@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::{constants::DEFAULT_COLUMN_WIDTH, test::user_model::util::new_empty_user_model};
 
@@ -30,27 +31,34 @@ fn add_undo_redo() {
 #[test]
 fn set_sheet_color() {
     let mut model = new_empty_user_model();
-    model.set_sheet_color(0, "#343434").unwrap();
+    model
+        .set_sheet_color(0, &Color::Rgb("#343434".to_string()))
+        .unwrap();
     let worksheets_properties = model.get_worksheets_properties();
     assert_eq!(worksheets_properties.len(), 1);
-    assert_eq!(worksheets_properties[0].color, Some("#343434".to_owned()));
+    assert_eq!(
+        worksheets_properties[0].color,
+        Color::Rgb("#343434".to_owned())
+    );
     model.undo().unwrap();
-    assert_eq!(model.get_worksheets_properties()[0].color, None);
+    assert_eq!(model.get_worksheets_properties()[0].color, Color::None);
 
     model.redo().unwrap();
     assert_eq!(
         model.get_worksheets_properties()[0].color,
-        Some("#343434".to_owned())
+        Color::Rgb("#343434".to_owned())
     );
     // changes the color if there is one
-    model.set_sheet_color(0, "#2534FF").unwrap();
+    model
+        .set_sheet_color(0, &Color::Rgb("#2534FF".to_string()))
+        .unwrap();
     assert_eq!(
         model.get_worksheets_properties()[0].color,
-        Some("#2534FF".to_owned())
+        Color::Rgb("#2534FF".to_owned())
     );
     // Setting it back to none
-    model.set_sheet_color(0, "").unwrap();
-    assert_eq!(model.get_worksheets_properties()[0].color, None);
+    model.set_sheet_color(0, &Color::None).unwrap();
+    assert_eq!(model.get_worksheets_properties()[0].color, Color::None);
 }
 
 #[test]

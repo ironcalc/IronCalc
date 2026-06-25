@@ -1,8 +1,8 @@
 use std::{collections::HashMap, io::Read};
 
 use ironcalc_base::types::{
-    Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Fill, Font,
-    FontScheme, HorizontalAlignment, NumFmt, Styles, VerticalAlignment,
+    Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Color, Dxf,
+    DxfFont, Fill, Font, FontScheme, HorizontalAlignment, NumFmt, Styles, Theme, VerticalAlignment,
 };
 use roxmltree::Node;
 
@@ -10,7 +10,7 @@ use crate::error::XlsxError;
 
 use super::util::{get_attribute, get_bool, get_bool_false, get_color, get_number};
 
-fn get_border(node: Node, name: &str) -> Result<Option<BorderItem>, XlsxError> {
+fn get_border(node: Node, name: &str, theme: &Theme) -> Result<Option<BorderItem>, XlsxError> {
     let style;
     let color;
     let border_nodes = node
@@ -40,9 +40,9 @@ fn get_border(node: Node, name: &str) -> Result<Option<BorderItem>, XlsxError> {
             .filter(|n| n.has_tag_name("color"))
             .collect::<Vec<Node>>();
         if color_node.len() == 1 {
-            color = get_color(color_node[0])?;
+            color = get_color(color_node[0], theme)?;
         } else {
-            color = None;
+            color = Color::None;
         }
     } else {
         return Ok(None);
@@ -52,6 +52,7 @@ fn get_border(node: Node, name: &str) -> Result<Option<BorderItem>, XlsxError> {
 
 pub(super) fn load_styles<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
+    theme: &Theme,
 ) -> Result<Styles, XlsxError> {
     let mut file = archive.by_name("xl/styles.xml")?;
     let mut text = String::new();
@@ -85,7 +86,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         .collect::<Vec<Node>>()[0];
     for font in font_nodes.children() {
         let mut sz = 11;
-        let mut name = "Calibri".to_string();
+        let mut name = "Inter".to_string();
         // NOTE: In Excel you can have simple underline or double underline
         // In IronCalc convert double underline to simple
         // This in excel is u with a value of "double"
@@ -93,8 +94,11 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         let mut b = false;
         let mut i = false;
         let mut strike = false;
-        // Default color is black
-        let mut color = Some("#000000".to_string());
+        // No <color> child is semantically equivalent to <color auto="1"/> in OOXML —
+        // both mean "use the automatic/default color", which we represent as None.
+        // Collapsing this to Some("#000000") would make it indistinguishable from an
+        // explicit <color rgb="FF000000"/>.
+        let mut color: Color = Color::None;
         let mut family = 2;
         let mut scheme = FontScheme::default();
         for feature in font.children() {
@@ -107,7 +111,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
                         .unwrap_or(11);
                 }
                 "color" => {
-                    color = get_color(feature)?;
+                    color = get_color(feature, theme)?;
                 }
                 "u" => {
                     u = true;
@@ -121,7 +125,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
                 "strike" => {
                     strike = true;
                 }
-                "name" => name = feature.attribute("val").unwrap_or("Calibri").to_string(),
+                "name" => name = "Inter".to_string(), // TODO: feature.attribute("val").unwrap_or("Calibri").to_string(),
                 // If there is a theme the font scheme and family overrides other properties like the name
                 "family" => {
                     family = feature
@@ -172,28 +176,20 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         if pattern_fill.len() != 1 {
             // safety belt
             // Some fills do not have a patternFill, but they have gradientFill
-            fills.push(Fill {
-                pattern_type: "solid".to_string(),
-                fg_color: None,
-                bg_color: None,
-            });
+            fills.push(Fill::default());
             continue;
         }
         let pattern_fill = pattern_fill[0];
 
-        let pattern_type = pattern_fill
-            .attribute("patternType")
-            .unwrap_or("none")
-            .to_string();
-        let mut fg_color = None;
-        let mut bg_color = None;
+        let mut fg_color = Color::None;
+        let mut bg_color = Color::None;
         for feature in pattern_fill.children() {
             match feature.tag_name().name() {
                 "fgColor" => {
-                    fg_color = get_color(feature)?;
+                    fg_color = get_color(feature, theme)?;
                 }
                 "bgColor" => {
-                    bg_color = get_color(feature)?;
+                    bg_color = get_color(feature, theme)?;
                 }
                 _ => {
                     println!("Unexpected pattern");
@@ -201,10 +197,13 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
                 }
             }
         }
+        // Prefer fgColor (solid fill convention); fall back to bgColor
         fills.push(Fill {
-            pattern_type,
-            fg_color,
-            bg_color,
+            color: if fg_color.is_some() {
+                fg_color
+            } else {
+                bg_color
+            },
         })
     }
 
@@ -216,11 +215,11 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     for border in border_nodes.children() {
         let diagonal_up = get_bool_false(border, "diagonal_up");
         let diagonal_down = get_bool_false(border, "diagonal_down");
-        let left = get_border(border, "left")?;
-        let right = get_border(border, "right")?;
-        let top = get_border(border, "top")?;
-        let bottom = get_border(border, "bottom")?;
-        let diagonal = get_border(border, "diagonal")?;
+        let left = get_border(border, "left", theme)?;
+        let right = get_border(border, "right", theme)?;
+        let top = get_border(border, "top", theme)?;
+        let bottom = get_border(border, "bottom", theme)?;
+        let diagonal = get_border(border, "diagonal", theme)?;
         borders.push(Border {
             diagonal_up,
             diagonal_down,
@@ -273,6 +272,12 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         let name = get_attribute(&cell_style, "name")?.to_string();
         let xf_id = get_number(cell_style, "xfId");
         let builtin_id = get_number(cell_style, "builtinId");
+        // NB: A builtin style could be hidden (this is removed in the UI)
+        // <cellStyle name="Linked Cell" xfId="8" builtinId="24" hidden="1"/>
+        // NB: A builtin style could be modified
+        // <cellStyle name="Good" xfId="4" builtinId="26" customBuiltin="1"/>
+        // let hidden = get_bool(cell_style, "hidden");
+        // let custom_builtin = get_bool(cell_style, "customBuiltin");
         style_names.insert(xf_id, name.clone());
         cell_styles.push(CellStyles {
             name,
@@ -287,7 +292,13 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         .filter(|n| n.has_tag_name("cellXfs"))
         .collect::<Vec<Node>>()[0];
     for xfs in cell_xfs_nodes.children() {
-        let xf_id = get_attribute(&xfs, "xfId")?.parse::<i32>()?;
+        // `xfId` is optional on a cellXfs <xf> (it references cellStyleXfs;
+        // many Excel/LibreOffice files omit it). Default to 0 when absent.
+        let xf_id = xfs
+            .attribute("xfId")
+            .map(|s| s.parse::<i32>())
+            .transpose()?
+            .unwrap_or(0);
         let num_fmt_id = get_number(xfs, "numFmtId");
         let font_id = get_number(xfs, "fontId");
         let fill_id = get_number(xfs, "fillId");
@@ -362,18 +373,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         });
     }
 
-    // TODO
-    // let mut dxfs = Vec::new();
-    // let mut tableStyles = Vec::new();
-    // let mut colors = Vec::new();
-    // <colors>
-    //     <mruColors>
-    //         <color rgb="FFB1BB4D"/>
-    //         <color rgb="FFFF99CC"/>
-    //         <color rgb="FF6C56DC"/>
-    //         <color rgb="FFFF66CC"/>
-    //     </mruColors>
-    // </colors>
+    let dxfs = load_dxfs(style_sheet, theme)?;
 
     Ok(Styles {
         num_fmts,
@@ -383,5 +383,145 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         cell_style_xfs,
         cell_xfs,
         cell_styles,
+        dxfs,
     })
+}
+
+fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
+    let mut dxfs = Vec::new();
+    let dxfs_nodes = style_sheet
+        .children()
+        .filter(|n| n.has_tag_name("dxfs"))
+        .collect::<Vec<Node>>();
+    if dxfs_nodes.is_empty() {
+        return Ok(dxfs);
+    }
+    for dxf_node in dxfs_nodes[0].children() {
+        if !dxf_node.is_element() {
+            continue;
+        }
+        let mut font = None;
+        let mut fill = None;
+        let mut border = None;
+        let mut num_fmt = None;
+        let mut alignment = None;
+
+        for child in dxf_node.children() {
+            match child.tag_name().name() {
+                "font" => {
+                    let mut f = DxfFont::default();
+                    for feat in child.children() {
+                        match feat.tag_name().name() {
+                            "color" => {
+                                f.color = get_color(feat, theme)?;
+                            }
+                            "b" => {
+                                f.b = Some(true);
+                            }
+                            "i" => {
+                                f.i = Some(true);
+                            }
+                            "u" => {
+                                f.u = Some(true);
+                            }
+                            "strike" => {
+                                f.strike = Some(true);
+                            }
+                            "sz" => {
+                                f.sz = Some(
+                                    feat.attribute("val")
+                                        .unwrap_or("11")
+                                        .parse::<i32>()
+                                        .unwrap_or(11),
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
+                    font = Some(f);
+                }
+                "fill" => {
+                    let pattern_fill_nodes = child
+                        .children()
+                        .filter(|n| n.has_tag_name("patternFill"))
+                        .collect::<Vec<Node>>();
+                    if pattern_fill_nodes.len() == 1 {
+                        let pf = pattern_fill_nodes[0];
+                        let mut fg_color = Color::None;
+                        let mut bg_color = Color::None;
+                        for feat in pf.children() {
+                            match feat.tag_name().name() {
+                                "fgColor" => fg_color = get_color(feat, theme)?,
+                                "bgColor" => bg_color = get_color(feat, theme)?,
+                                _ => {}
+                            }
+                        }
+                        // Prefer fgColor (solid fill convention); fall back to bgColor
+                        fill = Some(Fill {
+                            color: if fg_color.is_some() {
+                                fg_color
+                            } else {
+                                bg_color
+                            },
+                        });
+                    }
+                }
+                "border" => {
+                    let left = get_border(child, "left", theme)?;
+                    let right = get_border(child, "right", theme)?;
+                    let top = get_border(child, "top", theme)?;
+                    let bottom = get_border(child, "bottom", theme)?;
+                    let diagonal = get_border(child, "diagonal", theme)?;
+                    border = Some(Border {
+                        diagonal_up: false,
+                        diagonal_down: false,
+                        left,
+                        right,
+                        top,
+                        bottom,
+                        diagonal,
+                    });
+                }
+                "numFmt" => {
+                    let num_fmt_id = get_number(child, "numFmtId");
+                    let format_code = child.attribute("formatCode").unwrap_or("").to_string();
+                    num_fmt = Some(NumFmt {
+                        num_fmt_id,
+                        format_code,
+                    });
+                }
+                "alignment" => {
+                    let wrap_text = matches!(child.attribute("wrapText"), Some("1"));
+                    let horizontal = match child.attribute("horizontal") {
+                        Some("center") => HorizontalAlignment::Center,
+                        Some("left") => HorizontalAlignment::Left,
+                        Some("right") => HorizontalAlignment::Right,
+                        Some("justify") => HorizontalAlignment::Justify,
+                        _ => HorizontalAlignment::default(),
+                    };
+                    let vertical = match child.attribute("vertical") {
+                        Some("bottom") => VerticalAlignment::Bottom,
+                        Some("center") => VerticalAlignment::Center,
+                        Some("top") => VerticalAlignment::Top,
+                        _ => VerticalAlignment::default(),
+                    };
+                    alignment = Some(Alignment {
+                        horizontal,
+                        vertical,
+                        wrap_text,
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        dxfs.push(Dxf {
+            font,
+            fill,
+            border,
+            num_fmt,
+            alignment,
+        });
+    }
+    Ok(dxfs)
 }

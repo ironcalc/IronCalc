@@ -59,6 +59,10 @@
   --palette-grey-a400: #bdbdbd;
   --palette-grey-a700: #616161;
 
+  /* shadows */
+  --shadow-sm: 0px 1px 3px 0px rgb(39 37 37 / 10%);
+  --shadow-md: 0 2px 6px rgb(0 0 0 / 12%), 0 8px 24px rgb(0 0 0 / 12%);
+
   /* sheet */
   --palette-sheet-header-corner-background: #fff;
   --palette-sheet-header-text-color: #333;
@@ -78,4 +82,5 @@
     "Inter", "Adjusted Arial Fallback", sans-serif;
   --palette-sheet-header-font:
     bold 12px "Inter", "Adjusted Arial Fallback", sans-serif;
+  --palette-sheet-cell-array-structure-color: #2f80ed;
 }

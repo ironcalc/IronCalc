@@ -29,7 +29,8 @@ ACOS returns a number in radians in the range [0 to $\pi$] that is the angle who
 <center><img src="/functions/images/arccosine-curve.png" width="350" alt="Graph showing acos(x) for x between -1 and +1."></center>
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=acos).
+
+<IronCalcEmbed src="/examples/acos.ic"/>
 
 ## Links
 * For more information about inverse trigonometric functions, visit Wikipedia's [Inverse trigonometric functions](https://en.wikipedia.org/wiki/Inverse_trigonometric_functions) page.

@@ -50,7 +50,8 @@ $$
 \text{pv} = -\text{fv} - (\text{pmt} \times \text{nper})
 $$
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=pv).
+
+<IronCalcEmbed src="/examples/pv.ic"/>
 
 ## Links
 * For more information about the concept of "present value" in finance, visit Wikipedia's [Present value](https://en.wikipedia.org/wiki/present_value) page.

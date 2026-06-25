@@ -4,7 +4,7 @@ use crate::test::user_model::util::new_empty_user_model;
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
     expressions::{types::Area, utils::number_to_column},
-    types::{Border, BorderItem, BorderStyle},
+    types::{Border, BorderItem, BorderStyle, Color},
     BorderArea, UserModel,
 };
 
@@ -125,7 +125,7 @@ fn borders_all() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -147,7 +147,7 @@ fn borders_all() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -165,7 +165,7 @@ fn borders_all() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -185,7 +185,7 @@ fn borders_all() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -203,7 +203,7 @@ fn borders_all() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -284,7 +284,7 @@ fn borders_inner() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -304,7 +304,7 @@ fn borders_inner() {
         let style = model.get_cell_style(0, 5, 6).unwrap();
         let border_item = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FF5566".to_string()),
+            color: Color::Rgb("#FF5566".to_string()),
         };
         // It should be right and bottom
         let expected_border = Border {
@@ -323,7 +323,7 @@ fn borders_inner() {
         let style = model.get_cell_style(0, 8, 8).unwrap();
         let border_item = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FF5566".to_string()),
+            color: Color::Rgb("#FF5566".to_string()),
         };
         // It should be only left and top
         let expected_border = Border {
@@ -370,7 +370,7 @@ fn borders_outer() {
         let style = model.get_cell_style(0, 5, 6).unwrap();
         let border_item = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FF5566".to_string()),
+            color: Color::Rgb("#FF5566".to_string()),
         };
         // It should be only left and top
         let expected_border = Border {
@@ -389,7 +389,7 @@ fn borders_outer() {
         let style = model.get_cell_style(0, 8, 8).unwrap();
         let border_item = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FF5566".to_string()),
+            color: Color::Rgb("#FF5566".to_string()),
         };
         // It should be only left and top
         let expected_border = Border {
@@ -411,7 +411,7 @@ fn borders_outer() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -429,7 +429,7 @@ fn borders_outer() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -449,7 +449,7 @@ fn borders_outer() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -467,7 +467,7 @@ fn borders_outer() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -514,7 +514,7 @@ fn borders_top() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let bottom = if row != 4 {
                 None
@@ -546,7 +546,7 @@ fn borders_top() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let expected_border = Border {
                 diagonal_up: false,
@@ -639,7 +639,7 @@ fn borders_right() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let left = if column != 9 {
                 None
@@ -696,7 +696,7 @@ fn borders_bottom() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             // The top will also have a value for all but the first one
             let bottom = if row != 8 {
@@ -749,7 +749,7 @@ fn borders_left() {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
-                color: Some("#FF5566".to_string()),
+                color: Color::Rgb("#FF5566".to_string()),
             };
             let left = if column != 6 {
                 None
@@ -771,7 +771,7 @@ fn borders_left() {
         let style = model.get_cell_style(0, row, 5).unwrap();
         let border_item = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FF5566".to_string()),
+            color: Color::Rgb("#FF5566".to_string()),
         };
         let expected_border = Border {
             diagonal_up: false,
@@ -815,7 +815,7 @@ fn none_borders_get_neighbour() {
         let style = model.get_cell_style(0, 4, 6).unwrap();
         let border_item = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FF5566".to_string()),
+            color: Color::Rgb("#FF5566".to_string()),
         };
 
         let expected_border = Border {
@@ -834,7 +834,7 @@ fn none_borders_get_neighbour() {
         let style = model.get_cell_style(0, 5, 7).unwrap();
         let border_item = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FF5566".to_string()),
+            color: Color::Rgb("#FF5566".to_string()),
         };
 
         let expected_border = Border {
@@ -853,7 +853,7 @@ fn none_borders_get_neighbour() {
         let style = model.get_cell_style(0, 6, 6).unwrap();
         let border_item = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FF5566".to_string()),
+            color: Color::Rgb("#FF5566".to_string()),
         };
 
         let expected_border = Border {
@@ -872,7 +872,7 @@ fn none_borders_get_neighbour() {
         let style = model.get_cell_style(0, 5, 5).unwrap();
         let border_item = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FF5566".to_string()),
+            color: Color::Rgb("#FF5566".to_string()),
         };
 
         let expected_border = Border {
@@ -900,14 +900,14 @@ fn heavier_borders() {
     // We check the border between F4 and F5
     let border_item = BorderItem {
         style: BorderStyle::Thin,
-        color: Some("#000000".to_string()),
+        color: Color::Rgb("#000000".to_string()),
     };
     assert_eq!(model._get_cell_border("F5").top, Some(border_item.clone()));
 
     // But the border is actually NOT changed (because it is lighter)
     let border_item2 = BorderItem {
         style: BorderStyle::Thin,
-        color: Some("#F2F2F2".to_string()),
+        color: Color::Rgb("#F2F2F2".to_string()),
     };
     assert_eq!(model._get_cell_actual_border("F5").top, Some(border_item2));
 
@@ -929,7 +929,7 @@ fn lighter_borders() {
     // We check the border around F5
     let border_item = BorderItem {
         style: BorderStyle::Thin,
-        color: Some("#F2F2F2".to_string()),
+        color: Color::Rgb("#F2F2F2".to_string()),
     };
     let border = model._get_cell_border("F5");
     assert_eq!(border.top, Some(border_item.clone()));
@@ -952,7 +952,7 @@ fn lighter_borders() {
     // after undoing the border is what it was
     let border_item = BorderItem {
         style: BorderStyle::Thin,
-        color: Some("#000000".to_string()),
+        color: Color::Rgb("#000000".to_string()),
     };
     let border = model._get_cell_border("F5");
     assert_eq!(border.top, Some(border_item.clone()));
@@ -985,7 +985,7 @@ fn autofill() {
     // auto filling does not change the borders
     let border_item = BorderItem {
         style: BorderStyle::Thin,
-        color: Some("#000000".to_string()),
+        color: Color::Rgb("#000000".to_string()),
     };
     let border = model._get_cell_border("D4");
     assert_eq!(border.top, Some(border_item.clone()));
@@ -1000,7 +1000,7 @@ fn autofill() {
     // but it hasn't really changed
     let border_item = BorderItem {
         style: BorderStyle::Thin,
-        color: Some("#F4F4F4".to_string()),
+        color: Color::Rgb("#F4F4F4".to_string()),
     };
     let border_e5_actual = model._get_cell_actual_border("E5");
     assert_eq!(border_e5_actual.left, Some(border_item.clone()));
@@ -1021,7 +1021,7 @@ fn border_top() {
     // But C4 was changed
     let border_item = BorderItem {
         style: BorderStyle::Thin,
-        color: Some("#F2F2F2".to_string()),
+        color: Color::Rgb("#F2F2F2".to_string()),
     };
     assert_eq!(model._get_cell_actual_border("C4").top, Some(border_item));
 
@@ -1030,7 +1030,7 @@ fn border_top() {
     // This tests that diff lists go in the right order
     let border_item = BorderItem {
         style: BorderStyle::Thin,
-        color: Some("#000000".to_string()),
+        color: Color::Rgb("#000000".to_string()),
     };
     assert_eq!(model._get_cell_actual_border("C4").top, Some(border_item));
 }

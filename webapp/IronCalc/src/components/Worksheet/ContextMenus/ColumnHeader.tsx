@@ -3,18 +3,15 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
+  MoveHorizontal,
   Plus,
   Snowflake,
   Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  DeleteButton,
-  ItemNameStyled,
-  MenuDivider,
-  StyledMenu,
-  StyledMenuItem,
-} from "./Common";
+import { Menu } from "../../Menu/Menu";
+import { MenuDivider } from "../../Menu/MenuDivider";
+import { MenuItem } from "../../Menu/MenuItem";
 
 interface Range {
   rowStart: number;
@@ -27,7 +24,7 @@ interface Range {
 interface ColumnHeaderContextMenuProps {
   open: boolean;
   onClose: () => void;
-  anchorPosition: { top: number; left: number } | null;
+  anchorPosition: { x: number; y: number } | null;
   onInsertColumnsLeft: () => void;
   onInsertColumnsRight: () => void;
   onFreezeColumns: () => void;
@@ -37,6 +34,7 @@ interface ColumnHeaderContextMenuProps {
   onShowHiddenColumns: () => void;
   onMoveColumnsLeft: () => void;
   onMoveColumnsRight: () => void;
+  onSetColumnWidth: () => void;
   range: Range;
   frozenColumnsCount: number;
   hiddenColumnsCount: number;
@@ -55,6 +53,7 @@ const ColumnHeaderContextMenu = (properties: ColumnHeaderContextMenuProps) => {
     onDeleteColumns,
     onMoveColumnsLeft,
     onMoveColumnsRight,
+    onSetColumnWidth,
     onHideColumns,
     onShowHiddenColumns,
     range,
@@ -64,104 +63,82 @@ const ColumnHeaderContextMenu = (properties: ColumnHeaderContextMenuProps) => {
 
   const { columnStart, columnEnd, columnCount } = range;
 
+  if (!anchorPosition) {
+    return null;
+  }
+
   return (
-    <StyledMenu
-      open={open}
-      onClose={onClose}
-      transitionDuration={0}
-      autoFocus={false}
-      anchorReference="anchorPosition"
-      anchorPosition={anchorPosition ?? undefined}
-    >
-      <StyledMenuItem onClick={onInsertColumnsLeft}>
-        <Plus />
-        <ItemNameStyled>
-          {t("context_menu.column_header.insert_columns_before", {
-            count: columnCount,
-          })}
-        </ItemNameStyled>
-      </StyledMenuItem>
-      <StyledMenuItem onClick={onInsertColumnsRight}>
-        <Plus />
-        <ItemNameStyled>
-          {t("context_menu.column_header.insert_columns_after", {
-            count: columnCount,
-          })}
-        </ItemNameStyled>
-      </StyledMenuItem>
+    <Menu open={open} onClose={onClose} anchorPosition={anchorPosition}>
+      <MenuItem icon={<Plus />} onClick={onInsertColumnsLeft}>
+        {t("context_menu.column_header.insert_columns_before", {
+          count: columnCount,
+        })}
+      </MenuItem>
+      <MenuItem icon={<Plus />} onClick={onInsertColumnsRight}>
+        {t("context_menu.column_header.insert_columns_after", {
+          count: columnCount,
+        })}
+      </MenuItem>
 
       <MenuDivider />
 
-      <StyledMenuItem onClick={onMoveColumnsLeft}>
-        <ArrowLeft />
-        <ItemNameStyled>
-          {t("context_menu.column_header.move_columns_left")}
-        </ItemNameStyled>
-      </StyledMenuItem>
-      <StyledMenuItem onClick={onMoveColumnsRight}>
-        <ArrowRight />
-        <ItemNameStyled>
-          {t("context_menu.column_header.move_columns_right")}
-        </ItemNameStyled>
-      </StyledMenuItem>
+      <MenuItem icon={<ArrowLeft />} onClick={onMoveColumnsLeft}>
+        {t("context_menu.column_header.move_columns_left")}
+      </MenuItem>
+      <MenuItem icon={<ArrowRight />} onClick={onMoveColumnsRight}>
+        {t("context_menu.column_header.move_columns_right")}
+      </MenuItem>
 
       <MenuDivider />
-      <StyledMenuItem onClick={onHideColumns}>
-        <EyeOff />
-        <ItemNameStyled>
-          {columnCount === 1
-            ? t("context_menu.column_header.hide_column", {
-                column: columnStart,
-              })
-            : t("context_menu.column_header.hide_columns", {
-                columnStart,
-                columnEnd,
-              })}
-        </ItemNameStyled>
-      </StyledMenuItem>
+
+      <MenuItem icon={<MoveHorizontal />} onClick={onSetColumnWidth}>
+        {t("context_menu.column_header.set_column_width")}
+      </MenuItem>
+
+      <MenuDivider />
+
+      <MenuItem icon={<EyeOff />} onClick={onHideColumns}>
+        {columnCount === 1
+          ? t("context_menu.column_header.hide_column", {
+              column: columnStart,
+            })
+          : t("context_menu.column_header.hide_columns", {
+              columnStart,
+              columnEnd,
+            })}
+      </MenuItem>
       {hiddenColumnsCount > 0 && (
-        <StyledMenuItem onClick={onShowHiddenColumns}>
-          <Eye />
-          <ItemNameStyled>
-            {t("context_menu.column_header.show_hidden_columns")}
-          </ItemNameStyled>
-        </StyledMenuItem>
+        <MenuItem icon={<Eye />} onClick={onShowHiddenColumns}>
+          {t("context_menu.column_header.show_hidden_columns")}
+        </MenuItem>
       )}
+
       <MenuDivider />
 
-      <StyledMenuItem onClick={onFreezeColumns}>
-        <Snowflake />
-        <ItemNameStyled>
-          {t("context_menu.column_header.freeze_columns", {
-            column: columnStart,
-          })}
-        </ItemNameStyled>
-      </StyledMenuItem>
+      <MenuItem icon={<Snowflake />} onClick={onFreezeColumns}>
+        {t("context_menu.column_header.freeze_columns", {
+          column: columnStart,
+        })}
+      </MenuItem>
       {frozenColumnsCount > 0 && (
-        <StyledMenuItem onClick={onUnfreezeColumns}>
-          <Snowflake />
-          <ItemNameStyled>
-            {t("context_menu.column_header.unfreeze_columns")}
-          </ItemNameStyled>
-        </StyledMenuItem>
+        <MenuItem icon={<Snowflake />} onClick={onUnfreezeColumns}>
+          {t("context_menu.column_header.unfreeze_columns")}
+        </MenuItem>
       )}
 
       <MenuDivider />
 
-      <DeleteButton onClick={onDeleteColumns}>
-        <Trash2 />
-        <ItemNameStyled>
-          {columnCount === 1
-            ? t("context_menu.column_header.delete_column", {
-                column: columnStart,
-              })
-            : t("context_menu.column_header.delete_columns", {
-                columnStart,
-                columnEnd,
-              })}
-        </ItemNameStyled>
-      </DeleteButton>
-    </StyledMenu>
+      <MenuItem icon={<Trash2 />} destructive onClick={onDeleteColumns}>
+        {columnCount === 1
+          ? t("context_menu.column_header.delete_column", {
+              column: columnStart,
+            })
+          : t("context_menu.column_header.delete_columns", {
+              columnStart,
+              columnEnd,
+            })}
+      </MenuItem>
+    </Menu>
   );
 };
 

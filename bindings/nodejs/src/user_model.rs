@@ -6,7 +6,7 @@ use napi::{self, bindgen_prelude::*, Result, Unknown};
 
 use ironcalc::base::{
   expressions::types::Area,
-  types::{CellType, Style},
+  types::{CellType, Color, Style},
   BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
@@ -124,8 +124,10 @@ impl UserModel {
     self.model.rename_sheet(sheet, &name).map_err(to_js_error)
   }
 
+  // FIXME: This should alos allow for themed colors
   #[napi(js_name = "setSheetColor")]
   pub fn set_sheet_color(&mut self, sheet: u32, color: String) -> Result<()> {
+    let color = Color::from_rgb(&color).map_err(to_js_error)?;
     self
       .model
       .set_sheet_color(sheet, &color)

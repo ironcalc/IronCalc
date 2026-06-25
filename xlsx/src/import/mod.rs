@@ -1,8 +1,9 @@
-mod colors;
+mod conditional_formatting;
 mod metadata;
-mod shared_strings;
+pub(crate) mod shared_strings;
 mod styles;
 mod tables;
+mod theme;
 mod util;
 mod workbook;
 mod worksheets;
@@ -16,6 +17,10 @@ use std::{
 use roxmltree::Node;
 
 use ironcalc_base::{
+    expressions::{
+        parser::{new_parser_english, stringify::to_english_string},
+        types::CellReferenceRC,
+    },
     types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
     Model,
 };
@@ -54,6 +59,35 @@ fn load_relationships<R: Read + std::io::Seek>(
     Ok(rels)
 }
 
+fn resolve_theme_path(rels: &HashMap<String, Relationship>) -> Option<String> {
+    let target = rels
+        .values()
+        .find(|r| r.rel_type.ends_with("/theme"))?
+        .target
+        .clone();
+    Some(if let Some(absolute) = target.strip_prefix('/') {
+        absolute.to_string()
+    } else {
+        format!("xl/{target}")
+    })
+}
+
+// FIXME: This is a bit of a HACK. We basically re-parse all the defined names assuming the context is `A1`
+// and there is no tables or defined names.
+fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, XlsxError> {
+    let defined_names = Vec::new();
+    let tables = HashMap::new();
+    let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables);
+    let cell_reference = CellReferenceRC {
+        sheet: worksheets[0].clone(),
+        column: 1,
+        row: 1,
+    };
+    let t = parser.parse(formula, &cell_reference);
+
+    Ok(to_english_string(&t, &cell_reference))
+}
+
 fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     name: String,
     reader: R,
@@ -63,8 +97,10 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     let mut archive = zip::ZipArchive::new(reader)?;
 
     let mut shared_strings = read_shared_strings(&mut archive)?;
-    let workbook = load_workbook(&mut archive)?;
+    let mut workbook = load_workbook(&mut archive)?;
     let rels = load_relationships(&mut archive)?;
+    let theme_path = resolve_theme_path(&rels);
+    let theme = theme::load(&mut archive, theme_path.as_deref());
     let mut tables = HashMap::new();
     let (worksheets, selected_sheet) = load_sheets(
         &mut archive,
@@ -72,8 +108,17 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         &workbook,
         &mut tables,
         &mut shared_strings,
+        &theme,
     )?;
-    let styles = load_styles(&mut archive)?;
+    let styles = load_styles(&mut archive, &theme)?;
+    // reparse formulas in defined names, since they may refer to sheets and tables that have been loaded
+    let worksheet_names = worksheets
+        .iter()
+        .map(|s| s.name.clone())
+        .collect::<Vec<_>>();
+    for dn in &mut workbook.defined_names {
+        dn.formula = reparse_formula_hack(&dn.formula, &worksheet_names)?;
+    }
     let metadata = match load_metadata(&mut archive) {
         Ok(metadata) => metadata,
         Err(_) => {
@@ -110,6 +155,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         metadata,
         tables,
         views,
+        theme,
     })
 }
 

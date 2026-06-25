@@ -15,13 +15,9 @@
   flex: 1;
   align-items: center;
   overflow-x: auto;
-  padding: 0 8px;
+  padding: 4px 8px;
   gap: 4px;
-  scrollbar-width: none; /* Firefox */
-}
-
-.ic-toolbar-container::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  scrollbar-width: none;
 }
 
 /* Color line */
@@ -52,10 +48,19 @@
   justify-content: center;
   text-align: center;
   font-family: var(--typography-font-family);
-  font-size: 12px;
-  border: none;
-  border-radius: 4px;
+  font-size: var(--typography-font-size);
+  border: 1px solid var(--palette-grey-300);
+  border-radius: 6px;
   min-width: 24px;
+  background: transparent;
+  cursor: text;
+  outline: none;
+  padding: 0;
+  box-sizing: border-box;
+}
+.ic-toolbar-font-size-box:focus {
+  background: var(--palette-common-white);
+  border: 1px solid var(--palette-grey-500);
 }
 
 /* Button group */
@@ -70,7 +75,6 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 10;
   width: 24px;
   height: 100%;
   display: flex;
@@ -101,4 +105,11 @@
 .ic-toolbar-scroll-arrow svg {
   width: 16px;
   height: 16px;
+}
+
+.ic-toolbar-scroll-arrow .ic-tooltip-trigger {
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
 }

@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
-use colors::{get_indexed_color, get_themed_color};
+use ironcalc_base::colors::get_indexed_color;
 use roxmltree::{ExpandedName, Node};
 
 use crate::error::XlsxError;
 
-use super::colors;
+use ironcalc_base::types::{Color, Theme};
 
 pub(crate) fn get_number(node: Node, s: &str) -> i32 {
     node.attribute(s).unwrap_or("0").parse::<i32>().unwrap_or(0)
@@ -36,36 +36,37 @@ pub(super) fn get_value_or_default(node: &Node, tag_name: &str, default: &str) -
     }
 }
 
-pub(super) fn get_color(node: Node) -> Result<Option<String>, XlsxError> {
+pub(super) fn get_color(node: Node, _theme: &Theme) -> Result<Color, XlsxError> {
     // 18.3.1.15 color (Data Bar Color)
     if node.has_attribute("rgb") {
-        let mut val = node.attribute("rgb").unwrap().to_string();
-        // FIXME the two first values is normally the alpha.
-        if val.len() == 8 {
-            val = format!("#{}", &val[2..8]);
-        }
-        Ok(Some(val))
+        let raw = node.attribute("rgb").unwrap();
+        // Strip leading alpha byte from ARGB (e.g. "FF4472C4" → "#4472C4")
+        let hex = if raw.len() == 8 {
+            format!("#{}", raw[2..].to_ascii_uppercase())
+        } else {
+            format!("#{}", raw.to_ascii_uppercase())
+        };
+        Ok(Color::Rgb(hex))
     } else if node.has_attribute("indexed") {
         let index = node.attribute("indexed").unwrap().parse::<i32>()?;
+        if index == 64 {
+            // 64 is "transparent" in OOXML, but we don't have a good way to represent that, so we'll just ignore it
+            return Ok(Color::None);
+        }
         let rgb = get_indexed_color(index);
-        Ok(Some(rgb))
-    // Color::Indexed(val)
+        Ok(Color::Rgb(rgb))
     } else if node.has_attribute("theme") {
-        let theme = node.attribute("theme").unwrap().parse::<i32>()?;
+        let theme_index = node.attribute("theme").unwrap().parse::<i32>()?;
         let tint = match node.attribute("tint") {
             Some(t) => t.parse::<f64>().unwrap_or(0.0),
             None => 0.0,
         };
-        let rgb = get_themed_color(theme, tint);
-        Ok(Some(rgb))
-    // Color::Theme { theme, tint }
+        Ok(Color::Theme(theme_index, tint))
     } else if node.has_attribute("auto") {
-        // TODO: Is this correct?
-        // A boolean value indicating the color is automatic and system color dependent.
-        Ok(None)
+        Ok(Color::None)
     } else {
         println!("Unexpected color node {node:?}");
-        Ok(None)
+        Ok(Color::None)
     }
 }
 

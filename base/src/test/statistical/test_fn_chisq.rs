@@ -171,3 +171,52 @@ fn test_booleans() {
     assert_eq!(model._get_text("A3"), "0.008150972");
     assert_eq!(model._get_text("A4"), "7");
 }
+
+#[test]
+fn test_arguments() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=CHISQ.DIST()");
+    model._set("A2", "=CHISQ.DIST(8)");
+    model._set("A3", "=CHISQ.DIST(8, 3)");
+    model._set("A4", "=CHISQ.DIST(8, 3, TRUE)");
+    model._set("A5", "=CHISQ.DIST(8, 3, TRUE, 2)");
+
+    model._set("B1", "=CHISQ.INV()");
+    model._set("B2", "=CHISQ.INV(0)");
+    model._set("B3", "=CHISQ.INV(A4, 3)");
+    model._set("B4", "=CHISQ.INV(0, 1, 2)");
+
+    model._set("C1", "=CHISQ.DIST.RT()");
+    model._set("C2", "=CHISQ.DIST.RT(8)");
+    model._set("C3", "=CHISQ.DIST.RT(8, 3)");
+    model._set("C4", "=CHISQ.DIST.RT(8, 3, 2)");
+
+    model._set("D1", "=CHISQ.INV.RT()");
+    model._set("D2", "=CHISQ.INV.RT(0)");
+    model._set("D3", "=CHISQ.INV.RT(C3, 3)");
+    model._set("D4", "=CHISQ.INV.RT(0, 1, 2)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
+    assert_eq!(model._get_text("A3"), "#ERROR!");
+    assert_eq!(model._get_text("A4"), "0.953988294");
+    assert_eq!(model._get_text("A5"), "#ERROR!");
+
+    assert_eq!(model._get_text("B1"), "#ERROR!");
+    assert_eq!(model._get_text("B2"), "#ERROR!");
+    assert_eq!(model._get_text("B3"), "8");
+    assert_eq!(model._get_text("B4"), "#ERROR!");
+
+    assert_eq!(model._get_text("C1"), "#ERROR!");
+    assert_eq!(model._get_text("C2"), "#ERROR!");
+    assert_eq!(model._get_text("C3"), "0.046011706");
+    assert_eq!(model._get_text("C4"), "#ERROR!");
+
+    assert_eq!(model._get_text("D1"), "#ERROR!");
+    assert_eq!(model._get_text("D2"), "#ERROR!");
+    assert_eq!(model._get_text("D3"), "8");
+    assert_eq!(model._get_text("D4"), "#ERROR!");
+}

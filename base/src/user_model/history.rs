@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
 
-use crate::types::{Cell, Col, Row, SheetState, Style, Worksheet};
+use crate::{
+    cf_types::CfRule,
+    types::{Cell, Col, Color, Row, SheetState, Style, Theme, Worksheet},
+};
 
 #[derive(Clone, Encode, Decode)]
 pub(crate) struct RowData {
@@ -26,18 +29,31 @@ pub(crate) enum Diff {
         new_value: String,
         old_value: Box<Option<Cell>>,
     },
-    CellClearContents {
+    SetArrayValue {
         sheet: u32,
         row: i32,
         column: i32,
-        old_value: Box<Option<Cell>>,
+        width: i32,
+        height: i32,
+        new_value: String,
+        old_values: Vec<Vec<Option<Cell>>>,
     },
-    CellClearAll {
+    RangeClearContents {
         sheet: u32,
         row: i32,
         column: i32,
-        old_value: Box<Option<Cell>>,
-        old_style: Box<Style>,
+        width: i32,
+        height: i32,
+        old_value: Vec<Vec<Option<Cell>>>,
+    },
+    RangeClearAll {
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+        old_value: Vec<Vec<Option<Cell>>>,
+        old_style: Vec<Vec<Style>>,
     },
     CellClearFormatting {
         sheet: u32,
@@ -139,6 +155,12 @@ pub(crate) enum Diff {
         index: u32,
         name: String,
     },
+    DuplicateSheet {
+        /// Index of the sheet that was duplicated.
+        source_index: u32,
+        /// Index of the resulting copy (always `source_index + 1`).
+        new_index: u32,
+    },
     RenameSheet {
         index: u32,
         old_value: String,
@@ -146,8 +168,8 @@ pub(crate) enum Diff {
     },
     SetSheetColor {
         index: u32,
-        old_value: String,
-        new_value: String,
+        old_value: Color,
+        new_value: Color,
     },
     SetSheetState {
         index: u32,
@@ -158,6 +180,10 @@ pub(crate) enum Diff {
         sheet: u32,
         old_value: bool,
         new_value: bool,
+    },
+    SetTheme {
+        old_value: Box<Theme>,
+        new_value: Box<Theme>,
     },
     CreateDefinedName {
         name: String,
@@ -177,14 +203,16 @@ pub(crate) enum Diff {
         new_scope: Option<u32>,
         new_formula: String,
     },
-    MoveColumn {
+    MoveColumns {
         sheet: u32,
         column: i32,
+        column_count: i32,
         delta: i32,
     },
-    MoveRow {
+    MoveRows {
         sheet: u32,
         row: i32,
+        row_count: i32,
         delta: i32,
     },
     SetLocale {
@@ -194,6 +222,53 @@ pub(crate) enum Diff {
     SetTimezone {
         old_value: String,
         new_value: String,
+    },
+    // Named style diffs
+    CreateNamedStyle {
+        name: String,
+        xf_id: i32,
+    },
+    DeleteNamedStyle {
+        name: String,
+        old_xf_id: i32,
+    },
+    UpdateNamedStyle {
+        name: String,
+        new_name: String,
+        old_xf_id: i32,
+        new_xf_id: i32,
+    },
+    // Conditional formatting diffs
+    AddConditionalFormatting {
+        sheet: u32,
+        range: String,
+        rule: Box<CfRule>,
+        priority: u32,
+    },
+    DeleteConditionalFormatting {
+        sheet: u32,
+        index: u32,
+        old_range: String,
+        old_rule: Box<CfRule>,
+        old_priority: u32,
+    },
+    UpdateConditionalFormatting {
+        sheet: u32,
+        index: u32,
+        old_range: String,
+        old_rule: Box<CfRule>,
+        old_priority: u32,
+        new_range: String,
+        new_rule: Box<CfRule>,
+    },
+    /// Swaps the priorities of the two CF rules at `index_a` and `index_b`.
+    /// `priority_a`/`priority_b` are their priorities *before* the swap.
+    SwapConditionalFormattingPriority {
+        sheet: u32,
+        index_a: u32,
+        index_b: u32,
+        priority_a: u32,
+        priority_b: u32,
     },
     // FIXME: we are missing SetViewDiffs
 }

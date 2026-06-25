@@ -116,11 +116,17 @@ fn test_set_user_input() {
 
     // Case2 : Invalid Row
     let update_result = model.set_user_input(0, 0, 2, "20.0".to_string());
-    assert_eq!(update_result, Err("Incorrect row or column".to_string()));
+    assert_eq!(
+        update_result,
+        Err("Row or column is outside valid range.".to_string())
+    );
 
     // Case3 : Invalid Column
     let update_result = model.set_user_input(0, 1, 1048579, "20.0".to_string());
-    assert_eq!(update_result, Err("Incorrect row or column".to_string()));
+    assert_eq!(
+        update_result,
+        Err("Row or column is outside valid range.".to_string())
+    );
 }
 
 #[test]

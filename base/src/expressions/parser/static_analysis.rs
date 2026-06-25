@@ -2,6 +2,9 @@ use crate::functions::Function;
 
 use super::Node;
 
+#[cfg(target_arch = "wasm32")]
+use regex_lite as regex;
+
 use regex::Regex;
 use std::sync::OnceLock;
 
@@ -53,7 +56,7 @@ fn is_range_reference(s: &str) -> bool {
  This formulas will not be compatible with old versions of the engine. The FG will stringify this as `=SUM(_xlfn.SIMPLE(A1:A7))`.
  */
 
-/// Transverses the formula tree adding the implicit intersection operator in all arguments of functions that
+/// Traverses the formula tree adding the implicit intersection operator in all arguments of functions that
 /// expect a scalar but get a range.
 ///  * A:A => @A:A
 ///  * SIN(A1:D1) => SIN(@A1:D1)
@@ -69,9 +72,11 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
-        | Node::InvalidFunctionKind { .. }
+        | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
-        | Node::ReferenceKind { .. } => {}
+        | Node::ReferenceKind { .. }
+        | Node::LambdaDefKind { .. }
+        | Node::LambdaCallKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
             // We need to check wether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
@@ -79,6 +84,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             if matches!(&new_node, Node::ImplicitIntersection { .. }) {
                 *node = new_node
             }
+        }
+        Node::SpillRangeOperator { child } => {
+            add_implicit_intersection(child, add);
         }
         Node::RangeKind {
             row1,
@@ -145,11 +153,14 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 }
             }
         }
-        Node::WrongVariableKind(v) => {
+        Node::NamedVariableKind { name, id } => {
             if add {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
-                    child: Box::new(Node::WrongVariableKind(v.to_owned())),
+                    child: Box::new(Node::NamedVariableKind {
+                        name: name.clone(),
+                        id: *id,
+                    }),
                 }
             }
         }
@@ -171,7 +182,10 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                     add_implicit_intersection(&mut args[index], false);
                 }
             }
-            if add
+            // There are some function that will never add an automatic II:
+            let new_function = matches!(kind, Function::Let | Function::Lambda);
+            if !new_function
+                && add
                 && matches!(
                     run_static_analysis_on_node(node),
                     StaticResult::Range(_, _) | StaticResult::Unknown
@@ -186,10 +200,98 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
     };
 }
 
-pub(crate) enum StaticResult {
+/// Inverse of [`add_implicit_intersection`], used when exporting to Excel.
+///
+/// The internal (RC) representation stores every implicit intersection as `@`,
+/// losing the `automatic` flag. When exporting we must decide, for each `@`,
+/// whether it should be written as `_xlfn.SINGLE(...)` (because it is meaningful)
+/// or dropped (because `add_implicit_intersection` would re-insert it on import).
+///
+/// That decision depends on the *context* of the operator, exactly like
+/// `add_implicit_intersection`: an `@` is redundant only in a position that
+/// expects a scalar (`add == true`). Crucially, an `@` sitting in a `Vector`
+/// argument of a function such as `SUM` is **not** redundant: on import no
+/// automatic intersection is added there, so dropping it would change the result
+/// (e.g. `SUM(A1,B1,@J:J)` would become `SUM(A1,B1,J:J)`, scanning the whole
+/// column). This pass removes only the redundant operators, leaving the rest to
+/// be stringified as `_xlfn.SINGLE`.
+///
+/// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
+/// (a formula is evaluated in a scalar context).
+pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
+    match node {
+        // Leaves and nodes that never contain a nested implicit intersection.
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ErrorKind(_)
+        | Node::EmptyArgKind
+        | Node::ParseErrorKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
+        | Node::NamedFunctionKind { .. }
+        | Node::ArrayKind(_)
+        | Node::ReferenceKind { .. }
+        | Node::RangeKind { .. }
+        | Node::OpRangeKind { .. }
+        | Node::DefinedNameKind(_)
+        | Node::NamedVariableKind { .. }
+        | Node::TableNameKind(_)
+        | Node::LambdaDefKind { .. }
+        | Node::LambdaCallKind { .. } => {}
+        Node::ImplicitIntersection { child, .. } => {
+            if add {
+                // Would `add_implicit_intersection` re-insert this operator on
+                // import? Probe the child in a scalar context to find out.
+                let mut probe = child.as_ref().clone();
+                add_implicit_intersection(&mut probe, true);
+                if matches!(probe, Node::ImplicitIntersection { .. }) {
+                    // Redundant: drop the operator and keep cleaning the child.
+                    // The child is still in the same (scalar) context, so recurse
+                    // with `add` to also remove any nested redundant operators.
+                    let mut inner = child.as_ref().clone();
+                    remove_redundant_implicit_intersection(&mut inner, add);
+                    *node = inner;
+                    return;
+                }
+            }
+            // Meaningful operator: keep it, but still clean any nested ones.
+            remove_redundant_implicit_intersection(child, false);
+        }
+        Node::SpillRangeOperator { child } => {
+            remove_redundant_implicit_intersection(child, add);
+        }
+        Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
+        Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right, .. }
+        | Node::CompareKind { left, right, .. } => {
+            remove_redundant_implicit_intersection(left, add);
+            remove_redundant_implicit_intersection(right, add);
+        }
+        Node::FunctionKind { kind, args } => {
+            let arg_count = args.len();
+            let signature = get_function_args_signature(kind, arg_count);
+            for index in 0..arg_count {
+                // Scalar arguments are an intersecting context; vector arguments
+                // (ranges/arrays) are not.
+                let child_add = matches!(signature[index], Signature::Scalar);
+                remove_redundant_implicit_intersection(&mut args[index], child_add);
+            }
+        }
+    };
+}
+
+/// The result of the static analysis of a node
+pub enum StaticResult {
+    // The result of the evaluation is a single value (number, string, boolean, error)
     Scalar,
+    // The result of the evaluation is an array with dimensions (rows, columns)
     Array(i32, i32),
+    // The result of the evaluation is a range with dimensions (rows, columns)
     Range(i32, i32),
+    // The result of the evaluation is unknown, we cannot guaranty it is a scalar, an array or a range
     Unknown,
     // TODO: What if one of the dimensions is known?
     // what if the dimensions are unknown but bounded?
@@ -222,7 +324,7 @@ fn static_analysis_op_nodes(left: &Node, right: &Node) -> StaticResult {
 //  * Array(a, b) if we know it will be an a x b array.
 //  * Range(a, b) if we know it will be a a x b range.
 //  * Unknown if we cannot guaranty either
-fn run_static_analysis_on_node(node: &Node) -> StaticResult {
+pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
     match node {
         Node::BooleanKind(_)
         | Node::NumberKind(_)
@@ -242,14 +344,16 @@ fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             // StaticResult::Unknown or Array is also valid
             StaticResult::Scalar
         }
-        Node::InvalidFunctionKind { .. } => {
-            // StaticResult::Unknown is also valid
-            StaticResult::Scalar
+        Node::NamedFunctionKind { .. } => {
+            // A named-function call invokes a LAMBDA (defined-name or LET-bound) whose
+            // result shape is unknown at parse time — it may well be an array that needs
+            // to spill (e.g. a LAMBDA wrapping SEQUENCE). Treat it like LambdaCallKind.
+            StaticResult::Unknown
         }
         Node::ArrayKind(array) => {
             let n = array.len() as i32;
-            // FIXME: This is a placeholder until we implement arrays
-            StaticResult::Array(n, 1)
+            let m = array.first().map(|row| row.len() as i32).unwrap_or(0);
+            StaticResult::Array(n, m)
         }
         Node::RangeKind {
             row1,
@@ -265,18 +369,24 @@ fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::ReferenceKind { .. } => StaticResult::Scalar,
 
         // binary operations
-        Node::OpConcatenateKind { left, right } => static_analysis_op_nodes(left, right),
-        Node::OpSumKind { left, right, .. } => static_analysis_op_nodes(left, right),
-        Node::OpProductKind { left, right, .. } => static_analysis_op_nodes(left, right),
-        Node::OpPowerKind { left, right, .. } => static_analysis_op_nodes(left, right),
-        Node::CompareKind { left, right, .. } => static_analysis_op_nodes(left, right),
+        Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right, .. }
+        | Node::CompareKind { left, right, .. } => static_analysis_op_nodes(left, right),
 
         // defined names
-        Node::DefinedNameKind(_) => StaticResult::Unknown,
-        Node::WrongVariableKind(_) => StaticResult::Unknown,
+        Node::DefinedNameKind(_) => {
+            // TODO: We could do better if we tracked the defined names
+            StaticResult::Unknown
+        }
+        Node::NamedVariableKind { .. } => StaticResult::Scalar,
         Node::TableNameKind(_) => StaticResult::Unknown,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
+        Node::SpillRangeOperator { .. } => StaticResult::Unknown,
+        Node::LambdaDefKind { .. } => StaticResult::Unknown,
+        Node::LambdaCallKind { .. } => StaticResult::Unknown,
     }
 }
 
@@ -306,6 +416,21 @@ fn scalar_arguments(args: &[Node]) -> StaticResult {
 // We only care if the function can return a range or not
 fn not_implemented(_args: &[Node]) -> StaticResult {
     StaticResult::Scalar
+}
+
+/// SUMIF spills according to the shape of its criteria argument (`args[1]`); the
+/// criteria_range and sum_range arguments are consumed, not broadcast. A scalar
+/// criterion yields a scalar; a range/array criterion yields an array of the
+/// same dimensions.
+fn sumif_static_result(args: &[Node]) -> StaticResult {
+    match args.get(1) {
+        Some(criteria) => match run_static_analysis_on_node(criteria) {
+            StaticResult::Array(a, b) | StaticResult::Range(a, b) => StaticResult::Array(a, b),
+            StaticResult::Scalar => StaticResult::Scalar,
+            StaticResult::Unknown => StaticResult::Unknown,
+        },
+        None => StaticResult::Scalar,
+    }
 }
 
 fn static_analysis_offset(args: &[Node]) -> StaticResult {
@@ -387,6 +512,45 @@ fn args_signature_scalars(
     }
 }
 
+fn args_signature_lambda(arg_count: usize) -> Vec<Signature> {
+    // LAMBDA([param1, param2, ...], body) — at least 1 arg (the body)
+    if arg_count == 0 {
+        return vec![Signature::Error; arg_count];
+    }
+    // All parameter names are Scalar; the final body argument is Vector.
+    let mut sig = vec![Signature::Scalar; arg_count];
+    sig[arg_count - 1] = Signature::Vector;
+    sig
+}
+
+fn args_signature_let(arg_count: usize) -> Vec<Signature> {
+    // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
+    if arg_count < 3 || arg_count.is_multiple_of(2) {
+        return vec![Signature::Error; arg_count];
+    }
+    (0..arg_count)
+        .map(|i| {
+            // Odd indices are value expressions; last index is the body.
+            // Both should be Vector so range references are not implicitly intersected.
+            // Even indices (except last) are name declarations — Scalar is fine since
+            // they are never actually evaluated as range expressions.
+            if i % 2 == 1 || i == arg_count - 1 {
+                Signature::Vector
+            } else {
+                Signature::Scalar
+            }
+        })
+        .collect()
+}
+
+fn args_signature_arraytotext(arg_count: usize) -> Vec<Signature> {
+    match arg_count {
+        1 => vec![Signature::Vector],
+        2 => vec![Signature::Vector, Signature::Scalar],
+        _ => vec![Signature::Error; arg_count],
+    }
+}
+
 fn args_signature_one_vector(arg_count: usize) -> Vec<Signature> {
     if arg_count == 1 {
         vec![Signature::Vector]
@@ -400,6 +564,20 @@ fn args_signature_sumif(arg_count: usize) -> Vec<Signature> {
         vec![Signature::Vector, Signature::Scalar]
     } else if arg_count == 3 {
         vec![Signature::Vector, Signature::Scalar, Signature::Vector]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
+/// SUMIF signature with the criteria argument as a `Vector` instead of a
+/// `Scalar`. This stops a range/array criteria from being collapsed by implicit
+/// intersection, so SUMIF can spill one sum per criterion. (COUNTIF/AVERAGEIF
+/// keep the classic [`args_signature_sumif`], intersecting range criteria.)
+fn args_signature_sumif_spill(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Vector, Signature::Vector]
+    } else if arg_count == 3 {
+        vec![Signature::Vector, Signature::Vector, Signature::Vector]
     } else {
         vec![Signature::Error; arg_count]
     }
@@ -512,6 +690,138 @@ fn args_signature_xlookup(arg_count: usize) -> Vec<Signature> {
     result
 }
 
+fn args_signature_sort(arg_count: usize) -> Vec<Signature> {
+    if !(1..=4).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_sortby(arg_count: usize) -> Vec<Signature> {
+    // Valid: 2, 3, 5, 7, ... (n==2 || n==3 || n>=5 with odd count)
+    if arg_count < 2 || (arg_count > 3 && arg_count.is_multiple_of(2)) {
+        return vec![Signature::Error; arg_count];
+    }
+    // arg[0] = array (Vector), arg[1] = by_array1 (Vector),
+    // optional arg[2] = sort_order1 (Scalar), then pairs (Vector, Scalar)
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    let mut i = 1;
+    while i < arg_count {
+        result[i] = Signature::Vector; // by_array
+        i += 2; // skip the sort_order (Scalar)
+    }
+    result
+}
+
+fn args_signature_unique(arg_count: usize) -> Vec<Signature> {
+    if !(1..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_filter(arg_count: usize) -> Vec<Signature> {
+    if !(2..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result[1] = Signature::Vector;
+    result
+}
+
+fn args_signature_sequence(arg_count: usize) -> Vec<Signature> {
+    if !(1..=4).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    vec![Signature::Scalar; arg_count]
+}
+
+fn args_signature_randarray(arg_count: usize) -> Vec<Signature> {
+    if arg_count > 5 {
+        return vec![Signature::Error; arg_count];
+    }
+    vec![Signature::Scalar; arg_count]
+}
+
+fn args_signature_take(arg_count: usize) -> Vec<Signature> {
+    if !(2..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_drop(arg_count: usize) -> Vec<Signature> {
+    if !(2..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_tocol(arg_count: usize) -> Vec<Signature> {
+    if !(1..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_bycol_byrow(arg_count: usize) -> Vec<Signature> {
+    if arg_count != 2 {
+        return vec![Signature::Error; arg_count];
+    }
+    vec![Signature::Vector, Signature::Scalar]
+}
+
+fn args_signature_map(arg_count: usize) -> Vec<Signature> {
+    if arg_count < 2 {
+        return vec![Signature::Error; arg_count];
+    }
+    // All args except the last (lambda) are Vector; the lambda is Scalar.
+    let mut result = vec![Signature::Vector; arg_count];
+    result[arg_count - 1] = Signature::Scalar;
+    result
+}
+
+fn args_signature_reduce(arg_count: usize) -> Vec<Signature> {
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Scalar],
+        3 => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
+        _ => vec![Signature::Error; arg_count],
+    }
+}
+
+fn args_signature_scan(arg_count: usize) -> Vec<Signature> {
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Scalar],
+        3 => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
+        _ => vec![Signature::Error; arg_count],
+    }
+}
+
+fn args_signature_textsplit(arg_count: usize) -> Vec<Signature> {
+    if !(2..=6).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    // col_delimiter (index 1) and row_delimiter (index 2) can be arrays
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[1] = Signature::Vector;
+    if arg_count >= 3 {
+        result[2] = Signature::Vector;
+    }
+    result
+}
+
 fn args_signature_textafter(arg_count: usize) -> Vec<Signature> {
     if !(2..=6).contains(&arg_count) {
         vec![Signature::Scalar; arg_count]
@@ -612,6 +922,58 @@ fn args_signature_networkdays_intl(arg_count: usize) -> Vec<Signature> {
 // 2. Checking the arguments to see if we need to insert the implicit intersection operator
 // 3. Understanding the return value
 //
+fn args_signature_xmatch(arg_count: usize) -> Vec<Signature> {
+    if !(2..=4).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[1] = Signature::Vector;
+    result
+}
+
+fn args_signature_trimrange(arg_count: usize) -> Vec<Signature> {
+    if !(1..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_address(arg_count: usize) -> Vec<Signature> {
+    if !(2..=5).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    vec![Signature::Scalar; arg_count]
+}
+
+fn args_signature_choosecols(arg_count: usize) -> Vec<Signature> {
+    if arg_count < 2 {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_expand(arg_count: usize) -> Vec<Signature> {
+    if !(2..=4).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
+    if !(2..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
 // The signature of the functions should be defined only once
 
 // Given a function and a number of arguments this returns the arguments at each position
@@ -625,6 +987,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Iferror => args_signature_scalars(arg_count, 2, 0),
         Function::Ifna => args_signature_scalars(arg_count, 2, 0),
         Function::Ifs => vec![Signature::Scalar; arg_count],
+        Function::Lambda => args_signature_lambda(arg_count),
+        Function::Let => args_signature_let(arg_count),
         Function::Not => args_signature_scalars(arg_count, 1, 0),
         Function::Or => vec![Signature::Vector; arg_count],
         Function::Switch => vec![Signature::Scalar; arg_count],
@@ -659,7 +1023,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sqrt => args_signature_scalars(arg_count, 1, 0),
         Function::Sqrtpi => args_signature_scalars(arg_count, 1, 0),
         Function::Sum => vec![Signature::Vector; arg_count],
-        Function::Sumif => args_signature_sumif(arg_count),
+        Function::Sumif => args_signature_sumif_spill(arg_count),
         Function::Sumifs => vec![Signature::Vector; arg_count],
         Function::Tan => args_signature_scalars(arg_count, 1, 0),
         Function::Tanh => args_signature_scalars(arg_count, 1, 0),
@@ -674,12 +1038,19 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Isnontext => args_signature_scalars(arg_count, 1, 0),
         Function::Isnumber => args_signature_scalars(arg_count, 1, 0),
         Function::Isodd => args_signature_scalars(arg_count, 1, 0),
+        Function::Isomitted => args_signature_scalars(arg_count, 1, 0),
         Function::Isref => args_signature_one_vector(arg_count),
         Function::Istext => args_signature_scalars(arg_count, 1, 0),
         Function::Na => args_signature_no_args(arg_count),
         Function::Sheet => args_signature_sheet(arg_count),
         Function::Type => args_signature_one_vector(arg_count),
+        Function::Address => args_signature_address(arg_count),
+        Function::Areas => args_signature_one_vector(arg_count),
+        Function::Choosecols => args_signature_choosecols(arg_count),
+        Function::Chooserows => args_signature_choosecols(arg_count),
+        Function::Expand => args_signature_expand(arg_count),
         Function::Hlookup => args_signature_hlookup(arg_count),
+        Function::Hstack => vec![Signature::Vector; arg_count],
         Function::Index => args_signature_index(arg_count),
         Function::Indirect => args_signature_scalars(arg_count, 1, 0),
         Function::Lookup => args_signature_lookup(arg_count),
@@ -688,7 +1059,37 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Row => args_signature_row(arg_count),
         Function::Rows => args_signature_one_vector(arg_count),
         Function::Vlookup => args_signature_hlookup(arg_count),
+        Function::Vstack => vec![Signature::Vector; arg_count],
+        Function::Wrapcols => args_signature_wrapcols(arg_count),
+        Function::Wraprows => args_signature_wrapcols(arg_count),
         Function::Xlookup => args_signature_xlookup(arg_count),
+        Function::Xmatch => args_signature_xmatch(arg_count),
+        Function::Trimrange => args_signature_trimrange(arg_count),
+        Function::Sort => args_signature_sort(arg_count),
+        Function::Sortby => args_signature_sortby(arg_count),
+        Function::Unique => args_signature_unique(arg_count),
+        Function::Filter => args_signature_filter(arg_count),
+        Function::Take => args_signature_take(arg_count),
+        Function::Drop => args_signature_drop(arg_count),
+        Function::Tocol => args_signature_tocol(arg_count),
+        Function::Torow => args_signature_tocol(arg_count),
+        Function::Transpose => args_signature_one_vector(arg_count),
+        Function::Mmult => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::Bycol => args_signature_bycol_byrow(arg_count),
+        Function::Byrow => args_signature_bycol_byrow(arg_count),
+        Function::Map => args_signature_map(arg_count),
+        Function::Reduce => args_signature_reduce(arg_count),
+        Function::Scan => args_signature_scan(arg_count),
+        Function::Makearray => vec![Signature::Scalar; 3],
+        Function::Sequence => args_signature_sequence(arg_count),
+        Function::Randarray => args_signature_randarray(arg_count),
+        Function::Textsplit => args_signature_textsplit(arg_count),
         Function::Concat => vec![Signature::Vector; arg_count],
         Function::Concatenate => vec![Signature::Scalar; arg_count],
         Function::Exact => args_signature_scalars(arg_count, 2, 0),
@@ -701,6 +1102,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Right => args_signature_scalars(arg_count, 2, 1),
         Function::Search => args_signature_scalars(arg_count, 2, 1),
         Function::Substitute => args_signature_scalars(arg_count, 3, 1),
+        Function::Regexextract => args_signature_scalars(arg_count, 2, 1),
+        Function::Regexreplace => args_signature_scalars(arg_count, 3, 0),
+        Function::Regextest => args_signature_scalars(arg_count, 2, 0),
         Function::T => args_signature_scalars(arg_count, 1, 0),
         Function::Text => args_signature_scalars(arg_count, 2, 0),
         Function::Textafter => args_signature_textafter(arg_count),
@@ -745,6 +1149,16 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::WorkdayIntl => args_signature_scalars(arg_count, 2, 2),
         Function::Yearfrac => args_signature_scalars(arg_count, 2, 1),
         Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
+        Function::Accrint => args_signature_scalars(arg_count, 6, 2),
+        Function::Accrintm => args_signature_scalars(arg_count, 3, 2),
+        Function::Disc => args_signature_scalars(arg_count, 4, 1),
+        Function::Fvschedule => vec![Signature::Scalar, Signature::Vector],
+        Function::Intrate => args_signature_scalars(arg_count, 4, 1),
+        Function::Pricedisc => args_signature_scalars(arg_count, 4, 1),
+        Function::Pricemat => args_signature_scalars(arg_count, 5, 1),
+        Function::Received => args_signature_scalars(arg_count, 4, 1),
+        Function::Yielddisc => args_signature_scalars(arg_count, 4, 1),
+        Function::Yieldmat => args_signature_scalars(arg_count, 5, 1),
         Function::Cumipmt => args_signature_scalars(arg_count, 6, 0),
         Function::Cumprinc => args_signature_scalars(arg_count, 6, 0),
         Function::Db => args_signature_scalars(arg_count, 4, 1),
@@ -773,6 +1187,23 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Tbillyield => args_signature_scalars(arg_count, 3, 0),
         Function::Xirr => args_signature_xirr(arg_count),
         Function::Xnpv => args_signature_xnpv(arg_count),
+        Function::Duration => args_signature_scalars(arg_count, 5, 1),
+        Function::Mduration => args_signature_scalars(arg_count, 5, 1),
+        Function::Price => args_signature_scalars(arg_count, 6, 1),
+        Function::Yield => args_signature_scalars(arg_count, 6, 1),
+        Function::Oddfprice => args_signature_scalars(arg_count, 8, 1),
+        Function::Oddfyield => args_signature_scalars(arg_count, 8, 1),
+        Function::Oddlprice => args_signature_scalars(arg_count, 7, 1),
+        Function::Oddlyield => args_signature_scalars(arg_count, 7, 1),
+        Function::Coupdaybs => args_signature_scalars(arg_count, 3, 1),
+        Function::Coupdays => args_signature_scalars(arg_count, 3, 1),
+        Function::Coupdaysnc => args_signature_scalars(arg_count, 3, 1),
+        Function::Coupncd => args_signature_scalars(arg_count, 3, 1),
+        Function::Coupnum => args_signature_scalars(arg_count, 3, 1),
+        Function::Couppcd => args_signature_scalars(arg_count, 3, 1),
+        Function::Amordegrc => args_signature_scalars(arg_count, 6, 1),
+        Function::Amorlinc => args_signature_scalars(arg_count, 6, 1),
+        Function::Vdb => args_signature_scalars(arg_count, 5, 2),
         Function::Besseli => args_signature_scalars(arg_count, 2, 0),
         Function::Besselj => args_signature_scalars(arg_count, 2, 0),
         Function::Besselk => args_signature_scalars(arg_count, 2, 0),
@@ -832,6 +1263,24 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
         Function::Unicode => args_signature_scalars(arg_count, 1, 0),
+        Function::Unichar => args_signature_scalars(arg_count, 1, 0),
+        Function::Char => args_signature_scalars(arg_count, 1, 0),
+        Function::Clean => args_signature_scalars(arg_count, 1, 0),
+        Function::Code => args_signature_scalars(arg_count, 1, 0),
+        Function::Asc => args_signature_scalars(arg_count, 1, 0),
+        Function::Arraytotext => args_signature_arraytotext(arg_count),
+        Function::Dollar => args_signature_scalars(arg_count, 1, 1),
+        Function::Findb => args_signature_scalars(arg_count, 2, 1),
+        Function::Fixed => args_signature_scalars(arg_count, 1, 2),
+        Function::Leftb => args_signature_scalars(arg_count, 1, 1),
+        Function::Lenb => args_signature_scalars(arg_count, 1, 0),
+        Function::Midb => args_signature_scalars(arg_count, 3, 0),
+        Function::Numbervalue => args_signature_scalars(arg_count, 1, 2),
+        Function::Proper => args_signature_scalars(arg_count, 1, 0),
+        Function::Replace => args_signature_scalars(arg_count, 4, 0),
+        Function::Replaceb => args_signature_scalars(arg_count, 4, 0),
+        Function::Rightb => args_signature_scalars(arg_count, 1, 1),
+        Function::Searchb => args_signature_scalars(arg_count, 2, 1),
         Function::Geomean => vec![Signature::Vector; arg_count],
         Function::Networkdays => args_signature_networkdays(arg_count),
         Function::NetworkdaysIntl => args_signature_networkdays_intl(arg_count),
@@ -872,6 +1321,30 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Combin => args_signature_scalars(arg_count, 2, 0),
         Function::Combina => args_signature_scalars(arg_count, 2, 0),
         Function::Sumsq => vec![Signature::Vector; arg_count],
+        Function::Mdeterm => args_signature_one_vector(arg_count),
+        Function::Minverse => args_signature_one_vector(arg_count),
+        Function::Munit => args_signature_scalars(arg_count, 1, 0),
+        Function::Multinomial => vec![Signature::Vector; arg_count],
+        Function::Seriessum => {
+            if arg_count == 4 {
+                vec![
+                    Signature::Scalar,
+                    Signature::Scalar,
+                    Signature::Scalar,
+                    Signature::Vector,
+                ]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::Sumproduct => vec![Signature::Vector; arg_count],
+        Function::Percentof => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::N => args_signature_scalars(arg_count, 1, 0),
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_scalars(arg_count, 1, 1),
@@ -952,6 +1425,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Phi => args_signature_scalars(arg_count, 1, 0),
         Function::PoissonDist => args_signature_scalars(arg_count, 3, 0),
         Function::Standardize => args_signature_scalars(arg_count, 3, 0),
+        Function::Stdev => vec![Signature::Vector; arg_count],
         Function::StDevP => vec![Signature::Vector; arg_count],
         Function::StDevS => vec![Signature::Vector; arg_count],
         Function::Stdeva => vec![Signature::Vector; arg_count],
@@ -987,6 +1461,96 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
                 vec![Signature::Error; arg_count]
             }
         }
+        // Compatibility wrappers
+        Function::BetaDistCompat => args_signature_scalars(arg_count, 3, 2),
+        Function::HypGeomDistCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::LogNormDistCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::NegbinomDistCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::NormSDistCompat => args_signature_scalars(arg_count, 1, 0),
+        Function::TDistCompat => args_signature_scalars(arg_count, 3, 0),
+        // Compatibility aliases
+        Function::BetaInvCompat => args_signature_scalars(arg_count, 3, 2),
+        Function::BinomDistCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::ChiDistCompat => args_signature_scalars(arg_count, 2, 0),
+        Function::ChiInvCompat => args_signature_scalars(arg_count, 2, 0),
+        Function::ChiTestCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::ConfidenceCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::CovarCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::CritbinomCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::ExponDistCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::FDistCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::FInvCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::FTestCompat => vec![Signature::Vector; 2],
+        Function::GammaDistCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::GammaInvCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::LoginvCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::ModeCompat => vec![Signature::Vector; arg_count],
+        Function::NormDistCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::NormInvCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::NormSInvCompat => args_signature_scalars(arg_count, 1, 0),
+        Function::PercentileCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::PercentrankCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::PoissonCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::QuartileCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
+        Function::StDevPCompat => vec![Signature::Vector; arg_count],
+        Function::TInvCompat => args_signature_scalars(arg_count, 2, 0),
+        Function::TTestCompat => {
+            if arg_count == 4 {
+                vec![
+                    Signature::Vector,
+                    Signature::Vector,
+                    Signature::Scalar,
+                    Signature::Scalar,
+                ]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::VarCompat => vec![Signature::Vector; arg_count],
+        Function::VarPCompat => vec![Signature::Vector; arg_count],
+        Function::WeibullCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::ZTestCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::Sumx2my2 => vec![Signature::Vector; 2],
         Function::Sumx2py2 => vec![Signature::Vector; 2],
         Function::Sumxmy2 => vec![Signature::Vector; 2],
@@ -995,6 +1559,60 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Intercept => vec![Signature::Vector; 2],
         Function::Slope => vec![Signature::Vector; 2],
         Function::Steyx => vec![Signature::Vector; 2],
+        Function::Forecast | Function::ForecastLinear => {
+            vec![Signature::Scalar, Signature::Vector, Signature::Vector]
+        }
+        Function::ForecastEts
+        | Function::ForecastEtsConfint
+        | Function::ForecastEtsSeasonality
+        | Function::ForecastEtsStat => vec![Signature::Vector; arg_count],
+        Function::Frequency => vec![Signature::Vector, Signature::Vector],
+        Function::Growth | Function::Trend => match arg_count {
+            1 => vec![Signature::Vector],
+            2 => vec![Signature::Vector, Signature::Vector],
+            3 => vec![Signature::Vector, Signature::Vector, Signature::Vector],
+            4 => vec![
+                Signature::Vector,
+                Signature::Vector,
+                Signature::Vector,
+                Signature::Scalar,
+            ],
+            _ => vec![Signature::Error; arg_count],
+        },
+        Function::Linest | Function::Logest => match arg_count {
+            1 => vec![Signature::Vector],
+            2 => vec![Signature::Vector, Signature::Vector],
+            3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
+            4 => vec![
+                Signature::Vector,
+                Signature::Vector,
+                Signature::Scalar,
+                Signature::Scalar,
+            ],
+            _ => vec![Signature::Error; arg_count],
+        },
+        Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
+        Function::PercentileExc | Function::PercentileInc => {
+            vec![Signature::Vector, Signature::Scalar]
+        }
+        Function::PercentrankExc | Function::PercentrankInc => {
+            vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+        }
+        Function::Permut | Function::Permutationa => vec![Signature::Scalar; 2],
+        Function::Prob => match arg_count {
+            3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
+            4 => vec![
+                Signature::Vector,
+                Signature::Vector,
+                Signature::Scalar,
+                Signature::Scalar,
+            ],
+            _ => vec![Signature::Error; arg_count],
+        },
+        Function::QuartileExc | Function::QuartileInc => {
+            vec![Signature::Vector, Signature::Scalar]
+        }
+        Function::Trimmean => vec![Signature::Vector, Signature::Scalar],
         Function::Gauss => args_signature_scalars(arg_count, 1, 0),
         Function::Harmean => vec![Signature::Vector; arg_count],
         Function::Kurt => vec![Signature::Vector; arg_count],
@@ -1019,6 +1637,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Iferror => scalar_arguments(args),
         Function::Ifna => scalar_arguments(args),
         Function::Ifs => not_implemented(args),
+        Function::Lambda => StaticResult::Unknown,
+        Function::Let => StaticResult::Unknown,
         Function::Not => StaticResult::Scalar,
         Function::Or => StaticResult::Scalar,
         Function::Switch => not_implemented(args),
@@ -1053,7 +1673,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sqrt => scalar_arguments(args),
         Function::Sqrtpi => StaticResult::Scalar,
         Function::Sum => StaticResult::Scalar,
-        Function::Sumif => not_implemented(args),
+        Function::Sumif => sumif_static_result(args),
         Function::Sumifs => not_implemented(args),
         Function::Tan => scalar_arguments(args),
         Function::Tanh => scalar_arguments(args),
@@ -1068,12 +1688,19 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Isnontext => not_implemented(args),
         Function::Isnumber => not_implemented(args),
         Function::Isodd => not_implemented(args),
+        Function::Isomitted => not_implemented(args),
         Function::Isref => not_implemented(args),
         Function::Istext => not_implemented(args),
         Function::Na => StaticResult::Scalar,
         Function::Sheet => StaticResult::Scalar,
         Function::Type => not_implemented(args),
+        Function::Address => not_implemented(args),
+        Function::Areas => StaticResult::Scalar,
+        Function::Choosecols => StaticResult::Unknown,
+        Function::Chooserows => StaticResult::Unknown,
+        Function::Expand => StaticResult::Unknown,
         Function::Hlookup => not_implemented(args),
+        Function::Hstack => StaticResult::Unknown,
         Function::Index => static_analysis_index(args),
         Function::Indirect => static_analysis_indirect(args),
         Function::Lookup => not_implemented(args),
@@ -1082,27 +1709,80 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Row => StaticResult::Scalar,
         Function::Rows => not_implemented(args),
         Function::Vlookup => not_implemented(args),
+        Function::Vstack => StaticResult::Unknown,
+        Function::Wrapcols => StaticResult::Unknown,
+        Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => not_implemented(args),
+        Function::Xmatch => not_implemented(args),
+        Function::Trimrange => StaticResult::Unknown,
+        Function::Sort => StaticResult::Unknown,
+        Function::Sortby => StaticResult::Unknown,
+        Function::Unique => StaticResult::Unknown,
+        Function::Filter => StaticResult::Unknown,
+        Function::Take => StaticResult::Unknown,
+        Function::Drop => StaticResult::Unknown,
+        Function::Tocol => StaticResult::Unknown,
+        Function::Torow => StaticResult::Unknown,
+        Function::Transpose => StaticResult::Unknown,
+        Function::Mmult => StaticResult::Unknown,
+        Function::Bycol => StaticResult::Unknown,
+        Function::Byrow => StaticResult::Unknown,
+        Function::Map => StaticResult::Unknown,
+        Function::Reduce => StaticResult::Unknown,
+        Function::Scan => StaticResult::Unknown,
+        Function::Makearray => StaticResult::Unknown,
+        Function::Sequence => StaticResult::Unknown,
+        Function::Randarray => StaticResult::Unknown,
+        Function::Textsplit => StaticResult::Unknown,
         Function::Concat => not_implemented(args),
         Function::Concatenate => not_implemented(args),
         Function::Exact => not_implemented(args),
         Function::Find => not_implemented(args),
-        Function::Left => not_implemented(args),
+        // LEFT/MID/RIGHT broadcast element-wise: an array/range argument yields an array.
+        Function::Left => scalar_arguments(args),
         Function::Len => not_implemented(args),
-        Function::Lower => not_implemented(args),
-        Function::Mid => not_implemented(args),
+        // UPPER/LOWER broadcast element-wise: an array/range argument yields an array.
+        Function::Lower => scalar_arguments(args),
+        Function::Mid => scalar_arguments(args),
         Function::Rept => not_implemented(args),
-        Function::Right => not_implemented(args),
+        Function::Right => scalar_arguments(args),
         Function::Search => not_implemented(args),
         Function::Substitute => not_implemented(args),
+        Function::Regexextract => {
+            if args.len() == 3 {
+                StaticResult::Unknown
+            } else {
+                not_implemented(args)
+            }
+        }
+        Function::Regexreplace => not_implemented(args),
+        Function::Regextest => not_implemented(args),
         Function::T => not_implemented(args),
-        Function::Text => not_implemented(args),
+        Function::Text => scalar_arguments(args),
         Function::Textafter => not_implemented(args),
         Function::Textbefore => not_implemented(args),
         Function::Textjoin => not_implemented(args),
         Function::Trim => not_implemented(args),
         Function::Unicode => not_implemented(args),
-        Function::Upper => not_implemented(args),
+        Function::Unichar => not_implemented(args),
+        Function::Char => not_implemented(args),
+        Function::Clean => not_implemented(args),
+        Function::Code => not_implemented(args),
+        Function::Asc => not_implemented(args),
+        Function::Arraytotext => not_implemented(args),
+        Function::Dollar => not_implemented(args),
+        Function::Findb => not_implemented(args),
+        Function::Fixed => not_implemented(args),
+        Function::Leftb => not_implemented(args),
+        Function::Lenb => not_implemented(args),
+        Function::Midb => not_implemented(args),
+        Function::Numbervalue => not_implemented(args),
+        Function::Proper => not_implemented(args),
+        Function::Replace => not_implemented(args),
+        Function::Replaceb => not_implemented(args),
+        Function::Rightb => not_implemented(args),
+        Function::Searchb => not_implemented(args),
+        Function::Upper => scalar_arguments(args),
         Function::Value => not_implemented(args),
         Function::Valuetotext => not_implemented(args),
         Function::Average => not_implemented(args),
@@ -1117,12 +1797,13 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Countifs => not_implemented(args),
         Function::Maxifs => not_implemented(args),
         Function::Minifs => not_implemented(args),
-        Function::Date => not_implemented(args),
+        // DATE broadcasts element-wise: an array/range argument yields an array.
+        Function::Date => scalar_arguments(args),
         Function::Datedif => not_implemented(args),
         Function::Datevalue => not_implemented(args),
-        Function::Day => not_implemented(args),
+        Function::Day => scalar_arguments(args),
         Function::Edate => not_implemented(args),
-        Function::Month => not_implemented(args),
+        Function::Month => scalar_arguments(args),
         Function::Time => not_implemented(args),
         Function::Timevalue => not_implemented(args),
         Function::Hour => not_implemented(args),
@@ -1130,15 +1811,25 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Second => not_implemented(args),
         Function::Now => not_implemented(args),
         Function::Today => not_implemented(args),
-        Function::Year => not_implemented(args),
+        Function::Year => scalar_arguments(args),
         Function::Days => not_implemented(args),
         Function::Days360 => not_implemented(args),
-        Function::Weekday => not_implemented(args),
+        Function::Weekday => scalar_arguments(args),
         Function::Weeknum => not_implemented(args),
         Function::Workday => not_implemented(args),
         Function::WorkdayIntl => not_implemented(args),
         Function::Yearfrac => not_implemented(args),
-        Function::Isoweeknum => not_implemented(args),
+        Function::Isoweeknum => scalar_arguments(args),
+        Function::Accrint => scalar_arguments(args),
+        Function::Accrintm => scalar_arguments(args),
+        Function::Disc => StaticResult::Scalar,
+        Function::Fvschedule => StaticResult::Scalar,
+        Function::Intrate => StaticResult::Scalar,
+        Function::Pricedisc => StaticResult::Scalar,
+        Function::Pricemat => StaticResult::Scalar,
+        Function::Received => StaticResult::Scalar,
+        Function::Yielddisc => StaticResult::Scalar,
+        Function::Yieldmat => StaticResult::Scalar,
         Function::Cumipmt => not_implemented(args),
         Function::Cumprinc => not_implemented(args),
         Function::Db => not_implemented(args),
@@ -1167,6 +1858,23 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Tbillyield => not_implemented(args),
         Function::Xirr => not_implemented(args),
         Function::Xnpv => not_implemented(args),
+        Function::Duration => StaticResult::Scalar,
+        Function::Mduration => StaticResult::Scalar,
+        Function::Price => StaticResult::Scalar,
+        Function::Yield => StaticResult::Scalar,
+        Function::Oddfprice => StaticResult::Scalar,
+        Function::Oddfyield => StaticResult::Scalar,
+        Function::Oddlprice => StaticResult::Scalar,
+        Function::Oddlyield => StaticResult::Scalar,
+        Function::Coupdaybs => StaticResult::Scalar,
+        Function::Coupdays => StaticResult::Scalar,
+        Function::Coupdaysnc => StaticResult::Scalar,
+        Function::Coupncd => StaticResult::Scalar,
+        Function::Coupnum => StaticResult::Scalar,
+        Function::Couppcd => StaticResult::Scalar,
+        Function::Amordegrc => StaticResult::Scalar,
+        Function::Amorlinc => StaticResult::Scalar,
+        Function::Vdb => StaticResult::Scalar,
         Function::Besseli => scalar_arguments(args),
         Function::Besselj => scalar_arguments(args),
         Function::Besselk => scalar_arguments(args),
@@ -1257,8 +1965,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Quotient => scalar_arguments(args),
         Function::Mround => scalar_arguments(args),
         Function::Trunc => scalar_arguments(args),
-        Function::Gcd => not_implemented(args),
-        Function::Lcm => not_implemented(args),
+        Function::Gcd => StaticResult::Scalar,
+        Function::Lcm => StaticResult::Scalar,
         Function::Base => scalar_arguments(args),
         Function::Decimal => scalar_arguments(args),
         Function::Roman => scalar_arguments(args),
@@ -1266,10 +1974,17 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Combin => scalar_arguments(args),
         Function::Combina => scalar_arguments(args),
         Function::Sumsq => StaticResult::Scalar,
+        Function::Mdeterm => StaticResult::Scalar,
+        Function::Minverse => StaticResult::Unknown,
+        Function::Munit => StaticResult::Unknown,
+        Function::Multinomial => StaticResult::Scalar,
+        Function::Seriessum => StaticResult::Scalar,
+        Function::Sumproduct => StaticResult::Scalar,
+        Function::Percentof => StaticResult::Scalar,
         Function::N => scalar_arguments(args),
         Function::Sheets => scalar_arguments(args),
-        Function::Cell => scalar_arguments(args),
-        Function::Info => scalar_arguments(args),
+        Function::Cell => StaticResult::Unknown,
+        Function::Info => StaticResult::Unknown,
         Function::Dget => not_implemented(args),
         Function::Dmax => not_implemented(args),
         Function::Dmin => not_implemented(args),
@@ -1322,6 +2037,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Phi => StaticResult::Scalar,
         Function::PoissonDist => StaticResult::Scalar,
         Function::Standardize => StaticResult::Scalar,
+        Function::Stdev => StaticResult::Scalar,
         Function::StDevP => StaticResult::Scalar,
         Function::StDevS => StaticResult::Scalar,
         Function::Stdeva => StaticResult::Scalar,
@@ -1338,6 +2054,43 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::VarA => StaticResult::Scalar,
         Function::WeibullDist => StaticResult::Scalar,
         Function::ZTest => StaticResult::Scalar,
+        Function::BetaDistCompat => StaticResult::Scalar,
+        Function::HypGeomDistCompat => StaticResult::Scalar,
+        Function::LogNormDistCompat => StaticResult::Scalar,
+        Function::NegbinomDistCompat => StaticResult::Scalar,
+        Function::NormSDistCompat => StaticResult::Scalar,
+        Function::TDistCompat => StaticResult::Scalar,
+        Function::BetaInvCompat => StaticResult::Scalar,
+        Function::BinomDistCompat => StaticResult::Scalar,
+        Function::ChiDistCompat => StaticResult::Scalar,
+        Function::ChiInvCompat => StaticResult::Scalar,
+        Function::ChiTestCompat => StaticResult::Scalar,
+        Function::ConfidenceCompat => StaticResult::Scalar,
+        Function::CovarCompat => StaticResult::Scalar,
+        Function::CritbinomCompat => StaticResult::Scalar,
+        Function::ExponDistCompat => StaticResult::Scalar,
+        Function::FDistCompat => StaticResult::Scalar,
+        Function::FInvCompat => StaticResult::Scalar,
+        Function::FTestCompat => StaticResult::Scalar,
+        Function::GammaDistCompat => StaticResult::Scalar,
+        Function::GammaInvCompat => StaticResult::Scalar,
+        Function::LoginvCompat => StaticResult::Scalar,
+        Function::ModeCompat => StaticResult::Scalar,
+        Function::NormDistCompat => StaticResult::Scalar,
+        Function::NormInvCompat => StaticResult::Scalar,
+        Function::NormSInvCompat => StaticResult::Scalar,
+        Function::PercentileCompat => StaticResult::Scalar,
+        Function::PercentrankCompat => StaticResult::Scalar,
+        Function::PoissonCompat => StaticResult::Scalar,
+        Function::QuartileCompat => StaticResult::Scalar,
+        Function::RankCompat => StaticResult::Scalar,
+        Function::StDevPCompat => StaticResult::Scalar,
+        Function::TInvCompat => StaticResult::Scalar,
+        Function::TTestCompat => StaticResult::Scalar,
+        Function::VarCompat => StaticResult::Scalar,
+        Function::VarPCompat => StaticResult::Scalar,
+        Function::WeibullCompat => StaticResult::Scalar,
+        Function::ZTestCompat => StaticResult::Scalar,
         Function::Sumx2my2 => StaticResult::Scalar,
         Function::Sumx2py2 => StaticResult::Scalar,
         Function::Sumxmy2 => StaticResult::Scalar,
@@ -1346,6 +2099,31 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Intercept => StaticResult::Scalar,
         Function::Slope => StaticResult::Scalar,
         Function::Steyx => StaticResult::Scalar,
+        Function::Forecast => StaticResult::Scalar,
+        Function::ForecastLinear => StaticResult::Scalar,
+        Function::ForecastEts => StaticResult::Scalar,
+        Function::ForecastEtsConfint => StaticResult::Scalar,
+        Function::ForecastEtsSeasonality => StaticResult::Scalar,
+        Function::ForecastEtsStat => StaticResult::Scalar,
+        // Spill-returning functions
+        Function::Frequency => StaticResult::Unknown,
+        Function::Growth => StaticResult::Unknown,
+        Function::Linest => StaticResult::Unknown,
+        Function::Logest => StaticResult::Unknown,
+        Function::ModeMult => StaticResult::Unknown,
+        Function::Trend => StaticResult::Unknown,
+        // Scalar-returning functions
+        Function::ModeSingl => StaticResult::Scalar,
+        Function::PercentileExc => StaticResult::Scalar,
+        Function::PercentileInc => StaticResult::Scalar,
+        Function::PercentrankExc => StaticResult::Scalar,
+        Function::PercentrankInc => StaticResult::Scalar,
+        Function::Permut => StaticResult::Scalar,
+        Function::Permutationa => StaticResult::Scalar,
+        Function::Prob => StaticResult::Scalar,
+        Function::QuartileExc => StaticResult::Scalar,
+        Function::QuartileInc => StaticResult::Scalar,
+        Function::Trimmean => StaticResult::Scalar,
         Function::Gauss => StaticResult::Scalar,
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,

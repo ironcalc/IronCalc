@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
 import {
@@ -20,10 +21,12 @@ import WorksheetCanvas, {
   headerRowHeight,
 } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
+import CellContextMenu from "./ContextMenus/Cell";
 import ColumnHeaderContextMenu from "./ContextMenus/ColumnHeader";
 import RowHeaderContextMenu from "./ContextMenus/RowHeader";
 import usePointer from "./usePointer";
 import "./worksheet.css";
+import { Alert, Prompt } from "../Modal";
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -44,6 +47,10 @@ const Worksheet = forwardRef(
       model: Model;
       workbookState: WorkbookState;
       refresh: () => void;
+      canEdit: boolean;
+      onCut: () => void;
+      onCopy: () => void;
+      onPaste: () => void;
     },
     ref,
   ) => {
@@ -56,12 +63,14 @@ const Worksheet = forwardRef(
     const spacerElement = useRef<HTMLDivElement>(null);
     const cellOutline = useRef<HTMLDivElement>(null);
     const areaOutline = useRef<HTMLDivElement>(null);
+    const cellArrayStructure = useRef<HTMLDivElement>(null);
     const extendToOutline = useRef<HTMLDivElement>(null);
     const columnResizeGuide = useRef<HTMLDivElement>(null);
     const rowResizeGuide = useRef<HTMLDivElement>(null);
     const columnHeaders = useRef<HTMLDivElement>(null);
     const worksheetCanvas = useRef<WorksheetCanvas | null>(null);
 
+    const [cellContextMenuOpen, setCellContextMenuOpen] = useState(false);
     const [colHeaderContextMenuOpen, setColHeaderContextMenuOpen] =
       useState(false);
     const [rowHeaderContextMenuOpen, setRowHeaderContextMenuOpen] =
@@ -70,10 +79,19 @@ const Worksheet = forwardRef(
       top: number;
       left: number;
     } | null>(null);
+    const [rowColErrorTitle, setRowColErrorTitle] = useState<string | null>(
+      null,
+    );
+    const [columnWidthDialogOpen, setColumnWidthDialogOpen] = useState(false);
+    const [columnWidthDefault, setColumnWidthDefault] = useState("");
+    const [rowHeightDialogOpen, setRowHeightDialogOpen] = useState(false);
+    const [rowHeightDefault, setRowHeightDefault] = useState("");
 
     const ignoreScrollEventRef = useRef(false);
 
-    const { model, workbookState, refresh } = props;
+    const { model, workbookState, refresh, canEdit, onCut, onCopy, onPaste } =
+      props;
+    const { t } = useTranslation();
     const [clientWidth, clientHeight] = useWindowSize();
 
     useImperativeHandle(ref, () => ({
@@ -89,6 +107,7 @@ const Worksheet = forwardRef(
 
       const outline = cellOutline.current;
       const area = areaOutline.current;
+      const arrayStructure = cellArrayStructure.current;
       const extendTo = extendToOutline.current;
       const editor = editorElement.current;
 
@@ -102,9 +121,11 @@ const Worksheet = forwardRef(
         !area ||
         !extendTo ||
         !scrollElement.current ||
-        !editor
-      )
+        !editor ||
+        !arrayStructure
+      ) {
         return;
+      }
       // FIXME: This two need to be computed.
       model.setWindowWidth(clientWidth - 37);
       model.setWindowHeight(clientHeight - 190);
@@ -119,6 +140,7 @@ const Worksheet = forwardRef(
           rowGuide: rowGuideRef,
           columnHeaders: columnHeadersRef,
           cellOutline: outline,
+          cellArrayStructure: arrayStructure,
           areaOutline: area,
           extendToOutline: extendTo,
           editor: editor,
@@ -384,12 +406,32 @@ const Worksheet = forwardRef(
                 setRowHeaderContextMenuOpen(true);
                 return;
               }
+              // Cell area: select the clicked cell
+              const cell = worksheetCanvas.current?.getCellByCoordinates(x, y);
+              if (cell) {
+                const { range } = model.getSelectedView();
+                const [rowStart, columnStart, rowEnd, columnEnd] = range;
+                if (
+                  !(
+                    rowStart <= cell.row &&
+                    cell.row <= rowEnd &&
+                    columnStart <= cell.column &&
+                    cell.column <= columnEnd
+                  )
+                ) {
+                  model.setSelectedCell(cell.row, cell.column);
+                  refresh();
+                }
+              }
             }
 
-            // setContextMenuOpen(true);
+            setCellContextMenuOpen(true);
           }}
           onDoubleClick={(event) => {
             // Starts editing cell
+            if (!canEdit) {
+              return;
+            }
             const { sheet, row, column } = model.getSelectedView();
             const text = model.getCellContent(sheet, row, column);
             const editorWidth =
@@ -416,6 +458,10 @@ const Worksheet = forwardRef(
           }}
         >
           <canvas className="ic-worksheet-sheet-canvas" ref={canvasElement} />
+          <div
+            className="ic-worksheet-cell-array-structure"
+            ref={cellArrayStructure}
+          />
           <div className="ic-worksheet-cell-outline" ref={cellOutline} />
           <div className="ic-worksheet-editor-wrapper" ref={editorElement}>
             <Editor
@@ -429,6 +475,7 @@ const Worksheet = forwardRef(
               model={model}
               workbookState={workbookState}
               type={"cell"}
+              canEdit={canEdit}
             />
           </div>
           <div className="ic-worksheet-area-outline" ref={areaOutline} />
@@ -443,54 +490,155 @@ const Worksheet = forwardRef(
           <div className="ic-worksheet-row-resize-guide" ref={rowResizeGuide} />
           <div className="ic-worksheet-column-headers" ref={columnHeaders} />
         </div>
+        <CellContextMenu
+          open={cellContextMenuOpen}
+          onClose={() => setCellContextMenuOpen(false)}
+          anchorPosition={
+            contextMenuPosition
+              ? { x: contextMenuPosition.left, y: contextMenuPosition.top }
+              : null
+          }
+          column={columnNameFromNumber(model.getSelectedView().column)}
+          row={model.getSelectedView().row}
+          onCut={onCut}
+          onCopy={onCopy}
+          onPaste={onPaste}
+          onInsertColumnLeft={(): void => {
+            const view = model.getSelectedView();
+            try {
+              model.insertColumns(view.sheet, view.column, 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_inserting_columns"));
+            }
+            setCellContextMenuOpen(false);
+            refresh();
+          }}
+          onInsertColumnRight={(): void => {
+            const view = model.getSelectedView();
+            try {
+              model.insertColumns(view.sheet, view.range[3] + 1, 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_inserting_columns"));
+            }
+            setCellContextMenuOpen(false);
+            refresh();
+          }}
+          onInsertRowAbove={(): void => {
+            const view = model.getSelectedView();
+            try {
+              model.insertRows(view.sheet, view.row, 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_inserting_rows"));
+            }
+            setCellContextMenuOpen(false);
+            refresh();
+          }}
+          onInsertRowBelow={(): void => {
+            const view = model.getSelectedView();
+            try {
+              model.insertRows(view.sheet, view.range[2] + 1, 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_inserting_rows"));
+            }
+            setCellContextMenuOpen(false);
+            refresh();
+          }}
+          onDeleteColumn={(): void => {
+            const view = model.getSelectedView();
+            try {
+              model.deleteColumns(view.sheet, view.column, 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_deleting_columns"));
+            }
+            setCellContextMenuOpen(false);
+            refresh();
+          }}
+          onDeleteRow={(): void => {
+            const view = model.getSelectedView();
+            try {
+              model.deleteRows(view.sheet, view.row, 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_deleting_rows"));
+            }
+            setCellContextMenuOpen(false);
+            refresh();
+          }}
+        />
         <ColumnHeaderContextMenu
           open={colHeaderContextMenuOpen}
           onClose={() => setColHeaderContextMenuOpen(false)}
-          anchorPosition={contextMenuPosition}
+          anchorPosition={
+            contextMenuPosition
+              ? { x: contextMenuPosition.left, y: contextMenuPosition.top }
+              : null
+          }
           onInsertColumnsLeft={(): void => {
             const view = model.getSelectedView();
             const columnStart = view.range[1];
             const columnEnd = view.range[3];
-            model.insertColumns(
-              view.sheet,
-              view.column,
-              columnEnd - columnStart + 1,
-            );
+            try {
+              model.insertColumns(
+                view.sheet,
+                view.column,
+                columnEnd - columnStart + 1,
+              );
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_inserting_columns"));
+            }
             setColHeaderContextMenuOpen(false);
           }}
           onInsertColumnsRight={(): void => {
             const view = model.getSelectedView();
             const columnStart = view.range[1];
             const columnEnd = view.range[3];
-            model.insertColumns(
-              view.sheet,
-              columnEnd + 1,
-              columnEnd - columnStart + 1,
-            );
+            try {
+              model.insertColumns(
+                view.sheet,
+                columnEnd + 1,
+                columnEnd - columnStart + 1,
+              );
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_inserting_columns"));
+            }
             setColHeaderContextMenuOpen(false);
           }}
           onMoveColumnsLeft={(): void => {
             const view = model.getSelectedView();
             const columnStart = view.range[1];
             const columnEnd = view.range[3];
-            model.moveColumns(
-              view.sheet,
-              columnStart,
-              columnEnd - columnStart + 1,
-              -1,
-            );
+            try {
+              model.moveColumns(
+                view.sheet,
+                columnStart,
+                columnEnd - columnStart + 1,
+                -1,
+              );
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_moving_columns"));
+            }
             setColHeaderContextMenuOpen(false);
           }}
           onMoveColumnsRight={(): void => {
             const view = model.getSelectedView();
             const columnStart = view.range[1];
             const columnEnd = view.range[3];
-            model.moveColumns(
-              view.sheet,
-              columnStart,
-              columnEnd - columnStart + 1,
-              1,
-            );
+            try {
+              model.moveColumns(
+                view.sheet,
+                columnStart,
+                columnEnd - columnStart + 1,
+                1,
+              );
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_moving_columns"));
+            }
+            setColHeaderContextMenuOpen(false);
+          }}
+          onSetColumnWidth={(): void => {
+            const view = model.getSelectedView();
+            const width = model.getColumnWidth(view.sheet, view.range[1]);
+            setColumnWidthDefault(`${width}`);
+            setColumnWidthDialogOpen(true);
             setColHeaderContextMenuOpen(false);
           }}
           onFreezeColumns={(): void => {
@@ -507,12 +655,15 @@ const Worksheet = forwardRef(
             const view = model.getSelectedView();
             const columnStart = view.range[1];
             const columnEnd = view.range[3];
-
-            model.deleteColumns(
-              view.sheet,
-              columnStart,
-              columnEnd - columnStart + 1,
-            );
+            try {
+              model.deleteColumns(
+                view.sheet,
+                columnStart,
+                columnEnd - columnStart + 1,
+              );
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_deleting_columns"));
+            }
             setColHeaderContextMenuOpen(false);
           }}
           range={(() => {
@@ -558,33 +709,60 @@ const Worksheet = forwardRef(
         <RowHeaderContextMenu
           open={rowHeaderContextMenuOpen}
           onClose={() => setRowHeaderContextMenuOpen(false)}
-          anchorPosition={contextMenuPosition}
+          anchorPosition={
+            contextMenuPosition
+              ? { x: contextMenuPosition.left, y: contextMenuPosition.top }
+              : null
+          }
           onInsertRowsAbove={(): void => {
             const view = model.getSelectedView();
             const rowStart = view.range[0];
             const rowEnd = view.range[2];
-            model.insertRows(view.sheet, view.row, rowEnd - rowStart + 1);
+            try {
+              model.insertRows(view.sheet, view.row, rowEnd - rowStart + 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_inserting_rows"));
+            }
             setRowHeaderContextMenuOpen(false);
           }}
           onInsertRowsBelow={(): void => {
             const view = model.getSelectedView();
             const rowStart = view.range[0];
             const rowEnd = view.range[2];
-            model.insertRows(view.sheet, view.row + 1, rowEnd - rowStart + 1);
+            try {
+              model.insertRows(view.sheet, view.row + 1, rowEnd - rowStart + 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_inserting_rows"));
+            }
             setRowHeaderContextMenuOpen(false);
           }}
           onMoveRowsUp={(): void => {
             const view = model.getSelectedView();
             const rowStart = view.range[0];
             const rowEnd = view.range[2];
-            model.moveRows(view.sheet, rowStart, rowEnd - rowStart + 1, -1);
+            try {
+              model.moveRows(view.sheet, rowStart, rowEnd - rowStart + 1, -1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_moving_rows"));
+            }
             setRowHeaderContextMenuOpen(false);
           }}
           onMoveRowsDown={(): void => {
             const view = model.getSelectedView();
             const rowStart = view.range[0];
             const rowEnd = view.range[2];
-            model.moveRows(view.sheet, rowStart, rowEnd - rowStart + 1, 1);
+            try {
+              model.moveRows(view.sheet, rowStart, rowEnd - rowStart + 1, 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_moving_rows"));
+            }
+            setRowHeaderContextMenuOpen(false);
+          }}
+          onSetRowHeight={(): void => {
+            const view = model.getSelectedView();
+            const height = model.getRowHeight(view.sheet, view.range[0]);
+            setRowHeightDefault(`${height}`);
+            setRowHeightDialogOpen(true);
             setRowHeaderContextMenuOpen(false);
           }}
           onFreezeRows={(): void => {
@@ -601,7 +779,11 @@ const Worksheet = forwardRef(
             const view = model.getSelectedView();
             const rowStart = view.range[0];
             const rowEnd = view.range[2];
-            model.deleteRows(view.sheet, rowStart, rowEnd - rowStart + 1);
+            try {
+              model.deleteRows(view.sheet, rowStart, rowEnd - rowStart + 1);
+            } catch {
+              setRowColErrorTitle(t("error_dialog.error_deleting_rows"));
+            }
             setRowHeaderContextMenuOpen(false);
           }}
           onHideRows={(): void => {
@@ -629,6 +811,62 @@ const Worksheet = forwardRef(
             };
           })()}
           frozenRowsCount={model.getFrozenRowsCount(model.getSelectedSheet())}
+        />
+        <Alert
+          open={rowColErrorTitle !== null}
+          onClose={() => setRowColErrorTitle(null)}
+          title={rowColErrorTitle ?? ""}
+          message={rowColErrorTitle ?? ""}
+        />
+        <Prompt
+          open={columnWidthDialogOpen}
+          onClose={() => setColumnWidthDialogOpen(false)}
+          title={t("context_menu.column_header.set_column_width")}
+          confirmLabel={t("common.apply")}
+          cancelLabel={t("common.cancel")}
+          defaultValue={columnWidthDefault}
+          inputProps={{
+            type: "number",
+            min: 0,
+            step: "any",
+            endAdornment: "px",
+          }}
+          onSubmit={(value): void => {
+            const width = Number.parseFloat(value);
+            if (!Number.isFinite(width) || width < 0) {
+              return;
+            }
+            const view = model.getSelectedView();
+            const columnStart = view.range[1];
+            const columnEnd = view.range[3];
+            model.setColumnsWidth(view.sheet, columnStart, columnEnd, width);
+            worksheetCanvas.current?.renderSheet();
+          }}
+        />
+        <Prompt
+          open={rowHeightDialogOpen}
+          onClose={() => setRowHeightDialogOpen(false)}
+          title={t("context_menu.row_header.set_row_height")}
+          confirmLabel={t("common.apply")}
+          cancelLabel={t("common.cancel")}
+          defaultValue={rowHeightDefault}
+          inputProps={{
+            type: "number",
+            min: 0,
+            step: "any",
+            endAdornment: "px",
+          }}
+          onSubmit={(value): void => {
+            const height = Number.parseFloat(value);
+            if (!Number.isFinite(height) || height < 0) {
+              return;
+            }
+            const view = model.getSelectedView();
+            const rowStart = view.range[0];
+            const rowEnd = view.range[2];
+            model.setRowsHeight(view.sheet, rowStart, rowEnd, height);
+            worksheetCanvas.current?.renderSheet();
+          }}
         />
       </div>
     );

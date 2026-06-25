@@ -27,25 +27,35 @@
 
 #![warn(clippy::print_stdout)]
 
+pub mod builtin_styles;
 pub mod calc_result;
 pub mod cell;
+pub mod cf_types;
+pub mod colors;
 pub mod expressions;
 pub mod formatter;
 pub mod language;
 pub mod locale;
 pub mod new_empty;
 pub mod number_format;
+pub mod themes;
 pub mod types;
 pub mod worksheet;
+
+pub use crate::constants::COLUMN_WIDTH_FACTOR;
+pub use crate::constants::ROW_HEIGHT_FACTOR;
 
 mod actions;
 mod arithmetic;
 mod cast;
+mod conditional_formatting;
 mod constants;
+mod cut_paste;
 mod functions;
 mod implicit_intersection;
 mod model;
 mod styles;
+mod tz;
 mod units;
 mod user_model;
 mod utils;

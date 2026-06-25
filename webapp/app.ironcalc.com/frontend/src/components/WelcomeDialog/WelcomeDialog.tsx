@@ -1,138 +1,165 @@
-import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
-import { styled } from "@mui/material";
-import { Table, X } from "lucide-react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import TemplatesList, {
-  Cross,
-  DialogContent,
-  DialogFooter,
-  DialogFooterButton,
-  DialogWrapper,
-  TemplatesListWrapper,
-} from "./TemplatesList";
-import TemplatesListItem from "./TemplatesListItem";
+import {
+  IconButton,
+  IronCalcIconWhite as IronCalcIcon,
+} from "@ironcalc/workbook";
+import { LayoutTemplate, Plus, Upload, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Trans, useTranslation } from "react-i18next";
+import TemplatesList from "./TemplatesList";
+import { useDialogFocus } from "./useDialogFocus";
+import { useDialogKeyDown } from "./useDialogKeyDown";
+import "./welcome-dialog.css";
 
-function WelcomeDialog(properties: {
+function WelcomeDialog({
+  onClose,
+  onSelectTemplate,
+  onModelUpload,
+  onOpenTemplates,
+}: {
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
+  onModelUpload: (arrayBuffer: ArrayBuffer, fileName: string) => Promise<void>;
+  onOpenTemplates: () => void;
 }) {
   const { t } = useTranslation();
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("blank");
+  const [gridScrolled, setGridScrolled] = useState(false);
+  const dialogRef = useDialogFocus(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const blankButtonRef = useRef<HTMLButtonElement>(null);
+  const lastTemplateRef = useRef<HTMLButtonElement>(null);
 
-  const handleClose = () => {
-    properties.onClose();
+  const { onKeyDown } = useDialogKeyDown({
+    focusableElements: [blankButtonRef, lastTemplateRef],
+    onClose,
+  });
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    const arrayBuffer = await file.arrayBuffer();
+    await onModelUpload(arrayBuffer, file.name);
+    onClose();
   };
 
-  const handleTemplateSelect = (templateId: string) => {
-    setSelectedTemplate(templateId);
-  };
-
-  return (
-    <DialogWrapper open={true} onClose={() => {}}>
-      <DialogWelcomeHeader>
-        <DialogHeaderTitleWrapper>
-          <DialogHeaderLogoWrapper>
-            <IronCalcIcon />
-          </DialogHeaderLogoWrapper>
-          <DialogHeaderTitle>{t("welcome_dialog.title")}</DialogHeaderTitle>
-          <DialogHeaderTitleSubtitle>
-            {t("welcome_dialog.subtitle")}
-          </DialogHeaderTitleSubtitle>
-        </DialogHeaderTitleWrapper>
-        <Cross
-          onClick={handleClose}
-          title={t("welcome_dialog.close_dialog")}
-          tabIndex={0}
-          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
-        >
-          <X />
-        </Cross>
-      </DialogWelcomeHeader>
-      <DialogContent>
-        <ListTitle>{t("welcome_dialog.new")}</ListTitle>
-        <TemplatesListWrapper>
-          <TemplatesListItem
-            title={t("welcome_dialog.blank_workbook")}
-            description={t("welcome_dialog.blank_workbook_description")}
-            icon={<Table />}
-            iconColor="#F2994A"
-            active={selectedTemplate === "blank"}
-            onClick={() => handleTemplateSelect("blank")}
-          />
-        </TemplatesListWrapper>
-        <ListTitle>{t("welcome_dialog.templates.templates")}</ListTitle>
-        <TemplatesList
-          selectedTemplate={selectedTemplate}
-          handleTemplateSelect={handleTemplateSelect}
+  return createPortal(
+    <div className="app-ic-wd-backdrop" onClick={onClose} role="none">
+      <div
+        ref={dialogRef}
+        className="app-ic-wd-paper"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("welcome_dialog.title")}
+        tabIndex={-1}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
         />
-      </DialogContent>
-      <DialogFooter>
-        <DialogFooterButton
-          onClick={() => properties.onSelectTemplate(selectedTemplate)}
-        >
-          {t("welcome_dialog.create_workbook")}
-        </DialogFooterButton>
-      </DialogFooter>
-    </DialogWrapper>
+        <div className="app-ic-wd-content app-ic-wd-content--two-col">
+          <div className="app-ic-wd-col-actions">
+            <div className="app-ic-wd-col-actions-top">
+              <div className="app-ic-wd-logo-wrapper">
+                <div className="app-ic-wd-logo-icon">
+                  <IronCalcIcon />
+                </div>
+                <span className="app-ic-wd-logo-title">IronCalc</span>
+                <IconButton
+                  className="app-ic-wd-mobile-close"
+                  icon={<X />}
+                  aria-label={t("welcome_dialog.close_dialog")}
+                  onClick={onClose}
+                />
+              </div>
+              <div className="app-ic-wd-action-group">
+                <button
+                  ref={blankButtonRef}
+                  type="button"
+                  className="app-ic-wd-action-button"
+                  onClick={() => onSelectTemplate("blank")}
+                >
+                  <span className="app-ic-wd-action-button-icon">
+                    <Plus />
+                  </span>
+                  {t("welcome_dialog.blank_workbook")}
+                </button>
+                <button
+                  type="button"
+                  className="app-ic-wd-action-button"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <span className="app-ic-wd-action-button-icon">
+                    <Upload />
+                  </span>
+                  {t("welcome_dialog.import_workbook")}
+                </button>
+                <button
+                  type="button"
+                  className="app-ic-wd-action-button app-ic-wd-action-button--mobile-only"
+                  onClick={onOpenTemplates}
+                >
+                  <span className="app-ic-wd-action-button-icon">
+                    <LayoutTemplate />
+                  </span>
+                  {t("welcome_dialog.templates.templates")}
+                </button>
+              </div>
+            </div>
+            <div className="app-ic-wd-storage-warning">
+              <div>
+                <Trans
+                  i18nKey="welcome_dialog.storage_warning"
+                  components={{
+                    warn: (
+                      <strong className="app-ic-wd-storage-warning-title" />
+                    ),
+                    docsLink: (
+                      // biome-ignore lint/a11y/useAnchorContent: content is provided by the translation
+                      <a
+                        href="https://docs.ironcalc.com/web-application/about.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      />
+                    ),
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="app-ic-wd-col-templates">
+            <div
+              className={`app-ic-wd-list-title${gridScrolled ? " app-ic-wd-list-title--scrolled" : ""}`}
+            >
+              {t("welcome_dialog.templates.examples_and_templates")}
+              <IconButton
+                icon={<X />}
+                aria-label={t("welcome_dialog.close_dialog")}
+                onClick={onClose}
+              />
+            </div>
+            <TemplatesList
+              selectedTemplate=""
+              handleTemplateSelect={onSelectTemplate}
+              columns={3}
+              onScroll={(e) => setGridScrolled(e.currentTarget.scrollTop > 0)}
+              lastItemRef={lastTemplateRef}
+            />
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
-
-const DialogWelcomeHeader = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 16px;
-  font-family: Inter;
-`;
-
-const DialogHeaderTitleWrapper = styled("span")`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 4px 0px;
-  gap: 4px;
-  width: 100%;
-`;
-
-const DialogHeaderTitle = styled("span")`
-  font-weight: 700;
-`;
-
-const DialogHeaderTitleSubtitle = styled("span")`
-  font-size: 12px;
-  color: #757575;
-`;
-
-export const DialogHeaderLogoWrapper = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  max-width: 20px;
-  max-height: 20px;
-  background-color: #f2994a;
-  padding: 10px;
-  margin-bottom: 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 2px;
-  transform: rotate(-8deg);
-  user-select: none;
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
-const ListTitle = styled("div")`
-  font-size: 12px;
-  font-weight: 600;
-  color: #424242;
-`;
 
 export default WelcomeDialog;

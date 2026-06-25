@@ -13,19 +13,51 @@
     "close_dialog": "Fermer la boîte de dialogue",
     "new": "Nouveau",
     "blank_workbook": "Classeur vierge",
-    "blank_workbook_description": "Créez à partir de zéro ou téléchargez votre propre fichier.",
+    "import_workbook": "Importer un classeur",
+    "storage_warning": "<warn>Attention !</warn> Cette application est une preuve de concept et non un produit fini. N'hésitez pas à explorer, partager et importer/télécharger des modèles, mais ne partagez pas et n'importez pas de modèles contenant des données sensibles ou privées. Les données seront supprimées périodiquement. <docsLink>En savoir plus</docsLink>",
     "templates": {
       "choose_template": "Choisir un modèle",
       "templates": "Modèles",
+      "see_all": "Voir tout",
+      "examples_and_templates": "Exemples & modèles",
+      "category_all": "Tout",
+      "category_finance": "Finance",
+      "category_lifestyle": "Style de vie",
+      "category_project_management": "Gestion de projet",
+      "category_games": "Jeux",
+      "yearly_calendar": "Calendrier annuel",
+      "yearly_calendar_description": "Planifiez et visualisez toute l'année.",
       "mortgage_calculator": "Calculateur hypothécaire",
       "mortgage_calculator_description": "Estimez les paiements, les intérêts et le coût total.",
+      "crossword": "Mots croisés",
+      "crossword_description": "Remplissez la grille et résolvez les indices.",
       "travel_expenses_tracker": "Suivi des frais de voyage",
-      "travel_expenses_tracker_description": "Suivez les coûts de voyage et respectez votre budget."
+      "travel_expenses_tracker_description": "Suivez les coûts de voyage et respectez votre budget.",
+      "invoice": "Facture",
+      "invoice_description": "Créez et suivez les factures clients.",
+      "gantt_project_tracker": "Suivi de projet Gantt",
+      "gantt_project_tracker_description": "Planifiez les tâches et les échéances sur un diagramme de Gantt.",
+      "weekly_timesheet": "Feuille de temps hebdomadaire",
+      "weekly_timesheet_description": "Saisissez et vérifiez les heures travaillées chaque semaine.",
+      "eu_salary_calculator": "Calculateur de salaire UE",
+      "eu_salary_calculator_description": "Estimez le salaire net après impôts dans l'UE.",
+      "absence_schedule": "Planning des absences",
+      "absence_schedule_description": "Suivez les congés et absences de l'équipe.",
+      "wordle": "Wordle",
+      "wordle_description": "Devinez le mot caché de cinq lettres.",
+      "event_calendar": "Calendrier des événements",
+      "event_calendar_description": "Organisez et suivez les événements à venir."
     },
-    "create_workbook": "Créer un classeur"
+    "create_workbook": "Créer un classeur",
+    "documentation": "Documentation",
+    "about_ironcalc": "À propos d'IronCalc"
   },
   "left_drawer": {
     "new_workbook": "Nouveau classeur",
+    "search_workbook": "Rechercher des classeurs",
+    "search_placeholder": "Rechercher un classeur...",
+    "clear_search": "Effacer la recherche",
+    "search_no_results": "Votre recherche ne correspond à aucun classeur.",
     "pinned": "Épinglés",
     "today": "Aujourd'hui",
     "last_30_days": "30 derniers jours",
@@ -40,9 +72,16 @@
     "alert": {
       "title": "Attention !",
       "subtitle": "IronCalc stocke vos données uniquement dans le stockage local de votre navigateur.",
-      "subtitle2": "<bold>Téléchargez souvent votre XLSX</bold> – les versions futures pourraient ne pas ouvrir les classeurs actuels, même s'ils sont partagés."
+      "subtitle2": "<bold>Téléchargez souvent votre XLSX</bold> – les versions futures pourraient ne pas ouvrir les classeurs actuels, même s'ils sont partagés.",
+      "close": "Fermer"
     },
-    "documentation": "Documentation"
+    "documentation": "Documentation",
+    "cancel": "Annuler",
+    "delete_workbooks_one": "Supprimer {{count}} classeur",
+    "delete_workbooks_other": "Supprimer {{count}} classeurs",
+    "bulk_delete_message_one": "Ce classeur sera définitivement supprimé.",
+    "bulk_delete_message_other": "{{count}} classeurs seront définitivement supprimés.",
+    "select_workbook": "Sélectionner {{name}}"
   },
   "file_bar": {
     "open_sidebar": "Ouvrir la barre latérale",
@@ -65,14 +104,16 @@
       "delete_workbook": {
         "button": "Supprimer le classeur",
         "title": "Êtes-vous sûr ?",
-        "subtitle": "Le classeur <bold>'{{workbookName}}'</bold> sera définitivement supprimé. Cette action ne peut pas être annulée.",
-        "confirm_button": "Oui, supprimer le classeur",
+        "subtitle": "Le classeur '{{workbookName}}' sera définitivement supprimé.",
+        "warning": "Cette action ne peut pas être annulée.",
+        "confirm_button": "Oui, supprimer",
         "cancel_button": "Annuler"
       },
       "default_language": "Langue par défaut"
     },
     "help_menu": {
       "button": "Aide",
+      "about": "À propos d'IronCalc",
       "documentation": "Documentation",
       "keyboard_shortcuts": "Raccourcis clavier"
     },

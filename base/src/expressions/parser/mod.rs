@@ -13,10 +13,11 @@ factor  => prod (opProd prod)*
 prod    => power ('^' power)*
 power   => (unaryOp)* range '%'*
 range   => implicit (':' primary)?
-implicit=> '@' primary | primary
+implicit=> '@' primary | primary '#' | primary
 primary => '(' expr ')'
         => number
         => function '(' f_args ')'
+        => LAMBDA '(' f_args ')' '(' f_args ')'
         => name
         => string
         => '{' a_args '}'
@@ -49,6 +50,7 @@ use super::utils::number_to_column;
 
 use token::OpCompare;
 
+mod lambda;
 pub mod move_formula;
 pub mod static_analysis;
 pub mod stringify;
@@ -104,6 +106,15 @@ pub enum ArrayNode {
     Number(f64),
     String(String),
     Error(token::Error),
+    /// An empty (blank) cell from a range reference.
+    Empty,
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct NamedVariable {
+    pub(crate) name: String,
+    pub(crate) id: Option<u32>,
+    pub(crate) is_optional: bool,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -175,16 +186,33 @@ pub enum Node {
         kind: Function,
         args: Vec<Node>,
     },
-    InvalidFunctionKind {
+    // LAMBDA(a,b, SQRT(a*a+b*b))
+    LambdaDefKind {
+        parameters: Vec<NamedVariable>,
+        body: Box<Node>,
+    },
+    // LAMBDA(a,b, SQRT(a*a+b*b))(3,4)
+    LambdaCallKind {
+        lambda: Box<Node>,
+        args: Vec<Node>,
+    },
+    NamedFunctionKind {
+        id: Option<u32>,
         name: String,
         args: Vec<Node>,
     },
     ArrayKind(Vec<Vec<ArrayNode>>),
     DefinedNameKind(DefinedNameS),
     TableNameKind(String),
-    WrongVariableKind(String),
+    NamedVariableKind {
+        name: String,
+        id: Option<u32>,
+    },
     ImplicitIntersection {
         automatic: bool,
+        child: Box<Node>,
+    },
+    SpillRangeOperator {
         child: Box<Node>,
     },
     CompareKind {
@@ -503,7 +531,18 @@ impl<'a> Parser<'a> {
                 child: Box::new(t),
             };
         }
-        self.parse_primary()
+        let primary = self.parse_primary();
+        if let Node::ParseErrorKind { .. } = primary {
+            return primary;
+        }
+        let next_token = self.lexer.peek_token();
+        if next_token == TokenType::Spill {
+            self.lexer.advance_token();
+            return Node::SpillRangeOperator {
+                child: Box::new(primary),
+            };
+        }
+        primary
     }
 
     fn parse_array_row(&mut self) -> Result<Vec<ArrayNode>, Node> {
@@ -748,8 +787,12 @@ impl<'a> Parser<'a> {
             TokenType::Ident(name) => {
                 let next_token = self.lexer.peek_token();
                 if next_token == TokenType::LeftParenthesis {
-                    // It's a function call "SUM(.."
                     self.lexer.advance_token();
+                    // It's a function call "SUM(.."
+                    // _xlfn.LAMBDA(_xlpm.a,_xlpm.b, SQRT(_xlpm.a*_xlpm.a+_xlpm.b*_xlpm.b))(3,4)
+                    if &name == "_xlfn.LAMBDA" || &name.to_uppercase() == "LAMBDA" {
+                        return self.parse_lambda();
+                    }
                     let args = match self.parse_function_args() {
                         Ok(s) => s,
                         Err(e) => return e,
@@ -761,7 +804,7 @@ impl<'a> Parser<'a> {
                             message: err.message,
                         };
                     }
-                    // We should do this *only* importing functions from xlsx
+                    // We should do this *only* importing functions from xlsx: Implicit Intersection
                     if &name == "_xlfn.SINGLE" {
                         if args.len() != 1 {
                             return Node::ParseErrorKind {
@@ -776,7 +819,31 @@ impl<'a> Parser<'a> {
                             child: Box::new(args[0].clone()),
                         };
                     }
+                    // We should do this *only* importing functions from xlsx: Spill Range Operator
+                    if &name == "_xlfn.ANCHORARRAY" {
+                        if args.len() != 1 {
+                            return Node::ParseErrorKind {
+                                formula: self.lexer.get_formula(),
+                                position: self.lexer.get_position() as usize,
+                                message: "ANCHORARRAY requires one argument".to_string(),
+                            };
+                        }
+                        return Node::SpillRangeOperator {
+                            child: Box::new(args[0].clone()),
+                        };
+                    }
                     // We should do this *only* importing functions from xlsx
+                    if let Some(function_kind) = self
+                        .language
+                        .functions
+                        .lookup(name.trim_start_matches("_xlfn._xlws."))
+                    {
+                        return Node::FunctionKind {
+                            kind: function_kind,
+                            args,
+                        };
+                    }
+
                     if let Some(function_kind) = self
                         .language
                         .functions
@@ -787,7 +854,11 @@ impl<'a> Parser<'a> {
                             args,
                         };
                     }
-                    return Node::InvalidFunctionKind { name, args };
+                    return Node::NamedFunctionKind {
+                        name: name.trim_start_matches("_xlpm.").to_string(),
+                        args,
+                        id: None,
+                    };
                 }
                 let context = &self.context;
 
@@ -812,7 +883,9 @@ impl<'a> Parser<'a> {
                         return Node::TableNameKind(name);
                     }
                 }
-                Node::WrongVariableKind(name)
+                // xlpm: Excel Lambda Parameter
+                let name = name.trim_start_matches("_xlpm.").to_string();
+                Node::NamedVariableKind { name, id: None }
             }
             TokenType::Error(kind) => Node::ErrorKind(kind),
             TokenType::Illegal(error) => Node::ParseErrorKind {
@@ -906,6 +979,7 @@ impl<'a> Parser<'a> {
             | TokenType::Comma
             | TokenType::Bang
             | TokenType::And
+            | TokenType::Spill
             | TokenType::Percent => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
                 position: 0,

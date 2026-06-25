@@ -214,3 +214,16 @@ fn test_names() {
 
     assert!(!is_valid_identifier("LOG10"));
 }
+
+#[test]
+fn test_a1_identifier_allows_r_and_c() {
+    // is_valid_a1_identifier permits "R" and "C" (valid LAMBDA/LET variable names).
+    assert!(is_valid_a1_identifier("R"));
+    assert!(is_valid_a1_identifier("r"));
+    assert!(is_valid_a1_identifier("C"));
+    assert!(is_valid_a1_identifier("c"));
+    // All other is_valid_identifier rules still apply.
+    assert!(!is_valid_a1_identifier("R1C1"));
+    assert!(!is_valid_a1_identifier("A23"));
+    assert!(!is_valid_a1_identifier("true"));
+}

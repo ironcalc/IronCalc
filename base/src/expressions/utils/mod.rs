@@ -161,12 +161,8 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
 
     for ch in chars {
         match ch {
-            'A'..='Z' => {
-                if state == 1 {
-                    column.push(ch);
-                } else {
-                    return None;
-                }
+            'A'..='Z' if state == 1 => {
+                column.push(ch);
             }
             '0'..='9' => {
                 if state == 1 {
@@ -208,11 +204,14 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
     })
 }
 
-pub fn is_valid_identifier(name: &str) -> bool {
+/// Returns true if `name` is a valid identifier in an A1-mode formula expression.
+/// This is a superset of `is_valid_identifier`: it permits the single-character
+/// names "R" and "C" that are valid as LAMBDA parameters or LET variables but
+/// not as worksheet-level defined names.
+pub fn is_valid_a1_identifier(name: &str) -> bool {
     // https://support.microsoft.com/en-us/office/names-in-formulas-fc2935f9-115d-4bef-a370-3aa8bb4c91f1
     // https://github.com/MartinTrummer/excel-names/
     let upper = name.to_uppercase();
-    // length of chars
     let len = upper.chars().count();
 
     let mut chars = upper.chars();
@@ -224,12 +223,9 @@ pub fn is_valid_identifier(name: &str) -> bool {
         Some(ch) => ch,
         None => return false,
     };
+
     // The first character of a name must be a letter, an underscore character (_), or a backslash (\).
     if !(first.is_ascii_alphabetic() || first == '_' || first == '\\') {
-        return false;
-    }
-    // You cannot use the uppercase and lowercase characters "C", "c", "R", or "r" as a defined name
-    if len == 1 && (first == 'R' || first == 'C') {
         return false;
     }
     if upper == *"TRUE" || upper == *"FALSE" {
@@ -248,6 +244,15 @@ pub fn is_valid_identifier(name: &str) -> bool {
     }
 
     true
+}
+
+pub fn is_valid_identifier(name: &str) -> bool {
+    // You cannot use the uppercase and lowercase characters "C", "c", "R", or "r" as a defined name
+    let upper = name.to_uppercase();
+    if upper == "R" || upper == "C" {
+        return false;
+    }
+    is_valid_a1_identifier(name)
 }
 
 fn name_needs_quoting(name: &str) -> bool {

@@ -1,17 +1,36 @@
-import type { Model } from "@ironcalc/wasm";
-import { styled } from "@mui/material/styles";
+import type {
+  FmtSettings,
+  IronCalcTheme,
+  Model,
+  NamedStyle,
+} from "@ironcalc/wasm";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { TOOLBAR_HEIGHT } from "../constants";
+import { useCallback, useEffect, useState } from "react";
+import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
 import NamedRanges from "./NamedRanges/NamedRanges";
+import NamedStylesPanel from "./NamedStyles/NamedStylesPanel";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
+import Themes from "./Themes/themes";
+import "./rightdrawer.css";
+import { useTranslation } from "react-i18next";
+import type {
+  NamedStyleSavePayload,
+  SaveError,
+} from "./NamedStyles/EditNamedStyle";
 
+// Default drawer width is duplicated in CSS in rightdrawer.css; keep in sync
 const DEFAULT_DRAWER_WIDTH = 360;
 const MIN_DRAWER_WIDTH = 300;
 const MAX_DRAWER_WIDTH = 500;
 
-export type DrawerType = "namedRanges" | "regionalSettings";
+const KEYBOARD_RESIZE_STEP = 16;
+
+export type DrawerType =
+  | "namedRanges"
+  | "namedStyles"
+  | "regionalSettings"
+  | "conditionalFormatting"
+  | "themes";
 
 interface RightDrawerProps {
   isOpen: boolean;
@@ -22,6 +41,21 @@ interface RightDrawerProps {
   onUpdate: () => void;
   getSelectedArea: () => string;
   drawerType: DrawerType;
+  // Themes props
+  themes: IronCalcTheme[];
+  currentTheme: IronCalcTheme;
+  onThemePicked: (theme: IronCalcTheme) => void;
+  // Named styles props
+  customStyles: NamedStyle[];
+  builtinStyles: NamedStyle[];
+  formatOptions: FmtSettings;
+  onApplyNamedStyle: (name: string) => void;
+  onAddNamedStyle: (payload: NamedStyleSavePayload) => SaveError;
+  onUpdateNamedStyle: (
+    originalName: string,
+    payload: NamedStyleSavePayload,
+  ) => SaveError;
+  onDeleteNamedStyle: (name: string) => void;
   // Regional settings props
   initialLocale: string;
   initialTimezone: string;
@@ -38,20 +72,62 @@ const RightDrawer = ({
   model,
   onUpdate,
   drawerType,
+  themes,
+  currentTheme,
+  onThemePicked,
+  customStyles,
+  builtinStyles,
+  formatOptions,
+  onApplyNamedStyle,
+  onAddNamedStyle,
+  onUpdateNamedStyle,
+  onDeleteNamedStyle,
   initialLocale,
   initialTimezone,
   initialLanguage,
   onSettingsSave,
 }: RightDrawerProps) => {
-  const { t } = useTranslation();
   const [drawerWidth, setDrawerWidth] = useState(width);
   const [isResizing, setIsResizing] = useState(false);
-  const resizeHandleRef = useRef<HTMLDivElement>(null);
+
+  const { t } = useTranslation();
 
   const handleMouseDown = useCallback((e: ReactMouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
   }, []);
+
+  // FIXME: Because of my complicated (aka stupid) global logic it is hard for the separator
+  // to receive keyboard focus (a11y issue)
+  // You can reach it via Shift+Tab from the locale select,
+  // but any redraw steals focus back to the sheet.
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLHRElement>) => {
+      let nextWidth = drawerWidth;
+
+      if (e.key === "ArrowLeft") {
+        nextWidth = Math.min(
+          MAX_DRAWER_WIDTH,
+          drawerWidth + KEYBOARD_RESIZE_STEP,
+        );
+      } else if (e.key === "ArrowRight") {
+        nextWidth = Math.max(
+          MIN_DRAWER_WIDTH,
+          drawerWidth - KEYBOARD_RESIZE_STEP,
+        );
+      } else if (e.key === "Home") {
+        nextWidth = MIN_DRAWER_WIDTH;
+      } else if (e.key === "End") {
+        nextWidth = MAX_DRAWER_WIDTH;
+      } else {
+        return;
+      }
+
+      setDrawerWidth(nextWidth);
+      onWidthChange(nextWidth);
+    },
+    [drawerWidth, onWidthChange],
+  );
 
   useEffect(() => {
     if (!isResizing) {
@@ -95,6 +171,21 @@ const RightDrawer = ({
 
   const renderDrawerContent = () => {
     switch (drawerType) {
+      case "namedStyles":
+        return (
+          <NamedStylesPanel
+            model={model}
+            onClose={onClose}
+            customStyles={customStyles}
+            builtinStyles={builtinStyles}
+            formatOptions={formatOptions}
+            currentTheme={currentTheme}
+            onApplyNamedStyle={onApplyNamedStyle}
+            onAddNamedStyle={onAddNamedStyle}
+            onUpdateNamedStyle={onUpdateNamedStyle}
+            onDeleteNamedStyle={onDeleteNamedStyle}
+          />
+        );
       case "regionalSettings":
         return (
           <RegionalSettings
@@ -103,6 +194,26 @@ const RightDrawer = ({
             initialTimezone={initialTimezone}
             initialLanguage={initialLanguage}
             onSave={onSettingsSave}
+          />
+        );
+      case "conditionalFormatting":
+        return (
+          <ConditionalFormatting
+            onClose={onClose}
+            getSelectedArea={getSelectedArea}
+            sheet={model.getSelectedView().sheet}
+            onUpdate={onUpdate}
+            model={model}
+            currentTheme={currentTheme}
+          />
+        );
+      case "themes":
+        return (
+          <Themes
+            onClose={onClose}
+            themes={themes}
+            currentTheme={currentTheme}
+            onThemePicked={onThemePicked}
           />
         );
       default:
@@ -118,76 +229,23 @@ const RightDrawer = ({
   };
 
   return (
-    <DrawerContainer $drawerWidth={drawerWidth}>
-      <ResizeHandle
-        ref={resizeHandleRef}
-        onMouseDown={handleMouseDown}
-        $isResizing={isResizing}
+    <div
+      className="ic-drawer-container"
+      style={{ ["--ic-runtime-drawer-width" as string]: `${drawerWidth}px` }}
+    >
+      <div className="ic-drawer-divider" />
+      <div className="ic-drawer-content">{renderDrawerContent()}</div>
+      <hr
+        className={`ic-drawer-resize-handle ${isResizing ? "ic-drawer-resize-handle--resizing" : ""}`}
+        tabIndex={0}
         aria-label={t("right_drawer.resize_drawer")}
+        aria-orientation="vertical"
+        onMouseDown={handleMouseDown}
+        onKeyDown={handleKeyDown}
       />
-      <Divider />
-      <DrawerContent>{renderDrawerContent()}</DrawerContent>
-    </DrawerContainer>
+    </div>
   );
 };
-
-type DrawerContainerProps = {
-  $drawerWidth: number;
-};
-
-const DrawerContainer = styled("div")<DrawerContainerProps>(
-  ({ theme, $drawerWidth }) => ({
-    position: "absolute",
-    overflow: "hidden",
-    backgroundColor: theme.palette.common.white,
-    right: 0,
-    top: TOOLBAR_HEIGHT,
-    bottom: 0,
-    borderLeft: `1px solid ${theme.palette.grey[300]}`,
-    width: $drawerWidth,
-    display: "flex",
-    flexDirection: "column",
-
-    "@media (max-width: 600px)": {
-      width: "100%",
-      borderLeft: "none",
-      top: 0,
-      zIndex: 1000,
-    },
-  }),
-);
-
-const Divider = styled("div")(({ theme }) => ({
-  height: 1,
-  width: "100%",
-  backgroundColor: theme.palette.grey[300],
-  margin: 0,
-}));
-
-const DrawerContent = styled("div")({
-  flex: 1,
-  height: "100%",
-});
-
-const ResizeHandle = styled("div")<{ $isResizing: boolean }>(
-  ({ theme, $isResizing }) => ({
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    cursor: "col-resize",
-    backgroundColor: $isResizing ? theme.palette.primary.main : "transparent",
-    zIndex: 10,
-
-    "&:hover": {
-      backgroundColor: theme.palette.primary.main,
-      opacity: 0.5,
-    },
-
-    transition: $isResizing ? "none" : "background-color 0.2s ease",
-  }),
-);
 
 export default RightDrawer;
 export { DEFAULT_DRAWER_WIDTH, MAX_DRAWER_WIDTH, MIN_DRAWER_WIDTH };

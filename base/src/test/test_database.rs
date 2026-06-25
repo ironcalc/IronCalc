@@ -31,10 +31,40 @@ fn arguments() {
     model._set("A19", "=DCOUNT(1, 2)");
     model._set("A20", "=DCOUNT(1, 2, 3, 4)");
 
-    model._set("A21", "=DGET()");
-    model._set("A22", "=DGET(2)");
-    model._set("A23", "=DGET(1, 2)");
-    model._set("A24", "=DGET(1, 2, 3, 4)");
+    model._set("A21", "=DCOUNTA()");
+    model._set("A22", "=DCOUNTA(2)");
+    model._set("A23", "=DCOUNTA(1, 2)");
+    model._set("A24", "=DCOUNTA(1, 2, 3, 4)");
+
+    model._set("B1", "=DGET()");
+    model._set("B2", "=DGET(2)");
+    model._set("B3", "=DGET(1, 2)");
+    model._set("B4", "=DGET(1, 2, 3, 4)");
+
+    model._set("B5", "=DPRODUCT()");
+    model._set("B6", "=DPRODUCT(2)");
+    model._set("B7", "=DPRODUCT(1, 2)");
+    model._set("B8", "=DPRODUCT(1, 2, 3, 4)");
+
+    model._set("B9", "=DVAR()");
+    model._set("B10", "=DVAR(2)");
+    model._set("B11", "=DVAR(1, 2)");
+    model._set("B12", "=DVAR(1, 2, 3, 4)");
+
+    model._set("B13", "=DVARP()");
+    model._set("B14", "=DVARP(2)");
+    model._set("B15", "=DVARP(1, 2)");
+    model._set("B16", "=DVARP(1, 2, 3, 4)");
+
+    model._set("B17", "=DSTDEV()");
+    model._set("B18", "=DSTDEV(2)");
+    model._set("B19", "=DSTDEV(1, 2)");
+    model._set("B20", "=DSTDEV(1, 2, 3, 4)");
+
+    model._set("B21", "=DSTDEVP()");
+    model._set("B22", "=DSTDEVP(2)");
+    model._set("B23", "=DSTDEVP(1, 2)");
+    model._set("B24", "=DSTDEVP(1, 2, 3, 4)");
 
     model.evaluate();
 
@@ -67,6 +97,36 @@ fn arguments() {
     assert_eq!(model._get_text("A22"), *"#ERROR!");
     assert_eq!(model._get_text("A23"), *"#ERROR!");
     assert_eq!(model._get_text("A24"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B1"), *"#ERROR!");
+    assert_eq!(model._get_text("B2"), *"#ERROR!");
+    assert_eq!(model._get_text("B3"), *"#ERROR!");
+    assert_eq!(model._get_text("B4"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B5"), *"#ERROR!");
+    assert_eq!(model._get_text("B6"), *"#ERROR!");
+    assert_eq!(model._get_text("B7"), *"#ERROR!");
+    assert_eq!(model._get_text("B8"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B9"), *"#ERROR!");
+    assert_eq!(model._get_text("B10"), *"#ERROR!");
+    assert_eq!(model._get_text("B11"), *"#ERROR!");
+    assert_eq!(model._get_text("B12"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B13"), *"#ERROR!");
+    assert_eq!(model._get_text("B14"), *"#ERROR!");
+    assert_eq!(model._get_text("B15"), *"#ERROR!");
+    assert_eq!(model._get_text("B16"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B17"), *"#ERROR!");
+    assert_eq!(model._get_text("B18"), *"#ERROR!");
+    assert_eq!(model._get_text("B19"), *"#ERROR!");
+    assert_eq!(model._get_text("B20"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B21"), *"#ERROR!");
+    assert_eq!(model._get_text("B22"), *"#ERROR!");
+    assert_eq!(model._get_text("B23"), *"#ERROR!");
+    assert_eq!(model._get_text("B24"), *"#ERROR!");
 }
 
 #[test]

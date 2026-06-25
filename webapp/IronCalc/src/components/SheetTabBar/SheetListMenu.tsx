@@ -1,102 +1,68 @@
-import { styled } from "@mui/material";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import { Check } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { MenuItem } from "../Menu/MenuItem";
 import type { SheetOptions } from "./types";
+import "./sheet-list-menu.css";
 
 function isWhiteColor(color: string): boolean {
   return ["#FFF", "#FFFFFF"].includes(color);
 }
 
 interface SheetListMenuProps {
-  open: boolean;
-  onClose: () => void;
-  anchorEl: HTMLButtonElement | null;
   onSheetSelected: (index: number) => void;
   sheetOptionsList: SheetOptions[];
   selectedIndex: number;
 }
 
-const SheetListMenu = (properties: SheetListMenuProps) => {
-  const {
-    open,
-    onClose,
-    anchorEl,
-    onSheetSelected,
-    sheetOptionsList,
-    selectedIndex,
-  } = properties;
-
+const SheetListMenu = ({
+  onSheetSelected,
+  sheetOptionsList,
+  selectedIndex,
+}: SheetListMenuProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const hasColors = sheetOptionsList.some((tab) => !isWhiteColor(tab.color));
 
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const items = containerRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitemradio"]',
+      );
+      items?.[selectedIndex]?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedIndex]);
+
   return (
-    <StyledMenu
-      open={open}
-      onClose={onClose}
-      anchorEl={anchorEl}
-      anchorOrigin={{
-        vertical: "top",
-        horizontal: "left",
-      }}
-      transformOrigin={{
-        vertical: "bottom",
-        horizontal: 6,
-      }}
-    >
+    <div ref={containerRef}>
       {sheetOptionsList.map((tab, index) => (
-        <StyledMenuItem
+        <MenuItem
           key={tab.sheetId}
+          checked={index === selectedIndex}
+          icon={
+            hasColors ? (
+              <span
+                className="ic-sheet-list-menu-color"
+                style={{ backgroundColor: tab.color }}
+              />
+            ) : undefined
+          }
           onClick={() => onSheetSelected(index)}
         >
-          {index === selectedIndex ? (
-            <Check
-              style={{ width: "16px", height: "16px", marginRight: "8px" }}
-            />
-          ) : (
-            <div
-              style={{ width: "16px", height: "16px", marginRight: "8px" }}
-            />
-          )}
-          {hasColors && <ItemColor style={{ backgroundColor: tab.color }} />}
-          <ItemName
-            style={{
-              fontWeight: index === selectedIndex ? "bold" : "normal",
-              color: tab.state === "visible" ? "#333" : "#888",
-            }}
+          <span
+            className={
+              [
+                index === selectedIndex && "ic-sheet-list-menu-name--selected",
+                tab.state !== "visible" && "ic-sheet-list-menu-name--hidden",
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
           >
             {tab.name}
-          </ItemName>
-        </StyledMenuItem>
+          </span>
+        </MenuItem>
       ))}
-    </StyledMenu>
+    </div>
   );
 };
-
-const StyledMenu = styled(Menu)({
-  "& .MuiPaper-root": {
-    borderRadius: 8,
-    padding: 4,
-  },
-  "& .MuiList-padding": {
-    padding: 0,
-  },
-});
-
-const StyledMenuItem = styled(MenuItem)({
-  padding: 8,
-  borderRadius: 4,
-});
-
-const ItemColor = styled("div")({
-  width: 12,
-  height: 12,
-  borderRadius: 4,
-  marginRight: 8,
-});
-
-const ItemName = styled("div")({
-  fontSize: 12,
-  color: "#333",
-});
 
 export default SheetListMenu;

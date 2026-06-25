@@ -1,0 +1,48 @@
+.ic-icon-picker-trigger {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.ic-icon-picker-trigger:hover {
+  background: var(--palette-grey-100);
+}
+
+.ic-icon-picker-panel {
+  position: fixed;
+  background: var(--palette-common-white);
+  border: 1px solid var(--palette-grey-300);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+}
+
+.ic-icon-picker-item {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.ic-icon-picker-item:hover {
+  background: var(--palette-grey-100);
+}
+
+.ic-icon-picker-item--selected {
+  background: var(--palette-grey-50);
+  outline-offset: -1px;
+}

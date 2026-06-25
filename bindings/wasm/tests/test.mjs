@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert'
 import { Model } from "../pkg/wasm.js";
 
-const DEFAULT_ROW_HEIGHT = 28;
+const DEFAULT_ROW_HEIGHT = 25;
 
 test('Frozen rows and columns', () => {
     let model = new Model('Workbook1', 'en', 'UTC', 'en');
@@ -42,37 +42,25 @@ test('Evaluates correctly', (t) => {
     assert.strictEqual(result, "70");
 });
 
+const DEFAULT_STYLE = {
+    num_fmt: 'general',
+    fill: { },
+    font: { sz: 12, name: 'Inter', family: 2, scheme: 'minor' },
+    border: {},
+    quote_prefix: false,
+};
+
 test('Styles work', () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
-    let style = model.getCellStyle(0, 1, 1);
-    assert.deepEqual(style, {
-        num_fmt: 'general',
-        fill: { pattern_type: 'none' },
-        font: {
-            sz: 13,
-            color: '#000000',
-            name: 'Calibri',
-            family: 2,
-            scheme: 'minor'
-        },
-        border: {},
-        quote_prefix: false
-    });
+    let extended = model.getCellStyle(0, 1, 1);
+    assert.deepEqual(extended.style, DEFAULT_STYLE);
+    assert.strictEqual(extended.icon, undefined);
+    assert.strictEqual(extended.data_bar, undefined);
+    assert.strictEqual(extended.custom_icon, undefined);
+
     model.setUserInput(0, 1, 1, "'=1+1");
-    style = model.getCellStyle(0, 1, 1);
-    assert.deepEqual(style, {
-        num_fmt: 'general',
-        fill: { pattern_type: 'none' },
-        font: {
-            sz: 13,
-            color: '#000000',
-            name: 'Calibri',
-            family: 2,
-            scheme: 'minor'
-        },
-        border: {},
-        quote_prefix: true
-    });
+    extended = model.getCellStyle(0, 1, 1);
+    assert.deepEqual(extended.style, { ...DEFAULT_STYLE, quote_prefix: true });
 });
 
 test("Add sheets", (t) => {
@@ -115,10 +103,10 @@ test("invalid column throws an exception", () => {
 
 test("floating column numbers get truncated", () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
-    model.setRowsHeight(0.8, 5.2, 5.5, 100.5);
+    model.setRowsHeight(0.8, 5.2, 5.5, 125);
 
-    assert.strictEqual(model.getRowHeight(0.11, 5.99), 100.5);
-    assert.strictEqual(model.getRowHeight(0, 5), 100.5);
+    assert.strictEqual(model.getRowHeight(0.11, 5.99), 125);
+    assert.strictEqual(model.getRowHeight(0, 5), 125);
 });
 
 test("autofill", () => {

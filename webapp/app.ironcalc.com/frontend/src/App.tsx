@@ -1,10 +1,8 @@
 import "./App.css";
-import styled from "@emotion/styled";
 import type { IronCalcHandle } from "@ironcalc/workbook";
 // From IronCalc
 import { IronCalc, IronCalcIcon, init, Model } from "@ironcalc/workbook";
 import "@ironcalc/workbook/style.css";
-import { Modal } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileBar } from "./components/FileBar";
@@ -19,6 +17,7 @@ import {
   createNewModel,
   deleteModelByUuid,
   deleteSelectedModel,
+  getLanguageFromLocale,
   getShortLocaleCode,
   isStorageEmpty,
   loadDefaultLocaleFromStorage,
@@ -53,6 +52,7 @@ function App() {
 
   const { t, i18n } = useTranslation();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Run only for i18n.language dependency
   useEffect(() => {
     async function start() {
       await init();
@@ -61,28 +61,35 @@ function App() {
       const modelHash = urlParams.get("model");
       const exampleFilename = urlParams.get("example");
       const language = loadDefaultLocaleFromStorage();
-      const localeShort = getShortLocaleCode(language);
+      const languageId = getLanguageFromLocale(language);
       // If there is a model name ?model=modelHash we try to load it
       // if there is not, or the loading failed we load an empty model
+      let loadedModel: Model | null = null;
       if (modelHash) {
         // Get a remote model
         try {
           const model_bytes = await get_model(modelHash);
-          const importedModel = Model.from_bytes(model_bytes, localeShort);
+          loadedModel = Model.from_bytes(model_bytes, languageId);
           localStorage.removeItem("selected");
-          setModel(importedModel);
         } catch (_e) {
+          console.error(_e);
+          alert(t("errors.model_not_found"));
           console.log("Failed to load model from hash:", modelHash);
         }
       } else if (exampleFilename) {
         try {
           const model_bytes = await get_documentation_model(exampleFilename);
-          const importedModel = Model.from_bytes(model_bytes, localeShort);
+          loadedModel = Model.from_bytes(model_bytes, languageId);
           localStorage.removeItem("selected");
-          setModel(importedModel);
         } catch (_e) {
+          console.error(_e);
+          alert(t("errors.example_not_found"));
           console.log("Failed to load example model:", exampleFilename);
         }
+      }
+
+      if (loadedModel) {
+        setModel(loadedModel);
       } else {
         // try to load from local storage
         const result = loadSelectedModelFromStorage();
@@ -115,22 +122,26 @@ function App() {
     }
   }, [model, localStorageId]);
 
+  useEffect(() => {
+    if (!model) return;
+    // We try to save the model every second
+    const interval = setInterval(() => {
+      const queue = model.flushSendQueue();
+      if (queue.length !== 1) {
+        saveSelectedModelInStorage(model);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [model]);
+
   if (!model) {
     return (
-      <Loading>
+      <div className="app-ic-loading">
         <IronCalcIcon style={{ width: 24, height: 24, marginBottom: 16 }} />
         <div>{t("loading_screen.message")}</div>
-      </Loading>
+      </div>
     );
   }
-
-  // We try to save the model every second
-  setInterval(() => {
-    const queue = model.flushSendQueue();
-    if (queue.length !== 1) {
-      saveSelectedModelInStorage(model);
-    }
-  }, 1000);
 
   // Handlers for model changes that also update our models state
   const handleNewModel = () => {
@@ -163,19 +174,21 @@ function App() {
   // Passing the property down makes sure it is always defined.
 
   return (
-    <Wrapper>
+    <div className="app-ic-wrapper">
       <LeftDrawer
         open={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
         newModel={handleNewModel}
         setModel={handleSetModel}
         onDelete={handleDeleteModelByUuid}
         localStorageId={localStorageId}
       />
-      <MainContent isDrawerOpen={isDrawerOpen}>
-        {isDrawerOpen && (
-          <MobileOverlay onClick={() => setIsDrawerOpen(false)} />
-        )}
+      <div
+        className={`app-ic-main-content${isDrawerOpen ? " app-ic-main-content--open" : ""}`}
+        style={{
+          marginLeft: isDrawerOpen ? 0 : -DRAWER_WIDTH,
+          width: isDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%",
+        }}
+      >
         <FileBar
           model={model}
           onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
@@ -183,8 +196,8 @@ function App() {
 
             const bytes = new Uint8Array(await blob.arrayBuffer());
             const locale = loadDefaultLocaleFromStorage();
-            const localeShort = getShortLocaleCode(locale);
-            const newModel = Model.from_bytes(bytes, localeShort);
+            const languageId = getLanguageFromLocale(locale);
+            const newModel = Model.from_bytes(bytes, languageId);
             saveModelToStorage(newModel);
 
             setModel(newModel);
@@ -201,7 +214,14 @@ function App() {
           onLanguageChange={handleLanguageChange}
         />
         <IronCalc model={model} ref={ironCalcRef} />
-      </MainContent>
+        {isDrawerOpen && (
+          <div
+            className="app-ic-mobile-overlay"
+            onClick={() => setIsDrawerOpen(false)}
+            role="none"
+          />
+        )}
+      </div>
       {showWelcomeDialog && (
         <WelcomeDialog
           onClose={() => {
@@ -210,6 +230,19 @@ function App() {
               setModel(createdModel);
             }
             setShowWelcomeDialog(false);
+          }}
+          onOpenTemplates={() => {
+            setShowWelcomeDialog(false);
+            setTemplatesDialogOpen(true);
+          }}
+          onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
+            const blob = await uploadFile(arrayBuffer, fileName);
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            const locale = loadDefaultLocaleFromStorage();
+            const languageId = getLanguageFromLocale(locale);
+            const newModel = Model.from_bytes(bytes, languageId);
+            saveModelToStorage(newModel);
+            setModel(newModel);
           }}
           onSelectTemplate={async (templateId) => {
             switch (templateId) {
@@ -221,11 +254,8 @@ function App() {
               default: {
                 const model_bytes = await get_documentation_model(templateId);
                 const locale = loadDefaultLocaleFromStorage();
-                const localeShort = getShortLocaleCode(locale);
-                const importedModel = Model.from_bytes(
-                  model_bytes,
-                  localeShort,
-                );
+                const languageId = getLanguageFromLocale(locale);
+                const importedModel = Model.from_bytes(model_bytes, languageId);
                 saveModelToStorage(importedModel);
                 setModel(importedModel);
                 break;
@@ -235,77 +265,24 @@ function App() {
           }}
         />
       )}
-      <Modal
+      <TemplatesDialog
         open={isTemplatesDialogOpen}
         onClose={() => setTemplatesDialogOpen(false)}
-        aria-labelledby="templates-dialog-title"
-        aria-describedby="templates-dialog-description"
-      >
-        <TemplatesDialog
-          onClose={() => setTemplatesDialogOpen(false)}
-          onSelectTemplate={async (fileName) => {
-            const model_bytes = await get_documentation_model(fileName);
-            const locale = loadDefaultLocaleFromStorage();
-            const localeShort = getShortLocaleCode(locale);
-            const importedModel = Model.from_bytes(model_bytes, localeShort);
-            saveModelToStorage(importedModel);
-            setModel(importedModel);
-            setTemplatesDialogOpen(false);
-          }}
-        />
-      </Modal>
-    </Wrapper>
+        onSelectTemplate={async (fileName) => {
+          const model_bytes = await get_documentation_model(fileName);
+          const locale = loadDefaultLocaleFromStorage();
+          const languageId = getLanguageFromLocale(locale);
+          const importedModel = Model.from_bytes(model_bytes, languageId);
+          saveModelToStorage(importedModel);
+          setModel(importedModel);
+          setTemplatesDialogOpen(false);
+        }}
+      />
+    </div>
   );
 }
 
-const Wrapper = styled("div")`
-  display: flex;
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-`;
-
 const DRAWER_WIDTH = 264;
 export const MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE = 768;
-
-const MainContent = styled("div")<{ isDrawerOpen: boolean }>`
-  margin-left: ${({ isDrawerOpen }) =>
-    isDrawerOpen ? "0px" : `-${DRAWER_WIDTH}px`};
-  width: ${({ isDrawerOpen }) =>
-    isDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%"};
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  @media (max-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE}px) {
-    ${({ isDrawerOpen }) =>
-      isDrawerOpen && `min-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE}px;`}
-  }
-`;
-
-const MobileOverlay = styled("div")`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.8);
-  z-index: 100;
-  cursor: pointer;
-
-  @media (min-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE + 1}px) {
-    display: none;
-  }
-`;
-
-const Loading = styled("div")`
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-family: "Inter";
-  font-size: 14px;
-`;
 
 export default App;

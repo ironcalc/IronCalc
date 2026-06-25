@@ -3,23 +3,20 @@ import {
   ArrowUp,
   Eye,
   EyeOff,
+  MoveVertical,
   Plus,
   Snowflake,
   Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  DeleteButton,
-  ItemNameStyled,
-  MenuDivider,
-  StyledMenu,
-  StyledMenuItem,
-} from "./Common";
+import { Menu } from "../../Menu/Menu";
+import { MenuDivider } from "../../Menu/MenuDivider";
+import { MenuItem } from "../../Menu/MenuItem";
 
 interface RowHeaderContextMenuProps {
   open: boolean;
   onClose: () => void;
-  anchorPosition: { top: number; left: number } | null;
+  anchorPosition: { x: number; y: number } | null;
   onInsertRowsAbove: () => void;
   onInsertRowsBelow: () => void;
   onFreezeRows: () => void;
@@ -27,6 +24,7 @@ interface RowHeaderContextMenuProps {
   onDeleteRows: () => void;
   onMoveRowsUp: () => void;
   onMoveRowsDown: () => void;
+  onSetRowHeight: () => void;
   onHideRows: () => void;
   onShowHiddenRows: () => void;
   range: {
@@ -52,6 +50,7 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
     onDeleteRows,
     onMoveRowsUp,
     onMoveRowsDown,
+    onSetRowHeight,
     onHideRows,
     onShowHiddenRows,
     range,
@@ -61,88 +60,64 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
   const { rowStart, rowEnd } = range;
   const rowCount = rowEnd - rowStart + 1;
 
+  if (!anchorPosition) {
+    return null;
+  }
+
   return (
-    <StyledMenu
-      open={open}
-      onClose={onClose}
-      transitionDuration={0}
-      autoFocus={false}
-      anchorReference="anchorPosition"
-      anchorPosition={anchorPosition ?? undefined}
-    >
-      <StyledMenuItem onClick={onInsertRowsAbove}>
-        <Plus />
-        <ItemNameStyled>
-          {t("context_menu.row_header.insert_rows_above", { count: rowCount })}
-        </ItemNameStyled>
-      </StyledMenuItem>
-      <StyledMenuItem onClick={onInsertRowsBelow}>
-        <Plus />
-        <ItemNameStyled>
-          {t("context_menu.row_header.insert_rows_below", { count: rowCount })}
-        </ItemNameStyled>
-      </StyledMenuItem>
+    <Menu open={open} onClose={onClose} anchorPosition={anchorPosition}>
+      <MenuItem icon={<Plus />} onClick={onInsertRowsAbove}>
+        {t("context_menu.row_header.insert_rows_above", { count: rowCount })}
+      </MenuItem>
+      <MenuItem icon={<Plus />} onClick={onInsertRowsBelow}>
+        {t("context_menu.row_header.insert_rows_below", { count: rowCount })}
+      </MenuItem>
 
       <MenuDivider />
 
-      <StyledMenuItem onClick={onMoveRowsUp}>
-        <ArrowUp />
-        <ItemNameStyled>
-          {t("context_menu.row_header.move_rows_up")}
-        </ItemNameStyled>
-      </StyledMenuItem>
-      <StyledMenuItem onClick={onMoveRowsDown}>
-        <ArrowDown />
-        <ItemNameStyled>
-          {t("context_menu.row_header.move_rows_down")}
-        </ItemNameStyled>
-      </StyledMenuItem>
+      <MenuItem icon={<ArrowUp />} onClick={onMoveRowsUp}>
+        {t("context_menu.row_header.move_rows_up")}
+      </MenuItem>
+      <MenuItem icon={<ArrowDown />} onClick={onMoveRowsDown}>
+        {t("context_menu.row_header.move_rows_down")}
+      </MenuItem>
 
       <MenuDivider />
 
-      <StyledMenuItem onClick={onHideRows}>
-        <EyeOff />
-        <ItemNameStyled>
-          {rowCount === 1
-            ? t("context_menu.row_header.hide_row", { row: rowStart })
-            : t("context_menu.row_header.hide_rows", { rowStart, rowEnd })}
-        </ItemNameStyled>
-      </StyledMenuItem>
-      <StyledMenuItem onClick={onShowHiddenRows}>
-        <Eye />
-        <ItemNameStyled>
-          {t("context_menu.row_header.show_hidden_rows")}
-        </ItemNameStyled>
-      </StyledMenuItem>
+      <MenuItem icon={<MoveVertical />} onClick={onSetRowHeight}>
+        {t("context_menu.row_header.set_row_height")}
+      </MenuItem>
 
       <MenuDivider />
 
-      <StyledMenuItem onClick={onFreezeRows}>
-        <Snowflake />
-        <ItemNameStyled>
-          {t("context_menu.row_header.freeze_rows", { row: rowStart })}
-        </ItemNameStyled>
-      </StyledMenuItem>
+      <MenuItem icon={<EyeOff />} onClick={onHideRows}>
+        {rowCount === 1
+          ? t("context_menu.row_header.hide_row", { row: rowStart })
+          : t("context_menu.row_header.hide_rows", { rowStart, rowEnd })}
+      </MenuItem>
+      <MenuItem icon={<Eye />} onClick={onShowHiddenRows}>
+        {t("context_menu.row_header.show_hidden_rows")}
+      </MenuItem>
+
+      <MenuDivider />
+
+      <MenuItem icon={<Snowflake />} onClick={onFreezeRows}>
+        {t("context_menu.row_header.freeze_rows", { row: rowStart })}
+      </MenuItem>
       {frozenRowsCount > 0 && (
-        <StyledMenuItem onClick={onUnfreezeRows}>
-          <Snowflake />
-          <ItemNameStyled>
-            {t("context_menu.row_header.unfreeze_rows")}
-          </ItemNameStyled>
-        </StyledMenuItem>
+        <MenuItem icon={<Snowflake />} onClick={onUnfreezeRows}>
+          {t("context_menu.row_header.unfreeze_rows")}
+        </MenuItem>
       )}
 
       <MenuDivider />
 
-      <DeleteButton onClick={onDeleteRows}>
-        <Trash2 />
-        <ItemNameStyled>
-          {rowCount === 1
-            ? t("context_menu.row_header.delete_row", { row: rowStart })
-            : t("context_menu.row_header.delete_rows", { rowStart, rowEnd })}
-        </ItemNameStyled>
-      </DeleteButton>
-    </StyledMenu>
+      <MenuItem icon={<Trash2 />} destructive onClick={onDeleteRows}>
+        {rowCount === 1
+          ? t("context_menu.row_header.delete_row", { row: rowStart })
+          : t("context_menu.row_header.delete_rows", { rowStart, rowEnd })}
+      </MenuItem>
+    </Menu>
   );
 };
 

@@ -32,10 +32,6 @@ ODD returns a [number](/features/value-types#numbers) that is the nearest odd in
 * If the value of the *number* argument is not (or cannot be converted to) a [number](/features/value-types#numbers), then ODD returns the [`#VALUE!`](/features/error-types.md#value) error.
 <!--@include: ../markdown-snippets/error-type-details.txt-->
 
-<!--
-## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=odd).
--->
 
 ## Links
 * For more information about even and odd numbers, visit Wikipedia's [Parity](https://en.wikipedia.org/wiki/Parity_(mathematics)) page.

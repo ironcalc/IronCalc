@@ -35,7 +35,8 @@ TAN returns a unitless [number](/features/value-types#numbers) that is the trigo
 
 * Theoretically, $\text{tan}(x)$ is undefined for any critical $x$ that satisfies $x = \frac{\pi}{2} + k\pi$ (where $k$ is any integer). However, an exact representation of the mathematical constant $\pi$ requires infinite precision, which cannot be achieved with the floating-point representation available. Hence, TAN will return very large or very small values close to critical $x$ values.
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=tan).
+
+<IronCalcEmbed src="/examples/tan.ic"/>
 
 ## Links
 * For more information about trigonometric tangent, visit Wikipedia's [Trigonometric functions](https://en.wikipedia.org/wiki/Trigonometric_functions) page.

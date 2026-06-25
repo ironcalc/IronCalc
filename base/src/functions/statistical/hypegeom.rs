@@ -105,4 +105,18 @@ impl<'a> Model<'a> {
 
         CalcResult::Number(prob)
     }
+
+    // HYPGEOMDIST(sample_s, number_sample, population_s, number_pop) — always PMF (cumulative=FALSE)
+    pub(crate) fn fn_hypgeomdist_compat(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut new_args = args.to_vec();
+        new_args.push(Node::BooleanKind(false));
+        self.fn_hyp_geom_dist(&new_args, cell)
+    }
 }

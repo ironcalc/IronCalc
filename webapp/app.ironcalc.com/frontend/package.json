@@ -10,24 +10,21 @@
     "check-write": "biome check --write ./src"
   },
   "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
     "@ironcalc/workbook": "file:../../IronCalc/",
-    "i18next": "^25.7.4",
-    "@mui/material": "^7.3.9",
-    "lucide-react": "^0.562.0",
+    "i18next": "^26.3.1",
+    "lucide-react": "^1.17.0",
     "qrcode.react": "^4.2.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "react-i18next": "^16.5.8"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.7",
-    "@types/react": "^19.2.4",
+    "@biomejs/biome": "2.4.16",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "typescript": "~5.9.3",
-    "vite": "^8.0.2",
-    "vite-plugin-svgr": "^4.5.0"
+    "typescript": "6.0.3",
+    "vite": "^8.0.16",
+    "vite-plugin-svgr": "^5.2.0"
   }
 }

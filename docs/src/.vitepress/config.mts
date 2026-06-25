@@ -47,6 +47,7 @@ export default defineConfig({
           { text: "Sharing Files", link: "/web-application/sharing-files" },
           { text: "Language selector", link: "/web-application/language-selector" },
           { text: "Managing Workbooks", link: "/web-application/managing-workbooks" },
+          { text: "Templates", link: "/web-application/templates" },
         ],
       },
       {
@@ -59,6 +60,8 @@ export default defineConfig({
             link: "/features/name-manager",
           },
           { text: "Using Styles", link: "/features/using-styles" },
+          { text: "Cell Styles", link: "/features/cell-styles" },
+          { text: "Conditional Formatting", link: "/features/conditional-formatting" },
           { text: "Keyboard Shortcuts", link: "/features/keyboard-shortcuts" },
           {
             text: "Error Types",
@@ -79,7 +82,11 @@ export default defineConfig({
           {
             text: "Serial Numbers",
             link: "/features/serial-numbers",
-          },		  
+          },
+          {
+            text: "Regional Settings",
+            link: "/features/regional-settings",
+          },
           {
             text: "Unsupported Features",
             link: "/features/unsupported-features",
@@ -242,41 +249,6 @@ export default defineConfig({
               {
                 text: "XMATCH",
                 link: "/functions/lookup_and_reference/xmatch",
-              },
-            ],
-          },
-          {
-            text: "Cube",
-            collapsed: true,
-            link: "/functions/cube",
-            items: [
-              {
-                text: "CUBEKPIMEMBER",
-                link: "/functions/cube/cubekpimember",
-              },
-              {
-                text: "CUBEMEMBER",
-                link: "/functions/cube/cubemember",
-              },
-              {
-                text: "CUBEMEMBERPROPERTY",
-                link: "/functions/cube/cubememberproperty",
-              },
-              {
-                text: "CUBERANKEDMEMBER",
-                link: "/functions/cube/cuberankedmember",
-              },
-              {
-                text: "CUBESET",
-                link: "/functions/cube/cubeset",
-              },
-              {
-                text: "CUBESETCOUNT",
-                link: "/functions/cube/cubesetcount",
-              },
-              {
-                text: "CUBEVALUE",
-                link: "/functions/cube/cubevalue",
               },
             ],
           },

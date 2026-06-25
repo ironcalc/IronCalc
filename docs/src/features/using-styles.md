@@ -28,6 +28,14 @@ Customize the layout by modifying:
 
 You can freeze one or more rows and columns so they stay visible while scrolling. To do this, right-click anywhere on the canvas and use the **context menu**. Frozen rows and columns remain fixed while the rest of the content scrolls.
 
+## Moving Rows and Columns
+
+To move a row or column, right-click its header and select **Move row up**, **Move row down**, **Move column left**, or **Move column right**.
+
+## Hiding Rows and Columns
+
+To hide a row or column, right-click its header and select **Hide row** or **Hide column**.
+
 ## Copying and Pasting Styles
 
 Styles can be **copied and pasted** from one cell or range to another. Simply copy a cell with the desired style and paste it elsewhere to apply the same formatting.

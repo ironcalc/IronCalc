@@ -1,10 +1,11 @@
 import type {
   BorderOptions,
+  Color,
   FmtSettings,
   HorizontalAlignment,
+  IronCalcTheme,
   VerticalAlignment,
 } from "@ironcalc/wasm";
-import Tooltip from "@mui/material/Tooltip";
 import {
   AlignCenter,
   AlignLeft,
@@ -12,6 +13,7 @@ import {
   ArrowDownToLine,
   ArrowUpToLine,
   Bold,
+  Brush,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -24,6 +26,7 @@ import {
   Grid2x2X,
   ImageDown,
   Italic,
+  Layers,
   Minus,
   PaintBucket,
   PaintRoller,
@@ -33,6 +36,7 @@ import {
   Redo2,
   RemoveFormatting,
   Strikethrough,
+  SwatchBook,
   Type,
   Underline,
   Undo2,
@@ -51,7 +55,9 @@ import {
   increaseDecimalPlaces,
   NumberFormats,
 } from "../FormatMenu/formatUtil";
+import ThemeMenu from "../ThemeMenu/ThemeMenu";
 import "./toolbar.css";
+import { Tooltip } from "../Tooltip/Tooltip";
 
 type ToolbarProperties = {
   canUndo: boolean;
@@ -66,12 +72,13 @@ type ToolbarProperties = {
   onToggleVerticalAlign: (v: string) => void;
   onToggleWrapText: (v: boolean) => void;
   onCopyStyles: () => void;
-  onTextColorPicked: (hex: string) => void;
-  onFillColorPicked: (hex: string) => void;
+  onTextColorPicked: (color: Color) => void;
+  onFillColorPicked: (color: Color) => void;
   onNumberFormatPicked: (numberFmt: string) => void;
   onBorderChanged: (border: BorderOptions) => void;
   onClearFormatting: () => void;
   onIncreaseFontSize: (delta: number) => void;
+  onSetFontSize: (size: number) => void;
   onDownloadPNG: () => void;
   fillColor: string;
   fontColor: string;
@@ -88,6 +95,14 @@ type ToolbarProperties = {
   showGridLines: boolean;
   onToggleShowGridLines: (show: boolean) => void;
   formatOptions: FmtSettings;
+  onOpenConditionalFormatting: () => void;
+  isConditionalFormattingOpen: boolean;
+  onOpenNamedStyles: () => void;
+  isNamedStylesOpen: boolean;
+  themes: IronCalcTheme[];
+  currentTheme: IronCalcTheme;
+  onThemePicked: (theme: IronCalcTheme) => void;
+  onOpenThemes: () => void;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -96,15 +111,22 @@ function Toolbar(properties: ToolbarProperties) {
   const [borderPickerOpen, setBorderPickerOpen] = useState(false);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
+  const [fontSizeInput, setFontSizeInput] = useState(`${properties.fontSize}`);
 
   const fontColorButton = useRef(null);
   const fillColorButton = useRef(null);
   const borderButton = useRef(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const fontSizeInputRef = useRef<HTMLInputElement>(null);
+  const cancelFontSizeCommit = useRef(false);
 
   const { t } = useTranslation();
 
-  const { canEdit } = properties;
+  const { canEdit, currentTheme } = properties;
+
+  useEffect(() => {
+    setFontSizeInput(`${properties.fontSize}`);
+  }, [properties.fontSize]);
 
   const scrollLeft = () =>
     toolbarRef.current?.scrollBy({ left: -200, behavior: "smooth" });
@@ -112,7 +134,9 @@ function Toolbar(properties: ToolbarProperties) {
     toolbarRef.current?.scrollBy({ left: 200, behavior: "smooth" });
 
   const updateArrows = useCallback(() => {
-    if (!toolbarRef.current) return;
+    if (!toolbarRef.current) {
+      return;
+    }
     const { scrollLeft, scrollWidth, clientWidth } = toolbarRef.current;
     setShowLeftArrow(scrollLeft > 0);
     setShowRightArrow(scrollLeft < scrollWidth - clientWidth);
@@ -120,7 +144,9 @@ function Toolbar(properties: ToolbarProperties) {
 
   useEffect(() => {
     const toolbar = toolbarRef.current;
-    if (!toolbar) return;
+    if (!toolbar) {
+      return;
+    }
 
     updateArrows();
     toolbar.addEventListener("scroll", updateArrows);
@@ -143,32 +169,6 @@ function Toolbar(properties: ToolbarProperties) {
 
   return (
     <div className="ic-toolbar-wrapper">
-      {showLeftArrow && (
-        <Tooltip
-          title={t("toolbar.scroll_left")}
-          slotProps={{
-            popper: {
-              modifiers: [
-                {
-                  name: "offset",
-                  options: {
-                    offset: [0, -8],
-                  },
-                },
-              ],
-            },
-          }}
-        >
-          {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
-          {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
-          <div
-            className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--left"
-            onClick={scrollLeft}
-          >
-            <ChevronLeft />
-          </div>
-        </Tooltip>
-      )}
       <div className="ic-toolbar-container" ref={toolbarRef}>
         {/* History/Edit Group */}
         <div className="ic-toolbar-button-group">
@@ -268,11 +268,6 @@ function Toolbar(properties: ToolbarProperties) {
             onChange={(numberFmt): void => {
               properties.onNumberFormatPicked(numberFmt);
             }}
-            onExited={(): void => {}}
-            anchorOrigin={{
-              horizontal: 20, // Aligning the menu to the middle of FormatButton
-              vertical: "bottom",
-            }}
             formatOptions={properties.formatOptions}
           >
             <Tooltip title={t("toolbar.format_number")}>
@@ -303,7 +298,57 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-          <div className="ic-toolbar-font-size-box">{properties.fontSize}</div>
+          <input
+            ref={fontSizeInputRef}
+            className="ic-toolbar-font-size-box"
+            type="text"
+            inputMode="numeric"
+            aria-label={t("toolbar.font_size")}
+            value={fontSizeInput}
+            disabled={!canEdit}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.currentTarget.select();
+            }}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setFontSizeInput(e.target.value)}
+            onBlur={() => {
+              if (cancelFontSizeCommit.current) {
+                cancelFontSizeCommit.current = false;
+                return;
+              }
+              const parsed = Number(fontSizeInput.trim());
+              if (Number.isInteger(parsed) && parsed > 0 && parsed <= 400) {
+                properties.onSetFontSize(parsed);
+              } else {
+                setFontSizeInput(`${properties.fontSize}`);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.currentTarget.blur();
+              } else if (e.key === "Escape") {
+                cancelFontSizeCommit.current = true;
+                setFontSizeInput(`${properties.fontSize}`);
+                e.currentTarget.blur();
+              } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                e.preventDefault();
+                const current = Number(fontSizeInput.trim());
+                if (Number.isInteger(current)) {
+                  const delta = e.shiftKey ? 10 : 1;
+                  const next =
+                    e.key === "ArrowUp"
+                      ? Math.min(current + delta, 400)
+                      : Math.max(current - delta, 1);
+                  setFontSizeInput(`${next}`);
+                  properties.onSetFontSize(next);
+                  requestAnimationFrame(() =>
+                    fontSizeInputRef.current?.focus(),
+                  );
+                }
+              }
+            }}
+          />
           <Tooltip title={t("toolbar.increase_font_size")}>
             <IconButton
               icon={<Plus />}
@@ -367,7 +412,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.font_color")}>
             <IconButton
               type="button"
-              pressed={false}
+              pressed={fontColorPickerOpen}
               disabled={!canEdit}
               ref={fontColorButton}
               aria-label={t("toolbar.font_color")}
@@ -386,7 +431,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.fill_color")}>
             <IconButton
               type="button"
-              pressed={false}
+              pressed={fillColorPickerOpen}
               disabled={!canEdit}
               ref={fillColorButton}
               aria-label={t("toolbar.fill_color")}
@@ -411,6 +456,38 @@ function Toolbar(properties: ToolbarProperties) {
               onClick={() => setBorderPickerOpen(true)}
               disabled={!canEdit}
               icon={<Grid2X2 />}
+            />
+          </Tooltip>
+          <Tooltip title={t("toolbar.conditional_formatting")}>
+            <IconButton
+              icon={<Brush />}
+              aria-label={t("toolbar.conditional_formatting")}
+              pressed={properties.isConditionalFormattingOpen}
+              onClick={properties.onOpenConditionalFormatting}
+              disabled={!canEdit}
+            />
+          </Tooltip>
+          <ThemeMenu
+            themes={properties.themes}
+            currentTheme={properties.currentTheme}
+            onChange={properties.onThemePicked}
+            onManageThemes={properties.onOpenThemes}
+          >
+            <Tooltip title={t("toolbar.themes")}>
+              <IconButton
+                icon={<SwatchBook />}
+                aria-label={t("toolbar.themes")}
+                disabled={!canEdit}
+              />
+            </Tooltip>
+          </ThemeMenu>
+          <Tooltip title={t("toolbar.named_styles")}>
+            <IconButton
+              icon={<Layers />}
+              aria-label={t("toolbar.named_styles")}
+              pressed={properties.isNamedStylesOpen}
+              onClick={properties.onOpenNamedStyles}
+              disabled={!canEdit}
             />
           </Tooltip>
         </div>
@@ -502,6 +579,14 @@ function Toolbar(properties: ToolbarProperties) {
 
         {/* View & Tools Group */}
         <div className="ic-toolbar-button-group">
+          <Tooltip title={t("toolbar.selected_png")}>
+            <IconButton
+              icon={<ImageDown />}
+              aria-label={t("toolbar.download_png")}
+              onClick={() => properties.onDownloadPNG()}
+              disabled={!canEdit}
+            />
+          </Tooltip>
           <Tooltip title={t("toolbar.show_hide_grid_lines")}>
             <IconButton
               icon={properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
@@ -509,14 +594,6 @@ function Toolbar(properties: ToolbarProperties) {
               onClick={() =>
                 properties.onToggleShowGridLines(!properties.showGridLines)
               }
-              disabled={!canEdit}
-            />
-          </Tooltip>
-          <Tooltip title={t("toolbar.selected_png")}>
-            <IconButton
-              icon={<ImageDown />}
-              aria-label={t("toolbar.download_png")}
-              onClick={() => properties.onDownloadPNG()}
               disabled={!canEdit}
             />
           </Tooltip>
@@ -535,8 +612,7 @@ function Toolbar(properties: ToolbarProperties) {
           }}
           anchorEl={fontColorButton}
           open={fontColorPickerOpen}
-          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-          transformOrigin={{ vertical: "top", horizontal: "left" }}
+          theme={currentTheme}
         />
         <ColorPicker
           color={properties.fillColor}
@@ -553,11 +629,9 @@ function Toolbar(properties: ToolbarProperties) {
           }}
           anchorEl={fillColorButton}
           open={fillColorPickerOpen}
-          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-          transformOrigin={{ vertical: "top", horizontal: "left" }}
+          theme={currentTheme}
         />
         <BorderPicker
-          placement="bottom-start"
           onChange={(border): void => {
             properties.onBorderChanged(border);
           }}
@@ -566,33 +640,34 @@ function Toolbar(properties: ToolbarProperties) {
           }}
           anchorEl={borderButton}
           open={borderPickerOpen}
+          currentTheme={currentTheme}
         />
       </div>
-      {showRightArrow && (
-        <Tooltip
-          title={t("toolbar.scroll_right")}
-          slotProps={{
-            popper: {
-              modifiers: [
-                {
-                  name: "offset",
-                  options: {
-                    offset: [0, -8],
-                  },
-                },
-              ],
-            },
-          }}
+
+      {showLeftArrow && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: we need this
+        // biome-ignore lint/a11y/useKeyWithClickEvents: TODO!
+        <div
+          className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--left"
+          onClick={scrollLeft}
         >
-          {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
-          {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
-          <div
-            className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--right"
-            onClick={scrollRight}
-          >
+          <Tooltip title={t("toolbar.scroll_left")}>
+            <ChevronLeft />
+          </Tooltip>
+        </div>
+      )}
+
+      {showRightArrow && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: we need this
+        // biome-ignore lint/a11y/useKeyWithClickEvents: TODO!
+        <div
+          className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--right"
+          onClick={scrollRight}
+        >
+          <Tooltip title={t("toolbar.scroll_right")}>
             <ChevronRight />
-          </div>
-        </Tooltip>
+          </Tooltip>
+        </div>
       )}
     </div>
   );

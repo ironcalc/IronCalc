@@ -13,19 +13,51 @@
     "close_dialog": "Dialog schließen",
     "new": "Neu",
     "blank_workbook": "Leere Arbeitsmappe",
-    "blank_workbook_description": "Von Grund auf erstellen oder eigene Datei hochladen.",
+    "import_workbook": "Arbeitsmappe importieren",
+    "storage_warning": "<warn>Achtung!</warn> Diese App ist ein Proof of Concept und kein fertiges Produkt. Experimentieren, teilen sowie hoch- und herunterladen Sie Modelle gerne, aber teilen oder laden Sie keine Modelle mit sensiblen oder privaten Daten hoch. Daten werden regelmäßig gelöscht. <docsLink>Mehr erfahren</docsLink>",
     "templates": {
       "choose_template": "Vorlage auswählen",
       "templates": "Vorlagen",
+      "see_all": "Alle anzeigen",
+      "examples_and_templates": "Beispiele & Vorlagen",
+      "category_all": "Alle",
+      "category_finance": "Finanzen",
+      "category_lifestyle": "Lebensstil",
+      "category_project_management": "Projektmanagement",
+      "category_games": "Spiele",
+      "yearly_calendar": "Jahreskalender",
+      "yearly_calendar_description": "Plane und visualisiere das ganze Jahr.",
       "mortgage_calculator": "Hypothekenrechner",
       "mortgage_calculator_description": "Zahlungen, Zinsen und Gesamtkosten schätzen.",
+      "crossword": "Kreuzworträtsel",
+      "crossword_description": "Fülle das Gitter aus und löse die Hinweise.",
       "travel_expenses_tracker": "Reisekostenerfassung",
-      "travel_expenses_tracker_description": "Reisekosten verfolgen und Budget einhalten."
+      "travel_expenses_tracker_description": "Reisekosten verfolgen und Budget einhalten.",
+      "invoice": "Rechnung",
+      "invoice_description": "Erstelle und verfolge Kundenrechnungen.",
+      "gantt_project_tracker": "Gantt-Projektplaner",
+      "gantt_project_tracker_description": "Plane Aufgaben und Zeitpläne im Gantt-Diagramm.",
+      "weekly_timesheet": "Wöchentlicher Stundenzettel",
+      "weekly_timesheet_description": "Erfasse und überprüfe die Arbeitsstunden jeder Woche.",
+      "eu_salary_calculator": "EU-Gehaltsrechner",
+      "eu_salary_calculator_description": "Schätze das Nettogehalt nach EU-Steuern.",
+      "absence_schedule": "Abwesenheitsplan",
+      "absence_schedule_description": "Verfolge Urlaub und Abwesenheiten im Team.",
+      "wordle": "Wordle",
+      "wordle_description": "Errate das versteckte Wort mit fünf Buchstaben.",
+      "event_calendar": "Veranstaltungskalender",
+      "event_calendar_description": "Organisiere und verfolge anstehende Veranstaltungen."
     },
-    "create_workbook": "Arbeitsmappe erstellen"
+    "create_workbook": "Arbeitsmappe erstellen",
+    "documentation": "Dokumentation",
+    "about_ironcalc": "Über IronCalc"
   },
   "left_drawer": {
     "new_workbook": "Neue Arbeitsmappe",
+    "search_workbook": "Arbeitsmappen durchsuchen",
+    "search_placeholder": "Arbeitsmappe suchen...",
+    "clear_search": "Suche löschen",
+    "search_no_results": "Deine Suche entspricht keinem Arbeitsmappe.",
     "pinned": "Angeheftet",
     "today": "Heute",
     "last_30_days": "Letzte 30 Tage",
@@ -40,9 +72,16 @@
     "alert": {
       "title": "Achtung!",
       "subtitle": "IronCalc speichert Ihre Daten nur im lokalen Speicher Ihres Browsers.",
-      "subtitle2": "<bold>Laden Sie Ihre XLSX regelmäßig herunter</bold> – zukünftige Versionen können aktuelle Arbeitsmappen möglicherweise nicht öffnen, auch wenn sie geteilt wurden."
+      "subtitle2": "<bold>Laden Sie Ihre XLSX regelmäßig herunter</bold> – zukünftige Versionen können aktuelle Arbeitsmappen möglicherweise nicht öffnen, auch wenn sie geteilt wurden.",
+      "close": "Schließen"
     },
-    "documentation": "Dokumentation"
+    "documentation": "Dokumentation",
+    "cancel": "Abbrechen",
+    "delete_workbooks_one": "{{count}} Arbeitsmappe löschen",
+    "delete_workbooks_other": "{{count}} Arbeitsmappen löschen",
+    "bulk_delete_message_one": "Diese Arbeitsmappe wird dauerhaft gelöscht.",
+    "bulk_delete_message_other": "{{count}} Arbeitsmappen werden dauerhaft gelöscht.",
+    "select_workbook": "{{name}} auswählen"
   },
   "file_bar": {
     "open_sidebar": "Seitenleiste öffnen",
@@ -65,14 +104,16 @@
       "delete_workbook": {
         "button": "Arbeitsmappe löschen",
         "title": "Sind Sie sicher?",
-        "subtitle": "Die Arbeitsmappe <bold>'{{workbookName}}'</bold> wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
-        "confirm_button": "Ja, Arbeitsmappe löschen",
+        "subtitle": "Die Arbeitsmappe '{{workbookName}}' wird dauerhaft gelöscht.",
+        "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+        "confirm_button": "Ja, löschen",
         "cancel_button": "Abbrechen"
       },
       "default_language": "Standardsprache"
     },
     "help_menu": {
       "button": "Hilfe",
+      "about": "Über IronCalc",
       "documentation": "Dokumentation",
       "keyboard_shortcuts": "Tastaturkürzel"
     },

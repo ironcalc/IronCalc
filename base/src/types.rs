@@ -2,7 +2,7 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
-use crate::expressions::token::Error;
+use crate::{cf_types::ConditionalFormatting, expressions::token::Error};
 
 fn default_as_false() -> bool {
     false
@@ -10,6 +10,86 @@ fn default_as_false() -> bool {
 
 fn is_false(b: &bool) -> bool {
     !*b
+}
+
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+#[serde(untagged)]
+pub enum Color {
+    Rgb(String),
+    /// Theme slot index and tint. Tint ∈ [-1, 1]: positive lightens, negative darkens.
+    Theme(i32, f64),
+    /// No color — equivalent to OOXML `<color auto="1"/>` or absence of `<color>`.
+    #[default]
+    None,
+}
+
+/// Valid hex colors are #FFAABB
+/// #fff is not valid
+fn is_valid_hex_color(color: &str) -> bool {
+    if color.chars().count() != 7 {
+        return false;
+    }
+    if !color.starts_with('#') {
+        return false;
+    }
+    if let Ok(z) = i32::from_str_radix(&color[1..], 16) {
+        if (0..=0xffffff).contains(&z) {
+            return true;
+        }
+    }
+    false
+}
+
+impl Color {
+    pub fn is_none(&self) -> bool {
+        matches!(self, Color::None)
+    }
+
+    pub fn is_some(&self) -> bool {
+        !matches!(self, Color::None)
+    }
+
+    /// Resolves the color to a `#RRGGBB` string, consulting the workbook theme when needed.
+    /// Returns an empty string for `Color::None`.
+    pub fn to_rgb(&self, theme: &Theme) -> String {
+        match self {
+            Color::Rgb(s) => s.clone(),
+            Color::Theme(idx, tint) => theme.resolve(*idx, *tint),
+            Color::None => String::new(),
+        }
+    }
+
+    pub fn from_rgb(color: &str) -> Result<Self, String> {
+        if is_valid_hex_color(color) {
+            return Ok(Color::Rgb(color.to_string()));
+        }
+        Err(format!("Invalid color: '{}'.", color))
+    }
+
+    /// Parses a color from the JS/WASM parameter format:
+    /// - `""` => `Color::None`
+    /// - `"#RRGGBB"` => `Color::Rgb(...)`
+    /// - `"[index, tint]"` => `Color::Theme(index, tint)`
+    pub fn from_param(s: &str) -> Result<Self, String> {
+        if s.is_empty() {
+            return Ok(Color::None);
+        }
+        if is_valid_hex_color(s) {
+            return Ok(Color::Rgb(s.to_string()));
+        }
+        if let Some(inner) = s.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+            let mut parts = inner.splitn(2, ',');
+            if let (Some(idx_str), Some(tint_str)) = (parts.next(), parts.next()) {
+                if let (Ok(idx), Ok(tint)) = (
+                    idx_str.trim().parse::<i32>(),
+                    tint_str.trim().parse::<f64>(),
+                ) {
+                    return Ok(Color::Theme(idx, tint));
+                }
+            }
+        }
+        Err(format!("Invalid color: '{}'.", s))
+    }
 }
 
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
@@ -51,6 +131,7 @@ pub struct Workbook {
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
     pub views: HashMap<u32, WorkbookView>,
+    pub theme: Theme,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -109,7 +190,7 @@ pub struct Worksheet {
     pub shared_formulas: Vec<String>,
     pub sheet_id: u32,
     pub state: SheetState,
-    pub color: Option<String>,
+    pub color: Color,
     pub merge_cells: Vec<String>,
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
@@ -117,6 +198,7 @@ pub struct Worksheet {
     pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
+    pub conditional_formatting: Vec<ConditionalFormatting>,
 }
 
 /// Internal representation of Excel's sheet_data
@@ -160,17 +242,59 @@ pub enum CellType {
     CompoundData = 128,
 }
 
+/// The evaluated value stored in a formula cell.
+/// `Unevaluated` is a transient state that only exists during evaluation.
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub enum FormulaValue {
+    Unevaluated,
+    Boolean(bool),
+    Number(f64),
+    Text(String),
+    Error {
+        ei: Error,
+        // Origin cell reference, e.g. "Sheet3!C4"
+        o: String,
+        // Human-readable error message, e.g. "Not implemented function"
+        m: String,
+    },
+}
+
+/// The value stored in a spill cell (no formula, no origin tracking).
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub enum SpillValue {
+    Boolean(bool),
+    Number(f64),
+    Text(String),
+    Error(Error),
+}
+
+/// Whether an array formula is a CSE (Ctrl+Shift+Enter) formula or a dynamic formula.
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub enum ArrayKind {
+    /// Ctrl+Shift+Enter array formula: fills a fixed declared range.
+    Cse,
+    /// Dynamic array formula: spills into adjacent cells automatically.
+    Dynamic,
+}
+
+// A cell in a worksheet.
+// Every cell has a style index (s) pointing to cell_xfs in the workbook styles.
+// Other fields:
+// * `f`    — formula index into the sheet's shared_formulas list
+// * `si`   — shared string index (SharedString cells only)
+// * `v`    — evaluated value (formula/spill cells)
+// * `r`    — spill range (width, height) for array/dynamic formula anchors
+// * `kind` — Cse or Dynamic for array formula anchors
+// * `a`    — anchor cell (row, column) for spill cells
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
 pub enum Cell {
     EmptyCell {
         s: i32,
     },
-
     BooleanCell {
         v: bool,
         s: i32,
     },
-
     NumberCell {
         v: f64,
         s: i32,
@@ -185,40 +309,29 @@ pub enum Cell {
         si: i32,
         s: i32,
     },
-    // Non evaluated Formula
+    // A regular (non-array) formula cell.
+    // `v` is `Unevaluated` transiently during evaluation, then holds the result.
     CellFormula {
         f: i32,
         s: i32,
+        v: FormulaValue,
     },
-
-    CellFormulaBoolean {
+    // The anchor of an array or dynamic formula.
+    // `kind` distinguishes CSE from dynamic; `r` is the spill range (width, height).
+    // `v` is `Unevaluated` transiently during evaluation, then holds the anchor cell result.
+    ArrayFormula {
         f: i32,
-        v: bool,
         s: i32,
+        r: (i32, i32),
+        kind: ArrayKind,
+        v: FormulaValue,
     },
-
-    CellFormulaNumber {
-        f: i32,
-        v: f64,
+    // A spill cell: holds a value produced by an array/dynamic formula at `a` (row, column).
+    SpillCell {
         s: i32,
+        a: (i32, i32),
+        v: SpillValue,
     },
-    // always inline string
-    CellFormulaString {
-        f: i32,
-        v: String,
-        s: i32,
-    },
-
-    CellFormulaError {
-        f: i32,
-        ei: Error,
-        s: i32,
-        // Origin: Sheet3!C4
-        o: String,
-        // Error Message: "Not implemented function"
-        m: String,
-    },
-    // TODO: Array formulas
 }
 
 impl Default for Cell {
@@ -288,7 +401,37 @@ pub struct TableStyleInfo {
     pub show_column_stripes: bool,
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+pub struct DxfFont {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strike: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub u: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub b: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub i: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sz: Option<i32>,
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
+}
+
+// Dxf stands for "Differential Formatting". It is used in places like:
+// * conditional formatting
+// * tables
+// to specify partial formatting that overrides the cell formatting.
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+pub struct Dxf {
+    pub font: Option<DxfFont>,
+    pub fill: Option<Fill>,
+    pub border: Option<Border>,
+    pub num_fmt: Option<NumFmt>,
+    pub alignment: Option<Alignment>,
+}
+
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Styles {
     pub num_fmts: Vec<NumFmt>,
     pub fonts: Vec<Font>,
@@ -297,6 +440,7 @@ pub struct Styles {
     pub cell_style_xfs: Vec<CellStyleXfs>,
     pub cell_xfs: Vec<CellXfs>,
     pub cell_styles: Vec<CellStyles>,
+    pub dxfs: Vec<Dxf>,
 }
 
 impl Default for Styles {
@@ -304,23 +448,17 @@ impl Default for Styles {
         Styles {
             num_fmts: vec![],
             fonts: vec![Default::default()],
-            fills: vec![
-                Default::default(),
-                Fill {
-                    pattern_type: "gray125".to_string(),
-                    fg_color: None,
-                    bg_color: None,
-                },
-            ],
+            fills: vec![Default::default(), Default::default()],
             borders: vec![Default::default()],
             cell_style_xfs: vec![Default::default()],
             cell_xfs: vec![Default::default()],
             cell_styles: vec![Default::default()],
+            dxfs: vec![],
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
@@ -344,7 +482,7 @@ impl Default for Style {
     }
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct NumFmt {
     pub num_fmt_id: i32,
     pub format_code: String,
@@ -382,7 +520,7 @@ impl Display for FontScheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Font {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
@@ -397,7 +535,9 @@ pub struct Font {
     #[serde(skip_serializing_if = "is_false")]
     pub i: bool,
     pub sz: i32,
-    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
     pub name: String,
     // This is the font family fallback
     // 1 -> serif
@@ -415,33 +555,20 @@ impl Default for Font {
             u: false,
             b: false,
             i: false,
-            sz: 13,
-            color: Some("#000000".to_string()),
-            name: "Calibri".to_string(),
+            sz: 12,
+            color: Color::None,
+            name: "Inter".to_string(),
             family: 2,
             scheme: FontScheme::Minor,
         }
     }
 }
 
-// TODO: Maybe use an enum for the pattern_type values here?
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
 pub struct Fill {
-    pub pattern_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fg_color: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub bg_color: Option<String>,
-}
-
-impl Default for Fill {
-    fn default() -> Self {
-        Fill {
-            pattern_type: "none".to_string(),
-            fg_color: Default::default(),
-            bg_color: Default::default(),
-        }
-    }
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
@@ -622,13 +749,15 @@ impl Display for BorderStyle {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct BorderItem {
     pub style: BorderStyle,
-    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
 pub struct Border {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
@@ -655,6 +784,88 @@ pub struct SheetProperties {
     pub name: String,
     pub state: String,
     pub sheet_id: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
+}
+
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct Theme {
+    pub name: String,
+    pub dk1: String,
+    pub lt1: String,
+    pub dk2: String,
+    pub lt2: String,
+    pub accent1: String,
+    pub accent2: String,
+    pub accent3: String,
+    pub accent4: String,
+    pub accent5: String,
+    pub accent6: String,
+    pub hlink: String,
+    pub fol_hlink: String,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Theme {
+            name: "Office".to_string(),
+            dk1: "#000000".to_string(),
+            lt1: "#FFFFFF".to_string(),
+            dk2: "#44546A".to_string(),
+            lt2: "#E7E6E6".to_string(),
+            accent1: "#4472C4".to_string(),
+            accent2: "#ED7D31".to_string(),
+            accent3: "#A5A5A5".to_string(),
+            accent4: "#FFC000".to_string(),
+            accent5: "#5B9BD5".to_string(),
+            accent6: "#70AD47".to_string(),
+            hlink: "#0563C1".to_string(),
+            fol_hlink: "#954F72".to_string(),
+        }
+    }
+}
+
+impl Theme {
+    /// Resolves a `theme="N"` attribute (and optional `tint`) to an `#RRGGBB` string.
+    /// Applies the OOXML dk/lt swap for indices 0–3.
+    pub fn resolve(&self, theme_index: i32, tint: f64) -> String {
+        use crate::colors::hex_with_tint_to_rgb;
+        let color = match theme_index {
+            0 => &self.lt1,
+            1 => &self.dk1,
+            2 => &self.lt2,
+            3 => &self.dk2,
+            4 => &self.accent1,
+            5 => &self.accent2,
+            6 => &self.accent3,
+            7 => &self.accent4,
+            8 => &self.accent5,
+            9 => &self.accent6,
+            10 => &self.hlink,
+            11 => &self.fol_hlink,
+            _ => &self.dk1,
+        };
+        hex_with_tint_to_rgb(color, tint)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_is_valid_hex_color() {
+        assert!(is_valid_hex_color("#000000"));
+        assert!(is_valid_hex_color("#ffffff"));
+
+        assert!(!is_valid_hex_color("000000"));
+        assert!(!is_valid_hex_color("ffffff"));
+
+        assert!(!is_valid_hex_color("#gggggg"));
+
+        // Not obvious cases unrecognized as colors
+        assert!(!is_valid_hex_color("#ffffff "));
+        assert!(!is_valid_hex_color("#fff")); // CSS shorthand
+        assert!(!is_valid_hex_color("#ffffff00")); // with alpha channel
+    }
 }

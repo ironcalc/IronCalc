@@ -13,19 +13,51 @@
     "close_dialog": "Chiudi finestra",
     "new": "Nuovo",
     "blank_workbook": "Cartella di lavoro vuota",
-    "blank_workbook_description": "Crea da zero o carica il tuo file.",
+    "import_workbook": "Importa cartella di lavoro",
+    "storage_warning": "<warn>Attenzione!</warn> Questa applicazione è una prova di concetto e non un prodotto finito. Sentiti libero di esplorare, condividere e caricare/scaricare modelli, ma non condividere o caricare modelli con dati sensibili o privati. I dati verranno eliminati periodicamente. <docsLink>Scopri di più</docsLink>",
     "templates": {
       "choose_template": "Scegli un modello",
       "templates": "Modelli",
+      "see_all": "Vedi tutto",
+      "examples_and_templates": "Esempi e modelli",
+      "category_all": "Tutti",
+      "category_finance": "Finanza",
+      "category_lifestyle": "Stile di vita",
+      "category_project_management": "Gestione progetti",
+      "category_games": "Giochi",
+      "yearly_calendar": "Calendario annuale",
+      "yearly_calendar_description": "Pianifica e visualizza l'intero anno.",
       "mortgage_calculator": "Calcolatore mutuo",
       "mortgage_calculator_description": "Stima pagamenti, interessi e costo totale.",
+      "crossword": "Cruciverba",
+      "crossword_description": "Completa la griglia e risolvi le definizioni.",
       "travel_expenses_tracker": "Tracciamento spese di viaggio",
-      "travel_expenses_tracker_description": "Tieni traccia dei costi di viaggio e rispetta il budget."
+      "travel_expenses_tracker_description": "Tieni traccia dei costi di viaggio e rispetta il budget.",
+      "invoice": "Fattura",
+      "invoice_description": "Crea e gestisci le fatture dei clienti.",
+      "gantt_project_tracker": "Monitoraggio progetti Gantt",
+      "gantt_project_tracker_description": "Pianifica attività e scadenze su un diagramma di Gantt.",
+      "weekly_timesheet": "Foglio ore settimanale",
+      "weekly_timesheet_description": "Registra e controlla le ore lavorate ogni settimana.",
+      "eu_salary_calculator": "Calcolatore stipendio UE",
+      "eu_salary_calculator_description": "Stima lo stipendio netto dopo le tasse UE.",
+      "absence_schedule": "Calendario assenze",
+      "absence_schedule_description": "Tieni traccia di ferie e assenze del team.",
+      "wordle": "Wordle",
+      "wordle_description": "Indovina la parola nascosta di cinque lettere.",
+      "event_calendar": "Calendario eventi",
+      "event_calendar_description": "Organizza e segui i prossimi eventi."
     },
-    "create_workbook": "Crea cartella di lavoro"
+    "create_workbook": "Crea cartella di lavoro",
+    "documentation": "Documentazione",
+    "about_ironcalc": "Informazioni su IronCalc"
   },
   "left_drawer": {
     "new_workbook": "Nuova cartella di lavoro",
+    "search_workbook": "Cerca cartelle di lavoro",
+    "search_placeholder": "Cerca cartella di lavoro...",
+    "clear_search": "Cancella ricerca",
+    "search_no_results": "La tua ricerca non corrisponde a nessuna cartella di lavoro.",
     "pinned": "Fissati",
     "today": "Oggi",
     "last_30_days": "Ultimi 30 giorni",
@@ -40,9 +72,16 @@
     "alert": {
       "title": "Attenzione!",
       "subtitle": "IronCalc memorizza i tuoi dati solo nella memoria locale del browser.",
-      "subtitle2": "<bold>Scarica spesso il tuo XLSX</bold> – le versioni future potrebbero non aprire le cartelle di lavoro attuali, anche se condivise."
+      "subtitle2": "<bold>Scarica spesso il tuo XLSX</bold> – le versioni future potrebbero non aprire le cartelle di lavoro attuali, anche se condivise.",
+      "close": "Chiudi"
     },
-    "documentation": "Documentazione"
+    "documentation": "Documentazione",
+    "cancel": "Annulla",
+    "delete_workbooks_one": "Elimina {{count}} cartella",
+    "delete_workbooks_other": "Elimina {{count}} cartelle",
+    "bulk_delete_message_one": "Questa cartella di lavoro verrà eliminata definitivamente.",
+    "bulk_delete_message_other": "{{count}} cartelle di lavoro verranno eliminate definitivamente.",
+    "select_workbook": "Seleziona {{name}}"
   },
   "file_bar": {
     "open_sidebar": "Apri barra laterale",
@@ -65,14 +104,16 @@
       "delete_workbook": {
         "button": "Elimina cartella di lavoro",
         "title": "Sei sicuro?",
-        "subtitle": "La cartella di lavoro <bold>'{{workbookName}}'</bold> verrà eliminata definitivamente. Questa azione non può essere annullata.",
-        "confirm_button": "Sì, elimina cartella di lavoro",
+        "subtitle": "La cartella di lavoro '{{workbookName}}' verrà eliminata definitivamente.",
+        "warning": "Questa azione non può essere annullata.",
+        "confirm_button": "Sì, elimina",
         "cancel_button": "Annulla"
       },
       "default_language": "Lingua predefinita"
     },
     "help_menu": {
       "button": "Aiuto",
+      "about": "Informazioni su IronCalc",
       "documentation": "Documentazione",
       "keyboard_shortcuts": "Scorciatoie da tastiera"
     },

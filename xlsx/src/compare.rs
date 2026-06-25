@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::panic)]
 
 use std::path::Path;
 
@@ -75,14 +75,8 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
             .unwrap_or_default();
         match (cell1, cell2) {
             (Cell::EmptyCell { .. }, Cell::EmptyCell { .. }) => {}
-            (Cell::NumberCell { .. }, Cell::NumberCell { .. }) => {}
-            (Cell::BooleanCell { .. }, Cell::BooleanCell { .. }) => {}
-            (Cell::ErrorCell { .. }, Cell::ErrorCell { .. }) => {}
-            (Cell::SharedString { .. }, Cell::SharedString { .. }) => {}
-            (
-                Cell::CellFormulaNumber { v: value1, .. },
-                Cell::CellFormulaNumber { v: value2, .. },
-            ) => {
+
+            (Cell::NumberCell { v: value1, .. }, Cell::NumberCell { v: value2, .. }) => {
                 if !numbers_are_close(*value1, *value2, eps) {
                     diffs.push(Diff {
                         sheet_name: ws1[cell.index as usize].clone(),
@@ -94,27 +88,8 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                     });
                 }
             }
-            (
-                Cell::CellFormulaString { v: value1, .. },
-                Cell::CellFormulaString { v: value2, .. },
-            ) => {
-                // FIXME: We should compare the actual value, not just the index
-                if value1 != value2 {
-                    diffs.push(Diff {
-                        sheet_name: ws1[cell.index as usize].clone(),
-                        row,
-                        column,
-                        value1: cell1.clone(),
-                        value2: cell2.clone(),
-                        reason: "Strings are different".to_string(),
-                    });
-                }
-            }
-            (
-                Cell::CellFormulaBoolean { v: value1, .. },
-                Cell::CellFormulaBoolean { v: value2, .. },
-            ) => {
-                // FIXME: We should compare the actual value, not just the index
+
+            (Cell::BooleanCell { v: value1, .. }, Cell::BooleanCell { v: value2, .. }) => {
                 if value1 != value2 {
                     diffs.push(Diff {
                         sheet_name: ws1[cell.index as usize].clone(),
@@ -126,12 +101,9 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                     });
                 }
             }
-            (
-                Cell::CellFormulaError { ei: index1, .. },
-                Cell::CellFormulaError { ei: index2, .. },
-            ) => {
-                // FIXME: We should compare the actual value, not just the index
-                if index1 != index2 {
+
+            (Cell::ErrorCell { ei: value1, .. }, Cell::ErrorCell { ei: value2, .. }) => {
+                if value1 != value2 {
                     diffs.push(Diff {
                         sheet_name: ws1[cell.index as usize].clone(),
                         row,
@@ -142,6 +114,78 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                     });
                 }
             }
+
+            (Cell::SharedString { si: value1, .. }, Cell::SharedString { si: value2, .. }) => {
+                // FIXME: compare resolved shared-string contents, not indices,
+                // if the two workbooks can have different shared-string tables.
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Strings are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::CellFormula { v: v1, .. } | Cell::ArrayFormula { v: v1, .. },
+                Cell::CellFormula { v: v2, .. } | Cell::ArrayFormula { v: v2, .. },
+            ) => {
+                let mismatch = match (v1, v2) {
+                    (FormulaValue::Unevaluated, FormulaValue::Unevaluated) => false,
+                    (FormulaValue::Boolean(a), FormulaValue::Boolean(b)) => a != b,
+                    (FormulaValue::Number(a), FormulaValue::Number(b)) => {
+                        !numbers_are_close(*a, *b, eps)
+                    }
+                    (FormulaValue::Text(a), FormulaValue::Text(b)) => a != b,
+                    (FormulaValue::Error { ei: e1, .. }, FormulaValue::Error { ei: e2, .. }) => {
+                        e1 != e2
+                    }
+                    // Some xlsx files store formula errors as t="str" with the error code as
+                    // text instead of the correct t="e". Treat them as equivalent.
+                    (FormulaValue::Text(s), FormulaValue::Error { ei, .. })
+                    | (FormulaValue::Error { ei, .. }, FormulaValue::Text(s)) => {
+                        s != &format!("{ei}")
+                    }
+                    _ => true,
+                };
+                if mismatch {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Formula values are different".to_string(),
+                    });
+                }
+            }
+
+            (Cell::SpillCell { v: v1, .. }, Cell::SpillCell { v: v2, .. }) => {
+                let mismatch = match (v1, v2) {
+                    (SpillValue::Boolean(a), SpillValue::Boolean(b)) => a != b,
+                    (SpillValue::Number(a), SpillValue::Number(b)) => {
+                        !numbers_are_close(*a, *b, eps)
+                    }
+                    (SpillValue::Text(a), SpillValue::Text(b)) => a != b,
+                    (SpillValue::Error(a), SpillValue::Error(b)) => a != b,
+                    _ => true,
+                };
+                if mismatch {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Spill values are different".to_string(),
+                    });
+                }
+            }
+
             (_, _) => {
                 diffs.push(Diff {
                     sheet_name: ws1[cell.index as usize].clone(),
@@ -157,26 +201,111 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
     Ok(diffs)
 }
 
+fn cell_display(cell: &Cell) -> String {
+    match cell {
+        Cell::EmptyCell { .. } => "(empty)".to_string(),
+        Cell::NumberCell { v, .. } => format!("{v}"),
+        Cell::BooleanCell { v, .. } => format!("{v}"),
+        Cell::ErrorCell { ei, .. } => format!("{ei} (error)"),
+        Cell::SharedString { si, .. } => format!("shared_string[{si}]"),
+        Cell::CellFormula {
+            v: FormulaValue::Unevaluated,
+            ..
+        } => "(unevaluated formula)".to_string(),
+        Cell::CellFormula {
+            v: FormulaValue::Boolean(v),
+            ..
+        }
+        | Cell::ArrayFormula {
+            v: FormulaValue::Boolean(v),
+            ..
+        } => format!("{v} (bool)"),
+        Cell::CellFormula {
+            v: FormulaValue::Number(v),
+            ..
+        }
+        | Cell::ArrayFormula {
+            v: FormulaValue::Number(v),
+            ..
+        } => format!("{v} (number)"),
+        Cell::CellFormula {
+            v: FormulaValue::Text(v),
+            ..
+        }
+        | Cell::ArrayFormula {
+            v: FormulaValue::Text(v),
+            ..
+        } => format!("\"{v}\" (string)"),
+        Cell::CellFormula {
+            v: FormulaValue::Error { ei, .. },
+            ..
+        }
+        | Cell::ArrayFormula {
+            v: FormulaValue::Error { ei, .. },
+            ..
+        } => format!("{ei} (error)"),
+        Cell::ArrayFormula {
+            v: FormulaValue::Unevaluated,
+            s,
+            r,
+            kind,
+            ..
+        } => {
+            format!("(unevaluated {kind:?} formula, size={s}, range={r:?})")
+        }
+        Cell::SpillCell {
+            v: SpillValue::Number(v),
+            s,
+            a,
+        } => {
+            format!("{v} (spill, size={s}, area={a:?})")
+        }
+        Cell::SpillCell {
+            v: SpillValue::Boolean(v),
+            s,
+            a,
+        } => {
+            format!("{v} (spill, size={s}, area={a:?})")
+        }
+        Cell::SpillCell {
+            v: SpillValue::Error(ei),
+            s,
+            a,
+        } => {
+            format!("{ei} (spill, size={s}, area={a:?})")
+        }
+        Cell::SpillCell {
+            v: SpillValue::Text(v),
+            s,
+            a,
+        } => {
+            format!("\"{v}\" (spill, size={s}, area={a:?})")
+        }
+    }
+}
+
 pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
     match compare(m1, m2) {
         Ok(diffs) => {
             if diffs.is_empty() {
                 Ok(())
             } else {
-                let mut message = "".to_string();
+                let count = diffs.len();
+                let mut lines = format!(
+                    "Models are different ({count} diff{}):\n",
+                    if count == 1 { "" } else { "s" }
+                );
                 for diff in diffs {
-                    message = format!(
-                        "{}\n.Diff: {}!{}{}, value1: {:?}, value2 {:?}\n {}",
-                        message,
-                        diff.sheet_name,
-                        number_to_column(diff.column).unwrap(),
-                        diff.row,
-                        &diff.value1,
-                        &diff.value2,
+                    let col = number_to_column(diff.column).unwrap();
+                    let cell_ref = format!("{}!{}{}", diff.sheet_name, col, diff.row);
+                    let excel = cell_display(&diff.value1);
+                    let ironcalc = cell_display(&diff.value2);
+                    lines.push_str(&format!(
+                        "\n  {cell_ref:<16}  Excel: {excel:<30}  IronCalc: {ironcalc:<30}  [{}]",
                         diff.reason
-                    );
+                    ));
                 }
-                Err(format!("Models are different: {message}"))
+                Err(lines)
             }
         }
         Err(r) => Err(format!("Models are different: {}", r.message)),

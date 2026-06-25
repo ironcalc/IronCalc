@@ -1,7 +1,7 @@
 use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
-use crate::expressions::parser::static_analysis::add_implicit_intersection;
+use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
 use crate::expressions::token::{OpSum, OpUnary};
 use crate::language::{get_language, Language};
 use crate::locale::{get_locale, Locale};
@@ -53,6 +53,21 @@ pub fn to_rc_format(node: &Node) -> String {
     stringify(node, None, &DisplaceData::None, false, locale, language)
 }
 
+pub fn to_english_string(node: &Node, context: &CellReferenceRC) -> String {
+    #[allow(clippy::expect_used)]
+    let locale = get_locale("en").expect("");
+    #[allow(clippy::expect_used)]
+    let language = get_language("en").expect("");
+    stringify(
+        node,
+        Some(context),
+        &DisplaceData::None,
+        false,
+        locale,
+        language,
+    )
+}
+
 /// This is the mode used to display the formula in the UI
 pub fn to_localized_string(
     node: &Node,
@@ -77,8 +92,14 @@ pub fn to_excel_string(node: &Node, context: &CellReferenceRC) -> String {
     let locale = get_locale("en").expect("");
     #[allow(clippy::expect_used)]
     let language = get_language("en").expect("");
+    // The internal representation stores every implicit intersection as `@`,
+    // without the `automatic` flag. Drop the operators that Excel would re-insert
+    // automatically on import; the rest are kept as `_xlfn.SINGLE` while
+    // stringifying. See `remove_redundant_implicit_intersection`.
+    let mut node = node.clone();
+    remove_redundant_implicit_intersection(&mut node, true);
     stringify(
-        node,
+        &node,
         Some(context),
         &DisplaceData::None,
         true,
@@ -598,14 +619,29 @@ fn stringify(
             )
         ),
         OpSumKind { kind, left, right } => {
-            let left_str = stringify(
-                left,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language,
-            );
+            // CompareKind has lower precedence than +/-, so wrap it to preserve semantics
+            let left_str = if matches!(**left, CompareKind { .. }) {
+                format!(
+                    "({})",
+                    stringify(
+                        left,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
+                )
+            } else {
+                stringify(
+                    left,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                )
+            };
             // if kind is minus then we need parentheses in the right side if they are OpSumKind or CompareKind
             let right_str = if (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }))
                 | matches!(**right, CompareKind { .. })
@@ -690,7 +726,7 @@ fn stringify(
                 | WrongReferenceKind { .. }
                 | DefinedNameKind(_)
                 | TableNameKind(_)
-                | WrongVariableKind(_)
+                | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     left,
                     context,
@@ -704,13 +740,16 @@ fn stringify(
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
                 | FunctionKind { .. }
-                | InvalidFunctionKind { .. }
+                | NamedFunctionKind { .. }
+                | LambdaDefKind { .. }
+                | LambdaCallKind { .. }
                 | ArrayKind(_)
                 | ErrorKind(_)
                 | ParseErrorKind { .. }
                 | OpSumKind { .. }
                 | CompareKind { .. }
                 | ImplicitIntersection { .. }
+                | SpillRangeOperator { .. }
                 | EmptyArgKind => format!(
                     "({})",
                     stringify(
@@ -732,7 +771,7 @@ fn stringify(
                 | WrongReferenceKind { .. }
                 | DefinedNameKind(_)
                 | TableNameKind(_)
-                | WrongVariableKind(_)
+                | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     right,
                     context,
@@ -746,7 +785,9 @@ fn stringify(
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
                 | FunctionKind { .. }
-                | InvalidFunctionKind { .. }
+                | NamedFunctionKind { .. }
+                | LambdaDefKind { .. }
+                | LambdaCallKind { .. }
                 | ArrayKind(_)
                 | UnaryKind { .. }
                 | ErrorKind(_)
@@ -754,6 +795,7 @@ fn stringify(
                 | OpSumKind { .. }
                 | CompareKind { .. }
                 | ImplicitIntersection { .. }
+                | SpillRangeOperator { .. }
                 | EmptyArgKind => format!(
                     "({})",
                     stringify(
@@ -768,7 +810,7 @@ fn stringify(
             };
             format!("{x}^{y}")
         }
-        InvalidFunctionKind { name, args } => format_function(
+        NamedFunctionKind { name, args, id: _ } => format_function(
             &name.to_lowercase(),
             args,
             context,
@@ -825,7 +867,7 @@ fn stringify(
         }
         TableNameKind(value) => value.to_string(),
         DefinedNameKind((name, ..)) => name.to_string(),
-        WrongVariableKind(name) => name.to_string(),
+        NamedVariableKind { name, id: _ } => name.to_string(),
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
                 let needs_parentheses = match **right {
@@ -840,12 +882,15 @@ fn stringify(
                     | OpConcatenateKind { .. }
                     | OpProductKind { .. }
                     | FunctionKind { .. }
-                    | InvalidFunctionKind { .. }
+                    | NamedFunctionKind { .. }
+                    | LambdaDefKind { .. }
+                    | LambdaCallKind { .. }
                     | ArrayKind(_)
                     | DefinedNameKind(_)
                     | TableNameKind(_)
-                    | WrongVariableKind(_)
+                    | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
+                    | SpillRangeOperator { .. }
                     | CompareKind { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
@@ -900,26 +945,103 @@ fn stringify(
             message: _,
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
-        ImplicitIntersection {
-            automatic: _,
-            child,
-        } => {
+        SpillRangeOperator { child } => {
             if export_to_excel {
-                // We need to check wether the II can be automatic or not
-                let mut new_node = child.as_ref().clone();
-
-                add_implicit_intersection(&mut new_node, true);
-                if matches!(&new_node, Node::ImplicitIntersection { .. }) {
-                    return stringify(
+                return format!(
+                    "_xlfn.ANCHORARRAY({})",
+                    stringify(
                         child,
                         context,
                         displace_data,
                         export_to_excel,
                         locale,
-                        language,
-                    );
-                }
-
+                        language
+                    )
+                );
+            };
+            format!(
+                "{}#",
+                stringify(
+                    child,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language
+                )
+            )
+        }
+        LambdaDefKind { parameters, body } => {
+            let lambda_name = if export_to_excel {
+                "_xlfn.LAMBDA"
+            } else {
+                "LAMBDA"
+            };
+            let arg_sep = if locale.numbers.symbols.decimal == "." {
+                ","
+            } else {
+                ";"
+            };
+            let mut parts: Vec<String> = parameters
+                .iter()
+                .map(|p| {
+                    if export_to_excel {
+                        if p.is_optional {
+                            format!("_xlop.{}", p.name)
+                        } else {
+                            format!("_xlpm.{}", p.name)
+                        }
+                    } else if p.is_optional {
+                        format!("[{}]", p.name)
+                    } else {
+                        p.name.clone()
+                    }
+                })
+                .collect();
+            parts.push(stringify(
+                body,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            ));
+            format!("{}({})", lambda_name, parts.join(arg_sep))
+        }
+        LambdaCallKind { lambda, args } => {
+            let arg_sep = if locale.numbers.symbols.decimal == "." {
+                ","
+            } else {
+                ";"
+            };
+            // When the callee is a plain named variable (unknown identifier used as a function),
+            // use lowercase to distinguish from real function calls in R1C1 format and
+            // to match the display behaviour of InvalidFunctionKind.
+            let lambda_str = match lambda.as_ref() {
+                Node::NamedVariableKind { name, id: _ } => name.to_lowercase(),
+                other => stringify(
+                    other,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                ),
+            };
+            let call_args: Vec<String> = args
+                .iter()
+                .map(|a| stringify(a, context, displace_data, export_to_excel, locale, language))
+                .collect();
+            format!("{}({})", lambda_str, call_args.join(arg_sep))
+        }
+        ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            if export_to_excel {
+                // Redundant operators have already been stripped by
+                // `remove_redundant_implicit_intersection`; whatever remains is
+                // meaningful and must be exported explicitly.
                 return format!(
                     "_xlfn.SINGLE({})",
                     stringify(
@@ -1015,7 +1137,11 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
                 rename_sheet_in_node(arg, sheet_index, new_name);
             }
         }
-        Node::InvalidFunctionKind { name: _, args } => {
+        Node::NamedFunctionKind {
+            name: _,
+            args,
+            id: _,
+        } => {
             for arg in args {
                 rename_sheet_in_node(arg, sheet_index, new_name);
             }
@@ -1037,6 +1163,9 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
+        Node::SpillRangeOperator { child } => {
+            rename_sheet_in_node(child, sheet_index, new_name);
+        }
 
         // Do nothing
         Node::BooleanKind(_) => {}
@@ -1047,8 +1176,20 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ArrayKind(_) => {}
         Node::DefinedNameKind(_) => {}
         Node::TableNameKind(_) => {}
-        Node::WrongVariableKind(_) => {}
+        Node::NamedVariableKind { .. } => {}
         Node::EmptyArgKind => {}
+        Node::LambdaDefKind {
+            parameters: _,
+            body,
+        } => {
+            rename_sheet_in_node(body, sheet_index, new_name);
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            rename_sheet_in_node(lambda, sheet_index, new_name);
+            for arg in args {
+                rename_sheet_in_node(arg, sheet_index, new_name);
+            }
+        }
     }
 }
 
@@ -1099,7 +1240,11 @@ pub(crate) fn rename_defined_name_in_node(
                 rename_defined_name_in_node(arg, name, scope, new_name);
             }
         }
-        Node::InvalidFunctionKind { name: _, args } => {
+        Node::NamedFunctionKind {
+            name: _,
+            args,
+            id: _,
+        } => {
             for arg in args {
                 rename_defined_name_in_node(arg, name, scope, new_name);
             }
@@ -1121,7 +1266,9 @@ pub(crate) fn rename_defined_name_in_node(
         } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
-
+        Node::SpillRangeOperator { child } => {
+            rename_defined_name_in_node(child, name, scope, new_name);
+        }
         // Do nothing
         Node::BooleanKind(_) => {}
         Node::NumberKind(_) => {}
@@ -1135,6 +1282,18 @@ pub(crate) fn rename_defined_name_in_node(
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
         Node::TableNameKind(_) => {}
-        Node::WrongVariableKind(_) => {}
+        Node::NamedVariableKind { .. } => {}
+        Node::LambdaDefKind {
+            parameters: _,
+            body,
+        } => {
+            rename_defined_name_in_node(body, name, scope, new_name);
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            rename_defined_name_in_node(lambda, name, scope, new_name);
+            for arg in args {
+                rename_defined_name_in_node(arg, name, scope, new_name);
+            }
+        }
     }
 }

@@ -1,13 +1,27 @@
 use crate::{
     calc_result::CalcResult,
-    cast::NumberOrArray,
+    cast::{array_node_to_string, NumberOrArray, StringOrArray, ValueOrArray},
     expressions::{
         parser::{ArrayNode, Node},
-        token::Error,
+        token::{Error, OpCompare},
         types::CellReferenceIndex,
     },
+    functions::util::compare_values,
     model::Model,
 };
+
+/// Maps an output index `i` back to the source array index, applying Excel's
+/// size-1 broadcasting rule: a length-1 dimension repeats its only element, an
+/// equal-length dimension maps one-to-one, and any other mismatch is out of range.
+pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
+    if len == 1 {
+        Some(0)
+    } else if i < len {
+        Some(i)
+    } else {
+        None
+    }
+}
 
 /// Unify how we map booleans/strings to f64
 fn to_f64(value: &ArrayNode) -> Result<f64, Error> {
@@ -19,6 +33,7 @@ fn to_f64(value: &ArrayNode) -> Result<f64, Error> {
             Err(_) => Err(Error::VALUE),
         },
         ArrayNode::Error(err) => Err(err.clone()),
+        ArrayNode::Empty => Ok(0.0),
     }
 }
 
@@ -125,13 +140,13 @@ impl<'a> Model<'a> {
 
                 let mut array = Vec::new();
                 for i in 0..n {
-                    let row1 = a1.get(i);
-                    let row2 = a2.get(i);
+                    let row1 = bcast_idx(n1, i).and_then(|ri| a1.get(ri));
+                    let row2 = bcast_idx(n2, i).and_then(|ri| a2.get(ri));
 
                     let mut data_row = Vec::new();
                     for j in 0..m {
-                        let val1 = row1.and_then(|r| r.get(j));
-                        let val2 = row2.and_then(|r| r.get(j));
+                        let val1 = row1.and_then(|r| bcast_idx(m1, j).and_then(|cj| r.get(cj)));
+                        let val2 = row2.and_then(|r| bcast_idx(m2, j).and_then(|cj| r.get(cj)));
 
                         match (val1, val2) {
                             (Some(v1), Some(v2)) => match (to_f64(v1), to_f64(v2)) {
@@ -148,6 +163,181 @@ impl<'a> Model<'a> {
                             // Mismatched dimensions => #VALUE!
                             _ => data_row.push(ArrayNode::Error(Error::VALUE)),
                         }
+                    }
+                    array.push(data_row);
+                }
+                CalcResult::Array(array)
+            }
+        }
+    }
+
+    /// Applies the concatenation operator (`&`) element-wise.
+    /// When either operand is a range or array the result is an array of strings;
+    /// when both are scalars the result is a single String.
+    pub(crate) fn handle_concatenate(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let l = match self.get_string_or_array(left, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let r = match self.get_string_or_array(right, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+
+        // Concatenates two array elements, propagating errors as error nodes.
+        let concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
+            match (array_node_to_string(a), array_node_to_string(b)) {
+                (Ok(sa), Ok(sb)) => ArrayNode::String(format!("{sa}{sb}")),
+                (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
+            }
+        };
+
+        match (l, r) {
+            (StringOrArray::String(s1), StringOrArray::String(s2)) => {
+                CalcResult::String(format!("{s1}{s2}"))
+            }
+            (StringOrArray::String(s1), StringOrArray::Array(a2)) => CalcResult::Array(
+                a2.iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|n| concat_nodes(&ArrayNode::String(s1.clone()), n))
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            (StringOrArray::Array(a1), StringOrArray::String(s2)) => CalcResult::Array(
+                a1.iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|n| concat_nodes(n, &ArrayNode::String(s2.clone())))
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            (StringOrArray::Array(a1), StringOrArray::Array(a2)) => {
+                let n1 = a1.len();
+                let m1 = a1.first().map(|r| r.len()).unwrap_or(0);
+                let n2 = a2.len();
+                let m2 = a2.first().map(|r| r.len()).unwrap_or(0);
+                let rows = n1.max(n2);
+                let cols = m1.max(m2);
+                let mut array = Vec::with_capacity(rows);
+                for ri in 0..rows {
+                    let row1 = bcast_idx(n1, ri).and_then(|i| a1.get(i));
+                    let row2 = bcast_idx(n2, ri).and_then(|i| a2.get(i));
+                    let mut data_row = Vec::with_capacity(cols);
+                    for ci in 0..cols {
+                        let v1 = row1.and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)));
+                        let v2 = row2.and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)));
+                        let node = match (v1, v2) {
+                            (Some(v1), Some(v2)) => concat_nodes(v1, v2),
+                            _ => ArrayNode::Error(Error::VALUE),
+                        };
+                        data_row.push(node);
+                    }
+                    array.push(data_row);
+                }
+                CalcResult::Array(array)
+            }
+        }
+    }
+
+    /// Applies a comparison operator element-wise.
+    /// When either operand is a range or array the result is an array of booleans;
+    /// when both are scalars the result is a single Boolean.
+    pub(crate) fn handle_comparison(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+        kind: &OpCompare,
+    ) -> CalcResult {
+        let l = match self.get_value_or_array(left, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let r = match self.get_value_or_array(right, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+
+        let apply = |lv: &CalcResult, rv: &CalcResult| -> bool {
+            let cmp = compare_values(lv, rv);
+            match kind {
+                OpCompare::Equal => cmp == 0,
+                OpCompare::LessThan => cmp == -1,
+                OpCompare::GreaterThan => cmp == 1,
+                OpCompare::LessOrEqualThan => cmp < 1,
+                OpCompare::GreaterOrEqualThan => cmp > -1,
+                OpCompare::NonEqual => cmp != 0,
+            }
+        };
+
+        let node_to_calc = |node: &ArrayNode| -> CalcResult {
+            match node {
+                ArrayNode::Number(n) => CalcResult::Number(*n),
+                ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
+                ArrayNode::String(s) => CalcResult::String(s.clone()),
+                ArrayNode::Error(e) => CalcResult::Error {
+                    error: e.clone(),
+                    origin: cell,
+                    message: String::new(),
+                },
+                ArrayNode::Empty => CalcResult::EmptyCell,
+            }
+        };
+
+        match (l, r) {
+            (ValueOrArray::Value(lv), ValueOrArray::Value(rv)) => {
+                CalcResult::Boolean(apply(&lv, &rv))
+            }
+            (ValueOrArray::Array(la), ValueOrArray::Value(rv)) => CalcResult::Array(
+                la.iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|n| ArrayNode::Boolean(apply(&node_to_calc(n), &rv)))
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            (ValueOrArray::Value(lv), ValueOrArray::Array(ra)) => CalcResult::Array(
+                ra.iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|n| ArrayNode::Boolean(apply(&lv, &node_to_calc(n))))
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            (ValueOrArray::Array(la), ValueOrArray::Array(ra)) => {
+                let n1 = la.len();
+                let m1 = la.first().map(|r| r.len()).unwrap_or(0);
+                let n2 = ra.len();
+                let m2 = ra.first().map(|r| r.len()).unwrap_or(0);
+                let rows = n1.max(n2);
+                let cols = m1.max(m2);
+                let mut array = Vec::with_capacity(rows);
+                for ri in 0..rows {
+                    let lrow = bcast_idx(n1, ri).and_then(|i| la.get(i));
+                    let rrow = bcast_idx(n2, ri).and_then(|i| ra.get(i));
+                    let mut data_row = Vec::with_capacity(cols);
+                    for ci in 0..cols {
+                        let lv = lrow
+                            .and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)))
+                            .map(node_to_calc);
+                        let rv = rrow
+                            .and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)))
+                            .map(node_to_calc);
+                        let node = match (lv, rv) {
+                            (Some(lv), Some(rv)) => ArrayNode::Boolean(apply(&lv, &rv)),
+                            _ => ArrayNode::Error(Error::VALUE),
+                        };
+                        data_row.push(node);
                     }
                     array.push(data_row);
                 }

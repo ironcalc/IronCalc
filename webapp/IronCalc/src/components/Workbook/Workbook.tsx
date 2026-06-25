@@ -1,15 +1,19 @@
 import type {
   BorderOptions,
   ClipboardCell,
+  IronCalcTheme,
   Model,
   WorksheetProperties,
 } from "@ironcalc/wasm";
+import { type Color, getThemeList } from "@ironcalc/wasm";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
 } from "../clipboard";
 import FormulaBar from "../FormulaBar/FormulaBar";
+import type { SaveError } from "../RightDrawer/NamedStyles/EditNamedStyle";
 import RightDrawer, {
   DEFAULT_DRAWER_WIDTH,
   type DrawerType,
@@ -33,18 +37,34 @@ import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 import "./workbook.css";
+import { Alert } from "../Modal";
+
+function colorToParam(color: Color): string {
+  if (color === undefined) {
+    return "";
+  }
+  if (typeof color === "string") {
+    return color;
+  }
+  return `[${color[0]}, ${color[1]}]`;
+}
 
 const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const { model, workbookState } = props;
+  const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const worksheetRef = useRef<{
     getCanvas: () => WorksheetCanvas | null;
   }>(null);
+  const lastClipboardJson = useRef<string | null>(null);
 
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
 
+  const [alertDialogMessage, setAlertDialogMessage] = useState<string | null>(
+    null,
+  );
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
   const [drawerType, setDrawerType] = useState<DrawerType>("namedRanges");
@@ -57,10 +77,26 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const worksheets = model.getWorksheetsProperties();
   const info = worksheets.map(
     ({ name, color, sheet_id, state }: WorksheetProperties) => {
-      return { name, color: color ? color : "#FFF", sheetId: sheet_id, state };
+      return {
+        name,
+        color: model.resolveColor(color) || "#FFF",
+        sheetId: sheet_id,
+        state,
+      };
     },
   );
   const focusWorkbook = useCallback(() => {
+    const active = document.activeElement as HTMLElement | null;
+    // FIXME: Horrible HACK for now
+    // Prevents the workbook from stealing focus when the user is interacting with the color picker, border picker, advanced color picker, or a modal dialog
+    if (
+      active?.closest(
+        ".ic-color-picker, .ic-advanced-color-picker-panel, .ic-border-picker, .ic-modal-dialog",
+      )
+    ) {
+      return;
+    }
+
     if (rootRef.current) {
       rootRef.current.focus({ preventScroll: true });
       // HACK: We need to select something inside the root for onCopy to work
@@ -130,12 +166,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     updateRangeStyle("alignment.wrap_text", `${value}`);
   };
 
-  const onTextColorPicked = (hex: string) => {
-    updateRangeStyle("font.color", hex);
+  const onTextColorPicked = (color: Color) => {
+    updateRangeStyle("font.color", colorToParam(color));
   };
 
-  const onFillColorPicked = (hex: string) => {
-    updateRangeStyle("fill.fg_color", hex);
+  const onFillColorPicked = (color: Color) => {
+    updateRangeStyle("fill.color", colorToParam(color));
   };
 
   const onNumberFormatPicked = (numberFmt: string) => {
@@ -145,6 +181,52 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const onIncreaseFontSize = (delta: number) => {
     updateRangeStyle("font.size_delta", `${delta}`);
   };
+
+  const onSetFontSize = (size: number) => {
+    updateRangeStyle("font.size", `${size}`);
+  };
+
+  const handlePaste = useCallback(async (): Promise<void> => {
+    focusWorkbook();
+    try {
+      const items = await navigator.clipboard.read();
+      const dt = new DataTransfer();
+      for (const item of items) {
+        for (const type of item.types) {
+          dt.setData(type, await (await item.getType(type)).text());
+        }
+      }
+      if (!dt.getData("application/json") && lastClipboardJson.current) {
+        dt.setData("application/json", lastClipboardJson.current);
+      }
+      rootRef.current?.dispatchEvent(
+        new ClipboardEvent("paste", {
+          clipboardData: dt,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    } catch {
+      // fall back to text-only if clipboard.read() is unavailable
+      try {
+        const text = await navigator.clipboard.readText();
+        const dt = new DataTransfer();
+        dt.setData("text/plain", text);
+        if (lastClipboardJson.current) {
+          dt.setData("application/json", lastClipboardJson.current);
+        }
+        rootRef.current?.dispatchEvent(
+          new ClipboardEvent("paste", {
+            clipboardData: dt,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      } catch {
+        setAlertDialogMessage(t("error_dialog.error_clipboard_paste"));
+      }
+    }
+  }, [focusWorkbook, t]);
 
   const onCopyStyles = () => {
     const {
@@ -160,7 +242,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     for (let row = row1; row <= row2; row++) {
       const styleRow = [];
       for (let column = column1; column <= column2; column++) {
-        styleRow.push(model.getCellStyle(sheet, row, column));
+        styleRow.push(model.getCellStyle(sheet, row, column).style);
       }
       styles.push(styleRow);
     }
@@ -178,9 +260,19 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   };
 
   const fmtSettings = model.getFmtSettings();
+  const themesRef = useRef<IronCalcTheme[] | null>(null);
+  if (themesRef.current === null) {
+    themesRef.current = getThemeList();
+  }
+  const themes = themesRef.current ?? [];
+
+  const handleThemePicked = (theme: IronCalcTheme) => {
+    model.setTheme(theme);
+    setRedrawId((id) => id + 1);
+  };
 
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
-  // the Rust end
+  // the Rust backend
   const { onKeyDown } = useKeyboardNavigation({
     onCellsDeleted: (): void => {
       const {
@@ -192,13 +284,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
 
       const width = Math.abs(columnEnd - columnStart);
       const height = Math.abs(rowEnd - rowStart);
-      model.rangeClearContents(
-        sheet,
-        row,
-        column,
-        row + height,
-        column + width,
-      );
+      try {
+        model.rangeClearContents(
+          sheet,
+          row,
+          column,
+          row + height,
+          column + width,
+        );
+      } catch (e) {
+        setAlertDialogMessage(`${e}`);
+      }
       setRedrawId((id) => id + 1);
     },
     onExpandAreaSelectedKeyboard: (
@@ -253,17 +349,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     },
     onBold: () => {
       const { sheet, row, column } = model.getSelectedView();
-      const value = model.getCellStyle(sheet, row, column).font.b;
+      const value = model.getCellStyle(sheet, row, column).style.font.b;
       onToggleBold(!value);
     },
     onItalic: () => {
       const { sheet, row, column } = model.getSelectedView();
-      const value = model.getCellStyle(sheet, row, column).font.i;
+      const value = model.getCellStyle(sheet, row, column).style.font.i;
       onToggleItalic(!value);
     },
     onUnderline: () => {
       const { sheet, row, column } = model.getSelectedView();
-      const value = model.getCellStyle(sheet, row, column).font.u;
+      const value = model.getCellStyle(sheet, row, column).style.font.u;
       onToggleUnderline(!value);
     },
     onNavigationToEdge: (direction: NavigationKey): void => {
@@ -377,21 +473,39 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     );
   }, [model]);
 
-  const formulaValue = () => {
+  // Returns the formula value to be shown in the formula bar
+  // and whether the it is part of an array formula that cannot be edited directly
+  const getFormulaValue = (): [string, boolean] => {
     const cell = workbookState.getEditingCell();
     if (cell) {
-      return workbookState.getEditingText();
+      return [workbookState.getEditingText(), true];
     }
     const { sheet, row, column } = model.getSelectedView();
-    return model.getCellContent(sheet, row, column);
+    const arrayStructure = model.getCellArrayStructure(sheet, row, column);
+    if (arrayStructure === "SingleCell") {
+      // single cell
+    } else if ("DynamicAnchor" in arrayStructure) {
+      // Anchor of a dynamic array
+    } else if ("DynamicChild" in arrayStructure) {
+      // Child of a dynamic array
+    } else if ("ArrayAnchor" in arrayStructure) {
+      return [`{${model.getCellContent(sheet, row, column)}}`, false];
+    } else if ("ArrayChild" in arrayStructure) {
+      const array = arrayStructure.ArrayChild;
+      return [`{${model.getCellContent(sheet, array[0], array[1])}}`, false];
+    }
+    return [model.getCellContent(sheet, row, column), true];
   };
+
+  const [formulaValue, isArrayFormula] = getFormulaValue();
 
   const getCellStyle = useCallback(() => {
     const { sheet, row, column } = model.getSelectedView();
-    return model.getCellStyle(sheet, row, column);
+    return model.getCellStyle(sheet, row, column).style;
   }, [model]);
 
   const style = getCellStyle();
+  const currentTheme = model.getTheme();
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: This div needs to be focusable to handle keyboard events for the workbook
@@ -449,13 +563,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             }
             data.set(Number.parseInt(row, 10), rowMap);
           }
-          model.pasteFromClipboard(
-            source.sheet,
-            source.area,
-            data,
-            source.type === "cut",
-          );
-          setRedrawId((id) => id + 1);
+          try {
+            model.pasteFromClipboard(
+              source.sheet,
+              source.area,
+              data,
+              source.type === "cut",
+            );
+            setRedrawId((id) => id + 1);
+          } catch (e) {
+            setAlertDialogMessage(`${e}`);
+          }
         } else if (mimeType === "text/plain") {
           const {
             sheet,
@@ -470,8 +588,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             width: Math.abs(columnEnd - columnStart) + 1,
             height: Math.abs(rowEnd - rowStart) + 1,
           };
-          model.pasteCsvText(range, value);
-          setRedrawId((id) => id + 1);
+          try {
+            model.pasteCsvText(range, value);
+            setRedrawId((id) => id + 1);
+          } catch (e) {
+            setAlertDialogMessage(`${e}`);
+          }
         } else {
           // NOT IMPLEMENTED
         }
@@ -511,6 +633,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           sheet,
           clipboardId,
         });
+        lastClipboardJson.current = clipboardJsonStr;
         event.clipboardData.setData("text/plain", data.csv.trim());
         event.clipboardData.setData("application/json", clipboardJsonStr);
         event.preventDefault();
@@ -549,6 +672,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           sheet,
           clipboardId,
         });
+        lastClipboardJson.current = clipboardJsonStr;
         event.clipboardData.setData("text/plain", data.csv);
         event.clipboardData.setData("application/json", clipboardJsonStr);
         workbookState.setCutRange({
@@ -595,6 +719,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
         onIncreaseFontSize={(delta: number) => {
           onIncreaseFontSize(delta);
+        }}
+        onSetFontSize={(size: number) => {
+          onSetFontSize(size);
         }}
         onDownloadPNG={() => {
           // creates a new canvas element in the visible part of the the selected area
@@ -665,8 +792,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           );
           setRedrawId((id) => id + 1);
         }}
-        fillColor={style.fill.fg_color || "#FFFFFF"}
-        fontColor={style.font.color}
+        fillColor={model.resolveColor(style.fill.color) || "#FFFFFF"}
+        fontColor={model.resolveColor(style.font.color) || "#000000"}
         fontSize={style.font.sz}
         bold={style.font.b}
         underline={style.font.u}
@@ -688,6 +815,16 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setRedrawId((id) => id + 1);
         }}
         formatOptions={fmtSettings}
+        onOpenConditionalFormatting={() => openDrawer("conditionalFormatting")}
+        isConditionalFormattingOpen={
+          isDrawerOpen && drawerType === "conditionalFormatting"
+        }
+        onOpenNamedStyles={() => openDrawer("namedStyles")}
+        isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
+        themes={themes}
+        currentTheme={currentTheme}
+        onThemePicked={handleThemePicked}
+        onOpenThemes={() => openDrawer("themes")}
       />
       <div
         className="ic-workbook-worksheet-area-left"
@@ -697,7 +834,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       >
         <FormulaBar
           cellAddress={cellAddress()}
-          formulaValue={formulaValue()}
+          formulaValue={formulaValue}
           onChange={() => {
             setRedrawId((id) => id + 1);
             focusWorkbook();
@@ -710,7 +847,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           openDrawer={() => {
             openDrawer("namedRanges");
           }}
-          canEdit={true}
+          canEdit={isArrayFormula}
         />
         <Worksheet
           model={model}
@@ -719,6 +856,16 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             setRedrawId((id) => id + 1);
           }}
           ref={worksheetRef}
+          canEdit={isArrayFormula}
+          onCut={(): void => {
+            focusWorkbook();
+            document.execCommand("cut");
+          }}
+          onCopy={(): void => {
+            focusWorkbook();
+            document.execCommand("copy");
+          }}
+          onPaste={handlePaste}
         />
 
         <SheetTabBar
@@ -736,9 +883,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             model.newSheet();
             setRedrawId((value) => value + 1);
           }}
-          onSheetColorChanged={(hex: string): void => {
+          onSheetColorChanged={(color: Color): void => {
             try {
-              model.setSheetColor(model.getSelectedSheet(), hex);
+              model.setSheetColor(model.getSelectedSheet(), color);
               setRedrawId((value) => value + 1);
             } catch (e) {
               // TODO: Show a proper modal dialog
@@ -758,6 +905,16 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             const selectedSheet = model.getSelectedSheet();
             model.deleteSheet(selectedSheet);
             setRedrawId((value) => value + 1);
+          }}
+          onSheetDuplicated={(): void => {
+            try {
+              const selectedSheet = model.getSelectedSheet();
+              model.duplicateSheet(selectedSheet);
+              setRedrawId((value) => value + 1);
+            } catch (e) {
+              // TODO: Show a proper modal dialog
+              alert(`${e}`);
+            }
           }}
           onHideSheet={(): void => {
             const selectedSheet = model.getSelectedSheet();
@@ -787,6 +944,46 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           return getFullRangeToString(selectedView, worksheetNames);
         }}
         drawerType={drawerType}
+        themes={themes}
+        currentTheme={model.getTheme()}
+        onThemePicked={handleThemePicked}
+        customStyles={(() => {
+          const builtinNames = new Set(
+            model.getBuiltinNamedStyles().map((s) => s.name.toLowerCase()),
+          );
+          return model
+            .getNamedStyleList()
+            .filter((name) => !builtinNames.has(name.toLowerCase()))
+            .map((name) => ({ name, style: model.getNamedStyle(name) }));
+        })()}
+        builtinStyles={model.getBuiltinNamedStyles()}
+        formatOptions={fmtSettings}
+        onApplyNamedStyle={(name) => {
+          model.onApplyNamedStyle(name);
+          setRedrawId((id) => id + 1);
+        }}
+        onAddNamedStyle={(payload): SaveError => {
+          try {
+            model.createNamedStyle(payload.name, payload.style);
+            setRedrawId((id) => id + 1);
+            return { nameError: "" };
+          } catch (e) {
+            return { nameError: e instanceof Error ? e.message : String(e) };
+          }
+        }}
+        onUpdateNamedStyle={(originalName, payload): SaveError => {
+          try {
+            model.updateNamedStyle(originalName, payload.name, payload.style);
+            setRedrawId((id) => id + 1);
+            return { nameError: "" };
+          } catch (e) {
+            return { nameError: e instanceof Error ? e.message : String(e) };
+          }
+        }}
+        onDeleteNamedStyle={(name) => {
+          model.deleteNamedStyle(name);
+          setRedrawId((id) => id + 1);
+        }}
         initialLocale={model.getLocale()}
         initialTimezone={model.getTimezone()}
         initialLanguage={model.getLanguage()}
@@ -796,6 +993,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setLanguage(language);
           setRedrawId((id) => id + 1);
         }}
+      />
+      <Alert
+        open={alertDialogMessage !== null}
+        onClose={() => setAlertDialogMessage(null)}
+        title={t("error_dialog.error_deleting_cells")}
+        message={alertDialogMessage}
       />
     </div>
   );

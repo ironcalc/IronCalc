@@ -2,7 +2,8 @@ use pyo3::exceptions::PyException;
 use pyo3::{create_exception, prelude::*, wrap_pyfunction};
 
 use types::{PyCellType, PySheetProperty, PyStyle};
-use xlsx::base::types::{Style, Workbook};
+use xlsx::base::expressions::types::Area;
+use xlsx::base::types::{Color, Style, Workbook};
 use xlsx::base::{Model, UserModel};
 
 use xlsx::export::{save_to_icalc, save_to_xlsx};
@@ -133,8 +134,15 @@ impl PyModel {
     }
 
     pub fn clear_cell_contents(&mut self, sheet: u32, row: i32, column: i32) -> PyResult<()> {
+        let area = Area {
+            sheet,
+            row,
+            column,
+            width: 1,
+            height: 1,
+        };
         self.model
-            .cell_clear_contents(sheet, row, column)
+            .range_clear_contents(&area)
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 
@@ -272,14 +280,19 @@ impl PyModel {
                 name: s.name,
                 state: s.state,
                 sheet_id: s.sheet_id,
-                color: s.color,
+                color: match s.color {
+                    Color::Rgb(s) => Some(s),
+                    Color::Theme(_, _) | Color::None => None,
+                },
             })
             .collect())
     }
 
+    // FIXME: this should also use themed colors
     pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> PyResult<()> {
+        let color = Color::from_rgb(color).map_err(|e| WorkbookError::new_err(e.to_string()))?;
         self.model
-            .set_sheet_color(sheet, color)
+            .set_sheet_color(sheet, &color)
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 

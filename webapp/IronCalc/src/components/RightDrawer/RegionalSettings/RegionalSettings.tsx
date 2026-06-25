@@ -1,21 +1,11 @@
 import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
-import {
-  Autocomplete,
-  type AutocompleteProps,
-  Box,
-  FormControl,
-  FormHelperText,
-  MenuItem,
-  Select,
-  styled,
-  TextField,
-} from "@mui/material";
-import type { Theme } from "@mui/material/styles";
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
+import "./regional-settings.css";
+import { Select } from "../../Select/Select";
 
 type RegionalSettingsProps = {
   onClose: () => void;
@@ -84,7 +74,6 @@ export const getLocaleDisplayName = (locale: string): string => {
 const RegionalSettings = (properties: RegionalSettingsProps) => {
   const { t } = useTranslation();
   const locales = getSupportedLocales();
-
   const timezones = getAllTimezones();
 
   const [selectedLocale, setSelectedLocale] = useState(
@@ -113,9 +102,11 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
   };
 
   return (
-    <Container>
-      <Header>
-        <HeaderTitle>{t("regional_settings.title")}</HeaderTitle>
+    <div className="ic-regional-settings-container">
+      <div className="ic-regional-settings-header">
+        <div className="ic-regional-settings-header-title">
+          {t("regional_settings.title")}
+        </div>
         <IconButton
           variant="ghost"
           size="xs"
@@ -123,377 +114,85 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
           onClick={properties.onClose}
           aria-label={t("right_drawer.close")}
         />
-      </Header>
+      </div>
 
-      <Content
-        onClick={(event) => event.stopPropagation()}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <FormSection>
-          <StyledSectionTitle>
+      <div className="ic-regional-settings-content">
+        <div className="ic-regional-settings-section">
+          <div className="ic-regional-settings-section-title">
             {t("regional_settings.locale.title")}
-          </StyledSectionTitle>
-          <FieldWrapper>
-            <StyledLabel htmlFor="locale">
-              {t("regional_settings.locale.locale_label")}
-            </StyledLabel>
-            <FormControl fullWidth>
-              <StyledSelect
-                id="locale"
-                value={selectedLocale}
-                onChange={(event) => {
-                  setSelectedLocale(event.target.value as string);
-                }}
-                renderValue={(value) => getLocaleDisplayName(value as string)}
-                MenuProps={{
-                  PaperProps: {
-                    sx: (theme) => menuPaperStyles(theme),
-                  },
-                  TransitionProps: {
-                    timeout: 0,
-                  },
-                  anchorOrigin: {
-                    vertical: "bottom",
-                    horizontal: "center",
-                  },
-                  transformOrigin: {
-                    vertical: "top",
-                    horizontal: "center",
-                  },
-                  marginThreshold: 0,
-                }}
-              >
-                {locales.map((locale) => (
-                  <StyledMenuItem key={locale} value={locale}>
-                    {getLocaleDisplayName(locale)}
-                  </StyledMenuItem>
-                ))}
-              </StyledSelect>
-              <HelperBox>
-                <Row>
-                  {t("regional_settings.locale.locale_example1")}
-                  <RowValue>
-                    {localeFormatExamples[selectedLocale]?.number ?? "1,234.56"}
-                  </RowValue>
-                </Row>
-                <Row>
-                  {t("regional_settings.locale.locale_example2")}
-                  <RowValue>
-                    {localeFormatExamples[selectedLocale]?.dateTime ??
-                      "10/17/2026 09:21:06 PM"}
-                  </RowValue>
-                </Row>
-                <Row>
-                  {t("regional_settings.locale.locale_example3")}
-                  <RowValue>
-                    {(() => {
-                      const delimiterType =
-                        localeFormatExamples[selectedLocale]?.delimiterType ??
-                        "comma";
-                      const delimiterChar =
-                        localeFormatExamples[selectedLocale]?.delimiterChar ??
-                        ",";
-                      const delimiterLabel = t(
-                        `regional_settings.locale.delimiter_${delimiterType}`,
-                      );
-                      return `${delimiterLabel} (${delimiterChar})`;
-                    })()}
-                  </RowValue>
-                </Row>
-              </HelperBox>
-            </FormControl>
-          </FieldWrapper>
-        </FormSection>
-        <FormSection>
-          <StyledSectionTitle>
+          </div>
+          <div className="ic-regional-settings-field-wrapper">
+            <Select
+              label={t("regional_settings.locale.locale_label")}
+              value={selectedLocale}
+              onChange={setSelectedLocale}
+              options={locales.map((locale) => ({
+                value: locale,
+                label: getLocaleDisplayName(locale),
+                triggerLabel: getLocaleDisplayName(locale),
+              }))}
+            />
+            <div className="ic-regional-settings-helper-box">
+              <div className="ic-regional-settings-row">
+                {t("regional_settings.locale.locale_example1")}
+                <span className="ic-regional-settings-row-value">
+                  {localeFormatExamples[selectedLocale]?.number ?? "1,234.56"}
+                </span>
+              </div>
+              <div className="ic-regional-settings-row">
+                {t("regional_settings.locale.locale_example2")}
+                <span className="ic-regional-settings-row-value">
+                  {localeFormatExamples[selectedLocale]?.dateTime ??
+                    "10/17/2026 09:21:06 PM"}
+                </span>
+              </div>
+              <div className="ic-regional-settings-row">
+                {t("regional_settings.locale.locale_example3")}
+                <span className="ic-regional-settings-row-value">
+                  {(() => {
+                    const delimiterType =
+                      localeFormatExamples[selectedLocale]?.delimiterType ??
+                      "comma";
+                    const delimiterChar =
+                      localeFormatExamples[selectedLocale]?.delimiterChar ??
+                      ",";
+                    const delimiterLabel = t(
+                      `regional_settings.locale.delimiter_${delimiterType}`,
+                    );
+                    return `${delimiterLabel} (${delimiterChar})`;
+                  })()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="ic-regional-settings-section">
+          <div className="ic-regional-settings-section-title">
             {t("regional_settings.timezone.title")}
-          </StyledSectionTitle>
-          <FieldWrapper>
-            <StyledLabel htmlFor="timezone">
-              {t("regional_settings.timezone.timezone_label")}
-            </StyledLabel>
-            <FormControl fullWidth>
-              <StyledAutocomplete
-                id="timezone"
-                value={selectedTimezone}
-                onChange={(_event, newValue) => {
-                  setSelectedTimezone(newValue);
-                }}
-                options={timezones}
-                renderInput={(params) => <TextField {...params} />}
-                renderOption={(props, option) => (
-                  <StyledMenuItem {...props} key={option as string}>
-                    {option as string}
-                  </StyledMenuItem>
-                )}
-                disableClearable
-                slotProps={{
-                  paper: {
-                    sx: (theme) => ({
-                      ...menuPaperStyles(theme),
-                      margin: "4px 0px",
-                    }),
-                  },
-                  popper: {
-                    sx: {
-                      "& .MuiAutocomplete-paper": {
-                        transition: "none !important",
-                      },
-                    },
-                  },
-                  popupIndicator: {
-                    disableRipple: true,
-                  },
-                }}
-              />
-              <StyledHelperText>
-                {t("regional_settings.timezone.timezone_helper")}
-              </StyledHelperText>
-            </FormControl>
-          </FieldWrapper>
-        </FormSection>
-      </Content>
+          </div>
+          <div className="ic-regional-settings-field-wrapper">
+            <Select
+              label={t("regional_settings.timezone.timezone_label")}
+              helperText={t("regional_settings.timezone.timezone_helper")}
+              value={selectedTimezone}
+              onChange={setSelectedTimezone}
+              options={timezones.map((timezone) => ({
+                value: timezone,
+                label: timezone,
+                triggerLabel: timezone,
+              }))}
+            />
+          </div>
+        </div>
+      </div>
 
-      <Footer>
+      <div className="ic-regional-settings-footer">
         <Button startIcon={<Check />} onClick={handleSave}>
           {t("num_fmt.save")}
         </Button>
-      </Footer>
-    </Container>
+      </div>
+    </div>
   );
 };
-
-const Container = styled("div")({
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-});
-
-const Header = styled("div")(({ theme }) => ({
-  height: 40,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  padding: "0 8px",
-  borderBottom: `1px solid ${theme.palette.grey[300]}`,
-}));
-
-const HeaderTitle = styled("div")({
-  width: "100%",
-  fontSize: 12,
-});
-
-const Content = styled("div")({
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  fontSize: 12,
-  overflow: "auto",
-});
-
-const FormSection = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
-  padding: "16px 12px",
-  borderBottom: `1px solid ${theme.palette.grey[300]}`,
-
-  "&:last-child": {
-    borderBottom: "none",
-  },
-}));
-
-const StyledSectionTitle = styled("h1")(({ theme }) => ({
-  fontSize: 14,
-  fontWeight: 600,
-  fontFamily: "Inter",
-  margin: 0,
-  color: theme.palette.text.primary,
-}));
-
-const StyledSelect = styled(Select)({
-  fontSize: 12,
-  height: 32,
-
-  "& .MuiInputBase-root": {
-    padding: "0px !important",
-  },
-
-  "& .MuiInputBase-input": {
-    fontSize: 12,
-    height: 20,
-    paddingRight: "0px !important",
-    margin: 0,
-  },
-
-  "& .MuiSelect-select": {
-    padding: "8px 32px 8px 8px !important",
-    fontSize: 12,
-  },
-
-  "& .MuiSvgIcon-root": {
-    right: "4px !important",
-  },
-});
-
-const StyledHelperText = styled(FormHelperText)(({ theme }) => ({
-  fontSize: 12,
-  fontFamily: "Inter",
-  color: theme.palette.grey[500],
-  margin: 0,
-  marginTop: 6,
-  padding: 0,
-  lineHeight: 1.4,
-}));
-
-const HelperBox = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "start",
-  justifyContent: "center",
-  gap: 2,
-  boxSizing: "border-box",
-  border: `1px solid ${theme.palette.grey[300]}`,
-  fontFamily: "Inter",
-  width: "100%",
-  height: "100%",
-  marginTop: 8,
-  backgroundColor: theme.palette.grey[100],
-  borderRadius: 4,
-  padding: 8,
-}));
-
-const Row = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexDirection: "row",
-  gap: 4,
-  width: "100%",
-  justifyContent: "space-between",
-  color: theme.palette.grey[700],
-}));
-
-const RowValue = styled("span")(({ theme }) => ({
-  fontSize: 12,
-  fontFamily: "Inter",
-  fontWeight: "normal",
-  color: theme.palette.grey[500],
-}));
-
-// Autocomplete with customized styles
-// Value => string,
-// multiple => false, (we cannot select multiple timezones)
-// disableClearable => true, (the timezone must always have a value)
-// freeSolo => false (the timezone must be from the list)
-type TimezoneAutocompleteProps = AutocompleteProps<string, false, true, false>;
-const StyledAutocomplete = styled((props: TimezoneAutocompleteProps) => (
-  <Autocomplete<string, false, true, false> {...props} />
-))({
-  "& .MuiInputBase-root": {
-    padding: "0px !important",
-    height: 32,
-  },
-
-  "& .MuiInputBase-input": {
-    fontSize: 12,
-    height: 20,
-    padding: 0,
-    paddingRight: "0px !important",
-    margin: 0,
-  },
-
-  "& .MuiAutocomplete-popupIndicator:hover": {
-    backgroundColor: "transparent !important",
-  },
-
-  "& .MuiAutocomplete-popupIndicator": {
-    "& .MuiTouchRipple-root": {
-      display: "none",
-    },
-  },
-
-  "& .MuiOutlinedInput-root .MuiAutocomplete-endAdornment": {
-    right: 4,
-  },
-
-  "& .MuiOutlinedInput-root .MuiAutocomplete-input": {
-    padding: "8px !important",
-  },
-});
-
-const menuPaperStyles = (theme: Theme) => ({
-  boxSizing: "border-box",
-  marginTop: "4px",
-  padding: "4px",
-  borderRadius: "8px",
-  transition: "none !important",
-  "& .MuiList-padding": {
-    padding: 0,
-  },
-  "& .MuiList-root": {
-    padding: 0,
-  },
-  "& .MuiAutocomplete-noOptions": {
-    padding: "8px",
-    fontSize: "12px",
-    fontFamily: "Inter",
-  },
-  "& .MuiMenuItem-root": {
-    height: "32px !important",
-    padding: "8px !important",
-    minHeight: "32px !important",
-  },
-  "& .MuiAutocomplete-option[aria-selected='true']": {
-    backgroundColor: `${theme.palette.grey[100]} !important`,
-    fontWeight: "500 !important",
-  },
-});
-
-const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
-  padding: "8px !important",
-  height: "32px !important",
-  minHeight: "32px !important",
-  borderRadius: 4,
-  display: "flex",
-  alignItems: "center",
-  fontSize: 12,
-
-  "&.Mui-selected": {
-    backgroundColor: `${theme.palette.grey[50]} !important`,
-  },
-
-  "&.Mui-selected:hover": {
-    backgroundColor: `${theme.palette.grey[50]} !important`,
-  },
-
-  "&:hover": {
-    backgroundColor: `${theme.palette.grey[50]} !important`,
-  },
-}));
-
-const FieldWrapper = styled(Box)({
-  display: "flex",
-  flexDirection: "column",
-  width: "100%",
-  gap: 6,
-});
-
-const StyledLabel = styled("label")(({ theme }) => ({
-  fontSize: 12,
-  fontFamily: "Inter",
-  fontWeight: 500,
-  color: theme.palette.text.primary,
-  display: "block",
-}));
-
-const Footer = styled("div")(({ theme }) => ({
-  color: theme.palette.grey[700],
-  display: "flex",
-  alignItems: "center",
-  borderTop: `1px solid ${theme.palette.grey[300]}`,
-  fontFamily: "Inter",
-  justifyContent: "flex-end",
-  padding: 8,
-  gap: 8,
-}));
 
 export default RegionalSettings;

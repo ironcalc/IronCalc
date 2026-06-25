@@ -1,3 +1,4 @@
 ignore:
   - "xlsx/src/bin"
   - "bindings/wasm"
+  - "bindings/nodejs"

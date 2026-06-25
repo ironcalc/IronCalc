@@ -19,16 +19,6 @@ export function attachOutlineHandle(
   parent.appendChild(cellOutlineHandle);
   worksheet.cellOutlineHandle = cellOutlineHandle;
 
-  Object.assign(cellOutlineHandle.style, {
-    position: "absolute",
-    width: "5px",
-    height: "5px",
-    background: worksheet.theme.outlineColor,
-    cursor: "crosshair",
-    borderRadius: "1px",
-    border: `1px solid white`,
-  });
-
   // cell handle events
   const resizeHandleMove = (event: MouseEvent): void => {
     const canvasRect = worksheet.canvas.getBoundingClientRect();
@@ -136,28 +126,43 @@ export function attachOutlineHandle(
       height,
     };
 
-    switch (extendedArea.type) {
-      case AreaType.rowsDown:
-        worksheet.model.autoFillRows(area, extendedArea.rowEnd);
-        break;
-      case AreaType.rowsUp: {
-        worksheet.model.autoFillRows(area, extendedArea.rowStart);
-        break;
+    try {
+      switch (extendedArea.type) {
+        case AreaType.rowsDown:
+          worksheet.model.autoFillRows(area, extendedArea.rowEnd);
+          break;
+        case AreaType.rowsUp: {
+          worksheet.model.autoFillRows(area, extendedArea.rowStart);
+          break;
+        }
+        case AreaType.columnsRight: {
+          worksheet.model.autoFillColumns(area, extendedArea.columnEnd);
+          break;
+        }
+        case AreaType.columnsLeft: {
+          worksheet.model.autoFillColumns(area, extendedArea.columnStart);
+          break;
+        }
       }
-      case AreaType.columnsRight: {
-        worksheet.model.autoFillColumns(area, extendedArea.columnEnd);
-        break;
-      }
-      case AreaType.columnsLeft: {
-        worksheet.model.autoFillColumns(area, extendedArea.columnStart);
-        break;
-      }
+    } catch (_) {
+      // This could fail if, for instnace we are breaking an array formula
+      // Here we fail silently
+      // TODO: Could we shouw a message to the user?
     }
+    const selectedRowStart = Math.min(rowStart, extendedArea.rowStart);
+    const selectedColumnStart = Math.min(columnStart, extendedArea.columnStart);
+    const selectedRowEnd = Math.max(rowStart + height - 1, extendedArea.rowEnd);
+    const selectedColumnEnd = Math.max(
+      columnStart + width - 1,
+      extendedArea.columnEnd,
+    );
+
+    worksheet.model.setSelectedCell(selectedRowStart, selectedColumnStart);
     worksheet.model.setSelectedRange(
-      Math.min(rowStart, extendedArea.rowStart),
-      Math.min(columnStart, extendedArea.columnStart),
-      Math.max(rowStart + height - 1, extendedArea.rowEnd),
-      Math.max(columnStart + width - 1, extendedArea.columnEnd),
+      selectedRowStart,
+      selectedColumnStart,
+      selectedRowEnd,
+      selectedColumnEnd,
     );
     worksheet.workbookState.clearExtendToArea();
     worksheet.renderSheet();
@@ -169,43 +174,77 @@ export function attachOutlineHandle(
   });
 
   cellOutlineHandle.addEventListener("dblclick", (event) => {
-    // On double-click, we will auto-fill the rows below the selected cell
-    const [sheet, row, column] = worksheet.model.getSelectedCell();
-    let lastUsedRow = row + 1;
-    let testColumn = column - 1;
+    // On double-click, we will auto-fill the rows below the selected range
+    event.stopPropagation();
+    event.preventDefault();
+    const { sheet, range } = worksheet.model.getSelectedView();
+    const rowStart = Math.min(range[0], range[2]);
+    const rowEnd = Math.max(range[0], range[2]);
+    const columnStart = Math.min(range[1], range[3]);
+    const columnEnd = Math.max(range[1], range[3]);
+    const width = columnEnd - columnStart + 1;
+    const height = rowEnd - rowStart + 1;
 
-    // The "test column" is the column to the left of the selected cell or the next column if the left one is empty
+    let lastUsedRow = rowEnd;
+    let testColumn = columnStart - 1;
+
+    // The "test column" is the column to the left of the selected range,
+    // or the column to the right if the left one is unavailable or empty.
     if (
       testColumn < 1 ||
-      worksheet.model.getFormattedCellValue(sheet, row, column - 1) === ""
+      worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) === ""
     ) {
-      testColumn = column + 1;
+      testColumn = columnEnd + 1;
       if (
         testColumn > LAST_COLUMN ||
-        worksheet.model.getFormattedCellValue(sheet, row, testColumn) === ""
+        worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) ===
+          ""
       ) {
         return;
       }
     }
 
     // Find the last used row in the "test column"
-    for (let r = row + 1; r <= LAST_ROW; r += 1) {
+    for (let r = rowEnd + 1; r <= LAST_ROW; r += 1) {
       if (worksheet.model.getFormattedCellValue(sheet, r, testColumn) === "") {
         break;
       }
       lastUsedRow = r;
     }
 
+    for (let r = rowEnd + 1; r <= lastUsedRow; r += 1) {
+      let isAnyCellNotEmpty = false;
+      for (let c = columnStart; c <= columnEnd; c += 1) {
+        if (worksheet.model.getFormattedCellValue(sheet, r, c) !== "") {
+          isAnyCellNotEmpty = true;
+          break;
+        }
+      }
+      if (isAnyCellNotEmpty) {
+        lastUsedRow = r - 1;
+        break;
+      }
+    }
+
+    if (lastUsedRow <= rowEnd) {
+      return;
+    }
+
     const area = {
       sheet,
-      row: row,
-      column: column,
-      width: 1,
-      height: 1,
+      row: rowStart,
+      column: columnStart,
+      width,
+      height,
     };
 
     worksheet.model.autoFillRows(area, lastUsedRow);
-    event.stopPropagation();
+    worksheet.model.setSelectedRange(
+      rowStart,
+      columnStart,
+      lastUsedRow,
+      columnEnd,
+    );
     worksheet.renderSheet();
   });
   return cellOutlineHandle;

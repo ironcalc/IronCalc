@@ -90,15 +90,6 @@ fn fn_or_xor() {
         model._set("A9", &format!("={func}(Z99)"));
         model._set("A10", &format!("={func}(X99:Z99"));
 
-        // Reference to cell with reference to empty range
-        model._set("B11", "=X99:Z99");
-        model._set("A11", &format!("={func}(B11)"));
-
-        // Reference to cell with non-empty range
-        model._set("X12", "1");
-        model._set("B12", "=X12:Z12");
-        model._set("A12", &format!("={func}(B12)"));
-
         // Reference to text cell
         model._set("B13", "some_text");
         model._set("A13", &format!("={func}(B13)"));
@@ -143,17 +134,9 @@ fn fn_or_xor() {
         assert_eq!(model._get_text("A9"), *"#VALUE!");
         assert_eq!(model._get_text("A10"), *"#VALUE!");
 
-        assert_eq!(model._get_text("A11"), *"#VALUE!");
-
-        // TODO: This one depends on spill behaviour which isn't implemented yet
-        // assert_eq!(model._get_text("A12"), *"TRUE");
-
         assert_eq!(model._get_text("A13"), *"#VALUE!");
         assert_eq!(model._get_text("A14"), *"FALSE");
         assert_eq!(model._get_text("A15"), *"TRUE");
-
-        // TODO: This one depends on @ implicit intersection behaviour which isn't implemented yet
-        // assert_eq!(model._get_text("A16"), *"TRUE");
 
         assert_eq!(model._get_text("A17"), *"TRUE");
 
@@ -163,6 +146,91 @@ fn fn_or_xor() {
 
         assert_eq!(model._get_text("A20"), *"#DIV/0!");
     }
+}
+
+#[test]
+fn fn_or_xor_arrays() {
+    inner("or");
+    inner("xor");
+
+    fn inner(func: &str) {
+        println!("Testing function: {func}");
+
+        let mut model = new_empty_model();
+
+        // Boolean array literals
+        model._set("A1", &format!("={func}({{TRUE, FALSE, FALSE}})"));
+        model._set("A2", &format!("={func}({{FALSE, FALSE, FALSE}})"));
+
+        // Number array literals (0 is FALSE, anything else TRUE)
+        model._set("A3", &format!("={func}({{0, 0, 1}})"));
+        model._set("A4", &format!("={func}({{0, 0, 0}})"));
+
+        // Strings in arrays are ignored
+        model._set("A5", &format!(r#"={func}({{"text", TRUE}})"#));
+        model._set("A6", &format!(r#"={func}({{"text", FALSE}})"#));
+
+        // Two-dimensional array combined with a scalar argument
+        model._set("A7", &format!("={func}({{FALSE; FALSE}}, TRUE)"));
+
+        // Errors inside an array are propagated
+        model._set("A8", &format!(r#"={func}({{#DIV/0!, TRUE}})"#));
+
+        model.evaluate();
+
+        assert_eq!(model._get_text("A1"), *"TRUE");
+        assert_eq!(model._get_text("A2"), *"FALSE");
+        assert_eq!(model._get_text("A3"), *"TRUE");
+        assert_eq!(model._get_text("A4"), *"FALSE");
+        assert_eq!(model._get_text("A5"), *"TRUE");
+        assert_eq!(model._get_text("A6"), *"FALSE");
+        assert_eq!(model._get_text("A7"), *"TRUE");
+        assert_eq!(model._get_text("A8"), *"#DIV/0!");
+    }
+}
+
+#[test]
+fn fn_and_arrays() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=AND({TRUE, TRUE, TRUE})");
+    model._set("A2", "=AND({TRUE, FALSE, TRUE})");
+    model._set("A3", "=AND({1, 2, 3})");
+    model._set("A4", "=AND({1, 0, 3})");
+    // Strings ignored
+    model._set("A5", r#"=AND({"text", TRUE})"#);
+    // Error propagated
+    model._set("A6", "=AND({TRUE, #N/A})");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"FALSE");
+    assert_eq!(model._get_text("A3"), *"TRUE");
+    assert_eq!(model._get_text("A4"), *"FALSE");
+    assert_eq!(model._get_text("A5"), *"TRUE");
+    assert_eq!(model._get_text("A6"), *"#N/A");
+}
+
+#[test]
+#[ignore = "not yet implemented"]
+fn spill_behaviour() {
+    let mut model = new_empty_model();
+
+    // Reference to cell with reference to empty range
+    model._set("B11", "=X99:Z99");
+    model._set("A11", "=OR(B11)");
+
+    // Reference to cell with non-empty range
+    model._set("X12", "1");
+    model._set("B12", "=X12:Z12");
+    model._set("A12", "=OR(B12)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A11"), *"FALSE");
+
+    assert_eq!(model._get_text("A12"), *"TRUE");
 }
 
 #[test]

@@ -1,8 +1,19 @@
 use pyo3::prelude::*;
 use xlsx::base::types::{
-    Alignment, Border, BorderItem, BorderStyle, CellType, Fill, Font, FontScheme,
+    Alignment, Border, BorderItem, BorderStyle, CellType, Color, Fill, Font, FontScheme,
     HorizontalAlignment, Style, VerticalAlignment,
 };
+
+fn color_to_string(c: Color) -> Option<String> {
+    match c {
+        Color::Rgb(s) => Some(s),
+        Color::Theme(_, _) | Color::None => None,
+    }
+}
+
+fn string_to_color(s: String) -> Color {
+    Color::Rgb(s)
+}
 
 #[derive(Clone)]
 #[pyclass]
@@ -154,11 +165,7 @@ pub struct PyFont {
 #[derive(Clone)]
 pub struct PyFill {
     #[pyo3(get)]
-    pub pattern_type: String,
-    #[pyo3(get)]
-    pub fg_color: Option<String>,
-    #[pyo3(get)]
-    pub bg_color: Option<String>,
+    pub color: Option<String>,
 }
 
 #[pyclass(eq, eq_int)]
@@ -234,9 +241,7 @@ impl From<&PyBorderStyle> for BorderStyle {
 impl From<&PyFill> for Fill {
     fn from(py_fill: &PyFill) -> Self {
         Fill {
-            pattern_type: py_fill.pattern_type.clone(),
-            fg_color: py_fill.fg_color.clone(),
-            bg_color: py_fill.bg_color.clone(),
+            color: py_fill.color.clone().map_or(Color::None, string_to_color),
         }
     }
 }
@@ -249,7 +254,7 @@ impl From<&PyFont> for Font {
             b: py_font.b,
             i: py_font.i,
             sz: py_font.sz,
-            color: py_font.color.clone(),
+            color: py_font.color.clone().map_or(Color::None, string_to_color),
             name: py_font.name.clone(),
             family: py_font.family,
             scheme: py_font.scheme.clone().into(),
@@ -261,7 +266,7 @@ impl From<&PyBorderItem> for BorderItem {
     fn from(py_item: &PyBorderItem) -> Self {
         BorderItem {
             style: (&py_item.style).into(),
-            color: py_item.color.clone(),
+            color: py_item.color.clone().map_or(Color::None, string_to_color),
         }
     }
 }
@@ -307,9 +312,7 @@ impl From<&PyStyle> for Style {
 impl From<Fill> for PyFill {
     fn from(fill: Fill) -> Self {
         PyFill {
-            pattern_type: fill.pattern_type,
-            fg_color: fill.fg_color,
-            bg_color: fill.bg_color,
+            color: color_to_string(fill.color),
         }
     }
 }
@@ -380,7 +383,7 @@ impl From<Font> for PyFont {
             b: font.b,
             i: font.i,
             sz: font.sz,
-            color: font.color,
+            color: color_to_string(font.color),
             name: font.name,
             family: font.family,
             scheme: font.scheme.into(),
@@ -393,7 +396,7 @@ impl From<BorderItem> for PyBorderItem {
     fn from(item: BorderItem) -> Self {
         PyBorderItem {
             style: item.style.into(),
-            color: item.color,
+            color: color_to_string(item.color),
         }
     }
 }

@@ -1,0 +1,481 @@
+/* Root = flex placeholder, paper = fixed visual panel */
+
+.app-ic-drawer {
+  --drawer-width: 264px;
+  width: var(--drawer-width);
+  flex-shrink: 0;
+  height: 100%;
+}
+
+.app-ic-drawer-paper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--drawer-width);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+  background-color: var(--palette-grey-50);
+  border-right: 1px solid var(--palette-grey-300);
+  overflow: hidden;
+  box-sizing: border-box;
+  transform: translateX(calc(-1 * var(--drawer-width)));
+  visibility: hidden;
+}
+
+.app-ic-drawer--open .app-ic-drawer-paper {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+/* Header */
+
+.app-ic-drawer-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  flex-shrink: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--palette-grey-300);
+}
+
+.app-ic-drawer-header-logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-ic-drawer-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--palette-primary-main);
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 2px;
+  user-select: none;
+}
+
+.app-ic-drawer-logo svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app-ic-drawer-header-title {
+  margin: 0;
+  font-size: calc(var(--typography-font-size) + 2px);
+  font-weight: 600;
+}
+
+.app-ic-drawer-header-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.app-ic-drawer-header .ic-button {
+  color: var(--palette-grey-600);
+}
+
+.app-ic-drawer-header .ic-button:hover {
+  background-color: var(--palette-grey-300);
+  color: var(--palette-grey-800);
+}
+
+.app-ic-drawer-header .hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Footer */
+
+.app-ic-drawer-footer {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid var(--palette-grey-300);
+  flex-shrink: 0;
+}
+
+.app-ic-drawer-footer-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: var(--typography-font-size);
+  color: var(--palette-common-black);
+  text-decoration: none;
+}
+
+.app-ic-drawer-footer-link:hover {
+  background-color: var(--palette-grey-300);
+}
+
+.app-ic-drawer-footer-link:focus {
+  outline: none;
+}
+
+.app-ic-drawer-footer-link:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  border-radius: 6px;
+  outline-offset: -2px;
+}
+
+.app-ic-drawer-footer--selection {
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.app-ic-drawer-footer-link svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--palette-grey-500);
+}
+
+/* Search */
+
+.app-ic-drawer-search {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
+.app-ic-drawer-search.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.app-ic-drawer-search-icon {
+  display: flex;
+  align-items: center;
+}
+
+.app-ic-drawer-search-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--palette-grey-600);
+}
+
+.app-ic-drawer-search-input {
+  flex: 1;
+}
+
+.app-ic-drawer-search-input .ic-input-control {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-ic-drawer-search-input input::placeholder {
+  color: var(--palette-grey-500);
+}
+
+/* Local storage alert */
+
+.app-ic-drawer-alert {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--palette-grey-300);
+  background-color: color-mix(
+    in srgb,
+    var(--palette-common-white) 40%,
+    transparent
+  );
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-sm);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--palette-grey-900);
+}
+
+.app-ic-drawer-alert-icon {
+  display: flex;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--palette-primary-main);
+}
+
+.app-ic-drawer-alert-icon svg,
+.app-ic-drawer-alert .ic-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.app-ic-drawer-alert h2 {
+  margin: 0 0 4px;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.app-ic-drawer-alert p {
+  margin: 0;
+}
+
+.app-ic-drawer-alert p + p {
+  margin-top: 6px;
+}
+
+.app-ic-drawer-alert .ic-button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+/* Drawer content */
+
+.app-ic-drawer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.app-ic-drawer-alert-wrapper {
+  position: absolute;
+  bottom: 50px;
+  left: 0;
+  right: 0;
+  padding: 12px;
+  transition: bottom 0.2s ease;
+}
+
+.app-ic-drawer-alert-wrapper--selection {
+  bottom: 84px;
+}
+
+/* Workbook list */
+
+.app-ic-drawer-section {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-ic-drawer-section-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  margin-bottom: 8px;
+  font-weight: 400;
+  color: var(--palette-grey-500);
+}
+
+.app-ic-drawer-section-title svg {
+  width: 12px;
+  height: 12px;
+}
+
+.app-ic-drawer-workbook-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding: 0 4px 0 0;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.app-ic-drawer-workbook-select {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 0 0 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+}
+
+.app-ic-drawer-workbook-select:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  border-radius: 6px;
+  outline-offset: -2px;
+}
+
+.app-ic-drawer-workbook-item:hover,
+.app-ic-drawer-workbook-item--selected {
+  background-color: var(--palette-grey-300);
+}
+
+.app-ic-drawer-workbook-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-left: 8px;
+  color: var(--palette-grey-500);
+}
+
+.app-ic-drawer-workbook-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.app-ic-drawer-workbook-icon--default {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-ic-drawer-workbook-icon--checkbox-wrapper {
+  display: none;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.app-ic-drawer-workbook-icon--checkbox {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  border: 1.5px solid var(--palette-grey-500);
+  border-radius: 4px;
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.app-ic-drawer-workbook-icon--checkbox:focus {
+  outline: none;
+}
+
+.app-ic-drawer-workbook-icon--checkbox:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+}
+
+.app-ic-drawer-workbook-icon--checkbox:checked {
+  background: var(--palette-common-black);
+  border-color: var(--palette-common-black);
+}
+
+.app-ic-drawer-workbook-icon--checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 3px;
+  height: 6px;
+  border: 2px solid var(--palette-common-white);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.app-ic-drawer-workbook-icon:hover .app-ic-drawer-workbook-icon--default,
+.app-ic-drawer-workbook-icon:focus-within
+  .app-ic-drawer-workbook-icon--default {
+  display: none;
+}
+
+.app-ic-drawer-workbook-icon:hover
+  .app-ic-drawer-workbook-icon--checkbox-wrapper,
+.app-ic-drawer-workbook-icon:focus-within
+  .app-ic-drawer-workbook-icon--checkbox-wrapper {
+  display: flex;
+}
+
+.app-ic-drawer-workbook-list--has-checked
+  .app-ic-drawer-workbook-icon--default {
+  display: none;
+}
+
+.app-ic-drawer-workbook-list--has-checked
+  .app-ic-drawer-workbook-icon--checkbox-wrapper {
+  display: flex;
+}
+
+.app-ic-drawer-workbook-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--palette-common-black);
+  font-size: var(--typography-font-size);
+}
+
+.app-ic-drawer-workbook-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  height: 24px;
+  padding: 4px;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+  overflow: hidden;
+  outline: none;
+  color: var(--palette-grey-900);
+  flex-shrink: 0;
+}
+
+.app-ic-drawer-workbook-item:hover .app-ic-drawer-workbook-ellipsis,
+.app-ic-drawer-workbook-ellipsis:focus {
+  width: 24px;
+  opacity: 1;
+}
+
+.app-ic-drawer-workbook-ellipsis:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+}
+
+.app-ic-drawer-workbook-ellipsis[aria-expanded="true"] {
+  width: 24px;
+  opacity: 1;
+  background-color: var(--palette-grey-300);
+}
+
+.app-ic-drawer-workbook-ellipsis:hover {
+  background-color: var(--palette-grey-400);
+  opacity: 1;
+}
+
+.app-ic-drawer-workbook-ellipsis svg {
+  width: 16px;
+  height: 16px;
+}
+
+.app-ic-drawer-no-results {
+  padding: 0 8px;
+  color: var(--palette-grey-500);
+}
+
+/* Backdrop for workbook context menu */
+
+.app-ic-drawer-menu-backdrop {
+  position: fixed;
+  inset: 0;
+}

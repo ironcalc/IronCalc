@@ -5,12 +5,14 @@ use wasm_bindgen::{
 };
 
 use ironcalc_base::{
+    cf_types::CfRuleInput,
+    colors,
     expressions::{
         lexer::util::get_tokens as tokenizer,
         types::Area,
-        utils::{number_to_column, quote_name as quote_name_ic},
+        utils::{column_to_number, number_to_column, quote_name as quote_name_ic},
     },
-    types::{CellType, Style},
+    types::{CellType, Color, Style},
     worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
@@ -35,6 +37,14 @@ pub fn column_name_from_number(column: i32) -> Result<String, JsError> {
     }
 }
 
+#[wasm_bindgen(js_name = "columnNumberFromName")]
+pub fn column_number_from_name(column: &str) -> Result<i32, JsError> {
+    match column_to_number(column) {
+        Ok(c) => Ok(c),
+        Err(_) => Err(JsError::new("Invalid column name")),
+    }
+}
+
 #[wasm_bindgen(js_name = "quoteName")]
 pub fn quote_name(name: &str) -> String {
     quote_name_ic(name)
@@ -50,6 +60,19 @@ pub fn get_all_timezones() -> Vec<String> {
 #[wasm_bindgen(js_name = "getSupportedLocales")]
 pub fn get_supported_locales() -> Vec<String> {
     ironcalc_base::get_supported_locales()
+}
+
+/// Returns the list of builtin themes with their color slots.
+#[wasm_bindgen(js_name = "getThemeList", unchecked_return_type = "IronCalcTheme[]")]
+#[allow(clippy::unwrap_used)]
+pub fn get_theme_list() -> JsValue {
+    serde_wasm_bindgen::to_value(&ironcalc_base::themes::builtin_themes()).unwrap()
+}
+
+/// Tint algorithm
+#[wasm_bindgen(js_name = "hexWithTintToRgb")]
+pub fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
+    colors::hex_with_tint_to_rgb(hex, tint)
 }
 
 #[derive(Serialize)]
@@ -178,6 +201,11 @@ impl Model {
         self.model.delete_sheet(sheet).map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "duplicateSheet")]
+    pub fn duplicate_sheet(&mut self, sheet: u32) -> Result<(), JsError> {
+        self.model.duplicate_sheet(sheet).map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "hideSheet")]
     pub fn hide_sheet(&mut self, sheet: u32) -> Result<(), JsError> {
         self.model.hide_sheet(sheet).map_err(to_js_error)
@@ -194,9 +222,15 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "setSheetColor")]
-    pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> Result<(), JsError> {
+    pub fn set_sheet_color(
+        &mut self,
+        sheet: u32,
+        #[wasm_bindgen(unchecked_param_type = "Color")] color: JsValue,
+    ) -> Result<(), JsError> {
+        let color: ironcalc_base::types::Color =
+            serde_wasm_bindgen::from_value(color).unwrap_or(Color::None);
         self.model
-            .set_sheet_color(sheet, color)
+            .set_sheet_color(sheet, &color)
             .map_err(to_js_error)
     }
 
@@ -400,6 +434,21 @@ impl Model {
             .map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "setUserArrayFormula")]
+    pub fn set_user_array_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+        formula: &str,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_user_array_formula(sheet, row, column, width, height, formula)
+            .map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "getFormattedCellValue")]
     pub fn get_formatted_cell_value(
         &self,
@@ -483,7 +532,7 @@ impl Model {
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "getCellStyle", unchecked_return_type = "CellStyle")]
+    #[wasm_bindgen(js_name = "getCellStyle", unchecked_return_type = "ExtendedCellStyle")]
     pub fn get_cell_style(
         &mut self,
         sheet: u32,
@@ -492,7 +541,7 @@ impl Model {
     ) -> Result<JsValue, JsError> {
         let style = self
             .model
-            .get_cell_style(sheet, row, column)
+            .get_extended_cell_style(sheet, row, column)
             .map_err(to_js_error)?;
 
         serde_wasm_bindgen::to_value(&style).map_err(|e| to_js_error(e.to_string()))
@@ -606,6 +655,37 @@ impl Model {
     #[wasm_bindgen(js_name = "getShowGridLines")]
     pub fn get_show_grid_lines(&mut self, sheet: u32) -> Result<bool, JsError> {
         self.model.get_show_grid_lines(sheet).map_err(to_js_error)
+    }
+
+    /// Sets the workbook theme.
+    #[wasm_bindgen(js_name = "setTheme")]
+    pub fn set_theme(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "IronCalcTheme")] theme: JsValue,
+    ) -> Result<(), JsError> {
+        let theme: ironcalc_base::types::Theme =
+            serde_wasm_bindgen::from_value(theme).map_err(|e| to_js_error(e.to_string()))?;
+        self.model.set_theme(theme);
+        Ok(())
+    }
+
+    /// Returns the current workbook theme.
+    #[wasm_bindgen(js_name = "getTheme", unchecked_return_type = "IronCalcTheme")]
+    pub fn get_theme(&self) -> Result<JsValue, JsError> {
+        serde_wasm_bindgen::to_value(&self.model.get_theme())
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Resolves a `Color` value to a CSS hex string using the current workbook theme.
+    /// Accepts `Color`; returns `""` for absent/None colors.
+    #[wasm_bindgen(js_name = "resolveColor")]
+    pub fn resolve_color(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "Color")] color: JsValue,
+    ) -> String {
+        let color: ironcalc_base::types::Color =
+            serde_wasm_bindgen::from_value(color).unwrap_or(ironcalc_base::types::Color::None);
+        self.model.resolve_color(&color)
     }
 
     #[wasm_bindgen(js_name = "autoFillRows")]
@@ -865,7 +945,7 @@ impl Model {
 
     #[wasm_bindgen(js_name = "isValidDefinedName")]
     pub fn is_valid_defined_name(
-        &self,
+        &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,
@@ -921,5 +1001,185 @@ impl Model {
     pub fn get_fmt_settings(&self) -> Result<JsValue, JsError> {
         let settings: FmtSettings = self.model.get_fmt_settings().into();
         serde_wasm_bindgen::to_value(&settings).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(
+        js_name = "getCellArrayStructure",
+        unchecked_return_type = "CellArrayStructure"
+    )]
+    pub fn get_cell_array_structure(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<JsValue, JsError> {
+        let cell_structure = self
+            .model
+            .get_cell_array_structure(sheet, row, column)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        serde_wasm_bindgen::to_value(&cell_structure).map_err(JsError::from)
+    }
+
+    // -----------------------------------------------------------------------
+    // Conditional formatting
+    // -----------------------------------------------------------------------
+
+    #[wasm_bindgen(
+        js_name = "getConditionalFormattingList",
+        unchecked_return_type = "ConditionalFormattingView[]"
+    )]
+    pub fn get_conditional_formatting_list(&self, sheet: u32) -> Result<JsValue, JsError> {
+        let list = self
+            .model
+            .get_conditional_formatting_list(sheet)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        serde_wasm_bindgen::to_value(&list).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "addConditionalFormatting")]
+    pub fn add_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        range: &str,
+        #[wasm_bindgen(unchecked_param_type = "CfRuleInput")] rule: JsValue,
+    ) -> Result<(), JsError> {
+        let rule: CfRuleInput =
+            serde_wasm_bindgen::from_value(rule).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .add_conditional_formatting(sheet, range, rule)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(
+        js_name = "getDxfForConditionalFormatting",
+        unchecked_return_type = "Dxf | null"
+    )]
+    pub fn get_dxf_for_conditional_formatting(
+        &self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<JsValue, JsError> {
+        let dxf = self
+            .model
+            .get_dxf_for_conditional_formatting(sheet, index)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        serde_wasm_bindgen::to_value(&dxf).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "deleteConditionalFormatting")]
+    pub fn delete_conditional_formatting(&mut self, sheet: u32, index: u32) -> Result<(), JsError> {
+        self.model
+            .delete_conditional_formatting(sheet, index)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "updateConditionalFormatting")]
+    pub fn update_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        index: u32,
+        new_range: &str,
+        #[wasm_bindgen(unchecked_param_type = "CfRuleInput")] new_rule: JsValue,
+    ) -> Result<(), JsError> {
+        let new_rule: CfRuleInput =
+            serde_wasm_bindgen::from_value(new_rule).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .update_conditional_formatting(sheet, index, new_range, new_rule)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "raiseConditionalFormattingPriority")]
+    pub fn raise_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<(), JsError> {
+        self.model
+            .raise_conditional_formatting_priority(sheet, index)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "lowerConditionalFormattingPriority")]
+    pub fn lower_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<(), JsError> {
+        self.model
+            .lower_conditional_formatting_priority(sheet, index)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    // Named styles
+
+    #[wasm_bindgen(js_name = "getNamedStyleList", unchecked_return_type = "string[]")]
+    pub fn get_named_style_list(&self) -> Vec<String> {
+        self.model.get_named_style_list()
+    }
+
+    #[wasm_bindgen(js_name = "getNamedStyle", unchecked_return_type = "CellStyle")]
+    pub fn get_named_style(&self, name: &str) -> Result<JsValue, JsError> {
+        let style = self.model.get_named_style(name).map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&style).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "createNamedStyle")]
+    pub fn create_named_style(
+        &mut self,
+        name: &str,
+        #[wasm_bindgen(unchecked_param_type = "CellStyle")] style: JsValue,
+    ) -> Result<(), JsError> {
+        let style: Style =
+            serde_wasm_bindgen::from_value(style).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .create_named_style(name, &style)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "deleteNamedStyle")]
+    pub fn delete_named_style(&mut self, name: &str) -> Result<(), JsError> {
+        self.model.delete_named_style(name).map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "updateNamedStyle")]
+    pub fn update_named_style(
+        &mut self,
+        name: &str,
+        new_name: &str,
+        #[wasm_bindgen(unchecked_param_type = "CellStyle")] style: JsValue,
+    ) -> Result<(), JsError> {
+        let style: Style =
+            serde_wasm_bindgen::from_value(style).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .update_named_style(name, new_name, &style)
+            .map_err(to_js_error)
+    }
+
+    /// Returns all Excel built-in named styles as a `NamedStyle[]`.
+    /// These are always available regardless of whether the workbook uses them.
+    #[wasm_bindgen(
+        js_name = "getBuiltinNamedStyles",
+        unchecked_return_type = "NamedStyle[]"
+    )]
+    pub fn get_builtin_named_styles(&self) -> Result<JsValue, JsError> {
+        #[derive(serde::Serialize)]
+        struct NamedStyleEntry {
+            name: String,
+            style: Style,
+        }
+        let entries: Vec<NamedStyleEntry> = self
+            .model
+            .get_builtin_named_styles()
+            .into_iter()
+            .map(|(name, style)| NamedStyleEntry { name, style })
+            .collect();
+        serde_wasm_bindgen::to_value(&entries).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Applies a named style to the current selection.
+    /// If the style is a built-in not yet in the workbook, it is added first.
+    #[wasm_bindgen(js_name = "onApplyNamedStyle")]
+    pub fn on_apply_named_style(&mut self, name: &str) -> Result<(), JsError> {
+        self.model.on_apply_named_style(name).map_err(to_js_error)
     }
 }

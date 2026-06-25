@@ -13,19 +13,51 @@
     "close_dialog": "Cerrar diálogo",
     "new": "Nuevo",
     "blank_workbook": "Libro en blanco",
-    "blank_workbook_description": "Crea desde cero o sube tu propio archivo.",
+    "import_workbook": "Importar libro",
+    "storage_warning": "<warn>¡Atención!</warn> Esta aplicación es una prueba de concepto y no un producto terminado. Siéntete libre de explorar, compartir y subir/descargar modelos, pero no compartas ni subas modelos con datos sensibles o privados. Los datos se eliminarán periódicamente. <docsLink>Leer más</docsLink>",
     "templates": {
       "choose_template": "Elegir una plantilla",
       "templates": "Plantillas",
+      "see_all": "Ver todo",
+      "examples_and_templates": "Ejemplos y plantillas",
+      "category_all": "Todo",
+      "category_finance": "Finanzas",
+      "category_lifestyle": "Estilo de vida",
+      "category_project_management": "Gestión de proyectos",
+      "category_games": "Juegos",
+      "yearly_calendar": "Calendario anual",
+      "yearly_calendar_description": "Planifica y visualiza todo el año.",
       "mortgage_calculator": "Calculadora de hipoteca",
       "mortgage_calculator_description": "Estima pagos, intereses y coste total.",
+      "crossword": "Crucigrama",
+      "crossword_description": "Rellena la cuadrícula y resuelve las pistas.",
       "travel_expenses_tracker": "Seguimiento de gastos de viaje",
-      "travel_expenses_tracker_description": "Controla los costes del viaje y mantente dentro del presupuesto."
+      "travel_expenses_tracker_description": "Controla los costes del viaje y mantente dentro del presupuesto.",
+      "invoice": "Factura",
+      "invoice_description": "Crea y gestiona facturas de clientes.",
+      "gantt_project_tracker": "Seguimiento de proyectos Gantt",
+      "gantt_project_tracker_description": "Planifica tareas y plazos en un diagrama de Gantt.",
+      "weekly_timesheet": "Hoja de horas semanal",
+      "weekly_timesheet_description": "Registra y revisa las horas trabajadas cada semana.",
+      "eu_salary_calculator": "Calculadora de salario UE",
+      "eu_salary_calculator_description": "Estima el salario neto tras impuestos en la UE.",
+      "absence_schedule": "Calendario de ausencias",
+      "absence_schedule_description": "Controla vacaciones y ausencias del equipo.",
+      "wordle": "Wordle",
+      "wordle_description": "Adivina la palabra oculta de cinco letras.",
+      "event_calendar": "Calendario de eventos",
+      "event_calendar_description": "Organiza y sigue los próximos eventos."
     },
-    "create_workbook": "Crear libro"
+    "create_workbook": "Crear libro",
+    "documentation": "Documentación",
+    "about_ironcalc": "Acerca de IronCalc"
   },
   "left_drawer": {
     "new_workbook": "Nuevo libro",
+    "search_workbook": "Buscar libros",
+    "search_placeholder": "Buscar libro...",
+    "clear_search": "Borrar búsqueda",
+    "search_no_results": "Tu búsqueda no coincide con ningún libro.",
     "pinned": "Fijados",
     "today": "Hoy",
     "last_30_days": "Últimos 30 días",
@@ -40,9 +72,16 @@
     "alert": {
       "title": "Atención",
       "subtitle": "IronCalc almacena tus datos solo en el almacenamiento local de tu navegador.",
-      "subtitle2": "<bold>Descarga tu XLSX con frecuencia</bold> – las versiones futuras podrían no abrir los libros actuales, incluso si se comparten."
+      "subtitle2": "<bold>Descarga tu XLSX con frecuencia</bold> – las versiones futuras podrían no abrir los libros actuales, incluso si se comparten.",
+      "close": "Cerrar"
     },
-    "documentation": "Documentación"
+    "documentation": "Documentación",
+    "cancel": "Cancelar",
+    "delete_workbooks_one": "Eliminar {{count}} libro",
+    "delete_workbooks_other": "Eliminar {{count}} libros",
+    "bulk_delete_message_one": "Este libro será eliminado permanentemente.",
+    "bulk_delete_message_other": "{{count}} libros serán eliminados permanentemente.",
+    "select_workbook": "Seleccionar {{name}}"
   },
   "file_bar": {
     "open_sidebar": "Abrir barra lateral",
@@ -65,14 +104,16 @@
       "delete_workbook": {
         "button": "Eliminar libro",
         "title": "¿Estás seguro?",
-        "subtitle": "El libro <bold>'{{workbookName}}'</bold> será eliminado permanentemente. Esta acción no se puede deshacer.",
-        "confirm_button": "Sí, eliminar libro",
+        "subtitle": "El libro '{{workbookName}}' será eliminado permanentemente.",
+        "warning": "Esta acción no se puede deshacer.",
+        "confirm_button": "Sí, eliminar",
         "cancel_button": "Cancelar"
       },
       "default_language": "Idioma predeterminado"
     },
     "help_menu": {
       "button": "Ayuda",
+      "about": "Acerca de IronCalc",
       "documentation": "Documentación",
       "keyboard_shortcuts": "Atajos de teclado"
     },

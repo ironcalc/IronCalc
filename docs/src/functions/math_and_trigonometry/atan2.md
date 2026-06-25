@@ -27,7 +27,8 @@ ATAN2 returns a number in radians in the range (-$\pi$, +$\pi$] that is the inve
 ## Details
 * The ATAN2 function utilizes the *atan2()* method provided by the [Rust Standard Library](https://doc.rust-lang.org/std/).
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=atan2).
+
+<IronCalcEmbed src="/examples/atan2.ic"/>
 
 ## Links
 * For more information about inverse trigonometric functions, visit Wikipedia's [Inverse trigonometric functions](https://en.wikipedia.org/wiki/Inverse_trigonometric_functions) page.

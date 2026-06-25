@@ -9,23 +9,55 @@
   },
   "welcome_dialog": {
     "title": "Welcome to IronCalc",
-    "subtitle": "Start with a blank workbook or a ready-made template.",
+    "subtitle": "Start fresh, bring your data, or explore what's possible.",
     "close_dialog": "Close dialog",
     "new": "New",
     "blank_workbook": "Blank workbook",
-    "blank_workbook_description": "Create from scratch or upload your own file.",
+    "import_workbook": "Import .xlsx",
+    "storage_warning": "<warn>Warning!</warn> This app is a proof of concept, not a finished product. Feel free to explore, share, and upload/download models, but don't share or upload models with sensitive or private data. Data will be deleted periodically. <docsLink>Read more</docsLink>",
     "templates": {
       "choose_template": "Choose a template",
       "templates": "Templates",
-      "mortgage_calculator": "Mortgage calculator",
+      "see_all": "See all",
+      "examples_and_templates": "Examples & Templates",
+      "category_all": "All",
+      "category_finance": "Finance",
+      "category_lifestyle": "Lifestyle",
+      "category_project_management": "Project Management",
+      "category_games": "Games",
+      "yearly_calendar": "Yearly Calendar",
+      "yearly_calendar_description": "Plan and visualize the full year ahead.",
+      "mortgage_calculator": "Mortgage Calculator",
       "mortgage_calculator_description": "Estimate payments, interest, and overall cost.",
-      "travel_expenses_tracker": "Travel expenses tracker",
-      "travel_expenses_tracker_description": "Track trip costs and stay on budget."
+      "crossword": "Crossword",
+      "crossword_description": "Fill in the grid and solve the clues.",
+      "travel_expenses_tracker": "Travel Expenses Tracker",
+      "travel_expenses_tracker_description": "Track trip costs and stay on budget.",
+      "invoice": "Invoice",
+      "invoice_description": "Create and track client invoices.",
+      "gantt_project_tracker": "Gantt Project Tracker",
+      "gantt_project_tracker_description": "Plan tasks and timelines on a Gantt chart.",
+      "weekly_timesheet": "Weekly Timesheet",
+      "weekly_timesheet_description": "Log and review hours worked each week.",
+      "eu_salary_calculator": "EU Salary Calculator",
+      "eu_salary_calculator_description": "Estimate net salary after EU taxes.",
+      "absence_schedule": "Absence Schedule",
+      "absence_schedule_description": "Track team vacations and time off.",
+      "wordle": "Wordle",
+      "wordle_description": "Guess the hidden five-letter word.",
+      "event_calendar": "Event Calendar",
+      "event_calendar_description": "Organize and follow upcoming events."
     },
-    "create_workbook": "Create workbook"
+    "create_workbook": "Create workbook",
+    "documentation": "Documentation",
+    "about_ironcalc": "About IronCalc"
   },
   "left_drawer": {
     "new_workbook": "New workbook",
+    "search_workbook": "Search workbooks",
+    "search_placeholder": "Search workbook...",
+    "clear_search": "Clear search",
+    "search_no_results": "Your search does not match any workbooks.",
     "pinned": "Pinned",
     "today": "Today",
     "last_30_days": "Last 30 Days",
@@ -40,9 +72,16 @@
     "alert": {
       "title": "Heads up!",
       "subtitle": "IronCalc stores your data only in your browser's local storage.",
-      "subtitle2": "<bold>Download your XLSX often</bold> – future versions may not open current workbooks, even if shared."
+      "subtitle2": "<bold>Download your XLSX often</bold> – future versions may not open current workbooks, even if shared.",
+      "close": "Close"
     },
-    "documentation": "Documentation"
+    "documentation": "Documentation",
+    "cancel": "Cancel",
+    "delete_workbooks_one": "Delete {{count}} workbook",
+    "delete_workbooks_other": "Delete {{count}} workbooks",
+    "bulk_delete_message_one": "This workbook will be permanently deleted.",
+    "bulk_delete_message_other": "{{count}} workbooks will be permanently deleted.",
+    "select_workbook": "Select {{name}}"
   },
   "file_bar": {
     "open_sidebar": "Open sidebar",
@@ -65,14 +104,16 @@
       "delete_workbook": {
         "button": "Delete workbook",
         "title": "Are you sure?",
-        "subtitle": "The workbook <bold>'{{workbookName}}'</bold> will be permanently deleted. This action cannot be undone.",
-        "confirm_button": "Yes, delete workbook",
+        "subtitle": "The workbook '{{workbookName}}' will be permanently deleted.",
+        "warning": "This action cannot be undone.",
+        "confirm_button": "Yes, delete",
         "cancel_button": "Cancel"
       },
       "default_language": "Default language"
     },
     "help_menu": {
       "button": "Help",
+      "about": "About Ironcalc",
       "documentation": "Documentation",
       "keyboard_shortcuts": "Keyboard Shortcuts"
     },

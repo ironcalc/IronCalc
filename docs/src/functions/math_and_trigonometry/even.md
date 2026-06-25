@@ -32,11 +32,6 @@ EVEN returns a [number](/features/value-types#numbers) that is the nearest even 
 * If the value of the *number* argument is not (or cannot be converted to) a [number](/features/value-types#numbers), then EVEN returns the [`#VALUE!`](/features/error-types.md#value) error.
 <!--@include: ../markdown-snippets/error-type-details.txt-->
 
-<!--
-## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=even).
--->
-
 ## Links
 * For more information about even and odd numbers, visit Wikipedia's [Parity](https://en.wikipedia.org/wiki/Parity_(mathematics)) page.
 * See also IronCalc's [ODD](/functions/math_and_trigonometry/odd) function.

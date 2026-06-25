@@ -36,10 +36,7 @@ $$
 \operatorname{QUOTIENT}(n, d) = \operatorname{TRUNC}\!\left(\dfrac{n}{d}\right),\quad d \ne 0
 $$
 This differs from using `INT(n/d)` when the quotient is negative, because `INT` rounds down toward −∞, whereas `TRUNC` and QUOTIENT truncate toward zero.
-<!--
-## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=quotient).
--->
+
 ## Links
 * For more information about the quotient, visit Wikipedia's [Quotient](https://en.wikipedia.org/wiki/Quotient) page.
 * See also IronCalc's [MOD](/functions/math_and_trigonometry/mod) function.

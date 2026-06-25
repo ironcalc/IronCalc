@@ -1,4 +1,5 @@
 import {
+  columnNumberFromName,
   getTokens,
   type Model,
   type Range,
@@ -235,6 +236,104 @@ export function parseRangeInSheet(
     }
   }
   return null;
+}
+
+// Parse a single cell like "A3" into { col, row }.
+const parseCell = (cell: string): { col: number; row: number } => {
+  const m = /^([A-Za-z]+)(\d+)$/.exec(cell.trim());
+  if (!m) {
+    throw new Error(`Invalid cell: "${cell}"`);
+  }
+  return { col: columnNumberFromName(m[1]), row: parseInt(m[2], 10) };
+};
+
+// Parse "A1:A4" or "A4" into a normalized rectangle.
+export const parseRect = (token: string) => {
+  const [a, b] = token.split(":");
+  const c1 = parseCell(a);
+  const c2 = b ? parseCell(b) : c1;
+  return {
+    minCol: Math.min(c1.col, c2.col),
+    maxCol: Math.max(c1.col, c2.col),
+    minRow: Math.min(c1.row, c2.row),
+    maxRow: Math.max(c1.row, c2.row),
+  };
+};
+
+function isRangeInRangesRaw(range: string, ranges: string): boolean {
+  const target = parseRect(range);
+  const rects = ranges.trim().split(/\s+/).filter(Boolean).map(parseRect);
+
+  // A cell is covered if it lies inside at least one rectangle.
+  const covered = (col: number, row: number): boolean =>
+    rects.some(
+      (r) =>
+        col >= r.minCol &&
+        col <= r.maxCol &&
+        row >= r.minRow &&
+        row <= r.maxRow,
+    );
+
+  // `range` is "in" `ranges` iff every cell of `range` is covered.
+  for (let col = target.minCol; col <= target.maxCol; col++) {
+    for (let row = target.minRow; row <= target.maxRow; row++) {
+      if (!covered(col, row)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Returns true if every cell of `range` is covered by the union of `ranges`.
+ *
+ * @param range  A single cell or range, e.g. "A3" or "A1:A4"
+ * @param ranges A space-separated list of cells/ranges, e.g. "A1:A2 A4 G6:G10"
+ */
+export function isRangeInRanges(range: string, ranges: string): boolean {
+  try {
+    return isRangeInRangesRaw(range, ranges);
+  } catch (e) {
+    console.error("Error in isRangeInRanges:", e);
+    return false;
+  }
+}
+
+// Splits a space-separated list of ranges into individual tokens, keeping
+// spaces that live inside a quoted sheet name (e.g. `'My Sheet'!A1`) together.
+function _splitRanges(ranges: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (const ch of ranges) {
+    if (ch === "'") {
+      inQuotes = !inQuotes;
+      current += ch;
+    } else if (/\s/.test(ch) && !inQuotes) {
+      if (current !== "") {
+        parts.push(current);
+        current = "";
+      }
+    } else {
+      current += ch;
+    }
+  }
+  if (current !== "") {
+    parts.push(current);
+  }
+  return parts;
+}
+
+/**
+ * Returns true if `ranges` is a space-separated list of plain references or
+ * ranges in canonical form: upper-case columns, no sheet names, no `$` absolute
+ * markers, single-space separated. For example: "A1:D3 A1:E5 D3 R1:R3 S3:S5".
+ */
+export function isValidRanges(ranges: string): boolean {
+  const cell = "[A-Z]+[1-9][0-9]*";
+  const token = `${cell}(?::${cell})?`;
+  return new RegExp(`^${token}(?: ${token})*$`).test(ranges);
 }
 
 export default getFormulaHTML;

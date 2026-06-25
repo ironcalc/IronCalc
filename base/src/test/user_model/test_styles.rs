@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::{
     expressions::types::Area,
@@ -22,7 +23,8 @@ fn basic_fonts() {
     assert!(!style.font.b);
     assert!(!style.font.u);
     assert!(!style.font.strike);
-    assert_eq!(style.font.color, Some("#000000".to_owned()));
+    // Default font has no color set — see Font::default() in types.rs.
+    assert_eq!(style.font.color, Color::None);
 
     // bold
     model.update_range_style(&range, "font.b", "true").unwrap();
@@ -51,7 +53,7 @@ fn basic_fonts() {
         .update_range_style(&range, "font.color", "#F1F1F1")
         .unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.font.color, Some("#F1F1F1".to_owned()));
+    assert_eq!(style.font.color, Color::Rgb("#F1F1F1".to_owned()));
 
     while model.can_undo() {
         model.undo().unwrap();
@@ -62,7 +64,8 @@ fn basic_fonts() {
     assert!(!style.font.b);
     assert!(!style.font.u);
     assert!(!style.font.strike);
-    assert_eq!(style.font.color, Some("#000000".to_owned()));
+    // After undo, font returns to the default — see Font::default() in types.rs.
+    assert_eq!(style.font.color, Color::None);
 
     while model.can_redo() {
         model.redo().unwrap();
@@ -73,7 +76,7 @@ fn basic_fonts() {
     assert!(style.font.b);
     assert!(style.font.u);
     assert!(style.font.strike);
-    assert_eq!(style.font.color, Some("#F1F1F1".to_owned()));
+    assert_eq!(style.font.color, Color::Rgb("#F1F1F1".to_owned()));
 
     let send_queue = model.flush_send_queue();
 
@@ -85,7 +88,7 @@ fn basic_fonts() {
     assert!(style.font.b);
     assert!(style.font.u);
     assert!(style.font.strike);
-    assert_eq!(style.font.color, Some("#F1F1F1".to_owned()));
+    assert_eq!(style.font.color, Color::Rgb("#F1F1F1".to_owned()));
 }
 
 #[test]
@@ -143,21 +146,13 @@ fn basic_fill() {
     };
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.fill.bg_color, None);
-    assert_eq!(style.fill.fg_color, None);
-    assert_eq!(&style.fill.pattern_type, "none");
+    assert_eq!(style.fill.color, Color::None);
 
-    // bg_color
     model
-        .update_range_style(&range, "fill.bg_color", "#F2F2F2")
-        .unwrap();
-    model
-        .update_range_style(&range, "fill.fg_color", "#F3F4F5")
+        .update_range_style(&range, "fill.color", "#F3F4F5")
         .unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#F2F2F2".to_owned()));
-    assert_eq!(style.fill.fg_color, Some("#F3F4F5".to_owned()));
-    assert_eq!(&style.fill.pattern_type, "solid");
+    assert_eq!(style.fill.color, Color::Rgb("#F3F4F5".to_owned()));
 
     let send_queue = model.flush_send_queue();
 
@@ -165,8 +160,7 @@ fn basic_fill() {
     model2.apply_external_diffs(&send_queue).unwrap();
 
     let style = model2.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#F2F2F2".to_owned()));
-    assert_eq!(style.fill.fg_color, Some("#F3F4F5".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#F3F4F5".to_owned()));
 }
 
 #[test]
@@ -180,12 +174,7 @@ fn fill_errors() {
         height: 1,
     };
     assert_eq!(
-        model.update_range_style(&range, "fill.bg_color", "#FFF"),
-        Err("Invalid color: '#FFF'.".to_string())
-    );
-
-    assert_eq!(
-        model.update_range_style(&range, "fill.fg_color", "#FFF"),
+        model.update_range_style(&range, "fill.color", "#FFF"),
         Err("Invalid color: '#FFF'.".to_string())
     );
 }
@@ -479,4 +468,66 @@ fn cell_clear_formatting() {
     let style = model.get_cell_style(0, 1, 1).unwrap();
     assert!(!style.font.b);
     assert_eq!(style.alignment, None);
+}
+
+#[test]
+fn basic_font_size() {
+    let mut model = new_empty_user_model();
+    let range = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 12);
+
+    model.update_range_style(&range, "font.size", "24").unwrap();
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 24);
+
+    model.undo().unwrap();
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 12);
+
+    model.redo().unwrap();
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 24);
+
+    let send_queue = model.flush_send_queue();
+    let mut model2 = new_empty_user_model();
+    model2.apply_external_diffs(&send_queue).unwrap();
+    let style = model2.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 24);
+}
+
+#[test]
+fn font_size_errors() {
+    let mut model = new_empty_user_model();
+    let range = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+
+    assert_eq!(
+        model.update_range_style(&range, "font.size", "abc"),
+        Err("Invalid value for font size: 'abc'.".to_string())
+    );
+    assert_eq!(
+        model.update_range_style(&range, "font.size", ""),
+        Err("Invalid value for font size: ''.".to_string())
+    );
+    assert_eq!(
+        model.update_range_style(&range, "font.size", "0"),
+        Err("Invalid value for font size: '0'.".to_string())
+    );
+    assert_eq!(
+        model.update_range_style(&range, "font.size", "-1"),
+        Err("Invalid value for font size: '-1'.".to_string())
+    );
 }

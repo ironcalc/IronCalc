@@ -1,53 +1,50 @@
-import styled from "@emotion/styled";
-import { Drawer } from "@mui/material";
+import { useState } from "react";
 import DrawerContent from "./DrawerContent";
 import DrawerFooter from "./DrawerFooter";
 import DrawerHeader from "./DrawerHeader";
+import { useWorkbookSelection } from "./useWorkbookSelection";
+import "./left-drawer.css";
 
 interface LeftDrawerProps {
   open: boolean;
-  onClose: () => void;
   newModel: () => void;
   setModel: (key: string) => void;
   onDelete: (uuid: string) => void;
   localStorageId: number;
 }
 
-function LeftDrawer({
-  open,
-  onClose,
-  newModel,
-  setModel,
-  onDelete,
-}: LeftDrawerProps) {
-  return (
-    <DrawerWrapper
-      variant="persistent"
-      anchor="left"
-      open={open}
-      onClose={onClose}
-      transitionDuration={0}
-    >
-      <DrawerHeader onNewModel={newModel} />
-      <DrawerContent setModel={setModel} onDelete={onDelete} />
+function LeftDrawer({ open, newModel, setModel, onDelete }: LeftDrawerProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const {
+    checkedUuids,
+    handleCheckboxClick,
+    handleDeleteChecked,
+    handleCancelChecked,
+  } = useWorkbookSelection({ onDelete });
 
-      <DrawerFooter />
-    </DrawerWrapper>
+  return (
+    <div className={`app-ic-drawer${open ? " app-ic-drawer--open" : ""}`}>
+      <div className="app-ic-drawer-paper">
+        <DrawerHeader
+          onNewModel={newModel}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
+        <DrawerContent
+          setModel={setModel}
+          onDelete={onDelete}
+          searchQuery={searchQuery}
+          checkedUuids={checkedUuids}
+          onCheckboxClick={handleCheckboxClick}
+        />
+        <DrawerFooter
+          checkedCount={checkedUuids.size}
+          onDeleteChecked={handleDeleteChecked}
+          onCancelChecked={handleCancelChecked}
+        />
+      </div>
+    </div>
   );
 }
-
-const DrawerWrapper = styled(Drawer)`
-  width: 264px;
-  height: 100%;
-  flex-shrink: 0;
-  font-family: "Inter", sans-serif;
-
-  .MuiDrawer-paper {
-    width: 264px;
-    background-color: #f5f5f5;
-    overflow: hidden;
-    border-right: 1px solid #e0e0e0;
-  }
-`;
 
 export default LeftDrawer;

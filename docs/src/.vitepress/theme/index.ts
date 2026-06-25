@@ -4,6 +4,7 @@ import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme";
 import "./style.css";
 import "./vars.css";
+import IronCalcEmbed from "./components/IronCalcEmbed.vue";
 
 export default {
   extends: DefaultTheme,
@@ -13,6 +14,6 @@ export default {
     });
   },
   enhanceApp({ app, router, siteData }) {
-    // ...
+    app.component("IronCalcEmbed", IronCalcEmbed);
   },
 } satisfies Theme;

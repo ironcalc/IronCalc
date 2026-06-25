@@ -63,7 +63,7 @@ CHOOSE returns a value of the same type as the selected argument. The returned v
 
 ## Examples
 
-[See some examples in IronCalc](https://app.ironcalc.com/?example=choose).
+<IronCalcEmbed src="/examples/choose.ic"/>
 
 ## Links
 

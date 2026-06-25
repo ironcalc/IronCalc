@@ -1,46 +1,51 @@
 import type { FmtSettings } from "@ironcalc/wasm";
-import { Menu, MenuItem, styled } from "@mui/material";
-import { Check } from "lucide-react";
-import { type ComponentProps, useCallback, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Menu } from "../Menu/Menu";
+import { MenuDivider } from "../Menu/MenuDivider";
+import { MenuItem } from "../Menu/MenuItem";
 import FormatPicker from "./FormatPicker";
 import { NumberFormats } from "./formatUtil";
+import "./format-menu.css";
 
-type FormatMenuProps = {
-  children: React.ReactNode;
+type FormatMenuProperties = {
+  children: ReactNode;
   numFmt: string;
   onChange: (numberFmt: string) => void;
-  onExited: () => void;
-  anchorOrigin: ComponentProps<typeof Menu>["anchorOrigin"];
   formatOptions: FmtSettings;
 };
 
-const FormatMenu = (properties: FormatMenuProps) => {
+interface FormatMenuItemsProperties {
+  numFmt: string;
+  onChange: (numberFmt: string) => void;
+  formatOptions: FmtSettings;
+  onOpenPicker: () => void;
+  previousFocusedElementRef: React.RefObject<HTMLElement | null>;
+}
+
+function FormatMenuItems({
+  numFmt,
+  onChange,
+  formatOptions,
+  onOpenPicker,
+  previousFocusedElementRef,
+}: FormatMenuItemsProperties) {
   const { t } = useTranslation();
-  const [isMenuOpen, setMenuOpen] = useState(false);
-  const [isPickerOpen, setPickerOpen] = useState(false);
-  const anchorElement = useRef<HTMLDivElement>(null);
 
-  const formatOptions = properties.formatOptions;
+  function onSelect(s: string) {
+    onChange(s);
+    const prev = previousFocusedElementRef.current;
+    requestAnimationFrame(() => prev?.focus());
+  }
 
-  const onSelect = useCallback(
-    (s: string) => {
-      properties.onChange(s);
-      setMenuOpen(false);
-    },
-    [properties.onChange],
-  );
-
-  const isAutoFormat = properties.numFmt === NumberFormats.AUTO;
-  const isNumberFormat = properties.numFmt === formatOptions.number_fmt;
-  const isPercentageFormat = properties.numFmt === NumberFormats.PERCENTAGE;
-  const isCurrencyEurosFormat =
-    properties.numFmt === NumberFormats.CURRENCY_EUR;
-  const isCurrencyUsdFormat = properties.numFmt === NumberFormats.CURRENCY_USD;
-  const isCurrencyGbpFormat = properties.numFmt === NumberFormats.CURRENCY_GBP;
-  const isShortDateFormat = properties.numFmt === formatOptions.short_date;
-  const isLongDateFormat = properties.numFmt === formatOptions.long_date;
-
+  const isAutoFormat = numFmt === NumberFormats.AUTO;
+  const isNumberFormat = numFmt === formatOptions.number_fmt;
+  const isPercentageFormat = numFmt === NumberFormats.PERCENTAGE;
+  const isCurrencyEurosFormat = numFmt === NumberFormats.CURRENCY_EUR;
+  const isCurrencyUsdFormat = numFmt === NumberFormats.CURRENCY_USD;
+  const isCurrencyGbpFormat = numFmt === NumberFormats.CURRENCY_GBP;
+  const isShortDateFormat = numFmt === formatOptions.short_date;
+  const isLongDateFormat = numFmt === formatOptions.long_date;
   const isCustomFormat = !(
     isAutoFormat ||
     isNumberFormat ||
@@ -54,182 +59,119 @@ const FormatMenu = (properties: FormatMenuProps) => {
 
   return (
     <>
-      <ChildrenWrapper
-        onClick={(): void => setMenuOpen(true)}
-        ref={anchorElement}
+      <MenuItem
+        checked={isAutoFormat}
+        onClick={() => onSelect(NumberFormats.AUTO)}
       >
-        {properties.children}
-      </ChildrenWrapper>
-      <StyledMenu
-        open={isMenuOpen}
-        onClose={(): void => setMenuOpen(false)}
-        anchorEl={anchorElement.current}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "left",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "left",
-        }}
+        {t("toolbar.format_menu.auto")}
+      </MenuItem>
+
+      <MenuDivider />
+
+      <MenuItem
+        checked={isNumberFormat}
+        onClick={() => onSelect(formatOptions.number_fmt)}
+        secondaryText={formatOptions.number_example}
       >
-        <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.AUTO)}>
-          <MenuItemText>
-            <CheckIcon $active={isAutoFormat} />
-            {t("toolbar.format_menu.auto")}
-          </MenuItemText>
-        </MenuItemWrapper>
-        <MenuDivider />
-        <MenuItemWrapper
-          onClick={(): void => onSelect(formatOptions.number_fmt)}
-        >
-          <MenuItemText>
-            <CheckIcon $active={isNumberFormat} />
-            {t("toolbar.format_menu.number")}
-          </MenuItemText>
-          <MenuItemExample>{formatOptions.number_example}</MenuItemExample>
-        </MenuItemWrapper>
-        <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.PERCENTAGE)}
-        >
-          <MenuItemText>
-            <CheckIcon $active={isPercentageFormat} />
-            {t("toolbar.format_menu.percentage")}
-          </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.percentage_example")}
-          </MenuItemExample>
-        </MenuItemWrapper>
+        {t("toolbar.format_menu.number")}
+      </MenuItem>
+      <MenuItem
+        checked={isPercentageFormat}
+        onClick={() => onSelect(NumberFormats.PERCENTAGE)}
+        secondaryText={t("toolbar.format_menu.percentage_example")}
+      >
+        {t("toolbar.format_menu.percentage")}
+      </MenuItem>
 
-        <MenuDivider />
-        <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.CURRENCY_EUR)}
-        >
-          <MenuItemText>
-            <CheckIcon $active={isCurrencyEurosFormat} />
-            {t("toolbar.format_menu.currency_eur")}
-          </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.currency_eur_example")}
-          </MenuItemExample>
-        </MenuItemWrapper>
-        <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.CURRENCY_USD)}
-        >
-          <MenuItemText>
-            <CheckIcon $active={isCurrencyUsdFormat} />
-            {t("toolbar.format_menu.currency_usd")}
-          </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.currency_usd_example")}
-          </MenuItemExample>
-        </MenuItemWrapper>
-        <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.CURRENCY_GBP)}
-        >
-          <MenuItemText>
-            <CheckIcon $active={isCurrencyGbpFormat} />
-            {t("toolbar.format_menu.currency_gbp")}
-          </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.currency_gbp_example")}
-          </MenuItemExample>
-        </MenuItemWrapper>
+      <MenuDivider />
 
-        <MenuDivider />
-        <MenuItemWrapper
-          onClick={(): void => onSelect(formatOptions.short_date)}
-        >
-          <MenuItemText>
-            <CheckIcon $active={isShortDateFormat} />
-            {t("toolbar.format_menu.date_short")}
-          </MenuItemText>
-          <MenuItemExample>{formatOptions.short_date_example}</MenuItemExample>
-        </MenuItemWrapper>
-        <MenuItemWrapper
-          onClick={(): void => onSelect(formatOptions.long_date)}
-        >
-          <MenuItemText>
-            <CheckIcon $active={isLongDateFormat} />
-            {t("toolbar.format_menu.date_long")}
-          </MenuItemText>
-          <MenuItemExample>{formatOptions.long_date_example}</MenuItemExample>
-        </MenuItemWrapper>
+      <MenuItem
+        checked={isCurrencyEurosFormat}
+        onClick={() => onSelect(NumberFormats.CURRENCY_EUR)}
+        secondaryText={t("toolbar.format_menu.currency_eur_example")}
+      >
+        {t("toolbar.format_menu.currency_eur")}
+      </MenuItem>
+      <MenuItem
+        checked={isCurrencyUsdFormat}
+        onClick={() => onSelect(NumberFormats.CURRENCY_USD)}
+        secondaryText={t("toolbar.format_menu.currency_usd_example")}
+      >
+        {t("toolbar.format_menu.currency_usd")}
+      </MenuItem>
+      <MenuItem
+        checked={isCurrencyGbpFormat}
+        onClick={() => onSelect(NumberFormats.CURRENCY_GBP)}
+        secondaryText={t("toolbar.format_menu.currency_gbp_example")}
+      >
+        {t("toolbar.format_menu.currency_gbp")}
+      </MenuItem>
 
-        <MenuDivider />
-        <MenuItemWrapper onClick={(): void => setPickerOpen(true)}>
-          <MenuItemText>
-            <CheckIcon $active={isCustomFormat} />
-            {t("toolbar.format_menu.custom")}
-          </MenuItemText>
-        </MenuItemWrapper>
-      </StyledMenu>
-      <FormatPicker
-        numFmt={properties.numFmt}
-        onChange={onSelect}
-        open={isPickerOpen}
-        onClose={(): void => setPickerOpen(false)}
-        onExited={properties.onExited}
-      />
+      <MenuDivider />
+
+      <MenuItem
+        checked={isShortDateFormat}
+        onClick={() => onSelect(formatOptions.short_date)}
+        secondaryText={formatOptions.short_date_example}
+      >
+        {t("toolbar.format_menu.date_short")}
+      </MenuItem>
+      <MenuItem
+        checked={isLongDateFormat}
+        onClick={() => onSelect(formatOptions.long_date)}
+        secondaryText={formatOptions.long_date_example}
+      >
+        {t("toolbar.format_menu.date_long")}
+      </MenuItem>
+
+      <MenuDivider />
+
+      <MenuItem checked={isCustomFormat} onClick={onOpenPicker}>
+        {t("toolbar.format_menu.custom")}
+      </MenuItem>
     </>
   );
+}
+
+const FormatMenu = (properties: FormatMenuProperties) => {
+  const [isPickerOpen, setPickerOpen] = useState(false);
+  const previousFocusedElement = useRef<HTMLElement | null>(null);
+
+  return (
+    <div className="ic-format-menu-root">
+      <Menu
+        trigger={
+          <div
+            className="ic-format-menu-anchor"
+            onMouseDownCapture={() => {
+              previousFocusedElement.current =
+                document.activeElement as HTMLElement | null;
+            }}
+          >
+            {properties.children}
+          </div>
+        }
+      >
+        <FormatMenuItems
+          numFmt={properties.numFmt}
+          onChange={properties.onChange}
+          formatOptions={properties.formatOptions}
+          onOpenPicker={() => setPickerOpen(true)}
+          previousFocusedElementRef={previousFocusedElement}
+        />
+      </Menu>
+
+      <FormatPicker
+        numFmt={properties.numFmt}
+        onChange={(s) => {
+          properties.onChange(s);
+          requestAnimationFrame(() => previousFocusedElement.current?.focus());
+        }}
+        open={isPickerOpen}
+        onClose={() => setPickerOpen(false)}
+      />
+    </div>
+  );
 };
-
-const StyledMenu = styled(Menu)({
-  "& .MuiPaper-root": {
-    borderRadius: 8,
-    padding: "4px 0px",
-    marginLeft: -4, // Starting with a small offset
-  },
-  "& .MuiList-root": {
-    padding: 0,
-  },
-});
-
-const MenuItemWrapper = styled(MenuItem)({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  fontSize: 12,
-  width: "calc(100% - 8px)",
-  minWidth: 172,
-  margin: "0px 4px",
-  borderRadius: 4,
-  padding: 8,
-  height: 32,
-});
-
-const ChildrenWrapper = styled("div")({
-  display: "flex",
-});
-
-const MenuDivider = styled("div")({
-  width: "100%",
-  margin: "auto",
-  marginTop: 4,
-  marginBottom: 4,
-  borderTop: "1px solid #eeeeee",
-});
-
-const CheckIcon = styled(Check, {
-  shouldForwardProp: (prop) => prop !== "$active",
-})<{ $active: boolean }>(({ $active }) => ({
-  width: 16,
-  height: 16,
-  color: $active ? "currentColor" : "transparent",
-  marginRight: 8,
-  flexShrink: 0,
-}));
-
-const MenuItemText = styled("div")({
-  color: "#000",
-  display: "flex",
-  alignItems: "center",
-});
-
-const MenuItemExample = styled("div")({
-  color: "#bdbdbd",
-  marginLeft: 20,
-});
 
 export default FormatMenu;

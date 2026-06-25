@@ -1,0 +1,76 @@
+.ic-sheet-tab-bar-container {
+  display: flex;
+  flex-direction: row;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--navigation-height);
+  align-items: center;
+  padding: 0;
+  font-family: var(--typography-font-family);
+  overflow: hidden;
+  background-color: var(--palette-common-white);
+  border-top: 1px solid var(--palette-grey-300);
+}
+
+.ic-sheet-tab-bar-sheets {
+  flex-grow: 2;
+  overflow: hidden;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-left: 8px;
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+}
+
+.ic-sheet-tab-bar-sheet-inner {
+  display: flex;
+}
+
+.ic-sheet-tab-bar-left-buttons-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 100%;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.ic-sheet-tab-bar-vertical-divider {
+  height: 100%;
+  width: 0;
+}
+
+.ic-sheet-tab-bar-right-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  color: var(--palette-primary-main);
+  height: 100%;
+  padding: 0 8px;
+  gap: 4px;
+  flex-shrink: 0;
+  width: auto;
+}
+
+.ic-sheet-tab-bar-text-divider {
+  width: 1px;
+  height: 60%;
+  background-color: var(--palette-grey-300);
+}
+
+@media (max-width: 769px) {
+  .ic-sheet-tab-bar-left-buttons-container {
+    padding: 0 8px;
+  }
+
+  .ic-sheet-tab-bar-vertical-divider {
+    border-right: 1px solid var(--palette-grey-200);
+  }
+
+  .ic-sheet-tab-bar-right-container {
+    display: none;
+  }
+}

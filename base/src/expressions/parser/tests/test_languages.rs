@@ -46,7 +46,7 @@ fn simple_language() {
     assert_eq!(to_rc_format(&t), "TRUE");
 
     let t = parser.parse("TRUE()", &cell_reference);
-    assert!(matches!(t, Node::InvalidFunctionKind { ref name, args: _} if name == "TRUE"));
+    assert!(matches!(t, Node::NamedFunctionKind { ref name, args: _, id: _ } if name == "TRUE"));
 
     let t = parser.parse("VERDADERO()", &cell_reference);
     assert!(matches!(

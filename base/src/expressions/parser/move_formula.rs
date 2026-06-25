@@ -99,6 +99,7 @@ pub(crate) fn to_string_array_node(
         ArrayNode::Number(number) => format_number_locale(*number, locale),
         ArrayNode::String(value) => format!("\"{value}\""),
         ArrayNode::Error(kind) => format!("{kind}"),
+        ArrayNode::Empty => "0".to_string(),
     }
 }
 
@@ -425,7 +426,7 @@ fn to_string_moved(
             to_string_moved(left, move_context, locale, language),
             to_string_moved(right, move_context, locale, language),
         ),
-        InvalidFunctionKind { name, args } => {
+        NamedFunctionKind { name, args, id: _ } => {
             move_function(name, args, move_context, locale, language)
         }
         FunctionKind { kind, args } => {
@@ -475,7 +476,7 @@ fn to_string_moved(
         }
         DefinedNameKind((name, ..)) => name.to_string(),
         TableNameKind(name) => name.to_string(),
-        WrongVariableKind(name) => name.to_string(),
+        NamedVariableKind { name, id: _ } => name.to_string(),
         CompareKind { kind, left, right } => format!(
             "{}{}{}",
             to_string_moved(left, move_context, locale, language),
@@ -507,6 +508,25 @@ fn to_string_moved(
                 "@{}",
                 to_string_moved(child, move_context, locale, language)
             )
+        }
+        SpillRangeOperator { child } => {
+            format!(
+                "{}#",
+                to_string_moved(child, move_context, locale, language)
+            )
+        }
+        LambdaDefKind { parameters, body } => {
+            let mut parts: Vec<String> = parameters.iter().map(|p| p.name.clone()).collect();
+            parts.push(to_string_moved(body, move_context, locale, language));
+            format!("LAMBDA({})", parts.join(","))
+        }
+        LambdaCallKind { lambda, args } => {
+            let lambda_str = to_string_moved(lambda, move_context, locale, language);
+            let call_args: Vec<String> = args
+                .iter()
+                .map(|a| to_string_moved(a, move_context, locale, language))
+                .collect();
+            format!("{}({})", lambda_str, call_args.join(","))
         }
     }
 }
