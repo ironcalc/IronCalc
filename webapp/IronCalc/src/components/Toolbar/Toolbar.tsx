@@ -49,6 +49,7 @@ import BorderPicker from "../BorderPicker/BorderPicker";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
 import ColorPicker from "../ColorPicker/ColorPicker";
+import { resolveColorToHex } from "../ColorPicker/util";
 import FormatMenu from "../FormatMenu/FormatMenu";
 import {
   decreaseDecimalPlaces,
@@ -80,8 +81,8 @@ type ToolbarProperties = {
   onIncreaseFontSize: (delta: number) => void;
   onSetFontSize: (size: number) => void;
   onDownloadPNG: () => void;
-  fillColor: string;
-  fontColor: string;
+  fillColor: Color;
+  fontColor: Color;
   fontSize: number;
   bold: boolean;
   underline: boolean;
@@ -422,7 +423,11 @@ function Toolbar(properties: ToolbarProperties) {
                   <Type />
                   <div
                     className="ic-toolbar-color-line"
-                    style={{ backgroundColor: properties.fontColor }}
+                    style={{
+                      backgroundColor:
+                        resolveColorToHex(properties.fontColor, currentTheme) ||
+                        "#000000",
+                    }}
                   />
                 </>
               }
@@ -441,7 +446,11 @@ function Toolbar(properties: ToolbarProperties) {
                   <PaintBucket />
                   <div
                     className="ic-toolbar-color-line"
-                    style={{ backgroundColor: properties.fillColor }}
+                    style={{
+                      backgroundColor:
+                        resolveColorToHex(properties.fillColor, currentTheme) ||
+                        "#FFFFFF",
+                    }}
                   />
                 </>
               }
