@@ -63,4 +63,8 @@
   .ic-drawer-resize-handle {
     display: none;
   }
+
+  .ic-drawer-divider {
+    display: none;
+  }
 }
