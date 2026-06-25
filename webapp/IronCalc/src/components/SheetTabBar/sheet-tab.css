@@ -99,3 +99,9 @@
   outline: none;
   border-color: var(--palette-primary-main);
 }
+
+@media (max-width: 769px) {
+  .ic-sheet-tab {
+    margin-right: 4px;
+  }
+}
