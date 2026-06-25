@@ -78,28 +78,30 @@ interface Range {
 
 export type TokenType =
   | "Illegal"
-  | "Eof"
+  | "EOF"
   | { Ident: string }
   | { String: string }
   | { Boolean: boolean }
   | { Number: number }
-  | { ERROR: ErrorType }
-  | { COMPARE: OpCompareType }
-  | { SUM: OpSumType }
-  | { PRODUCT: OpProductType }
-  | "POWER"
-  | "LPAREN"
-  | "RPAREN"
-  | "COLON"
-  | "SEMICOLON"
-  | "LBRACKET"
-  | "RBRACKET"
-  | "LBRACE"
-  | "RBRACE"
-  | "COMMA"
-  | "BANG"
-  | "PERCENT"
-  | "AND"
+  | { Error: ErrorType }
+  | { Compare: OpCompareType }
+  | { Sum: OpSumType }
+  | { Product: OpProductType }
+  | "Power"
+  | "LeftParenthesis"
+  | "RightParenthesis"
+  | "Colon"
+  | "Semicolon"
+  | "LeftBracket"
+  | "RightBracket"
+  | "LeftBrace"
+  | "RightBrace"
+  | "Comma"
+  | "Bang"
+  | "Percent"
+  | "And"
+  | "Spill"
+  | "Backslash"
   | Reference
   | Range;
 

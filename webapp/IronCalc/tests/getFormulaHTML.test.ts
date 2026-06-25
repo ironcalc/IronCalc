@@ -1,0 +1,106 @@
+import { readFile } from "node:fs/promises";
+import { initSync, Model } from "@ironcalc/wasm";
+import type { ReactElement } from "react";
+import { beforeAll, expect, test } from "vitest";
+import getFormulaHTML from "../src/components/Editor/util";
+
+let model: Model;
+
+beforeAll(async () => {
+  const buffer = await readFile("node_modules/@ironcalc/wasm/wasm_bg.wasm");
+  initSync({ module: buffer });
+  model = new Model("workbook", "en", "UTC", "en");
+});
+
+// Each entry of `html` is a React element (a plain object). The text is in
+// `props.children` and the (optional) reference color in `props.style.color`.
+const text = (el: ReactElement): string =>
+  (el.props as { children: string }).children;
+const color = (el: ReactElement): string | undefined =>
+  (el.props as { style?: { color?: string } }).style?.color;
+
+test("plain text (no leading '=') is wrapped in a single span", () => {
+  const { html, activeRanges } = getFormulaHTML(model, "hello");
+  expect(html).toHaveLength(1);
+  expect(text(html[0])).toBe("hello");
+  expect(activeRanges).toEqual([]);
+});
+
+test("a formula always starts with an '=' span", () => {
+  const { html } = getFormulaHTML(model, "=1+1");
+  expect(text(html[0])).toBe("=");
+  // "1+1" is a single non-reference run.
+  expect(html.map(text).join("")).toBe("=1+1");
+});
+
+test("a reference produces a colored span and an active range", () => {
+  const { html, activeRanges } = getFormulaHTML(model, "=A1+1");
+  expect(html.map(text).join("")).toBe("=A1+1");
+
+  const a1 = html.find((el) => text(el) === "A1");
+  expect(a1).toBeDefined();
+  expect(color(a1 as ReactElement)).toBeTruthy();
+
+  expect(activeRanges).toHaveLength(1);
+  expect(activeRanges[0]).toMatchObject({
+    sheet: 0,
+    rowStart: 1,
+    columnStart: 1,
+    rowEnd: 1,
+    columnEnd: 1,
+  });
+});
+
+test("the same reference reuses the same color", () => {
+  const { activeRanges } = getFormulaHTML(model, "=A1+A1");
+  expect(activeRanges).toHaveLength(2);
+  expect(activeRanges[0].color).toBe(activeRanges[1].color);
+});
+
+test("distinct references get distinct colors", () => {
+  const { activeRanges } = getFormulaHTML(model, "=A1+B2");
+  expect(activeRanges).toHaveLength(2);
+  expect(activeRanges[0].color).not.toBe(activeRanges[1].color);
+});
+
+test("a range reference yields a single normalized active range", () => {
+  const { html, activeRanges } = getFormulaHTML(model, "=SUM(A1:B3)");
+  expect(html.map(text).join("")).toBe("=SUM(A1:B3)");
+  expect(activeRanges).toHaveLength(1);
+  expect(activeRanges[0]).toMatchObject({
+    sheet: 0,
+    rowStart: 1,
+    columnStart: 1,
+    rowEnd: 3,
+    columnEnd: 2,
+  });
+});
+
+test("a trailing newline adds a trailing span", () => {
+  const { html } = getFormulaHTML(model, "=A1\n");
+  expect(text(html[html.length - 1])).toBe("\n");
+});
+
+test("a spill reference (A1#) covers the whole spilled range", () => {
+  // Make A1 spill a 1x3 dynamic array down A1:A3.
+  model.setUserInput(0, 1, 1, "={1;2;3}");
+  expect(model.getCellArrayStructure(0, 1, 1)).toEqual({
+    DynamicAnchor: [1, 3],
+  });
+
+  const { html, activeRanges } = getFormulaHTML(model, "=A1#+1");
+  // The reference and its spill operator are kept together in one span.
+  const anchor = html.find((el) => text(el) === "A1#");
+  expect(anchor).toBeDefined();
+  expect(color(anchor as ReactElement)).toBeTruthy();
+  expect(html.map(text).join("")).toBe("=A1#+1");
+
+  expect(activeRanges).toHaveLength(1);
+  expect(activeRanges[0]).toMatchObject({
+    sheet: 0,
+    rowStart: 1,
+    columnStart: 1,
+    rowEnd: 3,
+    columnEnd: 1,
+  });
+});
