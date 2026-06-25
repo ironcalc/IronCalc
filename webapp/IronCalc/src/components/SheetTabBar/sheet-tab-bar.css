@@ -70,6 +70,10 @@
     padding: 0 8px;
   }
 
+  .ic-sheet-tab-bar-sheets {
+    padding-left: 4px;
+  }
+
   .ic-sheet-tab-bar-vertical-divider {
     border-right: 1px solid var(--palette-grey-200);
   }
