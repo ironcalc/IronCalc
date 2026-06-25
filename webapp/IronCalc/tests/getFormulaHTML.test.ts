@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { initSync, Model } from "@ironcalc/wasm";
 import type { ReactElement } from "react";
 import { beforeAll, expect, test } from "vitest";
-import getFormulaHTML from "../src/components/Editor/util";
+import getFormulaHTML, { getColor } from "../src/components/Editor/util";
 
 let model: Model;
 
@@ -103,4 +103,28 @@ test("a spill reference (A1#) covers the whole spilled range", () => {
     rowEnd: 3,
     columnEnd: 1,
   });
+});
+
+test("non-spilling A1# still reconstructs the formula text", () => {
+  // B5 is empty, so it does not spill (structure is "SingleCell").
+  expect(model.getCellArrayStructure(0, 5, 2)).toBe("SingleCell");
+
+  const { html, activeRanges } = getFormulaHTML(model, "=B5#+1");
+  expect(activeRanges).toHaveLength(0);
+  expect(html.map(text).join("")).toBe("=B5#+1");
+});
+
+test("a spill reference does not skip a palette color for the next reference", () => {
+  // A1 spills A1:A3; B2 is a distinct, non-spilling reference.
+  model.setUserInput(0, 1, 1, "={1;2;3}");
+  expect(model.getCellArrayStructure(0, 1, 1)).toEqual({
+    DynamicAnchor: [1, 3],
+  });
+
+  const { activeRanges } = getFormulaHTML(model, "=A1#+B2");
+  expect(activeRanges).toHaveLength(2);
+  // First reference takes the first palette color...
+  expect(activeRanges[0].color).toBe(getColor(0));
+  // ...so the second distinct reference should take the second one.
+  expect(activeRanges[1].color).toBe(getColor(1));
 });

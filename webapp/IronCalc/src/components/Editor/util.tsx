@@ -163,7 +163,6 @@ function getFormulaHTML(
               {sliceString(formula, start, tokens[index + 1].end)}
             </span>,
           );
-          colorCount += 1;
 
           activeRanges.push({
             sheet: sheetIndex,
@@ -173,9 +172,16 @@ function getFormulaHTML(
             columnEnd,
             color,
           });
-          // Skip the next token since we already processed it
-          index += 1;
+        } else {
+          // If the reference is not a dynamic anchor, we treat as text
+          html.push(
+            <span key={index}>
+              {sliceString(formula, start, tokens[index + 1].end)}
+            </span>,
+          );
         }
+        // Skip the next token since we already processed it
+        index += 1;
       } else if (isReference) {
         const { sheet: refSheet, row, column } = token.Reference;
         const sheetIndex = refSheet ? sheetList.indexOf(refSheet) : sheet;
