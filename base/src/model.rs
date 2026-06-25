@@ -17,7 +17,7 @@ use crate::{
             stringify::{
                 rename_defined_name_in_node, to_english_string, to_localized_string, to_rc_format,
             },
-            ArrayNode, NamedVariable, Node, Parser,
+            ArrayNode, CompletionContext, NamedVariable, Node, Parser,
         },
         token::{get_error_by_name, Error, OpProduct, OpSum, OpUnary},
         types::*,
@@ -455,6 +455,35 @@ impl<'a> Model<'a> {
         })
     }
 
+    /// Returns completion information for a formula being edited in a cell.
+    ///
+    /// `formula` is the raw cell input (it may start with `=`) and `cursor` is a
+    /// char offset into it. The references in the formula are resolved relative
+    /// to the cell at (`sheet`, `row`, `column`). See
+    /// [`CompletionContext`](crate::expressions::parser::CompletionContext).
+    pub fn formula_completion(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+        cursor: usize,
+    ) -> Result<CompletionContext, String> {
+        let sheet_name = self.workbook.worksheet(sheet)?.get_name();
+        let cell_reference = CellReferenceRC {
+            sheet: sheet_name,
+            row,
+            column,
+        };
+        // The parser works on the formula body, without the leading `=`. Drop it
+        // and shift the cursor so it keeps pointing at the same character.
+        let (body, cursor) = match formula.strip_prefix('=') {
+            Some(rest) => (rest, cursor.saturating_sub(1)),
+            None => (formula, cursor),
+        };
+        Ok(self.parser.parse_at_cursor(body, cursor, &cell_reference))
+    }
+
     /// Translates an internally-stored (English) formula into the active
     /// language and locale for display to the user. Any leading `=` is
     /// preserved. If the formula fails to parse it is returned unchanged.
@@ -744,6 +773,7 @@ impl<'a> Model<'a> {
                 formula,
                 message,
                 position: _,
+                ..
             } => CalcResult::new_error(
                 Error::ERROR,
                 cell,

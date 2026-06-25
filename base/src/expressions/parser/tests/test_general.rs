@@ -123,6 +123,7 @@ fn test_parser_bad_formula() {
             formula,
             message,
             position,
+            ..
         } => {
             assert_eq!(formula, "#Value");
             assert_eq!(message, "Unexpected token: 'Spill'");
@@ -152,6 +153,7 @@ fn test_parser_bad_formula_1() {
             formula,
             message,
             position,
+            ..
         } => {
             assert_eq!(formula, "<5");
             assert_eq!(message, "Unexpected token: 'COMPARE'");
@@ -181,6 +183,7 @@ fn test_parser_bad_formula_2() {
             formula,
             message,
             position,
+            ..
         } => {
             assert_eq!(formula, "*5");
             assert_eq!(message, "Unexpected token: 'PRODUCT'");
@@ -210,6 +213,7 @@ fn test_parser_bad_formula_3() {
             formula,
             message,
             position,
+            ..
         } => {
             assert_eq!(formula, "SUM(#VALVE!)");
             assert_eq!(message, "Unexpected token: 'Spill'");

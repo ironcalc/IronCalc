@@ -498,6 +498,7 @@ fn to_string_moved(
             formula,
             message: _,
             position: _,
+            ..
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         ImplicitIntersection {
