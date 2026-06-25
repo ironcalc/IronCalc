@@ -111,6 +111,23 @@ export interface MarkedToken {
   end: number;
 }
 
+// What the grammar accepts at a cursor position while typing a formula.
+// `{ FunctionName }` carries the partial name typed so far; `{ Argument }`
+// carries the function name and the 1-based argument index.
+export type ExpectedTokens =
+  | "Range"
+  | "InString"
+  | "Other"
+  | { FunctionName: string }
+  | { Argument: [string, number] };
+
+export interface CompletionContext {
+  expecting: ExpectedTokens[];
+  // The span [replace_from, cursor) the UI should replace when inserting a
+  // completion (e.g. the partial name being typed).
+  replace_from: number;
+}
+
 export type CellArrayStructure =
   | "SingleCell"
   | { DynamicChild: [number, number, number, number] }

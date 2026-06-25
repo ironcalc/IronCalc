@@ -34,27 +34,33 @@ function isDynamicAnchor(
   return typeof structure === "object" && "DynamicAnchor" in structure;
 }
 
-export function isInReferenceMode(text: string, cursor: number): boolean {
-  // FIXME
-  // This is a gross oversimplification
-  // Returns true if both are true:
-  // 1. Cursor is at the end
-  // 2. Last char is one of [',', '(', '+', '*', '-', '/', '<', '>', '=', '&', ';']
-  // This has many false positives like '="1+' and also likely some false negatives
-  // The right way of doing this is to have a partial parse of the formula tree
-  // and check if the next token could be a reference
+// Returns true when the cursor sits at a position where the formula grammar
+// would accept a reference or range, so that arrow keys / clicking a cell can
+// insert one. This asks the engine for a partial parse of the formula up to the
+// cursor (see `getFormulaCompletion`), which fixes the false positives of the
+// old heuristic (e.g. `="1+`, where the cursor is inside a string).
+export function isInReferenceMode(
+  model: Model,
+  text: string,
+  cursor: number,
+): boolean {
   if (!text.startsWith("=")) {
     return false;
   }
-  if (text === "=") {
-    return true;
+  try {
+    const [sheet, row, column] = model.getSelectedCell();
+    const { expecting } = model.getFormulaCompletion(
+      sheet,
+      row,
+      column,
+      text,
+      cursor,
+    );
+    return expecting.includes("Range");
+  } catch (e) {
+    console.error("Error in isInReferenceMode:", e);
+    return false;
   }
-  const l = text.length;
-  const chars = [",", "(", "+", "*", "-", "/", "<", ">", "=", "&", ";"];
-  if (cursor === l && chars.includes(text[l - 1])) {
-    return true;
-  }
-  return false;
 }
 
 // IronCalc Color Palette

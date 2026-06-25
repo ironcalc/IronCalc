@@ -273,7 +273,10 @@ impl<'a> Lexer<'a> {
                         }
                     }
                     '#' => self.consume_error(),
-                    '"' => TokenType::String(self.consume_string()),
+                    '"' => match self.consume_string() {
+                        Ok(s) => TokenType::String(s),
+                        Err(error) => TokenType::Illegal(error),
+                    },
                     '\'' => self.consume_quoted_sheet_reference(),
                     '0'..='9' => {
                         let position = self.position - 1;
@@ -634,10 +637,11 @@ impl<'a> Lexer<'a> {
         chars
     }
 
-    fn consume_string(&mut self) -> String {
+    fn consume_string(&mut self) -> Result<String> {
         let mut position = self.position;
         let len = self.len;
         let mut chars = "".to_string();
+        let mut terminated = false;
         while position < len {
             let x = self.chars[position];
             position += 1;
@@ -648,11 +652,16 @@ impl<'a> Lexer<'a> {
                 chars.push(self.chars[position]);
                 position += 1;
             } else {
+                terminated = true;
                 break;
             }
         }
         self.position = position;
-        chars
+
+        if !terminated {
+            return Err(self.set_error("Expected closing '\"' but found end of input", position));
+        }
+        Ok(chars)
     }
 
     // Consumes a quoted string from input

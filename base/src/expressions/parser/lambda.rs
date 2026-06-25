@@ -1,4 +1,4 @@
-use crate::expressions::parser::{NamedVariable, Node, Parser};
+use crate::expressions::parser::{ExpectedTokens, NamedVariable, Node, Parser};
 use crate::expressions::token::TokenType;
 
 impl<'a> Parser<'a> {
@@ -12,6 +12,7 @@ impl<'a> Parser<'a> {
             self.lexer.advance_token();
             return Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
                 position: self.lexer.get_position() as usize,
                 message: "LAMBDA requires at least one argument (the body)".to_string(),
             };
@@ -38,6 +39,7 @@ impl<'a> Parser<'a> {
                 if let Err(err) = self.lexer.expect(TokenType::RightBracket) {
                     return Node::ParseErrorKind {
                         formula: self.lexer.get_formula(),
+                        expecting: vec![ExpectedTokens::Other],
                         position: err.position,
                         message: "Expected ']' after optional parameter name".to_string(),
                     };
@@ -65,6 +67,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
                             position: self.lexer.get_position() as usize,
                             message: "LAMBDA parameter must be a name".to_string(),
                         };
@@ -76,6 +79,7 @@ impl<'a> Parser<'a> {
             } else {
                 return Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Other],
                     position: self.lexer.get_position() as usize,
                     message: "Expected ',' or ')' in LAMBDA".to_string(),
                 };
@@ -90,13 +94,14 @@ impl<'a> Parser<'a> {
         // Immediate invocation: LAMBDA(params, body)(call_args)
         if self.lexer.peek_token() == TokenType::LeftParenthesis {
             self.lexer.advance_token(); // consume '('
-            let call_args = match self.parse_function_args() {
+            let call_args = match self.parse_function_args("LAMBDA") {
                 Ok(args) => args,
                 Err(e) => return e,
             };
             if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
                 return Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Other],
                     position: err.position,
                     message: err.message,
                 };

@@ -303,7 +303,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           // now we are editing one cell and we click in another one
           // If we can insert a range we do that
           const text = editingCell.text;
-          if (isInReferenceMode(text, editingCell.cursorEnd)) {
+          if (isInReferenceMode(model, text, editingCell.cursorEnd)) {
             const range = {
               sheet: model.getSelectedSheet(),
               rowStart: cell.row,

@@ -185,7 +185,7 @@ export const useKeyDown = (
             onTextUpdated();
             return;
           }
-          if (isInReferenceMode(cell.text, cell.cursorStart)) {
+          if (isInReferenceMode(model, cell.text, cell.cursorStart)) {
             // there is not a referenced Range but we are in reference mode
             // we select the next cell
             const sheetNames = model
@@ -281,7 +281,7 @@ export const useKeyDown = (
             onTextUpdated();
             return;
           }
-          if (isInReferenceMode(cell.text, cell.cursorStart)) {
+          if (isInReferenceMode(model, cell.text, cell.cursorStart)) {
             // there is not a referenced Range but we are in reference mode
             // we select the next cell
             const sheetNames = model
@@ -375,7 +375,7 @@ export const useKeyDown = (
             onTextUpdated();
             return;
           }
-          if (isInReferenceMode(cell.text, cell.cursorStart)) {
+          if (isInReferenceMode(model, cell.text, cell.cursorStart)) {
             // there is not a referenced Range but we are in reference mode
             // we select the next cell
             const sheetNames = model
@@ -469,7 +469,7 @@ export const useKeyDown = (
             onTextUpdated();
             return;
           }
-          if (isInReferenceMode(cell.text, cell.cursorStart)) {
+          if (isInReferenceMode(model, cell.text, cell.cursorStart)) {
             // there is not a referenced Range but we are in reference mode
             // we select the next cell
             const sheetNames = model

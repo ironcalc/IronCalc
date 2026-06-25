@@ -191,6 +191,28 @@ impl Model {
             .map_err(to_js_error)
     }
 
+    /// Returns completion information for a formula being edited in a cell.
+    /// `formula` is the raw cell input (it may start with `=`) and `cursor` is a
+    /// char offset into it.
+    #[wasm_bindgen(
+        js_name = "getFormulaCompletion",
+        unchecked_return_type = "CompletionContext"
+    )]
+    pub fn get_formula_completion(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+        cursor: usize,
+    ) -> Result<JsValue, JsError> {
+        let context = self
+            .model
+            .formula_completion(sheet, row, column, formula, cursor)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&context).map_err(|e| to_js_error(e.to_string()))
+    }
+
     #[wasm_bindgen(js_name = "newSheet")]
     pub fn new_sheet(&mut self) -> Result<(), JsError> {
         self.model.new_sheet().map_err(to_js_error)

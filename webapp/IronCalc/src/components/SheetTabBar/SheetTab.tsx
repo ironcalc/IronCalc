@@ -8,7 +8,7 @@ import type { WorkbookState } from "../workbookState";
 import SheetDeleteModal from "./SheetDeleteModal";
 import { SheetTabMenu } from "./SheetTabMenu";
 import "./sheet-tab.css";
-import type { Color, IronCalcTheme } from "@ironcalc/wasm";
+import type { Color, IronCalcTheme, Model } from "@ironcalc/wasm";
 
 interface SheetTabProps {
   name: string;
@@ -23,11 +23,19 @@ interface SheetTabProps {
   onHideSheet: () => void;
   workbookState: WorkbookState;
   currentTheme: IronCalcTheme;
+  model: Model;
 }
 
 function SheetTab(props: SheetTabProps) {
-  const { name, color, selected, workbookState, onSelected, currentTheme } =
-    props;
+  const {
+    name,
+    color,
+    selected,
+    workbookState,
+    onSelected,
+    currentTheme,
+    model,
+  } = props;
   const { t } = useTranslation();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -146,7 +154,7 @@ function SheetTab(props: SheetTabProps) {
         onContextMenu={handleContextMenu}
         onPointerDown={(event) => {
           const cell = workbookState.getEditingCell();
-          if (cell && isInReferenceMode(cell.text, cell.cursorStart)) {
+          if (cell && isInReferenceMode(model, cell.text, cell.cursorStart)) {
             event.stopPropagation();
             event.preventDefault();
           }

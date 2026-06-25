@@ -94,6 +94,7 @@ function SheetTabBar(props: SheetTabBarProps) {
               }}
               onHideSheet={props.onHideSheet}
               workbookState={workbookState}
+              model={props.model}
               currentTheme={props.model.getTheme()}
             />
           ))}

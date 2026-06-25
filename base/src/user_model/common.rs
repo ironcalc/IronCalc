@@ -8,6 +8,7 @@ use crate::{
     cf_types::ExtendedStyle,
     constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
+        parser::CompletionContext,
         types::Area,
         utils::{is_valid_column_number, is_valid_row},
     },
@@ -460,6 +461,26 @@ impl<'a> UserModel<'a> {
     #[inline]
     pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
         self.model.get_localized_cell_content(sheet, row, column)
+    }
+
+    /// Returns completion information for a formula being edited in a cell.
+    ///
+    /// `formula` is the raw cell input (it may start with `=`) and `cursor` is a
+    /// char offset into it.
+    ///
+    /// See also:
+    /// * [Model::formula_completion]
+    #[inline]
+    pub fn formula_completion(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+        cursor: usize,
+    ) -> Result<CompletionContext, String> {
+        self.model
+            .formula_completion(sheet, row, column, formula, cursor)
     }
 
     /// Returns the formatted value of a cell

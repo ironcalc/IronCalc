@@ -943,6 +943,7 @@ fn stringify(
             formula,
             position: _,
             message: _,
+            ..
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         SpillRangeOperator { child } => {
