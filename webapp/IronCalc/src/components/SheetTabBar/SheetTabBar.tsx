@@ -1,5 +1,5 @@
 import type { Color, Model } from "@ironcalc/wasm";
-import { Menu as MenuIcon, Plus } from "lucide-react";
+import { Menu as MenuIcon, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
@@ -102,6 +102,7 @@ function SheetTabBar(props: SheetTabBarProps) {
       <div className="ic-sheet-tab-bar-right-container">
         <Tooltip title={t("regional_settings.open_regional_settings")}>
           <Button
+            className="ic-sheet-tab-bar-regional-settings-button"
             style={{ color: "var(--palette-grey-600)" }}
             variant="ghost"
             size="sm"
@@ -115,6 +116,14 @@ function SheetTabBar(props: SheetTabBarProps) {
               `regional_settings.language.display_language.${props.model.getLanguage()}`,
             )}
           </Button>
+        </Tooltip>
+        <Tooltip title={t("regional_settings.open_regional_settings")}>
+          <IconButton
+            className="ic-sheet-tab-bar-regional-settings-icon-button"
+            aria-label={t("regional_settings.open_regional_settings")}
+            icon={<Settings />}
+            onClick={props.onOpenRegionalSettings}
+          />
         </Tooltip>
       </div>
     </div>
