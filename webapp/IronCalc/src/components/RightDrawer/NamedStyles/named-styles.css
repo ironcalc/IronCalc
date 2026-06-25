@@ -121,6 +121,7 @@
   font-size: var(--typography-font-size);
   padding: 0 6px;
   background-color: var(--palette-common-white, #fff);
+  color: var(--palette-common-black);
   font-family: inherit;
 }
 
