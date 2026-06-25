@@ -1,4 +1,5 @@
 import {
+  type CellArrayStructure,
   columnNumberFromName,
   getTokens,
   type Model,
@@ -25,6 +26,12 @@ export function tokenIsReferenceType(token: TokenType): token is Reference {
 
 export function tokenIsRangeType(token: TokenType): token is Range {
   return typeof token === "object" && "Range" in token;
+}
+
+function isDynamicAnchor(
+  structure: CellArrayStructure,
+): structure is { DynamicAnchor: [number, number] } {
+  return typeof structure === "object" && "DynamicAnchor" in structure;
 }
 
 export function isInReferenceMode(text: string, cursor: number): boolean {
@@ -127,7 +134,49 @@ function getFormulaHTML(
     const sheetList = model.getWorksheetsProperties().map((s) => s.name);
     for (let index = 0; index < tokenCount; index += 1) {
       const { token, start, end } = tokens[index];
-      if (tokenIsReferenceType(token)) {
+      const isReference = tokenIsReferenceType(token);
+      const isRange = tokenIsRangeType(token);
+      // is next token the spill operator? If so, we want to include it in the reference
+      if (
+        isReference &&
+        tokens[index + 1] &&
+        tokens[index + 1].token === "Spill"
+      ) {
+        const { sheet: refSheet, row, column } = token.Reference;
+        const sheetIndex = refSheet ? sheetList.indexOf(refSheet) : sheet;
+        const structure = model.getCellArrayStructure(sheetIndex, row, column);
+        if (isDynamicAnchor(structure)) {
+          const [width, height] = structure.DynamicAnchor;
+          const rowEnd = row + height - 1;
+          const columnEnd = column + width - 1;
+          const key = `${sheetIndex}-${row}-${column}:${rowEnd}-${columnEnd}`;
+          let color = usedColors[key];
+          if (!color) {
+            color = getColor(colorCount);
+            usedColors[key] = color;
+            colorCount += 1;
+          }
+
+          // we need the whole reference A27# (so from the beginning of the reference to the end of the spill operator)
+          html.push(
+            <span key={index} style={{ color }}>
+              {sliceString(formula, start, tokens[index + 1].end)}
+            </span>,
+          );
+          colorCount += 1;
+
+          activeRanges.push({
+            sheet: sheetIndex,
+            rowStart: row,
+            columnStart: column,
+            rowEnd,
+            columnEnd,
+            color,
+          });
+          // Skip the next token since we already processed it
+          index += 1;
+        }
+      } else if (isReference) {
         const { sheet: refSheet, row, column } = token.Reference;
         const sheetIndex = refSheet ? sheetList.indexOf(refSheet) : sheet;
         const key = `${sheetIndex}-${row}-${column}`;
@@ -150,7 +199,7 @@ function getFormulaHTML(
           columnEnd: column,
           color,
         });
-      } else if (tokenIsRangeType(token)) {
+      } else if (isRange) {
         let {
           sheet: refSheet,
           left: { row: rowStart, column: columnStart },
