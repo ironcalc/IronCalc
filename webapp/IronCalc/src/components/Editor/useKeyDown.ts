@@ -75,7 +75,7 @@ export const useKeyDown = (
               cell.column,
               width,
               height,
-              cell.text + (cell.referencedRange?.str || ""),
+              workbookState.getEditingText(),
             );
             model.onArrowDown();
           } else {
@@ -84,7 +84,7 @@ export const useKeyDown = (
               cell.sheet,
               cell.row,
               cell.column,
-              cell.text + (cell.referencedRange?.str || ""),
+              workbookState.getEditingText(),
             );
             if (shiftKey) {
               model.onArrowUp();
@@ -103,7 +103,7 @@ export const useKeyDown = (
             cell.sheet,
             cell.row,
             cell.column,
-            cell.text + (cell.referencedRange?.str || ""),
+            workbookState.getEditingText(),
           );
           if (shiftKey) {
             model.onArrowLeft();

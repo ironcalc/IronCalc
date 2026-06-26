@@ -334,13 +334,13 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           }
           // We are clicking away but we are not in reference mode
           // We finish the editing
-          workbookState.clearEditingCell();
           model.setUserInput(
             editingCell.sheet,
             editingCell.row,
             editingCell.column,
-            editingCell.text,
+            workbookState.getEditingText(),
           );
+          workbookState.clearEditingCell();
           // we continue to select the new cell
         }
         if (event.shiftKey) {

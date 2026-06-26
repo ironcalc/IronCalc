@@ -1,0 +1,17 @@
+.ic-insert-range-hint {
+  margin: 0 2px;
+  white-space: normal;
+  position: relative;
+}
+
+.ic-insert-range-hint::after {
+  content: "";
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  border: 1px solid;
+  height: 2px;
+  width: 6px;
+  border-top: 0;
+  color: var(--palette-info-main);
+}
