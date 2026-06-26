@@ -70,9 +70,6 @@
       "delete": "Elimina cartella di lavoro"
     },
     "alert": {
-      "title": "Attenzione!",
-      "subtitle": "IronCalc memorizza i tuoi dati solo nella memoria locale del browser.",
-      "subtitle2": "<bold>Scarica spesso il tuo XLSX</bold> – le versioni future potrebbero non aprire le cartelle di lavoro attuali, anche se condivise.",
       "close": "Chiudi"
     },
     "documentation": "Documentazione",
@@ -86,6 +83,7 @@
   "file_bar": {
     "open_sidebar": "Apri barra laterale",
     "close_sidebar": "Chiudi barra laterale",
+    "cloud_warning": "<warn>Attenzione!</warn> Questa applicazione è una prova di concetto e non un prodotto finito. Sentiti libero di esplorare, condividere e caricare/scaricare modelli, ma non condividere o caricare modelli con dati sensibili o privati. I dati verranno eliminati periodicamente.",
     "file_menu": {
       "button": "File",
       "new_blank_workbook": "Nuova cartella di lavoro vuota",
@@ -116,10 +114,6 @@
       "about": "Informazioni su IronCalc",
       "documentation": "Documentazione",
       "keyboard_shortcuts": "Scorciatoie da tastiera"
-    },
-    "title_input": {
-      "warning_text1": "Questa cartella di lavoro è memorizzata solo nel tuo browser. Per tenerla al sicuro, scaricala come .xlsx.",
-      "warning_text2": " Le versioni future potrebbero essere incompatibili."
     },
     "share_popover": {
       "button": "Condividi",

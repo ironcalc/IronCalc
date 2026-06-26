@@ -70,9 +70,6 @@
       "delete": "Arbeitsmappe löschen"
     },
     "alert": {
-      "title": "Achtung!",
-      "subtitle": "IronCalc speichert Ihre Daten nur im lokalen Speicher Ihres Browsers.",
-      "subtitle2": "<bold>Laden Sie Ihre XLSX regelmäßig herunter</bold> – zukünftige Versionen können aktuelle Arbeitsmappen möglicherweise nicht öffnen, auch wenn sie geteilt wurden.",
       "close": "Schließen"
     },
     "documentation": "Dokumentation",
@@ -86,6 +83,7 @@
   "file_bar": {
     "open_sidebar": "Seitenleiste öffnen",
     "close_sidebar": "Seitenleiste schließen",
+    "cloud_warning": "<warn>Achtung!</warn> Diese App ist ein Proof of Concept und kein fertiges Produkt. Experimentieren, teilen sowie hoch- und herunterladen Sie Modelle gerne, aber teilen oder laden Sie keine Modelle mit sensiblen oder privaten Daten hoch. Daten werden regelmäßig gelöscht.",
     "file_menu": {
       "button": "Datei",
       "new_blank_workbook": "Neue leere Arbeitsmappe",
@@ -116,10 +114,6 @@
       "about": "Über IronCalc",
       "documentation": "Dokumentation",
       "keyboard_shortcuts": "Tastaturkürzel"
-    },
-    "title_input": {
-      "warning_text1": "Diese Arbeitsmappe wird nur in Ihrem Browser gespeichert. Um sie sicher aufzubewahren, laden Sie sie als .xlsx herunter.",
-      "warning_text2": " Zukünftige Versionen könnten inkompatibel sein."
     },
     "share_popover": {
       "button": "Teilen",

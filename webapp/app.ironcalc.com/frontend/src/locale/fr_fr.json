@@ -70,9 +70,6 @@
       "delete": "Supprimer le classeur"
     },
     "alert": {
-      "title": "Attention !",
-      "subtitle": "IronCalc stocke vos données uniquement dans le stockage local de votre navigateur.",
-      "subtitle2": "<bold>Téléchargez souvent votre XLSX</bold> – les versions futures pourraient ne pas ouvrir les classeurs actuels, même s'ils sont partagés.",
       "close": "Fermer"
     },
     "documentation": "Documentation",
@@ -86,6 +83,7 @@
   "file_bar": {
     "open_sidebar": "Ouvrir la barre latérale",
     "close_sidebar": "Fermer la barre latérale",
+    "cloud_warning": "<warn>Attention !</warn> Cette application est une preuve de concept et non un produit fini. N'hésitez pas à explorer, partager et importer/télécharger des modèles, mais ne partagez pas et n'importez pas de modèles contenant des données sensibles ou privées. Les données seront supprimées périodiquement.",
     "file_menu": {
       "button": "Fichier",
       "new_blank_workbook": "Nouveau classeur vierge",
@@ -116,10 +114,6 @@
       "about": "À propos d'IronCalc",
       "documentation": "Documentation",
       "keyboard_shortcuts": "Raccourcis clavier"
-    },
-    "title_input": {
-      "warning_text1": "Ce classeur est stocké uniquement dans votre navigateur. Pour le conserver en sécurité, téléchargez-le au format .xlsx.",
-      "warning_text2": " Les versions futures pourraient être incompatibles."
     },
     "share_popover": {
       "button": "Partager",

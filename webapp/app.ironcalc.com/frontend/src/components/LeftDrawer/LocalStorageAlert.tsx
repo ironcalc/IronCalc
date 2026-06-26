@@ -1,5 +1,5 @@
 import { IconButton } from "@ironcalc/workbook";
-import { CircleAlert, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
@@ -22,19 +22,22 @@ function LocalStorageAlert() {
 
   return (
     <div className="app-ic-drawer-alert">
-      <div className="app-ic-drawer-alert-icon">
-        <CircleAlert />
-      </div>
-      <div>
-        <h2>{t("left_drawer.alert.title")}</h2>
-        <p>{t("left_drawer.alert.subtitle")}</p>
-        <p>
-          <Trans
-            i18nKey="left_drawer.alert.subtitle2"
-            components={{ bold: <strong /> }}
-          />
-        </p>
-      </div>
+      <p>
+        <Trans
+          i18nKey="welcome_dialog.storage_warning"
+          components={{
+            warn: <strong className="app-ic-wd-storage-warning-title" />,
+            docsLink: (
+              // biome-ignore lint/a11y/useAnchorContent: content is provided by the translation
+              <a
+                href="https://docs.ironcalc.com/web-application/about.html"
+                target="_blank"
+                rel="noopener noreferrer"
+              />
+            ),
+          }}
+        />
+      </p>
       <IconButton
         icon={<X />}
         aria-label={t("left_drawer.alert.close")}
