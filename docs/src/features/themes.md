@@ -34,6 +34,16 @@ A **theme** is a coordinated set of colors for text, background, accents, and hy
 
 Customizing a theme creates a new entry named **Custom** at the top of the list. Only one custom theme can exist at a time, so applying changes again overwrites it.
 
+## Theme Colors in the Color Picker
+
+Wherever you pick a color in IronCalc, such as for font, fill, or borders, the color picker is organized into groups.
+
+![Color picker with theme colors](./themes04.png)
+
+- **Theme colors**: the base colors of the active theme (Text, Background, Dark, Light, and Accent 1 to 6), each shown with a row of lighter and darker variations. Lighter variations mix in white and darker variations mix in black, giving you a wider palette built from the same set of colors. Theme colors update automatically whenever you switch or edit the theme, so cells using them always stay in sync.
+- **Standard colors**: a fixed set of common colors that don't depend on the theme, so they look the same no matter which theme is active.
+- **Recent**: the colors you've used most recently.
+
 ## Compatibility
 
 If you import a file that uses a theme not in the list, IronCalc keeps that theme and adds it to the **Themes** menu and drawer. You can leave the imported theme as is, or switch to one of IronCalc's built-in themes at any time.
