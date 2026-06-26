@@ -61,6 +61,7 @@ export default defineConfig({
           },
           { text: "Using Styles", link: "/features/using-styles" },
           { text: "Cell Styles", link: "/features/cell-styles" },
+          { text: "Themes", link: "/features/themes" },
           { text: "Conditional Formatting", link: "/features/conditional-formatting" },
           { text: "Keyboard Shortcuts", link: "/features/keyboard-shortcuts" },
           {
