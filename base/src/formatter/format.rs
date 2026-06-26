@@ -821,11 +821,9 @@ pub(crate) fn parse_formatted_number(
     let value = original.trim();
     let scientific_format = "0.00E+00";
 
-    let (decimal_separator, group_separator) = if locale.numbers.symbols.decimal == "," {
-        (b',', b'.')
-    } else {
-        (b'.', b',')
-    };
+    let symbols = &locale.numbers.symbols;
+    let decimal_separator = *symbols.decimal.as_bytes().first().unwrap_or(&b'.');
+    let group_separator = *symbols.group.as_bytes().first().unwrap_or(&b',');
 
     // Check if it is a percentage
     if let Some(p) = value.strip_suffix('%') {
