@@ -43,6 +43,7 @@
 .app-ic-file-bar-cloud-popover-content {
   position: fixed;
   width: 320px;
+  max-width: calc(100vw - 16px);
   background-color: var(--palette-common-white);
   border: 1px solid var(--palette-grey-300);
   border-radius: 8px;
