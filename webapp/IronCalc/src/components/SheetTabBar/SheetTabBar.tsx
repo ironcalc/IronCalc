@@ -103,7 +103,6 @@ function SheetTabBar(props: SheetTabBarProps) {
         <Tooltip title={t("regional_settings.open_regional_settings")}>
           <Button
             className="ic-sheet-tab-bar-regional-settings-button"
-            style={{ color: "var(--palette-grey-600)" }}
             variant="ghost"
             size="sm"
             onClick={() => {

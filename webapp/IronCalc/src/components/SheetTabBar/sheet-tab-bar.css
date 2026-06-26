@@ -61,6 +61,11 @@
   background-color: var(--palette-grey-300);
 }
 
+.ic-sheet-tab-bar-regional-settings-button,
+.ic-sheet-tab-bar-regional-settings-icon-button {
+  color: var(--palette-grey-600);
+}
+
 .ic-sheet-tab-bar-regional-settings-icon-button {
   display: none;
 }
