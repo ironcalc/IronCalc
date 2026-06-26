@@ -167,15 +167,15 @@ const EditNamedStyle = ({
       num_fmt: numFmt,
       fill: {
         ...style.fill,
-        color: formatStyle.fillColor || undefined,
+        color: formatStyle.fillColor,
       },
       font: {
         ...style.font,
-        b: formatStyle.bold,
-        i: formatStyle.italic,
-        u: formatStyle.underline,
-        strike: formatStyle.strike,
-        color: formatStyle.fontColor || undefined,
+        b: formatStyle.bold || false,
+        i: formatStyle.italic || false,
+        u: formatStyle.underline || false,
+        strike: formatStyle.strike || false,
+        color: formatStyle.fontColor,
       },
     };
     const error = onSave({ name: name.trim(), style: newStyle });
