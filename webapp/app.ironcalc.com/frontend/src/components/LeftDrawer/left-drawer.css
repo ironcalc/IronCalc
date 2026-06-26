@@ -190,8 +190,7 @@
 .app-ic-drawer-alert {
   position: relative;
   display: flex;
-  gap: 6px;
-  padding: 10px;
+  padding: 10px 28px 10px 10px;
   border-radius: 8px;
   border: 1px solid var(--palette-grey-300);
   background-color: color-mix(
@@ -206,31 +205,28 @@
   color: var(--palette-grey-900);
 }
 
-.app-ic-drawer-alert-icon {
-  display: flex;
-  flex-shrink: 0;
-  margin-top: 1px;
-  color: var(--palette-primary-main);
-}
-
-.app-ic-drawer-alert-icon svg,
 .app-ic-drawer-alert .ic-button svg {
   width: 12px;
   height: 12px;
-}
-
-.app-ic-drawer-alert h2 {
-  margin: 0 0 4px;
-  font-size: inherit;
-  font-weight: 600;
 }
 
 .app-ic-drawer-alert p {
   margin: 0;
 }
 
-.app-ic-drawer-alert p + p {
-  margin-top: 6px;
+.app-ic-drawer-alert a {
+  color: var(--palette-primary-main);
+  text-decoration: none;
+}
+
+.app-ic-drawer-alert a:hover {
+  text-decoration: underline;
+}
+
+.app-ic-drawer-alert a:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .app-ic-drawer-alert .ic-button {

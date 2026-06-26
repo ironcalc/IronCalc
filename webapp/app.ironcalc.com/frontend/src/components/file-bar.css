@@ -42,10 +42,7 @@
 
 .app-ic-file-bar-cloud-popover-content {
   position: fixed;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 240px;
+  width: 320px;
   background-color: var(--palette-common-white);
   border: 1px solid var(--palette-grey-300);
   border-radius: 8px;
@@ -60,6 +57,10 @@
   transition:
     opacity 150ms ease-out,
     visibility 0s linear 150ms;
+}
+
+.app-ic-file-bar-cloud-popover-content p {
+  margin: 0;
 }
 
 .app-ic-file-bar-cloud-popover-content[data-visible="true"] {

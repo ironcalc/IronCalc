@@ -70,9 +70,6 @@
       "delete": "Eliminar libro"
     },
     "alert": {
-      "title": "Atención",
-      "subtitle": "IronCalc almacena tus datos solo en el almacenamiento local de tu navegador.",
-      "subtitle2": "<bold>Descarga tu XLSX con frecuencia</bold> – las versiones futuras podrían no abrir los libros actuales, incluso si se comparten.",
       "close": "Cerrar"
     },
     "documentation": "Documentación",
@@ -86,6 +83,7 @@
   "file_bar": {
     "open_sidebar": "Abrir barra lateral",
     "close_sidebar": "Cerrar barra lateral",
+    "cloud_warning": "<warn>¡Atención!</warn> Esta aplicación es una prueba de concepto y no un producto terminado. Siéntete libre de explorar, compartir y subir/descargar modelos, pero no compartas ni subas modelos con datos sensibles o privados. Los datos se eliminarán periódicamente.",
     "file_menu": {
       "button": "Archivo",
       "new_blank_workbook": "Nuevo libro en blanco",
@@ -116,10 +114,6 @@
       "about": "Acerca de IronCalc",
       "documentation": "Documentación",
       "keyboard_shortcuts": "Atajos de teclado"
-    },
-    "title_input": {
-      "warning_text1": "Este libro se almacena solo en tu navegador. Para mantenerlo seguro, descárgalo como .xlsx.",
-      "warning_text2": " Las versiones futuras podrían ser incompatibles."
     },
     "share_popover": {
       "button": "Compartir",

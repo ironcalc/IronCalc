@@ -1,11 +1,10 @@
 import { CloudOff } from "lucide-react";
 import { type RefObject, useId, useState } from "react";
 import { createPortal } from "react-dom";
-import { useTranslation } from "react-i18next";
+import { Trans } from "react-i18next";
 import { usePopoverPosition } from "./usePopoverPosition";
 
 export function StorageWarning() {
-  const { t } = useTranslation();
   const popoverId = useId();
   const [visible, setVisible] = useState(false);
   const { triggerRef, popoverRef, position } = usePopoverPosition(visible);
@@ -39,8 +38,14 @@ export function StorageWarning() {
           data-visible={visible}
           style={position}
         >
-          {t("file_bar.title_input.warning_text1")}
-          <strong>{t("file_bar.title_input.warning_text2")}</strong>
+          <p>
+            <Trans
+              i18nKey="file_bar.cloud_warning"
+              components={{
+                warn: <strong className="app-ic-wd-storage-warning-title" />,
+              }}
+            />
+          </p>
         </div>,
         document.body,
       )}
