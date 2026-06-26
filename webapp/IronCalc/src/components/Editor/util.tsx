@@ -49,12 +49,14 @@ export function isInReferenceMode(
   }
   try {
     const [sheet, row, column] = model.getSelectedCell();
+    // Convert the UTF-16 cursor to a scalar offset
+    const scalarCursor = Array.from(text.slice(0, cursor)).length;
     const { expecting } = model.getFormulaCompletion(
       sheet,
       row,
       column,
       text,
-      cursor,
+      scalarCursor,
     );
     return expecting.includes("Range");
   } catch (e) {

@@ -116,7 +116,6 @@ export interface MarkedToken {
 // carries the function name and the 1-based argument index.
 export type ExpectedTokens =
   | "Range"
-  | "InString"
   | "Other"
   | { FunctionName: string }
   | { Argument: [string, number] };
