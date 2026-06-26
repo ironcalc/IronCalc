@@ -129,6 +129,95 @@ fn bare_partial_function_name() {
     assert_eq!(ctx.replace_from, 0);
 }
 
+#[test]
+fn bare_partial_function_name_in_the_middle() {
+    // IF(VLOOK|  → even though the call is still open, the cursor sits on the
+    // partial name `VLOOK`; we offer name completion and replace only `VLOOK`.
+    let ctx = complete_at_end("IF(VLOOK");
+    assert_eq!(
+        ctx.expecting,
+        vec![ExpectedTokens::FunctionName("VLOOK".to_string())]
+    );
+    assert_eq!(ctx.replace_from, 3);
+}
+
+#[test]
+fn partial_function_name_in_nested_call() {
+    // SUM(AVERAGE(MEDI|  → still typing `MEDI` two calls deep.
+    let ctx = complete_at_end("SUM(AVERAGE(MEDI");
+    assert_eq!(
+        ctx.expecting,
+        vec![ExpectedTokens::FunctionName("MEDI".to_string())]
+    );
+    assert_eq!(ctx.replace_from, 12);
+}
+
+#[test]
+fn partial_name_after_operator_inside_argument() {
+    // SUM(A1+SQR|  → `A1` is complete, the cursor is on the partial name `SQR`.
+    let ctx = complete_at_end("SUM(A1+SQR");
+    assert_eq!(
+        ctx.expecting,
+        vec![ExpectedTokens::FunctionName("SQR".to_string())]
+    );
+    assert_eq!(ctx.replace_from, 7);
+}
+
+#[test]
+fn partial_name_in_second_argument() {
+    // IF(A1,CONCAT|  → typing a name in the second argument of an open call.
+    let ctx = complete_at_end("IF(A1,CONCAT");
+    assert_eq!(
+        ctx.expecting,
+        vec![ExpectedTokens::FunctionName("CONCAT".to_string())]
+    );
+    assert_eq!(ctx.replace_from, 6);
+}
+
+#[test]
+fn partial_name_with_cursor_before_existing_tail() {
+    // MAX(AVER|, B2)  → cursor after `AVER`; the `, B2)` tail is ignored and we
+    // replace only the `AVER` being typed.
+    let ctx = complete_at("MAX(AVER, B2)", 8);
+    assert_eq!(
+        ctx.expecting,
+        vec![ExpectedTokens::FunctionName("AVER".to_string())]
+    );
+    assert_eq!(ctx.replace_from, 4);
+}
+
+// ---------------------------------------------------------------------------
+// (d) An identifier glued to the end of a number is not a function name being
+//     typed — the number already completed an operand. (Nothing to do with
+//     floating point / scientific notation; any letter behaves the same.)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn identifier_glued_to_a_number_is_not_a_function() {
+    // 1m|  → `1` is a complete operand; the trailing `m` is not a function name.
+    let ctx = complete_at_end("1m");
+    assert!(
+        !ctx.expecting
+            .iter()
+            .any(|e| matches!(e, ExpectedTokens::FunctionName(_))),
+        "got {:?}",
+        ctx.expecting
+    );
+}
+
+#[test]
+fn incomplete_scientific_notation_inside_argument_is_not_a_function() {
+    // SUM(1e|  → still a partial number inside the call, not a function name.
+    let ctx = complete_at_end("SUM(1e");
+    assert!(
+        !ctx.expecting
+            .iter()
+            .any(|e| matches!(e, ExpectedTokens::FunctionName(_))),
+        "got {:?}",
+        ctx.expecting
+    );
+}
+
 // ---------------------------------------------------------------------------
 // (e) The wrinkle: complete-looking argument then EOF
 // ---------------------------------------------------------------------------

@@ -169,7 +169,18 @@ export class WorkbookState {
   getEditingText(): string {
     const cell = this.cell;
     if (cell) {
-      return cell.text + (cell.referencedRange?.str || "");
+      const str = cell.referencedRange?.str || "";
+      if (str === "") {
+        return cell.text;
+      } else {
+        // insert str at the cursor position
+        const cursorPos = cell.cursorStart;
+        return (
+          cell.text.substring(0, cursorPos) +
+          str +
+          cell.text.substring(cursorPos)
+        );
+      }
     }
     return "";
   }

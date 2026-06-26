@@ -1470,10 +1470,6 @@ export default defineConfig({
                 link: "/functions/math_and_trigonometry/lcm",
               },
               {
-                text: "LET",
-                link: "/functions/math_and_trigonometry/let",
-              },
-              {
                 text: "LN",
                 link: "/functions/math_and_trigonometry/ln",
               },

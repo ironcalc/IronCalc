@@ -76,6 +76,77 @@ test("a range reference yields a single normalized active range", () => {
   });
 });
 
+test("distinct ranges get consecutive palette colors", () => {
+  const { activeRanges } = getFormulaHTML(model, "=SUM(A2:A5)+SUM(B2:B5)");
+  expect(activeRanges).toHaveLength(2);
+  // First range takes the first palette color...
+  expect(activeRanges[0].color).toBe(getColor(0));
+  // ...so the second distinct range should take the second one, not skip ahead.
+  expect(activeRanges[1].color).toBe(getColor(1));
+});
+
+test("a range does not skip a palette color for a following reference", () => {
+  const { activeRanges } = getFormulaHTML(model, "=SUM(A2:A5)+B7");
+  expect(activeRanges).toHaveLength(2);
+  expect(activeRanges[0].color).toBe(getColor(0));
+  expect(activeRanges[1].color).toBe(getColor(1));
+});
+
+// The reference-insertion hint is identified by its stable key/className.
+const isHint = (el: ReactElement): boolean =>
+  el.key === "reference-hint" ||
+  (el.props as { className?: string }).className === "insert-reference-hint";
+
+test("no cursor argument never renders the reference hint", () => {
+  const { html } = getFormulaHTML(model, "=SUM(");
+  expect(html.some(isHint)).toBe(false);
+});
+
+test("a caret in reference mode renders a hint after the caret", () => {
+  // `=SUM(|` — the grammar expects a reference here and none follows.
+  const { html } = getFormulaHTML(model, "=SUM(", 5);
+  const hints = html.filter(isHint);
+  expect(hints).toHaveLength(1);
+  // It is appended at the very end (the caret is past every token).
+  expect(isHint(html[html.length - 1])).toBe(true);
+  // The hint carries no formula text, so the reconstructed formula is unchanged.
+  expect(
+    html
+      .filter((el) => !isHint(el))
+      .map(text)
+      .join(""),
+  ).toBe("=SUM(");
+});
+
+test("the hint is inserted before the token following the caret", () => {
+  // `=SUM(|)` — caret between `(` and `)`; expects a reference, `)` is not one.
+  const { html } = getFormulaHTML(model, "=SUM()", 5);
+  const hintIndex = html.findIndex(isHint);
+  expect(hintIndex).toBeGreaterThanOrEqual(0);
+  // The closing paren span comes right after the hint.
+  expect(text(html[hintIndex + 1])).toBe(")");
+});
+
+test("no hint when a reference already follows the caret", () => {
+  // `=SUM(|A1)` — a reference sits immediately after the caret.
+  const { html } = getFormulaHTML(model, "=SUM(A1)", 5);
+  expect(html.some(isHint)).toBe(false);
+});
+
+test("no hint when the caret is not in reference mode", () => {
+  // `=1+1|` — the grammar does not expect a reference at the end here.
+  const { html } = getFormulaHTML(model, "=1+1", 4);
+  expect(html.some(isHint)).toBe(false);
+});
+
+test("a hint appears after a trailing operator", () => {
+  // `=A1+|` — after the `+` a reference is expected and none follows.
+  const { html } = getFormulaHTML(model, "=A1+", 4);
+  const hints = html.filter(isHint);
+  expect(hints).toHaveLength(1);
+  expect(isHint(html[html.length - 1])).toBe(true);
+});
+
 test("a trailing newline adds a trailing span", () => {
   const { html } = getFormulaHTML(model, "=A1\n");
   expect(text(html[html.length - 1])).toBe("\n");

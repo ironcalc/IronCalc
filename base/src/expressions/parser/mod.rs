@@ -270,6 +270,12 @@ pub struct Parser<'a> {
     /// Completion hint for the position currently being parsed. The deepest
     /// frame that hits EOF stamps this onto its error. See `parse_at_cursor`.
     expecting_here: Vec<ExpectedTokens>,
+    /// Set while parsing when an identifier turns out to be the last token in
+    /// the input (its `peek` is EOF): the user is mid-typing a name there.
+    /// Holds `(prefix, start_offset)`. Read by `parse_at_cursor` to offer
+    /// function/name completion even when the surrounding parse succeeds (`SU`,
+    /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
+    trailing_name: Option<(String, usize)>,
 }
 
 pub fn new_parser_english<'a>(
@@ -305,6 +311,7 @@ impl<'a> Parser<'a> {
             locale,
             language,
             expecting_here: vec![ExpectedTokens::Other],
+            trailing_name: None,
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -335,13 +342,12 @@ impl<'a> Parser<'a> {
         self.context = context.clone();
         // At the top level a formula may start with an expression or a range.
         self.expecting_here = vec![ExpectedTokens::Range, ExpectedTokens::Other];
+        self.trailing_name = None;
         self.parse_expr()
     }
 
     /// Parses `formula` up to `cursor` (a char offset) and reports what the
     /// grammar would accept at that position, so callers can offer completions.
-    ///
-    /// completion happens *at* the cursor
     pub fn parse_at_cursor(
         &mut self,
         formula: &str,
@@ -351,6 +357,20 @@ impl<'a> Parser<'a> {
         let head: String = formula.chars().take(cursor).collect();
 
         let node = self.parse(&head, context);
+
+        // If the cursor sits on an identifier the user is mid-typing, the parser
+        // recorded it as `trailing_name` while consuming it in a name position
+        // (see `parse_primary`). That takes priority over the parse outcome: it
+        // wins both when the surrounding parse *succeeds* (`SU`, `A1+F`) — where
+        // there is no error to carry an `expecting` — and when it *fails* for an
+        // unrelated reason (`IF(VLOOK`, where the EOF frame would otherwise
+        // report the "argument of IF" hint).
+        if let Some((prefix, start)) = self.trailing_name.take() {
+            return CompletionContext {
+                expecting: vec![ExpectedTokens::FunctionName(prefix)],
+                replace_from: start,
+            };
+        }
 
         match node {
             // (a) The prefix is incomplete: the EOF frame stamped `expecting`.
@@ -362,37 +382,13 @@ impl<'a> Parser<'a> {
                 expecting,
                 replace_from: position,
             },
-            // (b) The prefix parsed cleanly: the only thing still "in progress"
-            // is a trailing bare name (`A1+F`, `SU`). Offer name completion.
-            _ => match self.trailing_partial_ident(&head) {
-                Some((prefix, start)) => CompletionContext {
-                    expecting: vec![ExpectedTokens::FunctionName(prefix)],
-                    replace_from: start,
-                },
-                None => CompletionContext {
-                    expecting: vec![ExpectedTokens::Other],
-                    replace_from: cursor,
-                },
+            // (b) The prefix parsed cleanly and there is no trailing bare name,
+            // so there is nothing grammar-specific to offer.
+            _ => CompletionContext {
+                expecting: vec![ExpectedTokens::Other],
+                replace_from: cursor,
             },
         }
-    }
-
-    /// If `head` ends in a bare identifier (nothing consumed after it), returns
-    /// `(prefix, start_offset)`. Drives function/name autocomplete on a prefix
-    /// that already parses, e.g. `A1+F`.
-    fn trailing_partial_ident(&mut self, head: &str) -> Option<(String, usize)> {
-        self.lexer.set_formula(head);
-        let mut last = None;
-        loop {
-            let start = self.lexer.get_position() as usize;
-            match self.lexer.next_token() {
-                TokenType::EOF => break,
-                TokenType::Ident(name) => last = Some((name, start)),
-                // Anything else means the identifier isn't trailing.
-                _ => last = None,
-            }
-        }
-        last
     }
 
     // Returns the token used to separate arguments in functions and arrays
@@ -881,6 +877,17 @@ impl<'a> Parser<'a> {
             }
             TokenType::Ident(name) => {
                 let next_token = self.lexer.peek_token();
+                // If this identifier is the last token before the cursor (its
+                // peek is EOF), the user is mid-typing a name here. Record it so
+                // `parse_at_cursor` can offer function/name completion. We are in
+                // a name/operand position by construction, so this never fires
+                // for an identifier glued to a completed operand: the `m` in
+                // `1m` is leftover input, never reached as a primary.
+                if next_token == TokenType::EOF {
+                    let end = self.lexer.get_position() as usize;
+                    let start = end.saturating_sub(name.chars().count());
+                    self.trailing_name = Some((name.clone(), start));
+                }
                 if next_token == TokenType::LeftParenthesis {
                     self.lexer.advance_token();
                     // It's a function call "SUM(.."

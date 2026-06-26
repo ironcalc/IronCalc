@@ -65,11 +65,15 @@ function FormulaBar(properties: FormulaBarProps) {
         <div className="ic-formula-bar-button">
           <Fx />
         </div>
-        {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
-        {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
         <div
           className="ic-formula-bar-editor-wrapper"
-          onClick={(event) => {
+          // Start editing on pointerdown, not click: clicking *in the middle*
+          // of existing text does not emit a `click` event (only clicking past
+          // the end does), so an onClick here never fires for mid-text clicks.
+          // Also no preventDefault() — on pointerdown that would cancel the
+          // textarea's focus/caret placement, so the first click would set the
+          // editing cell but never focus the editor.
+          onPointerDown={(event) => {
             if (!properties.canEdit) {
               return;
             }
@@ -93,7 +97,6 @@ function FormulaBar(properties: FormulaBarProps) {
               editorHeight,
             });
             event.stopPropagation();
-            event.preventDefault();
           }}
         >
           <Editor

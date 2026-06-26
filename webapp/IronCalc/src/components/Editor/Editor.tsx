@@ -39,16 +39,25 @@
 import type { Model } from "@ironcalc/wasm";
 import {
   type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { FormulaHelper } from "../FormulaHelper/FormulaHelper";
+import {
+  applyListCompletion,
+  getCompletion,
+} from "../FormulaHelper/formulaCompletion";
 import { Alert } from "../Modal";
 import type { WorkbookState } from "../workbookState";
 import useKeyDown from "./useKeyDown";
 import getFormulaHTML from "./util";
+import "./editor.css";
+import { createAnchoredPortal } from "../createAnchoredPortal";
 
 const commonCSS: CSSProperties = {
   fontWeight: "inherit",
@@ -88,7 +97,17 @@ const Editor = (options: EditorOptions) => {
 
   const { t } = useTranslation();
   const [text, setText] = useState(originalText);
+  const [cursor, setCursor] = useState(originalText.length);
   const [formulaError, setFormulaError] = useState<string | null>(null);
+  // Formula helper popup state: the highlighted row in list mode, whether the
+  // user dismissed it with Escape, and the viewport position (from the textarea
+  // rect) where it is rendered via a portal, to escape `overflow: hidden`.
+  const [helperSelected, setHelperSelected] = useState(0);
+  const [helperDismissed, setHelperDismissed] = useState(false);
+  const [helperPosition, setHelperPosition] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
 
   const formulaRef = useRef<HTMLDivElement>(null);
   const maskRef = useRef<HTMLDivElement>(null);
@@ -96,10 +115,31 @@ const Editor = (options: EditorOptions) => {
 
   useEffect(() => {
     setText(originalText);
-    if (textareaRef.current) {
-      textareaRef.current.value = originalText;
+    const textarea = textareaRef.current;
+    // Only rewrite the textarea (and snap the caret to the end) when the value
+    // changed from the OUTSIDE — a different cell selected, or a new edit
+    // session. While the user types, `originalText` is derived from the same
+    // text being edited and flows back in unchanged, so the DOM value already
+    // matches; rewriting here would yank the caret to the end on every
+    // keystroke (and break clicking in the middle).
+    if (textarea && textarea.value !== originalText) {
+      textarea.value = originalText;
+      // If the value changed because a reference is being inserted at the cursor
+      // (cruise mode: clicking/dragging cells in the grid), keep the caret right
+      // after the inserted reference. Snapping to the end is only correct when
+      // the reference sits at the end of the formula; in the middle it would
+      // strand the caret past the rest of the text.
+      const cell = workbookState.getEditingCell();
+      const referencedStr = cell?.referencedRange?.str;
+      if (cell && referencedStr) {
+        const caret = cell.cursorStart + referencedStr.length;
+        textarea.setSelectionRange(caret, caret);
+        setCursor(caret);
+      } else {
+        setCursor(originalText.length);
+      }
     }
-  }, [originalText]);
+  }, [originalText, workbookState]);
 
   const { onKeyDown } = useKeyDown({
     model,
@@ -150,6 +190,7 @@ const Editor = (options: EditorOptions) => {
 
     workbookState.setActiveRanges(styledFormula.activeRanges);
     setText(cell.text);
+    setCursor(textarea.selectionStart);
 
     onTextUpdated();
 
@@ -188,7 +229,95 @@ const Editor = (options: EditorOptions) => {
 
   const showEditor = cell !== null || type === "formula-bar" ? "block" : "none";
   const mtext = cell ? workbookState.getEditingText() : originalText;
-  const styledFormula = getFormulaHTML(model, mtext).html;
+  const styledFormula = getFormulaHTML(model, mtext, cursor).html;
+
+  // The formula helper is shown while editing a formula in whichever editor
+  // currently has focus — the cell editor or the formula bar (both render this
+  // same component). Gating on `cell.focus === type` keeps a single popup. We
+  // compute the completion here so the keyboard handler and the popup share one
+  // source.
+  const helperActive =
+    cell !== null &&
+    cell.focus === type &&
+    text.startsWith("=") &&
+    !helperDismissed;
+  const completion = helperActive ? getCompletion(model, text, cursor) : null;
+  const showHelper = completion !== null;
+
+  // Reset the highlighted row whenever the formula or caret changes (typing,
+  // clicking); arrow-key navigation is preventDefaulted so it does not land
+  // here. Editing the text also clears a previous Escape dismissal.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on edit/caret
+  useEffect(() => {
+    setHelperSelected(0);
+  }, [text, cursor]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on text edit
+  useEffect(() => {
+    setHelperDismissed(false);
+  }, [text]);
+
+  // Keep the popup anchored to the bottom-left of the textarea. `text`/`cursor`
+  // are listed so we re-measure as the editor grows, even though they are not
+  // read directly here.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure on edit
+  useLayoutEffect(() => {
+    if (showHelper && textareaRef.current) {
+      const rect = textareaRef.current.getBoundingClientRect();
+      setHelperPosition({ left: rect.left, top: rect.bottom + 4 });
+    } else {
+      setHelperPosition(null);
+    }
+  }, [showHelper, text, cursor]);
+
+  // Replace the partial function name with `NAME(` and place the caret inside.
+  const acceptHelperFunction = () => {
+    const textarea = textareaRef.current;
+    if (!textarea || completion?.kind !== "list") {
+      return;
+    }
+    const result = applyListCompletion(
+      textarea.value,
+      textarea.selectionStart,
+      completion,
+      helperSelected,
+    );
+    textarea.value = result.text;
+    textarea.setSelectionRange(result.cursor, result.cursor);
+    onChange();
+  };
+
+  // Let the helper consume navigation keys before the editor's own handler.
+  // Returns true when the event was handled.
+  const handleHelperKeyDown = (
+    event: ReactKeyboardEvent<HTMLTextAreaElement>,
+  ): boolean => {
+    if (!completion) {
+      return false;
+    }
+    if (event.key === "Escape") {
+      setHelperDismissed(true);
+      event.preventDefault();
+      event.stopPropagation();
+      return true;
+    }
+    if (completion.kind !== "list") {
+      return false;
+    }
+    if (event.key === "ArrowDown") {
+      setHelperSelected((value) =>
+        Math.min(value + 1, completion.matches.length - 1),
+      );
+    } else if (event.key === "ArrowUp") {
+      setHelperSelected((value) => Math.max(value - 1, 0));
+    } else if (event.key === "Enter" || event.key === "Tab") {
+      acceptHelperFunction();
+    } else {
+      return false;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  };
 
   return (
     <>
@@ -246,6 +375,9 @@ const Editor = (options: EditorOptions) => {
           defaultValue={text}
           spellCheck="false"
           onKeyDown={(event) => {
+            if (handleHelperKeyDown(event)) {
+              return;
+            }
             try {
               onKeyDown(event);
             } catch (error) {
@@ -284,12 +416,35 @@ const Editor = (options: EditorOptions) => {
               maskRef.current.style.top = `-${textareaRef.current.scrollTop}px`;
             }
           }}
+          onSelect={(event) => {
+            // Track caret moves (arrows, clicks) so the helper follows along.
+            setCursor(event.currentTarget.selectionStart);
+          }}
           onPaste={(event) => event.stopPropagation()}
           onCopy={(event) => event.stopPropagation()}
           onDoubleClick={(event) => event.stopPropagation()}
           onCut={(event) => event.stopPropagation()}
         />
       </div>
+      {showHelper && helperPosition
+        ? createAnchoredPortal(
+            <div
+              style={{
+                position: "fixed",
+                left: helperPosition.left,
+                top: helperPosition.top,
+                zIndex: 1000,
+              }}
+            >
+              <FormulaHelper
+                completion={completion}
+                selected={helperSelected}
+                onSelect={setHelperSelected}
+              />
+            </div>,
+            textareaRef.current,
+          )
+        : null}
     </>
   );
 };
