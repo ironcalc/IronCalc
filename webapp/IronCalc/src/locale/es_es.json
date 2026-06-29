@@ -218,7 +218,6 @@
     "category_number_format": "Formato de número",
     "category_themed_cell_styles": "Estilos de celda con tema",
     "category_titles_and_headings": "Títulos y encabezados",
-    "confirm_delete_message": "¿Seguro que desea eliminar",
     "custom_format_placeholder": "p.ej. #,##0.00 o \"€\"#,##0",
     "custom_format_required": "El formato personalizado no puede estar vacío",
     "default_name_prefix": "Estilo",

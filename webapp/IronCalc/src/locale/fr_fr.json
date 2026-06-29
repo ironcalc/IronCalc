@@ -218,7 +218,6 @@
     "category_number_format": "Format de nombre",
     "category_themed_cell_styles": "Styles de cellule à thème",
     "category_titles_and_headings": "Titres et en-têtes",
-    "confirm_delete_message": "Voulez-vous vraiment supprimer",
     "custom_format_placeholder": "ex. #,##0.00 ou \"€\"#,##0",
     "custom_format_required": "Le format personnalisé ne peut pas être vide",
     "default_name_prefix": "Style",

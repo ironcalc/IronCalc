@@ -218,7 +218,6 @@
     "category_number_format": "Number Format",
     "category_themed_cell_styles": "Themed Cell Styles",
     "category_titles_and_headings": "Titles and Headings",
-    "confirm_delete_message": "Are you sure you want to delete",
     "custom_format_placeholder": "e.g. #,##0.00 or \"€\"#,##0",
     "custom_format_required": "Custom format cannot be empty",
     "default_name_prefix": "Style",
