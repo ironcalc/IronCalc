@@ -105,6 +105,7 @@ const EditNamedStyle = ({
   );
   const [numFmt, setNumFmt] = useState<string>(style.num_fmt);
   const [customFmt, setCustomFmt] = useState("");
+  const [customFmtTouched, setCustomFmtTouched] = useState(false);
 
   const knownFormats = [
     NumberFormats.AUTO,
@@ -150,6 +151,7 @@ const EditNamedStyle = ({
 
   const handleFormatChange = (value: string) => {
     if (value === CUSTOM_VALUE) {
+      setCustomFmtTouched(false);
       setNumFmt(customFmt || "");
     } else {
       setNumFmt(value);
@@ -157,10 +159,12 @@ const EditNamedStyle = ({
   };
 
   const selectValue = isCustom ? CUSTOM_VALUE : numFmt;
-  const hasError = !!nameError || !name.trim();
+  const customFmtError = isCustom && !customFmt.trim();
+  const hasError = !!nameError || !name.trim() || customFmtError;
 
   const handleSave = () => {
     if (hasError) {
+      setCustomFmtTouched(true);
       return;
     }
     const newStyle = {
@@ -234,13 +238,21 @@ const EditNamedStyle = ({
             />
             {isCustom && (
               <Input
+                autoFocus
                 type="text"
                 placeholder='e.g. #,##0.00 or "€"#,##0'
                 value={customFmt}
+                error={customFmtTouched && customFmtError}
+                helperText={
+                  customFmtTouched && customFmtError
+                    ? t("named_styles.custom_format_required")
+                    : ""
+                }
                 onChange={(e) => {
                   setCustomFmt(e.target.value);
                   setNumFmt(e.target.value);
                 }}
+                onBlur={() => setCustomFmtTouched(true)}
                 onKeyDown={handleKeyDown}
               />
             )}
