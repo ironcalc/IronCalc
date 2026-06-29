@@ -281,6 +281,14 @@ const NamedStylesPanel = ({
             onDelete={(style) => onDeleteNamedStyle(style.name)}
           />
         </div>
+        <div className="ic-named-styles-footer">
+          <Button
+            startIcon={<Plus />}
+            onClick={() => setView({ mode: "create" })}
+          >
+            {t("named_styles.add_new_style")}
+          </Button>
+        </div>
       </div>
     );
   }
