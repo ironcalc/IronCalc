@@ -206,24 +206,3 @@
   gap: 2px;
   flex-shrink: 0;
 }
-
-.ic-named-styles-confirm {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 24px 16px;
-  gap: 20px;
-}
-
-.ic-named-styles-confirm-message {
-  margin: 0;
-  font-size: var(--typography-font-size);
-  line-height: 1.5;
-}
-
-.ic-named-styles-confirm-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}

@@ -134,8 +134,7 @@ type PanelView =
   | { mode: "list" }
   | { mode: "create" }
   | { mode: "manage" }
-  | { mode: "editing"; style: NamedStyle }
-  | { mode: "delete-confirm"; style: NamedStyle };
+  | { mode: "editing"; style: NamedStyle };
 
 interface NamedStylesPanelProps {
   model: Model;
@@ -279,7 +278,7 @@ const NamedStylesPanel = ({
             model={model}
             customStyles={customStyles}
             onEdit={(style) => setView({ mode: "editing", style })}
-            onDelete={(style) => setView({ mode: "delete-confirm", style })}
+            onDelete={(style) => onDeleteNamedStyle(style.name)}
           />
         </div>
       </div>
@@ -316,40 +315,6 @@ const NamedStylesPanel = ({
             }}
             onClose={() => setView({ mode: "manage" })}
           />
-        </div>
-      </div>
-    );
-  }
-
-  if (view.mode === "delete-confirm") {
-    const { style: deletingStyle } = view;
-    return (
-      <div className="ic-named-styles-container">
-        {renderSubHeader(t("named_styles.delete_style"), () =>
-          setView({ mode: "manage" }),
-        )}
-        <div className="ic-named-styles-confirm">
-          <p className="ic-named-styles-confirm-message">
-            {t("named_styles.confirm_delete_message")}{" "}
-            <strong>{deletingStyle.name}</strong>?
-          </p>
-          <div className="ic-named-styles-confirm-actions">
-            <Button
-              variant="secondary"
-              onClick={() => setView({ mode: "manage" })}
-            >
-              {t("named_styles.cancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                onDeleteNamedStyle(deletingStyle.name);
-                setView({ mode: "list" });
-              }}
-            >
-              {t("named_styles.delete_style")}
-            </Button>
-          </div>
         </div>
       </div>
     );
