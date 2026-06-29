@@ -88,12 +88,13 @@ const EditNamedStyle = ({
     if (initialName) {
       return initialName;
     }
+    const prefix = t("named_styles.default_name_prefix");
     const existing = new Set(existingStyleNames.map((n) => n.toLowerCase()));
     let counter = 1;
-    let candidate = `Style${counter}`;
+    let candidate = `${prefix}${counter}`;
     while (existing.has(candidate.toLowerCase())) {
       counter++;
-      candidate = `Style${counter}`;
+      candidate = `${prefix}${counter}`;
     }
     return candidate;
   };
@@ -218,8 +219,8 @@ const EditNamedStyle = ({
           <Input
             autoFocus
             type="text"
-            label="Name"
-            placeholder="Style name"
+            label={t("named_styles.name_label")}
+            placeholder={t("named_styles.name_placeholder")}
             value={name}
             error={!!nameError}
             helperText={nameError}
@@ -231,7 +232,7 @@ const EditNamedStyle = ({
           />
           <div className="ic-edit-style-format-group">
             <Select
-              label="Format"
+              label={t("named_styles.format_label")}
               value={selectValue}
               options={formatSelectOptions}
               onChange={handleFormatChange}
@@ -240,7 +241,7 @@ const EditNamedStyle = ({
               <Input
                 autoFocus
                 type="text"
-                placeholder='e.g. #,##0.00 or "€"#,##0'
+                placeholder={t("named_styles.custom_format_placeholder")}
                 value={customFmt}
                 error={customFmtTouched && customFmtError}
                 helperText={
@@ -258,7 +259,9 @@ const EditNamedStyle = ({
             )}
           </div>
           <div className="ic-edit-style-format-group">
-            <span className="ic-edit-style-label">Style</span>
+            <span className="ic-edit-style-label">
+              {t("named_styles.style_label")}
+            </span>
             <FormatStylePicker
               value={formatStyle}
               onChange={setFormatStyle}

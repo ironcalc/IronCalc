@@ -21,19 +21,19 @@ import { getTileStyle } from "./named-styles-utils";
 type CategoryType = "grid" | "themed";
 
 interface Category {
-  label: string;
+  labelKey: string;
   type: CategoryType;
   names: string[];
 }
 
 const BUILTIN_CATEGORIES: Category[] = [
   {
-    label: "Good, Bad and Neutral",
+    labelKey: "named_styles.category_good_bad_neutral",
     type: "grid",
     names: ["normal", "bad", "good", "neutral"],
   },
   {
-    label: "Data and Model",
+    labelKey: "named_styles.category_data_and_model",
     type: "grid",
     names: [
       "calculation",
@@ -47,7 +47,7 @@ const BUILTIN_CATEGORIES: Category[] = [
     ],
   },
   {
-    label: "Titles and Headings",
+    labelKey: "named_styles.category_titles_and_headings",
     type: "grid",
     names: [
       "heading 1",
@@ -59,7 +59,7 @@ const BUILTIN_CATEGORIES: Category[] = [
     ],
   },
   {
-    label: "Themed Cell Styles",
+    labelKey: "named_styles.category_themed_cell_styles",
     type: "themed",
     // Each group of 4 = one accent (20% → 40% → 60% → 100%)
     names: [
@@ -96,7 +96,7 @@ const BUILTIN_CATEGORIES: Category[] = [
     ],
   },
   {
-    label: "Number Format",
+    labelKey: "named_styles.category_number_format",
     type: "grid",
     names: ["comma", "comma [0]", "currency", "currency [0]", "percent"],
   },
@@ -108,12 +108,15 @@ interface StyleGroup {
   styles: NamedStyle[];
 }
 
-function getBuiltinGroups(builtinStyles: NamedStyle[]): StyleGroup[] {
+function getBuiltinGroups(
+  builtinStyles: NamedStyle[],
+  t: (key: string) => string,
+): StyleGroup[] {
   const byLowerName = new Map(
     builtinStyles.map((s) => [s.name.toLowerCase(), s]),
   );
   return BUILTIN_CATEGORIES.map((cat) => ({
-    label: cat.label,
+    label: t(cat.labelKey),
     type: cat.type,
     styles: cat.names
       .map((n) => byLowerName.get(n))
@@ -121,13 +124,13 @@ function getBuiltinGroups(builtinStyles: NamedStyle[]): StyleGroup[] {
   })).filter((g) => g.styles.length > 0);
 }
 
-const ACCENT_LABELS = [
-  "Accent 1",
-  "Accent 2",
-  "Accent 3",
-  "Accent 4",
-  "Accent 5",
-  "Accent 6",
+const ACCENT_LABEL_KEYS = [
+  "named_styles.accent_1",
+  "named_styles.accent_2",
+  "named_styles.accent_3",
+  "named_styles.accent_4",
+  "named_styles.accent_5",
+  "named_styles.accent_6",
 ];
 
 type PanelView =
@@ -170,7 +173,7 @@ const NamedStylesPanel = ({
   const normalStyle = builtinStyles.find(
     (s) => s.name.toLowerCase() === "normal",
   );
-  const builtinGroups = getBuiltinGroups(builtinStyles);
+  const builtinGroups = getBuiltinGroups(builtinStyles, t);
   const allStyleNames = [
     ...customStyles.map((s) => s.name),
     ...builtinStyles.map((s) => s.name),
@@ -192,7 +195,7 @@ const NamedStylesPanel = ({
     if (group.type === "themed") {
       return (
         <div className="ic-named-styles-rows">
-          {ACCENT_LABELS.map((accentLabel, i) => {
+          {ACCENT_LABEL_KEYS.map((accentLabelKey, i) => {
             const accentSuffix = `accent${i + 1}`;
             const row = group.styles.filter((s) =>
               s.name.toLowerCase().endsWith(accentSuffix),
@@ -200,8 +203,9 @@ const NamedStylesPanel = ({
             if (row.length === 0) {
               return null;
             }
+            const accentLabel = t(accentLabelKey);
             return (
-              <div key={accentLabel} className="ic-named-styles-row">
+              <div key={accentLabelKey} className="ic-named-styles-row">
                 {row.map((s) => {
                   const pct = s.name.match(/^(\d+%)/);
                   return renderTile(s, pct ? pct[1] : accentLabel);
@@ -350,7 +354,7 @@ const NamedStylesPanel = ({
               className="ic-named-styles-section-title"
               style={{ height: "17px" }}
             >
-              Custom
+              {t("named_styles.section_custom")}
               <div className="ic-named-styles-section-title-actions">
                 <Tooltip title={t("named_styles.manage_styles")}>
                   <IconButton
@@ -367,7 +371,9 @@ const NamedStylesPanel = ({
           </div>
         )}
         <div className="ic-named-styles-section">
-          <div className="ic-named-styles-section-title">Theme</div>
+          <div className="ic-named-styles-section-title">
+            {t("named_styles.section_theme")}
+          </div>
           {builtinGroups.map((group) => (
             <div key={group.label} className="ic-named-styles-category">
               <div className="ic-named-styles-category-label">
