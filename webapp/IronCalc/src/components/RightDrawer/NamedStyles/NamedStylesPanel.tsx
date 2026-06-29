@@ -277,6 +277,7 @@ const NamedStylesPanel = ({
           <ManageCustomStyles
             model={model}
             customStyles={customStyles}
+            formatOptions={formatOptions}
             onEdit={(style) => setView({ mode: "editing", style })}
             onDelete={(style) => onDeleteNamedStyle(style.name)}
           />
