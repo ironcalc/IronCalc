@@ -208,6 +208,7 @@
     "back_to_list": "Zurück zur Liste",
     "cancel": "Abbrechen",
     "confirm_delete_message": "Möchten Sie wirklich löschen",
+    "custom_format_required": "Das benutzerdefinierte Format darf nicht leer sein",
     "delete_style": "Stil löschen",
     "manage_styles": "Stile verwalten",
     "name_already_exists": "Ein Stil mit diesem Namen existiert bereits",

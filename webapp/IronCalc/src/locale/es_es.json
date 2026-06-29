@@ -208,6 +208,7 @@
     "back_to_list": "Volver a la lista",
     "cancel": "Cancelar",
     "confirm_delete_message": "¿Seguro que desea eliminar",
+    "custom_format_required": "El formato personalizado no puede estar vacío",
     "delete_style": "Eliminar estilo",
     "manage_styles": "Gestionar estilos",
     "name_already_exists": "Ya existe un estilo con este nombre",
