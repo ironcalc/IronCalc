@@ -210,6 +210,8 @@
     "confirm_delete_message": "Möchten Sie wirklich löschen",
     "custom_format_required": "Das benutzerdefinierte Format darf nicht leer sein",
     "delete_style": "Stil löschen",
+    "empty_message1": "Keine benutzerdefinierten Stile.",
+    "empty_message2": "Klicken Sie auf 'Neu hinzufügen', um einen zu erstellen.",
     "manage_styles": "Stile verwalten",
     "name_already_exists": "Ein Stil mit diesem Namen existiert bereits",
     "new_style": "Neuer Stil",

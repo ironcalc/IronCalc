@@ -1,5 +1,5 @@
 import type { FmtSettings, Model, NamedStyle } from "@ironcalc/wasm";
-import { PencilLine, Trash2 } from "lucide-react";
+import { PackageOpen, PencilLine, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../../Button/IconButton";
 import { Tooltip } from "../../Tooltip/Tooltip";
@@ -21,6 +21,20 @@ const ManageCustomStyles = ({
   onDelete,
 }: ManageCustomStylesProps) => {
   const { t } = useTranslation();
+
+  if (customStyles.length === 0) {
+    return (
+      <div className="ic-named-styles-empty-state-message">
+        <div className="ic-named-styles-icon-wrapper">
+          <PackageOpen />
+        </div>
+        {t("named_styles.empty_message1")}
+        <br />
+        {t("named_styles.empty_message2")}
+      </div>
+    );
+  }
+
   return (
     <div className="ic-named-styles-manage-list">
       {customStyles.map((s) => (

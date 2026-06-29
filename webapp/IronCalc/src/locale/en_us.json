@@ -210,6 +210,8 @@
     "confirm_delete_message": "Are you sure you want to delete",
     "custom_format_required": "Custom format cannot be empty",
     "delete_style": "Delete style",
+    "empty_message1": "No custom styles yet.",
+    "empty_message2": "Click on 'Add new' to add one.",
     "manage_styles": "Manage styles",
     "name_already_exists": "A style with this name already exists",
     "new_style": "New style",
