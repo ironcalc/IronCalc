@@ -1,5 +1,6 @@
-import type { CellStyle, Color, Model } from "@ironcalc/wasm";
+import type { CellStyle, Color, FmtSettings, Model } from "@ironcalc/wasm";
 import type { CSSProperties } from "react";
+import { NumberFormats } from "../../FormatMenu/formatUtil";
 
 const BORDER_WIDTH: Record<string, string> = {
   thin: "1px",
@@ -41,6 +42,38 @@ function getBorderValue(
   const cssStyle = BORDER_CSS_STYLE[item.style] ?? "solid";
   const color = model.resolveColor(item.color) || "currentColor";
   return `${width} ${cssStyle} ${color}`;
+}
+
+export function getPreviewText(
+  numFmt: string,
+  formatOptions: FmtSettings,
+  t: (key: string) => string,
+): string {
+  if (numFmt === NumberFormats.AUTO) {
+    return "Aa";
+  }
+  if (numFmt === formatOptions.number_fmt) {
+    return "#";
+  }
+  if (numFmt === NumberFormats.PERCENTAGE) {
+    return "%";
+  }
+  if (numFmt === NumberFormats.CURRENCY_EUR) {
+    return t("toolbar.format_menu.currency_eur_example");
+  }
+  if (numFmt === NumberFormats.CURRENCY_USD) {
+    return t("toolbar.format_menu.currency_usd_example");
+  }
+  if (numFmt === NumberFormats.CURRENCY_GBP) {
+    return t("toolbar.format_menu.currency_gbp_example");
+  }
+  if (
+    numFmt === formatOptions.short_date ||
+    numFmt === formatOptions.long_date
+  ) {
+    return "31/12";
+  }
+  return "C";
 }
 
 export function getTileStyle(model: Model, style: CellStyle): CSSProperties {

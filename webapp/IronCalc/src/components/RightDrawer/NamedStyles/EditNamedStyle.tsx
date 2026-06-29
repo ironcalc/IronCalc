@@ -16,6 +16,7 @@ import FormatStylePicker, {
   type FormatStyle,
 } from "../ConditionalFormatting/FormatStylePicker";
 import "./edit-named-style.css";
+import { getPreviewText } from "./named-styles-utils";
 
 export interface SaveError {
   nameError: string;
@@ -203,7 +204,7 @@ const EditNamedStyle = ({
             className="ic-edit-style-preview"
             style={formatStyleToPreview(formatStyle, currentTheme)}
           >
-            Aa
+            {getPreviewText(numFmt, formatOptions, t)}
           </div>
           <span className="ic-edit-style-header-box-text">
             {name.trim() || t("named_styles.new_style")}
