@@ -210,6 +210,8 @@
     "confirm_delete_message": "¿Seguro que desea eliminar",
     "custom_format_required": "El formato personalizado no puede estar vacío",
     "delete_style": "Eliminar estilo",
+    "empty_message1": "No hay estilos personalizados.",
+    "empty_message2": "Haz clic en 'Añadir nuevo' para crear uno.",
     "manage_styles": "Gestionar estilos",
     "name_already_exists": "Ya existe un estilo con este nombre",
     "new_style": "Nuevo estilo",
