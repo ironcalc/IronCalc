@@ -208,7 +208,7 @@
 }
 
 .ic-named-styles-empty-state-message {
-  flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
