@@ -218,7 +218,6 @@
     "category_number_format": "Zahlenformat",
     "category_themed_cell_styles": "Designorientierte Zellenformate",
     "category_titles_and_headings": "Titel und Überschriften",
-    "confirm_delete_message": "Möchten Sie wirklich löschen",
     "custom_format_placeholder": "z. B. #,##0.00 oder \"€\"#,##0",
     "custom_format_required": "Das benutzerdefinierte Format darf nicht leer sein",
     "default_name_prefix": "Stil",
