@@ -78,16 +78,8 @@ export const DataBarMiniChart = ({
     : color;
   return (
     <div className="ic-db-mini-chart">
-      {BAR_WIDTHS.map((w, i) => (
-        <div
-          key={w}
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            borderTop: i > 0 ? "1px solid #e0e0e0" : undefined,
-          }}
-        >
+      {BAR_WIDTHS.map((w) => (
+        <div key={w} className="ic-db-bar-segment">
           <div
             style={{
               width: `${w * 100}%`,

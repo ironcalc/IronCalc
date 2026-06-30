@@ -3,6 +3,7 @@
   position: fixed;
   font-family: var(--typography-font-family);
   font-size: var(--typography-font-size);
+  background-color: var(--palette-common-white);
 }
 
 .ic-dropdown-menu {
@@ -11,7 +12,7 @@
   max-height: 240px;
   overflow-y: auto;
   border-radius: 8px;
-  background: var(--palette-common-white);
+  background-color: var(--palette-common-white);
   padding: 4px;
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.12),

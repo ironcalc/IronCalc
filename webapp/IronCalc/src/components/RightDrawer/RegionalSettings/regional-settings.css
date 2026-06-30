@@ -12,6 +12,7 @@
   align-items: center;
   justify-content: flex-end;
   padding: 0 8px;
+  color: var(--palette-common-black);
   border-bottom: 1px solid var(--palette-grey-300);
 }
 
