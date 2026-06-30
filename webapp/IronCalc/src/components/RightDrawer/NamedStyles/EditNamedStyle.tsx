@@ -5,7 +5,7 @@ import type {
   Model,
 } from "@ironcalc/wasm";
 import { Check } from "lucide-react";
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { resolveColorToHex } from "../../ColorPicker/util";
@@ -99,15 +99,6 @@ const EditNamedStyle = ({
     return candidate;
   };
 
-  const [name, setName] = useState(getDefaultName);
-  const [nameError, setNameError] = useState("");
-  const [formatStyle, setFormatStyle] = useState<FormatStyle>(() =>
-    initFormatStyle(model, style),
-  );
-  const [numFmt, setNumFmt] = useState<string>(style.num_fmt);
-  const [customFmt, setCustomFmt] = useState("");
-  const [customFmtTouched, setCustomFmtTouched] = useState(false);
-
   const knownFormats = [
     NumberFormats.AUTO,
     formatOptions.number_fmt,
@@ -118,7 +109,28 @@ const EditNamedStyle = ({
     formatOptions.short_date,
     formatOptions.long_date,
   ];
+
+  const [name, setName] = useState(getDefaultName);
+  const [nameError, setNameError] = useState("");
+  const [formatStyle, setFormatStyle] = useState<FormatStyle>(() =>
+    initFormatStyle(model, style),
+  );
+  const [numFmt, setNumFmt] = useState<string>(style.num_fmt);
+  const [customFmt, setCustomFmt] = useState(() =>
+    knownFormats.includes(style.num_fmt) ? "" : style.num_fmt,
+  );
+  const [customFmtTouched, setCustomFmtTouched] = useState(false);
+  const customFmtInputRef = useRef<HTMLInputElement>(null);
+
   const isCustom = !knownFormats.includes(numFmt);
+  const wasCustomRef = useRef(isCustom);
+
+  useEffect(() => {
+    if (isCustom && !wasCustomRef.current) {
+      customFmtInputRef.current?.focus();
+    }
+    wasCustomRef.current = isCustom;
+  }, [isCustom]);
 
   const formatSelectOptions = [
     { value: NumberFormats.AUTO, label: t("toolbar.format_menu.auto") },
@@ -239,7 +251,7 @@ const EditNamedStyle = ({
             />
             {isCustom && (
               <Input
-                autoFocus
+                ref={customFmtInputRef}
                 type="text"
                 placeholder={t("named_styles.custom_format_placeholder")}
                 value={customFmt}
