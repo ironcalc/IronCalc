@@ -40,6 +40,7 @@
   height: 52px;
   flex-shrink: 0;
   padding: 0 12px;
+  color: var(--palette-common-black);
   border-bottom: 1px solid var(--palette-grey-300);
 }
 

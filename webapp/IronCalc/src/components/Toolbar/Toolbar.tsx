@@ -426,7 +426,7 @@ function Toolbar(properties: ToolbarProperties) {
                     style={{
                       backgroundColor:
                         resolveColorToHex(properties.fontColor, currentTheme) ||
-                        "#000000",
+                        "var(--palette-sheet-default-text-color)",
                     }}
                   />
                 </>
@@ -449,7 +449,7 @@ function Toolbar(properties: ToolbarProperties) {
                     style={{
                       backgroundColor:
                         resolveColorToHex(properties.fillColor, currentTheme) ||
-                        "#FFFFFF",
+                        "var(--palette-common-white)",
                     }}
                   />
                 </>
