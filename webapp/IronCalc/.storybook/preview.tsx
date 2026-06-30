@@ -3,7 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../src/i18n";
 import type { PartialIronCalcThemeVariables } from "../src/theme";
-import { defaultThemeVariables, setThemeVariables } from "../src/theme/theme";
+import {
+  darkThemeVariables,
+  defaultThemeVariables,
+  setThemeVariables,
+} from "../src/theme/theme";
 import "../src/theme/theme.css";
 import "../src/index.css";
 
@@ -34,6 +38,7 @@ const crazyThemeVariables: PartialIronCalcThemeVariables = {
 
 const themes = {
   default: defaultThemeVariables,
+  dark: darkThemeVariables,
   crazy: crazyThemeVariables,
 };
 
@@ -88,6 +93,7 @@ const preview: Preview = {
         icon: "paintbrush",
         items: [
           { value: "default", title: "Default" },
+          { value: "dark", title: "Dark" },
           { value: "crazy", title: "Crazy" },
         ],
       },
