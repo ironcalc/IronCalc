@@ -336,7 +336,7 @@ const Editor = (options: EditorOptions) => {
           display: showEditor,
           background: "#FFF",
           fontFamily: "var(--palette-sheet-default-cell-font-family)",
-          fontSize: "13px",
+          fontSize: "12px",
         }}
       >
         <div

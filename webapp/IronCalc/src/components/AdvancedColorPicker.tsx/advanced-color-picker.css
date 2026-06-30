@@ -83,7 +83,7 @@
 
 .ic-advanced-color-picker-hash-label {
   margin: auto 0 auto 10px;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--palette-grey-900);
   font-family: var(--typography-font-family);
 }
