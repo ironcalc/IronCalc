@@ -18,6 +18,7 @@
 .ic-named-styles-header-title {
   width: 100%;
   font-size: var(--typography-font-size);
+  color: var(--palette-common-black);
 }
 
 .ic-named-styles-content {
@@ -33,6 +34,7 @@
   justify-content: space-between;
   padding: 0 8px;
   gap: 8px;
+  color: var(--palette-common-white);
   border-bottom: 1px solid var(--palette-grey-300);
 }
 

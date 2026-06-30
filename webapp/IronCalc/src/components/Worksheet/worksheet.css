@@ -5,7 +5,7 @@
   background: var(--palette-sheet-outline-color);
   cursor: crosshair;
   border-radius: 1px;
-  border: 1px solid white;
+  border: 1px solid var(--palette-common-white);
 }
 
 /* Spacer */

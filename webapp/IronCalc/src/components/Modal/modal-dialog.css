@@ -29,6 +29,7 @@
   justify-content: space-between;
   height: 44px;
   padding: 0 12px;
+  color: var(--palette-common-black);
 }
 
 .ic-modal-dialog-header h2 {

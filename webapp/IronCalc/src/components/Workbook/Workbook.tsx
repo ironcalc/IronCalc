@@ -79,7 +79,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     ({ name, color, sheet_id, state }: WorksheetProperties) => {
       return {
         name,
-        color: model.resolveColor(color) || "#FFF",
+        color: model.resolveColor(color) || "var(--palette-common-white)",
         sheetId: sheet_id,
         state,
       };

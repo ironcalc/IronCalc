@@ -334,7 +334,8 @@ const Editor = (options: EditorOptions) => {
           height: "100%",
           overflow: "hidden",
           display: showEditor,
-          background: "#FFF",
+          background: "var(--palette-common-white)",
+          color: "var(--palette-common-black)",
           fontFamily: "var(--palette-sheet-default-cell-font-family)",
           fontSize: "12px",
         }}
