@@ -18,6 +18,7 @@ export function useWorkbookMenu({ setModel, onDelete }: Options) {
   const [intendedSelection, setIntendedSelection] = useState<string | null>(
     null,
   );
+  const [, forceRefresh] = useState(0);
 
   const selectedUuid = getSelectedUuid();
 
@@ -65,11 +66,13 @@ export function useWorkbookMenu({ setModel, onDelete }: Options) {
   const handlePinToggle = (uuid: string) => {
     togglePinWorkbook(uuid);
     setIntendedSelection(null);
+    forceRefresh((n) => n + 1);
   };
 
   const handleDuplicate = (uuid: string) => {
     duplicateModel(uuid);
     setIntendedSelection(null);
+    forceRefresh((n) => n + 1);
   };
 
   return {
