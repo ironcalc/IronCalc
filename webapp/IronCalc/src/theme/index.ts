@@ -1,4 +1,5 @@
 export {
+  darkThemeVariables,
   defaultThemeVariables,
   setThemeVariables,
   unsetThemeVariables,
