@@ -205,7 +205,7 @@
 }
 
 .ic-db-swatch-row + .ic-db-swatch-row {
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--palette-grey-200);
 }
 
 .ic-db-swatch-bar {
@@ -219,6 +219,16 @@
   flex-direction: column;
   border-radius: 3px;
   overflow: hidden;
+}
+
+.ic-db-bar-segment {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.ic-db-bar-segment + .ic-db-bar-segment {
+  border-top: 1px solid var(--palette-grey-200);
 }
 
 .ic-is-presets {

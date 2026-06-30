@@ -6,7 +6,6 @@
   background: var(--palette-common-white);
   height: var(--toolbar-height);
   border-bottom: 1px solid var(--palette-grey-300);
-  border-radius: 4px 4px 0 0;
 }
 
 /* Toolbar container */
@@ -47,6 +46,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
+  color: var(--palette-common-black);
   font-family: var(--typography-font-family);
   font-size: var(--typography-font-size);
   border: 1px solid var(--palette-grey-300);
