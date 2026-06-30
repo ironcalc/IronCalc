@@ -11,6 +11,8 @@ import { type PartialIronCalcThemeVariables, setThemeVariables } from "./theme";
 interface IronCalcProperties {
   model: Model;
   themeVariables?: PartialIronCalcThemeVariables;
+  /** When false, renders without the toolbar/formula bar and blocks all edits. */
+  canEdit?: boolean;
 }
 
 export interface IronCalcHandle {
@@ -18,7 +20,7 @@ export interface IronCalcHandle {
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
-  ({ themeVariables, model }, ref) => {
+  ({ themeVariables, model, canEdit = true }, ref) => {
     const rootRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -40,7 +42,11 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
     return (
       <div ref={rootRef} className="ic-root">
         <I18nextProvider i18n={i18n}>
-          <Workbook model={model} workbookState={new WorkbookState()} />
+          <Workbook
+            model={model}
+            workbookState={new WorkbookState()}
+            canEdit={canEdit}
+          />
         </I18nextProvider>
       </div>
     );
