@@ -11,6 +11,11 @@ import { type PartialIronCalcThemeVariables, setThemeVariables } from "./theme";
 interface IronCalcProperties {
   model: Model;
   themeVariables?: PartialIronCalcThemeVariables;
+  // If we apply a mutation to the model from outside React
+  // (e.g. applying a remote diff), we want to update the
+  // canvas without throwing away the editing state. This can
+  // be done by incrementing the externalRevision prop.
+  externalRevision?: number;
 }
 
 export interface IronCalcHandle {
@@ -18,8 +23,19 @@ export interface IronCalcHandle {
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
-  ({ themeVariables, model }, ref) => {
+  ({ themeVariables, model, externalRevision = 0 }, ref) => {
     const rootRef = useRef<HTMLDivElement>(null);
+
+    // We keep WorkbookState and the model as a ref, so that
+    // it survives re-rendering this component.
+    // We build a new WorkbookState whenever the model identity changes.
+    const workbook = useRef<{ state: WorkbookState; model: Model } | null>(
+      null,
+    );
+    if (workbook.current === null || workbook.current.model !== model) {
+      workbook.current = { state: new WorkbookState(), model };
+    }
+    const workbookState = workbook.current.state;
 
     useEffect(() => {
       if (rootRef.current && themeVariables) {
@@ -40,7 +56,11 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
     return (
       <div ref={rootRef} className="ic-root">
         <I18nextProvider i18n={i18n}>
-          <Workbook model={model} workbookState={new WorkbookState()} />
+          <Workbook
+            model={model}
+            workbookState={workbookState}
+            externalRevision={externalRevision}
+          />
         </I18nextProvider>
       </div>
     );
