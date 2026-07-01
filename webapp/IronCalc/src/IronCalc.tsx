@@ -1,16 +1,21 @@
 import type { Model } from "@ironcalc/wasm";
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle } from "react";
 import { I18nextProvider } from "react-i18next";
 import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
 import i18n from "./i18n";
 import "./theme/theme.css";
 import "./index.css";
-import { type PartialIronCalcThemeVariables, setThemeVariables } from "./theme";
+import {
+  type PartialIronCalcThemeVariables,
+  setThemeVariables,
+  unsetThemeVariables,
+} from "./theme";
 
 interface IronCalcProperties {
   model: Model;
   themeVariables?: PartialIronCalcThemeVariables;
+  rootContainer?: HTMLElement | null;
 }
 
 export interface IronCalcHandle {
@@ -18,14 +23,22 @@ export interface IronCalcHandle {
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
-  ({ themeVariables, model }, ref) => {
-    const rootRef = useRef<HTMLDivElement>(null);
+  ({ themeVariables, model, rootContainer }, ref) => {
+    const root = rootContainer ?? document.body;
+    useEffect(() => {
+      if (root.classList.contains("ic-root")) {
+        console.warn("rootContainer already in use:", root);
+      }
+      root.classList.add("ic-root");
+      return () => root.classList.remove("ic-root");
+    }, [root]);
 
     useEffect(() => {
-      if (rootRef.current && themeVariables) {
-        setThemeVariables(themeVariables, rootRef.current);
+      if (themeVariables) {
+        setThemeVariables(themeVariables, root);
+        return () => unsetThemeVariables(root);
       }
-    }, [themeVariables]);
+    }, [root, themeVariables]);
 
     useImperativeHandle(ref, () => ({
       setLanguage(language: string) {
@@ -38,7 +51,7 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
     }));
 
     return (
-      <div ref={rootRef} className="ic-root">
+      <div className="ic-widget">
         <I18nextProvider i18n={i18n}>
           <Workbook model={model} workbookState={new WorkbookState()} />
         </I18nextProvider>

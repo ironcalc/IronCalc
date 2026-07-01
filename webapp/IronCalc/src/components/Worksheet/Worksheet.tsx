@@ -122,7 +122,8 @@ const Worksheet = forwardRef(
         !extendTo ||
         !scrollElement.current ||
         !editor ||
-        !arrayStructure
+        !arrayStructure ||
+        !canvasRef.closest(".ic-root")
       ) {
         return;
       }

@@ -125,7 +125,10 @@ export default class WorksheetCanvas {
     this.editor = options.elements.editor;
     this.refresh = options.refresh;
 
-    const rootRef = this.canvas.closest(".ic-root") ?? document.documentElement;
+    const rootRef = this.canvas.closest(".ic-root");
+    if (!rootRef) {
+      throw new Error("WorksheetCanvas must be rendered within an .ic-root");
+    }
     this.theme = readThemeFromCSS(rootRef);
 
     this.cellOutline = options.elements.cellOutline;
