@@ -87,3 +87,11 @@ export function setThemeVariables(
     }
   }
 }
+
+export function unsetThemeVariables(
+  target: HTMLElement = document.documentElement,
+): void {
+  for (const name of Object.keys(defaultThemeVariables)) {
+    target.style.removeProperty(name);
+  }
+}

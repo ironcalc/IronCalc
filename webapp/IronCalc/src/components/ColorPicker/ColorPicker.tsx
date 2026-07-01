@@ -3,10 +3,10 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import AdvancedColorPicker from "../AdvancedColorPicker.tsx/AdvancedColorPicker";
+import { createAnchoredPortal } from "../createAnchoredPortal";
 import { getFocusableElements } from "../util";
 import "./color-picker.css";
 import type { Color, IronCalcTheme } from "@ironcalc/wasm";
-import { createPortal } from "react-dom";
 import useAnchorPosition, { type Placement } from "./useAnchorPosition";
 import useKeyDown from "./useKeyDown";
 import {
@@ -190,7 +190,7 @@ const ColorPicker = ({
     );
   }
 
-  return createPortal(
+  return createAnchoredPortal(
     <div
       ref={panelRef}
       className="ic-color-picker"
@@ -303,7 +303,7 @@ const ColorPicker = ({
         </div>
       </div>
     </div>,
-    document.body,
+    anchorEl.current,
   );
 };
 

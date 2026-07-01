@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createAnchoredPortal } from "../createAnchoredPortal";
 import "./icon-picker.css";
 
 // Ordered list of all available icons for cycling.
@@ -130,7 +130,7 @@ const IconPicker = ({ value, color, onChange }: IconPickerProps) => {
         />
       </button>
       {open &&
-        createPortal(
+        createAnchoredPortal(
           <div
             ref={panelRef}
             className="ic-icon-picker-panel"
@@ -151,7 +151,7 @@ const IconPicker = ({ value, color, onChange }: IconPickerProps) => {
               </button>
             ))}
           </div>,
-          document.body,
+          buttonRef.current,
         )}
     </>
   );

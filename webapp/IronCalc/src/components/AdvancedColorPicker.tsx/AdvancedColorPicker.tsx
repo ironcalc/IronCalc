@@ -2,9 +2,9 @@ import { Check } from "lucide-react";
 import type { RefObject } from "react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "../Button/Button";
+import { createAnchoredPortal } from "../createAnchoredPortal";
 import "./advanced-color-picker.css";
 import { getFocusableElements } from "../util";
 import { useKeyDown } from "./useKeyDown";
@@ -136,7 +136,7 @@ const AdvancedColorPicker = ({
     return null;
   }
 
-  return createPortal(
+  return createAnchoredPortal(
     <div className="ic-menu-layer">
       <div className="ic-menu-backdrop" onClick={onCancel} aria-hidden="true" />
 
@@ -231,7 +231,7 @@ const AdvancedColorPicker = ({
         </div>
       </div>
     </div>,
-    document.body,
+    anchorEl.current,
   );
 };
 

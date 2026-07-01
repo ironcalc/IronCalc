@@ -1,6 +1,6 @@
 import { Check, ChevronRight } from "lucide-react";
 import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createAnchoredPortal } from "../createAnchoredPortal";
 import { MenuContext } from "./Menu";
 import { useAnchorPosition } from "./useAnchorPosition";
 import { useMenuKeyDown } from "./useMenuKeyDown";
@@ -203,7 +203,7 @@ export function MenuItemWithSubmenu({
       </button>
 
       {open
-        ? createPortal(
+        ? createAnchoredPortal(
             <MenuContext.Provider
               value={{
                 close: closeAll,
@@ -230,7 +230,7 @@ export function MenuItemWithSubmenu({
                 </div>
               </div>
             </MenuContext.Provider>,
-            document.body,
+            itemRef.current,
           )
         : null}
     </>

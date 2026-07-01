@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
+import { createAnchoredPortal } from "../createAnchoredPortal";
 
 import "./select.css";
 import "./dropdown-menu.css";
@@ -338,7 +338,7 @@ export function Select({
         </button>
 
         {open
-          ? createPortal(
+          ? createAnchoredPortal(
               <div
                 ref={menuRef}
                 className="ic-dropdown-menu-wrapper"
@@ -391,7 +391,7 @@ export function Select({
                   })}
                 </div>
               </div>,
-              document.body,
+              rootRef.current,
             )
           : null}
       </div>

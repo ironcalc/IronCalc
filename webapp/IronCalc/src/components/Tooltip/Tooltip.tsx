@@ -1,6 +1,6 @@
 import { type ReactElement, useId, useState } from "react";
-import { createPortal } from "react-dom";
 
+import { createAnchoredPortal } from "../createAnchoredPortal";
 import "./tooltip.css";
 import { useTooltipPosition } from "./useTooltipPosition";
 
@@ -47,7 +47,7 @@ export function Tooltip({ title, children }: TooltipProperties) {
         {children}
       </span>
 
-      {createPortal(
+      {createAnchoredPortal(
         <div
           ref={tooltipRef}
           id={tooltipId}
@@ -58,7 +58,7 @@ export function Tooltip({ title, children }: TooltipProperties) {
         >
           {title}
         </div>,
-        document.body,
+        triggerRef.current,
       )}
     </>
   );

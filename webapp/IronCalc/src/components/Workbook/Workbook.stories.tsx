@@ -45,6 +45,7 @@ function WorkbookWithInit() {
   }
   return (
     <div
+      className="ic-widget"
       style={{
         position: "absolute",
         top: 0,
