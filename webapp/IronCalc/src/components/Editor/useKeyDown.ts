@@ -98,13 +98,13 @@ export const useKeyDown = (
         }
         case "Tab": {
           // end edit and select cell to the right (or left if ShiftKey)
-          workbookState.clearEditingCell();
           model.setUserInput(
             cell.sheet,
             cell.row,
             cell.column,
             workbookState.getEditingText(),
           );
+          workbookState.clearEditingCell();
           if (shiftKey) {
             model.onArrowLeft();
           } else {
