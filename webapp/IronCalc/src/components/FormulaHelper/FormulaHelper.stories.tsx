@@ -52,10 +52,16 @@ function FormulaHelperPlayground() {
   };
 
   return (
-    <div style={{ padding: 40, width: 520 }}>
-      <p style={{ color: "#6a6a6a", fontSize: 13 }}>
-        Type a formula, e.g. <code>=SU</code> or <code>=SUMIF(</code>. Use ↑/↓
-        and Enter in the list.
+    <div style={{ width: 320 }}>
+      <p
+        style={{
+          color: "var(--palette-grey-700)",
+          fontSize: "var(--typography-font-size)",
+          fontFamily: "var(--typography-font-family)",
+        }}
+      >
+        Type a formula, e.g. <code>=SU</code> or <code>=SUMIF(</code>.<br />
+        Use ↑/↓ and Enter in the list.
       </p>
       <div style={{ position: "relative" }}>
         <input
@@ -87,14 +93,14 @@ function FormulaHelperPlayground() {
             }
           }}
           style={{
-            width: "100%",
+            width: 140,
             boxSizing: "border-box",
-            padding: "8px 10px",
-            fontSize: 15,
-            fontFamily: "ui-monospace, Menlo, Consolas, monospace",
-            border: "2px solid #f5a623",
-            borderRadius: 4,
-            outline: "none",
+            padding: "8px",
+            fontSize: "var(--typography-font-size)",
+            fontFamily: "var(--typography-font-family)",
+            border: "2px solid var(--palette-primary-main)",
+            outline:
+              "3px solid color-mix(in srgb, var(--palette-primary-main) 20%, transparent)",
           }}
         />
         {completion ? (
@@ -118,7 +124,7 @@ const meta = {
   title: "Components/FormulaHelper",
   component: FormulaHelperPlayground,
   parameters: {
-    layout: "fullscreen",
+    layout: "centered",
   },
 } satisfies Meta<typeof FormulaHelperPlayground>;
 
