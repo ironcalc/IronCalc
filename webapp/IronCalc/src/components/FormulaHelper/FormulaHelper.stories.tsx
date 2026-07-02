@@ -37,12 +37,12 @@ function FormulaHelperPlayground() {
     : null;
 
   // Accept the highlighted function: replace the partial name with `NAME(`.
-  const accept = () => {
+  const accept = (index: number = selected) => {
     const input = inputRef.current;
     if (!input || completion?.kind !== "list") {
       return;
     }
-    const result = applyListCompletion(text, cursor, completion, selected);
+    const result = applyListCompletion(text, cursor, completion, index);
     setText(result.text);
     setSelected(0);
     requestAnimationFrame(() => {
@@ -105,6 +105,7 @@ function FormulaHelperPlayground() {
               completion={completion}
               selected={selected}
               onSelect={setSelected}
+              onAccept={accept}
             />
           </div>
         ) : null}

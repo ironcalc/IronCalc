@@ -270,7 +270,9 @@ const Editor = (options: EditorOptions) => {
   }, [showHelper, text, cursor]);
 
   // Replace the partial function name with `NAME(` and place the caret inside.
-  const acceptHelperFunction = () => {
+  // Takes an explicit index (rather than always reading `helperSelected`) so a
+  // click can accept the row it lands on without waiting on a state update.
+  const acceptHelperFunction = (index: number = helperSelected) => {
     const textarea = textareaRef.current;
     if (!textarea || completion?.kind !== "list") {
       return;
@@ -279,7 +281,7 @@ const Editor = (options: EditorOptions) => {
       textarea.value,
       textarea.selectionStart,
       completion,
-      helperSelected,
+      index,
     );
     textarea.value = result.text;
     textarea.setSelectionRange(result.cursor, result.cursor);
@@ -440,6 +442,7 @@ const Editor = (options: EditorOptions) => {
                 completion={completion}
                 selected={helperSelected}
                 onSelect={setHelperSelected}
+                onAccept={acceptHelperFunction}
               />
             </div>,
             textareaRef.current,

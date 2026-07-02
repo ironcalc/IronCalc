@@ -47,12 +47,15 @@ interface FormulaHelperProps {
   selected: number;
   // Called when a row is hovered, so the parent can update `selected`.
   onSelect: (index: number) => void;
+  // Called when a row is clicked, to accept that row's completion.
+  onAccept: (index: number) => void;
 }
 
 export function FormulaHelper({
   completion,
   selected,
   onSelect,
+  onAccept,
 }: FormulaHelperProps) {
   if (!completion) {
     return null;
@@ -64,6 +67,7 @@ export function FormulaHelper({
         prefix={completion.prefix}
         selected={selected}
         onSelect={onSelect}
+        onAccept={onAccept}
       />
     );
   }
@@ -80,11 +84,13 @@ function FunctionList({
   prefix,
   selected,
   onSelect,
+  onAccept,
 }: {
   matches: string[];
   prefix: string;
   selected: number;
   onSelect: (index: number) => void;
+  onAccept: (index: number) => void;
 }) {
   const clamped = Math.min(Math.max(selected, 0), matches.length - 1);
   return (
@@ -104,6 +110,7 @@ function FunctionList({
             key={name}
             className={`ic-fh-list-item${isSelected ? " ic-fh-selected" : ""}`}
             onMouseEnter={() => onSelect(index)}
+            onClick={() => onAccept(index)}
           >
             <span className="ic-fh-name">
               <span className="ic-fh-name-match">{prefix}</span>
