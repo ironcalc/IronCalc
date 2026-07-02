@@ -2,12 +2,6 @@
    design mockup (orange accent, function list + signature/docs card). */
 
 .ic-fh {
-  --ic-fh-orange: var(--palette-primary-main);
-  --ic-fh-orange-bg: color-mix(
-    in srgb,
-    var(--palette-primary-main) 20%,
-    transparent
-  );
   font-family: var(--typography-font-family);
   width: 320px;
   max-width: 90vw;
@@ -105,7 +99,7 @@
 }
 
 .ic-fh-arg-active {
-  background: var(--ic-fh-orange-bg);
+  background: color-mix(in srgb, var(--palette-primary-main) 20%, transparent);
   color: var(--palette-common-black);
   border-radius: 3px;
   padding: 1px 3px;
