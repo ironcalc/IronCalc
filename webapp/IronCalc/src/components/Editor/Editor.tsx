@@ -270,8 +270,7 @@ const Editor = (options: EditorOptions) => {
   }, [showHelper, text, cursor]);
 
   // Replace the partial function name with `NAME(` and place the caret inside.
-  // Takes an explicit index (rather than always reading `helperSelected`) so a
-  // click can accept the row it lands on without waiting on a state update.
+  // Takes an explicit index so a row click can accept the row it lands on directly.
   const acceptHelperFunction = (index: number = helperSelected) => {
     const textarea = textareaRef.current;
     if (!textarea || completion?.kind !== "list") {
