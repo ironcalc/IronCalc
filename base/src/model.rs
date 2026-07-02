@@ -3880,6 +3880,26 @@ impl<'a> Model<'a> {
             number_example,
         }
     }
+
+    /// Cycles the references touched by the cursor through the four
+    /// absolute/relative states, Excel F4 style: A1 -> $A$1 -> A$1 -> $A1 -> A1.
+    /// Returns the new text together with the new cursor start and end.
+    ///
+    /// Given cycle_reference("=A1", 3, 3) returns ("=$A$1", 5, 5)
+    pub fn cycle_reference(
+        &self,
+        value: &str,
+        start: usize,
+        end: usize,
+    ) -> Result<(String, i32, i32), String> {
+        crate::expressions::lexer::util::cycle_reference(
+            value,
+            start,
+            end,
+            self.locale,
+            self.language,
+        )
+    }
 }
 
 #[cfg(test)]
