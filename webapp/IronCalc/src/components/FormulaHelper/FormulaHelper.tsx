@@ -10,13 +10,15 @@
 // either the mouse (hover) or the keyboard (arrow keys). See the editor
 // integration in Editor.tsx and the standalone demo in FormulaHelper.stories.
 
-import { BookOpen, ChevronUp } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import {
   Fragment,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  useCallback,
   useState,
 } from "react";
+import { IconButton } from "../Button/IconButton";
 import {
   type Completion,
   displayArgName,
@@ -93,6 +95,12 @@ function FunctionList({
   onAccept: (index: number) => void;
 }) {
   const clamped = Math.min(Math.max(selected, 0), matches.length - 1);
+
+  // Fires whenever the selected button changes, scrolling it into view.
+  const scrollSelectedIntoView = useCallback((el: HTMLButtonElement | null) => {
+    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, []);
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: only swallows events so editing isn't interrupted
     // biome-ignore lint/a11y/useKeyWithClickEvents: not user-interactive; stops propagation only
@@ -108,6 +116,7 @@ function FunctionList({
           <button
             type="button"
             key={name}
+            ref={isSelected ? scrollSelectedIntoView : undefined}
             className={`ic-fh-list-item${isSelected ? " ic-fh-selected" : ""}`}
             onMouseEnter={() => onSelect(index)}
             onClick={() => onAccept(index)}
@@ -173,19 +182,35 @@ function FunctionDetail({
             ))}
             {" )"}
           </div>
-          <div className="ic-fh-desc">{info.description}</div>
+          {collapsed ? null : (
+            <div className="ic-fh-desc">
+              {info.description}
+              {url ? (
+                <a
+                  className="ic-fh-link"
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Read more
+                </a>
+              ) : null}
+            </div>
+          )}
         </div>
-        <button
-          type="button"
-          className="ic-fh-icon-btn"
+        <IconButton
+          icon={
+            <ChevronUp
+              size={16}
+              style={{ transform: collapsed ? "rotate(180deg)" : undefined }}
+            />
+          }
+          aria-label={collapsed ? "Expand" : "Collapse"}
           title={collapsed ? "Expand" : "Collapse"}
+          size="xs"
+          className="ic-fh-collapse-btn"
           onClick={() => setCollapsed((value) => !value)}
-        >
-          <ChevronUp
-            size={16}
-            style={{ transform: collapsed ? "rotate(180deg)" : undefined }}
-          />
-        </button>
+        />
       </div>
 
       {collapsed || info.examples.length === 0 ? null : (
@@ -196,15 +221,6 @@ function FunctionDetail({
               {example}
             </div>
           ))}
-        </div>
-      )}
-
-      {collapsed || !url ? null : (
-        <div className="ic-fh-footer">
-          <a className="ic-fh-link" href={url} target="_blank" rel="noreferrer">
-            <BookOpen size={15} />
-            Learn more about {name}
-          </a>
         </div>
       )}
     </div>
