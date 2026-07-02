@@ -529,6 +529,33 @@ export const useKeyDown = (
           workbookState.setEditingCell(cell);
           return;
         }
+        case "F4": {
+          const value = textarea.value;
+          // the model works in characters, the textarea in UTF-16 code units
+          const start = Array.from(
+            value.slice(0, textarea.selectionStart),
+          ).length;
+          const end = Array.from(value.slice(0, textarea.selectionEnd)).length;
+
+          const [newText, newStart, newEnd] = model.cycleReference(
+            value,
+            start,
+            end,
+          );
+          const newChars = Array.from(newText);
+          const selectionStart = newChars.slice(0, newStart).join("").length;
+          const selectionEnd = newChars.slice(0, newEnd).join("").length;
+
+          cell.text = newText;
+          workbookState.setEditingCell(cell);
+          setTimeout(() => {
+            textarea.setSelectionRange(selectionStart, selectionEnd);
+          }, 0);
+          event.stopPropagation();
+          event.preventDefault();
+          onTextUpdated();
+          return;
+        }
         default: {
           // noop
         }

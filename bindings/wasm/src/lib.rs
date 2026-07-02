@@ -213,6 +213,27 @@ impl Model {
         serde_wasm_bindgen::to_value(&context).map_err(|e| to_js_error(e.to_string()))
     }
 
+    /// Cycles the references touched by the cursor through the four
+    /// absolute/relative states, Excel F4 style: A1 -> $A$1 -> A$1 -> $A1 -> A1.
+    /// Returns the new text together with the new cursor start and end.
+    /// `start` and `end` are char offsets into `value`.
+    #[wasm_bindgen(
+        js_name = "cycleReference",
+        unchecked_return_type = "[string, number, number]"
+    )]
+    pub fn cycle_reference(
+        &self,
+        value: &str,
+        start: usize,
+        end: usize,
+    ) -> Result<JsValue, JsError> {
+        let result = self
+            .model
+            .cycle_reference(value, start, end)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&result).map_err(|e| to_js_error(e.to_string()))
+    }
+
     #[wasm_bindgen(js_name = "newSheet")]
     pub fn new_sheet(&mut self) -> Result<(), JsError> {
         self.model.new_sheet().map_err(to_js_error)

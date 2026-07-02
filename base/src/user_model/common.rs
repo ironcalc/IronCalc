@@ -483,6 +483,22 @@ impl<'a> UserModel<'a> {
             .formula_completion(sheet, row, column, formula, cursor)
     }
 
+    /// Cycles the references touched by the cursor through the four
+    /// absolute/relative states, Excel F4 style: A1 -> $A$1 -> A$1 -> $A1 -> A1.
+    /// Returns the new text together with the new cursor start and end.
+    ///
+    /// See also:
+    /// * [Model::cycle_reference]
+    #[inline]
+    pub fn cycle_reference(
+        &self,
+        value: &str,
+        start: usize,
+        end: usize,
+    ) -> Result<(String, i32, i32), String> {
+        self.model.cycle_reference(value, start, end)
+    }
+
     /// Returns the formatted value of a cell
     ///
     /// See also:
