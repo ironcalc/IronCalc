@@ -549,6 +549,7 @@ version = "0.7.1"
 dependencies = [
  "bitcode",
  "chrono",
+ "ironcalc",
  "ironcalc_base",
  "itertools",
  "roxmltree",

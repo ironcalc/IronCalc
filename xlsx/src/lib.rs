@@ -47,4 +47,8 @@ pub mod compare;
 pub mod error;
 pub mod export;
 pub mod import;
+pub mod util;
 pub use ironcalc_base as base;
+
+#[cfg(feature = "mock_time")]
+pub mod mock_time;

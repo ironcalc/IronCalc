@@ -11,6 +11,11 @@ readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+# Compiles the engine with a mocked clock so tests can pin NOW()/TODAY()
+# to the timestamp stored in a workbook's METADATA sheet (see `mock_time.rs`).
+mock_time = ["ironcalc_base/mock_time"]
+
 [dependencies]
 zip = "0.6"
 roxmltree = "0.19"
@@ -27,9 +32,9 @@ bitcode = "0.6.8"
 
 [dev-dependencies]
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
-# Enables the mocked clock when building tests, so `compare::test_file` can
-# pin NOW()/TODAY() to the timestamp stored in a workbook's METADATA sheet.
-ironcalc_base = { path = "../base", version = "0.7", features = ["mock_time"] }
+# Path-only self dependency (stripped when publishing): turns on the mocked
+# clock for this crate's own tests while leaving normal builds untouched.
+ironcalc = { path = ".", features = ["mock_time"] }
 
 [lib]
 name = "ironcalc"

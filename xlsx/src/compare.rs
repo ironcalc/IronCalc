@@ -9,6 +9,11 @@ use ironcalc_base::{expressions::utils::number_to_column, Model};
 use crate::export::save_to_xlsx;
 use crate::import::load_from_xlsx;
 
+use super::util::get_workbook_metadata;
+
+#[cfg(feature = "mock_time")]
+use crate::mock_time::set_mock_time_from_metadata;
+
 pub struct CompareError {
     message: String,
 }
@@ -312,74 +317,6 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
     }
 }
 
-fn get_metadata_sheet_index(model: &Model) -> Option<u32> {
-    for (index, ws) in model.workbook.worksheets.iter().enumerate() {
-        if ws.name.eq_ignore_ascii_case("METADATA") {
-            return Some(index as u32);
-        }
-    }
-    None
-}
-
-// Excel serial date of the Unix epoch (1970-01-01)
-const UNIX_EPOCH_SERIAL: f64 = 25569.0;
-const MILLISECONDS_PER_DAY: f64 = 86_400_000.0;
-
-/// Looks in the METADATA sheet for a row with "NOW" in column A and an Excel
-/// serial date in column B (typically `=NOW()` with the value Excel cached on
-/// save) and returns it as milliseconds since the Unix epoch.
-fn get_metadata_timestamp(model: &Model) -> Option<i64> {
-    let sheet_index = get_metadata_sheet_index(model)?;
-    for row in 1..=32 {
-        if let Ok(CellValue::String(label)) = model.get_cell_value_by_index(sheet_index, row, 1) {
-            if label == "NOW" {
-                if let Ok(CellValue::Number(serial)) =
-                    model.get_cell_value_by_index(sheet_index, row, 2)
-                {
-                    let milliseconds = (serial - UNIX_EPOCH_SERIAL) * MILLISECONDS_PER_DAY;
-                    return Some(milliseconds.round() as i64);
-                }
-                return None;
-            }
-        }
-    }
-    None
-}
-
-/// Mocks the engine clock to the timestamp stored in the METADATA sheet so
-/// that volatile functions (NOW, TODAY, ...) evaluate to the same values
-/// Excel saved. Workbooks without a timestamp use the actual system time.
-/// The mock only takes effect when `ironcalc_base` is compiled with the
-/// `mock_time` feature, which is enabled for test builds of this crate.
-fn set_mock_time_from_metadata(model: &Model) {
-    let milliseconds = get_metadata_timestamp(model).unwrap_or_else(|| {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as i64
-    });
-    ironcalc_base::mock_time::set_mock_time(milliseconds);
-}
-
-// Cheesy way to get the locale from the workbook metadata sheet
-fn get_workbook_metadata(model: &Model) -> String {
-    let metadata_sheet_index = get_metadata_sheet_index(model);
-    let default_locale = "en".to_string();
-    if let Some(sheet_index) = metadata_sheet_index {
-        if let Ok(a1) = model.get_formatted_cell_value(sheet_index, 1, 1) {
-            if a1 == "Locale" {
-                match model.get_formatted_cell_value(sheet_index, 1, 2) {
-                    Ok(v) if v == "en-GB" => {
-                        return "en-GB".to_string();
-                    }
-                    _ => return default_locale,
-                }
-            }
-        }
-    }
-    default_locale
-}
-
 /// Tests that file in file_path produces the same results in Excel and in IronCalc.
 pub fn test_file(file_path: &str) -> Result<(), String> {
     // FIXME: we need to load the model twice :S
@@ -387,6 +324,7 @@ pub fn test_file(file_path: &str) -> Result<(), String> {
     let locale = get_workbook_metadata(&model1);
     // Loading a model already evaluates some cells (conditional formatting),
     // so the clock must be mocked before loading the models we compare.
+    #[cfg(feature = "mock_time")]
     set_mock_time_from_metadata(&model1);
     let model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
     let mut model2 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
@@ -401,6 +339,7 @@ pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(),
     let locale = get_workbook_metadata(&model1);
     // Loading a model already evaluates some cells (conditional formatting),
     // so the clock must be mocked before loading the models we compare.
+    #[cfg(feature = "mock_time")]
     set_mock_time_from_metadata(&model1);
 
     let model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
