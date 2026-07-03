@@ -27,6 +27,9 @@ bitcode = "0.6.8"
 
 [dev-dependencies]
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
+# Enables the mocked clock when building tests, so `compare::test_file` can
+# pin NOW()/TODAY() to the timestamp stored in a workbook's METADATA sheet.
+ironcalc_base = { path = "../base", version = "0.7", features = ["mock_time"] }
 
 [lib]
 name = "ironcalc"

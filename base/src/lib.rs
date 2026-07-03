@@ -64,7 +64,7 @@ mod workbook;
 #[cfg(test)]
 mod test;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mock_time"))]
 pub mod mock_time;
 
 pub use locale::get_supported_locales;

@@ -169,7 +169,7 @@ fn assert_crossword_rules(model: Model) {
 
 #[test]
 fn test_x14_expression_conditional_formatting() {
-    let model = load_from_xlsx("tests/templates/crossword.xlsx", "en", "UTC", "en").unwrap();
+    let model = load_from_xlsx("tests/crossword_ranges.xlsx", "en", "UTC", "en").unwrap();
 
     // The rules survive a save / load round-trip (exported as regular
     // `type="expression"` rules in the main conditionalFormatting block).
