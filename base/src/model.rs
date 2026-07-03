@@ -36,7 +36,7 @@ use crate::{
 
 use crate::{cf_types::CfCellResult, tz::Tz};
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mock_time"))]
 pub use crate::mock_time::get_milliseconds_since_epoch;
 
 /// Number of milliseconds since January 1, 1970
@@ -44,7 +44,7 @@ pub use crate::mock_time::get_milliseconds_since_epoch;
 /// * The Operative System
 /// * The JavaScript environment
 /// * Or mocked for tests
-#[cfg(not(test))]
+#[cfg(not(any(test, feature = "mock_time")))]
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::expect_used)]
 pub fn get_milliseconds_since_epoch() -> i64 {
@@ -60,7 +60,7 @@ pub fn get_milliseconds_since_epoch() -> i64 {
 /// * The Operative System
 /// * The JavaScript environment
 /// * Or mocked for tests
-#[cfg(not(test))]
+#[cfg(not(any(test, feature = "mock_time")))]
 #[cfg(target_arch = "wasm32")]
 pub fn get_milliseconds_since_epoch() -> i64 {
     use js_sys::Date;
