@@ -34,6 +34,30 @@ function isDynamicAnchor(
   return typeof structure === "object" && "DynamicAnchor" in structure;
 }
 
+// A token that begins an operand: a value, a name/function, a reference/range,
+// or an opening delimiter of a grouped expression or array. When such a token
+// sits right after the caret there is already an operand there, so the caret is
+// not in an empty slot and the reference-insertion hint must not be shown (e.g.
+// `=|SUM(...)`, where the function name follows the caret).
+function tokenStartsOperand(token: TokenType): boolean {
+  if (typeof token === "object") {
+    return (
+      "Ident" in token ||
+      "Number" in token ||
+      "String" in token ||
+      "Boolean" in token ||
+      "Reference" in token ||
+      "Range" in token
+    );
+  }
+  return token === "LeftParenthesis" || token === "LeftBrace";
+}
+
+// The argument separator tokens (`,` in English locales, `;` otherwise).
+function tokenIsArgumentSeparator(token: TokenType): boolean {
+  return token === "Comma" || token === "Semicolon";
+}
+
 // Returns true when the cursor sits at a position where the formula grammar
 // would accept a reference or range, so that arrow keys / clicking a cell can
 // insert one. This asks the engine for a partial parse of the formula up to the
@@ -167,11 +191,22 @@ function getFormulaHTML(
       const isReference = tokenIsReferenceType(token);
       const isRange = tokenIsRangeType(token);
 
-      // Insert the hint right before the first token that begins at/after the
-      // caret — unless that token is itself a reference/range, in which case a
-      // reference already follows the caret and no hint is needed.
+      // The hint belongs right before the first token that begins at/after the
+      // caret. Suppress it when the caret is not actually in an empty operand
+      // slot:
+      //   * the following token already starts an operand (`=|SUM(...)`,
+      //     `=A1+|B2`) — the reference/value is there, nothing to insert;
+      //   * the caret sits in an empty trailing argument, i.e. right after a
+      //     separator and immediately before `)` (`=SUM(A1,|)`). Note this is
+      //     distinct from `=SUM(|)`, whose previous token is `(`, not a
+      //     separator, and which does mark an insertable first argument.
       if (inReferenceMode && !hintHandled && start >= scalarCursor) {
-        if (!isReference && !isRange) {
+        const previousToken = index > 0 ? tokens[index - 1].token : undefined;
+        const emptyTrailingArgument =
+          token === "RightParenthesis" &&
+          previousToken !== undefined &&
+          tokenIsArgumentSeparator(previousToken);
+        if (!tokenStartsOperand(token) && !emptyTrailingArgument) {
           html.push(referenceHint);
         }
         hintHandled = true;
