@@ -327,7 +327,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     onCellEditStart: (): void => {
       // User presses F2, we start editing at the edn of the text
       const { sheet, row, column } = model.getSelectedView();
-      const text = model.getCellContent(sheet, row, column);
+      const text = model.getEditableCellContent(sheet, row, column);
       const editorWidth =
         model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
       const editorHeight = model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
