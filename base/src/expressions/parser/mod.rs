@@ -908,15 +908,21 @@ impl<'a> Parser<'a> {
                     if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
                         // `SUM(A1` parses a complete argument and then fails to
                         // find the `)`. If we ran out of input we are still
-                        // inside the call, so keep the argument completion hint.
+                        // inside the call, sitting right after a complete
+                        // argument: report the (correct) argument index so the
+                        // signature tooltip works, but NOT `Range` — a fresh
+                        // reference cannot begin after a complete operand. (A
+                        // separator or `)` is what is expected here.)
                         let at_eof = err.position >= self.lexer.get_formula().chars().count();
+                        let expecting = if at_eof {
+                            let index = (args.len() as u32).max(1);
+                            vec![ExpectedTokens::Argument(display_name.clone(), index)]
+                        } else {
+                            vec![ExpectedTokens::Other]
+                        };
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
-                            expecting: if at_eof {
-                                self.expecting_here.clone()
-                            } else {
-                                vec![ExpectedTokens::Other]
-                            },
+                            expecting,
                             position: err.position,
                             message: err.message,
                         };
@@ -1354,8 +1360,11 @@ impl<'a> Parser<'a> {
         Ok(args)
     }
 
-    /// Records that the position currently being parsed is argument `index`
-    /// (1-based) of `fn_name`, so an EOF there reports useful completions.
+    /// Records that the position currently being parsed *starts* argument
+    /// `index` (1-based) of `fn_name`: a fresh operand goes here, so a `Range`
+    /// is a valid completion. Reported if an EOF lands on this empty slot (e.g.
+    /// `SUM(` or `SUM(A1,`). Once the argument is complete the unclosed-call
+    /// path in `parse_primary` reports the argument context without `Range`.
     fn set_argument_hint(&mut self, fn_name: &str, index: u32) {
         self.expecting_here = vec![
             ExpectedTokens::Argument(fn_name.to_string(), index),

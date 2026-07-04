@@ -289,3 +289,85 @@ fn escaped_quotes_inside_string_stay_open() {
     let ctx = complete_at_end("SUM(\"say \"\"hi\"\"");
     assert_eq!(ctx.expecting, vec![ExpectedTokens::Other]);
 }
+
+// ---------------------------------------------------------------------------
+// (f) A completed operand inside an OPEN call is not a place where a fresh
+//     reference can start. A bare cell (`A1`) can still grow into a range
+//     (`A1:B2`), so offering `Range` there is fine — but an operand that ends
+//     in `)` (a nested call) or a finished range (`A1:B2`) cannot be extended,
+//     so `Range` must NOT be offered. At the top level the parser already gets
+//     this right (see the `A1+SUM(A3)|` / `A1:B2|` cases below); inside an open
+//     call it wrongly keeps offering `Range`.
+//
+//     These pin the Rust-side cause of the editor showing an "insert reference"
+//     hint at `=SUM(A1, SUM(A3)|)`.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn completed_nested_call_in_argument_does_not_expect_range() {
+    // SUM(A1, SUM(A3)|)  → the second argument already holds a complete call;
+    // the next token can only be an operator / `,` / `)`, never a range.
+    let ctx = complete_at("SUM(A1, SUM(A3))", 15);
+    assert!(
+        !ctx.expecting.contains(&ExpectedTokens::Range),
+        "got {:?}",
+        ctx.expecting
+    );
+}
+
+#[test]
+fn completed_range_in_argument_does_not_expect_range() {
+    // SUM(A1:B2|)  → the argument is a finished range; nothing new starts here.
+    let ctx = complete_at("SUM(A1:B2)", 9);
+    assert!(
+        !ctx.expecting.contains(&ExpectedTokens::Range),
+        "got {:?}",
+        ctx.expecting
+    );
+}
+
+#[test]
+fn top_level_completed_call_does_not_expect_range() {
+    // A1+SUM(A3)|  → for contrast, the top level already handles this correctly:
+    // after a complete operand no range is offered.
+    let ctx = complete_at("A1+SUM(A3)", 10);
+    assert!(
+        !ctx.expecting.contains(&ExpectedTokens::Range),
+        "got {:?}",
+        ctx.expecting
+    );
+}
+
+#[test]
+fn dangling_operator_after_a_completed_call_expects_a_range() {
+    // 1+2*SUM(I3:J6, N13:O15+SUM(L12:L13)*|  → the trailing `*` needs a fresh
+    // operand, so a range is a valid completion even though the operator follows
+    // a completed nested call. Dropping the argument's `Range` hint on
+    // completion must not swallow this.
+    let ctx = complete_at_end("1+2*SUM(I3:J6,N13:O15+SUM(L12:L13)*");
+    assert!(
+        ctx.expecting.contains(&ExpectedTokens::Range),
+        "got {:?}",
+        ctx.expecting
+    );
+}
+
+#[test]
+fn nested_call_in_argument_keeps_the_outer_argument_index() {
+    // SUM(A1, SUM(A3)|)  → the cursor is in the SECOND argument of the outer
+    // SUM. A nested call in that argument must not leak its own inner index: we
+    // should report argument 2, not 1.
+    let ctx = complete_at("SUM(A1, SUM(A3))", 15);
+    assert!(
+        ctx.expecting
+            .contains(&ExpectedTokens::Argument("SUM".to_string(), 2)),
+        "got {:?}",
+        ctx.expecting
+    );
+    assert!(
+        !ctx.expecting
+            .contains(&ExpectedTokens::Argument("SUM".to_string(), 1)),
+        "got {:?}",
+        ctx.expecting
+    );
+}
