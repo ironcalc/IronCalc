@@ -479,8 +479,8 @@ const Workbook = (props: {
     );
   }, [model]);
 
-  // Returns the formula value to be shown in the formula bar
-  // and whether the it is part of an array formula that cannot be edited directly
+  // Returns the formula bar value and whether it can be edited
+  // (false for array formulas)
   const getFormulaValue = (): [string, boolean] => {
     const cell = workbookState.getEditingCell();
     if (cell) {
@@ -503,7 +503,7 @@ const Workbook = (props: {
     return [model.getCellContent(sheet, row, column), true];
   };
 
-  const [formulaValue, isArrayFormula] = getFormulaValue();
+  const [formulaValue, canEditFormula] = getFormulaValue();
 
   const getCellStyle = useCallback(() => {
     const { sheet, row, column } = model.getSelectedView();
@@ -530,6 +530,8 @@ const Workbook = (props: {
       }}
       onPaste={(event: React.ClipboardEvent) => {
         if (!canEdit) {
+          event.preventDefault();
+          event.stopPropagation();
           return;
         }
         workbookState.clearCutRange();
@@ -650,6 +652,8 @@ const Workbook = (props: {
       }}
       onCut={(event: React.ClipboardEvent) => {
         if (!canEdit) {
+          event.preventDefault();
+          event.stopPropagation();
           return;
         }
         const data = model.copyToClipboard();
@@ -863,7 +867,7 @@ const Workbook = (props: {
           openDrawer={() => {
             openDrawer("namedRanges");
           }}
-          canEdit={canEdit && isArrayFormula}
+          canEdit={canEdit && canEditFormula}
         />
         <Worksheet
           model={model}
@@ -872,7 +876,7 @@ const Workbook = (props: {
             setRedrawId((id) => id + 1);
           }}
           ref={worksheetRef}
-          canEdit={canEdit && isArrayFormula}
+          canEdit={canEdit && canEditFormula}
           onCut={(): void => {
             focusWorkbook();
             document.execCommand("cut");
