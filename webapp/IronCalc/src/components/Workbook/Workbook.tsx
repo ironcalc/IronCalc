@@ -516,7 +516,7 @@ const Workbook = (props: {
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: This div needs to be focusable to handle keyboard events for the workbook
     <div
-      className={`ic-workbook-container${canEdit ? "" : " ic-workbook-container--no-toolbar"}`}
+      className={`ic-workbook-container${canEdit ? "" : " ic-workbook-container--readonly"}`}
       ref={rootRef}
       onKeyDown={onKeyDown}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: This div needs to be focusable to handle keyboard events for the workbook
