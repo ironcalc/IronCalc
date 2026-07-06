@@ -105,19 +105,25 @@ const useKeyboardNavigation = (
             break;
           }
           case "b": {
-            if (options.canEdit) options.onBold();
+            if (options.canEdit) {
+              options.onBold();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;
           }
           case "i": {
-            if (options.canEdit) options.onItalic();
+            if (options.canEdit) {
+              options.onItalic();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;
           }
           case "u": {
-            if (options.canEdit) options.onUnderline();
+            if (options.canEdit) {
+              options.onUnderline();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;
@@ -252,7 +258,9 @@ const useKeyboardNavigation = (
           break;
         }
         case "Delete": {
-          if (options.canEdit) options.onCellsDeleted();
+          if (options.canEdit) {
+            options.onCellsDeleted();
+          }
           break;
         }
         case "PageDown": {
