@@ -15,3 +15,9 @@
 .ic-workbook-container:focus {
   outline: none;
 }
+
+/* In read-only mode the toolbar is not rendered, so collapse the space
+   reserved for it (worksheet area and right drawer offset by it). */
+.ic-workbook-container--no-toolbar {
+  --toolbar-height: 0px;
+}
