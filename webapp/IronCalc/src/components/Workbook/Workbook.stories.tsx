@@ -29,7 +29,7 @@ async function loadModel(): Promise<Model> {
   return new Model("Workbook1", "en", "UTC", "en");
 }
 
-function WorkbookWithInit() {
+function WorkbookWithInit({ canEdit }: { canEdit: boolean }) {
   const [model, setModel] = useState<Model | null>(null);
 
   useEffect(() => {
@@ -54,7 +54,11 @@ function WorkbookWithInit() {
         right: 0,
       }}
     >
-      <Workbook model={model} workbookState={new WorkbookState()} />
+      <Workbook
+        model={model}
+        workbookState={new WorkbookState()}
+        canEdit={canEdit}
+      />
     </div>
   );
 }
@@ -65,8 +69,12 @@ const meta = {
   parameters: {
     layout: "fullscreen",
   },
-  argTypes: {},
-  args: {},
+  argTypes: {
+    canEdit: { control: "boolean" },
+  },
+  args: {
+    canEdit: true,
+  },
 } satisfies Meta<typeof WorkbookWithInit>;
 
 export default meta;
