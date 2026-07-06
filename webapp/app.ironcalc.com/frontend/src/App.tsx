@@ -11,6 +11,8 @@ import {
   get_documentation_model,
   get_model,
   uploadFile,
+  fetchFinanceData,
+  type FinanceFetchTask,
 } from "./components/rpc";
 import {
   createModelWithSafeTimezone,
@@ -36,6 +38,7 @@ function App() {
   const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [localStorageId, setLocalStorageId] = useState<number>(1);
+  const [redrawVersion, setRedrawVersion] = useState<number>(0);
 
   const ironCalcRef = useRef<IronCalcHandle>(null);
 
@@ -124,12 +127,41 @@ function App() {
 
   useEffect(() => {
     if (!model) return;
+
+    const handleTasks = () => {
+      try {
+        const tasks = model.takeTasks();
+        if (!Array.isArray(tasks) || tasks.length === 0) return;
+
+        const financeTasks = tasks
+          .filter(
+            (t): t is { FinanceFetch: FinanceFetchTask } =>
+              "FinanceFetch" in t,
+          )
+          .map((t) => t.FinanceFetch);
+
+        if (financeTasks.length > 0) {
+          fetchFinanceData(financeTasks).then((results) => {
+            if (!Array.isArray(results)) return;
+            results.forEach((result, i) =>
+                model.completeFinancialTask(financeTasks[i], result),
+              );
+            model.evaluate();
+            setRedrawVersion((v) => v + 1);
+          });
+        }
+      } catch (_) {
+        // Silently ignore fetch errors (server may be down, no API key, etc.)
+      }
+    };
+
     // We try to save the model every second
     const interval = setInterval(() => {
       const queue = model.flushSendQueue();
       if (queue.length !== 1) {
         saveSelectedModelInStorage(model);
       }
+      handleTasks();
     }, 1000);
     return () => clearInterval(interval);
   }, [model]);
@@ -213,7 +245,11 @@ function App() {
           setLocalStorageId={setLocalStorageId}
           onLanguageChange={handleLanguageChange}
         />
-        <IronCalc model={model} ref={ironCalcRef} />
+        <IronCalc
+          model={model}
+          ref={ironCalcRef}
+          redrawVersion={redrawVersion}
+        />
         {isDrawerOpen && (
           <div
             className="app-ic-mobile-overlay"

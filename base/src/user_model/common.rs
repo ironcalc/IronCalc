@@ -12,7 +12,9 @@ use crate::{
         types::Area,
         utils::{is_valid_column_number, is_valid_row},
     },
+    finance::provider::FinanceError,
     model::{FmtSettings, Model},
+    task::FinanceFetchTask,
     types::{
         Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
         SheetProperties, SheetState, Style, Theme, VerticalAlignment,
@@ -375,6 +377,29 @@ impl<'a> UserModel<'a> {
     /// * [UserModel::pause_evaluation]
     pub fn evaluate(&mut self) {
         self.model.evaluate()
+    }
+
+    /// Drain and return any pending side-effect tasks collected during
+    /// the most recent evaluation.
+    ///
+    /// Call this after [`evaluate()`](Self::evaluate)
+    ///
+    /// See also:
+    /// * [Model::take_tasks]
+    pub fn take_tasks(&mut self) -> Vec<crate::task::Task> {
+        self.model.take_tasks()
+    }
+
+    /// Complete a pending task by feeding its result into the model's cache.
+    ///
+    /// See also:
+    /// * [Model::complete_task]
+    pub fn complete_financial_task(
+        &mut self,
+        task: FinanceFetchTask,
+        result: Result<f64, FinanceError>,
+    ) {
+        self.model.complete_financial_task(task, result)
     }
 
     /// Returns the list of pending diffs and removes them from the queue

@@ -521,6 +521,8 @@ pub struct Functions {
     pub seriessum: String,
     pub sumproduct: String,
     pub percentof: String,
+    // TODO: localize for non-English languages
+    pub finance: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]

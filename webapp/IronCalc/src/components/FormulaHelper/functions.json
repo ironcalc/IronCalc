@@ -2125,6 +2125,26 @@
     "description": "Compatibility name for F.INV.RT. Prefer F.INV.RT in new formulas.",
     "examples": ["=FINV(0.05, 5, 10) is equivalent to =F.INV.RT(0.05, 5, 10)."]
   },
+  "finance": {
+    "tier": 0,
+    "category": 4,
+    "tags": ["stock", "forex", "crypto"],
+    "args": [
+      ["ticker", "text", "Ticker symbol (e.g. AAPL, EURUSD, BTCUSDT)"],
+      [
+        "attribute",
+        "text",
+        "Data to fetch: price, open, high, low, close, volume"
+      ],
+      ["asset_type", "text", "Asset class: stock, forex, or crypto"]
+    ],
+    "description": "Fetches real-time financial market data for stocks, forex pairs, and cryptocurrencies via the configured finance provider. Returns #N/A initially while the data loads; after the server fetch completes, the actual value appears. Use it to pull live prices, exchange rates, and crypto quotes directly into your spreadsheet.",
+    "examples": [
+      "=FINANCE(\"AAPL\", \"price\", \"stock\") returns Apple's current stock price.",
+      "=FINANCE(\"EURUSD\", \"price\", \"forex\") returns the EUR/USD exchange rate.",
+      "=FINANCE(\"BTCUSDT\", \"price\", \"crypto\") returns the Bitcoin price in USDT."
+    ]
+  },
   "fisher": {
     "tier": 0,
     "category": 9,
