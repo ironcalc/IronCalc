@@ -16,7 +16,7 @@ interface IronCalcProperties {
   model: Model;
   themeVariables?: PartialIronCalcThemeVariables;
   rootContainer?: HTMLElement | null;
-  /** When false, renders without the toolbar/formula bar and blocks all edits. */
+  /** When false, renders without the toolbar, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
 }
 

@@ -227,9 +227,13 @@ const Editor = (options: EditorOptions) => {
 
   const cell = workbookState.getEditingCell();
 
-  const showEditor = cell !== null || type === "formula-bar" ? "block" : "none";
+  const showEditor = cell !== null || type === "formula-bar";
   const mtext = cell ? workbookState.getEditingText() : originalText;
-  const styledFormula = getFormulaHTML(model, mtext, cursor).html;
+  // In read-only mode the formula is rendered as plain grey text: reference
+  // highlighting (and its inline colors) only makes sense while editing.
+  const styledFormula = canEdit
+    ? getFormulaHTML(model, mtext, cursor).html
+    : mtext;
 
   // The formula helper is shown while editing a formula in whichever editor
   // currently has focus — the cell editor or the formula bar (both render this
@@ -329,16 +333,7 @@ const Editor = (options: EditorOptions) => {
         message={formulaError ?? undefined}
       />
       <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          overflow: "hidden",
-          display: showEditor,
-          background: "#FFF",
-          fontFamily: "var(--palette-sheet-default-cell-font-family)",
-          fontSize: "12px",
-        }}
+        className={`ic-editor-container${showEditor ? "" : " ic-editor-container--hidden"}${canEdit ? "" : " ic-editor-container--readonly"}`}
       >
         <div
           ref={maskRef}
