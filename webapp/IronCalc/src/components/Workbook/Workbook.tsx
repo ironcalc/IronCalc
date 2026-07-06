@@ -529,7 +529,9 @@ const Workbook = (props: {
         }
       }}
       onPaste={(event: React.ClipboardEvent) => {
-        if (!canEdit) return;
+        if (!canEdit) {
+          return;
+        }
         workbookState.clearCutRange();
         const { items } = event.clipboardData;
         if (!items) {
@@ -647,7 +649,9 @@ const Workbook = (props: {
         event.stopPropagation();
       }}
       onCut={(event: React.ClipboardEvent) => {
-        if (!canEdit) return;
+        if (!canEdit) {
+          return;
+        }
         const data = model.copyToClipboard();
         const sheet = model.getSelectedSheet();
         // '2024-10-18T14:07:37.599Z'

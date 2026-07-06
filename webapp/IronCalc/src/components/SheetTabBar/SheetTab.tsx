@@ -83,7 +83,9 @@ function SheetTab(props: SheetTabProps) {
   }
 
   const handleOpenMenu = (event: React.MouseEvent) => {
-    if (!props.canEdit) return;
+    if (!props.canEdit) {
+      return;
+    }
     event.stopPropagation();
     event.preventDefault();
     if (menuOpen) {
@@ -97,7 +99,9 @@ function SheetTab(props: SheetTabProps) {
   };
 
   const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!props.canEdit) return;
+    if (!props.canEdit) {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     onSelected();
@@ -111,7 +115,9 @@ function SheetTab(props: SheetTabProps) {
   };
 
   const handleStartEditing = () => {
-    if (!props.canEdit) return;
+    if (!props.canEdit) {
+      return;
+    }
     setEditingName(name);
     setInputWidth(Math.max(name.length * 7 + 8, 6));
     setIsEditing(true);
