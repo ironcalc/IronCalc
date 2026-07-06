@@ -93,13 +93,17 @@ const useKeyboardNavigation = (
         // Ctrl+...
         switch (lowerKey) {
           case "z": {
-            options.onUndo();
+            if (options.canEdit) {
+              options.onUndo();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;
           }
           case "y": {
-            options.onRedo();
+            if (options.canEdit) {
+              options.onRedo();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;

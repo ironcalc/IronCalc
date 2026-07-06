@@ -229,8 +229,7 @@ const Editor = (options: EditorOptions) => {
 
   const showEditor = cell !== null || type === "formula-bar";
   const mtext = cell ? workbookState.getEditingText() : originalText;
-  // In read-only mode the formula is rendered as plain grey text: reference
-  // highlighting (and its inline colors) only makes sense while editing.
+  // In read-only mode the formula is rendered as plain grey text
   const styledFormula = canEdit
     ? getFormulaHTML(model, mtext, cursor).html
     : mtext;
