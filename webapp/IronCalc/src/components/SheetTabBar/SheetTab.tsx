@@ -207,17 +207,17 @@ function SheetTab(props: SheetTabProps) {
           <>
             <div className="ic-sheet-tab-name">{name}</div>
             {props.canEdit && (
-            <button
-              ref={menuButtonRef}
-              className={`ic-sheet-tab-menu-button${menuOpen ? " ic-sheet-tab-menu-button--active" : ""}`}
-              onClick={handleOpenMenu}
-              type="button"
-              aria-label={t("sheet_tab.open_menu")}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-            >
-              <ChevronDown />
-            </button>
+              <button
+                ref={menuButtonRef}
+                className={`ic-sheet-tab-menu-button${menuOpen ? " ic-sheet-tab-menu-button--active" : ""}`}
+                onClick={handleOpenMenu}
+                type="button"
+                aria-label={t("sheet_tab.open_menu")}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+              >
+                <ChevronDown />
+              </button>
             )}
           </>
         )}
