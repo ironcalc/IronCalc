@@ -319,6 +319,12 @@ const Worksheet = forwardRef(
             event.preventDefault();
             event.stopPropagation();
 
+            // The context menus only offer editing actions (insert/delete,
+            // cut/paste), so they are not shown in read-only mode.
+            if (!canEdit) {
+              return;
+            }
+
             // Store mouse position for menu placement
             setContextMenuPosition({
               top: event.clientY,

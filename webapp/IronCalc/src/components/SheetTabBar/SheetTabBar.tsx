@@ -25,7 +25,7 @@ export interface SheetTabBarProps {
   onHideSheet: () => void;
   model: Model;
   onOpenRegionalSettings: () => void;
-  /** When false, sheet add/rename/delete affordances are hidden. */
+  /** When false, sheet add/rename/delete and regional settings affordances are hidden. */
   canEdit: boolean;
 }
 
@@ -105,32 +105,34 @@ function SheetTabBar(props: SheetTabBarProps) {
           ))}
         </div>
       </div>
-      <div className="ic-sheet-tab-bar-right-container">
-        <Tooltip title={t("regional_settings.open_regional_settings")}>
-          <Button
-            className="ic-sheet-tab-bar-regional-settings-button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              props.onOpenRegionalSettings();
-            }}
-          >
-            {getLocaleDisplayName(props.model.getLocale())}
-            <div className="ic-sheet-tab-bar-text-divider" />
-            {t(
-              `regional_settings.language.display_language.${props.model.getLanguage()}`,
-            )}
-          </Button>
-        </Tooltip>
-        <Tooltip title={t("regional_settings.open_regional_settings")}>
-          <IconButton
-            className="ic-sheet-tab-bar-regional-settings-icon-button"
-            aria-label={t("regional_settings.open_regional_settings")}
-            icon={<Settings />}
-            onClick={props.onOpenRegionalSettings}
-          />
-        </Tooltip>
-      </div>
+      {props.canEdit && (
+        <div className="ic-sheet-tab-bar-right-container">
+          <Tooltip title={t("regional_settings.open_regional_settings")}>
+            <Button
+              className="ic-sheet-tab-bar-regional-settings-button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                props.onOpenRegionalSettings();
+              }}
+            >
+              {getLocaleDisplayName(props.model.getLocale())}
+              <div className="ic-sheet-tab-bar-text-divider" />
+              {t(
+                `regional_settings.language.display_language.${props.model.getLanguage()}`,
+              )}
+            </Button>
+          </Tooltip>
+          <Tooltip title={t("regional_settings.open_regional_settings")}>
+            <IconButton
+              className="ic-sheet-tab-bar-regional-settings-icon-button"
+              aria-label={t("regional_settings.open_regional_settings")}
+              icon={<Settings />}
+              onClick={props.onOpenRegionalSettings}
+            />
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 }

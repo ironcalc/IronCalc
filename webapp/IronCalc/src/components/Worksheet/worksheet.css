@@ -8,6 +8,11 @@
   border: 1px solid white;
 }
 
+/* The handle auto-fills (drags) cell content, so it is an edit affordance. */
+.ic-workbook-container--readonly .ironcalc-cell-handle {
+  display: none;
+}
+
 /* Spacer */
 .ic-worksheet-spacer {
   position: absolute;
