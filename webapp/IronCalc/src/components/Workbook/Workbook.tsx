@@ -52,7 +52,7 @@ function colorToParam(color: Color): string {
 const Workbook = (props: {
   model: Model;
   workbookState: WorkbookState;
-  /** When false, the toolbar/formula bar are hidden and all edits are blocked. */
+  /** When false, the toolbar is hidden, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
 }) => {
   const { model, workbookState, canEdit = true } = props;
@@ -516,7 +516,7 @@ const Workbook = (props: {
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: This div needs to be focusable to handle keyboard events for the workbook
     <div
-      className="ic-workbook-container"
+      className={`ic-workbook-container${canEdit ? "" : " ic-workbook-container--no-toolbar"}`}
       ref={rootRef}
       onKeyDown={onKeyDown}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: This div needs to be focusable to handle keyboard events for the workbook
@@ -696,145 +696,147 @@ const Workbook = (props: {
       }}
     >
       {canEdit && (
-      <Toolbar
-        canUndo={model.canUndo()}
-        canRedo={model.canRedo()}
-        onRedo={onRedo}
-        onUndo={onUndo}
-        onToggleUnderline={onToggleUnderline}
-        onToggleBold={onToggleBold}
-        onToggleItalic={onToggleItalic}
-        onToggleStrike={onToggleStrike}
-        onToggleHorizontalAlign={onToggleHorizontalAlign}
-        onToggleVerticalAlign={onToggleVerticalAlign}
-        onToggleWrapText={onToggleWrapText}
-        onCopyStyles={onCopyStyles}
-        onTextColorPicked={onTextColorPicked}
-        onFillColorPicked={onFillColorPicked}
-        onNumberFormatPicked={onNumberFormatPicked}
-        onClearFormatting={() => {
-          const {
-            sheet,
-            range: [rowStart, columnStart, rowEnd, columnEnd],
-          } = model.getSelectedView();
-          model.rangeClearFormatting(
-            sheet,
-            rowStart,
-            columnStart,
-            rowEnd,
-            columnEnd,
-          );
-          setRedrawId((id) => id + 1);
-        }}
-        onIncreaseFontSize={(delta: number) => {
-          onIncreaseFontSize(delta);
-        }}
-        onSetFontSize={(size: number) => {
-          onSetFontSize(size);
-        }}
-        onDownloadPNG={() => {
-          // creates a new canvas element in the visible part of the the selected area
-          const worksheetCanvas = worksheetRef.current?.getCanvas();
-          if (!worksheetCanvas) {
-            return;
+        <Toolbar
+          canUndo={model.canUndo()}
+          canRedo={model.canRedo()}
+          onRedo={onRedo}
+          onUndo={onUndo}
+          onToggleUnderline={onToggleUnderline}
+          onToggleBold={onToggleBold}
+          onToggleItalic={onToggleItalic}
+          onToggleStrike={onToggleStrike}
+          onToggleHorizontalAlign={onToggleHorizontalAlign}
+          onToggleVerticalAlign={onToggleVerticalAlign}
+          onToggleWrapText={onToggleWrapText}
+          onCopyStyles={onCopyStyles}
+          onTextColorPicked={onTextColorPicked}
+          onFillColorPicked={onFillColorPicked}
+          onNumberFormatPicked={onNumberFormatPicked}
+          onClearFormatting={() => {
+            const {
+              sheet,
+              range: [rowStart, columnStart, rowEnd, columnEnd],
+            } = model.getSelectedView();
+            model.rangeClearFormatting(
+              sheet,
+              rowStart,
+              columnStart,
+              rowEnd,
+              columnEnd,
+            );
+            setRedrawId((id) => id + 1);
+          }}
+          onIncreaseFontSize={(delta: number) => {
+            onIncreaseFontSize(delta);
+          }}
+          onSetFontSize={(size: number) => {
+            onSetFontSize(size);
+          }}
+          onDownloadPNG={() => {
+            // creates a new canvas element in the visible part of the the selected area
+            const worksheetCanvas = worksheetRef.current?.getCanvas();
+            if (!worksheetCanvas) {
+              return;
+            }
+            const {
+              range: [rowStart, columnStart, rowEnd, columnEnd],
+            } = model.getSelectedView();
+            // NB: cells outside of the displayed area are not rendered
+            // I think the only reasonable way to do this would be server side.
+            let [x, y] = worksheetCanvas.getCoordinatesByCell(
+              rowStart,
+              columnStart,
+            );
+            const [x1, y1] = worksheetCanvas.getCoordinatesByCell(
+              rowEnd + 1,
+              columnEnd + 1,
+            );
+            const width = (x1 - x) * devicePixelRatio;
+            const height = (y1 - y) * devicePixelRatio;
+            x *= devicePixelRatio;
+            y *= devicePixelRatio;
+
+            const capturedCanvas = document.createElement("canvas");
+            capturedCanvas.width = width;
+            capturedCanvas.height = height;
+            const ctx = capturedCanvas.getContext("2d");
+            if (!ctx) {
+              return;
+            }
+
+            ctx.drawImage(
+              worksheetCanvas.canvas,
+              x,
+              y,
+              width,
+              height,
+              0,
+              0,
+              width,
+              height,
+            );
+
+            const downloadLink = document.createElement("a");
+            downloadLink.href = capturedCanvas.toDataURL("image/png");
+            downloadLink.download = "ironcalc.png";
+            downloadLink.click();
+          }}
+          onBorderChanged={(border: BorderOptions): void => {
+            const {
+              sheet,
+              range: [rowStart, columnStart, rowEnd, columnEnd],
+            } = model.getSelectedView();
+            const row = Math.min(rowStart, rowEnd);
+            const column = Math.min(columnStart, columnEnd);
+
+            const width = Math.abs(columnEnd - columnStart) + 1;
+            const height = Math.abs(rowEnd - rowStart) + 1;
+            const borderArea = {
+              type: border.border,
+              item: border,
+            };
+            model.setAreaWithBorder(
+              { sheet, row, column, width, height },
+              borderArea,
+            );
+            setRedrawId((id) => id + 1);
+          }}
+          fillColor={style.fill.color}
+          fontColor={style.font.color}
+          fontSize={style.font.sz}
+          bold={style.font.b}
+          underline={style.font.u}
+          italic={style.font.i}
+          strike={style.font.strike}
+          horizontalAlign={
+            style.alignment ? style.alignment.horizontal : "general"
           }
-          const {
-            range: [rowStart, columnStart, rowEnd, columnEnd],
-          } = model.getSelectedView();
-          // NB: cells outside of the displayed area are not rendered
-          // I think the only reasonable way to do this would be server side.
-          let [x, y] = worksheetCanvas.getCoordinatesByCell(
-            rowStart,
-            columnStart,
-          );
-          const [x1, y1] = worksheetCanvas.getCoordinatesByCell(
-            rowEnd + 1,
-            columnEnd + 1,
-          );
-          const width = (x1 - x) * devicePixelRatio;
-          const height = (y1 - y) * devicePixelRatio;
-          x *= devicePixelRatio;
-          y *= devicePixelRatio;
-
-          const capturedCanvas = document.createElement("canvas");
-          capturedCanvas.width = width;
-          capturedCanvas.height = height;
-          const ctx = capturedCanvas.getContext("2d");
-          if (!ctx) {
-            return;
+          verticalAlign={
+            style.alignment?.vertical ? style.alignment.vertical : "bottom"
           }
-
-          ctx.drawImage(
-            worksheetCanvas.canvas,
-            x,
-            y,
-            width,
-            height,
-            0,
-            0,
-            width,
-            height,
-          );
-
-          const downloadLink = document.createElement("a");
-          downloadLink.href = capturedCanvas.toDataURL("image/png");
-          downloadLink.download = "ironcalc.png";
-          downloadLink.click();
-        }}
-        onBorderChanged={(border: BorderOptions): void => {
-          const {
-            sheet,
-            range: [rowStart, columnStart, rowEnd, columnEnd],
-          } = model.getSelectedView();
-          const row = Math.min(rowStart, rowEnd);
-          const column = Math.min(columnStart, columnEnd);
-
-          const width = Math.abs(columnEnd - columnStart) + 1;
-          const height = Math.abs(rowEnd - rowStart) + 1;
-          const borderArea = {
-            type: border.border,
-            item: border,
-          };
-          model.setAreaWithBorder(
-            { sheet, row, column, width, height },
-            borderArea,
-          );
-          setRedrawId((id) => id + 1);
-        }}
-        fillColor={style.fill.color}
-        fontColor={style.font.color}
-        fontSize={style.font.sz}
-        bold={style.font.b}
-        underline={style.font.u}
-        italic={style.font.i}
-        strike={style.font.strike}
-        horizontalAlign={
-          style.alignment ? style.alignment.horizontal : "general"
-        }
-        verticalAlign={
-          style.alignment?.vertical ? style.alignment.vertical : "bottom"
-        }
-        wrapText={style.alignment?.wrap_text || false}
-        canEdit={true}
-        numFmt={style.num_fmt}
-        showGridLines={model.getShowGridLines(model.getSelectedSheet())}
-        onToggleShowGridLines={(show) => {
-          const sheet = model.getSelectedSheet();
-          model.setShowGridLines(sheet, show);
-          setRedrawId((id) => id + 1);
-        }}
-        formatOptions={fmtSettings}
-        onOpenConditionalFormatting={() => openDrawer("conditionalFormatting")}
-        isConditionalFormattingOpen={
-          isDrawerOpen && drawerType === "conditionalFormatting"
-        }
-        onOpenNamedStyles={() => openDrawer("namedStyles")}
-        isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
-        themes={themes}
-        currentTheme={currentTheme}
-        onThemePicked={handleThemePicked}
-        onOpenThemes={() => openDrawer("themes")}
-      />
+          wrapText={style.alignment?.wrap_text || false}
+          canEdit={true}
+          numFmt={style.num_fmt}
+          showGridLines={model.getShowGridLines(model.getSelectedSheet())}
+          onToggleShowGridLines={(show) => {
+            const sheet = model.getSelectedSheet();
+            model.setShowGridLines(sheet, show);
+            setRedrawId((id) => id + 1);
+          }}
+          formatOptions={fmtSettings}
+          onOpenConditionalFormatting={() =>
+            openDrawer("conditionalFormatting")
+          }
+          isConditionalFormattingOpen={
+            isDrawerOpen && drawerType === "conditionalFormatting"
+          }
+          onOpenNamedStyles={() => openDrawer("namedStyles")}
+          isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
+          themes={themes}
+          currentTheme={currentTheme}
+          onThemePicked={handleThemePicked}
+          onOpenThemes={() => openDrawer("themes")}
+        />
       )}
       <div
         className="ic-workbook-worksheet-area-left"
