@@ -42,7 +42,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -52,6 +51,7 @@ import {
   applyListCompletion,
   getCompletion,
 } from "../FormulaHelper/formulaCompletion";
+import { useHelperPosition } from "../FormulaHelper/useHelperPosition";
 import { Alert } from "../Modal";
 import type { WorkbookState } from "../workbookState";
 import useKeyDown from "./useKeyDown";
@@ -99,15 +99,11 @@ const Editor = (options: EditorOptions) => {
   const [text, setText] = useState(originalText);
   const [cursor, setCursor] = useState(originalText.length);
   const [formulaError, setFormulaError] = useState<string | null>(null);
-  // Formula helper popup state: the highlighted row in list mode, whether the
-  // user dismissed it with Escape, and the viewport position (from the textarea
-  // rect) where it is rendered via a portal, to escape `overflow: hidden`.
+  // Formula helper popup state: the highlighted row in list mode and whether
+  // the user dismissed it with Escape. The popup itself is rendered via a
+  // portal, to escape `overflow: hidden`.
   const [helperSelected, setHelperSelected] = useState(0);
   const [helperDismissed, setHelperDismissed] = useState(false);
-  const [helperPosition, setHelperPosition] = useState<{
-    left: number;
-    top: number;
-  } | null>(null);
 
   const formulaRef = useRef<HTMLDivElement>(null);
   const maskRef = useRef<HTMLDivElement>(null);
@@ -256,18 +252,12 @@ const Editor = (options: EditorOptions) => {
     setHelperDismissed(false);
   }, [text]);
 
-  // Keep the popup anchored to the bottom-left of the textarea. `text`/`cursor`
-  // are listed so we re-measure as the editor grows, even though they are not
-  // read directly here.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure on edit
-  useLayoutEffect(() => {
-    if (showHelper && textareaRef.current) {
-      const rect = textareaRef.current.getBoundingClientRect();
-      setHelperPosition({ left: rect.left, top: rect.bottom + 4 });
-    } else {
-      setHelperPosition(null);
-    }
-  }, [showHelper, text, cursor]);
+  // Anchor the popup to the textarea, flipping above / right-aligning it when
+  // it would overflow the viewport.
+  const { helperRef, position: helperPosition } = useHelperPosition(
+    showHelper,
+    textareaRef,
+  );
 
   // Replace the partial function name with `NAME(` and place the caret inside.
   // Takes an explicit index so a row click can accept the row it lands on directly.
@@ -427,13 +417,13 @@ const Editor = (options: EditorOptions) => {
           onCut={(event) => event.stopPropagation()}
         />
       </div>
-      {showHelper && helperPosition
+      {showHelper
         ? createAnchoredPortal(
             <div
+              ref={helperRef}
               style={{
                 position: "fixed",
-                left: helperPosition.left,
-                top: helperPosition.top,
+                ...helperPosition,
                 zIndex: 1000,
               }}
             >
