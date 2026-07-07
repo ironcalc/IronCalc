@@ -349,7 +349,7 @@ fn parse_x14_expression_rule(
     // Inline <x14:dxf> format; append it to the shared dxfs and reference by index.
     let dxf_id = match rule.children().find(|n| n.has_tag_name("dxf")) {
         Some(dxf_node) => {
-            let dxf = parse_dxf(dxf_node, theme)?;
+            let dxf = parse_dxf(dxf_node, theme, None)?;
             let id = dxfs.len() as u32;
             dxfs.push(dxf);
             id
