@@ -150,8 +150,10 @@ function FunctionDetail({
 }) {
   const [collapsed, setCollapsed] = useState(lastCollapsed);
   const toggleCollapsed = () => {
-    lastCollapsed = !collapsed;
-    setCollapsed(!collapsed);
+    setCollapsed((value) => {
+      lastCollapsed = !value;
+      return lastCollapsed;
+    });
   };
   const info = lookup(name);
   if (!info) {
