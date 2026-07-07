@@ -36,7 +36,20 @@ pub(super) fn get_value_or_default(node: &Node, tag_name: &str, default: &str) -
     }
 }
 
-pub(super) fn get_color(node: Node, _theme: &Theme) -> Result<Color, XlsxError> {
+pub(super) fn get_color(node: Node, theme: &Theme) -> Result<Color, XlsxError> {
+    get_color_indexed(node, theme, None)
+}
+
+/// Like [`get_color`], but resolves an `indexed="n"` colour against the workbook's
+/// `<colors><indexedColors>` palette override (OOXML §18.8.27) when the file supplies one.
+/// `indexed` is that override as `#RRGGBB` strings positioned by index; `None` (the common
+/// case, no override) keeps the legacy default indexed palette. An out-of-range or malformed
+/// override entry also falls back to the default palette.
+pub(super) fn get_color_indexed(
+    node: Node,
+    _theme: &Theme,
+    indexed: Option<&[String]>,
+) -> Result<Color, XlsxError> {
     // 18.3.1.15 color (Data Bar Color)
     if node.has_attribute("rgb") {
         let raw = node.attribute("rgb").unwrap();
@@ -53,7 +66,17 @@ pub(super) fn get_color(node: Node, _theme: &Theme) -> Result<Color, XlsxError> 
             // 64 is "transparent" in OOXML, but we don't have a good way to represent that, so we'll just ignore it
             return Ok(Color::None);
         }
-        let rgb = get_indexed_color(index);
+        // Prefer the file's `<indexedColors>` override entry (when the file supplies one and it
+        // covers this index); otherwise fall back to the legacy default indexed palette.
+        let rgb = indexed
+            .and_then(|palette| {
+                usize::try_from(index)
+                    .ok()
+                    .and_then(|i| palette.get(i))
+                    .filter(|s| !s.is_empty())
+                    .cloned()
+            })
+            .unwrap_or_else(|| get_indexed_color(index));
         Ok(Color::Rgb(rgb))
     } else if node.has_attribute("theme") {
         let theme_index = node.attribute("theme").unwrap().parse::<i32>()?;
