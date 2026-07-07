@@ -137,6 +137,10 @@ function FunctionList({
   );
 }
 
+// Details card unmounts whenever the helper closes so
+// user's choice (collapsed/uncollapsed) is remembered.
+let lastCollapsed = false;
+
 function FunctionDetail({
   name,
   activeIndex,
@@ -144,7 +148,11 @@ function FunctionDetail({
   name: string;
   activeIndex: number;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(lastCollapsed);
+  const toggleCollapsed = () => {
+    lastCollapsed = !collapsed;
+    setCollapsed(!collapsed);
+  };
   const info = lookup(name);
   if (!info) {
     return null;
@@ -209,7 +217,7 @@ function FunctionDetail({
           title={collapsed ? "Expand" : "Collapse"}
           size="xs"
           className="ic-fh-collapse-btn"
-          onClick={() => setCollapsed((value) => !value)}
+          onClick={toggleCollapsed}
         />
       </div>
 
