@@ -293,6 +293,36 @@ fn test_apply_named_style_without_representative() {
 }
 
 #[test]
+fn test_named_style_base_record_includes_all_categories() {
+    // In cellStyleXfs the apply* flags mean "the style includes this formatting
+    // category" (Excel's "Style Includes" checkboxes) and default to true.
+    // IronCalc styles are full styles, so records we create or update must have
+    // all flags true; false would export as applyX="0" and Excel would treat
+    // the style as including nothing.
+    fn assert_all_included(model: &crate::model::Model, name: &str) {
+        let styles = &model.workbook.styles;
+        let xf_id = styles.get_xf_id_by_name(name).unwrap();
+        let record = &styles.cell_style_xfs[xf_id as usize];
+        assert!(record.apply_number_format, "number format not included");
+        assert!(record.apply_font, "font not included");
+        assert!(record.apply_fill, "fill not included");
+        assert!(record.apply_border, "border not included");
+        assert!(record.apply_alignment, "alignment not included");
+        assert!(record.apply_protection, "protection not included");
+    }
+
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold", &style).unwrap();
+    assert_all_included(&model, "bold");
+
+    style.font.i = true;
+    model.update_named_style("bold", "bold", &style).unwrap();
+    assert_all_included(&model, "bold");
+}
+
+#[test]
 fn test_update_named_style_rejects_builtin() {
     let mut model = new_empty_model();
     let style = model.get_style_for_cell(0, 1, 1).unwrap();
