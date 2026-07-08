@@ -323,6 +323,62 @@ fn test_named_style_base_record_includes_all_categories() {
 }
 
 #[test]
+fn test_named_style_ignores_quote_prefix() {
+    // A quote prefix marks a cell's own apostrophe-escaped content; it is not
+    // a named-style category and must be normalized out on create.
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    style.quote_prefix = true;
+    model.create_named_style("bold", &style).unwrap();
+    assert!(!model.get_named_style("bold").unwrap().quote_prefix);
+    // Applying the style to a cell does not add a quote prefix
+    model.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
+    let cell_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(cell_style.font.b);
+    assert!(!cell_style.quote_prefix);
+}
+
+#[test]
+fn test_update_named_style_keeps_cell_quote_prefix() {
+    // A cell parented to a named style can carry its own quote prefix (an
+    // imported "'123" cell); updating the style must not clobber it.
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold", &style).unwrap();
+    let representative = model
+        .workbook
+        .styles
+        .get_style_index_by_name("bold")
+        .unwrap();
+    let mut cell_xf = model.workbook.styles.cell_xfs[representative as usize].clone();
+    cell_xf.quote_prefix = true;
+    model.workbook.styles.cell_xfs.push(cell_xf);
+    let quoted_index = model.workbook.styles.cell_xfs.len() as i32 - 1;
+    model
+        .workbook
+        .worksheet_mut(0)
+        .unwrap()
+        .set_cell_style(1, 1, quoted_index)
+        .unwrap();
+
+    let mut new_style = model.get_named_style("bold").unwrap();
+    new_style.font.i = true;
+    new_style.quote_prefix = true; // must be ignored
+    model
+        .update_named_style("bold", "bold", &new_style)
+        .unwrap();
+
+    // The quoted cell keeps its prefix and still picks up the new font
+    let a1 = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(a1.quote_prefix);
+    assert!(a1.font.i);
+    // The named style itself carries no quote prefix
+    assert!(!model.get_named_style("bold").unwrap().quote_prefix);
+}
+
+#[test]
 fn test_update_named_style_rejects_builtin() {
     let mut model = new_empty_model();
     let style = model.get_style_for_cell(0, 1, 1).unwrap();

@@ -67,27 +67,27 @@ impl<'a> UserModel<'a> {
         let mut diff_list = Vec::new();
 
         // Ensure the style exists in the model, adding it from builtins if needed.
-        let style_index = match self
-            .model
-            .workbook
-            .styles
-            .get_or_create_style_index_by_name(name)
-        {
-            Ok(style_index) => style_index,
-            Err(_) => {
-                let style = crate::builtin_styles::get_builtin_style(name)
-                    .ok_or_else(|| format!("Named style '{name}' not found"))?;
-                self.model
-                    .workbook
-                    .styles
-                    .create_named_style(name, &style)?;
-                let style_index = self.model.workbook.styles.get_style_index_by_name(name)?;
-                diff_list.push(Diff::CreateNamedStyle {
-                    name: name.to_string(),
-                    style: Box::new(style),
-                });
-                style_index
-            }
+        // Only fall back to the builtins when the name is genuinely absent;
+        // errors on an existing style (e.g. an invalid xf id in a malformed
+        // workbook) must surface as-is.
+        let style_index = if self.model.workbook.styles.get_xf_id_by_name(name).is_ok() {
+            self.model
+                .workbook
+                .styles
+                .get_or_create_style_index_by_name(name)?
+        } else {
+            let style = crate::builtin_styles::get_builtin_style(name)
+                .ok_or_else(|| format!("Named style '{name}' not found"))?;
+            self.model
+                .workbook
+                .styles
+                .create_named_style(name, &style)?;
+            let style_index = self.model.workbook.styles.get_style_index_by_name(name)?;
+            diff_list.push(Diff::CreateNamedStyle {
+                name: name.to_string(),
+                style: Box::new(style),
+            });
+            style_index
         };
 
         // Resolve the selection range.

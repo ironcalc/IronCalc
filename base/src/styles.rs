@@ -107,7 +107,9 @@ impl Styles {
             apply_protection: false,
             apply_font: false,
             apply_fill: false,
-            quote_prefix: style.quote_prefix,
+            // A quote prefix marks a cell's own apostrophe-escaped content;
+            // it is not a named-style category in Excel and is normalized out.
+            quote_prefix: false,
             alignment: style.alignment.clone(),
         });
         xf_id
@@ -225,6 +227,9 @@ impl Styles {
             || cell_xf.apply_border
             || cell_xf.apply_alignment
             || cell_xf.apply_protection
+            // A quote prefix is a cell's own apostrophe-escaped state, never
+            // part of a named style, so such an xf is not a plain representative.
+            || cell_xf.quote_prefix
     }
 
     // Same as `get_style_index_by_name` but creates the plain representative if
@@ -281,6 +286,8 @@ impl Styles {
         })
     }
 
+    /// Creates a named style. `style.quote_prefix` is ignored: a quote prefix
+    /// belongs to a cell's content, not to a named style.
     pub fn create_named_style(&mut self, style_name: &str, style: &Style) -> Result<(), String> {
         if self.get_xf_id_by_name(style_name).is_ok() {
             return Err("A style with that name already exists".to_string());
@@ -509,7 +516,8 @@ impl<'a> Model<'a> {
     ///   the style, except those a cell overrides locally (its `apply_*` flags).
     ///
     /// Cells keep their style index, so they pick up the new formatting without
-    /// being touched.
+    /// being touched. `style.quote_prefix` is ignored: a quote prefix belongs
+    /// to a cell's content, not to a named style, and is never propagated.
     pub fn update_named_style(
         &mut self,
         name: &str,
