@@ -1,4 +1,27 @@
-use crate::types::{Border, BorderItem, BorderStyle, Color, Fill, Font, FontScheme, Style};
+use crate::types::{
+    Border, BorderItem, BorderStyle, Color, Fill, Font, FontScheme, Style, StyleIncludes,
+};
+
+// Which formatting categories each built-in style includes (the `apply*`
+// flags of its cellStyleXfs record), as written by Excel. Alignment and
+// protection are only included by "Normal".
+const fn includes(number_format: bool, font: bool, fill: bool, border: bool) -> StyleIncludes {
+    StyleIncludes {
+        number_format,
+        font,
+        fill,
+        border,
+        alignment: false,
+        protection: false,
+    }
+}
+
+const FONT_ONLY: StyleIncludes = includes(false, true, false, false);
+const FONT_FILL: StyleIncludes = includes(false, true, true, false);
+const FONT_BORDER: StyleIncludes = includes(false, true, false, true);
+const FONT_FILL_BORDER: StyleIncludes = includes(false, true, true, true);
+const FILL_BORDER: StyleIncludes = includes(false, false, true, true);
+const NUMBER_FORMAT_ONLY: StyleIncludes = includes(true, false, false, false);
 
 fn solid_fill(color: Color) -> Fill {
     Fill { color }
@@ -62,9 +85,10 @@ fn thin_top_double_bottom_border(color: Color) -> Border {
 const IDX_DK2: i32 = 3;
 const IDX_ACCENT: [i32; 6] = [4, 5, 6, 7, 8, 9];
 
-/// Returns the full list of Excel built-in named styles with their style definitions.
+/// Returns the full list of Excel built-in named styles with their style
+/// definitions and the formatting categories each one includes.
 #[allow(clippy::vec_init_then_push)]
-pub fn builtin_named_styles() -> Vec<(String, Style)> {
+pub fn builtin_named_styles() -> Vec<(String, Style, StyleIncludes)> {
     let mut result = vec![];
 
     // Good, Bad, Neutral — fixed RGB colors, not theme-dependent
@@ -78,6 +102,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             fill: solid_fill(Color::Rgb("#C6EFCE".to_string())),
             ..Default::default()
         },
+        FONT_FILL,
     ));
     result.push((
         "Bad".to_string(),
@@ -89,6 +114,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             fill: solid_fill(Color::Rgb("#FFC7CE".to_string())),
             ..Default::default()
         },
+        FONT_FILL,
     ));
     result.push((
         "Neutral".to_string(),
@@ -100,10 +126,15 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             fill: solid_fill(Color::Rgb("#FFEB9C".to_string())),
             ..Default::default()
         },
+        FONT_FILL,
     ));
 
     // Normal (always in every model, included here for the panel)
-    result.push(("Normal".to_string(), Style::default()));
+    result.push((
+        "Normal".to_string(),
+        Style::default(),
+        StyleIncludes::default(),
+    ));
 
     // Data and Model — fixed RGB colors
     result.push((
@@ -118,6 +149,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             border: thin_box_border(Color::Rgb("#7F7F7F".to_string())),
             ..Default::default()
         },
+        FONT_FILL_BORDER,
     ));
     result.push((
         "Check Cell".to_string(),
@@ -131,6 +163,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             border: double_box_border(Color::Rgb("#3F3F3F".to_string())),
             ..Default::default()
         },
+        FONT_FILL_BORDER,
     ));
     result.push((
         "Explanatory Text".to_string(),
@@ -142,6 +175,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             },
             ..Default::default()
         },
+        FONT_ONLY,
     ));
     result.push((
         "Input".to_string(),
@@ -154,6 +188,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             border: thin_box_border(Color::Rgb("#7F7F7F".to_string())),
             ..Default::default()
         },
+        FONT_FILL_BORDER,
     ));
     result.push((
         "Linked Cell".to_string(),
@@ -171,6 +206,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             },
             ..Default::default()
         },
+        FONT_BORDER,
     ));
     result.push((
         "Note".to_string(),
@@ -179,6 +215,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             border: thin_box_border(Color::Rgb("#B2B2B2".to_string())),
             ..Default::default()
         },
+        FILL_BORDER,
     ));
     result.push((
         "Output".to_string(),
@@ -192,6 +229,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             border: thin_box_border(Color::Rgb("#3F3F3F".to_string())),
             ..Default::default()
         },
+        FONT_FILL_BORDER,
     ));
     result.push((
         "Warning Text".to_string(),
@@ -202,6 +240,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             },
             ..Default::default()
         },
+        FONT_ONLY,
     ));
 
     // Titles and Headings — font color uses dk2, borders use accent1, all theme-relative
@@ -216,6 +255,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             },
             ..Default::default()
         },
+        FONT_ONLY,
     ));
     result.push((
         "Heading 1".to_string(),
@@ -229,6 +269,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             border: thick_bottom_border(Color::Theme(IDX_ACCENT[0], 0.0)),
             ..Default::default()
         },
+        FONT_BORDER,
     ));
     result.push((
         "Heading 2".to_string(),
@@ -242,6 +283,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             border: thick_bottom_border(Color::Theme(IDX_ACCENT[0], 0.5)),
             ..Default::default()
         },
+        FONT_BORDER,
     ));
     result.push((
         "Heading 3".to_string(),
@@ -260,6 +302,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             },
             ..Default::default()
         },
+        FONT_BORDER,
     ));
     result.push((
         "Heading 4".to_string(),
@@ -272,6 +315,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             },
             ..Default::default()
         },
+        FONT_ONLY,
     ));
     result.push((
         "Total".to_string(),
@@ -283,6 +327,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             border: thin_top_double_bottom_border(Color::Theme(IDX_ACCENT[0], 0.0)),
             ..Default::default()
         },
+        FONT_BORDER,
     ));
 
     // Themed Cell Styles: 20% / 40% / 60% tints and solid for each accent.
@@ -300,6 +345,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
                 fill: solid_fill(Color::Theme(idx, 0.8)),
                 ..Default::default()
             },
+            FONT_FILL,
         ));
         result.push((
             format!("40% - {accent_name}"),
@@ -307,6 +353,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
                 fill: solid_fill(Color::Theme(idx, 0.6)),
                 ..Default::default()
             },
+            FONT_FILL,
         ));
         result.push((
             format!("60% - {accent_name}"),
@@ -314,6 +361,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
                 fill: solid_fill(Color::Theme(idx, 0.4)),
                 ..Default::default()
             },
+            FONT_FILL,
         ));
         result.push((
             accent_name.to_string(),
@@ -321,6 +369,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
                 fill: solid_fill(Color::Theme(idx, 0.0)),
                 ..Default::default()
             },
+            FONT_FILL,
         ));
     }
 
@@ -331,6 +380,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             num_fmt: "#,##0.00".to_string(),
             ..Default::default()
         },
+        NUMBER_FORMAT_ONLY,
     ));
     result.push((
         "Comma [0]".to_string(),
@@ -338,6 +388,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             num_fmt: "#,##0".to_string(),
             ..Default::default()
         },
+        NUMBER_FORMAT_ONLY,
     ));
     result.push((
         "Currency".to_string(),
@@ -345,6 +396,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             num_fmt: r#"_("$"* #,##0.00_);_("$"* \(#,##0.00\);_("$"* "-"??_);_(@_)"#.to_string(),
             ..Default::default()
         },
+        NUMBER_FORMAT_ONLY,
     ));
     result.push((
         "Currency [0]".to_string(),
@@ -352,6 +404,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             num_fmt: r#"_("$"* #,##0_);_("$"* \(#,##0\);_("$"* "-"_);_(@_)"#.to_string(),
             ..Default::default()
         },
+        NUMBER_FORMAT_ONLY,
     ));
     result.push((
         "Percent".to_string(),
@@ -359,15 +412,17 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             num_fmt: "0%".to_string(),
             ..Default::default()
         },
+        NUMBER_FORMAT_ONLY,
     ));
 
     result
 }
 
-/// Looks up a built-in named style by name (case-sensitive). Returns `None` if not found.
-pub fn get_builtin_style(name: &str) -> Option<Style> {
+/// Looks up a built-in named style by name (case-sensitive), returning its
+/// definition and the categories it includes. Returns `None` if not found.
+pub fn get_builtin_style(name: &str) -> Option<(Style, StyleIncludes)> {
     builtin_named_styles()
         .into_iter()
-        .find(|(n, _)| n == name)
-        .map(|(_, s)| s)
+        .find(|(n, _, _)| n == name)
+        .map(|(_, s, i)| (s, i))
 }

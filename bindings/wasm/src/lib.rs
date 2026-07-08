@@ -12,7 +12,7 @@ use ironcalc_base::{
         types::Area,
         utils::{column_to_number, number_to_column, quote_name as quote_name_ic},
     },
-    types::{CellType, Color, Style},
+    types::{CellType, Color, Style, StyleIncludes},
     worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
@@ -1166,16 +1166,34 @@ impl Model {
         serde_wasm_bindgen::to_value(&style).map_err(|e| to_js_error(e.to_string()))
     }
 
+    /// Returns which formatting categories the named style includes.
+    #[wasm_bindgen(
+        js_name = "getNamedStyleIncludes",
+        unchecked_return_type = "StyleIncludes"
+    )]
+    pub fn get_named_style_includes(&self, name: &str) -> Result<JsValue, JsError> {
+        let includes = self
+            .model
+            .get_named_style_includes(name)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&includes).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Creates a new named style. `includes` selects which formatting
+    /// categories the style carries.
     #[wasm_bindgen(js_name = "createNamedStyle")]
     pub fn create_named_style(
         &mut self,
         name: &str,
         #[wasm_bindgen(unchecked_param_type = "CellStyle")] style: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "StyleIncludes")] includes: JsValue,
     ) -> Result<(), JsError> {
         let style: Style =
             serde_wasm_bindgen::from_value(style).map_err(|e| to_js_error(e.to_string()))?;
+        let includes: StyleIncludes =
+            serde_wasm_bindgen::from_value(includes).map_err(|e| to_js_error(e.to_string()))?;
         self.model
-            .create_named_style(name, &style)
+            .create_named_style(name, &style, includes)
             .map_err(to_js_error)
     }
 
@@ -1190,11 +1208,14 @@ impl Model {
         name: &str,
         new_name: &str,
         #[wasm_bindgen(unchecked_param_type = "CellStyle")] style: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "StyleIncludes")] includes: JsValue,
     ) -> Result<(), JsError> {
         let style: Style =
             serde_wasm_bindgen::from_value(style).map_err(|e| to_js_error(e.to_string()))?;
+        let includes: StyleIncludes =
+            serde_wasm_bindgen::from_value(includes).map_err(|e| to_js_error(e.to_string()))?;
         self.model
-            .update_named_style(name, new_name, &style)
+            .update_named_style(name, new_name, &style, includes)
             .map_err(to_js_error)
     }
 

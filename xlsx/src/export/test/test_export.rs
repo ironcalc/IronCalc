@@ -1,5 +1,6 @@
 use std::fs;
 
+use ironcalc_base::types::StyleIncludes;
 use ironcalc_base::Model;
 
 use crate::error::XlsxError;
@@ -181,10 +182,11 @@ fn test_named_styles() {
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
     style.font.b = true;
     style.font.i = true;
-    let e = model
-        .workbook
-        .styles
-        .create_named_style("bold & italics", &style);
+    let e = model.workbook.styles.create_named_style(
+        "bold & italics",
+        &style,
+        StyleIncludes::default(),
+    );
     assert!(e.is_ok());
     assert!(model
         .set_cell_style_by_name(0, 1, 1, "bold & italics")
@@ -225,7 +227,12 @@ fn test_named_styles() {
     assert!(style.font.b);
     style.font.u = true;
     model
-        .update_named_style("bold & italics", "bold & italics", &style)
+        .update_named_style(
+            "bold & italics",
+            "bold & italics",
+            &style,
+            StyleIncludes::default(),
+        )
         .unwrap();
     assert!(model.get_style_for_cell(0, 1, 1).unwrap().font.u);
     fs::remove_file(temp_file_name).unwrap();

@@ -511,7 +511,11 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.set_timezone(old_value)?;
                 }
-                Diff::CreateNamedStyle { name, style: _ } => {
+                Diff::CreateNamedStyle {
+                    name,
+                    style: _,
+                    includes: _,
+                } => {
                     self.model.workbook.styles.delete_named_style_entry(name)?;
                 }
                 Diff::DeleteNamedStyle { name, old_xf_id } => {
@@ -525,8 +529,11 @@ impl<'a> UserModel<'a> {
                     new_name,
                     old_style,
                     new_style: _,
+                    old_includes,
+                    new_includes: _,
                 } => {
-                    self.model.update_named_style(new_name, name, old_style)?;
+                    self.model
+                        .update_named_style(new_name, name, old_style, *old_includes)?;
                 }
                 Diff::AddConditionalFormatting {
                     sheet, priority, ..
@@ -718,11 +725,18 @@ impl<'a> UserModel<'a> {
                     old_value: _,
                     name,
                 } => {
+                    // The undo restored the cell's pre-apply format, so the
+                    // merge can be replayed against the cell's current state.
+                    let current_index = self
+                        .model
+                        .workbook
+                        .worksheet(*sheet)?
+                        .get_style(*row, *column);
                     let style_index = self
                         .model
                         .workbook
                         .styles
-                        .get_or_create_style_index_by_name(name)?;
+                        .get_style_index_for_applied_style(name, current_index)?;
                     self.model.workbook.worksheet_mut(*sheet)?.set_cell_style(
                         *row,
                         *column,
@@ -916,8 +930,15 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.set_timezone(new_value)?;
                 }
-                Diff::CreateNamedStyle { name, style } => {
-                    self.model.workbook.styles.create_named_style(name, style)?;
+                Diff::CreateNamedStyle {
+                    name,
+                    style,
+                    includes,
+                } => {
+                    self.model
+                        .workbook
+                        .styles
+                        .create_named_style(name, style, *includes)?;
                 }
                 Diff::DeleteNamedStyle { name, old_xf_id: _ } => {
                     self.model.workbook.styles.delete_named_style_entry(name)?;
@@ -927,8 +948,11 @@ impl<'a> UserModel<'a> {
                     new_name,
                     old_style: _,
                     new_style,
+                    old_includes: _,
+                    new_includes,
                 } => {
-                    self.model.update_named_style(name, new_name, new_style)?;
+                    self.model
+                        .update_named_style(name, new_name, new_style, *new_includes)?;
                 }
                 Diff::AddConditionalFormatting {
                     sheet,

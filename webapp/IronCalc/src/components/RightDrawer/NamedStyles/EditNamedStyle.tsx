@@ -36,6 +36,14 @@ interface EditNamedStyleProps {
 export interface NamedStyleSavePayload {
   name: string;
   style: CellStyle;
+  includes: {
+    number_format: boolean;
+    font: boolean;
+    fill: boolean;
+    border: boolean;
+    alignment: boolean;
+    protection: boolean;
+  };
 }
 
 function formatStyleToPreview(
@@ -196,7 +204,20 @@ const EditNamedStyle = ({
         color: formatStyle.fontColor,
       },
     };
-    const error = onSave({ name: name.trim(), style: newStyle });
+    // FIXME (@dani): The includes object is hardcoded to include all categories.
+    // In the future, we may want to allow users to select which categories to include.
+    const error = onSave({
+      name: name.trim(),
+      style: newStyle,
+      includes: {
+        number_format: true,
+        font: true,
+        fill: true,
+        border: true,
+        alignment: true,
+        protection: true,
+      },
+    });
     if (error.nameError) {
       setNameError(error.nameError);
     } else {
