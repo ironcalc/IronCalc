@@ -11,9 +11,9 @@ import {
 } from "react";
 import { createAnchoredPortal } from "../createAnchoredPortal";
 import "./menu.css";
+import { useMenuPosition } from "../utils/useMenuPosition";
 import { useAnchorPosition } from "./useAnchorPosition";
 import { useMenuKeyDown } from "./useMenuKeyDown";
-import { useMenuPosition } from "./useMenuPosition";
 
 const focusableSelector =
   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';

@@ -51,8 +51,8 @@ import {
   applyListCompletion,
   getCompletion,
 } from "../FormulaHelper/formulaCompletion";
-import { useHelperPosition } from "../FormulaHelper/useHelperPosition";
 import { Alert } from "../Modal";
+import { useMenuPosition } from "../utils/useMenuPosition";
 import type { WorkbookState } from "../workbookState";
 import useKeyDown from "./useKeyDown";
 import getFormulaHTML from "./util";
@@ -254,7 +254,7 @@ const Editor = (options: EditorOptions) => {
 
   // Anchor the popup to the textarea, flipping above / right-aligning it when
   // it would overflow the viewport.
-  const { helperRef, position: helperPosition } = useHelperPosition(
+  const { menuRef: helperRef, position: helperPosition } = useMenuPosition(
     showHelper,
     textareaRef,
   );

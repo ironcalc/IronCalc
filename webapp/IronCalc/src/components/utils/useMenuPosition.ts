@@ -1,4 +1,10 @@
-import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type RefObject,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
   const triggerRect = trigger.getBoundingClientRect();
@@ -42,7 +48,18 @@ function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
   return { top, left };
 }
 
-export function useMenuPosition(open: boolean) {
+/**
+ * Positions a popup (menu, formula helper…) next to an anchor element,
+ * flipping above / right-aligning and clamping so it stays in the viewport.
+ *
+ * The anchor is either the returned `triggerRef` (attach it to the trigger
+ * element) or, when the caller already owns a ref to the anchor (e.g. the
+ * editor textarea), the optional `anchorRef` argument.
+ */
+export function useMenuPosition(
+  open: boolean,
+  anchorRef?: RefObject<HTMLElement | null>,
+) {
   const triggerRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<CSSProperties>({});
@@ -51,9 +68,10 @@ export function useMenuPosition(open: boolean) {
     if (!open) {
       return;
     }
+    const anchor = anchorRef ?? triggerRef;
 
     function updatePosition() {
-      const trigger = triggerRef.current;
+      const trigger = anchor.current;
       const menu = menuRef.current;
       if (!trigger || !menu) {
         return;
@@ -65,14 +83,25 @@ export function useMenuPosition(open: boolean) {
 
     updatePosition();
 
+    // The anchor and the popup can both change size while open (e.g. the
+    // editor textarea grows while typing, the formula helper switches cards
+    // or collapses), so watch both in addition to viewport resize/scroll.
+    const observer = new ResizeObserver(updatePosition);
+    if (anchor.current) {
+      observer.observe(anchor.current);
+    }
+    if (menuRef.current) {
+      observer.observe(menuRef.current);
+    }
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
 
     return () => {
+      observer.disconnect();
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [open]);
+  }, [open, anchorRef]);
 
   return { triggerRef, menuRef, position };
 }
