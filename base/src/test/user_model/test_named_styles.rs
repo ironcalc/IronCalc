@@ -160,6 +160,29 @@ fn update_named_style_rejects_builtin() {
 }
 
 #[test]
+fn apply_named_style_with_invalid_xf_id_errors() {
+    // A malformed workbook can contain a cellStyles entry pointing at a
+    // non-existent cellStyleXfs record. Applying it must surface that error,
+    // not fall back to the builtin styles.
+    let mut model = new_empty_user_model();
+    model
+        .model
+        .workbook
+        .styles
+        .cell_styles
+        .push(crate::types::CellStyles {
+            name: "corrupt".to_string(),
+            xf_id: 999,
+            builtin_id: 0,
+        });
+    let err = model.on_apply_named_style("corrupt").unwrap_err();
+    assert!(err.contains("invalid xf id"), "unexpected error: {err}");
+    // Nothing was added or applied
+    assert!(!model.get_cell_style(0, 1, 1).unwrap().font.b);
+    assert!(!model.can_undo());
+}
+
+#[test]
 fn get_named_style_list_includes_default() {
     let model = new_empty_user_model();
     let list = model.get_named_style_list();
