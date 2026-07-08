@@ -12,8 +12,9 @@
   max-width: calc(100% - 40px);
   display: flex;
   flex-direction: column;
+  border: 1px solid var(--palette-surface-elevated-border);
   border-radius: 8px;
-  background: var(--palette-common-white);
+  background: var(--palette-surface-elevated);
   box-shadow: var(--shadow-sm);
   font-family: var(--typography-font-family);
 }
