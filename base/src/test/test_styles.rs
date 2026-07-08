@@ -23,27 +23,6 @@ fn test_model_set_cells_with_values_styles() {
 }
 
 #[test]
-fn test_named_styles() {
-    let mut model = new_empty_model();
-    model._set("A1", "42");
-    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.font.b = true;
-    assert!(model.set_cell_style(0, 1, 1, &style).is_ok());
-    let bold_style_index = model.get_cell_style_index(0, 1, 1).unwrap();
-    let e = model
-        .workbook
-        .styles
-        .add_named_cell_style("bold", bold_style_index);
-    assert!(e.is_ok());
-    model._set("A2", "420");
-    let a2_style_index = model.get_cell_style_index(0, 2, 1).unwrap();
-    assert!(a2_style_index != bold_style_index);
-    let e = model.set_cell_style_by_name(0, 2, 1, "bold");
-    assert!(e.is_ok());
-    assert_eq!(model.get_cell_style_index(0, 2, 1), Ok(bold_style_index));
-}
-
-#[test]
 fn test_create_named_style() {
     let mut model = new_empty_model();
     model._set("A1", "42");
@@ -146,6 +125,171 @@ fn test_update_named_style_rename() {
     model.update_named_style("bold", "bold2", &style).unwrap();
     assert!(model.get_named_style("bold").is_err());
     assert!(model.get_named_style("bold2").is_ok());
+}
+
+#[test]
+fn test_named_style_tables() {
+    // Creating a named style adds one record to each of the three tables:
+    // cell_style_xfs (the base record), cell_xfs (the plain representative
+    // pointing at it) and cell_styles (the name).
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold", &style).unwrap();
+
+    let styles = &model.workbook.styles;
+    let cell_style = styles
+        .cell_styles
+        .iter()
+        .find(|cs| cs.name == "bold")
+        .unwrap();
+    let xf_id = cell_style.xf_id;
+    assert_eq!(xf_id, styles.cell_style_xfs.len() as i32 - 1);
+
+    let representative = styles.get_style_index_by_name("bold").unwrap();
+    let cell_xf = &styles.cell_xfs[representative as usize];
+    assert_eq!(cell_xf.xf_id, xf_id);
+    let style_xf = &styles.cell_style_xfs[xf_id as usize];
+    assert_eq!(cell_xf.font_id, style_xf.font_id);
+    assert!(styles.fonts[style_xf.font_id as usize].b);
+}
+
+#[test]
+fn test_named_styles_with_same_format_are_independent() {
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold1", &style).unwrap();
+    model.create_named_style("bold2", &style).unwrap();
+
+    // Each named style has its own base record even if the formatting is equal
+    let xf_id1 = model.workbook.styles.get_xf_id_by_name("bold1").unwrap();
+    let xf_id2 = model.workbook.styles.get_xf_id_by_name("bold2").unwrap();
+    assert_ne!(xf_id1, xf_id2);
+
+    model.set_cell_style_by_name(0, 1, 1, "bold1").unwrap();
+    model.set_cell_style_by_name(0, 2, 1, "bold2").unwrap();
+
+    // Updating one of them must not affect the other
+    let mut new_style = style.clone();
+    new_style.font.i = true;
+    model
+        .update_named_style("bold1", "bold1", &new_style)
+        .unwrap();
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().font.i);
+    assert!(!model.get_style_for_cell(0, 2, 1).unwrap().font.i);
+    assert!(!model.get_named_style("bold2").unwrap().font.i);
+}
+
+#[test]
+fn test_update_named_style_leaves_anonymous_formatting_alone() {
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold", &style).unwrap();
+    // A1 uses the named style; A2 has identical but anonymous formatting
+    model.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
+    model.set_cell_style(0, 2, 1, &style).unwrap();
+
+    let mut new_style = style.clone();
+    new_style.font.i = true;
+    model
+        .update_named_style("bold", "bold", &new_style)
+        .unwrap();
+
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().font.i);
+    assert!(!model.get_style_for_cell(0, 2, 1).unwrap().font.i);
+}
+
+#[test]
+fn test_update_named_style_respects_cell_overrides() {
+    use crate::types::Color;
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold", &style).unwrap();
+    model.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
+
+    // Simulate an imported cell parented to "bold" with a local font override
+    // (applyFont="1"), as Excel produces when a styled cell is tweaked.
+    let representative = model
+        .workbook
+        .styles
+        .get_style_index_by_name("bold")
+        .unwrap();
+    let mut cell_xf = model.workbook.styles.cell_xfs[representative as usize].clone();
+    cell_xf.apply_font = true;
+    cell_xf.font_id = 0; // the default (non-bold) font
+    model.workbook.styles.cell_xfs.push(cell_xf);
+    let override_index = model.workbook.styles.cell_xfs.len() as i32 - 1;
+    model
+        .workbook
+        .worksheet_mut(0)
+        .unwrap()
+        .set_cell_style(2, 1, override_index)
+        .unwrap();
+
+    // Update the style: italic font and a yellow fill
+    let mut new_style = model.get_named_style("bold").unwrap();
+    new_style.font.i = true;
+    new_style.fill.color = Color::Rgb("#FFFF00".to_string());
+    model
+        .update_named_style("bold", "bold", &new_style)
+        .unwrap();
+
+    // The plain cell picks up both changes
+    let a1 = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(a1.font.i);
+    assert_eq!(a1.fill.color, Color::Rgb("#FFFF00".to_string()));
+
+    // The overriding cell keeps its own font but inherits the new fill
+    let a2 = model.get_style_for_cell(0, 2, 1).unwrap();
+    assert!(!a2.font.i);
+    assert!(!a2.font.b);
+    assert_eq!(a2.fill.color, Color::Rgb("#FFFF00".to_string()));
+}
+
+#[test]
+fn test_apply_named_style_without_representative() {
+    use crate::types::{CellStyleXfs, CellStyles};
+    // Simulate an imported workbook where a named style is defined but applied
+    // to no cell: there is no cell_xfs entry parented to it.
+    let mut model = new_empty_model();
+    let styles = &mut model.workbook.styles;
+    styles.fonts.push(crate::types::Font {
+        b: true,
+        ..Default::default()
+    });
+    let font_id = styles.fonts.len() as i32 - 1;
+    styles.cell_style_xfs.push(CellStyleXfs {
+        font_id,
+        ..Default::default()
+    });
+    let xf_id = styles.cell_style_xfs.len() as i32 - 1;
+    styles.cell_styles.push(CellStyles {
+        name: "imported bold".to_string(),
+        xf_id,
+        builtin_id: 0,
+    });
+
+    // No representative yet
+    assert!(model
+        .workbook
+        .styles
+        .get_style_index_by_name("imported bold")
+        .is_err());
+    // But the style can be read and applied; the representative is created on demand
+    assert!(model.get_named_style("imported bold").unwrap().font.b);
+    model
+        .set_cell_style_by_name(0, 1, 1, "imported bold")
+        .unwrap();
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().font.b);
+    let index = model
+        .workbook
+        .styles
+        .get_style_index_by_name("imported bold")
+        .unwrap();
+    assert_eq!(model.workbook.styles.cell_xfs[index as usize].xf_id, xf_id);
 }
 
 #[test]

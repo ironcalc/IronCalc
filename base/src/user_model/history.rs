@@ -68,6 +68,15 @@ pub(crate) enum Diff {
         old_value: Box<Option<Style>>,
         new_value: Box<Style>,
     },
+    // Unlike `SetCellStyle`, applying a named style is recorded by name so that
+    // redo re-links the cell to the style instead of copying its formatting.
+    ApplyNamedStyle {
+        sheet: u32,
+        row: i32,
+        column: i32,
+        old_value: Box<Option<Style>>,
+        name: String,
+    },
     // Column and Row diffs
     SetColumnWidth {
         sheet: u32,
@@ -226,7 +235,7 @@ pub(crate) enum Diff {
     // Named style diffs
     CreateNamedStyle {
         name: String,
-        xf_id: i32,
+        style: Box<Style>,
     },
     DeleteNamedStyle {
         name: String,
@@ -235,8 +244,8 @@ pub(crate) enum Diff {
     UpdateNamedStyle {
         name: String,
         new_name: String,
-        old_xf_id: i32,
-        new_xf_id: i32,
+        old_style: Box<Style>,
+        new_style: Box<Style>,
     },
     // Conditional formatting diffs
     AddConditionalFormatting {
