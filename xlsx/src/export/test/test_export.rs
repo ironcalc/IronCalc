@@ -202,6 +202,24 @@ fn test_named_styles() {
         .styles
         .get_style_index_by_name("bold & italics")
         .is_ok());
+    // After the roundtrip the style record must still include every formatting
+    // category (in cellStyleXfs absent apply* attributes mean "included";
+    // exporting applyX="0" would make Excel treat the style as empty).
+    let cell_style = model
+        .workbook
+        .styles
+        .cell_styles
+        .iter()
+        .find(|cs| cs.name == "bold & italics")
+        .unwrap();
+    let record = &model.workbook.styles.cell_style_xfs[cell_style.xf_id as usize];
+    assert!(record.apply_number_format);
+    assert!(record.apply_font);
+    assert!(record.apply_fill);
+    assert!(record.apply_border);
+    assert!(record.apply_alignment);
+    assert!(record.apply_protection);
+
     // The cell is still linked to the named style: updating it restyles the cell
     let mut style = model.get_named_style("bold & italics").unwrap();
     assert!(style.font.b);

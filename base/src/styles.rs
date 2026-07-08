@@ -84,17 +84,15 @@ impl Styles {
     // when the style is applied to them). Returns the new `xf_id`.
     fn create_base_style(&mut self, style: &Style) -> i32 {
         let (num_fmt_id, font_id, fill_id, border_id) = self.get_or_create_component_ids(style);
+        // The apply* flags on a cellStyleXfs record mark which formatting
+        // categories the style includes; IronCalc styles include all of them
+        // (the default), otherwise Excel would treat the style as empty.
         self.cell_style_xfs.push(CellStyleXfs {
             num_fmt_id,
             font_id,
             fill_id,
             border_id,
-            apply_number_format: false,
-            apply_border: false,
-            apply_alignment: false,
-            apply_protection: false,
-            apply_font: false,
-            apply_fill: false,
+            ..Default::default()
         });
         let xf_id = self.cell_style_xfs.len() as i32 - 1;
         self.cell_xfs.push(CellXfs {
@@ -537,12 +535,7 @@ impl<'a> Model<'a> {
             font_id,
             fill_id,
             border_id,
-            apply_number_format: false,
-            apply_border: false,
-            apply_alignment: false,
-            apply_protection: false,
-            apply_font: false,
-            apply_fill: false,
+            ..Default::default()
         };
 
         for cell_xf in styles.cell_xfs.iter_mut().filter(|xf| xf.xf_id == xf_id) {
