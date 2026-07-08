@@ -197,6 +197,13 @@ impl<'a> UserModel<'a> {
                     column,
                     old_value,
                     new_value: _,
+                }
+                | Diff::ApplyNamedStyle {
+                    sheet,
+                    row,
+                    column,
+                    old_value,
+                    name: _,
                 } => {
                     if let Some(old_style) = old_value.as_ref() {
                         self.model
@@ -504,7 +511,7 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.set_timezone(old_value)?;
                 }
-                Diff::CreateNamedStyle { name, xf_id: _ } => {
+                Diff::CreateNamedStyle { name, style: _ } => {
                     self.model.workbook.styles.delete_named_style_entry(name)?;
                 }
                 Diff::DeleteNamedStyle { name, old_xf_id } => {
@@ -516,34 +523,10 @@ impl<'a> UserModel<'a> {
                 Diff::UpdateNamedStyle {
                     name,
                     new_name,
-                    old_xf_id,
-                    new_xf_id,
+                    old_style,
+                    new_style: _,
                 } => {
-                    if old_xf_id != new_xf_id {
-                        for worksheet in &mut self.model.workbook.worksheets {
-                            for row_data in worksheet.sheet_data.values_mut() {
-                                for cell in row_data.values_mut() {
-                                    if cell.get_style() == *new_xf_id {
-                                        cell.set_style(*old_xf_id);
-                                    }
-                                }
-                            }
-                            for row in &mut worksheet.rows {
-                                if row.s == *new_xf_id {
-                                    row.s = *old_xf_id;
-                                }
-                            }
-                            for col in &mut worksheet.cols {
-                                if col.style == Some(*new_xf_id) {
-                                    col.style = Some(*old_xf_id);
-                                }
-                            }
-                        }
-                    }
-                    self.model
-                        .workbook
-                        .styles
-                        .update_named_style_entry(new_name, name, *old_xf_id)?;
+                    self.model.update_named_style(new_name, name, old_style)?;
                 }
                 Diff::AddConditionalFormatting {
                     sheet, priority, ..
@@ -728,6 +711,24 @@ impl<'a> UserModel<'a> {
                 } => self
                     .model
                     .set_cell_style(*sheet, *row, *column, new_value)?,
+                Diff::ApplyNamedStyle {
+                    sheet,
+                    row,
+                    column,
+                    old_value: _,
+                    name,
+                } => {
+                    let style_index = self
+                        .model
+                        .workbook
+                        .styles
+                        .get_or_create_style_index_by_name(name)?;
+                    self.model.workbook.worksheet_mut(*sheet)?.set_cell_style(
+                        *row,
+                        *column,
+                        style_index,
+                    )?;
+                }
                 Diff::InsertRows { sheet, row, count } => {
                     self.model.insert_rows(*sheet, *row, *count)?;
                     needs_evaluation = true;
@@ -915,11 +916,8 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.set_timezone(new_value)?;
                 }
-                Diff::CreateNamedStyle { name, xf_id } => {
-                    self.model
-                        .workbook
-                        .styles
-                        .add_named_cell_style(name, *xf_id)?;
+                Diff::CreateNamedStyle { name, style } => {
+                    self.model.workbook.styles.create_named_style(name, style)?;
                 }
                 Diff::DeleteNamedStyle { name, old_xf_id: _ } => {
                     self.model.workbook.styles.delete_named_style_entry(name)?;
@@ -927,34 +925,10 @@ impl<'a> UserModel<'a> {
                 Diff::UpdateNamedStyle {
                     name,
                     new_name,
-                    old_xf_id,
-                    new_xf_id,
+                    old_style: _,
+                    new_style,
                 } => {
-                    if old_xf_id != new_xf_id {
-                        for worksheet in &mut self.model.workbook.worksheets {
-                            for row_data in worksheet.sheet_data.values_mut() {
-                                for cell in row_data.values_mut() {
-                                    if cell.get_style() == *old_xf_id {
-                                        cell.set_style(*new_xf_id);
-                                    }
-                                }
-                            }
-                            for row in &mut worksheet.rows {
-                                if row.s == *old_xf_id {
-                                    row.s = *new_xf_id;
-                                }
-                            }
-                            for col in &mut worksheet.cols {
-                                if col.style == Some(*old_xf_id) {
-                                    col.style = Some(*new_xf_id);
-                                }
-                            }
-                        }
-                    }
-                    self.model
-                        .workbook
-                        .styles
-                        .update_named_style_entry(name, new_name, *new_xf_id)?;
+                    self.model.update_named_style(name, new_name, new_style)?;
                 }
                 Diff::AddConditionalFormatting {
                     sheet,

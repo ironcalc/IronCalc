@@ -196,6 +196,55 @@ fn apply_builtin_named_style_lazy_adds_to_model() {
 }
 
 #[test]
+fn apply_and_update_named_style_full_undo_redo() {
+    let mut model = new_empty_user_model();
+
+    // 1. Write "Hola" in D9
+    model.set_user_input(0, 9, 4, "Hola").unwrap();
+
+    // 2. Create a new named style
+    let mut style = model.get_cell_style(0, 9, 4).unwrap();
+    style.font.b = true;
+    model.create_named_style("greeting", &style).unwrap();
+
+    // 3. Apply it to D9
+    model.set_selected_cell(9, 4).unwrap();
+    model.set_selected_range(9, 4, 9, 4).unwrap();
+    model.on_apply_named_style("greeting").unwrap();
+    assert!(model.get_cell_style(0, 9, 4).unwrap().font.b);
+
+    // 4. Update the style with a text color
+    let red = Color::Rgb("#FF0000".to_string());
+    let mut new_style = model.get_named_style("greeting").unwrap();
+    new_style.font.color = red.clone();
+    model
+        .update_named_style("greeting", "greeting", &new_style)
+        .unwrap();
+    assert_eq!(model.get_cell_style(0, 9, 4).unwrap().font.color, red);
+
+    // 5. Undo everything
+    while model.can_undo() {
+        model.undo().unwrap();
+    }
+    assert_eq!(model.get_cell_content(0, 9, 4).unwrap(), "");
+    assert!(!model
+        .get_named_style_list()
+        .contains(&"greeting".to_string()));
+
+    // 6. Redo everything
+    while model.can_redo() {
+        model.redo().unwrap();
+    }
+
+    // D9 must show the style as of step 4 (red text), not as of step 3
+    assert_eq!(model.get_cell_content(0, 9, 4).unwrap(), "Hola");
+    assert_eq!(model.get_named_style("greeting").unwrap().font.color, red);
+    let d9 = model.get_cell_style(0, 9, 4).unwrap();
+    assert!(d9.font.b);
+    assert_eq!(d9.font.color, red);
+}
+
+#[test]
 fn apply_builtin_named_style_undo_redo() {
     let mut model = new_empty_user_model();
 
