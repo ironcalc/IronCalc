@@ -4,7 +4,7 @@ use bitcode::{Decode, Encode};
 
 use crate::{
     cf_types::CfRule,
-    types::{Cell, Col, Color, Row, SheetState, Style, Theme, Worksheet},
+    types::{Cell, Col, Color, Row, SheetState, Style, StyleIncludes, Theme, Worksheet},
 };
 
 #[derive(Clone, Encode, Decode)]
@@ -236,6 +236,7 @@ pub(crate) enum Diff {
     CreateNamedStyle {
         name: String,
         style: Box<Style>,
+        includes: StyleIncludes,
     },
     DeleteNamedStyle {
         name: String,
@@ -246,6 +247,8 @@ pub(crate) enum Diff {
         new_name: String,
         old_style: Box<Style>,
         new_style: Box<Style>,
+        old_includes: StyleIncludes,
+        new_includes: StyleIncludes,
     },
     // Conditional formatting diffs
     AddConditionalFormatting {

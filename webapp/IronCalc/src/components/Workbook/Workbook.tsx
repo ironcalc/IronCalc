@@ -964,7 +964,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
         onAddNamedStyle={(payload): SaveError => {
           try {
-            model.createNamedStyle(payload.name, payload.style);
+            model.createNamedStyle(
+              payload.name,
+              payload.style,
+              payload.includes,
+            );
             setRedrawId((id) => id + 1);
             return { nameError: "" };
           } catch (e) {
@@ -973,7 +977,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
         onUpdateNamedStyle={(originalName, payload): SaveError => {
           try {
-            model.updateNamedStyle(originalName, payload.name, payload.style);
+            model.updateNamedStyle(
+              originalName,
+              payload.name,
+              payload.style,
+              payload.includes,
+            );
             setRedrawId((id) => id + 1);
             return { nameError: "" };
           } catch (e) {

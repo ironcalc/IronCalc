@@ -1,7 +1,10 @@
 use crate::{
     model::Model,
     number_format::{get_default_num_fmt_id, get_new_num_fmt_index, get_num_fmt},
-    types::{Border, CellStyleXfs, CellStyles, CellXfs, Dxf, Fill, Font, NumFmt, Style, Styles},
+    types::{
+        Border, CellStyleXfs, CellStyles, CellXfs, Dxf, Fill, Font, NumFmt, Style, StyleIncludes,
+        Styles,
+    },
 };
 
 impl Styles {
@@ -82,17 +85,21 @@ impl Styles {
     // Creates the base record of a named style: a new entry in `cell_style_xfs`
     // together with its "plain representative" in `cell_xfs` (the xf cells get
     // when the style is applied to them). Returns the new `xf_id`.
-    fn create_base_style(&mut self, style: &Style) -> i32 {
+    fn create_base_style(&mut self, style: &Style, includes: StyleIncludes) -> i32 {
         let (num_fmt_id, font_id, fill_id, border_id) = self.get_or_create_component_ids(style);
         // The apply* flags on a cellStyleXfs record mark which formatting
-        // categories the style includes; IronCalc styles include all of them
-        // (the default), otherwise Excel would treat the style as empty.
+        // categories the style includes.
         self.cell_style_xfs.push(CellStyleXfs {
             num_fmt_id,
             font_id,
             fill_id,
             border_id,
-            ..Default::default()
+            apply_number_format: includes.number_format,
+            apply_font: includes.font,
+            apply_fill: includes.fill,
+            apply_border: includes.border,
+            apply_alignment: includes.alignment,
+            apply_protection: includes.protection,
         });
         let xf_id = self.cell_style_xfs.len() as i32 - 1;
         self.cell_xfs.push(CellXfs {
@@ -264,6 +271,97 @@ impl Styles {
         Ok(self.cell_xfs.len() as i32 - 1)
     }
 
+    // Returns the index in `cell_xfs` that results from applying the named
+    // style on top of the format at `current_index` (Excel semantics):
+    // * categories the style includes take the style's components and stay
+    //   inherited (`apply_* = false`);
+    // * the rest keep the current format's components, marked as the cell's
+    //   own (`apply_* = true`);
+    // * the current quote prefix is always kept — it belongs to the cell's
+    //   content, not to the style.
+    // An existing identical xf is reused, otherwise one is created.
+    pub(crate) fn get_style_index_for_applied_style(
+        &mut self,
+        style_name: &str,
+        current_index: i32,
+    ) -> Result<i32, String> {
+        let xf_id = self.get_xf_id_by_name(style_name)?;
+        let record = self
+            .cell_style_xfs
+            .get(xf_id as usize)
+            .ok_or_else(|| format!("Style '{style_name}' points to an invalid xf id"))?
+            .clone();
+        let current = self
+            .cell_xfs
+            .get(current_index as usize)
+            .ok_or("Invalid index provided".to_string())?
+            .clone();
+        // The style's alignment lives on its plain representative.
+        let style_alignment = self
+            .get_style_index_by_name(style_name)
+            .ok()
+            .and_then(|index| self.cell_xfs[index as usize].alignment.clone());
+
+        let new_xf = CellXfs {
+            xf_id,
+            num_fmt_id: if record.apply_number_format {
+                record.num_fmt_id
+            } else {
+                current.num_fmt_id
+            },
+            font_id: if record.apply_font {
+                record.font_id
+            } else {
+                current.font_id
+            },
+            fill_id: if record.apply_fill {
+                record.fill_id
+            } else {
+                current.fill_id
+            },
+            border_id: if record.apply_border {
+                record.border_id
+            } else {
+                current.border_id
+            },
+            alignment: if record.apply_alignment {
+                style_alignment
+            } else {
+                current.alignment.clone()
+            },
+            apply_number_format: !record.apply_number_format,
+            apply_font: !record.apply_font,
+            apply_fill: !record.apply_fill,
+            apply_border: !record.apply_border,
+            apply_alignment: !record.apply_alignment,
+            apply_protection: !record.apply_protection,
+            quote_prefix: current.quote_prefix,
+        };
+        if let Some(index) = self.cell_xfs.iter().position(|xf| xf == &new_xf) {
+            return Ok(index as i32);
+        }
+        self.cell_xfs.push(new_xf);
+        Ok(self.cell_xfs.len() as i32 - 1)
+    }
+
+    /// Returns which formatting categories the named style includes
+    /// (the `apply*` flags of its `cellStyleXfs` record).
+    pub fn get_style_includes(&self, style_name: &str) -> Result<StyleIncludes, String> {
+        let xf_id = self.get_xf_id_by_name(style_name)?;
+        let record = self
+            .cell_style_xfs
+            .get(xf_id as usize)
+            .ok_or_else(|| format!("Style '{style_name}' points to an invalid xf id"))?;
+        Ok(StyleIncludes {
+            number_format: record.apply_number_format,
+            font: record.apply_font,
+            fill: record.apply_fill,
+            border: record.apply_border,
+            alignment: record.apply_alignment,
+            protection: record.apply_protection,
+        })
+    }
+
     // Returns the `Style` of a named style. Reads the plain representative in
     // `cell_xfs` when there is one (it also carries alignment); otherwise the
     // style is reconstructed from its `cell_style_xfs` record.
@@ -286,13 +384,20 @@ impl Styles {
         })
     }
 
-    /// Creates a named style. `style.quote_prefix` is ignored: a quote prefix
-    /// belongs to a cell's content, not to a named style.
-    pub fn create_named_style(&mut self, style_name: &str, style: &Style) -> Result<(), String> {
+    /// Creates a named style. `includes` selects which formatting categories
+    /// the style carries (Excel's "Style Includes" checkboxes); use
+    /// `StyleIncludes::default()` for a full style. `style.quote_prefix` is
+    /// ignored: a quote prefix belongs to a cell's content, not to a named style.
+    pub fn create_named_style(
+        &mut self,
+        style_name: &str,
+        style: &Style,
+        includes: StyleIncludes,
+    ) -> Result<(), String> {
         if self.get_xf_id_by_name(style_name).is_ok() {
             return Err("A style with that name already exists".to_string());
         }
-        let xf_id = self.create_base_style(style);
+        let xf_id = self.create_base_style(style, includes);
         self.add_named_cell_style(style_name, xf_id)
     }
 
@@ -427,7 +532,9 @@ impl<'a> Model<'a> {
             .set_cell_style(destination_cell.1, destination_cell.2, source_style_index)
     }
 
-    /// Sets the style "style_name" in cell
+    /// Applies the named style "style_name" to the cell. Only the categories
+    /// the style includes are stamped; the rest of the cell's formatting is
+    /// kept as local overrides.
     pub fn set_cell_style_by_name(
         &mut self,
         sheet: u32,
@@ -435,10 +542,11 @@ impl<'a> Model<'a> {
         column: i32,
         style_name: &str,
     ) -> Result<(), String> {
+        let current_index = self.workbook.worksheet(sheet)?.get_style(row, column);
         let style_index = self
             .workbook
             .styles
-            .get_or_create_style_index_by_name(style_name)?;
+            .get_style_index_for_applied_style(style_name, current_index)?;
         self.workbook
             .worksheet_mut(sheet)?
             .set_cell_style(row, column, style_index)
@@ -495,9 +603,21 @@ impl<'a> Model<'a> {
         self.workbook.styles.get_style_by_name(name)
     }
 
+    /// Returns which formatting categories the named style includes.
+    pub fn get_named_style_includes(&self, name: &str) -> Result<StyleIncludes, String> {
+        self.workbook.styles.get_style_includes(name)
+    }
+
     /// Creates a new named style. Fails if a style with that name already exists.
-    pub fn create_named_style(&mut self, name: &str, style: &Style) -> Result<(), String> {
-        self.workbook.styles.create_named_style(name, style)
+    pub fn create_named_style(
+        &mut self,
+        name: &str,
+        style: &Style,
+        includes: StyleIncludes,
+    ) -> Result<(), String> {
+        self.workbook
+            .styles
+            .create_named_style(name, style, includes)
     }
 
     /// Deletes a named style. Fails if the style does not exist or is built-in.
@@ -518,11 +638,17 @@ impl<'a> Model<'a> {
     /// Cells keep their style index, so they pick up the new formatting without
     /// being touched. `style.quote_prefix` is ignored: a quote prefix belongs
     /// to a cell's content, not to a named style, and is never propagated.
+    ///
+    /// `includes` replaces the style's category set (the record's `apply*`
+    /// flags). It governs exporting and future applications of the style;
+    /// dependent cells keep their own `apply_*` ownership flags, so changing
+    /// the includes never rewrites which components a cell owns.
     pub fn update_named_style(
         &mut self,
         name: &str,
         new_name: &str,
         style: &Style,
+        includes: StyleIncludes,
     ) -> Result<(), String> {
         let styles = &mut self.workbook.styles;
         if styles.is_builtin_style(name) {
@@ -538,13 +664,17 @@ impl<'a> Model<'a> {
 
         let (num_fmt_id, font_id, fill_id, border_id) = styles.get_or_create_component_ids(style);
 
-        styles.cell_style_xfs[xf_id as usize] = CellStyleXfs {
-            num_fmt_id,
-            font_id,
-            fill_id,
-            border_id,
-            ..Default::default()
-        };
+        let record = &mut styles.cell_style_xfs[xf_id as usize];
+        record.num_fmt_id = num_fmt_id;
+        record.font_id = font_id;
+        record.fill_id = fill_id;
+        record.border_id = border_id;
+        record.apply_number_format = includes.number_format;
+        record.apply_font = includes.font;
+        record.apply_fill = includes.fill;
+        record.apply_border = includes.border;
+        record.apply_alignment = includes.alignment;
+        record.apply_protection = includes.protection;
 
         for cell_xf in styles.cell_xfs.iter_mut().filter(|xf| xf.xf_id == xf_id) {
             if !cell_xf.apply_number_format {

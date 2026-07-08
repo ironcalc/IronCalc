@@ -518,6 +518,16 @@ export interface FmtSettings {
   number_example: string;
 }
 
+/** The formatting categories a named style includes. */
+export interface StyleIncludes {
+  number_format: boolean;
+  font: boolean;
+  fill: boolean;
+  border: boolean;
+  alignment: boolean;
+  protection: boolean;
+}
+
 /** A named cell style (e.g. "Normal", "Heading 1", or a custom style). */
 export interface NamedStyle {
   /** The style name. */

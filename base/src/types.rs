@@ -685,6 +685,35 @@ impl Default for CellStyleXfs {
     }
 }
 
+/// The formatting categories a named style includes — Excel's "Style Includes"
+/// checkboxes, stored as the `apply*` attributes of the style's `cellStyleXfs`
+/// record. Applying the style to a cell only stamps the included categories.
+/// The default (like "Normal") includes everything; the built-in "Percent",
+/// for example, includes only the number format.
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Copy)]
+#[serde(default)]
+pub struct StyleIncludes {
+    pub number_format: bool,
+    pub font: bool,
+    pub fill: bool,
+    pub border: bool,
+    pub alignment: bool,
+    pub protection: bool,
+}
+
+impl Default for StyleIncludes {
+    fn default() -> Self {
+        StyleIncludes {
+            number_format: true,
+            font: true,
+            fill: true,
+            border: true,
+            alignment: true,
+            protection: true,
+        }
+    }
+}
+
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct CellXfs {
     pub xf_id: i32,
