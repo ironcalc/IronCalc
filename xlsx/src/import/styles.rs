@@ -696,6 +696,12 @@ mod indexed_color_tests {
             resolve(r#"<c indexed="5"/>"#),
             Color::Rgb("#FFFF00".to_string())
         );
+        // Malformed negative index -> default fallback, not a panic (would underflow
+        // `index as usize` in `get_indexed_color` without the guard).
+        assert_eq!(
+            resolve(r#"<c indexed="-1"/>"#),
+            Color::Rgb("#000000".to_string())
+        );
         // theme= is unaffected by the indexed override.
         assert_eq!(
             resolve(r#"<c theme="3" tint="0.0"/>"#),

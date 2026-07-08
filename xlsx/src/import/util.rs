@@ -66,6 +66,12 @@ pub(super) fn get_color_indexed(
             // 64 is "transparent" in OOXML, but we don't have a good way to represent that, so we'll just ignore it
             return Ok(Color::None);
         }
+        if index < 0 {
+            // A malformed `indexed="-1"` would underflow `index as usize` inside
+            // `get_indexed_color` and panic; treat it like any other out-of-range index and
+            // fall back to the default palette entry.
+            return Ok(Color::Rgb(get_indexed_color(0)));
+        }
         // Prefer the file's `<indexedColors>` override entry (when the file supplies one and it
         // covers this index); otherwise fall back to the legacy default indexed palette.
         let rgb = indexed
