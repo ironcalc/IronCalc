@@ -762,7 +762,14 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "probability",
+        "number",
+        "Left-tail probability between 0 and 1 associated with the chi-squared distribution"
+      ],
+      ["deg_freedom", "integer", "Number of degrees of freedom"]
+    ],
     "description": "Returns the inverse of the left-tailed chi-squared distribution - the value at which the CDF equals a given probability. Use it to find percentile values or critical values for chi-squared tests.",
     "examples": [
       "=CHISQ.INV(0.95, 3) returns the 95th percentile with 3 degrees of freedom."
