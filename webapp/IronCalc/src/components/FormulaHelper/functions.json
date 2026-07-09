@@ -512,7 +512,15 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["trials", "integer", "Total number of independent trials"],
+      ["probability_s", "number", "Probability of success on each trial"],
+      [
+        "alpha",
+        "number",
+        "Criterion value: the cumulative probability threshold, between 0 and 1"
+      ]
+    ],
     "description": "Returns the smallest number of successes such that the cumulative binomial probability reaches at least a given value. Use it to find the threshold count for a given confidence level in quality or acceptance sampling.",
     "examples": ["=BINOM.INV(10, 0.5, 0.75) returns the 75th-percentile count."]
   },
