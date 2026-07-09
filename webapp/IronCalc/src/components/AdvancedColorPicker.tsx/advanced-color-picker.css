@@ -1,5 +1,5 @@
 .ic-advanced-color-picker {
-  background: var(--palette-common-white);
+  background: transparent;
   width: 240px;
   max-width: 100%;
   padding: 0;
@@ -93,6 +93,7 @@
   min-width: 0;
   border: none;
   background: transparent;
+  color: var(--palette-common-black);
   outline: none;
   padding-right: 10px;
   border-radius: 5px;
@@ -123,11 +124,10 @@
 
 .ic-advanced-color-picker-panel {
   position: fixed;
+  border: 1px solid var(--palette-surface-elevated-border);
   border-radius: 12px;
   padding: 0;
   overflow: hidden;
-  background: var(--palette-common-white);
-  box-shadow:
-    0px 8px 24px rgba(0, 0, 0, 0.18),
-    0px 2px 8px rgba(0, 0, 0, 0.1);
+  background: var(--palette-surface-elevated);
+  box-shadow: var(--shadow-md);
 }

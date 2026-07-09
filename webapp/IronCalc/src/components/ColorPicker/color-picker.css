@@ -1,14 +1,13 @@
 .ic-color-picker {
   position: fixed;
   z-index: 1300;
-  max-width: 220px;
+  max-width: 222px;
   min-width: 180px;
   margin: 0;
+  border: 1px solid var(--palette-surface-elevated-border);
   border-radius: 8px;
-  background: var(--palette-common-white);
-  box-shadow:
-    0 2px 8px rgb(0 0 0 / 0.12),
-    0 8px 24px rgb(0 0 0 / 0.12);
+  background: var(--palette-surface-elevated);
+  box-shadow: var(--shadow-md);
   font-family: var(--typography-font-family);
   font-size: var(--typography-font-size);
   box-sizing: border-box;
@@ -62,7 +61,7 @@
 
 .ic-color-picker__menu-item:hover {
   cursor: pointer;
-  background: var(--palette-grey-100);
+  background: var(--palette-grey-200);
 }
 
 .ic-color-picker__menu-item-square {

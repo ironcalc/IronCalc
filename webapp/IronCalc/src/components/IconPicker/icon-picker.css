@@ -16,10 +16,10 @@
 
 .ic-icon-picker-panel {
   position: fixed;
-  background: var(--palette-common-white);
-  border: 1px solid var(--palette-grey-300);
+  background: var(--palette-surface-elevated);
+  border: 1px solid var(--palette-surface-elevated-border);
   border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
   padding: 6px;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -39,10 +39,10 @@
 }
 
 .ic-icon-picker-item:hover {
-  background: var(--palette-grey-100);
+  background: var(--palette-grey-200);
 }
 
 .ic-icon-picker-item--selected {
-  background: var(--palette-grey-50);
+  background: var(--palette-grey-100);
   outline-offset: -1px;
 }
