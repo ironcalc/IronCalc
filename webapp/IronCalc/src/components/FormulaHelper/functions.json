@@ -1005,7 +1005,11 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["alpha", "number", "Significance level; e.g. 0.05 for 95% confidence"],
+      ["standard_dev", "number", "Population standard deviation"],
+      ["size", "integer", "Sample size"]
+    ],
     "description": "Returns the margin of error for a population mean using the normal distribution. Use it to build a confidence interval: the true mean is likely between AVERAGE ± CONFIDENCE.NORM.",
     "examples": [
       "=CONFIDENCE.NORM(0.05, STDEV(A2:A100), COUNT(A2:A100)) returns the margin for a 95% confidence interval."
