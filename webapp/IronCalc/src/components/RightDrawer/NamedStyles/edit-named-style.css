@@ -43,6 +43,27 @@
   border-bottom: none;
 }
 
+.ic-edit-style-section-header {
+  gap: 4px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.ic-edit-style-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--typography-font-family);
+  margin: 0;
+  color: var(--palette-common-black);
+}
+
+.ic-edit-style-section-subtitle {
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-grey-500);
+  line-height: 1.5;
+}
+
 .ic-edit-style-footer {
   display: flex;
   align-items: center;

@@ -239,6 +239,8 @@
     "panel_title": "Styles de cellule",
     "section_custom": "Personnalisé",
     "section_theme": "Thème",
+    "style_properties": "Propriétés du style",
+    "style_properties_description": "Les propriétés actives remplaceront la mise en forme existante de la cellule lorsque ce style sera appliqué.",
     "update_style": "Modifier le style"
   },
   "navigation": {

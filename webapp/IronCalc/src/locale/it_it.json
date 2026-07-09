@@ -239,6 +239,8 @@
     "panel_title": "Stili di cella",
     "section_custom": "Personalizzato",
     "section_theme": "Tema",
+    "style_properties": "Proprietà dello stile",
+    "style_properties_description": "Le proprietà attive sovrascriveranno la formattazione esistente della cella quando questo stile viene applicato.",
     "update_style": "Modifica stile"
   },
   "navigation": {
