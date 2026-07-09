@@ -1863,7 +1863,13 @@
     "tier": 0,
     "category": 3,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "x",
+        "number",
+        "The lower bound for integrating the complementary error function"
+      ]
+    ],
     "description": "A higher-precision version of ERFC. Use it in scientific and engineering applications where numerical accuracy is critical.",
     "examples": ["=ERFC.PRECISE(1) returns approximately 0.1573."]
   },
