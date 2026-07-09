@@ -796,7 +796,18 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "actual_range",
+        "range",
+        "The range of observed frequencies to test against expected values"
+      ],
+      [
+        "expected_range",
+        "range",
+        "The range of expected frequencies; must have the same number of data points as actual_range"
+      ]
+    ],
     "description": "Returns the p-value for a chi-squared test of independence between observed and expected frequencies. Use it to determine whether an association between two categorical variables is statistically significant.",
     "examples": [
       "=CHISQ.TEST(observed_range, expected_range) returns the p-value."
