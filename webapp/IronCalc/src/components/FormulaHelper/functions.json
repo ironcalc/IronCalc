@@ -1824,8 +1824,15 @@
     "tier": 0,
     "category": 3,
     "tags": [],
-    "args": [],
-    "description": "Returns the error function integrated between 0 and a given value. Used in statistics and physics for normal distribution calculations and diffusion problems.",
+    "args": [
+      ["lower_limit", "number", "The lower bound for integrating the error function"],
+      [
+        "upper_limit*",
+        "number",
+        "The upper bound; if omitted, integrates between 0 and lower_limit"
+      ]
+    ],
+    "description": "Returns the error function integrated between 0 and a given value, or between two limits. Used in statistics and physics for normal distribution calculations and diffusion problems.",
     "examples": ["=ERF(1) returns approximately 0.8427."]
   },
   "erf.precise": {
