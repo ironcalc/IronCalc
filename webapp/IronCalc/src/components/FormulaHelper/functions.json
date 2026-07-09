@@ -1839,7 +1839,9 @@
     "tier": 0,
     "category": 3,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "number", "The value up to which to integrate the error function"]
+    ],
     "description": "A single-argument version of ERF that always integrates from 0 to the given upper limit, with higher numerical precision. Use it when you need the standard error function with more accuracy.",
     "examples": ["=ERF.PRECISE(1) returns approximately 0.8427."]
   },
