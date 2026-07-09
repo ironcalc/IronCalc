@@ -292,6 +292,174 @@ fn test_next_year_includes_endpoints() {
 }
 
 // ---------------------------------------------------------------------------
+// Between / NotBetween  [date1, date2] (issue #1221)
+// ---------------------------------------------------------------------------
+
+// The dates below are fixed, so assertions are deterministic:
+// DATE(2025,4,25) = 45772 and DATE(2025,4,30) = 45777.
+
+fn between_rule(period: PeriodType, date1: &str, date2: &str) -> CfRuleInput {
+    CfRuleInput::TimePeriod {
+        time_period: period,
+        date1: Some(date1.to_string()),
+        date2: Some(date2.to_string()),
+        format: super::red_fill(),
+        stop_if_true: false,
+    }
+}
+
+fn set_between_test_dates(model: &mut crate::Model<'static>) {
+    set_formula(model, 1, "=DATE(2025,4,23)"); // before the interval
+    set_formula(model, 2, "=DATE(2025,4,25)"); // left endpoint
+    set_formula(model, 3, "=DATE(2025,4,27)"); // inside
+    set_formula(model, 4, "=DATE(2025,4,30)"); // right endpoint
+    set_formula(model, 5, "=DATE(2025,5,2)"); // after the interval
+    model.evaluate();
+}
+
+fn assert_between_highlights(model: &crate::Model<'static>, negated: bool) {
+    for (row, inside) in [(1, false), (2, true), (3, true), (4, true), (5, false)] {
+        assert_eq!(
+            is_red(model, row),
+            inside != negated,
+            "row {row} (inside interval: {inside})"
+        );
+    }
+}
+
+#[test]
+fn test_between_iso_dates() {
+    let mut model = new_empty_model();
+    set_between_test_dates(&mut model);
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            between_rule(PeriodType::Between, "2025-04-25", "2025-04-30"),
+        )
+        .unwrap();
+    model.evaluate();
+
+    assert_between_highlights(&model, false);
+}
+
+#[test]
+fn test_not_between_iso_dates() {
+    let mut model = new_empty_model();
+    set_between_test_dates(&mut model);
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            between_rule(PeriodType::NotBetween, "2025-04-25", "2025-04-30"),
+        )
+        .unwrap();
+    model.evaluate();
+
+    assert_between_highlights(&model, true);
+}
+
+#[test]
+fn test_between_serial_numbers() {
+    let mut model = new_empty_model();
+    set_between_test_dates(&mut model);
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            between_rule(PeriodType::Between, "45772", "45777"),
+        )
+        .unwrap();
+    model.evaluate();
+
+    assert_between_highlights(&model, false);
+}
+
+#[test]
+fn test_between_locale_dates() {
+    let mut model = new_empty_model();
+    set_between_test_dates(&mut model);
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            between_rule(PeriodType::Between, "4/25/2025", "4/30/2025"),
+        )
+        .unwrap();
+    model.evaluate();
+
+    assert_between_highlights(&model, false);
+}
+
+#[test]
+fn test_between_reversed_bounds() {
+    // Bounds given in the "wrong" order behave the same as the right order,
+    // matching the CellIs Between behavior.
+    let mut model = new_empty_model();
+    set_between_test_dates(&mut model);
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            between_rule(PeriodType::Between, "2025-04-30", "2025-04-25"),
+        )
+        .unwrap();
+    model.evaluate();
+
+    assert_between_highlights(&model, false);
+}
+
+#[test]
+fn test_between_ignores_time_component() {
+    let mut model = new_empty_model();
+    // Noon on the left endpoint day: the date part is inside the interval.
+    set_formula(&mut model, 1, "=DATE(2025,4,25)+0.5");
+    model.evaluate();
+    model
+        .add_conditional_formatting(
+            0,
+            "A1",
+            between_rule(PeriodType::Between, "2025-04-25", "2025-04-30"),
+        )
+        .unwrap();
+    model.evaluate();
+
+    assert!(is_red(&model, 1), "time of day should be ignored");
+}
+
+#[test]
+fn test_between_missing_dates_highlights_nothing() {
+    let mut model = new_empty_model();
+    set_between_test_dates(&mut model);
+    model
+        .add_conditional_formatting(0, "A1:A5", period_rule(PeriodType::Between))
+        .unwrap();
+    model.evaluate();
+
+    for row in 1..=5 {
+        assert!(!is_red(&model, row), "row {row} should not be highlighted");
+    }
+}
+
+#[test]
+fn test_between_invalid_dates_highlight_nothing() {
+    let mut model = new_empty_model();
+    set_between_test_dates(&mut model);
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            between_rule(PeriodType::Between, "not a date", "2025-04-30"),
+        )
+        .unwrap();
+    model.evaluate();
+
+    for row in 1..=5 {
+        assert!(!is_red(&model, row), "row {row} should not be highlighted");
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Non-date numbers are not matched
 // ---------------------------------------------------------------------------
 

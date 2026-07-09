@@ -9,7 +9,7 @@ use crate::{
 
 pub(crate) mod binary_search;
 mod database;
-mod date_and_time;
+pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
 mod information;
