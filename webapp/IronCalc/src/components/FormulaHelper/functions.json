@@ -1825,7 +1825,11 @@
     "category": 3,
     "tags": [],
     "args": [
-      ["lower_limit", "number", "The lower bound for integrating the error function"],
+      [
+        "lower_limit",
+        "number",
+        "The lower bound for integrating the error function"
+      ],
       [
         "upper_limit*",
         "number",
@@ -1873,13 +1877,19 @@
     "description": "A higher-precision version of ERFC. Use it in scientific and engineering applications where numerical accuracy is critical.",
     "examples": ["=ERFC.PRECISE(1) returns approximately 0.1573."]
   },
-  "errortype": {
+  "error.type": {
     "tier": 0,
     "category": 5,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "error_val",
+        "any",
+        "The error value to identify; usually a reference to a cell that may contain an error"
+      ]
+    ],
     "description": "Returns a number corresponding to the type of error in a cell (1 for #NULL!, 2 for #DIV/0!, etc.). Use it inside error-handling formulas to take different actions depending on which error occurred.",
-    "examples": ["=ERRORTYPE(A2) returns 2 if A2 contains #DIV/0!."]
+    "examples": ["=ERROR.TYPE(A2) returns 2 if A2 contains #DIV/0!."]
   },
   "even": {
     "tier": 0,
