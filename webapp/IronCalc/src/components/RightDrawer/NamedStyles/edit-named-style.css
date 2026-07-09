@@ -12,7 +12,6 @@
 .ic-edit-style-header-box {
   font-size: 14px;
   font-family: var(--typography-font-family);
-  font-weight: 600;
   gap: 8px;
   padding: 24px 12px;
   color: var(--palette-common-black);
@@ -28,6 +27,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 600;
 }
 
 .ic-edit-style-styled-box {
@@ -36,6 +36,11 @@
   align-items: stretch;
   gap: 16px;
   padding: 16px 12px;
+  border-bottom: 1px solid var(--palette-grey-200);
+}
+
+.ic-edit-style-styled-box:last-child {
+  border-bottom: none;
 }
 
 .ic-edit-style-footer {
@@ -47,17 +52,59 @@
   border-top: 1px solid var(--palette-grey-300);
 }
 
-.ic-edit-style-label {
+.ic-edit-style-subrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ic-edit-style-sublabel {
   font-size: var(--typography-font-size);
   font-family: var(--typography-font-family);
-  font-weight: 500;
   color: var(--palette-common-black);
+}
+
+.ic-edit-style-font-buttons {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid var(--palette-grey-200);
+}
+
+.ic-edit-style-font-buttons .ic-button {
+  border-radius: 4px;
+}
+
+.ic-input-control.ic-edit-style-swatch-wrapper {
+  flex: none;
+  width: 32px;
+  padding: 2px;
+}
+
+.ic-edit-style-swatch {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  border: 1px solid
+    color-mix(in srgb, var(--palette-common-black) 12%, transparent);
+  cursor: pointer;
 }
 
 .ic-edit-style-format-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
+}
+
+.ic-edit-style-format-group > .ic-toggle {
+  display: flex;
+  justify-content: space-between;
+}
+
+.ic-edit-style-format-group .ic-toggle-label {
+  font-weight: 800;
 }
 
 .ic-edit-style-preview {
@@ -71,5 +118,5 @@
   justify-content: center;
   font-size: 12px;
   font-family: var(--typography-font-family);
-  font-weight: 600;
+  font-weight: 400;
 }
