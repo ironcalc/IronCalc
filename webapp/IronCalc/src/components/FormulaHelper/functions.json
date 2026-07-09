@@ -810,7 +810,7 @@
     ],
     "description": "Returns the p-value for a chi-squared test of independence between observed and expected frequencies. Use it to determine whether an association between two categorical variables is statistically significant.",
     "examples": [
-      "=CHISQ.TEST(observed_range, expected_range) returns the p-value."
+      "=CHISQ.TEST(actual_range, expected_range) returns the p-value."
     ]
   },
   "chitest": {
