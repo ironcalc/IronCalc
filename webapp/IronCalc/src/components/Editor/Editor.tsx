@@ -424,7 +424,6 @@ const Editor = (options: EditorOptions) => {
               style={{
                 position: "fixed",
                 ...helperPosition,
-                zIndex: 1000,
               }}
             >
               <FormulaHelper
