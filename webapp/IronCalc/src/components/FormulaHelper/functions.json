@@ -493,7 +493,16 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["trials", "integer", "Total number of independent trials"],
+      ["probability_s", "number", "Probability of success on each trial"],
+      ["number_s", "integer", "Number of successes (lower bound of the range)"],
+      [
+        "number_s2*",
+        "integer",
+        "Upper bound of the range; if omitted, returns the probability of exactly number_s successes"
+      ]
+    ],
     "description": "Returns the probability that the number of successes in a binomial trial falls within a specified range. Use it when you want \"between k₁ and k₂ successes\" rather than an exact count.",
     "examples": [
       "=BINOM.DIST.RANGE(10, 0.5, 3, 7) returns P(3 ≤ X ≤ 7) for 10 fair coin flips."
