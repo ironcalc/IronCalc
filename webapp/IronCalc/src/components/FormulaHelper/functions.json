@@ -1849,7 +1849,13 @@
     "tier": 0,
     "category": 3,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "x",
+        "number",
+        "The lower bound for integrating the complementary error function"
+      ]
+    ],
     "description": "Returns the complementary error function: 1 minus ERF. Use it when you need the probability that a value lies beyond a threshold in a normal distribution context.",
     "examples": ["=ERFC(1) returns approximately 0.1573."]
   },
