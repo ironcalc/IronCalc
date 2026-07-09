@@ -3,18 +3,20 @@ import type {
   FmtSettings,
   IronCalcTheme,
   Model,
+  StyleIncludes,
 } from "@ironcalc/wasm";
-import { Check } from "lucide-react";
+import { Bold, Check, Italic, Strikethrough, Underline } from "lucide-react";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
+import { IconButton } from "../../Button/IconButton";
+import ColorPicker from "../../ColorPicker/ColorPicker";
 import { resolveColorToHex } from "../../ColorPicker/util";
 import { NumberFormats } from "../../FormatMenu/formatUtil";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
-import FormatStylePicker, {
-  type FormatStyle,
-} from "../ConditionalFormatting/FormatStylePicker";
+import { Toggle } from "../../Toggle/Toggle";
+import type { FormatStyle } from "../ConditionalFormatting/FormatStylePicker";
 import "./edit-named-style.css";
 import { getPreviewText } from "./named-styles-utils";
 
@@ -36,35 +38,36 @@ interface EditNamedStyleProps {
 export interface NamedStyleSavePayload {
   name: string;
   style: CellStyle;
-  includes: {
-    number_format: boolean;
-    font: boolean;
-    fill: boolean;
-    border: boolean;
-    alignment: boolean;
-    protection: boolean;
-  };
+  includes: StyleIncludes;
 }
 
 function formatStyleToPreview(
   formatStyle: FormatStyle,
   currentTheme: IronCalcTheme,
+  includeFont: boolean,
+  includeFill: boolean,
 ): CSSProperties {
-  const decorations: string[] = [];
-  if (formatStyle.underline) {
-    decorations.push("underline");
+  const preview: CSSProperties = {};
+  if (includeFill) {
+    preview.backgroundColor =
+      resolveColorToHex(formatStyle.fillColor, currentTheme) || undefined;
   }
-  if (formatStyle.strike) {
-    decorations.push("line-through");
+  if (includeFont) {
+    const decorations: string[] = [];
+    if (formatStyle.underline) {
+      decorations.push("underline");
+    }
+    if (formatStyle.strike) {
+      decorations.push("line-through");
+    }
+    preview.color =
+      resolveColorToHex(formatStyle.fontColor, currentTheme) || undefined;
+    preview.fontWeight = formatStyle.bold ? "bold" : undefined;
+    preview.fontStyle = formatStyle.italic ? "italic" : undefined;
+    preview.textDecoration =
+      decorations.length > 0 ? decorations.join(" ") : undefined;
   }
-  return {
-    backgroundColor:
-      resolveColorToHex(formatStyle.fillColor, currentTheme) || undefined,
-    color: resolveColorToHex(formatStyle.fontColor, currentTheme) || undefined,
-    fontWeight: formatStyle.bold ? "bold" : undefined,
-    fontStyle: formatStyle.italic ? "italic" : undefined,
-    textDecoration: decorations.length > 0 ? decorations.join(" ") : undefined,
-  };
+  return preview;
 }
 
 function initFormatStyle(model: Model, style: CellStyle): FormatStyle {
@@ -128,7 +131,30 @@ const EditNamedStyle = ({
     knownFormats.includes(style.num_fmt) ? "" : style.num_fmt,
   );
   const [customFmtTouched, setCustomFmtTouched] = useState(false);
+  const [initialIncludes] = useState<StyleIncludes | null>(() => {
+    if (!initialName) {
+      return null;
+    }
+    try {
+      return model.getNamedStyleIncludes(initialName);
+    } catch {
+      return null;
+    }
+  });
+  const [includeFormat, setIncludeFormat] = useState(
+    initialIncludes?.number_format ?? true,
+  );
+  const [includeFont, setIncludeFont] = useState(initialIncludes?.font ?? true);
+  const [includeFill, setIncludeFill] = useState(initialIncludes?.fill ?? true);
+  const [fontColorOpen, setFontColorOpen] = useState(false);
+  const [fillColorOpen, setFillColorOpen] = useState(false);
+  const fontColorRef = useRef<HTMLButtonElement>(null);
+  const fillColorRef = useRef<HTMLButtonElement>(null);
   const customFmtInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleFontAttr = (
+    key: keyof Pick<FormatStyle, "bold" | "italic" | "underline" | "strike">,
+  ) => setFormatStyle((current) => ({ ...current, [key]: !current[key] }));
 
   const isCustom = !knownFormats.includes(numFmt);
   const wasCustomRef = useRef(isCustom);
@@ -180,7 +206,7 @@ const EditNamedStyle = ({
   };
 
   const selectValue = isCustom ? CUSTOM_VALUE : numFmt;
-  const customFmtError = isCustom && !customFmt.trim();
+  const customFmtError = includeFormat && isCustom && !customFmt.trim();
   const hasError = !!nameError || !name.trim() || customFmtError;
 
   const handleSave = () => {
@@ -204,15 +230,15 @@ const EditNamedStyle = ({
         color: formatStyle.fontColor,
       },
     };
-    // FIXME (@dani): The includes object is hardcoded to include all categories.
-    // In the future, we may want to allow users to select which categories to include.
+    // Border, alignment and protection are not editable in this panel,
+    // so they are always carried over from the base style.
     const error = onSave({
       name: name.trim(),
       style: newStyle,
       includes: {
-        number_format: true,
-        font: true,
-        fill: true,
+        number_format: includeFormat,
+        font: includeFont,
+        fill: includeFill,
         border: true,
         alignment: true,
         protection: true,
@@ -240,9 +266,18 @@ const EditNamedStyle = ({
         <div className="ic-edit-style-header-box">
           <div
             className="ic-edit-style-preview"
-            style={formatStyleToPreview(formatStyle, currentTheme)}
+            style={formatStyleToPreview(
+              formatStyle,
+              currentTheme,
+              includeFont,
+              includeFill,
+            )}
           >
-            {getPreviewText(numFmt, formatOptions, t)}
+            {getPreviewText(
+              includeFormat ? numFmt : NumberFormats.AUTO,
+              formatOptions,
+              t,
+            )}
           </div>
           <span className="ic-edit-style-header-box-text">
             {name.trim() || t("named_styles.new_style")}
@@ -263,44 +298,167 @@ const EditNamedStyle = ({
             }}
             onKeyDown={handleKeyDown}
           />
-          <div className="ic-edit-style-format-group">
-            <Select
-              label={t("named_styles.format_label")}
-              value={selectValue}
-              options={formatSelectOptions}
-              onChange={handleFormatChange}
-            />
-            {isCustom && (
-              <Input
-                ref={customFmtInputRef}
-                type="text"
-                placeholder={t("named_styles.custom_format_placeholder")}
-                value={customFmt}
-                error={customFmtTouched && customFmtError}
-                helperText={
-                  customFmtTouched && customFmtError
-                    ? t("named_styles.custom_format_required")
-                    : ""
-                }
-                onChange={(e) => {
-                  setCustomFmt(e.target.value);
-                  setNumFmt(e.target.value);
-                }}
-                onBlur={() => setCustomFmtTouched(true)}
-                onKeyDown={handleKeyDown}
+        </div>
+
+        <div className="ic-edit-style-styled-box ic-edit-style-format-group">
+          <Toggle
+            checked={includeFormat}
+            onChange={setIncludeFormat}
+            label={t("named_styles.number_label")}
+          />
+          {includeFormat && (
+            <>
+              <Select
+                label={t("named_styles.format_label")}
+                value={selectValue}
+                options={formatSelectOptions}
+                onChange={handleFormatChange}
               />
-            )}
-          </div>
-          <div className="ic-edit-style-format-group">
-            <span className="ic-edit-style-label">
-              {t("named_styles.style_label")}
-            </span>
-            <FormatStylePicker
-              value={formatStyle}
-              onChange={setFormatStyle}
-              currentTheme={currentTheme}
-            />
-          </div>
+              {isCustom && (
+                <Input
+                  ref={customFmtInputRef}
+                  type="text"
+                  placeholder={t("named_styles.custom_format_placeholder")}
+                  value={customFmt}
+                  error={customFmtTouched && customFmtError}
+                  helperText={
+                    customFmtTouched && customFmtError
+                      ? t("named_styles.custom_format_required")
+                      : ""
+                  }
+                  onChange={(e) => {
+                    setCustomFmt(e.target.value);
+                    setNumFmt(e.target.value);
+                  }}
+                  onBlur={() => setCustomFmtTouched(true)}
+                  onKeyDown={handleKeyDown}
+                />
+              )}
+            </>
+          )}
+        </div>
+        <div className="ic-edit-style-styled-box ic-edit-style-format-group">
+          <Toggle
+            checked={includeFont}
+            onChange={setIncludeFont}
+            label={t("named_styles.font_label")}
+          />
+          {includeFont && (
+            <>
+              <div className="ic-edit-style-subrow">
+                <span className="ic-edit-style-sublabel">
+                  {t("named_styles.font_style_label")}
+                </span>
+                <div className="ic-edit-style-font-buttons">
+                  <IconButton
+                    icon={<Bold />}
+                    pressed={formatStyle.bold}
+                    aria-label={t("toolbar.bold")}
+                    onClick={() => toggleFontAttr("bold")}
+                  />
+                  <IconButton
+                    icon={<Italic />}
+                    pressed={formatStyle.italic}
+                    aria-label={t("toolbar.italic")}
+                    onClick={() => toggleFontAttr("italic")}
+                  />
+                  <IconButton
+                    icon={<Underline />}
+                    pressed={formatStyle.underline}
+                    aria-label={t("toolbar.underline")}
+                    onClick={() => toggleFontAttr("underline")}
+                  />
+                  <IconButton
+                    icon={<Strikethrough />}
+                    pressed={formatStyle.strike}
+                    aria-label={t("toolbar.strike_through")}
+                    onClick={() => toggleFontAttr("strike")}
+                  />
+                </div>
+              </div>
+              <div className="ic-edit-style-subrow">
+                <span className="ic-edit-style-sublabel">
+                  {t("named_styles.font_color_label")}
+                </span>
+                <div className="ic-input-control md ic-edit-style-swatch-wrapper">
+                  <button
+                    ref={fontColorRef}
+                    type="button"
+                    className="ic-edit-style-swatch"
+                    style={{
+                      backgroundColor:
+                        resolveColorToHex(
+                          formatStyle.fontColor,
+                          currentTheme,
+                        ) || "#000000",
+                    }}
+                    onClick={() => setFontColorOpen(true)}
+                    aria-label={t("toolbar.font_color")}
+                  />
+                </div>
+                <ColorPicker
+                  color={formatStyle.fontColor}
+                  defaultColor="#000000"
+                  title={t("color_picker.default")}
+                  onChange={(color) => {
+                    setFormatStyle((current) => ({
+                      ...current,
+                      fontColor: color,
+                    }));
+                    setFontColorOpen(false);
+                  }}
+                  onClose={() => setFontColorOpen(false)}
+                  anchorEl={fontColorRef}
+                  open={fontColorOpen}
+                  theme={currentTheme}
+                />
+              </div>
+            </>
+          )}
+        </div>
+        <div className="ic-edit-style-styled-box ic-edit-style-format-group">
+          <Toggle
+            checked={includeFill}
+            onChange={setIncludeFill}
+            label={t("named_styles.fill_label")}
+          />
+          {includeFill && (
+            <div className="ic-edit-style-subrow">
+              <span className="ic-edit-style-sublabel">
+                {t("named_styles.background_color_label")}
+              </span>
+              <div className="ic-input-control md ic-edit-style-swatch-wrapper">
+                <button
+                  ref={fillColorRef}
+                  type="button"
+                  className="ic-edit-style-swatch"
+                  style={{
+                    backgroundColor:
+                      resolveColorToHex(formatStyle.fillColor, currentTheme) ||
+                      "transparent",
+                  }}
+                  onClick={() => setFillColorOpen(true)}
+                  aria-label={t("toolbar.fill_color")}
+                />
+              </div>
+              <ColorPicker
+                color={formatStyle.fillColor || "#FFFFFF"}
+                defaultColor=""
+                title={t("color_picker.default")}
+                onChange={(color) => {
+                  setFormatStyle((current) => ({
+                    ...current,
+                    fillColor: color,
+                  }));
+                  setFillColorOpen(false);
+                }}
+                onClose={() => setFillColorOpen(false)}
+                anchorEl={fillColorRef}
+                open={fillColorOpen}
+                theme={currentTheme}
+              />
+            </div>
+          )}
         </div>
       </div>
       <div className="ic-edit-style-footer">
