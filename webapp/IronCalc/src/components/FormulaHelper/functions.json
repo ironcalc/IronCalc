@@ -1019,7 +1019,11 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["alpha", "number", "Significance level; e.g. 0.05 for 95% confidence"],
+      ["standard_dev", "number", "Population standard deviation"],
+      ["size", "integer", "Sample size; must be greater than 1"]
+    ],
     "description": "Like CONFIDENCE.NORM but uses the Student's t-distribution, appropriate for small samples where the population standard deviation is unknown. Use it when your sample size is small (typically under 30).",
     "examples": [
       "=CONFIDENCE.T(0.05, STDEV(A2:A20), 20) returns the margin for 20 data points."
