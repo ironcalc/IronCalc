@@ -751,7 +751,10 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "number", "The value at which to evaluate the distribution"],
+      ["deg_freedom", "integer", "Number of degrees of freedom"]
+    ],
     "description": "Returns the right-tailed chi-squared distribution probability. Use it to find the p-value for a chi-squared test statistic - values close to 0 indicate statistical significance.",
     "examples": ["=CHISQ.DIST.RT(5, 3) returns the right-tail probability."]
   },
