@@ -239,6 +239,8 @@
     "panel_title": "Cell styles",
     "section_custom": "Custom",
     "section_theme": "Theme",
+    "style_properties": "Style properties",
+    "style_properties_description": "Active properties will overwrite the cell's existing formatting when this style is applied.",
     "update_style": "Edit style"
   },
   "navigation": {

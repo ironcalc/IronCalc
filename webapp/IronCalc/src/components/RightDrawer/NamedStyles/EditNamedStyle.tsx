@@ -300,6 +300,15 @@ const EditNamedStyle = ({
           />
         </div>
 
+        <div className="ic-edit-style-styled-box ic-edit-style-section-header">
+          <div className="ic-edit-style-section-title">
+            {t("named_styles.style_properties")}
+          </div>
+          <div className="ic-edit-style-section-subtitle">
+            {t("named_styles.style_properties_description")}
+          </div>
+        </div>
+
         <div className="ic-edit-style-styled-box ic-edit-style-format-group">
           <Toggle
             checked={includeFormat}

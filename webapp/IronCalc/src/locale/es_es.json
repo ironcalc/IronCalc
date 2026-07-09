@@ -239,6 +239,8 @@
     "panel_title": "Estilos de celda",
     "section_custom": "Personalizado",
     "section_theme": "Tema",
+    "style_properties": "Propiedades del estilo",
+    "style_properties_description": "Las propiedades activas sobrescribirán el formato existente de la celda cuando se aplique este estilo.",
     "update_style": "Editar estilo"
   },
   "navigation": {

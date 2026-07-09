@@ -239,6 +239,8 @@
     "panel_title": "Zellformate",
     "section_custom": "Benutzerdefiniert",
     "section_theme": "Design",
+    "style_properties": "Stileigenschaften",
+    "style_properties_description": "Aktive Eigenschaften überschreiben die vorhandene Formatierung der Zelle, wenn dieser Stil angewendet wird.",
     "update_style": "Stil bearbeiten"
   },
   "navigation": {
