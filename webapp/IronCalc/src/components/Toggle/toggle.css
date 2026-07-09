@@ -1,0 +1,78 @@
+.ic-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-common-black);
+}
+
+.ic-toggle.disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.ic-toggle-label {
+  font-weight: 500;
+  transition: opacity 150ms ease;
+}
+
+.ic-toggle:has(.ic-toggle-input:not(:checked)) .ic-toggle-label {
+  opacity: 0.5;
+}
+
+/* Visually hidden but focusable */
+.ic-toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ic-toggle-track {
+  position: relative;
+  flex-shrink: 0;
+  width: 28px;
+  height: 16px;
+  border-radius: 999px;
+  background-color: var(--palette-grey-400);
+  transition: background-color 150ms ease;
+}
+
+.ic-toggle:hover .ic-toggle-input:not(:disabled, :checked) + .ic-toggle-track {
+  background-color: var(--palette-grey-500);
+}
+
+.ic-toggle-input:checked + .ic-toggle-track {
+  background-color: var(--palette-primary-main);
+}
+
+.ic-toggle:hover .ic-toggle-input:checked:not(:disabled) + .ic-toggle-track {
+  background-color: var(--palette-primary-dark);
+}
+
+.ic-toggle-input:focus-visible + .ic-toggle-track {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+}
+
+.ic-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--palette-common-white);
+  transition: transform 150ms ease;
+}
+
+.ic-toggle-input:checked + .ic-toggle-track .ic-toggle-thumb {
+  transform: translateX(12px);
+}
