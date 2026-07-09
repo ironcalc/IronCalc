@@ -349,7 +349,12 @@ const EditNamedStyle = ({
         <div className="ic-edit-style-styled-box ic-edit-style-format-group">
           <Toggle
             checked={includeFont}
-            onChange={setIncludeFont}
+            onChange={(checked) => {
+              setIncludeFont(checked);
+              if (!checked) {
+                setFontColorOpen(false);
+              }
+            }}
             label={t("named_styles.font_label")}
           />
           {includeFont && (
@@ -428,7 +433,12 @@ const EditNamedStyle = ({
         <div className="ic-edit-style-styled-box ic-edit-style-format-group">
           <Toggle
             checked={includeFill}
-            onChange={setIncludeFill}
+            onChange={(checked) => {
+              setIncludeFill(checked);
+              if (!checked) {
+                setFillColorOpen(false);
+              }
+            }}
             label={t("named_styles.fill_label")}
           />
           {includeFill && (
