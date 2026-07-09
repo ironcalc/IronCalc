@@ -3186,14 +3186,15 @@
     "tags": [],
     "args": [
       [
-        "parameter",
-        "text",
-        "Name of the first parameter (subsequent arguments add more parameters)"
-      ],
-      [
-        "...",
+        "parameter*",
         "any",
-        "Additional parameter names, with the formula as the final argument"
+        "A name for a value passed to the function, e.g. x. Optional; add one per parameter (up to 253)."
+      ],
+      ["...", "any", "Additional parameter names."],
+      [
+        "calculation",
+        "any",
+        "The formula to evaluate using the parameters. Always the last argument."
       ]
     ],
     "description": "Defines a custom, reusable function with named parameters that you can store in the Name Manager and call like any built-in function. Use it to package a complex formula you repeat often into a named function, making your workbook easier to maintain and understand.",

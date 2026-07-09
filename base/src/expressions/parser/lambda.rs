@@ -22,7 +22,14 @@ impl<'a> Parser<'a> {
 
         // Parse items one by one. Items followed by the separator are parameters (must
         // be plain names or [name]). The final item before ')' is the body expression.
+        let mut arg_index = 1;
         let body = loop {
+            // The cursor is currently in item `arg_index` of LAMBDA, so an EOF
+            // here reports the argument context for the Formula Helper. LAMBDA
+            // is parsed specially (not through `parse_function_args`), so this
+            // hint has to be stamped explicitly.
+            self.set_argument_hint("LAMBDA", arg_index);
+
             // Optional parameter syntax: [name]
             let bracket_optional = self.lexer.peek_token() == TokenType::LeftBracket;
             if bracket_optional {
@@ -50,6 +57,7 @@ impl<'a> Parser<'a> {
             if next == arg_separator {
                 // This item must be a parameter name.
                 self.lexer.advance_token();
+                arg_index += 1;
                 match expr {
                     Node::NamedVariableKind { name, id } => {
                         // xlop: Excel Optional Parameter.
