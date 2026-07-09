@@ -105,6 +105,17 @@ fn compute_icon_index(v: f64, thresholds: &[(f64, bool)]) -> u32 {
     idx
 }
 
+/// Parses a date bound of a Between/NotBetween time-period rule: either a
+/// date string in any format DATEVALUE accepts (e.g. "2025-04-25",
+/// "4/25/2025") or a plain Excel serial number.
+fn parse_cf_date_bound(value: &str) -> Option<f64> {
+    let trimmed = value.trim();
+    if let Ok(serial) = crate::functions::date_and_time::parse_datevalue_text(trimmed) {
+        return Some(serial as f64);
+    }
+    trimmed.parse::<f64>().ok().map(f64::floor)
+}
+
 /// Stable string key for a CellValue, used for duplicate detection.
 fn cell_value_key(v: &crate::cell::CellValue) -> Option<String> {
     use crate::cell::CellValue;
@@ -258,11 +269,20 @@ impl<'a> Model<'a> {
             }
             CfRule::TimePeriod {
                 time_period,
+                date1,
+                date2,
                 dxf_id,
                 stop_if_true,
-                ..
             } => {
-                self.apply_cf_time_period(sheet, time_period, *dxf_id, *stop_if_true, ranges);
+                self.apply_cf_time_period(
+                    sheet,
+                    time_period,
+                    date1.as_deref(),
+                    date2.as_deref(),
+                    *dxf_id,
+                    *stop_if_true,
+                    ranges,
+                );
             }
             CfRule::IconRating {
                 icon,
@@ -847,10 +867,13 @@ impl<'a> Model<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn apply_cf_time_period(
         &mut self,
         sheet: u32,
         period: &PeriodType,
+        date1: Option<&str>,
+        date2: Option<&str>,
         dxf_id: u32,
         stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
@@ -959,8 +982,18 @@ impl<'a> Model<'a> {
                 };
                 (serial_of(start), serial_of(end))
             }
-            PeriodType::Between | PeriodType::NotBetween => return,
+            PeriodType::Between | PeriodType::NotBetween => {
+                let (Some(d1), Some(d2)) = (date1, date2) else {
+                    return;
+                };
+                let (Some(s1), Some(s2)) = (parse_cf_date_bound(d1), parse_cf_date_bound(d2))
+                else {
+                    return;
+                };
+                (s1.min(s2), s1.max(s2))
+            }
         };
+        let negate = matches!(period, PeriodType::NotBetween);
 
         for &(r1, c1, r2, c2) in ranges {
             for row in r1..=r2 {
@@ -968,7 +1001,8 @@ impl<'a> Model<'a> {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
                     {
                         let day = v.floor();
-                        if day >= range.0 && day <= range.1 {
+                        let inside = day >= range.0 && day <= range.1;
+                        if inside != negate {
                             self.update_cf_cache(
                                 sheet,
                                 row,

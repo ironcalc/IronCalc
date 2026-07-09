@@ -504,7 +504,7 @@ fn parse_year_simple(year_str: &str) -> Result<i32, String> {
     }
 }
 
-fn parse_datevalue_text(value: &str) -> Result<i32, String> {
+pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     // Trim whitespace and discard any time component (e.g., "2024-02-29 06:00" -> "2024-02-29")
     let mut date_str = value.trim();
     if let Some(idx) = date_str.find('T') {
