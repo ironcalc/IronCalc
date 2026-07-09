@@ -733,7 +733,15 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "number", "The value at which to evaluate the distribution"],
+      ["deg_freedom", "integer", "Number of degrees of freedom"],
+      [
+        "cumulative",
+        "logical",
+        "TRUE for the cumulative distribution function; FALSE for the probability density function"
+      ]
+    ],
     "description": "Returns the chi-squared distribution probability (left-tailed CDF or PDF). Use it in goodness-of-fit tests and tests of independence when analyzing categorical data.",
     "examples": [
       "=CHISQ.DIST(5, 3, TRUE) returns the left-tail CDF at 5 with 3 degrees of freedom."
