@@ -371,3 +371,51 @@ fn nested_call_in_argument_keeps_the_outer_argument_index() {
         ctx.expecting
     );
 }
+
+// ---------------------------------------------------------------------------
+// LAMBDA is parsed specially (not through `parse_function_args`), so it needs
+// its own argument-hint stamping for the Formula Helper to show a signature.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn open_lambda_reports_its_first_argument() {
+    // LAMBDA(|  → the Formula Helper needs `Argument("LAMBDA", 1)` to render the
+    // signature, and a range is still a valid completion.
+    let ctx = complete_at_end("LAMBDA(");
+    assert!(
+        ctx.expecting
+            .contains(&ExpectedTokens::Argument("LAMBDA".to_string(), 1)),
+        "got {:?}",
+        ctx.expecting
+    );
+    assert!(ctx.expecting.contains(&ExpectedTokens::Range));
+}
+
+#[test]
+fn lambda_tracks_the_argument_index_across_parameters() {
+    // LAMBDA(x, y,|  → third item (two parameters typed so far).
+    let ctx = complete_at_end("LAMBDA(x,y,");
+    assert!(
+        ctx.expecting
+            .contains(&ExpectedTokens::Argument("LAMBDA".to_string(), 3)),
+        "got {:?}",
+        ctx.expecting
+    );
+}
+
+#[test]
+fn lambda_body_with_a_dangling_operator_expects_a_range() {
+    // LAMBDA(x, x+|  → the body's trailing `+` needs an operand; still argument 2.
+    let ctx = complete_at_end("LAMBDA(x,x+");
+    assert!(
+        ctx.expecting.contains(&ExpectedTokens::Range),
+        "got {:?}",
+        ctx.expecting
+    );
+    assert!(
+        ctx.expecting
+            .contains(&ExpectedTokens::Argument("LAMBDA".to_string(), 2)),
+        "got {:?}",
+        ctx.expecting
+    );
+}
