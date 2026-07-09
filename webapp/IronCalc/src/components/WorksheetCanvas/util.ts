@@ -79,6 +79,10 @@ export function readThemeFromCSS(root: Element): Theme {
     primaryMain: readCSSVar("--palette-primary-main", style),
     headerTextColor: readCSSVar("--palette-sheet-header-text-color", style),
     headerBackground: readCSSVar("--palette-sheet-header-background", style),
+    headerCornerBackground: readCSSVar(
+      "--palette-sheet-header-corner-background",
+      style,
+    ),
     headerSelectedBackground: readCSSVar(
       "--palette-sheet-header-selected-background",
       style,
@@ -105,6 +109,7 @@ export interface Theme {
   primaryMain: string;
   headerTextColor: string;
   headerBackground: string;
+  headerCornerBackground: string;
   headerSelectedBackground: string;
   headerBorderColor: string;
   outlineColor: string;
