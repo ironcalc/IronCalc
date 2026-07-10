@@ -86,7 +86,7 @@
   color: var(--palette-common-black);
 }
 
-.ic-edit-style-font-buttons {
+.ic-edit-style-button-group {
   display: flex;
   gap: 2px;
   padding: 2px;
@@ -94,7 +94,7 @@
   border: 1px solid var(--palette-grey-200);
 }
 
-.ic-edit-style-font-buttons .ic-button {
+.ic-edit-style-button-group .ic-button {
   border-radius: 4px;
 }
 

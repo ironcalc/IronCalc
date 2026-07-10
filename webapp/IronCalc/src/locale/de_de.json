@@ -210,9 +210,11 @@
     "accent_5": "Akzent 5",
     "accent_6": "Akzent 6",
     "add_new_style": "Neu hinzufügen",
+    "alignment_label": "Ausrichtung",
     "apply": "Anwenden",
     "back_to_list": "Zurück zur Liste",
     "background_color_label": "Hintergrundfarbe",
+    "border_label": "Rahmen",
     "cancel": "Abbrechen",
     "category_data_and_model": "Daten und Modell",
     "category_good_bad_neutral": "Gut, schlecht und neutral",
@@ -230,6 +232,7 @@
     "font_label": "Schriftart",
     "font_style_label": "Schriftstil",
     "format_label": "Format",
+    "horizontal_align_label": "Horizontal",
     "manage_styles": "Stile verwalten",
     "name_already_exists": "Ein Stil mit diesem Namen existiert bereits",
     "name_label": "Name",
@@ -241,7 +244,8 @@
     "section_theme": "Design",
     "style_properties": "Stileigenschaften",
     "style_properties_description": "Aktive Eigenschaften überschreiben die vorhandene Formatierung der Zelle, wenn dieser Stil angewendet wird.",
-    "update_style": "Stil bearbeiten"
+    "update_style": "Stil bearbeiten",
+    "vertical_align_label": "Vertikal"
   },
   "navigation": {
     "add_sheet": "Tabellenblatt hinzufügen",
