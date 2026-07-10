@@ -156,18 +156,6 @@ export default function BorderPicker({
   }, [anchorEl, open]);
 
   useEffect(() => {
-    if (!borderSelected) {
-      return;
-    }
-
-    onChange({
-      color: borderColor,
-      style: borderStyle,
-      border: borderSelected,
-    });
-  }, [borderColor, borderStyle, borderSelected, onChange]);
-
-  useEffect(() => {
     if (!open) {
       return;
     }
@@ -230,11 +218,23 @@ export default function BorderPicker({
     };
   }, [open, onClose, colorPickerOpen]);
 
+  const applyBorder = (
+    border: BorderType,
+    color: Color,
+    style: BorderStyle,
+  ): void => {
+    onChange({ color, style, border });
+  };
+
   const toggleBorder = (
     value: BorderType,
     offValue: BorderType | null,
   ): void => {
-    setBorderSelected((current) => (current === value ? offValue : value));
+    const next = borderSelected === value ? offValue : value;
+    setBorderSelected(next);
+    if (next !== null) {
+      applyBorder(next, borderColor, borderStyle);
+    }
   };
 
   if (!open || !anchorEl.current) {
@@ -283,6 +283,7 @@ export default function BorderPicker({
                 onClick={() => {
                   if (value === BorderType.None) {
                     setBorderSelected(BorderType.None);
+                    applyBorder(BorderType.None, borderColor, borderStyle);
                     return;
                   }
                   toggleBorder(value, button.offValue);
@@ -318,6 +319,9 @@ export default function BorderPicker({
             onChange={(color) => {
               setBorderColor(color);
               setColorPickerOpen(false);
+              if (borderSelected) {
+                applyBorder(borderSelected, color, borderStyle);
+              }
             }}
             onClose={() => {
               setColorPickerOpen(false);
@@ -346,6 +350,9 @@ export default function BorderPicker({
               onSelect={(style) => {
                 setBorderStyle(style);
                 setStylePickerOpen(false);
+                if (borderSelected) {
+                  applyBorder(borderSelected, borderColor, style);
+                }
               }}
             />
           )}
