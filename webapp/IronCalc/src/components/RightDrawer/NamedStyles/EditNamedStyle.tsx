@@ -1,13 +1,27 @@
 import type {
   CellStyle,
   FmtSettings,
+  HorizontalAlignment,
   IronCalcTheme,
   Model,
   StyleIncludes,
+  VerticalAlignment,
 } from "@ironcalc/wasm";
-import { Bold, Check, Italic, Strikethrough, Underline } from "lucide-react";
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  ArrowDownToLine,
+  ArrowUpToLine,
+  Bold,
+  Check,
+  Italic,
+  Strikethrough,
+  Underline,
+} from "lucide-react";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ArrowMiddleFromLine } from "../../../icons";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
@@ -146,6 +160,18 @@ const EditNamedStyle = ({
   );
   const [includeFont, setIncludeFont] = useState(initialIncludes?.font ?? true);
   const [includeFill, setIncludeFill] = useState(initialIncludes?.fill ?? true);
+  const [includeAlignment, setIncludeAlignment] = useState(
+    initialIncludes?.alignment ?? true,
+  );
+  const [horizontalAlign, setHorizontalAlign] = useState<HorizontalAlignment>(
+    style.alignment?.horizontal ?? "general",
+  );
+  const [verticalAlign, setVerticalAlign] = useState<VerticalAlignment>(
+    style.alignment?.vertical ?? "bottom",
+  );
+  const [includeBorder, setIncludeBorder] = useState(
+    initialIncludes?.border ?? true,
+  );
   const [fontColorOpen, setFontColorOpen] = useState(false);
   const [fillColorOpen, setFillColorOpen] = useState(false);
   const fontColorRef = useRef<HTMLButtonElement>(null);
@@ -217,6 +243,11 @@ const EditNamedStyle = ({
     const newStyle = {
       ...style,
       num_fmt: numFmt,
+      alignment: {
+        horizontal: horizontalAlign,
+        vertical: verticalAlign,
+        wrap_text: style.alignment?.wrap_text ?? false,
+      },
       fill: {
         ...style.fill,
         color: formatStyle.fillColor || undefined,
@@ -230,8 +261,8 @@ const EditNamedStyle = ({
         color: formatStyle.fontColor,
       },
     };
-    // Border, alignment and protection are not editable in this panel,
-    // so they are always carried over from the base style.
+    // Protection is not editable in this panel, so it is always carried
+    // over from the base style.
     const error = onSave({
       name: name.trim(),
       style: newStyle,
@@ -239,8 +270,8 @@ const EditNamedStyle = ({
         number_format: includeFormat,
         font: includeFont,
         fill: includeFill,
-        border: true,
-        alignment: true,
+        border: includeBorder,
+        alignment: includeAlignment,
         protection: true,
       },
     });
@@ -363,7 +394,7 @@ const EditNamedStyle = ({
                 <span className="ic-edit-style-sublabel">
                   {t("named_styles.font_style_label")}
                 </span>
-                <div className="ic-edit-style-font-buttons">
+                <div className="ic-edit-style-button-group">
                   <IconButton
                     icon={<Bold />}
                     pressed={formatStyle.bold}
@@ -478,6 +509,86 @@ const EditNamedStyle = ({
               />
             </div>
           )}
+        </div>
+        <div className="ic-edit-style-styled-box ic-edit-style-format-group">
+          <Toggle
+            checked={includeAlignment}
+            onChange={setIncludeAlignment}
+            label={t("named_styles.alignment_label")}
+          />
+          {includeAlignment && (
+            <>
+              <div className="ic-edit-style-subrow">
+                <span className="ic-edit-style-sublabel">
+                  {t("named_styles.horizontal_align_label")}
+                </span>
+                <div className="ic-edit-style-button-group">
+                  <IconButton
+                    icon={<AlignLeft />}
+                    pressed={horizontalAlign === "left"}
+                    aria-label={t("toolbar.align_left")}
+                    onClick={() =>
+                      setHorizontalAlign(
+                        horizontalAlign === "left" ? "general" : "left",
+                      )
+                    }
+                  />
+                  <IconButton
+                    icon={<AlignCenter />}
+                    pressed={horizontalAlign === "center"}
+                    aria-label={t("toolbar.align_center")}
+                    onClick={() =>
+                      setHorizontalAlign(
+                        horizontalAlign === "center" ? "general" : "center",
+                      )
+                    }
+                  />
+                  <IconButton
+                    icon={<AlignRight />}
+                    pressed={horizontalAlign === "right"}
+                    aria-label={t("toolbar.align_right")}
+                    onClick={() =>
+                      setHorizontalAlign(
+                        horizontalAlign === "right" ? "general" : "right",
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div className="ic-edit-style-subrow">
+                <span className="ic-edit-style-sublabel">
+                  {t("named_styles.vertical_align_label")}
+                </span>
+                <div className="ic-edit-style-button-group">
+                  <IconButton
+                    icon={<ArrowUpToLine />}
+                    pressed={verticalAlign === "top"}
+                    aria-label={t("toolbar.vertical_align_top")}
+                    onClick={() => setVerticalAlign("top")}
+                  />
+                  <IconButton
+                    icon={<ArrowMiddleFromLine />}
+                    pressed={verticalAlign === "center"}
+                    aria-label={t("toolbar.vertical_align_middle")}
+                    onClick={() => setVerticalAlign("center")}
+                  />
+                  <IconButton
+                    icon={<ArrowDownToLine />}
+                    pressed={verticalAlign === "bottom"}
+                    aria-label={t("toolbar.vertical_align_bottom")}
+                    onClick={() => setVerticalAlign("bottom")}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="ic-edit-style-styled-box ic-edit-style-format-group">
+          <Toggle
+            checked={includeBorder}
+            onChange={setIncludeBorder}
+            label={t("named_styles.border_label")}
+          />
         </div>
       </div>
       <div className="ic-edit-style-footer">

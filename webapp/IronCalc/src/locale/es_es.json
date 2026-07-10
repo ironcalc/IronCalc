@@ -210,9 +210,11 @@
     "accent_5": "Acento 5",
     "accent_6": "Acento 6",
     "add_new_style": "Añadir nuevo",
+    "alignment_label": "Alineación",
     "apply": "Aplicar",
     "back_to_list": "Volver a la lista",
     "background_color_label": "Color de fondo",
+    "border_label": "Borde",
     "cancel": "Cancelar",
     "category_data_and_model": "Datos y modelo",
     "category_good_bad_neutral": "Bueno, malo y neutral",
@@ -230,6 +232,7 @@
     "font_label": "Fuente",
     "font_style_label": "Estilo de fuente",
     "format_label": "Formato",
+    "horizontal_align_label": "Horizontal",
     "manage_styles": "Gestionar estilos",
     "name_already_exists": "Ya existe un estilo con este nombre",
     "name_label": "Nombre",
@@ -241,7 +244,8 @@
     "section_theme": "Tema",
     "style_properties": "Propiedades del estilo",
     "style_properties_description": "Las propiedades activas sobrescribirán el formato existente de la celda cuando se aplique este estilo.",
-    "update_style": "Editar estilo"
+    "update_style": "Editar estilo",
+    "vertical_align_label": "Vertical"
   },
   "navigation": {
     "add_sheet": "Añadir hoja",
