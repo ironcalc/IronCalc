@@ -1,11 +1,24 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{formatter::format::parse_formatted_number, locale::get_default_locale};
+use crate::{
+    formatter::format::parse_formatted_number,
+    locale::{get_default_locale, get_locale},
+};
 
 const PARSE_ERROR_MSG: &str = "Could not parse number";
 
 fn parse(input: &str, currencies: &[&str]) -> Result<(f64, Option<String>), String> {
     let locale = get_default_locale();
+    parse_formatted_number(input, currencies, locale)
+}
+
+fn parse_de(input: &str, currencies: &[&str]) -> Result<(f64, Option<String>), String> {
+    let locale = get_locale("de").unwrap();
+    parse_formatted_number(input, currencies, locale)
+}
+
+fn parse_fr(input: &str, currencies: &[&str]) -> Result<(f64, Option<String>), String> {
+    let locale = get_locale("fr").unwrap();
     parse_formatted_number(input, currencies, locale)
 }
 
@@ -151,6 +164,94 @@ fn errors() {
 #[test]
 fn errors_wrong_currency() {
     assert_eq!(parse("123€", &["$"]), Err(PARSE_ERROR_MSG.to_string()));
+}
+
+// German uses ',' as decimal separator and '.' as group separator
+#[test]
+fn numbers_de() {
+    assert_eq!(parse_de("3,15", &["$"]), Ok((3.15, None)));
+    assert_eq!(parse_de("-4,456", &["$"]), Ok((-4.456, None)));
+    assert_eq!(
+        parse_de("1.234", &["$"]),
+        Ok((1234.0, Some("#,##0".to_string())))
+    );
+    assert_eq!(
+        parse_de("1.234,56", &["$"]),
+        Ok((1234.56, Some("#,##0.00".to_string())))
+    );
+    assert_eq!(
+        parse_de("1.234.567", &["$"]),
+        Ok((1234567.0, Some("#,##0".to_string())))
+    );
+}
+
+#[test]
+fn percentage_and_currency_de() {
+    assert_eq!(
+        parse_de("12,5%", &["$"]),
+        Ok((0.125, Some("#,##0.00%".to_string())))
+    );
+    assert_eq!(
+        parse_de("1.234,50€", &["€"]),
+        Ok((1234.5, Some("#,##0.00€".to_string())))
+    );
+}
+
+#[test]
+fn errors_de() {
+    // en-US formatted numbers are not valid in the German locale
+    assert_eq!(
+        parse_de("1,234.56", &["$"]),
+        Err(PARSE_ERROR_MSG.to_string())
+    );
+    // group separators must come in groups of three
+    assert!(parse_de("1.23,4", &["$"]).is_err());
+}
+
+// French uses ',' as decimal separator and
+// '\u{202f}' (narrow no-break space) as group separator
+#[test]
+fn numbers_fr() {
+    assert_eq!(parse_fr("3,15", &["$"]), Ok((3.15, None)));
+    // "1,000" is one, not one thousand
+    assert_eq!(parse_fr("1,000", &["$"]), Ok((1.0, None)));
+    assert_eq!(
+        parse_fr("1\u{202f}234", &["$"]),
+        Ok((1234.0, Some("#,##0".to_string())))
+    );
+    assert_eq!(
+        parse_fr("1\u{202f}234,56", &["$"]),
+        Ok((1234.56, Some("#,##0.00".to_string())))
+    );
+    assert_eq!(
+        parse_fr("-12\u{202f}345\u{202f}678", &["$"]),
+        Ok((-12345678.0, Some("#,##0".to_string())))
+    );
+}
+
+#[test]
+fn percentage_and_currency_fr() {
+    assert_eq!(
+        parse_fr("12,5%", &["$"]),
+        Ok((0.125, Some("#,##0.00%".to_string())))
+    );
+    assert_eq!(
+        parse_fr("1\u{202f}234,50€", &["€"]),
+        Ok((1234.5, Some("#,##0.00€".to_string())))
+    );
+}
+
+#[test]
+fn errors_fr() {
+    // '.' is neither the decimal nor the group separator in French
+    assert_eq!(parse_fr("1.000", &["$"]), Err(PARSE_ERROR_MSG.to_string()));
+    // en-US formatted numbers are not valid in the French locale
+    assert_eq!(
+        parse_fr("1,234.56", &["$"]),
+        Err(PARSE_ERROR_MSG.to_string())
+    );
+    // group separators must come in groups of three
+    assert!(parse_fr("1\u{202f}23,4", &["$"]).is_err());
 }
 
 #[test]
