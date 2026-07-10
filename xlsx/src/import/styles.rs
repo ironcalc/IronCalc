@@ -125,8 +125,10 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
                 "strike" => {
                     strike = true;
                 }
-                "name" => name = "Inter".to_string(), // TODO: feature.attribute("val").unwrap_or("Calibri").to_string(),
-                // If there is a theme the font scheme and family overrides other properties like the name
+                // ECMA-376 §18.8.29 (`name`): the `val` attribute is the font's typeface.
+                "name" => {
+                    name = feature.attribute("val").unwrap_or("Inter").to_string();
+                }
                 "family" => {
                     family = feature
                         .attribute("val")
