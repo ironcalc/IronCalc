@@ -389,11 +389,11 @@ const EditNamedStyle = ({
             label={t("named_styles.font_label")}
           />
           {includeFont && (
-            <>
-              <div className="ic-edit-style-subrow">
-                <span className="ic-edit-style-sublabel">
-                  {t("named_styles.font_style_label")}
-                </span>
+            <div className="ic-edit-style-subrow">
+              <span className="ic-edit-style-sublabel">
+                {t("named_styles.font_style_label")}
+              </span>
+              <div className="ic-edit-style-controls-row">
                 <div className="ic-edit-style-button-group">
                   <IconButton
                     icon={<Bold />}
@@ -420,11 +420,6 @@ const EditNamedStyle = ({
                     onClick={() => toggleFontAttr("strike")}
                   />
                 </div>
-              </div>
-              <div className="ic-edit-style-subrow">
-                <span className="ic-edit-style-sublabel">
-                  {t("named_styles.font_color_label")}
-                </span>
                 <div className="ic-input-control md ic-edit-style-swatch-wrapper">
                   <button
                     ref={fontColorRef}
@@ -458,7 +453,7 @@ const EditNamedStyle = ({
                   theme={currentTheme}
                 />
               </div>
-            </>
+            </div>
           )}
         </div>
         <div className="ic-edit-style-styled-box ic-edit-style-format-group">
