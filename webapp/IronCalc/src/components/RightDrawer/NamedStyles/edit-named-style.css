@@ -86,15 +86,24 @@
   color: var(--palette-common-black);
 }
 
+.ic-edit-style-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .ic-edit-style-button-group {
+  box-sizing: border-box;
   display: flex;
   gap: 2px;
   padding: 2px;
   border-radius: 6px;
   border: 1px solid var(--palette-grey-200);
+  height: 32px;
 }
 
 .ic-edit-style-button-group .ic-button {
+  --button-height: 26px;
   border-radius: 4px;
 }
 
