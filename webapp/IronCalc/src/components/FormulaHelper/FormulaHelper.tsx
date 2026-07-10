@@ -176,7 +176,7 @@ function FunctionDetail({
       <div className="ic-fh-header">
         <div className="ic-fh-header-main">
           <div className="ic-fh-signature">
-            <span className="ic-fh-fn-name">{name}</span>
+            <span className="ic-fh-fn-name">{name.toUpperCase()}</span>
             {" ( "}
             {args.map((arg, index) => (
               <Fragment key={arg[0]}>
