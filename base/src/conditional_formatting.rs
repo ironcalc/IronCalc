@@ -40,7 +40,9 @@ fn parse_range_part(s: &str) -> Option<(i32, i32, i32, i32)> {
         2 => {
             let r1 = parse_reference_a1(parts[0])?;
             let r2 = parse_reference_a1(parts[1])?;
-            Some((r1.row, r1.column, r2.row, r2.column))
+            let (row_min, row_max) = (r1.row.min(r2.row), r1.row.max(r2.row));
+            let (col_min, col_max) = (r1.column.min(r2.column), r1.column.max(r2.column));
+            Some((row_min, col_min, row_max, col_max))
         }
         _ => None,
     }
