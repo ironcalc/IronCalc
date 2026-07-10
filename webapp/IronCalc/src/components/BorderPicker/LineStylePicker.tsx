@@ -1,7 +1,7 @@
 import { BorderStyle } from "@ironcalc/wasm";
 import "./line-style-picker.css";
 
-const STYLE_OPTIONS = [
+export const STYLE_OPTIONS = [
   { value: BorderStyle.Thin, previewClassName: "thin" },
   { value: BorderStyle.Medium, previewClassName: "medium" },
   { value: BorderStyle.Thick, previewClassName: "thick" },
@@ -38,7 +38,7 @@ export default function LineStylePicker({
           }
           onClick={() => onSelect(option.value)}
         >
-          <span className={option.previewClassName} />
+          <span className={`ic-line-preview ${option.previewClassName}`} />
         </button>
       ))}
     </div>
