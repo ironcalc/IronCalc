@@ -45,7 +45,20 @@ import { Select } from "../../Select/Select";
 import { Toggle } from "../../Toggle/Toggle";
 import type { FormatStyle } from "../ConditionalFormatting/FormatStylePicker";
 import "./edit-named-style.css";
-import { getPreviewText } from "./named-styles-utils";
+import {
+  borderStyleToCss,
+  FAINT_PREVIEW_BORDER,
+  getPreviewText,
+  HORIZONTAL_JUSTIFY,
+  VERTICAL_ALIGN_ITEMS,
+} from "./named-styles-utils";
+
+interface BorderSides {
+  top: boolean;
+  right: boolean;
+  bottom: boolean;
+  left: boolean;
+}
 
 export interface SaveError {
   nameError: string;
@@ -68,18 +81,29 @@ export interface NamedStyleSavePayload {
   includes: StyleIncludes;
 }
 
+interface PreviewOptions {
+  includeFont: boolean;
+  includeFill: boolean;
+  includeAlignment: boolean;
+  includeBorder: boolean;
+  horizontalAlign: HorizontalAlignment;
+  verticalAlign: VerticalAlignment;
+  borderSides: BorderSides;
+  borderLineStyle: BorderStyle;
+  borderColor: Color;
+}
+
 function formatStyleToPreview(
   formatStyle: FormatStyle,
   currentTheme: IronCalcTheme,
-  includeFont: boolean,
-  includeFill: boolean,
+  options: PreviewOptions,
 ): CSSProperties {
   const preview: CSSProperties = {};
-  if (includeFill) {
+  if (options.includeFill) {
     preview.backgroundColor =
       resolveColorToHex(formatStyle.fillColor, currentTheme) || undefined;
   }
-  if (includeFont) {
+  if (options.includeFont) {
     const decorations: string[] = [];
     if (formatStyle.underline) {
       decorations.push("underline");
@@ -93,6 +117,23 @@ function formatStyleToPreview(
     preview.fontStyle = formatStyle.italic ? "italic" : undefined;
     preview.textDecoration =
       decorations.length > 0 ? decorations.join(" ") : undefined;
+  }
+  if (options.includeAlignment) {
+    preview.justifyContent = HORIZONTAL_JUSTIFY[options.horizontalAlign];
+    preview.alignItems = VERTICAL_ALIGN_ITEMS[options.verticalAlign];
+  }
+  if (options.includeBorder) {
+    const { top, right, bottom, left } = options.borderSides;
+    const borderCss = borderStyleToCss(
+      options.borderLineStyle,
+      resolveColorToHex(options.borderColor, currentTheme),
+    );
+    // Draw each side explicitly so the box-shadow never doubles a real border.
+    preview.boxShadow = "none";
+    preview.borderTop = top ? borderCss : FAINT_PREVIEW_BORDER;
+    preview.borderRight = right ? borderCss : FAINT_PREVIEW_BORDER;
+    preview.borderBottom = bottom ? borderCss : FAINT_PREVIEW_BORDER;
+    preview.borderLeft = left ? borderCss : FAINT_PREVIEW_BORDER;
   }
   return preview;
 }
@@ -188,7 +229,7 @@ const EditNamedStyle = ({
   const [includeBorder, setIncludeBorder] = useState(
     initialIncludes?.border ?? false,
   );
-  const [borderSides, setBorderSides] = useState(() => ({
+  const [borderSides, setBorderSides] = useState<BorderSides>(() => ({
     top: !!style.border.top?.style,
     right: !!style.border.right?.style,
     bottom: !!style.border.bottom?.style,
@@ -361,12 +402,17 @@ const EditNamedStyle = ({
         <div className="ic-edit-style-header-box">
           <div
             className="ic-edit-style-preview"
-            style={formatStyleToPreview(
-              formatStyle,
-              currentTheme,
+            style={formatStyleToPreview(formatStyle, currentTheme, {
               includeFont,
               includeFill,
-            )}
+              includeAlignment,
+              includeBorder,
+              horizontalAlign,
+              verticalAlign,
+              borderSides,
+              borderLineStyle,
+              borderColor,
+            })}
           >
             {getPreviewText(
               includeFormat ? numFmt : NumberFormats.AUTO,
@@ -656,57 +702,61 @@ const EditNamedStyle = ({
                 <span className="ic-edit-style-sublabel">
                   {t("named_styles.border_label")}
                 </span>
-                <div className="ic-edit-style-button-group">
-                  <IconButton
-                    icon={<BorderOuterIcon />}
-                    pressed={allBorderSidesOn}
-                    aria-label={t("toolbar.borders.all")}
-                    onClick={() =>
-                      setBorderSides({
-                        top: !allBorderSidesOn,
-                        right: !allBorderSidesOn,
-                        bottom: !allBorderSidesOn,
-                        left: !allBorderSidesOn,
-                      })
-                    }
-                  />
-                  <IconButton
-                    icon={<BorderTopIcon />}
-                    pressed={borderSides.top}
-                    aria-label={t("toolbar.borders.top")}
-                    onClick={() => toggleBorderSide("top")}
-                  />
-                  <IconButton
-                    icon={<BorderRightIcon />}
-                    pressed={borderSides.right}
-                    aria-label={t("toolbar.borders.right")}
-                    onClick={() => toggleBorderSide("right")}
-                  />
-                  <IconButton
-                    icon={<BorderBottomIcon />}
-                    pressed={borderSides.bottom}
-                    aria-label={t("toolbar.borders.bottom")}
-                    onClick={() => toggleBorderSide("bottom")}
-                  />
-                  <IconButton
-                    icon={<BorderLeftIcon />}
-                    pressed={borderSides.left}
-                    aria-label={t("toolbar.borders.left")}
-                    onClick={() => toggleBorderSide("left")}
-                  />
-                  <IconButton
-                    icon={<BorderNoneIcon />}
-                    pressed={noBorderSidesOn}
-                    aria-label={t("toolbar.borders.clear")}
-                    onClick={() =>
-                      setBorderSides({
-                        top: false,
-                        right: false,
-                        bottom: false,
-                        left: false,
-                      })
-                    }
-                  />
+                <div className="ic-edit-style-controls-row">
+                  <div className="ic-edit-style-button-group">
+                    <IconButton
+                      icon={<BorderOuterIcon />}
+                      pressed={allBorderSidesOn}
+                      aria-label={t("toolbar.borders.all")}
+                      onClick={() =>
+                        setBorderSides({
+                          top: !allBorderSidesOn,
+                          right: !allBorderSidesOn,
+                          bottom: !allBorderSidesOn,
+                          left: !allBorderSidesOn,
+                        })
+                      }
+                    />
+                    <IconButton
+                      icon={<BorderNoneIcon />}
+                      pressed={noBorderSidesOn}
+                      aria-label={t("toolbar.borders.clear")}
+                      onClick={() =>
+                        setBorderSides({
+                          top: false,
+                          right: false,
+                          bottom: false,
+                          left: false,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="ic-edit-style-button-group">
+                    <IconButton
+                      icon={<BorderTopIcon />}
+                      pressed={borderSides.top}
+                      aria-label={t("toolbar.borders.top")}
+                      onClick={() => toggleBorderSide("top")}
+                    />
+                    <IconButton
+                      icon={<BorderRightIcon />}
+                      pressed={borderSides.right}
+                      aria-label={t("toolbar.borders.right")}
+                      onClick={() => toggleBorderSide("right")}
+                    />
+                    <IconButton
+                      icon={<BorderBottomIcon />}
+                      pressed={borderSides.bottom}
+                      aria-label={t("toolbar.borders.bottom")}
+                      onClick={() => toggleBorderSide("bottom")}
+                    />
+                    <IconButton
+                      icon={<BorderLeftIcon />}
+                      pressed={borderSides.left}
+                      aria-label={t("toolbar.borders.left")}
+                      onClick={() => toggleBorderSide("left")}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="ic-edit-style-subrow">

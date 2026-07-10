@@ -111,6 +111,7 @@
 }
 
 .ic-named-styles-tile {
+  box-sizing: border-box;
   height: 32px;
   min-width: 0;
   display: flex;
@@ -175,8 +176,10 @@
 }
 
 .ic-named-styles-manage-item-preview {
+  box-sizing: border-box;
   width: 40px;
   height: 36px;
+  padding: 4px;
   border-radius: 4px;
   box-shadow: inset 0 0 0 1px
     color-mix(in srgb, var(--palette-common-black) 12%, transparent);
@@ -185,8 +188,9 @@
   align-items: center;
   justify-content: center;
   font-size: var(--typography-font-size);
+  line-height: 1;
   font-family: var(--typography-font-family);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .ic-named-styles-manage-item-name {

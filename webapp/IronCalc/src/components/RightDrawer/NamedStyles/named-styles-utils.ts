@@ -1,6 +1,27 @@
-import type { CellStyle, Color, FmtSettings, Model } from "@ironcalc/wasm";
+import type {
+  CellStyle,
+  Color,
+  FmtSettings,
+  HorizontalAlignment,
+  Model,
+  VerticalAlignment,
+} from "@ironcalc/wasm";
 import type { CSSProperties } from "react";
 import { NumberFormats } from "../../FormatMenu/formatUtil";
+
+export const HORIZONTAL_JUSTIFY: Partial<Record<HorizontalAlignment, string>> =
+  {
+    left: "flex-start",
+    center: "center",
+    right: "flex-end",
+  };
+
+export const VERTICAL_ALIGN_ITEMS: Partial<Record<VerticalAlignment, string>> =
+  {
+    top: "flex-start",
+    center: "center",
+    bottom: "flex-end",
+  };
 
 const BORDER_WIDTH: Record<string, string> = {
   thin: "1px",
@@ -31,6 +52,16 @@ interface BorderItem {
   color?: Color;
 }
 
+// Faint outline for preview sides without a real border
+export const FAINT_PREVIEW_BORDER =
+  "1px solid color-mix(in srgb, var(--palette-common-black) 12%, transparent)";
+
+export function borderStyleToCss(style: string, color: string): string {
+  const width = BORDER_WIDTH[style] ?? "1px";
+  const cssStyle = BORDER_CSS_STYLE[style] ?? "solid";
+  return `${width} ${cssStyle} ${color}`;
+}
+
 function getBorderValue(
   model: Model,
   item: BorderItem | undefined,
@@ -38,10 +69,8 @@ function getBorderValue(
   if (!item?.style) {
     return undefined;
   }
-  const width = BORDER_WIDTH[item.style] ?? "1px";
-  const cssStyle = BORDER_CSS_STYLE[item.style] ?? "solid";
   const color = model.resolveColor(item.color) || "currentColor";
-  return `${width} ${cssStyle} ${color}`;
+  return borderStyleToCss(item.style, color);
 }
 
 export function getPreviewText(
@@ -84,15 +113,33 @@ export function getTileStyle(model: Model, style: CellStyle): CSSProperties {
   if (style.font.strike) {
     decorations.push("line-through");
   }
-  return {
+  const tileStyle: CSSProperties = {
     backgroundColor: model.resolveColor(style.fill.color) || undefined,
     color: model.resolveColor(style.font.color) || undefined,
     fontWeight: style.font.b ? "bold" : undefined,
     fontStyle: style.font.i ? "italic" : undefined,
     textDecoration: decorations.length > 0 ? decorations.join(" ") : undefined,
-    borderTop: getBorderValue(model, style.border?.top),
-    borderRight: getBorderValue(model, style.border?.right),
-    borderBottom: getBorderValue(model, style.border?.bottom),
-    borderLeft: getBorderValue(model, style.border?.left),
+    justifyContent: style.alignment?.horizontal
+      ? HORIZONTAL_JUSTIFY[style.alignment.horizontal]
+      : undefined,
+    alignItems: style.alignment?.vertical
+      ? VERTICAL_ALIGN_ITEMS[style.alignment.vertical]
+      : undefined,
   };
+
+  const top = getBorderValue(model, style.border?.top);
+  const right = getBorderValue(model, style.border?.right);
+  const bottom = getBorderValue(model, style.border?.bottom);
+  const left = getBorderValue(model, style.border?.left);
+  // Draw every side explicitly (faint fallback where unset) and drop the
+  // box-shadow so it doesn't double up with real borders.
+  if (top || right || bottom || left) {
+    tileStyle.boxShadow = "none";
+    tileStyle.borderTop = top ?? FAINT_PREVIEW_BORDER;
+    tileStyle.borderRight = right ?? FAINT_PREVIEW_BORDER;
+    tileStyle.borderBottom = bottom ?? FAINT_PREVIEW_BORDER;
+    tileStyle.borderLeft = left ?? FAINT_PREVIEW_BORDER;
+  }
+
+  return tileStyle;
 }
