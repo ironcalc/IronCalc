@@ -237,3 +237,20 @@ fn test_not_between() {
         );
     }
 }
+
+#[test]
+fn inverted_ranges() {
+    let mut model = model_with_cores();
+    model
+        .add_conditional_formatting(0, "A7:A1", cell_is(ValueOperator::NotEqual, "8", None))
+        .unwrap();
+    model.evaluate();
+
+    for row in [1, 2, 3, 5, 6, 7] {
+        assert!(is_red(&model, row), "row {row} should match NotEqual 8");
+    }
+    assert!(
+        !is_red(&model, 4),
+        "row 4 (8 cores) should not match NotEqual 8"
+    );
+}
