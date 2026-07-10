@@ -12,7 +12,7 @@
   box-shadow: 1px 2px 8px rgba(139, 143, 173, 0.5);
 }
 
-.ic-line-style-picker span {
+.ic-line-preview {
   display: block;
   width: 68px;
   color: var(--palette-grey-900);

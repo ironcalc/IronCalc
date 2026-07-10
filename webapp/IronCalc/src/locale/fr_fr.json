@@ -232,6 +232,7 @@
     "font_style_label": "Style",
     "format_label": "Format",
     "horizontal_align_label": "Horizontal",
+    "line_style_label": "Style de ligne",
     "manage_styles": "Gérer les styles",
     "name_already_exists": "Un style avec ce nom existe déjà",
     "name_label": "Nom",
@@ -242,7 +243,6 @@
     "section_custom": "Personnalisé",
     "section_theme": "Thème",
     "style_properties": "Propriétés du style",
-    "style_properties_description": "Les propriétés actives remplaceront la mise en forme existante de la cellule lorsque ce style sera appliqué.",
     "update_style": "Modifier le style",
     "vertical_align_label": "Vertical"
   },
