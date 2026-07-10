@@ -238,7 +238,13 @@ const Editor = (options: EditorOptions) => {
     text.startsWith("=") &&
     !helperDismissed;
   const completion = helperActive ? getCompletion(model, text, cursor) : null;
-  const showHelper = completion !== null;
+
+  // For now formula helper is only available in English, so we hide it for other languages.
+  // This is a temporary measure until we have a more robust solution for localization.
+  const language = model.getLanguage();
+  const locale = model.getLocale();
+  const showHelper =
+    language === "en" && locale === "en" && completion !== null;
 
   // Reset the highlighted row whenever the formula or caret changes (typing,
   // clicking); arrow-key navigation is preventDefaulted so it does not land
