@@ -14,7 +14,7 @@
     "new": "Nuovo",
     "blank_workbook": "Cartella di lavoro vuota",
     "import_workbook": "Importa cartella di lavoro",
-    "storage_warning": "<warn>Attenzione!</warn> Questa applicazione è una prova di concetto e non un prodotto finito. Sentiti libero di esplorare, condividere e caricare/scaricare modelli, ma non condividere o caricare modelli con dati sensibili o privati. I dati verranno eliminati periodicamente. <docsLink>Scopri di più</docsLink>",
+    "storage_warning": "<warn>Attenzione!</warn> Questa applicazione è una prova di concetto e non un prodotto finito. Puoi esplorare, condividere e caricare/scaricare modelli, ma non condividere o caricare modelli con dati sensibili o privati. I dati verranno eliminati periodicamente. <docsLink>Scopri di più</docsLink>",
     "templates": {
       "choose_template": "Scegli un modello",
       "templates": "Modelli",

@@ -14,7 +14,7 @@
     "new": "Neu",
     "blank_workbook": "Leere Arbeitsmappe",
     "import_workbook": "Arbeitsmappe importieren",
-    "storage_warning": "<warn>Achtung!</warn> Diese App ist ein Proof of Concept und kein fertiges Produkt. Experimentieren, teilen sowie hoch- und herunterladen Sie Modelle gerne, aber teilen oder laden Sie keine Modelle mit sensiblen oder privaten Daten hoch. Daten werden regelmäßig gelöscht. <docsLink>Mehr erfahren</docsLink>",
+    "storage_warning": "<warn>Achtung!</warn> Diese App ist ein Proof of Concept und kein fertiges Produkt. Sie können Modelle gerne erkunden, teilen sowie hoch- und herunterladen, aber teilen oder laden Sie keine Modelle mit sensiblen oder privaten Daten hoch. Daten werden regelmäßig gelöscht. <docsLink>Mehr erfahren</docsLink>",
     "templates": {
       "choose_template": "Vorlage auswählen",
       "templates": "Vorlagen",
