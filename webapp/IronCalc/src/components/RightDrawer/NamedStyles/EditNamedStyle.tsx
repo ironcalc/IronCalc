@@ -352,7 +352,7 @@ const EditNamedStyle = ({
         right: makeBorderItem(borderSides.right),
         bottom: makeBorderItem(borderSides.bottom),
         left: makeBorderItem(borderSides.left),
-      } as CellStyle["border"],
+      },
       fill: {
         ...style.fill,
         color: formatStyle.fillColor || undefined,
