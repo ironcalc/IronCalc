@@ -1,0 +1,122 @@
+{
+  "app": {
+    "title": "IronCalc"
+  },
+  "default_workbook_name": "통합 문서",
+  "errors": {
+    "model_not_found": "모델을 찾을 수 없거나 불러오지 못했습니다",
+    "example_not_found": "예제 파일을 찾을 수 없거나 불러오지 못했습니다"
+  },
+  "welcome_dialog": {
+    "title": "IronCalc에 오신 것을 환영합니다",
+    "subtitle": "새로 시작하거나, 데이터를 가져오거나, 다양한 가능성을 살펴보세요.",
+    "close_dialog": "대화상자 닫기",
+    "new": "새로 만들기",
+    "blank_workbook": "빈 통합 문서",
+    "import_workbook": ".xlsx 가져오기",
+    "storage_warning": "<warn>주의!</warn> 이 앱은 완성된 제품이 아닌 개념 증명(proof of concept) 단계입니다. 자유롭게 둘러보고 모델을 공유하거나 업로드·다운로드해 보세요. 다만 민감하거나 개인적인 데이터가 포함된 모델은 공유하거나 업로드하지 마세요. 데이터는 주기적으로 삭제됩니다. <docsLink>자세히 보기</docsLink>",
+    "templates": {
+      "choose_template": "템플릿 선택",
+      "templates": "템플릿",
+      "see_all": "전체 보기",
+      "examples_and_templates": "예제 및 템플릿",
+      "category_all": "전체",
+      "category_finance": "금융",
+      "category_lifestyle": "라이프스타일",
+      "category_project_management": "프로젝트 관리",
+      "category_games": "게임",
+      "yearly_calendar": "연간 캘린더",
+      "yearly_calendar_description": "한 해 전체 일정을 계획하고 한눈에 확인하세요.",
+      "crossword": "크로스워드 퍼즐",
+      "crossword_description": "빈칸을 채우고 힌트를 풀어보세요.",
+      "travel_expenses_tracker": "여행 경비 관리",
+      "travel_expenses_tracker_description": "여행 비용을 기록하고 예산을 관리하세요.",
+      "invoice": "인보이스",
+      "invoice_description": "고객 인보이스를 작성하고 관리하세요.",
+      "gantt_project_tracker": "간트 차트 프로젝트 관리",
+      "gantt_project_tracker_description": "간트 차트로 작업과 일정을 계획하세요.",
+      "weekly_timesheet": "주간 근무 기록표",
+      "weekly_timesheet_description": "매주 근무 시간을 기록하고 확인하세요.",
+      "wordle": "워들",
+      "wordle_description": "숨겨진 다섯 글자 단어를 맞혀보세요.",
+      "event_calendar": "이벤트 캘린더",
+      "event_calendar_description": "다가오는 이벤트를 정리하고 관리하세요."
+    },
+    "create_workbook": "통합 문서 만들기",
+    "documentation": "문서",
+    "about_ironcalc": "IronCalc 정보"
+  },
+  "left_drawer": {
+    "new_workbook": "새 통합 문서",
+    "search_workbook": "통합 문서 검색",
+    "search_placeholder": "통합 문서 검색...",
+    "clear_search": "검색어 지우기",
+    "search_no_results": "검색 결과와 일치하는 통합 문서가 없습니다.",
+    "pinned": "고정됨",
+    "today": "오늘",
+    "last_30_days": "최근 30일",
+    "older": "이전 항목",
+    "workbook_menu": {
+      "download": "다운로드 (.xlsx)",
+      "pin": "고정",
+      "unpin": "고정 해제",
+      "duplicate": "복제",
+      "delete": "통합 문서 삭제"
+    },
+    "alert": {
+      "close": "닫기"
+    },
+    "documentation": "문서",
+    "cancel": "취소",
+    "delete_workbooks_one": "통합 문서 {{count}}개 삭제",
+    "delete_workbooks_other": "통합 문서 {{count}}개 삭제",
+    "bulk_delete_message_one": "이 통합 문서가 영구적으로 삭제됩니다.",
+    "bulk_delete_message_other": "통합 문서 {{count}}개가 영구적으로 삭제됩니다.",
+    "select_workbook": "{{name}} 선택"
+  },
+  "file_bar": {
+    "open_sidebar": "사이드바 열기",
+    "close_sidebar": "사이드바 닫기",
+    "cloud_warning": "<warn>주의!</warn> 이 앱은 완성된 제품이 아닌 개념 증명(proof of concept) 단계입니다. 자유롭게 둘러보고 모델을 공유하거나 업로드·다운로드해 보세요. 다만 민감하거나 개인적인 데이터가 포함된 모델은 공유하거나 업로드하지 마세요. 데이터는 주기적으로 삭제됩니다.",
+    "file_menu": {
+      "button": "파일",
+      "new_blank_workbook": "새 빈 통합 문서",
+      "new_from_template": "템플릿에서 새로 만들기",
+      "import": {
+        "button": "가져오기",
+        "title": ".xlsx 파일 가져오기",
+        "subtitle": "파일을 여기에 끌어다 놓거나",
+        "subtitle_link": "클릭하여 찾아보기",
+        "learn_more": "IronCalc로 파일 가져오기에 대해 자세히 알아보기",
+        "close_dialog": "대화상자 닫기",
+        "uploading": "{{fileName}} 업로드 중...",
+        "drop_file_here": "여기에 파일을 놓으세요"
+      },
+      "download": "다운로드 (.xlsx)",
+      "delete_workbook": {
+        "button": "통합 문서 삭제",
+        "title": "정말 삭제하시겠습니까?",
+        "subtitle": "'{{workbookName}}' 통합 문서가 영구적으로 삭제됩니다.",
+        "warning": "이 작업은 되돌릴 수 없습니다.",
+        "confirm_button": "예, 삭제합니다",
+        "cancel_button": "취소"
+      },
+      "default_language": "기본 언어"
+    },
+    "help_menu": {
+      "button": "도움말",
+      "about": "IronCalc 정보",
+      "documentation": "문서",
+      "keyboard_shortcuts": "키보드 단축키"
+    },
+    "share_popover": {
+      "button": "공유",
+      "copy_url": "URL 복사",
+      "copied": "복사되었습니다!",
+      "info_text": "링크가 있는 모든 사람이 이 통합 문서의 사본에 접근할 수 있습니다"
+    }
+  },
+  "loading_screen": {
+    "message": "IronCalc 불러오는 중"
+  }
+}
