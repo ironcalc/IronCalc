@@ -187,18 +187,18 @@ export enum BorderStyle {
 }
 
 interface BorderItem {
-  style: string;
+  style: BorderStyle;
   color?: Color;
 }
 
 interface CellStyleBorder {
   diagonal_up?: boolean;
   diagonal_down?: boolean;
-  left: BorderItem;
-  right: BorderItem;
-  top: BorderItem;
-  bottom: BorderItem;
-  diagonal: BorderItem;
+  left?: BorderItem;
+  right?: BorderItem;
+  top?: BorderItem;
+  bottom?: BorderItem;
+  diagonal?: BorderItem;
 }
 
 export type VerticalAlignment =
