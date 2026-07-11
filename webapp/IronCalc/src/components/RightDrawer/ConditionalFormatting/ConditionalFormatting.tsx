@@ -1,7 +1,7 @@
 import type { Dxf, IronCalcTheme, Model } from "@ironcalc/wasm";
 import {
+  ArrowLeft,
   ChevronDown,
-  ChevronLeft,
   ChevronUp,
   Copy,
   PackageOpen,
@@ -216,7 +216,7 @@ const ConditionalFormatting = ({
         <div className="ic-cf-edit-header">
           <Tooltip title={t("conditional_formatting.back_to_list")}>
             <IconButton
-              icon={<ChevronLeft />}
+              icon={<ArrowLeft />}
               onClick={handleCancel}
               aria-label={t("conditional_formatting.back_to_list")}
             />
