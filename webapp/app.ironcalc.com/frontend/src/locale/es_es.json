@@ -14,7 +14,7 @@
     "new": "Nuevo",
     "blank_workbook": "Libro en blanco",
     "import_workbook": "Importar libro",
-    "storage_warning": "<warn>¡Atención!</warn> Esta aplicación es una prueba de concepto y no un producto terminado. Siéntete libre de explorar, compartir y subir/descargar modelos, pero no compartas ni subas modelos con datos sensibles o privados. Los datos se eliminarán periódicamente. <docsLink>Leer más</docsLink>",
+    "storage_warning": "<warn>¡Atención!</warn> Esta aplicación es una prueba de concepto y no un producto terminado. Puedes explorar, compartir y subir/descargar modelos, pero no compartas ni subas modelos con datos sensibles o privados. Los datos se eliminarán periódicamente. <docsLink>Leer más</docsLink>",
     "templates": {
       "choose_template": "Elegir una plantilla",
       "templates": "Plantillas",
