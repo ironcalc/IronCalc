@@ -272,7 +272,7 @@ const ConditionalFormatting = ({
     const q = searchQuery.trim().toLowerCase();
     return (
       rule.applyTo.toLowerCase().includes(q) ||
-      getRuleDescription({ ...rule, resolveValue: resolveRef })
+      getRuleDescription({ ...rule, resolveValue: resolveRef, t })
         .toLowerCase()
         .includes(q)
     );
@@ -504,6 +504,7 @@ const ConditionalFormatting = ({
                             : getRuleDescription({
                                 ...rule,
                                 resolveValue: resolveRef,
+                                t,
                               })}
                         </div>
                         <div className="ic-cf-list-item-range">

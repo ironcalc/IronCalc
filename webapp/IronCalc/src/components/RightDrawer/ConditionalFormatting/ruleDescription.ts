@@ -1,12 +1,33 @@
+import type { TFunction } from "i18next";
+
 interface RuleDescriptionArgs {
   ruleType: string;
   ruleOperator: string;
   ruleValue: string;
   ruleValue2?: string;
   resolveValue?: (val: string) => string;
+  t: TFunction;
 }
 
 const BETWEEN_OPERATORS = ["between", "not_between"];
+
+const CELL_VALUE_OP_SYMBOLS: Record<string, string> = {
+  less_than: "<",
+  less_than_or_equal: "≤",
+  greater_than: ">",
+  greater_than_or_equal: "≥",
+  equals: "=",
+  does_not_equal: "≠",
+};
+
+const SIMPLE_RULE_TYPES = [
+  "duplicate_values",
+  "unique_values",
+  "blanks",
+  "no_blanks",
+  "errors",
+  "no_errors",
+];
 
 export function getRuleDescription({
   ruleType,
@@ -14,6 +35,7 @@ export function getRuleDescription({
   ruleValue,
   ruleValue2,
   resolveValue,
+  t,
 }: RuleDescriptionArgs): string {
   const resolve = resolveValue ?? ((v: string) => v);
   const v = resolve(ruleValue);
@@ -21,85 +43,69 @@ export function getRuleDescription({
   const isBetween = BETWEEN_OPERATORS.includes(ruleOperator);
 
   if (ruleType === "cell_value") {
-    const opSymbols: Record<string, string> = {
-      less_than: "<",
-      less_than_or_equal: "≤",
-      greater_than: ">",
-      greater_than_or_equal: "≥",
-      equals: "=",
-      does_not_equal: "≠",
-      between: "is between",
-      not_between: "is not between",
-    };
-    const op = opSymbols[ruleOperator] ?? ruleOperator;
     if (isBetween) {
-      return v && v2 ? `Cell value ${op} ${v} and ${v2}` : `Cell value ${op}`;
+      if (v && v2) {
+        return t(`conditional_formatting.desc_cell_value_${ruleOperator}`, {
+          value: v,
+          value2: v2,
+        });
+      }
+      return t("conditional_formatting.desc_cell_value", {
+        op: t(`conditional_formatting.desc_op_${ruleOperator}`),
+      });
     }
-    return v ? `Cell value ${op} ${v}` : `Cell value ${op}`;
+    const symbol = CELL_VALUE_OP_SYMBOLS[ruleOperator] ?? ruleOperator;
+    return t("conditional_formatting.desc_cell_value", {
+      op: v ? `${symbol} ${v}` : symbol,
+    });
   }
 
   if (ruleType === "text") {
-    const opLabels: Record<string, string> = {
-      contains: "contains",
-      does_not_contain: "doesn't contain",
-      begins_with: "starts with",
-      ends_with: "ends with",
-      equals: "is exactly",
-    };
-    const op = opLabels[ruleOperator] ?? ruleOperator;
-    return v ? `Text ${op} '${v}'` : `Text ${op}`;
+    const op = t(`conditional_formatting.desc_op_${ruleOperator}`, {
+      defaultValue: ruleOperator,
+    });
+    if (v) {
+      return t("conditional_formatting.desc_text_value", { op, value: v });
+    }
+    return t("conditional_formatting.desc_text", { op });
   }
 
   if (ruleType === "date") {
-    const opLabels: Record<string, string> = {
-      between: "is between",
-      not_between: "is not between",
-      yesterday: "is Yesterday",
-      today: "is Today",
-      tomorrow: "is Tomorrow",
-      in_last_7_days: "is in Last 7 Days",
-      in_next_7_days: "is in Next 7 Days",
-      last_week: "is in Last Week",
-      this_week: "is in This Week",
-      next_week: "is in Next Week",
-      last_month: "is in Last Month",
-      this_month: "is in This Month",
-      next_month: "is in Next Month",
-      last_year: "is in Last Year",
-      this_year: "is in This Year",
-      next_year: "is in Next Year",
-    };
-    if (isBetween) {
-      return v && v2
-        ? `Date ${opLabels[ruleOperator]} ${v} and ${v2}`
-        : `Date ${opLabels[ruleOperator] ?? ruleOperator}`;
+    if (isBetween && v && v2) {
+      return t(`conditional_formatting.desc_date_${ruleOperator}`, {
+        value: v,
+        value2: v2,
+      });
     }
-    return `Date ${opLabels[ruleOperator] ?? ruleOperator}`;
+    return t("conditional_formatting.desc_date", {
+      op: t(`conditional_formatting.desc_op_${ruleOperator}`, {
+        defaultValue: ruleOperator,
+      }),
+    });
   }
 
   if (ruleType === "formula") {
-    return v ? `Formula: ${v}` : "Formula";
+    if (v) {
+      return t("conditional_formatting.desc_formula", { value: v });
+    }
+    return t("conditional_formatting.rule_type_formula");
   }
 
   if (ruleType === "color_scale") {
-    return "Color Scale";
+    return t("conditional_formatting.desc_color_scale");
   }
 
   if (ruleType === "data_bars") {
-    return "Data Bars";
+    return t("conditional_formatting.desc_data_bars");
   }
 
   if (ruleType === "icon_sets") {
-    return "Icon Sets";
+    return t("conditional_formatting.icon_sets_mode_preset");
   }
 
-  const simpleLabels: Record<string, string> = {
-    duplicate_values: "Duplicated Values",
-    unique_values: "Unique Values",
-    blanks: "Blanks",
-    no_blanks: "No Blanks",
-    errors: "Errors",
-    no_errors: "No Errors",
-  };
-  return simpleLabels[ruleType] ?? ruleType;
+  if (SIMPLE_RULE_TYPES.includes(ruleType)) {
+    return t(`conditional_formatting.rule_type_${ruleType}`);
+  }
+
+  return ruleType;
 }
