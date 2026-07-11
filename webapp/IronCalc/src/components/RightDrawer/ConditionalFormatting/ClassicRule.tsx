@@ -196,6 +196,7 @@ const ClassicRule = ({
         ruleValue,
         ruleValue2,
         resolveValue,
+        t,
       }),
     );
   }, [
@@ -205,6 +206,7 @@ const ClassicRule = ({
     ruleValue2,
     resolveValue,
     onDescriptionChange,
+    t,
   ]);
 
   return (
