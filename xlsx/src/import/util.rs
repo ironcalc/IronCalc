@@ -70,12 +70,107 @@ pub(super) fn get_color(node: Node, _theme: &Theme) -> Result<Color, XlsxError> 
     }
 }
 
+/// Parse an `xsd:boolean` attribute value.
+///
+/// The SpreadsheetML attributes read through these helpers (`customHeight`, `customWidth`,
+/// `customFormat`, `hidden`, `wrapText`, the `<xf>` `apply*` / `quotePrefix` flags, the
+/// `<tableStyleInfo>` `show*` flags, ...) are all typed **`xsd:boolean`** in the ECMA-376 /
+/// ISO 29500 SpreadsheetML schema. Per W3C XML Schema Part 2 §3.2.2 the lexical space of
+/// `xsd:boolean` is *exactly* the four literals `true`, `false`, `1`, `0`. So all four are
+/// spec-valid; the previous `"1"`/`"0"`-only code was the non-compliant one — it rejected the
+/// valid `true`/`false` form that LibreOffice emits. Excel writes `"1"`/`"0"`; both must work.
+///
+/// We deliberately do **not** over-accept: only the four `xsd:boolean` literals flip the value,
+/// and any other token (empty, `"yes"`, `"on"`, garbage) falls through to `default` rather than
+/// being read as true. `xsd:boolean`'s canonical literals are lowercase; matching them
+/// case-insensitively (and trimming surrounding whitespace) is a deliberate lenient-read
+/// allowance for real-world files, not an invitation to accept non-`xsd:boolean` spellings.
+///
+/// `default` is returned when the attribute is absent or holds an unrecognised value — for
+/// `xsd:boolean` attributes with a schema default of `false` (e.g. `customHeight`, `wrapText`),
+/// callers pass `false`.
+fn get_bool_with_default(node: Node, s: &str, default: bool) -> bool {
+    match node.attribute(s) {
+        Some(value) => {
+            let value = value.trim();
+            if value == "1" || value.eq_ignore_ascii_case("true") {
+                true
+            } else if value == "0" || value.eq_ignore_ascii_case("false") {
+                false
+            } else {
+                // Not a valid xsd:boolean literal — fall back to the schema default rather than
+                // guessing (do NOT treat arbitrary non-empty strings as true).
+                default
+            }
+        }
+        None => default,
+    }
+}
+
 pub(super) fn get_bool(node: Node, s: &str) -> bool {
     // defaults to true
-    !matches!(node.attribute(s), Some("0"))
+    get_bool_with_default(node, s, true)
 }
 
 pub(super) fn get_bool_false(node: Node, s: &str) -> bool {
     // defaults to false
-    matches!(node.attribute(s), Some("1"))
+    get_bool_with_default(node, s, false)
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use roxmltree::Document;
+
+    // The attributes these helpers read are typed `xsd:boolean` in ECMA-376 SpreadsheetML, whose
+    // lexical space (W3C XML Schema Part 2 §3.2.2) is exactly {`true`, `false`, `1`, `0`}. So all
+    // four forms must parse. Before the fix the helpers only recognised the Excel form (`"1"`/
+    // `"0"`) and silently mishandled the equally-valid `"true"`/`"false"` form LibreOffice emits —
+    // dropping `customHeight="true"`, `wrapText="true"`, etc. The helpers must ALSO not over-accept:
+    // tokens outside the xsd:boolean lexical space (`"yes"`, `"on"`, garbage, empty) are not valid
+    // and must fall back to the attribute's schema default, never be read as true.
+    const XML: &str = r#"<a one="1" zero="0" t="true" f="false" tu="TRUE" fc="False" ws=" true " empty="" yes="yes" on="on" other="x"/>"#;
+
+    #[test]
+    fn get_bool_false_accepts_all_xsd_boolean_forms() {
+        let doc = Document::parse(XML).unwrap();
+        let node = doc.root_element();
+        // Truthy xsd:boolean literals (Excel `1`, ECMA-376 `true`, case/whitespace lenient).
+        assert!(get_bool_false(node, "one"));
+        assert!(get_bool_false(node, "t"));
+        assert!(get_bool_false(node, "tu"));
+        assert!(get_bool_false(node, "ws"));
+        // Falsy xsd:boolean literals.
+        assert!(!get_bool_false(node, "zero"));
+        assert!(!get_bool_false(node, "f"));
+        assert!(!get_bool_false(node, "fc"));
+        // Absent / empty fall back to the schema default (false).
+        assert!(!get_bool_false(node, "missing"));
+        assert!(!get_bool_false(node, "empty"));
+        // NOT over-accepted: non-xsd:boolean tokens must not read as true.
+        assert!(!get_bool_false(node, "yes"));
+        assert!(!get_bool_false(node, "on"));
+        assert!(!get_bool_false(node, "other"));
+    }
+
+    #[test]
+    fn get_bool_accepts_all_xsd_boolean_forms() {
+        let doc = Document::parse(XML).unwrap();
+        let node = doc.root_element();
+        // Truthy xsd:boolean literals.
+        assert!(get_bool(node, "one"));
+        assert!(get_bool(node, "t"));
+        assert!(get_bool(node, "tu"));
+        // Falsy xsd:boolean literals — including `false`, which the pre-fix code wrongly read as
+        // true (anything but `"0"`).
+        assert!(!get_bool(node, "zero"));
+        assert!(!get_bool(node, "f"));
+        assert!(!get_bool(node, "fc"));
+        // Absent / empty / non-xsd:boolean tokens fall back to the schema default (true here).
+        assert!(get_bool(node, "missing"));
+        assert!(get_bool(node, "empty"));
+        assert!(get_bool(node, "yes"));
+        assert!(get_bool(node, "other"));
+    }
 }

@@ -26,7 +26,7 @@ use super::{
     conditional_formatting::load_conditional_formatting,
     shared_strings::decode_xlsx_escapes,
     tables::load_table,
-    util::{get_attribute, get_color, get_number},
+    util::{get_attribute, get_bool_false, get_color, get_number},
 };
 
 pub(crate) struct Sheet {
@@ -147,8 +147,8 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
             let max = max.parse::<i32>()?;
             let width = get_attribute(&col, "width")?;
             let width = width.parse::<f64>()?;
-            let custom_width = matches!(col.attribute("customWidth"), Some("1"));
-            let hidden = matches!(col.attribute("hidden"), Some("1"));
+            let custom_width = get_bool_false(col, "customWidth");
+            let hidden = get_bool_false(col, "hidden");
             let style = col
                 .attribute("style")
                 .map(|s| s.parse::<i32>().unwrap_or(0));
@@ -814,7 +814,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                 default_row_height
             }
         };
-        let custom_height = matches!(row.attribute("customHeight"), Some("1"));
+        let custom_height = get_bool_false(row, "customHeight");
         // The height of the row is always the visible height of the row
         // If custom_height is false that means the height was calculated automatically:
         // for example because a cell has many lines or a larger font
@@ -823,8 +823,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             Some(s) => s.parse::<i32>().unwrap_or(0),
             None => 0,
         };
-        let custom_format = matches!(row.attribute("customFormat"), Some("1"));
-        let hidden = matches!(row.attribute("hidden"), Some("1"));
+        let custom_format = get_bool_false(row, "customFormat");
+        let hidden = get_bool_false(row, "hidden");
 
         if let Some(row_index) = row_index {
             if custom_height || custom_format || row_style != 0 || has_height_attribute || hidden {
