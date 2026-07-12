@@ -176,6 +176,38 @@ fn test_sheets() {
 }
 
 #[test]
+fn test_move_sheet_order_roundtrips() {
+    let mut model = new_empty_model();
+    model.add_sheet("Second").unwrap();
+    model.add_sheet("Third").unwrap();
+    // A cross-sheet reference so we can confirm it survives the reorder + save.
+    model.set_user_input(1, 1, 1, "42".to_string()).unwrap(); // Second!A1
+    model
+        .set_user_input(0, 1, 1, "=Second!A1".to_string())
+        .unwrap(); // Sheet1!A1
+
+    // Reorder: Sheet1 goes to the end.
+    model.move_sheet(0, 2).unwrap();
+    assert_eq!(
+        model.workbook.get_worksheet_names(),
+        vec!["Second", "Third", "Sheet1"]
+    );
+
+    let temp_file_name = "temp_file_test_move_sheet_order.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    // The saved order is preserved on reload.
+    assert_eq!(
+        model.workbook.get_worksheet_names(),
+        vec!["Second", "Third", "Sheet1"]
+    );
+    // Sheet1 (now index 2) still resolves its reference to Second by name.
+    assert_eq!(model.get_formatted_cell_value(2, 1, 1).unwrap(), "42");
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
 fn test_named_styles() {
     let mut model = new_empty_model();
     model.set_user_input(0, 1, 1, "5.5".to_string()).unwrap();

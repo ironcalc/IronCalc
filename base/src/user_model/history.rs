@@ -175,6 +175,12 @@ pub(crate) enum Diff {
         old_value: String,
         new_value: String,
     },
+    MoveSheet {
+        /// Index of the worksheet before the move.
+        sheet_index: u32,
+        /// Index the worksheet was moved to.
+        new_index: u32,
+    },
     SetSheetColor {
         index: u32,
         old_value: Color,

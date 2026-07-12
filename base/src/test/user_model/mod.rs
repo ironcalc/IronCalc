@@ -21,6 +21,7 @@ mod test_hidden_columns;
 mod test_keyboard_navigation;
 mod test_language_switch;
 mod test_last_empty_cell;
+mod test_move_sheet;
 mod test_multi_row_column;
 mod test_named_styles;
 mod test_on_area_selection;

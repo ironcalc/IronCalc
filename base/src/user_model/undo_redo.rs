@@ -8,6 +8,7 @@ use crate::{
     UserModel,
 };
 
+use crate::user_model::common::selected_sheet_after_move;
 use crate::user_model::history::{Diff, DiffList};
 
 impl<'a> UserModel<'a> {
@@ -329,6 +330,19 @@ impl<'a> UserModel<'a> {
                     new_value: _,
                 } => {
                     self.model.rename_sheet_by_index(*index, old_value)?;
+                }
+                Diff::MoveSheet {
+                    sheet_index,
+                    new_index,
+                } => {
+                    // Undo a move by moving the sheet back to its original index.
+                    let selected = self.get_selected_sheet();
+                    self.model.move_sheet(*new_index, *sheet_index)?;
+                    self.set_selected_sheet(selected_sheet_after_move(
+                        selected,
+                        *new_index,
+                        *sheet_index,
+                    ))?;
                 }
                 Diff::SetSheetColor {
                     index,
@@ -809,6 +823,18 @@ impl<'a> UserModel<'a> {
                     new_value,
                 } => {
                     self.model.rename_sheet_by_index(*index, new_value)?;
+                }
+                Diff::MoveSheet {
+                    sheet_index,
+                    new_index,
+                } => {
+                    let selected = self.get_selected_sheet();
+                    self.model.move_sheet(*sheet_index, *new_index)?;
+                    self.set_selected_sheet(selected_sheet_after_move(
+                        selected,
+                        *sheet_index,
+                        *new_index,
+                    ))?;
                 }
                 Diff::SetSheetColor {
                     index,
