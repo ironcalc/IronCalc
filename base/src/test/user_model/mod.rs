@@ -30,6 +30,7 @@ mod test_paste_csv;
 mod test_recursive;
 mod test_rename_sheet;
 mod test_row_column;
+mod test_set_user_inputs;
 mod test_sheet_state;
 mod test_sheets_undo_redo;
 mod test_styles;
