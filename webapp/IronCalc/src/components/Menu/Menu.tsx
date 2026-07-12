@@ -48,7 +48,9 @@ export function Menu(props: MenuProperties) {
   );
 
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const open = isTriggerMode ? uncontrolledOpen : props.open;
+  const requestedOpen = isTriggerMode ? uncontrolledOpen : props.open;
+  // Won't open until the portal target resolves to avoid menu mispositioning.
+  const open = requestedOpen && portalAnchor !== null;
 
   const triggerPosition = useMenuPosition(isTriggerMode ? open : false);
   const anchorPosition = useAnchorPosition(
