@@ -542,6 +542,35 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
+    /// Moves the worksheet at `sheet_index` to `new_index`, shifting the other
+    /// sheets to accommodate. The moved worksheet ends up at exactly `new_index`.
+    ///
+    /// Sheet order is only a position in the worksheet vector; formulas key off
+    /// the sheet name (and defined names off the sheet id), so cross-sheet
+    /// references stay valid across a move — [reset_parsed_structures] re-resolves
+    /// every reference by name against the reordered vector.
+    ///
+    /// Fails if either index is out of range. Moving a sheet to its current
+    /// position is a no-op.
+    pub fn move_sheet(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
+        let sheet_count = self.workbook.worksheets.len() as u32;
+        if sheet_index >= sheet_count {
+            return Err("Sheet index too large".to_string());
+        }
+        if new_index >= sheet_count {
+            return Err("Target sheet index too large".to_string());
+        }
+        if sheet_index == new_index {
+            return Ok(());
+        }
+        let worksheet = self.workbook.worksheets.remove(sheet_index as usize);
+        self.workbook
+            .worksheets
+            .insert(new_index as usize, worksheet);
+        self.reset_parsed_structures();
+        Ok(())
+    }
+
     /// Deletes a sheet by name. Fails if:
     ///   * The sheet does not exists
     ///   * It is the last sheet

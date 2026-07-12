@@ -216,6 +216,27 @@ pub struct UserModel<'a> {
     pause_evaluation: bool,
 }
 
+/// Given the index of the currently selected sheet, returns the index that same
+/// sheet occupies after the worksheet at `from` is moved to `to`. This lets the
+/// selection follow a sheet by identity across a reorder instead of pointing at
+/// whichever sheet lands in the old slot.
+pub(crate) fn selected_sheet_after_move(selected: u32, from: u32, to: u32) -> u32 {
+    if selected == from {
+        return to;
+    }
+    // Mirror `Model::move_sheet`: remove at `from`, then insert at `to`.
+    let after_remove = if selected > from {
+        selected - 1
+    } else {
+        selected
+    };
+    if after_remove >= to {
+        after_remove + 1
+    } else {
+        after_remove
+    }
+}
+
 impl<'a> Debug for UserModel<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UserModel").finish()
@@ -585,6 +606,41 @@ impl<'a> UserModel<'a> {
             index: sheet,
             old_value,
             new_value: new_name.to_string(),
+        }]);
+        Ok(())
+    }
+
+    /// Moves the worksheet at `sheet_index` to `new_index` within the workbook,
+    /// shifting the other sheets to accommodate. The moved worksheet ends up at
+    /// exactly `new_index`.
+    ///
+    /// The reorder is undoable/redoable, and the new order is preserved when the
+    /// workbook is saved. Cross-sheet formula references stay valid across the
+    /// move (sheet order is a position, not an identity — references key off the
+    /// sheet name/id). The selection follows the same sheet across the move.
+    ///
+    /// Moving a sheet to its current position is a no-op (no history entry). Fails
+    /// if either index is out of range.
+    ///
+    /// See also:
+    /// * [Model::move_sheet]
+    pub fn set_worksheet_index(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        if sheet_index >= sheet_count {
+            return Err(format!("Invalid sheet index {sheet_index}"));
+        }
+        if new_index >= sheet_count {
+            return Err(format!("Invalid target index {new_index}"));
+        }
+        if sheet_index == new_index {
+            return Ok(());
+        }
+        let selected = self.get_selected_sheet();
+        self.model.move_sheet(sheet_index, new_index)?;
+        self.set_selected_sheet(selected_sheet_after_move(selected, sheet_index, new_index))?;
+        self.push_diff_list(vec![Diff::MoveSheet {
+            sheet_index,
+            new_index,
         }]);
         Ok(())
     }
@@ -2153,8 +2209,25 @@ impl<'a> UserModel<'a> {
 mod tests {
     use crate::{
         types::{HorizontalAlignment, VerticalAlignment},
-        user_model::common::{horizontal, vertical},
+        user_model::common::{horizontal, selected_sheet_after_move, vertical},
     };
+
+    #[test]
+    fn test_selected_sheet_after_move() {
+        // The moved sheet is followed to its destination.
+        assert_eq!(selected_sheet_after_move(0, 0, 2), 2);
+        assert_eq!(selected_sheet_after_move(3, 3, 0), 0);
+
+        // A sheet between the source and destination shifts by one.
+        // [A,B,C,D], select C (2), move A (0) -> 2 => [B,C,A,D], C is at 1.
+        assert_eq!(selected_sheet_after_move(2, 0, 2), 1);
+        // [A,B,C,D], select A (0), move C (2) -> 0 => [C,A,B,D], A is at 1.
+        assert_eq!(selected_sheet_after_move(0, 2, 0), 1);
+
+        // A sheet outside the moved span keeps its index.
+        // [A,B,C,D], select D (3), move B (1) -> 2 => [A,C,B,D], D still at 3.
+        assert_eq!(selected_sheet_after_move(3, 1, 2), 3);
+    }
 
     #[test]
     fn test_vertical() {
