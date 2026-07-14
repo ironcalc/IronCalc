@@ -250,6 +250,8 @@
 }
 
 .ic-cf-footer {
+  view-transition-name: ic-cf-footer;
+  background-color: var(--palette-common-white);
   padding: 8px;
   display: flex;
   align-items: center;

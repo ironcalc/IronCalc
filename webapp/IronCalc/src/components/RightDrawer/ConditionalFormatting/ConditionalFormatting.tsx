@@ -218,7 +218,11 @@ const ConditionalFormatting = ({
     const transition = document.startViewTransition(() =>
       flushSync(applyReorder),
     );
-    transition.finished.finally(() => setTransitioningIds(new Set()));
+    transition.finished.finally(() =>
+      setTransitioningIds((current) =>
+        current === names ? new Set() : current,
+      ),
+    );
   };
 
   if (isEditView) {
