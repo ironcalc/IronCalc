@@ -3,7 +3,6 @@
   position: fixed;
   font-family: var(--typography-font-family);
   font-size: var(--typography-font-size);
-  background-color: var(--palette-common-white);
 }
 
 .ic-dropdown-menu {
@@ -11,12 +10,11 @@
   width: 100%;
   max-height: 240px;
   overflow-y: auto;
+  border: 1px solid var(--palette-surface-elevated-border);
   border-radius: 8px;
-  background-color: var(--palette-common-white);
+  background-color: var(--palette-surface-elevated);
   padding: 4px;
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
 }
 
 /* Options */
@@ -41,7 +39,7 @@
 .ic-dropdown-menu-option:hover,
 .ic-dropdown-menu-option:focus-visible,
 .ic-dropdown-menu-option.is-active {
-  background: var(--palette-grey-50);
+  background: var(--palette-grey-200);
 }
 
 .ic-dropdown-menu-option-check {

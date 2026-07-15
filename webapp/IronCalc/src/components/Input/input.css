@@ -26,9 +26,9 @@
   display: flex;
   align-items: center;
   box-sizing: border-box;
-  border: 1px solid var(--palette-grey-300);
+  border: 1px solid var(--palette-input-border);
   border-radius: 6px;
-  background-color: var(--palette-common-white);
+  background-color: var(--palette-input-background);
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
@@ -69,7 +69,7 @@
 
 .ic-input-control.is-disabled {
   background-color: var(--palette-grey-200);
-  border-color: var(--palette-grey-300);
+  border-color: var(--palette-input-border);
   cursor: not-allowed;
 }
 

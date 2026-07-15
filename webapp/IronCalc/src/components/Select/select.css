@@ -61,9 +61,9 @@
   display: flex;
   width: 100%;
   align-items: center;
-  border: 1px solid var(--palette-grey-300);
+  border: 1px solid var(--palette-input-border);
   border-radius: 6px;
-  background: var(--palette-common-white);
+  background: var(--palette-input-background);
   color: var(--palette-common-black);
   font: inherit;
   text-align: left;
@@ -125,7 +125,7 @@
 /* Disabled state */
 .ic-select-control.disabled .ic-select-trigger,
 .ic-select-trigger:disabled {
-  border-color: var(--palette-grey-300);
+  border-color: var(--palette-input-border);
   background: var(--palette-grey-200);
   color: var(--palette-grey-400);
   cursor: not-allowed;

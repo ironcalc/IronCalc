@@ -58,6 +58,9 @@ export const defaultThemeVariables: IronCalcThemeVariables = {
   "--palette-surface-elevated": "#FFF",
   "--palette-surface-elevated-border": "transparent",
 
+  "--palette-input-background": "#FFF",
+  "--palette-input-border": "#E0E0E0",
+
   "--palette-sheet-header-corner-background": "#FFF",
   "--palette-sheet-header-text-color": "#333",
   "--palette-sheet-header-background": "#FFF",
@@ -132,6 +135,9 @@ export const darkThemeVariables: IronCalcThemeVariables = {
 
   "--palette-surface-elevated": "#2A2A2A",
   "--palette-surface-elevated-border": "#3A3A3A",
+
+  "--palette-input-background": "#2A2A2A",
+  "--palette-input-border": "#3A3A3A",
 
   "--palette-sheet-header-corner-background": "#242424",
   "--palette-sheet-header-text-color": "#D0D0D0",

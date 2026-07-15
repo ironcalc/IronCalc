@@ -53,6 +53,9 @@ export interface IronCalcThemeVariables {
   "--palette-surface-elevated": string;
   "--palette-surface-elevated-border": string;
 
+  "--palette-input-background": string;
+  "--palette-input-border": string;
+
   "--palette-sheet-header-corner-background": string;
   "--palette-sheet-header-text-color": string;
   "--palette-sheet-header-background": string;
