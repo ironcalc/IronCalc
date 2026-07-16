@@ -47,6 +47,13 @@ fn assert_converged(a: &Replica, b: &Replica) {
     let sheets_a = a.um.model.workbook.worksheets.len();
     let sheets_b = b.um.model.workbook.worksheets.len();
     assert_eq!(sheets_a, sheets_b, "sheet count differs");
+    // The model keeps names in insertion order, which may legitimately
+    // differ per replica; compare as sets.
+    let mut names_a = a.um.get_defined_name_list();
+    let mut names_b = b.um.get_defined_name_list();
+    names_a.sort();
+    names_b.sort();
+    assert_eq!(names_a, names_b, "defined names differ");
     for sheet in 0..sheets_a as u32 {
         let name_a = a.um.model.workbook.worksheet(sheet).unwrap().get_name();
         let name_b = b.um.model.workbook.worksheet(sheet).unwrap().get_name();
@@ -408,7 +415,7 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..10) {
+            match rng.gen_range(0..12) {
                 0..=3 => {
                     let value = format!("v{}", rng.gen::<u16>());
                     if trace {
@@ -418,7 +425,16 @@ fn fuzz_round(seed: u64) {
                 }
                 4 => {
                     let target = rng.gen_range(1..=25);
-                    let formula = format!("=A{target}*2");
+                    let formula = match rng.gen_range(0..5) {
+                        0 => format!("=A{target}*2"),
+                        1 => format!("=$A${target}+B{}", rng.gen_range(1..=25)),
+                        2 => {
+                            let hi = target + rng.gen_range(0..=5);
+                            format!("=SUM(A{target}:B{hi})")
+                        }
+                        3 => "=SUM(D:D)".to_string(),
+                        _ => format!("=FUZZNAME{}+1", rng.gen_range(1..=2)),
+                    };
                     if trace {
                         eprintln!("{step}: {who} set R{row}C{column} = {formula}");
                     }
@@ -452,6 +468,35 @@ fn fuzz_round(seed: u64) {
                         eprintln!("{step}: {who} insert_columns at {column}");
                     }
                     replica.um.insert_columns(0, column, 1).unwrap();
+                }
+                9 => {
+                    let n = rng.gen_range(1..=2);
+                    let name = format!("FUZZNAME{n}");
+                    let formula = format!("Sheet1!$A${row}");
+                    if trace {
+                        eprintln!("{step}: {who} define {name} = {formula}");
+                    }
+                    // Errors (already exists) are fine; names are also
+                    // exercised via update/delete below.
+                    let _ = replica.um.new_defined_name(&name, None, &formula);
+                }
+                10 => {
+                    let n = rng.gen_range(1..=2);
+                    let name = format!("FUZZNAME{n}");
+                    if rng.gen_bool(0.5) {
+                        if trace {
+                            eprintln!("{step}: {who} delete name {name}");
+                        }
+                        let _ = replica.um.delete_defined_name(&name, None);
+                    } else {
+                        let formula = format!("Sheet1!$B${row}");
+                        if trace {
+                            eprintln!("{step}: {who} update name {name} = {formula}");
+                        }
+                        let _ = replica
+                            .um
+                            .update_defined_name(&name, None, &name, None, &formula);
+                    }
                 }
                 _ => {
                     if trace {
@@ -642,6 +687,104 @@ fn resurrected_row_heals_references_to_it() {
     assert_eq!(b.um.get_cell_content(0, 1, 2), Ok("=A5*2".to_string()));
     assert_eq!(b.um.get_formatted_cell_value(0, 1, 2), Ok("14".to_string()));
     assert_eq!(b.um.get_cell_content(0, 5, 1), Ok("7".to_string()));
+}
+
+#[test]
+fn defined_name_syncs_and_reevaluates() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "21").unwrap();
+    a.um.new_defined_name("DOUBLE_ME", None, "Sheet1!$A$1").unwrap();
+    a.um.set_user_input(0, 2, 2, "=DOUBLE_ME*2").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_formatted_cell_value(0, 2, 2), Ok("42".to_string()));
+
+    // The other replica points the name somewhere else; everyone re-evaluates.
+    b.um.set_user_input(0, 5, 1, "100").unwrap();
+    b.um.update_defined_name("DOUBLE_ME", None, "DOUBLE_ME", None, "Sheet1!$A$5")
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(a.um.get_formatted_cell_value(0, 2, 2), Ok("200".to_string()));
+}
+
+#[test]
+fn concurrent_same_name_creation_is_lww() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.new_defined_name("TOTAL", None, "Sheet1!$A$1").unwrap();
+    b.um.new_defined_name("TOTAL", None, "Sheet1!$B$2").unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    let names_a = a.um.get_defined_name_list();
+    let names_b = b.um.get_defined_name_list();
+    assert_eq!(names_a.len(), 1);
+    assert_eq!(names_a, names_b);
+    assert!(names_a[0].2 == "Sheet1!$A$1" || names_a[0].2 == "Sheet1!$B$2");
+}
+
+#[test]
+fn defined_name_stays_positional_under_structural_edits() {
+    // The engine does NOT displace defined-name formulas on insert/delete
+    // (unlike Excel — an engine-level divergence): Sheet1!$A$5 keeps saying
+    // $A$5 while the content moves. The collab layer replicates the engine
+    // faithfully; both replicas must agree. If the engine gains name
+    // displacement, `sync_names` re-encodes the displaced text and this test
+    // flips expectations along with it.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 5, 1, "7").unwrap();
+    a.um.new_defined_name("TARGET", None, "Sheet1!$A$5").unwrap();
+    a.um.set_user_input(0, 1, 3, "=TARGET+1").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_formatted_cell_value(0, 1, 3), Ok("8".to_string()));
+
+    // A concurrent insert above the target: the "7" moves to A6, the name
+    // keeps pointing at (the now empty) A5 — identically on both replicas.
+    b.um.insert_rows(0, 2, 1).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(a.um.get_defined_name_list()[0].2, "Sheet1!$A$5");
+    assert_eq!(b.um.get_defined_name_list()[0].2, "Sheet1!$A$5");
+    assert_eq!(a.um.get_formatted_cell_value(0, 1, 3), Ok("1".to_string()));
+    assert_eq!(b.um.get_formatted_cell_value(0, 1, 3), Ok("1".to_string()));
+}
+
+#[test]
+fn renaming_defined_name_updates_dependent_formulas() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "5").unwrap();
+    a.um.new_defined_name("OLD_NAME", None, "Sheet1!$A$1").unwrap();
+    a.um.set_user_input(0, 3, 3, "=OLD_NAME*3").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.update_defined_name("OLD_NAME", None, "NEW_NAME", None, "Sheet1!$A$1")
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(
+        b.um.get_cell_content(0, 3, 3),
+        Ok("=NEW_NAME*3".to_string())
+    );
+    assert_eq!(b.um.get_formatted_cell_value(0, 3, 3), Ok("15".to_string()));
+}
+
+#[test]
+fn undo_of_defined_name_creation_propagates() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.new_defined_name("EPHEMERAL", None, "Sheet1!$A$1").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_defined_name_list().len(), 1);
+
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert!(a.um.get_defined_name_list().is_empty());
+    assert!(b.um.get_defined_name_list().is_empty());
 }
 
 #[test]

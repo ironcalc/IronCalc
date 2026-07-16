@@ -45,6 +45,7 @@ pub(crate) const MAP_ROWS: &str = "rows";
 pub(crate) const MAP_COLS: &str = "cols";
 pub(crate) const MAP_KEEP_ROWS: &str = "keep_rows";
 pub(crate) const MAP_KEEP_COLS: &str = "keep_cols";
+pub(crate) const MAP_NAMES: &str = "names";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Axis {
@@ -61,6 +62,7 @@ pub(crate) struct SchemaMaps {
     pub cols: MapRef,
     pub keep_rows: MapRef,
     pub keep_cols: MapRef,
+    pub names: MapRef,
 }
 
 impl SchemaMaps {
@@ -72,6 +74,7 @@ impl SchemaMaps {
             cols: doc.get_or_insert_map(MAP_COLS),
             keep_rows: doc.get_or_insert_map(MAP_KEEP_ROWS),
             keep_cols: doc.get_or_insert_map(MAP_KEEP_COLS),
+            names: doc.get_or_insert_map(MAP_NAMES),
         }
     }
 
@@ -103,6 +106,25 @@ pub(crate) fn keep_prefix(sheet: EntityId, id: EntityId) -> String {
 
 pub(crate) fn keep_key(sheet: EntityId, id: EntityId, client: u64) -> String {
     format!("{}{:x}", keep_prefix(sheet, id), client)
+}
+
+/// Key of a defined name: `<scope>|<name>` where scope is `g` (global) or a
+/// sheet id (`|` cannot appear in a valid defined name).
+pub(crate) fn name_key(scope: Option<EntityId>, name: &str) -> String {
+    match scope {
+        None => format!("g|{name}"),
+        Some(sheet) => format!("{}|{}", sheet.encode(), name),
+    }
+}
+
+/// Inverse of [`name_key`]; `Ok(None)` scope means global.
+pub(crate) fn parse_name_key(key: &str) -> Option<(Option<EntityId>, &str)> {
+    let (scope, name) = key.split_once('|')?;
+    if scope == "g" {
+        Some((None, name))
+    } else {
+        Some((Some(EntityId::decode(scope)?), name))
+    }
 }
 
 // Value readers.
@@ -186,6 +208,8 @@ impl SheetProj {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub(crate) struct Projection {
     pub sheets: BTreeMap<EntityId, SheetProj>,
+    /// Defined names: [`name_key`] → formula (id-form or plain text).
+    pub names: BTreeMap<String, String>,
 }
 
 impl Projection {
@@ -284,6 +308,12 @@ impl Projection {
                     "d" => entry.del = as_bool(&value).unwrap_or(false),
                     _ => {}
                 }
+            }
+        }
+
+        for (key, value) in maps.names.iter(&txn) {
+            if let Some(formula) = as_string(&value) {
+                proj.names.insert(key.to_string(), formula);
             }
         }
 
