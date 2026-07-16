@@ -7,6 +7,9 @@
 //! schema and projection (`projection`), and the session driving the
 //! translation in both directions (`session`).
 
+// Wired into the session in phase 3.3; until then only tests exercise it.
+#[allow(dead_code)]
+mod formula;
 mod ids;
 mod order;
 mod projection;
