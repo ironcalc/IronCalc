@@ -171,12 +171,15 @@ pub(crate) fn unique_position(
 pub(crate) enum ResolvedIndex {
     /// Visible at this 1-based display index.
     Visible(u32),
+    /// Visible but shifted past the end of the grid. The engine renders such
+    /// references with their literal out-of-grid index (`=A1048577`), so the
+    /// rank is kept; the element holds no cells.
+    Overflow(u32),
     /// Tombstoned. `rank` is the display index the element would occupy were
     /// it visible — equivalently, the index of the first visible element
-    /// after its position. Used to clamp range endpoints inward.
+    /// after its position.
     Gone { rank: u32 },
-    /// Never materialized on this axis (foreign or purged id), or shifted off
-    /// the grid.
+    /// Never materialized on this axis (foreign or purged id).
     Unknown,
 }
 
@@ -311,8 +314,7 @@ impl AxisOrder {
             if rank <= self.max as u64 {
                 ResolvedIndex::Visible(rank as u32)
             } else {
-                // Shifted past the end of the grid (truncated).
-                ResolvedIndex::Unknown
+                ResolvedIndex::Overflow(rank.min(u32::MAX as u64) as u32)
             }
         } else {
             ResolvedIndex::Gone {
