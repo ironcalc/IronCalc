@@ -46,8 +46,17 @@ use super::formula::{
 use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
 use super::order::{original_position, unique_position, AxisOrder, ResolvedIndex};
 use super::projection::{
-    axis_key, cell_key, keep_key, keep_prefix, sheet_meta_key, Axis, Projection, SchemaMaps,
-    SheetProj,
+    axis_key, cell_key, keep_key, keep_prefix, name_key, parse_name_key, sheet_meta_key, Axis,
+    Projection, SchemaMaps, SheetProj,
+};
+
+/// Sentinel "own sheet" used when encoding/rendering defined-name formulas:
+/// their references must be sheet-qualified, so a sheet-less reference
+/// resolves against this unknown sheet and degrades deterministically
+/// (encode → plain-text fallback, render → `#REF!`).
+const NAME_SCOPE_SENTINEL: EntityId = EntityId::Inserted {
+    client: u64::MAX,
+    counter: u32::MAX,
 };
 
 /// Resolves formula references against a consistent view of the replicated
@@ -265,6 +274,10 @@ struct Touched {
     full_sheets: BTreeSet<EntityId>,
     keep_rows: BTreeSet<(EntityId, EntityId)>,
     keep_cols: BTreeSet<(EntityId, EntityId)>,
+    /// Re-sync the defined-name map from the post-batch model (set by
+    /// defined-name diffs and by structural ops, which displace name
+    /// formulas in the model).
+    names: bool,
 }
 
 /// A live collaboration session for one [`UserModel`].
@@ -304,6 +317,7 @@ impl CollabSession {
                     &resolver,
                 )?;
             }
+            sync_names(&mut txn, &maps, um, &resolver)?;
         }
         let shadow = Projection::from_doc(&doc, &maps);
         Ok(CollabSession {
@@ -571,6 +585,11 @@ impl CollabSession {
             structural.push(changed);
         }
         let rerender_all = structural.iter().any(|s| *s);
+        // Defined names: apply doc state to the model when the map changed or
+        // any structural change shifted the rendering of id-form formulas.
+        if old_proj.names != new_proj.names || rerender_all {
+            reconcile_names(um, &new_proj, &resolver)?;
+        }
         for (index, (id, sp_new)) in new_sheets.iter().enumerate() {
             let sheet = index as u32;
             match old_proj.sheets.get(id).filter(|_| old_ids.contains(id)) {
@@ -856,10 +875,24 @@ impl Pass1<'_, '_> {
             Diff::MoveRows { .. } | Diff::MoveColumns { .. } => {
                 Err("collab: move rows/columns is not supported yet".to_string())
             }
-            Diff::CreateDefinedName { .. }
-            | Diff::DeleteDefinedName { .. }
-            | Diff::UpdateDefinedName { .. } => {
-                Err("collab: defined names are not supported yet".to_string())
+            // Defined names: pass 2 re-syncs the whole (small) name map from
+            // the post-batch model, which handles create/update/delete/rename
+            // and their undos uniformly.
+            Diff::CreateDefinedName { .. } | Diff::DeleteDefinedName { .. } => {
+                self.touched.names = true;
+                Ok(())
+            }
+            Diff::UpdateDefinedName {
+                name, new_name, ..
+            } => {
+                self.touched.names = true;
+                // A rename rewrites every dependent cell formula in the model
+                // (both directions, for undo); push those cells too.
+                if !name.eq_ignore_ascii_case(new_name) {
+                    self.touch_cells_mentioning(name);
+                    self.touch_cells_mentioning(new_name);
+                }
+                Ok(())
             }
             Diff::SetLocale { .. } | Diff::SetTimezone { .. } => {
                 Err("collab: locale/timezone changes are not supported yet".to_string())
@@ -987,6 +1020,9 @@ impl Pass1<'_, '_> {
     /// Id-form formulas otherwise need nothing here: their stored form is
     /// displacement-invariant and receivers re-render.
     fn touch_at_risk_formulas(&mut self) {
+        // Structural edits also displace defined-name formulas in the model;
+        // the name map is re-synced in pass 2 (id-form entries are no-ops).
+        self.touched.names = true;
         let mut marks: Vec<(EntityId, EntityId, EntityId)> = Vec::new();
         let resolver = CtxResolver { ctx: self.ctx };
         for (sheet_id, sp) in &self.shadow.sheets {
@@ -997,6 +1033,24 @@ impl Pass1<'_, '_> {
                     text.starts_with('=')
                 };
                 if at_risk {
+                    marks.push((*sheet_id, *col_id, *row_id));
+                }
+            }
+        }
+        for mark in marks {
+            self.touched.cells.insert(mark);
+        }
+    }
+
+    /// Marks every formula cell whose text mentions `name` (case-insensitive,
+    /// conservative): a defined-name rename rewrites those formulas in the
+    /// model, so their doc entries must be re-encoded.
+    fn touch_cells_mentioning(&mut self, name: &str) {
+        let needle = name.to_uppercase();
+        let mut marks: Vec<(EntityId, EntityId, EntityId)> = Vec::new();
+        for (sheet_id, sp) in &self.shadow.sheets {
+            for ((col_id, row_id), text) in &sp.cells {
+                if text.starts_with('=') && text.to_uppercase().contains(&needle) {
                     marks.push((*sheet_id, *col_id, *row_id));
                 }
             }
@@ -1429,6 +1483,10 @@ fn write_final_state(
         }
     }
 
+    if touched.names {
+        sync_names(txn, maps, um, &resolver)?;
+    }
+
     for sheet_id in &touched.sheet_meta {
         let Some(sheet) = ctx.sheet_index(*sheet_id) else {
             continue;
@@ -1453,6 +1511,60 @@ fn write_final_state(
         }
     }
 
+    Ok(())
+}
+
+/// Re-syncs the document's defined-name map from the post-batch model state:
+/// writes changed/new entries, removes vanished ones. Formulas are encoded to
+/// id-form where possible (sheet-qualified references), so structural edits
+/// never rewrite them in the document.
+fn sync_names(
+    txn: &mut TransactionMut,
+    maps: &SchemaMaps,
+    um: &UserModel,
+    resolver: &DocResolver,
+) -> Result<(), String> {
+    let mut desired: BTreeMap<String, String> = BTreeMap::new();
+    for (name, scope_index, formula) in um.model.get_defined_name_list() {
+        let scope = match scope_index {
+            None => None,
+            // Index-aligned with the resolver's sheet list by invariant.
+            Some(index) => match resolver.sheets.get(index as usize) {
+                Some((id, _)) => Some(*id),
+                None => continue,
+            },
+        };
+        let value = encode_formula(&formula, NAME_SCOPE_SENTINEL, resolver)
+            .unwrap_or_else(|_| formula.clone());
+        desired.insert(name_key(scope, &name), value);
+    }
+    let current: Vec<(String, Option<String>)> = maps
+        .names
+        .iter(&*txn)
+        .map(|(key, value)| {
+            let text = match value {
+                yrs::Out::Any(yrs::Any::String(s)) => Some(s.to_string()),
+                _ => None,
+            };
+            (key.to_string(), text)
+        })
+        .collect();
+    for (key, value) in &current {
+        match desired.get(key) {
+            Some(wanted) if Some(wanted) == value.as_ref() => {}
+            Some(wanted) => {
+                maps.names.insert(txn, key.as_str(), wanted.as_str());
+            }
+            None => {
+                maps.names.remove(txn, key);
+            }
+        }
+    }
+    for (key, wanted) in &desired {
+        if !current.iter().any(|(k, _)| k == key) {
+            maps.names.insert(txn, key.as_str(), wanted.as_str());
+        }
+    }
     Ok(())
 }
 
@@ -1487,6 +1599,63 @@ fn read_cell_for_doc(
 }
 
 // ---- inbound helpers ----
+
+/// Applies the document's defined-name map to the model: renders id-form
+/// formulas against the current orders, then diffs against the model's list
+/// (delete + recreate on change — dependent cell rewrites arrive as ordinary
+/// cell updates from the renaming replica, so no in-model rename is needed).
+fn reconcile_names(
+    um: &mut UserModel,
+    proj: &Projection,
+    resolver: &DocResolver,
+) -> Result<(), String> {
+    let mut desired: Vec<(String, Option<u32>, String)> = Vec::new();
+    for (key, value) in &proj.names {
+        let Some((scope_entity, name)) = parse_name_key(key) else {
+            continue;
+        };
+        let scope_index = match scope_entity {
+            None => None,
+            Some(id) => {
+                match resolver.sheets.iter().position(|(sid, _)| *sid == id) {
+                    Some(index) => Some(index as u32),
+                    // The scope sheet is deleted; skip the name for now.
+                    None => continue,
+                }
+            }
+        };
+        let text = if is_id_form(value) {
+            render_formula(value, NAME_SCOPE_SENTINEL, resolver)?
+        } else {
+            value.clone()
+        };
+        desired.push((name.to_string(), scope_index, text));
+    }
+    let current = um.model.get_defined_name_list();
+    // Drop names that vanished or changed…
+    for (name, scope, formula) in &current {
+        let keep = desired
+            .iter()
+            .any(|(n, s, f)| n.eq_ignore_ascii_case(name) && s == scope && f == formula);
+        if !keep {
+            um.model.delete_defined_name(name, *scope)?;
+        }
+    }
+    // …then create what is missing. Errors (e.g. a case-variant duplicate
+    // from a concurrent create) are skipped deterministically: both replicas
+    // process the same key order over the same converged state.
+    for (name, scope, formula) in &desired {
+        let exists = um
+            .model
+            .get_defined_name_list()
+            .iter()
+            .any(|(n, s, f)| n.eq_ignore_ascii_case(name) && s == scope && f == formula);
+        if !exists {
+            let _ = um.model.new_defined_name(name, *scope, formula);
+        }
+    }
+    Ok(())
+}
 
 fn dedupe_names(sheets: &[(EntityId, &SheetProj)]) -> Vec<String> {
     let mut seen: BTreeSet<String> = BTreeSet::new();
