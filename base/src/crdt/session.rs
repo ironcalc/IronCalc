@@ -40,7 +40,9 @@ use crate::types::Cell;
 use crate::user_model::history::{Diff, DiffType, QueueDiffs};
 use crate::UserModel;
 
-use super::formula::{encode_formula, is_id_form, render_formula, RefResolver};
+use super::formula::{
+    encode_formula, has_overflow_refs, is_id_form, render_formula, RefResolver,
+};
 use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
 use super::order::{original_position, unique_position, AxisOrder, ResolvedIndex};
 use super::projection::{
@@ -109,6 +111,41 @@ impl DocResolver {
     }
 }
 
+/// Name-less resolver over the translation context, for the overflow scan
+/// (payload sheet fields carry ids, so no name resolution is needed).
+struct CtxResolver<'a> {
+    ctx: &'a OrderCtx,
+}
+
+impl RefResolver for CtxResolver<'_> {
+    fn sheet_id_by_name(&self, _name: &str) -> Option<EntityId> {
+        None
+    }
+    fn sheet_name_by_id(&self, _id: EntityId) -> Option<String> {
+        None
+    }
+    fn row_id_at(&self, sheet: EntityId, index: u32) -> Option<EntityId> {
+        self.ctx.rows.get(&sheet)?.id_at(index)
+    }
+    fn column_id_at(&self, sheet: EntityId, index: u32) -> Option<EntityId> {
+        self.ctx.cols.get(&sheet)?.id_at(index)
+    }
+    fn resolve_row(&self, sheet: EntityId, id: EntityId) -> ResolvedIndex {
+        self.ctx
+            .rows
+            .get(&sheet)
+            .map(|o| o.resolve(id))
+            .unwrap_or(ResolvedIndex::Unknown)
+    }
+    fn resolve_column(&self, sheet: EntityId, id: EntityId) -> ResolvedIndex {
+        self.ctx
+            .cols
+            .get(&sheet)
+            .map(|o| o.resolve(id))
+            .unwrap_or(ResolvedIndex::Unknown)
+    }
+}
+
 impl RefResolver for DocResolver {
     fn sheet_id_by_name(&self, name: &str) -> Option<EntityId> {
         self.sheets
@@ -150,11 +187,6 @@ enum JournalEntry {
         sheet: EntityId,
         axis: Axis,
         ids: Vec<(EntityId, String)>,
-        /// The order of the *other* axis at deletion time. The fast undo path
-        /// (model-authoritative resurrect) is only valid if it is unchanged:
-        /// the model restores cells by their recorded indices, which map to
-        /// the right ids only in an unchanged cross layout.
-        cross: AxisOrder,
     },
     DeletedSheet {
         sheet: EntityId,
@@ -936,21 +968,41 @@ impl Pass1<'_, '_> {
                 Axis::Columns => self.touched.keep_cols.insert((sheet_id, id)),
             };
         }
-        self.touch_all_formulas();
+        self.touch_at_risk_formulas();
         Ok(())
     }
 
-    /// Interim measure while formulas are replicated as text: a structural
-    /// edit displaces formula references in the local model, so the rewritten
-    /// text must be pushed for every formula cell (on every sheet — references
-    /// cross sheets). The id-based formula phase removes this fan-out.
-    fn touch_all_formulas(&mut self) {
+    /// Marks the formulas a structural edit puts at risk, so pass 2 pushes
+    /// their post-displacement model text:
+    ///
+    /// * **plain-text fallbacks** (formulas the codec could not encode): their
+    ///   references are positional, so the local displacement must be fanned
+    ///   out — the pre-id-form mechanism, kept only for these;
+    /// * **id-form formulas with an overflowed reference** (shifted past the
+    ///   end of the grid): the engine renders those as out-of-grid
+    ///   *identifiers* (`=A1048577`) which freeze — identifiers are never
+    ///   displaced back — so the doc entry is demoted to the frozen plain
+    ///   text by re-encoding the model's rendering.
+    ///
+    /// Id-form formulas otherwise need nothing here: their stored form is
+    /// displacement-invariant and receivers re-render.
+    fn touch_at_risk_formulas(&mut self) {
+        let mut marks: Vec<(EntityId, EntityId, EntityId)> = Vec::new();
+        let resolver = CtxResolver { ctx: self.ctx };
         for (sheet_id, sp) in &self.shadow.sheets {
             for ((col_id, row_id), text) in &sp.cells {
-                if text.starts_with('=') {
-                    self.touched.cells.insert((*sheet_id, *col_id, *row_id));
+                let at_risk = if is_id_form(text) {
+                    has_overflow_refs(text, *sheet_id, &resolver)
+                } else {
+                    text.starts_with('=')
+                };
+                if at_risk {
+                    marks.push((*sheet_id, *col_id, *row_id));
                 }
             }
+        }
+        for mark in marks {
+            self.touched.cells.insert(mark);
         }
     }
 
@@ -996,19 +1048,13 @@ impl Pass1<'_, '_> {
             self.ctx.order_mut(sheet_id, axis).remove(*id);
         }
         if push_journal {
-            let cross_axis = match axis {
-                Axis::Rows => Axis::Columns,
-                Axis::Columns => Axis::Rows,
-            };
-            let cross = self.ctx.order(sheet_id, cross_axis)?.clone();
             self.journal.push(JournalEntry::DeletedAxis {
                 sheet: sheet_id,
                 axis,
                 ids,
-                cross,
             });
         }
-        self.touch_all_formulas();
+        self.touch_at_risk_formulas();
         Ok(())
     }
 
@@ -1025,16 +1071,12 @@ impl Pass1<'_, '_> {
         let sheet_id = self.ctx.sheet_at(sheet)?;
         let matches = matches!(
             self.journal.last(),
-            Some(JournalEntry::DeletedAxis { sheet: s, axis: a, ids, .. })
+            Some(JournalEntry::DeletedAxis { sheet: s, axis: a, ids })
                 if *s == sheet_id && *a == axis && ids.len() == count as usize
         );
-        let mut cross_at_delete = None;
         let ids: Vec<(EntityId, String)> = if matches {
             match self.journal.pop() {
-                Some(JournalEntry::DeletedAxis { ids, cross, .. }) => {
-                    cross_at_delete = Some(cross);
-                    ids
-                }
+                Some(JournalEntry::DeletedAxis { ids, .. }) => ids,
                 _ => unreachable!("journal entry checked above"),
             }
         } else {
@@ -1055,17 +1097,13 @@ impl Pass1<'_, '_> {
         };
         let axis_map = self.maps.axis(axis).0.clone();
         if matches {
-            // An id may already be visible again: a concurrent positive op
-            // resurrected it (update-wins). The document then treats this undo
-            // as a no-op for that id — but the model's own undo has inserted a
-            // duplicate row/column, so the model must be repaired.
-            let mut already_visible = false;
             for (id, pos) in &ids {
+                // An id may already be visible again: a concurrent positive
+                // op resurrected it (update-wins); the undo is then a no-op
+                // for it — never insert it into the order twice.
                 let visible = self.ctx.order(sheet_id, axis)?.index_of(*id).is_some();
                 axis_map.remove(&mut *self.txn, &axis_key(sheet_id, *id, "d"));
-                if visible {
-                    already_visible = true;
-                } else {
+                if !visible {
                     self.ctx.order_mut(sheet_id, axis).insert(*id, pos.clone());
                 }
                 match axis {
@@ -1073,38 +1111,16 @@ impl Pass1<'_, '_> {
                     Axis::Columns => self.touched.keep_cols.insert((sheet_id, *id)),
                 };
             }
-            // The model's own undo restored rows/cells by their *recorded
-            // indices*. That matches the document only if (a) the resurrected
-            // ids landed back at the same slot and (b) the other axis has the
-            // same layout it had at deletion time. Structural changes in
-            // between (local or remote) break either.
-            let cross_axis = match axis {
-                Axis::Rows => Axis::Columns,
-                Axis::Columns => Axis::Rows,
-            };
-            let slot_moved = self
-                .ctx
-                .order(sheet_id, axis)?
-                .index_of(ids[0].0)
-                .is_none_or(|actual| actual != at as u32);
-            let cross_changed = match &cross_at_delete {
-                Some(cross) => cross != self.ctx.order(sheet_id, cross_axis)?,
-                None => true,
-            };
-            let drifted = already_visible || slot_moved || cross_changed;
-            if drifted {
-                // The document is authoritative: repair the model from it
-                // after this action. Pushing the (misplaced) model state would
-                // corrupt the document, so no cell/prop/formula marks here.
-                self.repair.insert(sheet_id);
-            } else {
-                // Model and document agree on the layout: the model's restored
-                // content and re-displaced formulas are the truth to publish.
-                for (offset, (id, _)) in ids.iter().enumerate() {
-                    self.mark_restored_line(sheet_id, axis, *id, cross_indices.get(offset))?;
-                }
-                self.touch_all_formulas();
-            }
+            // The resurrect is doc-authoritative: the model's own index-based
+            // undo may have re-inserted the line at a stale slot (remote
+            // structural drift), duplicated an update-wins-resurrected line,
+            // and it loses `#REF!` references the document can heal (id
+            // tokens pointing at the resurrected line render again). Rebuild
+            // the model sheet from the document after this batch.
+            self.repair.insert(sheet_id);
+            // Fallback formulas still carry the model's re-displaced text;
+            // push them before the repair pulls the merged state back.
+            self.touch_at_risk_formulas();
             return Ok(());
         }
         // Fallback path (e.g. session attached mid-history): fresh ids were
@@ -1112,7 +1128,7 @@ impl Pass1<'_, '_> {
         for (offset, (id, _)) in ids.iter().enumerate() {
             self.mark_restored_line(sheet_id, axis, *id, cross_indices.get(offset))?;
         }
-        self.touch_all_formulas();
+        self.touch_at_risk_formulas();
         Ok(())
     }
 
