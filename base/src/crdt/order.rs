@@ -166,6 +166,20 @@ pub(crate) fn unique_position(
     result
 }
 
+/// Where an id sits in the display order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ResolvedIndex {
+    /// Visible at this 1-based display index.
+    Visible(u32),
+    /// Tombstoned. `rank` is the display index the element would occupy were
+    /// it visible — equivalently, the index of the first visible element
+    /// after its position. Used to clamp range endpoints inward.
+    Gone { rank: u32 },
+    /// Never materialized on this axis (foreign or purged id), or shifted off
+    /// the grid.
+    Unknown,
+}
+
 /// Ordering key: position first, id as deterministic tiebreak.
 type Key = (String, EntityId);
 
@@ -272,12 +286,39 @@ impl AxisOrder {
 
     /// 1-based display index of a visible id.
     pub(crate) fn index_of(&self, id: EntityId) -> Option<u32> {
-        let key = self.key_of(id)?;
+        match self.resolve(id) {
+            ResolvedIndex::Visible(index) => Some(index),
+            _ => None,
+        }
+    }
+
+    /// Full resolution of an id, including tombstoned ones — the basis for
+    /// rendering id-based formula references (`crdt::formula`).
+    pub(crate) fn resolve(&self, id: EntityId) -> ResolvedIndex {
+        let (pos, visible) = match self.materialized.get(&id) {
+            Some((pos, visible)) => (pos.clone(), *visible),
+            None => match id {
+                EntityId::Original(k) if k >= 1 && k <= self.max => (original_position(k), true),
+                _ => return ResolvedIndex::Unknown,
+            },
+        };
+        let key = (pos, id);
         let kref = key_ref(&key);
         let implicit = self.implicit_below(kref);
         let entries_below = self.entries.partition_point(|e| key_ref(e) < kref);
-        let index = implicit + entries_below as u64 + 1;
-        (index <= self.max as u64).then_some(index as u32)
+        let rank = implicit + entries_below as u64 + 1;
+        if visible {
+            if rank <= self.max as u64 {
+                ResolvedIndex::Visible(rank as u32)
+            } else {
+                // Shifted past the end of the grid (truncated).
+                ResolvedIndex::Unknown
+            }
+        } else {
+            ResolvedIndex::Gone {
+                rank: rank.min(self.max as u64 + 1) as u32,
+            }
+        }
     }
 
     /// The `r`-th non-materialized original, ascending (1-based rank).
