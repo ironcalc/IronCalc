@@ -479,6 +479,96 @@ fn fuzz_round(seed: u64) {
 }
 
 #[test]
+fn formula_edit_vs_concurrent_insert_preserves_both_intentions() {
+    // The id-form payoff: a formula written concurrently with a structural
+    // edit keeps pointing at its logical target — no LWW race, no data loss.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 5, 1, "7").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.set_user_input(0, 1, 2, "=A5*2").unwrap();
+    b.um.insert_rows(0, 3, 1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    // The marker moved to A6 and the formula follows it on both replicas.
+    assert_eq!(a.um.get_cell_content(0, 1, 2), Ok("=A6*2".to_string()));
+    assert_eq!(b.um.get_cell_content(0, 1, 2), Ok("=A6*2".to_string()));
+    assert_eq!(b.um.get_formatted_cell_value(0, 1, 2), Ok("14".to_string()));
+}
+
+#[test]
+fn formula_reference_vs_concurrent_delete_shows_ref_error() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 5, 1, "7").unwrap();
+    a.um.set_user_input(0, 1, 2, "=A5*2").unwrap();
+    sync(&mut a, &mut b);
+
+    b.um.delete_rows(0, 5, 1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(a.um.get_cell_content(0, 1, 2), Ok("=#REF!*2".to_string()));
+}
+
+#[test]
+fn range_grows_and_clamps_under_concurrent_structural_edits() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    for row in 1..=4 {
+        a.um.set_user_input(0, row, 1, "10").unwrap();
+    }
+    a.um.set_user_input(0, 6, 2, "=SUM(A1:A4)").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_formatted_cell_value(0, 6, 2), Ok("40".to_string()));
+
+    // A concurrent insert inside the range grows it; the new row's value is
+    // included after the merge.
+    b.um.insert_rows(0, 3, 1).unwrap();
+    b.um.set_user_input(0, 3, 1, "5").unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(a.um.get_cell_content(0, 7, 2), Ok("=SUM(A1:A5)".to_string()));
+    assert_eq!(a.um.get_formatted_cell_value(0, 7, 2), Ok("45".to_string()));
+
+    // Deleting the range's last row kills that endpoint (engine semantics:
+    // =SUM(A1:#REF!), not Excel's clamping) — identically on both replicas.
+    a.um.delete_rows(0, 5, 1).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(
+        b.um.get_cell_content(0, 6, 2),
+        Ok("=SUM(A1:#REF!)".to_string())
+    );
+}
+
+#[test]
+fn cross_sheet_formula_rerenders_on_remote_structural_change() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.set_user_input(0, 5, 1, "9").unwrap();
+    a.um.set_user_input(1, 1, 1, "=Sheet1!A5").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_formatted_cell_value(1, 1, 1), Ok("9".to_string()));
+
+    // B inserts a row on Sheet1; the formula on Sheet2 must re-render on
+    // both replicas even though Sheet2 itself did not change.
+    b.um.insert_rows(0, 2, 1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(
+        a.um.get_cell_content(1, 1, 1),
+        Ok("=Sheet1!A6".to_string())
+    );
+    assert_eq!(a.um.get_formatted_cell_value(1, 1, 1), Ok("9".to_string()));
+    assert_eq!(b.um.get_formatted_cell_value(1, 1, 1), Ok("9".to_string()));
+}
+
+#[test]
 fn formula_displacement_syncs_when_sequential() {
     // Sequential (not concurrent) structural edit: the displaced formula is
     // re-derived on the peer by replaying against converged state.
