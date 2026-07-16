@@ -37,7 +37,7 @@ use crate::expressions::lexer::util::get_tokens;
 use crate::expressions::token::TokenType;
 use crate::expressions::utils::{number_to_column, quote_name};
 
-use super::ids::EntityId;
+use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
 use super::order::ResolvedIndex;
 
 /// Delimiter around id tokens inside a replicated formula. ASCII "unit
@@ -195,10 +195,26 @@ fn encode_span(
             id
         }
     };
-    encode_endpoint(out, &span.left, sheet, resolver)?;
+    // Full column (D:D) and full row (5:5) ranges are *pinned*: the engine's
+    // displacement skips their spanning axis entirely (see `full_row` /
+    // `full_column` in stringify.rs), so those endpoints must not track ids.
+    let (pin_rows, pin_columns) = match &span.right {
+        Some(right) => (
+            span.left.absolute_row
+                && right.absolute_row
+                && span.left.row == 1
+                && right.row == MAX_ROW as i32,
+            span.left.absolute_column
+                && right.absolute_column
+                && span.left.column == 1
+                && right.column == MAX_COLUMN as i32,
+        ),
+        None => (false, false),
+    };
+    encode_endpoint(out, &span.left, sheet, resolver, pin_rows, pin_columns)?;
     if let Some(right) = &span.right {
         out.push(':');
-        encode_endpoint(out, right, sheet, resolver)?;
+        encode_endpoint(out, right, sheet, resolver, pin_rows, pin_columns)?;
     }
     Ok(())
 }
@@ -208,21 +224,33 @@ fn encode_endpoint(
     endpoint: &CellEndpoint,
     sheet: EntityId,
     resolver: &impl RefResolver,
+    pin_row: bool,
+    pin_column: bool,
 ) -> Result<(), Unsupported> {
     if endpoint.column < 1 || endpoint.row < 1 {
         return Err(Unsupported("reference outside the grid"));
     }
-    let column_id = resolver
-        .column_id_at(sheet, endpoint.column as u32)
-        .ok_or(Unsupported("column outside the grid"))?;
-    let row_id = resolver
-        .row_id_at(sheet, endpoint.row as u32)
-        .ok_or(Unsupported("row outside the grid"))?;
-    out.push(if endpoint.absolute_column { 'a' } else { 'r' });
-    out.push_str(&column_id.encode());
+    if pin_column {
+        out.push('p');
+        out.push_str(&EntityId::Original(endpoint.column as u32).encode());
+    } else {
+        let column_id = resolver
+            .column_id_at(sheet, endpoint.column as u32)
+            .ok_or(Unsupported("column outside the grid"))?;
+        out.push(if endpoint.absolute_column { 'a' } else { 'r' });
+        out.push_str(&column_id.encode());
+    }
     out.push(';');
-    out.push(if endpoint.absolute_row { 'a' } else { 'r' });
-    out.push_str(&row_id.encode());
+    if pin_row {
+        out.push('p');
+        out.push_str(&EntityId::Original(endpoint.row as u32).encode());
+    } else {
+        let row_id = resolver
+            .row_id_at(sheet, endpoint.row as u32)
+            .ok_or(Unsupported("row outside the grid"))?;
+        out.push(if endpoint.absolute_row { 'a' } else { 'r' });
+        out.push_str(&row_id.encode());
+    }
     Ok(())
 }
 
@@ -292,13 +320,13 @@ fn render_payload(
         None => {
             let endpoint = parse_endpoint(rest)?;
             match (
-                resolver.resolve_column(sheet, endpoint.0),
-                resolver.resolve_row(sheet, endpoint.2),
+                part_index(sheet, Axis2::Columns, &endpoint.column, resolver),
+                part_index(sheet, Axis2::Rows, &endpoint.row, resolver),
             ) {
-                (ResolvedIndex::Visible(column), ResolvedIndex::Visible(row)) => Ok(format!(
+                (Some(column), Some(row)) => Ok(format!(
                     "{}{}",
                     prefix,
-                    cell_text(column, row, endpoint.1, endpoint.3)?
+                    cell_text(column.0, row.0, column.1, row.1)?
                 )),
                 _ => Ok(format!("{prefix}#REF!")),
             }
@@ -306,6 +334,22 @@ fn render_payload(
         Some((left, right)) => {
             let l = parse_endpoint(left)?;
             let r = parse_endpoint(right)?;
+            // Pinned axes render in the engine's short form: `D:D` for full
+            // columns (row parts omitted), `5:9` for full rows.
+            let rows_pinned =
+                matches!(l.row, Part::Pinned(_)) && matches!(r.row, Part::Pinned(_));
+            let columns_pinned =
+                matches!(l.column, Part::Pinned(_)) && matches!(r.column, Part::Pinned(_));
+            if rows_pinned && !columns_pinned {
+                let left_text = full_column_text(sheet, &l.column, resolver)?;
+                let right_text = full_column_text(sheet, &r.column, resolver)?;
+                return Ok(format!("{prefix}{left_text}:{right_text}"));
+            }
+            if columns_pinned && !rows_pinned {
+                let left_text = full_row_text(sheet, &l.row, resolver)?;
+                let right_text = full_row_text(sheet, &r.row, resolver)?;
+                return Ok(format!("{prefix}{left_text}:{right_text}"));
+            }
             Ok(format!(
                 "{}{}:{}",
                 prefix,
@@ -327,39 +371,174 @@ fn render_payload(
 /// what the originating replica's engine produced locally.
 fn endpoint_text(
     sheet: EntityId,
-    endpoint: &(EntityId, bool, EntityId, bool),
+    endpoint: &Endpoint,
     resolver: &impl RefResolver,
 ) -> Result<String, String> {
     match (
-        resolver.resolve_column(sheet, endpoint.0),
-        resolver.resolve_row(sheet, endpoint.2),
+        part_index(sheet, Axis2::Columns, &endpoint.column, resolver),
+        part_index(sheet, Axis2::Rows, &endpoint.row, resolver),
     ) {
-        (ResolvedIndex::Visible(column), ResolvedIndex::Visible(row)) => {
-            cell_text(column, row, endpoint.1, endpoint.3)
-        }
+        (Some(column), Some(row)) => cell_text(column.0, row.0, column.1, row.1),
         _ => Ok("#REF!".to_string()),
     }
 }
 
-/// `(column_id, abs_column, row_id, abs_row)`
-fn parse_endpoint(text: &str) -> Result<(EntityId, bool, EntityId, bool), String> {
+fn full_column_text(
+    sheet: EntityId,
+    part: &Part,
+    resolver: &impl RefResolver,
+) -> Result<String, String> {
+    match part_index(sheet, Axis2::Columns, part, resolver) {
+        Some((index, absolute)) => {
+            let name = number_to_column(index as i32)
+                .ok_or_else(|| "column out of range".to_string())?;
+            Ok(format!("{}{}", if absolute { "$" } else { "" }, name))
+        }
+        None => Ok("#REF!".to_string()),
+    }
+}
+
+fn full_row_text(
+    sheet: EntityId,
+    part: &Part,
+    resolver: &impl RefResolver,
+) -> Result<String, String> {
+    match part_index(sheet, Axis2::Rows, part, resolver) {
+        Some((index, absolute)) => Ok(format!("{}{}", if absolute { "$" } else { "" }, index)),
+        None => Ok("#REF!".to_string()),
+    }
+}
+
+/// Internal axis selector (the projection's `Axis` lives a module up).
+#[derive(Clone, Copy)]
+enum Axis2 {
+    Rows,
+    Columns,
+}
+
+/// One side (row or column) of an endpoint.
+#[derive(Debug, PartialEq)]
+enum Part {
+    Id { id: EntityId, absolute: bool },
+    /// A literal index that never tracks structural edits (full ranges).
+    Pinned(u32),
+}
+
+#[derive(Debug, PartialEq)]
+struct Endpoint {
+    column: Part,
+    row: Part,
+}
+
+/// The current display index of a part, or `None` if it is dead. Overflowed
+/// parts (shifted past the grid) keep their literal rank — the engine renders
+/// them that way too (`=A1048577`).
+fn part_index(
+    sheet: EntityId,
+    axis: Axis2,
+    part: &Part,
+    resolver: &impl RefResolver,
+) -> Option<(u32, bool)> {
+    match part {
+        Part::Pinned(index) => Some((*index, false)),
+        Part::Id { id, absolute } => {
+            let resolved = match axis {
+                Axis2::Rows => resolver.resolve_row(sheet, *id),
+                Axis2::Columns => resolver.resolve_column(sheet, *id),
+            };
+            match resolved {
+                ResolvedIndex::Visible(index) | ResolvedIndex::Overflow(index) => {
+                    Some((index, *absolute))
+                }
+                ResolvedIndex::Gone { .. } | ResolvedIndex::Unknown => None,
+            }
+        }
+    }
+}
+
+fn parse_endpoint(text: &str) -> Result<Endpoint, String> {
     let (column, row) = text
         .split_once(';')
         .ok_or("malformed reference token: missing endpoint separator")?;
-    let parse_part = |part: &str| -> Result<(EntityId, bool), String> {
-        let mut chars = part.chars();
-        let absolute = match chars.next() {
-            Some('a') => true,
-            Some('r') => false,
-            _ => return Err("malformed reference token: bad flag".to_string()),
+    Ok(Endpoint {
+        column: parse_part(column)?,
+        row: parse_part(row)?,
+    })
+}
+
+fn parse_part(part: &str) -> Result<Part, String> {
+    let mut chars = part.chars();
+    let flag = chars.next().ok_or("malformed reference token: empty part")?;
+    let body = chars.as_str();
+    match flag {
+        'a' | 'r' => Ok(Part::Id {
+            id: EntityId::decode(body).ok_or("malformed reference token: bad entity id")?,
+            absolute: flag == 'a',
+        }),
+        'p' => match EntityId::decode(body) {
+            Some(EntityId::Original(index)) => Ok(Part::Pinned(index)),
+            _ => Err("malformed reference token: bad pinned index".to_string()),
+        },
+        _ => Err("malformed reference token: bad flag".to_string()),
+    }
+}
+
+/// Does any reference in this id-form formula currently resolve past the end
+/// of the grid? Such formulas are demoted to plain text by the caller: the
+/// engine renders them as out-of-grid identifiers (`=A1048577`) which freeze
+/// (identifiers are never displaced), so an id-token would wrongly keep
+/// tracking structural changes.
+pub(crate) fn has_overflow_refs(
+    id_form: &str,
+    own_sheet: EntityId,
+    resolver: &impl RefResolver,
+) -> bool {
+    let chars: Vec<char> = id_form.chars().collect();
+    let mut i = 0usize;
+    while i < chars.len() {
+        if chars[i] != REF_DELIM {
+            i += 1;
+            continue;
+        }
+        if chars.get(i + 1) == Some(&REF_DELIM) {
+            i += 2;
+            continue;
+        }
+        let Some(close) = chars[i + 1..].iter().position(|&c| c == REF_DELIM) else {
+            return false;
         };
-        let id = EntityId::decode(chars.as_str())
-            .ok_or("malformed reference token: bad entity id")?;
-        Ok((id, absolute))
-    };
-    let (column_id, abs_column) = parse_part(column)?;
-    let (row_id, abs_row) = parse_part(row)?;
-    Ok((column_id, abs_column, row_id, abs_row))
+        let payload: String = chars[i + 1..i + 1 + close].iter().collect();
+        i += close + 2;
+
+        let (sheet, rest) = match payload.strip_prefix('s') {
+            Some(rest) => match rest.split_once(';') {
+                Some((enc, endpoints)) => match EntityId::decode(enc) {
+                    Some(id) => (id, endpoints),
+                    None => continue,
+                },
+                None => continue,
+            },
+            None => (own_sheet, payload.as_str()),
+        };
+        for endpoint_text in rest.split(':') {
+            let Ok(endpoint) = parse_endpoint(endpoint_text) else {
+                continue;
+            };
+            for (axis, part) in [(Axis2::Columns, &endpoint.column), (Axis2::Rows, &endpoint.row)]
+            {
+                if let Part::Id { id, .. } = part {
+                    let resolved = match axis {
+                        Axis2::Rows => resolver.resolve_row(sheet, *id),
+                        Axis2::Columns => resolver.resolve_column(sheet, *id),
+                    };
+                    if matches!(resolved, ResolvedIndex::Overflow(_)) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
 }
 
 fn cell_text(column: u32, row: u32, abs_column: bool, abs_row: bool) -> Result<String, String> {
@@ -618,11 +797,56 @@ mod tests {
     }
 
     #[test]
-    fn full_column_range_round_trips_semantically() {
-        // D:D lexes as D1:D1048576 with absolute rows; the rendering is the
-        // explicit form, which parses back to the same range.
+    fn full_ranges_round_trip_and_are_pinned() {
         let resolver = TestResolver::pristine();
-        assert_eq!(round_trip(&resolver, "=SUM(D:D)"), "=SUM(D$1:D$1048576)");
+        assert_eq!(round_trip(&resolver, "=SUM(D:D)"), "=SUM(D:D)");
+        assert_eq!(round_trip(&resolver, "=SUM($D:$F)"), "=SUM($D:$F)");
+        assert_eq!(round_trip(&resolver, "=SUM(5:9)"), "=SUM(5:9)");
+    }
+
+    #[test]
+    fn full_column_range_ignores_row_edits_but_tracks_column_edits() {
+        // The engine's displacement skips the spanning axis of a full range
+        // (`full_row` in stringify.rs): D:D is unaffected by row inserts and
+        // deletes, but shifts with column inserts.
+        let mut resolver = TestResolver::pristine();
+        let encoded = encode_formula("=SUM(D:D)", S0, &resolver).unwrap();
+
+        let rows = resolver.rows.get_mut(&S0).unwrap();
+        let (lo, hi) = rows.insert_bounds(1);
+        rows.insert(
+            EntityId::Inserted { client: 9, counter: 1 },
+            crate::crdt::order::between(lo.as_deref(), hi.as_deref()),
+        );
+        rows.remove(EntityId::Original(5));
+        assert_eq!(render_formula(&encoded, S0, &resolver).unwrap(), "=SUM(D:D)");
+
+        let cols = resolver.cols.get_mut(&S0).unwrap();
+        let (lo, hi) = cols.insert_bounds(1);
+        cols.insert(
+            EntityId::Inserted { client: 9, counter: 2 },
+            crate::crdt::order::between(lo.as_deref(), hi.as_deref()),
+        );
+        assert_eq!(render_formula(&encoded, S0, &resolver).unwrap(), "=SUM(E:E)");
+    }
+
+    #[test]
+    fn overflowed_reference_renders_out_of_grid_index() {
+        // The engine displaces near-edge references past the grid and renders
+        // the literal index (`=A1048577`, an identifier that then freezes).
+        let mut resolver = TestResolver::pristine();
+        let encoded = encode_formula("=A1048576", S0, &resolver).unwrap();
+        let rows = resolver.rows.get_mut(&S0).unwrap();
+        let (lo, hi) = rows.insert_bounds(3);
+        rows.insert(
+            EntityId::Inserted { client: 9, counter: 1 },
+            crate::crdt::order::between(lo.as_deref(), hi.as_deref()),
+        );
+        assert_eq!(render_formula(&encoded, S0, &resolver).unwrap(), "=A1048577");
+        // The overflow scan flags the formula for demotion to plain text.
+        assert!(has_overflow_refs(&encoded, S0, &resolver));
+        let healthy = encode_formula("=A5", S0, &resolver).unwrap();
+        assert!(!has_overflow_refs(&healthy, S0, &resolver));
     }
 
     #[test]

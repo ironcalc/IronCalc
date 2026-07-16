@@ -569,6 +569,82 @@ fn cross_sheet_formula_rerenders_on_remote_structural_change() {
 }
 
 #[test]
+fn engine_displacement_matches_codec_render_matrix() {
+    // The 3.4 contract: with the fan-out gone, the receiving replica's render
+    // of the (unchanged) id-form must equal the text the originating engine
+    // produced by displacement. Exercise formulas × structural ops and check
+    // the model↔document invariant on both replicas after every exchange.
+    let formulas = [
+        "=A5",
+        "=$A$5",
+        "=A$5+$A5",
+        "=SUM(A2:A8)",
+        "=SUM($B$2:C9)",
+        "=SUM(D:D)",
+        "=SUM(3:4)",
+        "=Sheet2!B4*2",
+        "=SUM(Sheet2!A2:A6)",
+    ];
+    let ops: [fn(&mut Replica); 8] = [
+        |r| r.um.insert_rows(0, 3, 1).unwrap(),
+        |r| r.um.insert_rows(0, 1, 2).unwrap(),
+        |r| r.um.delete_rows(0, 5, 1).unwrap(),
+        |r| r.um.delete_rows(0, 2, 3).unwrap(),
+        |r| r.um.insert_columns(0, 1, 1).unwrap(),
+        |r| r.um.insert_columns(0, 3, 2).unwrap(),
+        |r| r.um.delete_columns(0, 1, 1).unwrap(),
+        |r| r.um.delete_columns(0, 2, 1).unwrap(),
+    ];
+    for formula in formulas {
+        for (i, op) in ops.iter().enumerate() {
+            let mut a = replica(1);
+            let mut b = replica(2);
+            a.um.new_sheet().unwrap();
+            a.um.set_user_input(0, 10, 5, formula).unwrap();
+            sync(&mut a, &mut b);
+
+            op(&mut a);
+            sync(&mut a, &mut b);
+
+            a.session.assert_model_matches_shadow(&a.um, "replica A");
+            b.session.assert_model_matches_shadow(&b.um, "replica B");
+            let (ra, rb) = (
+                a.um.get_cell_content(0, 10, 5).unwrap_or_default(),
+                b.um.get_cell_content(0, 10, 5).unwrap_or_default(),
+            );
+            // The formula cell may itself have moved; compare the whole
+            // window instead of guessing its new coordinates.
+            assert_converged(&a, &b);
+            assert_eq!(ra, rb, "formula {formula:?} op #{i}");
+        }
+    }
+}
+
+#[test]
+fn resurrected_row_heals_references_to_it() {
+    // Healing: the engine itself cannot restore a #REF! after delete+undo
+    // (WrongReference nodes are never displaced back), but the id token still
+    // points at the resurrected row, so the render heals it — on both sides.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 5, 1, "7").unwrap();
+    a.um.set_user_input(0, 1, 2, "=A5*2").unwrap();
+    sync(&mut a, &mut b);
+
+    b.um.delete_rows(0, 5, 1).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_cell_content(0, 1, 2), Ok("=#REF!*2".to_string()));
+
+    b.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(a.um.get_cell_content(0, 1, 2), Ok("=A5*2".to_string()));
+    assert_eq!(b.um.get_cell_content(0, 1, 2), Ok("=A5*2".to_string()));
+    assert_eq!(b.um.get_formatted_cell_value(0, 1, 2), Ok("14".to_string()));
+    assert_eq!(b.um.get_cell_content(0, 5, 1), Ok("7".to_string()));
+}
+
+#[test]
 fn formula_displacement_syncs_when_sequential() {
     // Sequential (not concurrent) structural edit: the displaced formula is
     // re-derived on the peer by replaying against converged state.
