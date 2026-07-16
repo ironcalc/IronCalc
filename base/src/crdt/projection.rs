@@ -1,0 +1,314 @@
+//! The replicated document schema and its projection.
+//!
+//! The yrs document is a set of **flat root maps with composite string keys**.
+//! Deliberately no nested shared types: concurrent creation of the same nested
+//! map resolves whole-subtree LWW in Yjs/yrs and silently drops one side's
+//! writes, whereas flat keys make every conflict an independent key-level LWW.
+//!
+//! Root maps and key formats (`<sid>`/`<rid>`/`<cid>` are [`EntityId`]
+//! encodings; the id charset is disjoint from the separators `. ! : /`):
+//!
+//! | map         | key                        | value                          |
+//! |-------------|----------------------------|--------------------------------|
+//! | `meta`      | `s.<sid>.name`             | sheet name (string)            |
+//! |             | `s.<sid>.pos`              | fractional position (string)   |
+//! |             | `s.<sid>.del`              | `true` (tombstone)             |
+//! |             | `s.<sid>.fr` / `.fc`       | frozen rows / columns (int)    |
+//! | `cells`     | `<sid>!<cid>:<rid>`        | user input (string)            |
+//! | `rows`      | `<sid>!<rid>.p`            | fractional position (string)   |
+//! |             | `<sid>!<rid>.h`            | row height (number)            |
+//! |             | `<sid>!<rid>.x`            | hidden (bool)                  |
+//! |             | `<sid>!<rid>.d`            | `true` (tombstone)             |
+//! | `cols`      | same fields as `rows`      | (`.h` is the column width)     |
+//! | `keep_rows` | `<sid>!<rid>/<client36>`   | op counter (int) — keep-set    |
+//! | `keep_cols` | `<sid>!<cid>/<client36>`   | op counter (int)               |
+//!
+//! Update-wins deletion: a row/column is visible iff it has no `.d` tombstone
+//! OR its keep-set is non-empty. Deleting clears the keep entries the deleter
+//! has *seen*; a concurrent positive op adds an unseen entry that survives the
+//! clear, so the row stays visible with all its (masked, never erased) cells.
+//!
+//! [`Projection`] is a plain-Rust snapshot of the document used to (a) diff
+//! remote changes against the last applied state and (b) derive the
+//! [`AxisOrder`]s that map stable ids to display indices.
+
+use std::collections::{BTreeMap, HashSet};
+
+use yrs::{Any, Doc, Map, MapRef, Out, Transact};
+
+use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
+use super::order::AxisOrder;
+
+pub(crate) const MAP_META: &str = "meta";
+pub(crate) const MAP_CELLS: &str = "cells";
+pub(crate) const MAP_ROWS: &str = "rows";
+pub(crate) const MAP_COLS: &str = "cols";
+pub(crate) const MAP_KEEP_ROWS: &str = "keep_rows";
+pub(crate) const MAP_KEEP_COLS: &str = "keep_cols";
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Axis {
+    Rows,
+    Columns,
+}
+
+/// Handles to the root maps of the document.
+#[derive(Clone)]
+pub(crate) struct SchemaMaps {
+    pub meta: MapRef,
+    pub cells: MapRef,
+    pub rows: MapRef,
+    pub cols: MapRef,
+    pub keep_rows: MapRef,
+    pub keep_cols: MapRef,
+}
+
+impl SchemaMaps {
+    pub(crate) fn attach(doc: &Doc) -> SchemaMaps {
+        SchemaMaps {
+            meta: doc.get_or_insert_map(MAP_META),
+            cells: doc.get_or_insert_map(MAP_CELLS),
+            rows: doc.get_or_insert_map(MAP_ROWS),
+            cols: doc.get_or_insert_map(MAP_COLS),
+            keep_rows: doc.get_or_insert_map(MAP_KEEP_ROWS),
+            keep_cols: doc.get_or_insert_map(MAP_KEEP_COLS),
+        }
+    }
+
+    pub(crate) fn axis(&self, axis: Axis) -> (&MapRef, &MapRef) {
+        match axis {
+            Axis::Rows => (&self.rows, &self.keep_rows),
+            Axis::Columns => (&self.cols, &self.keep_cols),
+        }
+    }
+}
+
+// Key builders.
+
+pub(crate) fn sheet_meta_key(sheet: EntityId, field: &str) -> String {
+    format!("s.{}.{}", sheet.encode(), field)
+}
+
+pub(crate) fn cell_key(sheet: EntityId, column: EntityId, row: EntityId) -> String {
+    format!("{}!{}:{}", sheet.encode(), column.encode(), row.encode())
+}
+
+pub(crate) fn axis_key(sheet: EntityId, id: EntityId, field: &str) -> String {
+    format!("{}!{}.{}", sheet.encode(), id.encode(), field)
+}
+
+pub(crate) fn keep_prefix(sheet: EntityId, id: EntityId) -> String {
+    format!("{}!{}/", sheet.encode(), id.encode())
+}
+
+pub(crate) fn keep_key(sheet: EntityId, id: EntityId, client: u64) -> String {
+    format!("{}{:x}", keep_prefix(sheet, id), client)
+}
+
+// Value readers.
+
+fn as_string(value: &Out) -> Option<String> {
+    match value {
+        Out::Any(Any::String(s)) => Some(s.to_string()),
+        _ => None,
+    }
+}
+
+fn as_f64(value: &Out) -> Option<f64> {
+    match value {
+        Out::Any(Any::Number(n)) => Some(*n),
+        Out::Any(Any::BigInt(n)) => Some(*n as f64),
+        _ => None,
+    }
+}
+
+fn as_bool(value: &Out) -> Option<bool> {
+    match value {
+        Out::Any(Any::Bool(b)) => Some(*b),
+        _ => None,
+    }
+}
+
+fn as_i32(value: &Out) -> Option<i32> {
+    match value {
+        Out::Any(Any::BigInt(n)) => i32::try_from(*n).ok(),
+        Out::Any(Any::Number(n)) => Some(*n as i32),
+        _ => None,
+    }
+}
+
+/// Materialized state of one row or column.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub(crate) struct AxisEntryProj {
+    pub pos: Option<String>,
+    /// Row height or column width.
+    pub size: Option<f64>,
+    pub hidden: bool,
+    /// Tombstone; the entity stays visible while its keep-set is non-empty.
+    pub del: bool,
+}
+
+/// Snapshot of one sheet as described by the document.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub(crate) struct SheetProj {
+    pub name: String,
+    pub pos: String,
+    pub del: bool,
+    pub frozen_rows: i32,
+    pub frozen_columns: i32,
+    pub rows: BTreeMap<EntityId, AxisEntryProj>,
+    pub cols: BTreeMap<EntityId, AxisEntryProj>,
+    /// Ids with at least one keep-set entry.
+    pub keep_rows: HashSet<EntityId>,
+    pub keep_cols: HashSet<EntityId>,
+    /// `(column, row) → user input`. Includes masked cells of deleted
+    /// rows/columns; visibility is decided by the axis orders.
+    pub cells: BTreeMap<(EntityId, EntityId), String>,
+}
+
+impl SheetProj {
+    pub(crate) fn axis_order(&self, axis: Axis) -> AxisOrder {
+        let (entries, keeps, max) = match axis {
+            Axis::Rows => (&self.rows, &self.keep_rows, MAX_ROW),
+            Axis::Columns => (&self.cols, &self.keep_cols, MAX_COLUMN),
+        };
+        AxisOrder::new(
+            max,
+            entries.iter().map(|(id, e)| {
+                let visible = !e.del || keeps.contains(id);
+                (*id, e.pos.clone(), visible)
+            }),
+        )
+    }
+}
+
+/// A plain snapshot of the whole document.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub(crate) struct Projection {
+    pub sheets: BTreeMap<EntityId, SheetProj>,
+}
+
+impl Projection {
+    /// Visible sheets in display order: `(id, proj)` sorted by `(pos, id)`.
+    pub(crate) fn visible_sheets(&self) -> Vec<(EntityId, &SheetProj)> {
+        let mut sheets: Vec<(EntityId, &SheetProj)> = self
+            .sheets
+            .iter()
+            .filter(|(_, s)| !s.del)
+            .map(|(id, s)| (*id, s))
+            .collect();
+        sheets.sort_by(|a, b| (a.1.pos.as_str(), a.0).cmp(&(b.1.pos.as_str(), b.0)));
+        sheets
+    }
+
+    pub(crate) fn from_doc(doc: &Doc, maps: &SchemaMaps) -> Projection {
+        let txn = doc.transact();
+        let mut proj = Projection::default();
+
+        for (key, value) in maps.meta.iter(&txn) {
+            let Some(rest) = key.strip_prefix("s.") else {
+                continue;
+            };
+            let Some((sid, field)) = rest.split_once('.') else {
+                continue;
+            };
+            let Some(sheet_id) = EntityId::decode(sid) else {
+                continue;
+            };
+            let sheet = proj.sheets.entry(sheet_id).or_default();
+            match field {
+                "name" => {
+                    if let Some(name) = as_string(&value) {
+                        sheet.name = name;
+                    }
+                }
+                "pos" => {
+                    if let Some(pos) = as_string(&value) {
+                        sheet.pos = pos;
+                    }
+                }
+                "del" => sheet.del = as_bool(&value).unwrap_or(false),
+                "fr" => sheet.frozen_rows = as_i32(&value).unwrap_or(0),
+                "fc" => sheet.frozen_columns = as_i32(&value).unwrap_or(0),
+                _ => {}
+            }
+        }
+
+        for (key, value) in maps.cells.iter(&txn) {
+            let Some((sid, rest)) = key.split_once('!') else {
+                continue;
+            };
+            let Some((cid, rid)) = rest.split_once(':') else {
+                continue;
+            };
+            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
+                EntityId::decode(sid),
+                EntityId::decode(cid),
+                EntityId::decode(rid),
+            ) else {
+                continue;
+            };
+            if let Some(input) = as_string(&value) {
+                proj.sheets
+                    .entry(sheet_id)
+                    .or_default()
+                    .cells
+                    .insert((col_id, row_id), input);
+            }
+        }
+
+        for (axis_map, is_rows) in [(&maps.rows, true), (&maps.cols, false)] {
+            for (key, value) in axis_map.iter(&txn) {
+                let Some((sid, rest)) = key.split_once('!') else {
+                    continue;
+                };
+                let Some((id, field)) = rest.rsplit_once('.') else {
+                    continue;
+                };
+                let (Some(sheet_id), Some(entity_id)) =
+                    (EntityId::decode(sid), EntityId::decode(id))
+                else {
+                    continue;
+                };
+                let sheet = proj.sheets.entry(sheet_id).or_default();
+                let entries = if is_rows {
+                    &mut sheet.rows
+                } else {
+                    &mut sheet.cols
+                };
+                let entry = entries.entry(entity_id).or_default();
+                match field {
+                    "p" => entry.pos = as_string(&value),
+                    "h" => entry.size = as_f64(&value),
+                    "x" => entry.hidden = as_bool(&value).unwrap_or(false),
+                    "d" => entry.del = as_bool(&value).unwrap_or(false),
+                    _ => {}
+                }
+            }
+        }
+
+        for (keep_map, is_rows) in [(&maps.keep_rows, true), (&maps.keep_cols, false)] {
+            for (key, _) in keep_map.iter(&txn) {
+                let Some((sid, rest)) = key.split_once('!') else {
+                    continue;
+                };
+                let Some((id, _client)) = rest.split_once('/') else {
+                    continue;
+                };
+                let (Some(sheet_id), Some(entity_id)) =
+                    (EntityId::decode(sid), EntityId::decode(id))
+                else {
+                    continue;
+                };
+                let sheet = proj.sheets.entry(sheet_id).or_default();
+                if is_rows {
+                    sheet.keep_rows.insert(entity_id);
+                } else {
+                    sheet.keep_cols.insert(entity_id);
+                }
+            }
+        }
+
+        proj
+    }
+}
