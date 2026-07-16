@@ -47,4 +47,3 @@ mod test_view;
 mod test_window_size;
 mod themes;
 mod util;
-mod test_scratch_probe;
