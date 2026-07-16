@@ -40,12 +40,107 @@ use crate::types::Cell;
 use crate::user_model::history::{Diff, DiffType, QueueDiffs};
 use crate::UserModel;
 
+use super::formula::{encode_formula, is_id_form, render_formula, RefResolver};
 use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
-use super::order::{original_position, unique_position, AxisOrder};
+use super::order::{original_position, unique_position, AxisOrder, ResolvedIndex};
 use super::projection::{
     axis_key, cell_key, keep_key, keep_prefix, sheet_meta_key, Axis, Projection, SchemaMaps,
     SheetProj,
 };
+
+/// Resolves formula references against a consistent view of the replicated
+/// state: sheet display names plus the row/column orders of every visible
+/// sheet (cross-sheet references resolve on the *referenced* sheet's orders).
+struct DocResolver {
+    /// Visible sheets in display order with their model (display) names.
+    sheets: Vec<(EntityId, String)>,
+    rows: BTreeMap<EntityId, AxisOrder>,
+    cols: BTreeMap<EntityId, AxisOrder>,
+}
+
+impl DocResolver {
+    /// View for inbound rendering: everything comes from the projection; the
+    /// names are the deduplicated display names the model uses.
+    fn from_projection(proj: &Projection) -> DocResolver {
+        let visible = proj.visible_sheets();
+        let names = dedupe_names(&visible);
+        let mut resolver = DocResolver {
+            sheets: Vec::with_capacity(visible.len()),
+            rows: BTreeMap::new(),
+            cols: BTreeMap::new(),
+        };
+        for ((id, sp), name) in visible.iter().zip(names) {
+            resolver.sheets.push((*id, name));
+            resolver.rows.insert(*id, sp.axis_order(Axis::Rows));
+            resolver.cols.insert(*id, sp.axis_order(Axis::Columns));
+        }
+        resolver
+    }
+
+    /// View for outbound encoding: orders from the (evolved) translation
+    /// context, names from the post-batch model (index-aligned by invariant).
+    fn from_ctx(ctx: &OrderCtx, um: &UserModel) -> Result<DocResolver, String> {
+        let mut sheets = Vec::with_capacity(ctx.sheets.len());
+        for (index, (id, _)) in ctx.sheets.iter().enumerate() {
+            let name = um.model.workbook.worksheet(index as u32)?.get_name();
+            sheets.push((*id, name));
+        }
+        Ok(DocResolver {
+            sheets,
+            rows: ctx.rows.clone(),
+            cols: ctx.cols.clone(),
+        })
+    }
+
+    /// View for bootstrap: `Original` sheet ids, pristine orders.
+    fn pristine_from_model(um: &UserModel) -> DocResolver {
+        let mut resolver = DocResolver {
+            sheets: Vec::new(),
+            rows: BTreeMap::new(),
+            cols: BTreeMap::new(),
+        };
+        for (index, ws) in um.model.workbook.worksheets.iter().enumerate() {
+            let id = EntityId::Original(index as u32);
+            resolver.sheets.push((id, ws.get_name()));
+            resolver.rows.insert(id, AxisOrder::new(MAX_ROW, Vec::new()));
+            resolver.cols.insert(id, AxisOrder::new(MAX_COLUMN, Vec::new()));
+        }
+        resolver
+    }
+}
+
+impl RefResolver for DocResolver {
+    fn sheet_id_by_name(&self, name: &str) -> Option<EntityId> {
+        self.sheets
+            .iter()
+            .find(|(_, n)| n == name)
+            .map(|(id, _)| *id)
+    }
+    fn sheet_name_by_id(&self, id: EntityId) -> Option<String> {
+        self.sheets
+            .iter()
+            .find(|(i, _)| *i == id)
+            .map(|(_, n)| n.clone())
+    }
+    fn row_id_at(&self, sheet: EntityId, index: u32) -> Option<EntityId> {
+        self.rows.get(&sheet)?.id_at(index)
+    }
+    fn column_id_at(&self, sheet: EntityId, index: u32) -> Option<EntityId> {
+        self.cols.get(&sheet)?.id_at(index)
+    }
+    fn resolve_row(&self, sheet: EntityId, id: EntityId) -> ResolvedIndex {
+        self.rows
+            .get(&sheet)
+            .map(|o| o.resolve(id))
+            .unwrap_or(ResolvedIndex::Unknown)
+    }
+    fn resolve_column(&self, sheet: EntityId, id: EntityId) -> ResolvedIndex {
+        self.cols
+            .get(&sheet)
+            .map(|o| o.resolve(id))
+            .unwrap_or(ResolvedIndex::Unknown)
+    }
+}
 
 /// Largest rectangle that a single diff is allowed to touch cell-by-cell.
 const MAX_RECT_CELLS: i64 = 262_144;
@@ -164,10 +259,18 @@ impl CollabSession {
         let doc = Doc::with_client_id(client_id);
         let maps = SchemaMaps::attach(&doc);
         {
+            let resolver = DocResolver::pristine_from_model(um);
             let mut txn = doc.transact_mut();
             let sheet_count = um.model.workbook.worksheets.len() as u32;
             for index in 0..sheet_count {
-                bootstrap_sheet(&mut txn, &maps, um, index, EntityId::Original(index))?;
+                bootstrap_sheet(
+                    &mut txn,
+                    &maps,
+                    um,
+                    index,
+                    EntityId::Original(index),
+                    &resolver,
+                )?;
             }
         }
         let shadow = Projection::from_doc(&doc, &maps);
@@ -235,19 +338,28 @@ impl CollabSession {
     /// document at all times).
     #[cfg(test)]
     pub(crate) fn assert_model_matches_shadow(&self, um: &UserModel, label: &str) {
+        let resolver = DocResolver::from_projection(&self.shadow);
         let visible = self.shadow.visible_sheets();
-        for (index, (_, sp)) in visible.iter().enumerate() {
+        for (index, (sheet_id, sp)) in visible.iter().enumerate() {
             let sheet = index as u32;
             let rows = sp.axis_order(Axis::Rows);
             let cols = sp.axis_order(Axis::Columns);
             for row in 1..=40u32 {
                 for column in 1..=15u32 {
                     let expected = match (rows.id_at(row), cols.id_at(column)) {
-                        (Some(row_id), Some(col_id)) => sp
-                            .cells
-                            .get(&(col_id, row_id))
-                            .cloned()
-                            .unwrap_or_default(),
+                        (Some(row_id), Some(col_id)) => {
+                            let raw = sp
+                                .cells
+                                .get(&(col_id, row_id))
+                                .cloned()
+                                .unwrap_or_default();
+                            if is_id_form(&raw) {
+                                render_formula(&raw, *sheet_id, &resolver)
+                                    .unwrap_or_else(|e| format!("<render error: {e}>"))
+                            } else {
+                                raw
+                            }
+                        }
                         _ => String::new(),
                     };
                     let actual = um
@@ -357,7 +469,8 @@ impl CollabSession {
             ws.rows.clear();
             ws.cols.clear();
         }
-        apply_full_sheet(um, sheet, sp)?;
+        let resolver = DocResolver::from_projection(&self.shadow);
+        apply_full_sheet(um, sheet, sheet_id, sp, &resolver)?;
         um.model.evaluate();
         Ok(())
     }
@@ -409,12 +522,37 @@ impl CollabSession {
                 um.model.set_frozen_columns(sheet, sp_new.frozen_columns)?;
             }
         }
-        // Content.
+        // Content. First find the sheets whose row/column order changed: any
+        // such change can shift the *rendering* of id-form formulas on every
+        // sheet (cross-sheet references), so even sheets on the fast delta
+        // path must re-render their formulas.
+        let resolver = DocResolver::from_projection(&new_proj);
+        let mut structural: Vec<bool> = Vec::with_capacity(new_sheets.len());
+        for (id, sp_new) in &new_sheets {
+            let changed = match old_proj.sheets.get(id).filter(|_| old_ids.contains(id)) {
+                Some(sp_old) => {
+                    sp_old.axis_order(Axis::Rows) != sp_new.axis_order(Axis::Rows)
+                        || sp_old.axis_order(Axis::Columns) != sp_new.axis_order(Axis::Columns)
+                }
+                None => true,
+            };
+            structural.push(changed);
+        }
+        let rerender_all = structural.iter().any(|s| *s);
         for (index, (id, sp_new)) in new_sheets.iter().enumerate() {
             let sheet = index as u32;
             match old_proj.sheets.get(id).filter(|_| old_ids.contains(id)) {
-                Some(sp_old) => reconcile_sheet(um, sheet, sp_old, sp_new)?,
-                None => apply_full_sheet(um, sheet, sp_new)?,
+                Some(sp_old) => reconcile_sheet(
+                    um,
+                    sheet,
+                    *id,
+                    sp_old,
+                    sp_new,
+                    &resolver,
+                    structural[index],
+                    rerender_all,
+                )?,
+                None => apply_full_sheet(um, sheet, *id, sp_new, &resolver)?,
             }
         }
         um.model.evaluate();
@@ -431,6 +569,7 @@ fn bootstrap_sheet(
     um: &UserModel,
     sheet_index: u32,
     sheet_id: EntityId,
+    resolver: &DocResolver,
 ) -> Result<(), String> {
     let ws = um.model.workbook.worksheet(sheet_index)?;
     maps.meta.insert(
@@ -491,7 +630,7 @@ fn bootstrap_sheet(
             if matches!(cell, Cell::EmptyCell { .. } | Cell::SpillCell { .. }) {
                 continue;
             }
-            let content = um.get_cell_content(sheet_index, *row, *column)?;
+            let content = read_cell_for_doc(um, sheet_index, *row, *column, sheet_id, resolver)?;
             if content.is_empty() {
                 continue;
             }
@@ -1116,6 +1255,10 @@ fn write_final_state(
     client_id: u64,
     op_counter: u32,
 ) -> Result<(), String> {
+    // Formula encoding resolves against the final (post-batch) orders and the
+    // post-batch model sheet names.
+    let resolver = DocResolver::from_ctx(ctx, um)?;
+
     // Keep-set entries first (only for ids still visible: an id deleted later
     // in the same batch must not be resurrected by its own earlier edit).
     for (set, axis) in [
@@ -1148,7 +1291,8 @@ fn write_final_state(
         ) else {
             continue; // masked by a later structural op in the same batch
         };
-        let content = read_cell_input(um, sheet, row as i32, column as i32)?;
+        let content =
+            read_cell_for_doc(um, sheet, row as i32, column as i32, *sheet_id, &resolver)?;
         let key = cell_key(*sheet_id, *col_id, *row_id);
         if content.is_empty() {
             maps.cells.remove(txn, &key);
@@ -1169,7 +1313,8 @@ fn write_final_state(
                 if matches!(cell, Cell::EmptyCell { .. } | Cell::SpillCell { .. }) {
                     continue;
                 }
-                let content = um.get_cell_content(sheet, *row, *column)?;
+                let content =
+                    read_cell_for_doc(um, sheet, *row, *column, *sheet_id, &resolver)?;
                 if content.is_empty() {
                     continue;
                 }
@@ -1295,13 +1440,33 @@ fn write_final_state(
     Ok(())
 }
 
-/// The user input of a cell as it should be replicated: empty for blank and
-/// spill cells (spills are recomputed downstream, never shipped).
-fn read_cell_input(um: &UserModel, sheet: u32, row: i32, column: i32) -> Result<String, String> {
+/// The replicated form of a cell: empty for blank and spill cells (spills are
+/// recomputed downstream, never shipped), id-form for formulas (canonical
+/// text with stable-id reference tokens), plain input text otherwise.
+///
+/// A formula the codec cannot represent (structured references, …) falls back
+/// to plain localized text; the structural-op fan-out keeps those convergent.
+fn read_cell_for_doc(
+    um: &UserModel,
+    sheet: u32,
+    row: i32,
+    column: i32,
+    sheet_id: EntityId,
+    resolver: &DocResolver,
+) -> Result<String, String> {
     let ws = um.model.workbook.worksheet(sheet)?;
     match ws.cell(row, column) {
         None | Some(Cell::EmptyCell { .. }) | Some(Cell::SpillCell { .. }) => Ok(String::new()),
-        Some(_) => um.get_cell_content(sheet, row, column),
+        Some(cell) => {
+            if cell.get_formula().is_some() {
+                if let Some(canonical) = um.model.get_english_cell_formula(sheet, row, column)? {
+                    if let Ok(id_form) = encode_formula(&canonical, sheet_id, resolver) {
+                        return Ok(id_form);
+                    }
+                }
+            }
+            um.get_cell_content(sheet, row, column)
+        }
     }
 }
 
@@ -1324,32 +1489,42 @@ fn dedupe_names(sheets: &[(EntityId, &SheetProj)]) -> Vec<String> {
     names
 }
 
+#[allow(clippy::too_many_arguments)]
 fn reconcile_sheet(
     um: &mut UserModel,
     sheet: u32,
+    sheet_id: EntityId,
     sp_old: &SheetProj,
     sp_new: &SheetProj,
+    resolver: &DocResolver,
+    structural: bool,
+    rerender_all: bool,
 ) -> Result<(), String> {
-    let rows_old = sp_old.axis_order(Axis::Rows);
-    let cols_old = sp_old.axis_order(Axis::Columns);
-    let rows_new = sp_new.axis_order(Axis::Rows);
-    let cols_new = sp_new.axis_order(Axis::Columns);
-    let structural = rows_old != rows_new || cols_old != cols_new;
-
     if !structural {
-        // Cell deltas only: same coordinates on both sides.
+        // Cell deltas only: same coordinates on both sides. When any *other*
+        // sheet changed structurally, id-form formulas here may render
+        // differently (cross-sheet references), so they are re-set as well.
         for (key, new_value) in &sp_new.cells {
-            if sp_old.cells.get(key) == Some(new_value) {
-                continue;
+            let changed = sp_old.cells.get(key) != Some(new_value);
+            let rerender = rerender_all && is_id_form(new_value);
+            if changed || rerender {
+                set_projected_cell(um, sheet, sheet_id, resolver, key, new_value)?;
             }
-            set_projected_cell(um, sheet, &rows_new, &cols_new, key, new_value)?;
         }
         for key in sp_old.cells.keys() {
             if sp_new.cells.contains_key(key) {
                 continue;
             }
-            set_projected_cell(um, sheet, &rows_new, &cols_new, key, "")?;
+            set_projected_cell(um, sheet, sheet_id, resolver, key, "")?;
         }
+        let rows_new = resolver
+            .rows
+            .get(&sheet_id)
+            .ok_or("collab: unknown sheet in resolver")?;
+        let cols_new = resolver
+            .cols
+            .get(&sheet_id)
+            .ok_or("collab: unknown sheet in resolver")?;
         // Property deltas.
         let row_ids: BTreeSet<EntityId> = sp_old.rows.keys().chain(sp_new.rows.keys()).copied().collect();
         for id in row_ids {
@@ -1385,6 +1560,8 @@ fn reconcile_sheet(
     // Structural change: conservative rebuild. The model's cells do not move
     // by themselves (we never replay insert/delete on remote), so shifting is
     // simulated by clearing every old location and writing every new one.
+    let rows_old = sp_old.axis_order(Axis::Rows);
+    let cols_old = sp_old.axis_order(Axis::Columns);
     for key in sp_old.cells.keys() {
         let (col_id, row_id) = key;
         let (Some(row), Some(column)) = (rows_old.index_of(*row_id), cols_old.index_of(*col_id))
@@ -1415,25 +1592,37 @@ fn reconcile_sheet(
         }
     }
     // Write the new state.
-    apply_sheet_content(um, sheet, sp_new, &rows_new, &cols_new)
+    apply_sheet_content(um, sheet, sheet_id, sp_new, resolver)
 }
 
-fn apply_full_sheet(um: &mut UserModel, sheet: u32, sp: &SheetProj) -> Result<(), String> {
-    let rows = sp.axis_order(Axis::Rows);
-    let cols = sp.axis_order(Axis::Columns);
-    apply_sheet_content(um, sheet, sp, &rows, &cols)
+fn apply_full_sheet(
+    um: &mut UserModel,
+    sheet: u32,
+    sheet_id: EntityId,
+    sp: &SheetProj,
+    resolver: &DocResolver,
+) -> Result<(), String> {
+    apply_sheet_content(um, sheet, sheet_id, sp, resolver)
 }
 
 fn apply_sheet_content(
     um: &mut UserModel,
     sheet: u32,
+    sheet_id: EntityId,
     sp: &SheetProj,
-    rows: &AxisOrder,
-    cols: &AxisOrder,
+    resolver: &DocResolver,
 ) -> Result<(), String> {
     for (key, value) in &sp.cells {
-        set_projected_cell(um, sheet, rows, cols, key, value)?;
+        set_projected_cell(um, sheet, sheet_id, resolver, key, value)?;
     }
+    let rows = resolver
+        .rows
+        .get(&sheet_id)
+        .ok_or("collab: unknown sheet in resolver")?;
+    let cols = resolver
+        .cols
+        .get(&sheet_id)
+        .ok_or("collab: unknown sheet in resolver")?;
     for (id, e) in &sp.rows {
         if e.size.is_none() && !e.hidden {
             continue;
@@ -1458,17 +1647,26 @@ fn apply_sheet_content(
 fn set_projected_cell(
     um: &mut UserModel,
     sheet: u32,
-    rows: &AxisOrder,
-    cols: &AxisOrder,
+    sheet_id: EntityId,
+    resolver: &DocResolver,
     key: &(EntityId, EntityId),
     value: &str,
 ) -> Result<(), String> {
     let (col_id, row_id) = key;
+    let (Some(rows), Some(cols)) = (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
+    else {
+        return Err("collab: unknown sheet in resolver".to_string());
+    };
     let (Some(row), Some(column)) = (rows.index_of(*row_id), cols.index_of(*col_id)) else {
         return Ok(()); // masked: its row or column is currently deleted
     };
+    let text = if is_id_form(value) {
+        render_formula(value, sheet_id, resolver)?
+    } else {
+        value.to_string()
+    };
     um.model
-        .set_user_input(sheet, row as i32, column as i32, value.to_string())
+        .set_user_input(sheet, row as i32, column as i32, text)
 }
 
 fn apply_row_props(
