@@ -1,0 +1,495 @@
+#![allow(clippy::unwrap_used)]
+
+//! Two-replica convergence tests for the CRDT collaboration session.
+//!
+//! Pattern: both replicas start from the same (empty) workbook, perform
+//! concurrent edits, exchange updates, and must end cell-by-cell identical —
+//! including evaluation results, which are never shipped.
+
+use crate::crdt::CollabSession;
+use crate::test::util::new_empty_model;
+use crate::UserModel;
+
+struct Replica {
+    um: UserModel<'static>,
+    session: CollabSession,
+}
+
+fn replica(client_id: u64) -> Replica {
+    let mut um = UserModel::from_model(new_empty_model());
+    let session = CollabSession::attach(&mut um, client_id).unwrap();
+    Replica { um, session }
+}
+
+/// Exchange all pending updates in both directions.
+fn sync(a: &mut Replica, b: &mut Replica) {
+    let trace = std::env::var("CRDT_FUZZ_TRACE").is_ok();
+    let from_a = a.session.flush_local(&mut a.um).unwrap();
+    let from_b = b.session.flush_local(&mut b.um).unwrap();
+    if trace {
+        a.session.assert_model_matches_shadow(&a.um, "replica A after flush");
+        b.session.assert_model_matches_shadow(&b.um, "replica B after flush");
+    }
+    a.session.apply_remote(&mut a.um, &from_b).unwrap();
+    b.session.apply_remote(&mut b.um, &from_a).unwrap();
+    if trace {
+        a.session.assert_model_matches_shadow(&a.um, "replica A after apply");
+        b.session.assert_model_matches_shadow(&b.um, "replica B after apply");
+    }
+}
+
+const WINDOW_ROWS: i32 = 40;
+const WINDOW_COLUMNS: i32 = 15;
+
+/// Asserts both replicas are identical over a viewing window: sheet names,
+/// cell contents, formatted (evaluated) values, row heights and hidden flags.
+fn assert_converged(a: &Replica, b: &Replica) {
+    let sheets_a = a.um.model.workbook.worksheets.len();
+    let sheets_b = b.um.model.workbook.worksheets.len();
+    assert_eq!(sheets_a, sheets_b, "sheet count differs");
+    for sheet in 0..sheets_a as u32 {
+        let name_a = a.um.model.workbook.worksheet(sheet).unwrap().get_name();
+        let name_b = b.um.model.workbook.worksheet(sheet).unwrap().get_name();
+        assert_eq!(name_a, name_b, "sheet {sheet} name differs");
+        for row in 1..=WINDOW_ROWS {
+            for column in 1..=WINDOW_COLUMNS {
+                let content_a = a.um.get_cell_content(sheet, row, column).unwrap();
+                let content_b = b.um.get_cell_content(sheet, row, column).unwrap();
+                assert_eq!(
+                    content_a, content_b,
+                    "content differs at sheet {sheet} R{row}C{column}"
+                );
+                let value_a = a.um.get_formatted_cell_value(sheet, row, column).unwrap();
+                let value_b = b.um.get_formatted_cell_value(sheet, row, column).unwrap();
+                assert_eq!(
+                    value_a, value_b,
+                    "value differs at sheet {sheet} R{row}C{column}"
+                );
+            }
+            assert_eq!(
+                a.um.get_row_height(sheet, row).unwrap(),
+                b.um.get_row_height(sheet, row).unwrap(),
+                "row {row} height differs on sheet {sheet}"
+            );
+        }
+        for column in 1..=WINDOW_COLUMNS {
+            assert_eq!(
+                a.um.get_column_width(sheet, column).unwrap(),
+                b.um.get_column_width(sheet, column).unwrap(),
+                "column {column} width differs on sheet {sheet}"
+            );
+        }
+    }
+}
+
+#[test]
+fn late_joiner_receives_full_state() {
+    let mut a = replica(1);
+    a.um.set_user_input(0, 1, 1, "Hello").unwrap();
+    a.um.set_user_input(0, 2, 2, "=1+1").unwrap();
+
+    let mut b = replica(2);
+    let sv = b.session.state_vector();
+    let update = {
+        // A late joiner asks for everything it is missing.
+        let _ = a.session.flush_local(&mut a.um).unwrap();
+        a.session.encode_state_since(&sv).unwrap()
+    };
+    b.session.apply_remote(&mut b.um, &update).unwrap();
+
+    assert_eq!(b.um.get_cell_content(0, 1, 1), Ok("Hello".to_string()));
+    assert_eq!(b.um.get_formatted_cell_value(0, 2, 2), Ok("2".to_string()));
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn same_cell_concurrent_edit_is_lww_and_order_independent() {
+    // Pair 1: A's update applied to B after B's own edit, and vice versa.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.set_user_input(0, 1, 1, "from A").unwrap();
+    b.um.set_user_input(0, 1, 1, "from B").unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    let winner = a.um.get_cell_content(0, 1, 1).unwrap();
+    assert!(winner == "from A" || winner == "from B");
+
+    // Pair 2: same edits, opposite delivery order — same winner.
+    let mut c = replica(1);
+    let mut d = replica(2);
+    sync(&mut c, &mut d);
+    c.um.set_user_input(0, 1, 1, "from A").unwrap();
+    d.um.set_user_input(0, 1, 1, "from B").unwrap();
+    let from_c = c.session.flush_local(&mut c.um).unwrap();
+    let from_d = d.session.flush_local(&mut d.um).unwrap();
+    // Reversed order of application compared to `sync`.
+    d.session.apply_remote(&mut d.um, &from_c).unwrap();
+    c.session.apply_remote(&mut c.um, &from_d).unwrap();
+    assert_converged(&c, &d);
+    assert_eq!(c.um.get_cell_content(0, 1, 1).unwrap(), winner);
+}
+
+#[test]
+fn concurrent_edits_to_different_cells_both_survive() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.set_user_input(0, 1, 1, "alpha").unwrap();
+    b.um.set_user_input(0, 5, 3, "beta").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_cell_content(0, 1, 1), Ok("alpha".to_string()));
+    assert_eq!(a.um.get_cell_content(0, 5, 3), Ok("beta".to_string()));
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn edit_lands_on_logical_cell_despite_concurrent_row_insert() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 5, 2, "marker").unwrap();
+    sync(&mut a, &mut b);
+
+    // A inserts a row above; B edits the marker cell.
+    a.um.insert_rows(0, 2, 1).unwrap();
+    b.um.set_user_input(0, 5, 2, "edited").unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    // The logical cell moved to row 6 and carries B's edit.
+    assert_eq!(a.um.get_cell_content(0, 6, 2), Ok("edited".to_string()));
+    assert_eq!(a.um.get_cell_content(0, 5, 2), Ok(String::new()));
+}
+
+#[test]
+fn concurrent_inserts_at_same_index_keep_both_rows() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 3, 1, "orig").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.insert_rows(0, 3, 1).unwrap();
+    a.um.set_user_input(0, 3, 1, "a-row").unwrap();
+    b.um.insert_rows(0, 3, 1).unwrap();
+    b.um.set_user_input(0, 3, 1, "b-row").unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    // Both inserted rows exist (no duplication, no loss), original shifted by 2.
+    let r3 = a.um.get_cell_content(0, 3, 1).unwrap();
+    let r4 = a.um.get_cell_content(0, 4, 1).unwrap();
+    assert_eq!(a.um.get_cell_content(0, 5, 1), Ok("orig".to_string()));
+    let mut both = [r3.as_str(), r4.as_str()];
+    both.sort_unstable();
+    assert_eq!(both, ["a-row", "b-row"]);
+}
+
+#[test]
+fn concurrent_delete_of_same_row_is_idempotent() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 4, 1, "goner").unwrap();
+    a.um.set_user_input(0, 5, 1, "below").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.delete_rows(0, 4, 1).unwrap();
+    b.um.delete_rows(0, 4, 1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    // Exactly one deletion happened.
+    assert_eq!(a.um.get_cell_content(0, 4, 1), Ok("below".to_string()));
+    assert_eq!(a.um.get_cell_content(0, 5, 1), Ok(String::new()));
+}
+
+#[test]
+fn delete_row_vs_concurrent_edit_update_wins() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 4, 1, "val").unwrap();
+    a.um.set_user_input(0, 5, 1, "below").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.delete_rows(0, 4, 1).unwrap();
+    b.um.set_user_input(0, 4, 2, "edited").unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    // Update-wins: the row survives with ALL its cells, on both replicas.
+    assert_eq!(a.um.get_cell_content(0, 4, 1), Ok("val".to_string()));
+    assert_eq!(a.um.get_cell_content(0, 4, 2), Ok("edited".to_string()));
+    assert_eq!(a.um.get_cell_content(0, 5, 1), Ok("below".to_string()));
+}
+
+#[test]
+fn delete_row_without_concurrent_edit_stays_deleted() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 4, 1, "goner").unwrap();
+    a.um.set_user_input(0, 5, 1, "below").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.delete_rows(0, 4, 1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(b.um.get_cell_content(0, 4, 1), Ok("below".to_string()));
+}
+
+#[test]
+fn concurrent_row_height_race_converges() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.set_rows_height(0, 2, 2, 40.0).unwrap();
+    b.um.set_rows_height(0, 2, 2, 55.0).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    let height = a.um.get_row_height(0, 2).unwrap();
+    assert!(
+        (height - 40.0).abs() < 1e-9 || (height - 55.0).abs() < 1e-9,
+        "unexpected height {height}"
+    );
+}
+
+#[test]
+fn duplicate_delivery_is_idempotent() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.set_user_input(0, 1, 1, "once").unwrap();
+    let update = a.session.flush_local(&mut a.um).unwrap();
+    b.session.apply_remote(&mut b.um, &update).unwrap();
+    b.session.apply_remote(&mut b.um, &update).unwrap();
+    assert_eq!(b.um.get_cell_content(0, 1, 1), Ok("once".to_string()));
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn formulas_are_recomputed_not_shipped() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "10").unwrap();
+    a.um.set_user_input(0, 1, 2, "=A1*2").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_formatted_cell_value(0, 1, 2), Ok("20".to_string()));
+
+    // The other replica changes the input; the formula re-evaluates everywhere.
+    b.um.set_user_input(0, 1, 1, "50").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_formatted_cell_value(0, 1, 2), Ok("100".to_string()));
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn offline_divergence_converges_in_one_merge() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 10, 1, "anchor").unwrap();
+    sync(&mut a, &mut b);
+
+    // Both go "offline" and diverge substantially.
+    for i in 1..=20 {
+        a.um.set_user_input(0, i, 1, &format!("{}", i * 2)).unwrap();
+        b.um.set_user_input(0, i, 3, &format!("b{i}")).unwrap();
+    }
+    a.um.insert_rows(0, 5, 2).unwrap();
+    b.um.delete_rows(0, 8, 1).unwrap();
+    b.um.set_rows_height(0, 3, 3, 42.0).unwrap();
+
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn new_sheet_and_concurrent_edit() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+
+    a.um.new_sheet().unwrap();
+    a.um.set_user_input(1, 1, 1, "second sheet").unwrap();
+    b.um.set_user_input(0, 1, 1, "first sheet").unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(
+        b.um.get_cell_content(1, 1, 1),
+        Ok("second sheet".to_string())
+    );
+    assert_eq!(
+        a.um.get_cell_content(0, 1, 1),
+        Ok("first sheet".to_string())
+    );
+}
+
+#[test]
+fn concurrent_sheet_rename_is_lww() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.rename_sheet(0, "From A").unwrap();
+    b.um.rename_sheet(0, "From B").unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    let name = a.um.model.workbook.worksheet(0).unwrap().get_name();
+    assert!(name == "From A" || name == "From B");
+}
+
+#[test]
+fn undo_of_delete_rows_resurrects_same_rows() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 2, 1, "two").unwrap();
+    a.um.set_user_input(0, 3, 1, "three").unwrap();
+    a.um.set_user_input(0, 4, 1, "four").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.delete_rows(0, 2, 2).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_cell_content(0, 2, 1), Ok("four".to_string()));
+
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(b.um.get_cell_content(0, 2, 1), Ok("two".to_string()));
+    assert_eq!(b.um.get_cell_content(0, 3, 1), Ok("three".to_string()));
+    assert_eq!(b.um.get_cell_content(0, 4, 1), Ok("four".to_string()));
+}
+
+#[test]
+fn undo_only_reverts_own_operation() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.set_user_input(0, 1, 1, "mine").unwrap();
+    sync(&mut a, &mut b);
+    b.um.set_user_input(0, 2, 2, "theirs").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    // A's edit is gone, B's edit survives.
+    assert_eq!(b.um.get_cell_content(0, 1, 1), Ok(String::new()));
+    assert_eq!(a.um.get_cell_content(0, 2, 2), Ok("theirs".to_string()));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn randomized_convergence_fuzz() {
+    // Seeded and deterministic: any failure is reproducible by seed.
+    // Set CRDT_FUZZ_SEEDS=n to stress with seeds 1..=n locally.
+    let seeds: Vec<u64> = match std::env::var("CRDT_FUZZ_SEEDS") {
+        Ok(n) => (1..=n.parse::<u64>().expect("CRDT_FUZZ_SEEDS must be a number")).collect(),
+        Err(_) => vec![1, 7, 42, 1234, 987_654],
+    };
+    for seed in seeds {
+        let result = std::panic::catch_unwind(|| fuzz_round(seed));
+        assert!(result.is_ok(), "fuzz_round failed for seed {seed}");
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn fuzz_round(seed: u64) {
+    use rand::rngs::StdRng;
+    use rand::{Rng, SeedableRng};
+
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+
+    let trace = std::env::var("CRDT_FUZZ_TRACE").is_ok();
+    for step in 0..120 {
+        {
+            let on_a = rng.gen_bool(0.5);
+            let who = if on_a { "A" } else { "B" };
+            let replica = if on_a { &mut a } else { &mut b };
+            let row = rng.gen_range(1..=25);
+            let column = rng.gen_range(1..=8);
+            match rng.gen_range(0..10) {
+                0..=3 => {
+                    let value = format!("v{}", rng.gen::<u16>());
+                    if trace {
+                        eprintln!("{step}: {who} set R{row}C{column} = {value}");
+                    }
+                    replica.um.set_user_input(0, row, column, &value).unwrap();
+                }
+                4 => {
+                    let target = rng.gen_range(1..=25);
+                    let formula = format!("=A{target}*2");
+                    if trace {
+                        eprintln!("{step}: {who} set R{row}C{column} = {formula}");
+                    }
+                    replica
+                        .um
+                        .set_user_input(0, row, column, &formula)
+                        .unwrap();
+                }
+                5 => {
+                    let count = rng.gen_range(1..=2);
+                    if trace {
+                        eprintln!("{step}: {who} insert_rows at {row} x{count}");
+                    }
+                    replica.um.insert_rows(0, row, count).unwrap();
+                }
+                6 => {
+                    if trace {
+                        eprintln!("{step}: {who} delete_rows at {row}");
+                    }
+                    replica.um.delete_rows(0, row, 1).unwrap();
+                }
+                7 => {
+                    let height = rng.gen_range(20..60) as f64;
+                    if trace {
+                        eprintln!("{step}: {who} row {row} height {height}");
+                    }
+                    replica.um.set_rows_height(0, row, row, height).unwrap();
+                }
+                8 => {
+                    if trace {
+                        eprintln!("{step}: {who} insert_columns at {column}");
+                    }
+                    replica.um.insert_columns(0, column, 1).unwrap();
+                }
+                _ => {
+                    if trace {
+                        eprintln!("{step}: {who} undo");
+                    }
+                    let _ = replica.um.undo();
+                }
+            }
+        }
+        if rng.gen_ratio(1, 6) {
+            if trace {
+                eprintln!("{step}: sync");
+            }
+            sync(&mut a, &mut b);
+        }
+    }
+    sync(&mut a, &mut b);
+    sync(&mut a, &mut b);
+    assert_eq!(
+        a.session.shadow_for_tests(),
+        b.session.shadow_for_tests(),
+        "documents diverged (outbound bug)"
+    );
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn formula_displacement_syncs_when_sequential() {
+    // Sequential (not concurrent) structural edit: the displaced formula is
+    // re-derived on the peer by replaying against converged state.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 5, 1, "7").unwrap();
+    a.um.set_user_input(0, 1, 2, "=A5").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.insert_rows(0, 3, 1).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(b.um.get_formatted_cell_value(0, 1, 2), Ok("7".to_string()));
+}
