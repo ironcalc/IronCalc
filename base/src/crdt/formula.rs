@@ -306,24 +306,38 @@ fn render_payload(
         Some((left, right)) => {
             let l = parse_endpoint(left)?;
             let r = parse_endpoint(right)?;
-            let columns = clamp_axis(
-                resolver.resolve_column(sheet, l.0),
-                resolver.resolve_column(sheet, r.0),
-            );
-            let rows = clamp_axis(
-                resolver.resolve_row(sheet, l.2),
-                resolver.resolve_row(sheet, r.2),
-            );
-            match (columns, rows) {
-                (Some((c1, c2)), Some((r1, r2))) => Ok(format!(
-                    "{}{}:{}",
-                    prefix,
-                    cell_text(c1, r1, l.1, l.3)?,
-                    cell_text(c2, r2, r.1, r.3)?
-                )),
-                _ => Ok(format!("{prefix}#REF!")),
-            }
+            Ok(format!(
+                "{}{}:{}",
+                prefix,
+                endpoint_text(sheet, &l, resolver)?,
+                endpoint_text(sheet, &r, resolver)?
+            ))
         }
+    }
+}
+
+/// Renders one range endpoint; a dead row or column makes it `#REF!`.
+///
+/// This matches the engine's own displacement semantics (`displace_cells`):
+/// deleting an endpoint row/column turns *that endpoint* into `#REF!`
+/// (`=SUM(A1:#REF!)`), it does not clamp the range as Excel does. Interior
+/// deletions shrink the range automatically here, because the endpoints keep
+/// their ids and only their rendered indices change. The two sides must agree
+/// so that re-rendering after a remote structural change reproduces exactly
+/// what the originating replica's engine produced locally.
+fn endpoint_text(
+    sheet: EntityId,
+    endpoint: &(EntityId, bool, EntityId, bool),
+    resolver: &impl RefResolver,
+) -> Result<String, String> {
+    match (
+        resolver.resolve_column(sheet, endpoint.0),
+        resolver.resolve_row(sheet, endpoint.2),
+    ) {
+        (ResolvedIndex::Visible(column), ResolvedIndex::Visible(row)) => {
+            cell_text(column, row, endpoint.1, endpoint.3)
+        }
+        _ => Ok("#REF!".to_string()),
     }
 }
 
@@ -346,23 +360,6 @@ fn parse_endpoint(text: &str) -> Result<(EntityId, bool, EntityId, bool), String
     let (column_id, abs_column) = parse_part(column)?;
     let (row_id, abs_row) = parse_part(row)?;
     Ok((column_id, abs_column, row_id, abs_row))
-}
-
-/// Clamps a range's two endpoints on one axis. A tombstoned start endpoint
-/// moves to the first visible element after it; a tombstoned end endpoint to
-/// the last visible element before it. `None` = the range collapsed.
-fn clamp_axis(start: ResolvedIndex, end: ResolvedIndex) -> Option<(u32, u32)> {
-    let s = match start {
-        ResolvedIndex::Visible(i) => i,
-        ResolvedIndex::Gone { rank } => rank,
-        ResolvedIndex::Unknown => return None,
-    };
-    let e = match end {
-        ResolvedIndex::Visible(i) => i,
-        ResolvedIndex::Gone { rank } => rank.checked_sub(1)?,
-        ResolvedIndex::Unknown => return None,
-    };
-    (s >= 1 && s <= e).then_some((s, e))
 }
 
 fn cell_text(column: u32, row: u32, abs_column: bool, abs_row: bool) -> Result<String, String> {
@@ -537,12 +534,14 @@ mod tests {
     }
 
     #[test]
-    fn range_endpoints_clamp_inward() {
+    fn range_endpoint_deletion_matches_engine_semantics() {
+        // The engine's displace_cells turns a deleted *endpoint* into #REF!
+        // (=SUM(A1:#REF!)) and shrinks ranges only on interior deletions; the
+        // codec must render identically so both replicas agree.
         let mut resolver = TestResolver::pristine();
         let encoded = encode_formula("=SUM(A2:A6)", S0, &resolver).unwrap();
 
-        // Deleting the top endpoint clamps the range start down to row 3
-        // (which then displays as row 2).
+        // Deleting the top endpoint kills that endpoint only.
         resolver
             .rows
             .get_mut(&S0)
@@ -550,10 +549,10 @@ mod tests {
             .remove(EntityId::Original(2));
         assert_eq!(
             render_formula(&encoded, S0, &resolver).unwrap(),
-            "=SUM(A2:A5)"
+            "=SUM(#REF!:A5)"
         );
 
-        // Deleting the bottom endpoint clamps the range end up.
+        // Deleting the bottom endpoint too kills the whole range.
         resolver
             .rows
             .get_mut(&S0)
@@ -561,7 +560,7 @@ mod tests {
             .remove(EntityId::Original(6));
         assert_eq!(
             render_formula(&encoded, S0, &resolver).unwrap(),
-            "=SUM(A2:A4)"
+            "=SUM(#REF!:#REF!)"
         );
 
         // An interior deletion shrinks the span but keeps the endpoints.
@@ -579,7 +578,7 @@ mod tests {
     }
 
     #[test]
-    fn collapsed_range_renders_ref_error() {
+    fn single_cell_range_deletion_renders_dead_range() {
         let mut resolver = TestResolver::pristine();
         let encoded = encode_formula("=SUM(B3:B3)", S0, &resolver).unwrap();
         resolver
@@ -589,7 +588,7 @@ mod tests {
             .remove(EntityId::Original(3));
         assert_eq!(
             render_formula(&encoded, S0, &resolver).unwrap(),
-            "=SUM(#REF!)"
+            "=SUM(#REF!:#REF!)"
         );
     }
 
