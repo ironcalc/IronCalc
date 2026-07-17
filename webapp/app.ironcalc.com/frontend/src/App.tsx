@@ -124,6 +124,7 @@ function App() {
         const provider = new CollabProvider(
           collabModel,
           `${collabServerUrl()}/${encodeURIComponent(collabRoom)}`,
+          { userName: urlParams.get("name") ?? undefined },
         );
         provider.connect();
         setModel(collabModel);
