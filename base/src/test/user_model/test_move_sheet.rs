@@ -26,15 +26,15 @@ fn move_reorders_sheets() {
     assert_eq!(sheet_names(&model), ["Sheet1", "Sheet2", "Sheet3"]);
 
     // Move the first sheet to the end.
-    model.set_worksheet_index(0, 2).unwrap();
+    model.move_sheet(0, 2).unwrap();
     assert_eq!(sheet_names(&model), ["Sheet2", "Sheet3", "Sheet1"]);
 
     // Move the last sheet to the front.
-    model.set_worksheet_index(2, 0).unwrap();
+    model.move_sheet(2, 0).unwrap();
     assert_eq!(sheet_names(&model), ["Sheet1", "Sheet2", "Sheet3"]);
 
     // Move a middle sheet.
-    model.set_worksheet_index(1, 2).unwrap();
+    model.move_sheet(1, 2).unwrap();
     assert_eq!(sheet_names(&model), ["Sheet1", "Sheet3", "Sheet2"]);
 }
 
@@ -44,7 +44,7 @@ fn move_undo_redo() {
     model.new_sheet().unwrap();
     model.new_sheet().unwrap();
 
-    model.set_worksheet_index(0, 2).unwrap();
+    model.move_sheet(0, 2).unwrap();
     assert_eq!(sheet_names(&model), ["Sheet2", "Sheet3", "Sheet1"]);
 
     model.undo().unwrap();
@@ -59,7 +59,7 @@ fn move_to_same_index_is_noop() {
     let mut model = new_empty_user_model();
     model.new_sheet().unwrap();
 
-    model.set_worksheet_index(1, 1).unwrap();
+    model.move_sheet(1, 1).unwrap();
     assert_eq!(sheet_names(&model), ["Sheet1", "Sheet2"]);
     // A no-op move records no history: the only undoable action is the
     // `new_sheet`, so a single undo drops back to one sheet.
@@ -73,8 +73,8 @@ fn move_out_of_range_is_rejected() {
     let mut model = new_empty_user_model();
     model.new_sheet().unwrap();
 
-    assert!(model.set_worksheet_index(2, 0).is_err());
-    assert!(model.set_worksheet_index(0, 2).is_err());
+    assert!(model.move_sheet(2, 0).is_err());
+    assert!(model.move_sheet(0, 2).is_err());
     // A rejected move leaves the order untouched and records no history: the
     // only undoable action is the `new_sheet`.
     assert_eq!(sheet_names(&model), ["Sheet1", "Sheet2"]);
@@ -96,7 +96,7 @@ fn move_preserves_cross_sheet_references() {
     assert_eq!(model.get_formatted_cell_value(2, 1, 1).unwrap(), "42");
 
     // Reorder: move Sheet2 (the referenced sheet) to the front.
-    model.set_worksheet_index(1, 0).unwrap();
+    model.move_sheet(1, 0).unwrap();
     assert_eq!(sheet_names(&model), ["Sheet2", "Sheet1", "Sheet3"]);
     // The formulas moved with their sheets and still resolve by name.
     // Sheet1 is now at index 1, Sheet3 at index 2, Sheet2 at index 0.
@@ -127,12 +127,12 @@ fn move_keeps_the_same_sheet_selected() {
     assert_eq!(selected_name(&model), "Sheet2");
 
     // Move a different sheet; selection follows Sheet2 by identity.
-    model.set_worksheet_index(0, 2).unwrap();
+    model.move_sheet(0, 2).unwrap();
     assert_eq!(sheet_names(&model), ["Sheet2", "Sheet3", "Sheet1"]);
     assert_eq!(selected_name(&model), "Sheet2");
 
     // Moving the selected sheet keeps it selected at its new slot.
-    model.set_worksheet_index(0, 2).unwrap();
+    model.move_sheet(0, 2).unwrap();
     assert_eq!(sheet_names(&model), ["Sheet3", "Sheet1", "Sheet2"]);
     assert_eq!(selected_name(&model), "Sheet2");
 
@@ -147,7 +147,7 @@ fn move_propagates() {
     let mut model = new_empty_user_model();
     model.new_sheet().unwrap();
     model.new_sheet().unwrap();
-    model.set_worksheet_index(0, 2).unwrap();
+    model.move_sheet(0, 2).unwrap();
 
     let send_queue = model.flush_send_queue();
 

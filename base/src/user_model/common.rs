@@ -624,7 +624,7 @@ impl<'a> UserModel<'a> {
     ///
     /// See also:
     /// * [Model::move_sheet]
-    pub fn set_worksheet_index(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
+    pub fn move_sheet(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
         let sheet_count = self.model.workbook.worksheets.len() as u32;
         if sheet_index >= sheet_count {
             return Err(format!("Invalid sheet index {sheet_index}"));
