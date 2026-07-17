@@ -1,0 +1,14 @@
+[package]
+name = "ironcalc_collab_server"
+version = "0.1.0"
+edition = "2021"
+description = "Websocket relay server for IronCalc collaboration (y-sync protocol)"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# The relay only speaks the y-sync protocol over per-room yrs documents; it
+# never depends on the spreadsheet engine and never inspects cell content.
+yrs = { version = "0.27.3", features = ["sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "macros", "sync", "time"] }
+tokio-tungstenite = "0.24"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
