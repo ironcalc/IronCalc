@@ -1,5 +1,6 @@
 import type { CellStyle, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
+import { type CollabCursor, colorForClient } from "../../collab/presence";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
@@ -45,6 +46,8 @@ export interface CanvasSettings {
   onColumnWidthChanges: (sheet: number, column: number, width: number) => void;
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
   refresh: () => void;
+  /** Other collaborators' cursors to paint (collaborative sessions only). */
+  remoteCursors?: () => CollabCursor[];
 }
 
 export const headerRowHeight = 28;
@@ -113,6 +116,8 @@ export default class WorksheetCanvas {
 
   theme: Theme;
 
+  remoteCursors: () => CollabCursor[];
+
   constructor(options: CanvasSettings) {
     this.model = options.model;
     this.sheetWidth = 0;
@@ -141,6 +146,7 @@ export default class WorksheetCanvas {
 
     this.onColumnWidthChanges = options.onColumnWidthChanges;
     this.onRowHeightChanges = options.onRowHeightChanges;
+    this.remoteCursors = options.remoteCursors ?? (() => []);
     this.resetHeaders();
     this.cellOutlineHandle = attachOutlineHandle(this);
 
@@ -2074,5 +2080,85 @@ export default class WorksheetCanvas {
     this.drawExtendToArea();
     this.drawActiveRanges(topLeftCell, bottomRightCell);
     this.drawCutRange();
+    this.drawRemoteCursors(topLeftCell, bottomRightCell);
+  }
+
+  private drawRemoteCursors(topLeftCell: Cell, bottomRightCell: Cell): void {
+    const cursors = this.remoteCursors();
+    if (cursors.length === 0) {
+      return;
+    }
+    const ctx = this.ctx;
+    const selectedSheet = this.model.getSelectedSheet();
+    const allowedOffset = 1; // to make borders look nicer
+    const minRow = topLeftCell.row - allowedOffset;
+    const maxRow = bottomRightCell.row + allowedOffset;
+    const minColumn = topLeftCell.column - allowedOffset;
+    const maxColumn = bottomRightCell.column + allowedOffset;
+    for (const cursor of cursors) {
+      if (cursor.sheet !== selectedSheet) {
+        continue;
+      }
+      const color = colorForClient(cursor.clientId);
+      let [rowStart, columnStart, rowEnd, columnEnd] = cursor.range;
+      if (rowStart > rowEnd) {
+        [rowStart, rowEnd] = [rowEnd, rowStart];
+      }
+      if (columnStart > columnEnd) {
+        [columnStart, columnEnd] = [columnEnd, columnStart];
+      }
+      const isRange = rowStart !== rowEnd || columnStart !== columnEnd;
+      if (
+        isRange &&
+        minRow <= rowEnd &&
+        rowStart <= maxRow &&
+        minColumn <= columnEnd &&
+        columnStart <= maxColumn
+      ) {
+        // The selected range, clamped to the viewport.
+        const [xStart, yStart] = this.getCoordinatesByCell(
+          Math.max(minRow, rowStart),
+          Math.max(minColumn, columnStart),
+        );
+        const [xEnd, yEnd] = this.getCoordinatesByCell(
+          Math.min(maxRow, rowEnd) + 1,
+          Math.min(maxColumn, columnEnd) + 1,
+        );
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
+        ctx.fillStyle = hexToRGBA10Percent(color);
+        ctx.fillRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
+      }
+      if (
+        cursor.row < minRow ||
+        cursor.row > maxRow ||
+        cursor.column < minColumn ||
+        cursor.column > maxColumn
+      ) {
+        continue;
+      }
+      // The active cell with the collaborator's name on top.
+      const [x, y] = this.getCoordinatesByCell(cursor.row, cursor.column);
+      const cellWidth = this.getColumnWidth(selectedSheet, cursor.column);
+      const cellHeight = this.getRowHeight(selectedSheet, cursor.row);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, cellWidth, cellHeight);
+      const label = cursor.name;
+      ctx.font = "500 10px Inter, sans-serif";
+      const labelWidth = ctx.measureText(label).width + 8;
+      const labelHeight = 14;
+      const labelY = Math.max(y - labelHeight, headerRowHeight);
+      ctx.fillStyle = color;
+      ctx.fillRect(x - 1, labelY, labelWidth, labelHeight);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, x + 3, labelY + labelHeight / 2 + 1);
+      // renderSheet's defaults, restored for the next painter
+      ctx.textAlign = "center";
+      ctx.lineWidth = 1;
+    }
   }
 }

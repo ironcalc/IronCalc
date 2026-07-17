@@ -9,6 +9,7 @@ import { type Color, getThemeList } from "@ironcalc/wasm";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CollabProvider } from "../../collab/CollabProvider";
+import { decodeCursors } from "../../collab/presence";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
@@ -82,14 +83,55 @@ const Workbook = (props: {
     setDrawerOpen(true);
   }, []);
 
-  // Repaint when a collaborator's update lands in the model.
+  // Repaint when a collaborator's update or cursor movement lands.
   useEffect(() => {
     if (!collabProvider) {
       return;
     }
-    return collabProvider.onRemoteUpdate(() => {
+    const bump = () => {
       setRedrawId((id) => id + 1);
-    });
+    };
+    const unsubscribeUpdate = collabProvider.onRemoteUpdate(bump);
+    const unsubscribePresence = collabProvider.onPresenceChange(bump);
+    return () => {
+      unsubscribeUpdate();
+      unsubscribePresence();
+    };
+  }, [collabProvider]);
+
+  // Publish our own cursor whenever the selection changed (any user action
+  // that moves it also triggers a render, so checking here catches them all).
+  // The last publish is tracked per provider: a replaced provider (e.g. a
+  // remount) must re-publish even an unchanged selection.
+  const lastPublishedPresence = useRef<{
+    provider: CollabProvider;
+    encoded: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!collabProvider) {
+      return;
+    }
+    const { sheet, row, column, range } = model.getSelectedView();
+    const state = {
+      name: collabProvider.userName,
+      sheet,
+      row,
+      column,
+      range,
+    };
+    const encoded = JSON.stringify(state);
+    const last = lastPublishedPresence.current;
+    if (!last || last.provider !== collabProvider || last.encoded !== encoded) {
+      lastPublishedPresence.current = { provider: collabProvider, encoded };
+      collabProvider.setPresence(state);
+    }
+  });
+
+  const getRemoteCursors = useCallback(() => {
+    if (!collabProvider) {
+      return [];
+    }
+    return decodeCursors(collabProvider.presence(), collabProvider.clientId);
   }, [collabProvider]);
 
   const worksheets = model.getWorksheetsProperties();
@@ -885,6 +927,7 @@ const Workbook = (props: {
         <Worksheet
           model={model}
           workbookState={workbookState}
+          getRemoteCursors={collabProvider ? getRemoteCursors : undefined}
           refresh={(): void => {
             setRedrawId((id) => id + 1);
           }}
