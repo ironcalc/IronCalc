@@ -694,6 +694,7 @@ name = "ironcalc_collab_server"
 version = "0.1.0"
 dependencies = [
  "futures-util",
+ "ironcalc_base",
  "tokio",
  "tokio-tungstenite",
  "yrs",
