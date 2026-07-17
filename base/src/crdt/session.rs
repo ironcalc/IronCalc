@@ -41,14 +41,56 @@ use crate::user_model::history::{Diff, DiffType, QueueDiffs};
 use crate::UserModel;
 
 use super::formula::{
-    encode_formula, has_overflow_refs, is_id_form, render_formula, RefResolver,
+    encode_formula, needs_reencode, is_id_form, render_formula, RefResolver,
 };
 use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
 use super::order::{original_position, unique_position, AxisOrder, ResolvedIndex};
 use super::projection::{
-    axis_key, cell_key, keep_key, keep_prefix, name_key, parse_name_key, sheet_meta_key, Axis,
-    Projection, SchemaMaps, SheetProj,
+    axis_key, cell_key, keep_key, keep_prefix, name_key, parse_name_key, sheet_keep_key,
+    sheet_keep_prefix, sheet_meta_key, Axis, Projection, SchemaMaps, SheetProj,
 };
+use crate::types::{Color, SheetState};
+
+/// Session codec for tab colors (no serde_json in non-dev deps).
+fn color_to_doc(color: &Color) -> Option<String> {
+    match color {
+        Color::None => None,
+        Color::Rgb(rgb) => Some(format!("r{rgb}")),
+        Color::Theme(index, tint) => Some(format!("t{index};{tint}")),
+    }
+}
+
+fn color_from_doc(text: &str) -> Result<Color, String> {
+    if let Some(rgb) = text.strip_prefix('r') {
+        return Ok(Color::Rgb(rgb.to_string()));
+    }
+    if let Some(rest) = text.strip_prefix('t') {
+        let (index, tint) = rest
+            .split_once(';')
+            .ok_or("collab: malformed theme color")?;
+        return Ok(Color::Theme(
+            index.parse().map_err(|_| "collab: malformed theme color")?,
+            tint.parse().map_err(|_| "collab: malformed theme color")?,
+        ));
+    }
+    Err("collab: malformed color".to_string())
+}
+
+fn state_to_doc(state: &SheetState) -> Option<String> {
+    match state {
+        SheetState::Visible => None,
+        SheetState::Hidden => Some("hidden".to_string()),
+        SheetState::VeryHidden => Some("veryHidden".to_string()),
+    }
+}
+
+fn state_from_doc(text: &str) -> Result<SheetState, String> {
+    match text {
+        "hidden" => Ok(SheetState::Hidden),
+        "veryHidden" => Ok(SheetState::VeryHidden),
+        _ => Err("collab: malformed sheet state".to_string()),
+    }
+}
 
 /// Sentinel "own sheet" used when encoding/rendering defined-name formulas:
 /// their references must be sheet-qualified, so a sheet-less reference
@@ -278,6 +320,8 @@ struct Touched {
     /// defined-name diffs and by structural ops, which displace name
     /// formulas in the model).
     names: bool,
+    /// Re-sync workbook-level settings (locale, timezone).
+    workbook: bool,
 }
 
 /// A live collaboration session for one [`UserModel`].
@@ -318,6 +362,10 @@ impl CollabSession {
                 )?;
             }
             sync_names(&mut txn, &maps, um, &resolver)?;
+            let settings = &um.model.workbook.settings;
+            maps.meta
+                .insert(&mut txn, "wb.locale", settings.locale.as_str());
+            maps.meta.insert(&mut txn, "wb.tz", settings.tz.as_str());
         }
         let shadow = Projection::from_doc(&doc, &maps);
         Ok(CollabSession {
@@ -492,6 +540,10 @@ impl CollabSession {
         for sheet_id in repair {
             self.repair_sheet_from_shadow(um, sheet_id)?;
         }
+        // A local sheet creation/deletion can change the deterministic
+        // display names (e.g. dissolve a duplicate-name suffix).
+        let display_names = dedupe_names(&self.shadow.visible_sheets());
+        align_sheet_display_names(um, &display_names)?;
         Ok(())
     }
 
@@ -539,26 +591,55 @@ impl CollabSession {
         // sheet (by position/id) gets a numeric suffix on every replica.
         let display_names = dedupe_names(&new_sheets);
 
-        // Remove sheets that are no longer visible (descending indices).
-        for (index, id) in old_ids.iter().enumerate().rev() {
-            if !new_ids.contains(id) {
+        // Align the model's sheet list with the document's visible list.
+        // `working` tracks model indices by id throughout.
+        let mut working: Vec<EntityId> = old_ids.clone();
+        let mut deferred: Vec<EntityId> = Vec::new();
+        for id in old_ids.iter().rev() {
+            if new_ids.contains(id) {
+                continue;
+            }
+            let Some(index) = working.iter().position(|x| x == id) else {
+                continue;
+            };
+            match um.model.delete_sheet(index as u32) {
+                Ok(()) => {
+                    working.remove(index);
+                }
+                // The engine refuses to delete the last sheet; retry after
+                // the insertions below (the document guarantees at least one
+                // visible sheet).
+                Err(_) => deferred.push(*id),
+            }
+        }
+        if new_ids.iter().any(|id| !working.contains(id)) || !deferred.is_empty() {
+            for (i, id) in new_ids.iter().enumerate() {
+                if working.contains(id) {
+                    continue;
+                }
+                // Insert right after its closest predecessor already present.
+                let at = new_ids[..i]
+                    .iter()
+                    .rev()
+                    .find_map(|p| working.iter().position(|x| x == p))
+                    .map_or(0, |p| p + 1);
+                um.model
+                    .insert_sheet(&format!("collab-new-{i}"), at as u32, None)?;
+                working.insert(at, *id);
+            }
+            for id in deferred {
+                let Some(index) = working.iter().position(|x| *x == id) else {
+                    continue;
+                };
                 um.model.delete_sheet(index as u32)?;
+                working.remove(index);
             }
         }
-        // Insert new sheets at their final indices (ascending).
-        for (index, (id, _)) in new_sheets.iter().enumerate() {
-            if !old_ids.contains(id) {
-                um.model.insert_sheet(&display_names[index], index as u32, None)?;
-            }
-        }
-        // Names and frozen panes.
+        debug_assert_eq!(working, new_ids, "sheet alignment failed");
+        align_sheet_display_names(um, &display_names)?;
+        // Frozen panes and per-sheet settings.
         for (index, (_, sp_new)) in new_sheets.iter().enumerate() {
             let sheet = index as u32;
-            let current_name = um.model.workbook.worksheet(sheet)?.get_name();
-            if current_name != display_names[index] {
-                um.model
-                    .rename_sheet_by_index(sheet, &display_names[index])?;
-            }
             let ws = um.model.workbook.worksheet(sheet)?;
             let (fr, fc) = (ws.frozen_rows, ws.frozen_columns);
             if fr != sp_new.frozen_rows {
@@ -566,6 +647,38 @@ impl CollabSession {
             }
             if fc != sp_new.frozen_columns {
                 um.model.set_frozen_columns(sheet, sp_new.frozen_columns)?;
+            }
+            let desired_color = match &sp_new.color {
+                Some(text) => color_from_doc(text)?,
+                None => Color::None,
+            };
+            let desired_state = match &sp_new.state {
+                Some(text) => state_from_doc(text)?,
+                None => SheetState::Visible,
+            };
+            let desired_grid = sp_new.grid_lines.unwrap_or(true);
+            let ws = um.model.workbook.worksheet(sheet)?;
+            if ws.color != desired_color {
+                um.model.set_sheet_color(sheet, &desired_color)?;
+            }
+            let ws = um.model.workbook.worksheet(sheet)?;
+            if ws.state != desired_state {
+                um.model.set_sheet_state(sheet, desired_state)?;
+            }
+            let ws = um.model.workbook.worksheet(sheet)?;
+            if ws.show_grid_lines != desired_grid {
+                um.model.set_show_grid_lines(sheet, desired_grid)?;
+            }
+        }
+        // Workbook-level registers.
+        if let Some(locale) = &new_proj.locale {
+            if um.model.workbook.settings.locale != *locale {
+                um.model.set_locale(locale)?;
+            }
+        }
+        if let Some(timezone) = &new_proj.timezone {
+            if um.model.workbook.settings.tz != *timezone {
+                um.model.set_timezone(timezone)?;
             }
         }
         // Content. First find the sheets whose row/column order changed: any
@@ -640,6 +753,18 @@ fn bootstrap_sheet(
     if ws.frozen_columns != 0 {
         maps.meta
             .insert(txn, sheet_meta_key(sheet_id, "fc"), ws.frozen_columns as i64);
+    }
+    if let Some(color) = color_to_doc(&ws.color) {
+        maps.meta
+            .insert(txn, sheet_meta_key(sheet_id, "color"), color.as_str());
+    }
+    if let Some(state) = state_to_doc(&ws.state) {
+        maps.meta
+            .insert(txn, sheet_meta_key(sheet_id, "state"), state.as_str());
+    }
+    if !ws.show_grid_lines {
+        maps.meta
+            .insert(txn, sheet_meta_key(sheet_id, "grid"), false);
     }
     for row in &ws.rows {
         if row.r < 1 {
@@ -840,14 +965,23 @@ impl Pass1<'_, '_> {
                     self.new_sheet_at(*new_index, true)
                 }
             }
-            Diff::RenameSheet { index, .. } => {
+            Diff::RenameSheet { index, .. }
+            | Diff::SetSheetColor { index, .. }
+            | Diff::SetSheetState { index, .. } => {
                 let sheet_id = self.ctx.sheet_at(*index)?;
                 self.touched.sheet_meta.insert(sheet_id);
                 Ok(())
             }
-            Diff::SetFrozenRowsCount { sheet, .. } | Diff::SetFrozenColumnsCount { sheet, .. } => {
+            Diff::SetFrozenRowsCount { sheet, .. }
+            | Diff::SetFrozenColumnsCount { sheet, .. }
+            | Diff::SetShowGridLines { sheet, .. } => {
                 let sheet_id = self.ctx.sheet_at(*sheet)?;
                 self.touched.sheet_meta.insert(sheet_id);
+                Ok(())
+            }
+            // Workbook-level LWW registers, read from the post-batch model.
+            Diff::SetLocale { .. } | Diff::SetTimezone { .. } => {
+                self.touched.workbook = true;
                 Ok(())
             }
 
@@ -866,9 +1000,6 @@ impl Pass1<'_, '_> {
             | Diff::DeleteConditionalFormatting { .. }
             | Diff::UpdateConditionalFormatting { .. }
             | Diff::SwapConditionalFormattingPriority { .. }
-            | Diff::SetSheetColor { .. }
-            | Diff::SetSheetState { .. }
-            | Diff::SetShowGridLines { .. }
             | Diff::SetTheme { .. } => Ok(()),
 
             // Moves: pure position rewrites. The diff already carries the
@@ -924,9 +1055,6 @@ impl Pass1<'_, '_> {
                     self.touch_cells_mentioning(new_name);
                 }
                 Ok(())
-            }
-            Diff::SetLocale { .. } | Diff::SetTimezone { .. } => {
-                Err("collab: locale/timezone changes are not supported yet".to_string())
             }
         }
     }
@@ -1059,7 +1187,7 @@ impl Pass1<'_, '_> {
         for (sheet_id, sp) in &self.shadow.sheets {
             for ((col_id, row_id), text) in &sp.cells {
                 let at_risk = if is_id_form(text) {
-                    has_overflow_refs(text, *sheet_id, &resolver)
+                    needs_reencode(text, *sheet_id, &resolver)
                 } else {
                     text.starts_with('=')
                 };
@@ -1355,6 +1483,19 @@ impl Pass1<'_, '_> {
         self.maps
             .meta
             .insert(&mut *self.txn, sheet_meta_key(id, "del"), true);
+        // Clear the keep entries this replica has seen; concurrent positive
+        // ops elsewhere survive and keep the sheet alive (update-wins).
+        let prefix = sheet_keep_prefix(id);
+        let seen: Vec<String> = self
+            .maps
+            .keep_sheets
+            .iter(&*self.txn)
+            .filter(|(key, _)| key.starts_with(prefix.as_str()))
+            .map(|(key, _)| key.to_string())
+            .collect();
+        for key in seen {
+            self.maps.keep_sheets.remove(&mut *self.txn, &key);
+        }
         if push_journal {
             self.journal
                 .push(JournalEntry::DeletedSheet { sheet: id, pos });
@@ -1365,6 +1506,23 @@ impl Pass1<'_, '_> {
     fn undo_delete_sheet(&mut self, index: u32) -> Result<(), String> {
         match self.journal.pop() {
             Some(JournalEntry::DeletedSheet { sheet, pos }) => {
+                // The undo resurrects the same sheet id only when that is
+                // coherent with the document: the id must still be invisible
+                // (a concurrent positive op may have update-wins-resurrected
+                // it — the model's undo then re-created a duplicate) and its
+                // positional slot must equal the index the model re-inserted
+                // at. Otherwise the model's new sheet is registered as a
+                // fresh sheet.
+                let already_visible = self.ctx.sheets.iter().any(|(id, _)| *id == sheet);
+                let doc_slot = self
+                    .ctx
+                    .sheets
+                    .iter()
+                    .filter(|(id, p)| (p.as_str(), *id) < (pos.as_str(), sheet))
+                    .count() as u32;
+                if already_visible || doc_slot != index {
+                    return self.new_sheet_at(index, true);
+                }
                 self.maps
                     .meta
                     .remove(&mut *self.txn, &sheet_meta_key(sheet, "del"));
@@ -1570,6 +1728,34 @@ fn write_final_state(
         sync_names(txn, maps, um, &resolver)?;
     }
 
+    if touched.workbook {
+        let settings = &um.model.workbook.settings;
+        maps.meta
+            .insert(txn, "wb.locale", settings.locale.as_str());
+        maps.meta.insert(txn, "wb.tz", settings.tz.as_str());
+    }
+
+    // Sheet keep-sets: every positive op on a sheet keeps it alive against a
+    // concurrent deletion (update-wins at sheet granularity).
+    let mut positive_sheets: BTreeSet<EntityId> = BTreeSet::new();
+    positive_sheets.extend(touched.cells.iter().map(|(s, _, _)| *s));
+    positive_sheets.extend(touched.row_props.iter().map(|(s, _)| *s));
+    positive_sheets.extend(touched.col_props.iter().map(|(s, _)| *s));
+    positive_sheets.extend(touched.keep_rows.iter().map(|(s, _)| *s));
+    positive_sheets.extend(touched.keep_cols.iter().map(|(s, _)| *s));
+    positive_sheets.extend(touched.sheet_meta.iter().copied());
+    positive_sheets.extend(touched.full_sheets.iter().copied());
+    for sheet_id in positive_sheets {
+        if ctx.sheet_index(sheet_id).is_none() {
+            continue; // deleted later in the same batch
+        }
+        maps.keep_sheets.insert(
+            txn,
+            sheet_keep_key(sheet_id, client_id),
+            op_counter as i64,
+        );
+    }
+
     for sheet_id in &touched.sheet_meta {
         let Some(sheet) = ctx.sheet_index(*sheet_id) else {
             continue;
@@ -1591,6 +1777,30 @@ fn write_final_state(
             maps.meta.insert(txn, fc_key, ws.frozen_columns as i64);
         } else {
             maps.meta.remove(txn, &fc_key);
+        }
+        let color_key = sheet_meta_key(*sheet_id, "color");
+        match color_to_doc(&ws.color) {
+            Some(color) => {
+                maps.meta.insert(txn, color_key, color.as_str());
+            }
+            None => {
+                maps.meta.remove(txn, &color_key);
+            }
+        }
+        let state_key = sheet_meta_key(*sheet_id, "state");
+        match state_to_doc(&ws.state) {
+            Some(state) => {
+                maps.meta.insert(txn, state_key, state.as_str());
+            }
+            None => {
+                maps.meta.remove(txn, &state_key);
+            }
+        }
+        let grid_key = sheet_meta_key(*sheet_id, "grid");
+        if ws.show_grid_lines {
+            maps.meta.remove(txn, &grid_key);
+        } else {
+            maps.meta.insert(txn, grid_key, false);
         }
     }
 
@@ -1749,12 +1959,53 @@ fn dedupe_names(sheets: &[(EntityId, &SheetProj)]) -> Vec<String> {
         let mut n = 1;
         while seen.contains(&candidate.to_lowercase()) {
             n += 1;
-            candidate = format!("{base} ({n})");
+            // Sheet names are capped at 31 chars; make room for the suffix.
+            let suffix = format!(" ({n})");
+            let max_base = 31usize.saturating_sub(suffix.chars().count());
+            let truncated: String = base.chars().take(max_base).collect();
+            candidate = format!("{truncated}{suffix}");
         }
         seen.insert(candidate.to_lowercase());
         names.push(candidate);
     }
     names
+}
+
+/// Renames the model's sheets to the deterministic display names derived
+/// from the document (two-phase: direct renames can collide transiently on
+/// name swaps, concurrent renames of different sheets to the same name, or
+/// placeholder names of freshly inserted sheets). Must run after both remote
+/// applies *and* local translation: a local sheet deletion can dissolve a
+/// name collision and change another sheet's display name.
+fn align_sheet_display_names(um: &mut UserModel, display_names: &[String]) -> Result<(), String> {
+    let mut current_names: Vec<String> = Vec::with_capacity(display_names.len());
+    for index in 0..display_names.len() {
+        current_names.push(um.model.workbook.worksheet(index as u32)?.get_name());
+    }
+    if current_names == display_names {
+        return Ok(());
+    }
+    let mut salt = 0usize;
+    loop {
+        let prefix = format!("collab-tmp{salt}-");
+        if !current_names.iter().any(|n| n.starts_with(&prefix)) {
+            break;
+        }
+        salt += 1;
+    }
+    for (index, current) in current_names.iter().enumerate() {
+        if *current != display_names[index] {
+            um.model
+                .rename_sheet_by_index(index as u32, &format!("collab-tmp{salt}-{index}"))?;
+        }
+    }
+    for (index, current) in current_names.iter().enumerate() {
+        if *current != display_names[index] {
+            um.model
+                .rename_sheet_by_index(index as u32, &display_names[index])?;
+        }
+    }
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
