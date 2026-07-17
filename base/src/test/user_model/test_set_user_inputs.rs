@@ -124,6 +124,57 @@ fn batch_across_sheets_is_one_undo_step() {
 }
 
 #[test]
+fn batch_overwriting_a_dynamic_array_anchor_undoes_to_the_spill() {
+    let mut model = new_empty_user_model();
+    // Seed a dynamic array in A1 that spills into A1:A3.
+    model.set_user_input(0, 1, 2, "10").unwrap(); // B1
+    model.set_user_input(0, 2, 2, "20").unwrap(); // B2
+    model.set_user_input(0, 3, 2, "30").unwrap(); // B3
+    model.set_user_input(0, 1, 1, "=B1:B3").unwrap(); // A1 anchor
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), "20"); // A2 is a spill cell
+
+    // One batch overwrites the anchor (A1) — which clears the spill — AND a former
+    // spill cell (A2). Both old_values must be snapshotted *before* the A1 write
+    // clears the spill; otherwise a single undo could not restore the array.
+    model
+        .set_user_inputs(&[
+            (0, 1, 1, "x".to_string()), // A1, the anchor
+            (0, 2, 1, "y".to_string()), // A2, previously a spill cell
+        ])
+        .unwrap();
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "x");
+    assert_eq!(model.get_cell_content(0, 2, 1).unwrap(), "y");
+    assert_eq!(model.get_cell_content(0, 3, 1).unwrap(), ""); // the rest of the spill is gone
+
+    // A single undo restores the dynamic array anchor and re-spills A2 and A3.
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "=B1:B3");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "10");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), "20");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "30");
+}
+
+#[test]
+fn batch_with_repeated_cell_keeps_last_write_and_undoes_as_one() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 1, 1, "orig").unwrap(); // A1
+
+    // The same cell appears twice in the batch: the last value wins.
+    model
+        .set_user_inputs(&[
+            (0, 1, 1, "first".to_string()),
+            (0, 1, 1, "second".to_string()),
+        ])
+        .unwrap();
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "second");
+
+    // A single undo reverts the whole batch back to the original value.
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "orig");
+    assert!(model.can_undo(), "only the seed edit remains");
+}
+
+#[test]
 fn batch_propagates_as_one_diff_list() {
     let mut model = new_empty_user_model();
     model
