@@ -14,6 +14,7 @@ use ironcalc_base::{
     },
     types::{CellType, Color, Style, StyleIncludes},
     worksheet::NavigationDirection,
+    crdt::SyncPeer,
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
@@ -116,6 +117,7 @@ fn leak_str(s: &str) -> &'static str {
 #[wasm_bindgen]
 pub struct Model {
     model: BaseModel<'static>,
+    peer: Option<SyncPeer>,
 }
 
 #[wasm_bindgen]
@@ -133,13 +135,13 @@ impl Model {
         let language_id = leak_str(language_id);
         let model =
             BaseModel::new_empty(name, locale, timezone, language_id).map_err(to_js_error)?;
-        Ok(Model { model })
+        Ok(Model { model, peer: None })
     }
 
     pub fn from_bytes(bytes: &[u8], language_id: &str) -> Result<Model, JsError> {
         let language_id = leak_str(language_id);
         let model = BaseModel::from_bytes(bytes, language_id).map_err(to_js_error)?;
-        Ok(Model { model })
+        Ok(Model { model, peer: None })
     }
 
     pub fn undo(&mut self) -> Result<(), JsError> {
@@ -1251,4 +1253,134 @@ impl Model {
     pub fn move_sheet(&mut self, sheet: u32, new_index: u32) -> Result<(), JsError> {
         self.model.move_sheet(sheet, new_index).map_err(to_js_error)
     }
+}
+
+/// What handling an incoming collaboration frame produced.
+#[wasm_bindgen]
+pub struct CollabFrameOutcome {
+    replies: Vec<u8>,
+    applied_update: bool,
+    presence_changed: bool,
+}
+
+#[wasm_bindgen]
+impl CollabFrameOutcome {
+    /// Frames to send back over the websocket, packed into one binary
+    /// message (empty when there is nothing to send).
+    #[wasm_bindgen(getter)]
+    pub fn replies(&self) -> Vec<u8> {
+        self.replies.clone()
+    }
+
+    /// A document update was applied — re-render the sheet.
+    #[wasm_bindgen(getter, js_name = "appliedUpdate")]
+    pub fn applied_update(&self) -> bool {
+        self.applied_update
+    }
+
+    /// The presence map changed — re-render collaborator cursors.
+    #[wasm_bindgen(getter, js_name = "presenceChanged")]
+    pub fn presence_changed(&self) -> bool {
+        self.presence_changed
+    }
+}
+
+#[derive(Serialize)]
+struct CollabPresenceEntry {
+    /// The collaborator's yjs client id.
+    #[serde(rename = "clientId")]
+    client_id: f64,
+    /// The opaque JSON string that client last published.
+    state: String,
+}
+
+// Collaboration (design doc §11, phase 9): the JavaScript side owns the
+// websocket and shuttles opaque binary frames between it and these methods.
+// A frame may pack several y-sync messages, so the byte buffers returned
+// here are each sent as one websocket message.
+#[wasm_bindgen]
+impl Model {
+    /// Attaches this model to a collaboration session. `clientId` must be
+    /// unique among the room's collaborators (pick a random 32-bit integer).
+    #[wasm_bindgen(js_name = "collabAttach")]
+    pub fn collab_attach(&mut self, client_id: u32) -> Result<(), JsError> {
+        if self.peer.is_some() {
+            return Err(JsError::new("collab: already attached"));
+        }
+        let peer = SyncPeer::attach(&mut self.model, u64::from(client_id)).map_err(to_js_error)?;
+        self.peer = Some(peer);
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "collabIsAttached")]
+    pub fn collab_is_attached(&self) -> bool {
+        self.peer.is_some()
+    }
+
+    /// The frames to send when the websocket (re)opens: sync handshake,
+    /// presence query and our own presence, packed into one binary message.
+    #[wasm_bindgen(js_name = "collabStartSync")]
+    pub fn collab_start_sync(&self) -> Result<Vec<u8>, JsError> {
+        let peer = self.peer.as_ref().ok_or_else(not_attached)?;
+        Ok(peer.start_sync().concat())
+    }
+
+    /// Handles one incoming websocket message.
+    #[wasm_bindgen(js_name = "collabHandleFrame")]
+    pub fn collab_handle_frame(&mut self, data: &[u8]) -> Result<CollabFrameOutcome, JsError> {
+        let peer = self.peer.as_mut().ok_or_else(not_attached)?;
+        let outcome = peer
+            .handle_frame(&mut self.model, data)
+            .map_err(to_js_error)?;
+        Ok(CollabFrameOutcome {
+            replies: outcome.replies.concat(),
+            applied_update: outcome.applied_update,
+            presence_changed: outcome.presence_changed,
+        })
+    }
+
+    /// Ships pending local edits: returns the frame to send, or `undefined`
+    /// when there is nothing new. Call after every user action (or on a
+    /// short debounce).
+    #[wasm_bindgen(js_name = "collabFlushLocal")]
+    pub fn collab_flush_local(&mut self) -> Result<Option<Vec<u8>>, JsError> {
+        let peer = self.peer.as_mut().ok_or_else(not_attached)?;
+        peer.flush_local(&mut self.model).map_err(to_js_error)
+    }
+
+    /// Publishes this client's presence (an opaque JSON string: user name,
+    /// selection, …) and returns the frame to send.
+    #[wasm_bindgen(js_name = "collabSetPresence")]
+    pub fn collab_set_presence(&mut self, json: &str) -> Result<Vec<u8>, JsError> {
+        let peer = self.peer.as_mut().ok_or_else(not_attached)?;
+        peer.set_presence(json).map_err(to_js_error)
+    }
+
+    /// Withdraws this client's presence (send the returned frame before
+    /// closing the websocket).
+    #[wasm_bindgen(js_name = "collabClearPresence")]
+    pub fn collab_clear_presence(&mut self) -> Result<Vec<u8>, JsError> {
+        let peer = self.peer.as_mut().ok_or_else(not_attached)?;
+        peer.clear_presence().map_err(to_js_error)
+    }
+
+    /// The current presence map: `{clientId, state}` for every collaborator
+    /// with a live state, including this client.
+    #[wasm_bindgen(js_name = "collabPresence", unchecked_return_type = "CollabPresence[]")]
+    pub fn collab_presence(&self) -> Result<JsValue, JsError> {
+        let peer = self.peer.as_ref().ok_or_else(not_attached)?;
+        let entries: Vec<CollabPresenceEntry> = peer
+            .presence()
+            .into_iter()
+            .map(|(client_id, state)| CollabPresenceEntry {
+                client_id: client_id as f64,
+                state,
+            })
+            .collect();
+        serde_wasm_bindgen::to_value(&entries).map_err(|e| to_js_error(e.to_string()))
+    }
+}
+
+fn not_attached() -> JsError {
+    JsError::new("collab: not attached — call collabAttach first")
 }

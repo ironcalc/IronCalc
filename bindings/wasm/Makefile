@@ -20,7 +20,7 @@ deps:
 	pnpm install --frozen-lockfile
 
 tests:
-	wasm-pack build --target nodejs && node tests/test.mjs && node tests/test_cf.mjs
+	wasm-pack build --target nodejs && node tests/test.mjs && node tests/test_cf.mjs && node tests/test_collab.mjs
 
 lint:
 	cargo check
