@@ -1,6 +1,7 @@
 import type { Model } from "@ironcalc/wasm";
 import { forwardRef, useEffect, useImperativeHandle } from "react";
 import { I18nextProvider } from "react-i18next";
+import type { CollabProvider } from "./collab/CollabProvider.ts";
 import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
 import i18n from "./i18n";
@@ -18,6 +19,8 @@ interface IronCalcProperties {
   rootContainer?: HTMLElement | null;
   /** When false, renders without the toolbar, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
+  /** When set, remote collaboration updates repaint the workbook. */
+  collabProvider?: CollabProvider;
 }
 
 export interface IronCalcHandle {
@@ -25,7 +28,10 @@ export interface IronCalcHandle {
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
-  ({ themeVariables, model, rootContainer, canEdit = true }, ref) => {
+  (
+    { themeVariables, model, rootContainer, canEdit = true, collabProvider },
+    ref,
+  ) => {
     const root = rootContainer ?? document.body;
     useEffect(() => {
       if (root.classList.contains("ic-root")) {
@@ -59,6 +65,7 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
             model={model}
             workbookState={new WorkbookState()}
             canEdit={canEdit}
+            collabProvider={collabProvider}
           />
         </I18nextProvider>
       </div>

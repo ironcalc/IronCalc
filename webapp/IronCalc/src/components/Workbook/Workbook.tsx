@@ -8,6 +8,7 @@ import type {
 import { type Color, getThemeList } from "@ironcalc/wasm";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { CollabProvider } from "../../collab/CollabProvider";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
@@ -54,8 +55,10 @@ const Workbook = (props: {
   workbookState: WorkbookState;
   /** When false, the toolbar is hidden, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
+  /** When set, remote collaboration updates repaint the workbook. */
+  collabProvider?: CollabProvider;
 }) => {
-  const { model, workbookState, canEdit = true } = props;
+  const { model, workbookState, canEdit = true, collabProvider } = props;
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const worksheetRef = useRef<{
@@ -78,6 +81,16 @@ const Workbook = (props: {
     setDrawerType(type);
     setDrawerOpen(true);
   }, []);
+
+  // Repaint when a collaborator's update lands in the model.
+  useEffect(() => {
+    if (!collabProvider) {
+      return;
+    }
+    return collabProvider.onRemoteUpdate(() => {
+      setRedrawId((id) => id + 1);
+    });
+  }, [collabProvider]);
 
   const worksheets = model.getWorksheetsProperties();
   const info = worksheets.map(

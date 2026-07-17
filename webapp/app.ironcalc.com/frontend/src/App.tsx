@@ -1,7 +1,13 @@
 import "./App.css";
 import type { IronCalcHandle } from "@ironcalc/workbook";
 // From IronCalc
-import { IronCalc, IronCalcIcon, init, Model } from "@ironcalc/workbook";
+import {
+  CollabProvider,
+  IronCalc,
+  IronCalcIcon,
+  init,
+  Model,
+} from "@ironcalc/workbook";
 import "@ironcalc/workbook/style.css";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,8 +36,20 @@ import {
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
 
+// The collaboration relay server (webapp/../collab-server); the room name
+// comes from the `?room=` URL parameter.
+function collabServerUrl(): string {
+  return (
+    import.meta.env.VITE_COLLAB_SERVER_URL ??
+    `ws://${window.location.hostname}:9000`
+  );
+}
+
 function App() {
   const [model, setModel] = useState<Model | null>(null);
+  const [collabProvider, setCollabProvider] = useState<CollabProvider | null>(
+    null,
+  );
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -60,8 +78,27 @@ function App() {
       const urlParams = new URLSearchParams(queryString);
       const modelHash = urlParams.get("model");
       const exampleFilename = urlParams.get("example");
+      const collabRoom = urlParams.get("room");
       const language = loadDefaultLocaleFromStorage();
       const languageId = getLanguageFromLocale(language);
+
+      if (collabRoom) {
+        // Collaborative session: the room document is authoritative, so we
+        // start from a blank workbook and let the sync handshake fill it in.
+        const collabModel = createModelWithSafeTimezone(collabRoom);
+        const provider = new CollabProvider(
+          collabModel,
+          `${collabServerUrl()}/${encodeURIComponent(collabRoom)}`,
+        );
+        provider.connect();
+        setModel(collabModel);
+        setCollabProvider(provider);
+        i18n.changeLanguage(language);
+        setTimeout(() => {
+          ironCalcRef.current?.setLanguage(language);
+        }, 0);
+        return;
+      }
       // If there is a model name ?model=modelHash we try to load it
       // if there is not, or the loading failed we load an empty model
       let loadedModel: Model | null = null;
@@ -123,7 +160,8 @@ function App() {
   }, [model, localStorageId]);
 
   useEffect(() => {
-    if (!model) return;
+    // Collaborative models live on the relay server, not in local storage.
+    if (!model || collabProvider) return;
     // We try to save the model every second
     const interval = setInterval(() => {
       const queue = model.flushSendQueue();
@@ -132,7 +170,18 @@ function App() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [model]);
+  }, [model, collabProvider]);
+
+  useEffect(() => {
+    if (!collabProvider) return;
+    // Withdraw our presence when the tab goes away.
+    const goodbye = () => collabProvider.destroy();
+    window.addEventListener("beforeunload", goodbye);
+    return () => {
+      window.removeEventListener("beforeunload", goodbye);
+      collabProvider.destroy();
+    };
+  }, [collabProvider]);
 
   if (!model) {
     return (
@@ -213,7 +262,11 @@ function App() {
           setLocalStorageId={setLocalStorageId}
           onLanguageChange={handleLanguageChange}
         />
-        <IronCalc model={model} ref={ironCalcRef} />
+        <IronCalc
+          model={model}
+          ref={ironCalcRef}
+          collabProvider={collabProvider ?? undefined}
+        />
         {isDrawerOpen && (
           <div
             className="app-ic-mobile-overlay"
