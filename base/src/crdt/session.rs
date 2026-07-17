@@ -372,6 +372,10 @@ struct Touched {
     named_styles: bool,
 }
 
+/// Transaction origin tag for updates applied from the wire; the sync peer's
+/// update observer uses it to keep remote changes out of its outbox.
+pub(crate) const REMOTE_ORIGIN: &str = "collab-remote";
+
 /// A live collaboration session for one [`UserModel`].
 pub struct CollabSession {
     doc: Doc,
@@ -444,9 +448,21 @@ impl CollabSession {
     pub fn apply_remote(&mut self, um: &mut UserModel, update: &[u8]) -> Result<(), String> {
         self.translate_queue(um)?;
         {
-            let mut txn = self.doc.transact_mut();
+            let mut txn = self.doc.transact_mut_with(REMOTE_ORIGIN);
+            let sv_pre = txn.state_vector();
             let update = Update::decode_v1(update).map_err(|e| e.to_string())?;
             txn.apply_update(update).map_err(|e| e.to_string())?;
+            let sv_post = txn.state_vector();
+            // Blocks the remote update contributed are already known on the
+            // other side of the pipe: mark them sent so the next flush does
+            // not echo them back. (Local pending edits were translated above,
+            // so for any client the remote extended, everything up to the new
+            // clock came from the wire.)
+            for (client, clock) in sv_post.iter() {
+                if *clock > sv_pre.get(client) {
+                    self.sent_sv.set_max(*client, *clock);
+                }
+            }
         }
         self.reconcile(um)
     }
@@ -467,6 +483,27 @@ impl CollabSession {
         self.doc
             .transact()
             .encode_state_as_update_v1(&StateVector::default())
+    }
+
+    /// A handle to the underlying document (cheap clone sharing the store);
+    /// the sync peer hangs the awareness instance off it.
+    pub(crate) fn doc_handle(&self) -> Doc {
+        self.doc.clone()
+    }
+
+    /// The document state vector as a struct (for protocol messages).
+    pub(crate) fn state_vector_raw(&self) -> StateVector {
+        self.doc.transact().state_vector()
+    }
+
+    /// Everything a peer with state vector `sv` is missing, for a handshake
+    /// reply. The full current state is now on the wire to the (single) pipe,
+    /// so the next flush does not need to re-send any of it.
+    pub(crate) fn handshake_diff(&mut self, sv: &StateVector) -> Vec<u8> {
+        let txn = self.doc.transact();
+        let diff = txn.encode_state_as_update_v1(sv);
+        self.sent_sv = txn.state_vector();
+        diff
     }
 
     /// Test hook: the last projection applied to the model. Two synced
@@ -534,7 +571,7 @@ impl CollabSession {
 
     // ---- outbound ----
 
-    fn translate_queue(&mut self, um: &mut UserModel) -> Result<(), String> {
+    pub(crate) fn translate_queue(&mut self, um: &mut UserModel) -> Result<(), String> {
         let bytes = um.flush_send_queue();
         let queue: Vec<QueueDiffs> =
             bitcode::decode(&bytes).map_err(|e| format!("collab: cannot decode queue: {e}"))?;
