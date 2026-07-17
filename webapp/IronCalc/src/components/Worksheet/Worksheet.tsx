@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import type { CollabCursor } from "../../collab/presence";
 import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
 import {
@@ -51,6 +52,8 @@ const Worksheet = forwardRef(
       onCut: () => void;
       onCopy: () => void;
       onPaste: () => void;
+      /** Other collaborators' cursors, painted on the canvas. */
+      getRemoteCursors?: () => CollabCursor[];
     },
     ref,
   ) => {
@@ -89,8 +92,16 @@ const Worksheet = forwardRef(
 
     const ignoreScrollEventRef = useRef(false);
 
-    const { model, workbookState, refresh, canEdit, onCut, onCopy, onPaste } =
-      props;
+    const {
+      model,
+      workbookState,
+      refresh,
+      canEdit,
+      onCut,
+      onCopy,
+      onPaste,
+      getRemoteCursors,
+    } = props;
     const { t } = useTranslation();
     const [clientWidth, clientHeight] = useWindowSize();
 
@@ -167,6 +178,7 @@ const Worksheet = forwardRef(
           model.setColumnsWidth(sheet, columnStart, columnEnd, width);
           worksheetCanvas.current?.renderSheet();
         },
+        remoteCursors: getRemoteCursors,
         onRowHeightChanges(sheet, row, height) {
           if (height < 0) {
             return;

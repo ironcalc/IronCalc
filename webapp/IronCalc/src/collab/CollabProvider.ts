@@ -39,6 +39,8 @@ export interface CollabProviderOptions {
   maxReconnectDelayMs?: number;
   /** Override the yjs client id (must be unique in the room). */
   clientId?: number;
+  /** Display name published with this client's presence. */
+  userName?: string;
   /** Websocket factory, injectable for tests. */
   createWebSocket?: (url: string) => CollabWebSocket;
 }
@@ -53,6 +55,7 @@ function randomClientId(): number {
 
 export class CollabProvider {
   readonly clientId: number;
+  readonly userName: string;
 
   private model: Model;
   private url: string;
@@ -84,6 +87,7 @@ export class CollabProvider {
       options.createWebSocket ??
       ((wsUrl: string) => new WebSocket(wsUrl) as unknown as CollabWebSocket);
     this.clientId = options.clientId ?? randomClientId();
+    this.userName = options.userName ?? "Guest";
     if (!model.collabIsAttached()) {
       model.collabAttach(this.clientId);
     }
