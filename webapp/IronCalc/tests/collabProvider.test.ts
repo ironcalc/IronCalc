@@ -6,6 +6,7 @@ import {
   type CollabStatus,
   type CollabWebSocket,
 } from "../src/collab/CollabProvider";
+import { decodeCursors } from "../src/collab/presence";
 
 // Two providers wired directly to each other through fake sockets: the
 // y-sync protocol is symmetric, so this exercises the same frames a relay
@@ -169,6 +170,29 @@ test("presence round trip and withdrawal", () => {
 
   pa.clearPresence();
   expect(pb.presence()).toEqual([]);
+});
+
+test("a published selection decodes into a remote cursor on the peer", () => {
+  const { pa, pb } = connectedPair();
+  pa.setPresence({
+    name: "ana",
+    sheet: 0,
+    row: 3,
+    column: 2,
+    range: [3, 2, 5, 4],
+  });
+  expect(decodeCursors(pb.presence(), pb.clientId)).toEqual([
+    {
+      clientId: 1,
+      name: "ana",
+      sheet: 0,
+      row: 3,
+      column: 2,
+      range: [3, 2, 5, 4],
+    },
+  ]);
+  // Our own cursor is filtered out on our side.
+  expect(decodeCursors(pa.presence(), pa.clientId)).toEqual([]);
 });
 
 test("destroy withdraws presence and closes the socket", () => {
