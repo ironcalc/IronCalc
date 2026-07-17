@@ -114,6 +114,16 @@
       "copy_url": "Copy URL",
       "copied": "Copied!",
       "info_text": "Anyone with the link will be able to access a copy of this workbook"
+    },
+    "collab": {
+      "button": "Collaborate",
+      "connected": "Live",
+      "connecting": "Connecting…",
+      "disconnected": "Offline",
+      "copy_url": "Copy URL",
+      "copied": "Copied!",
+      "info_text": "Anyone with the link can join and edit this workbook live",
+      "you": "you"
     }
   },
   "loading_screen": {

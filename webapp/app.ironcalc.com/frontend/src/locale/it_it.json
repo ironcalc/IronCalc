@@ -114,6 +114,16 @@
       "copy_url": "Copia URL",
       "copied": "Copiato!",
       "info_text": "Chiunque abbia il link potrà accedere a una copia di questa cartella di lavoro"
+    },
+    "collab": {
+      "button": "Collabora",
+      "connected": "In diretta",
+      "connecting": "Connessione…",
+      "disconnected": "Offline",
+      "copy_url": "Copia URL",
+      "copied": "Copiato!",
+      "info_text": "Chiunque abbia il link può partecipare e modificare questa cartella di lavoro in diretta",
+      "you": "tu"
     }
   },
   "loading_screen": {

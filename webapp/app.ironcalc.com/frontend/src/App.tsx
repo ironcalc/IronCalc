@@ -193,6 +193,25 @@ function App() {
     );
   }
 
+  // Turns the current workbook into a live session: attaching bootstraps
+  // the full content into the CRDT doc, so joiners receive this workbook.
+  const startCollaboration = () => {
+    if (!model || collabProvider) {
+      return;
+    }
+    const room = crypto.randomUUID().replace(/-/g, "");
+    const params = new URLSearchParams(window.location.search);
+    const provider = new CollabProvider(model, `${collabServerUrl()}/${room}`, {
+      userName: params.get("name") ?? undefined,
+    });
+    provider.connect();
+    setCollabProvider(provider);
+    params.delete("model");
+    params.delete("example");
+    params.set("room", room);
+    window.history.replaceState(null, "", `?${params.toString()}`);
+  };
+
   // Handlers for model changes that also update our models state
   const handleNewModel = () => {
     const newModel = createNewModel();
@@ -262,6 +281,8 @@ function App() {
           setIsDrawerOpen={setIsDrawerOpen}
           setLocalStorageId={setLocalStorageId}
           onLanguageChange={handleLanguageChange}
+          collabProvider={collabProvider}
+          onStartCollaboration={startCollaboration}
         />
         <IronCalc
           model={model}
