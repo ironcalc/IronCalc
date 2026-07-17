@@ -341,71 +341,95 @@ fn render_payload(
             let columns_pinned =
                 matches!(l.column, Part::Pinned(_)) && matches!(r.column, Part::Pinned(_));
             if rows_pinned && !columns_pinned {
-                let left_text = full_column_text(sheet, &l.column, resolver)?;
-                let right_text = full_column_text(sheet, &r.column, resolver)?;
+                let left = part_index(sheet, Axis2::Columns, &l.column, resolver);
+                let right = part_index(sheet, Axis2::Columns, &r.column, resolver);
+                let (left, right) = normalize_pair(left, right);
+                let left_text = axis_text(Axis2::Columns, left)?;
+                let right_text = axis_text(Axis2::Columns, right)?;
                 return Ok(format!("{prefix}{left_text}:{right_text}"));
             }
             if columns_pinned && !rows_pinned {
-                let left_text = full_row_text(sheet, &l.row, resolver)?;
-                let right_text = full_row_text(sheet, &r.row, resolver)?;
+                let left = part_index(sheet, Axis2::Rows, &l.row, resolver);
+                let right = part_index(sheet, Axis2::Rows, &r.row, resolver);
+                let (left, right) = normalize_pair(left, right);
+                let left_text = axis_text(Axis2::Rows, left)?;
+                let right_text = axis_text(Axis2::Rows, right)?;
                 return Ok(format!("{prefix}{left_text}:{right_text}"));
             }
-            Ok(format!(
-                "{}{}:{}",
-                prefix,
-                endpoint_text(sheet, &l, resolver)?,
-                endpoint_text(sheet, &r, resolver)?
-            ))
+            // Resolve all four parts; when both endpoints are alive the
+            // engine normalizes crossed ranges per axis, moving the absolute
+            // flag together with its coordinate ($D$5:B9 → B$5:$D9). A dead
+            // endpoint renders as #REF! with no normalization.
+            let lc = part_index(sheet, Axis2::Columns, &l.column, resolver);
+            let lr = part_index(sheet, Axis2::Rows, &l.row, resolver);
+            let rc = part_index(sheet, Axis2::Columns, &r.column, resolver);
+            let rr = part_index(sheet, Axis2::Rows, &r.row, resolver);
+            match (lc, lr, rc, rr) {
+                (Some(c1), Some(r1), Some(c2), Some(r2)) => {
+                    let (c1, c2) = if c1.0 > c2.0 { (c2, c1) } else { (c1, c2) };
+                    let (r1, r2) = if r1.0 > r2.0 { (r2, r1) } else { (r1, r2) };
+                    Ok(format!(
+                        "{}{}:{}",
+                        prefix,
+                        cell_text(c1.0, r1.0, c1.1, r1.1)?,
+                        cell_text(c2.0, r2.0, c2.1, r2.1)?
+                    ))
+                }
+                _ => Ok(format!(
+                    "{}{}:{}",
+                    prefix,
+                    endpoint_fragment(lc, lr)?,
+                    endpoint_fragment(rc, rr)?
+                )),
+            }
         }
     }
 }
 
-/// Renders one range endpoint; a dead row or column makes it `#REF!`.
-///
-/// This matches the engine's own displacement semantics (`displace_cells`):
-/// deleting an endpoint row/column turns *that endpoint* into `#REF!`
-/// (`=SUM(A1:#REF!)`), it does not clamp the range as Excel does. Interior
-/// deletions shrink the range automatically here, because the endpoints keep
-/// their ids and only their rendered indices change. The two sides must agree
-/// so that re-rendering after a remote structural change reproduces exactly
-/// what the originating replica's engine produced locally.
-fn endpoint_text(
-    sheet: EntityId,
-    endpoint: &Endpoint,
-    resolver: &impl RefResolver,
+/// A dead row or column makes an endpoint `#REF!` — matching the engine's
+/// own displacement semantics (`displace_cells`): deleting an endpoint
+/// row/column turns *that endpoint* into `#REF!` (`=SUM(A1:#REF!)`), it does
+/// not clamp the range as Excel does. Interior deletions shrink the range
+/// automatically here, because endpoints keep their ids and only their
+/// rendered indices change.
+fn endpoint_fragment(
+    column: Option<(u32, bool)>,
+    row: Option<(u32, bool)>,
 ) -> Result<String, String> {
-    match (
-        part_index(sheet, Axis2::Columns, &endpoint.column, resolver),
-        part_index(sheet, Axis2::Rows, &endpoint.row, resolver),
-    ) {
-        (Some(column), Some(row)) => cell_text(column.0, row.0, column.1, row.1),
+    match (column, row) {
+        (Some(c), Some(r)) => cell_text(c.0, r.0, c.1, r.1),
         _ => Ok("#REF!".to_string()),
     }
 }
 
-fn full_column_text(
-    sheet: EntityId,
-    part: &Part,
-    resolver: &impl RefResolver,
-) -> Result<String, String> {
-    match part_index(sheet, Axis2::Columns, part, resolver) {
-        Some((index, absolute)) => {
-            let name = number_to_column(index as i32)
-                .ok_or_else(|| "column out of range".to_string())?;
-            Ok(format!("{}{}", if absolute { "$" } else { "" }, name))
-        }
-        None => Ok("#REF!".to_string()),
+/// Engine range normalization: a live crossed pair swaps (the absolute flag
+/// travels with its coordinate); dead endpoints stay put.
+fn normalize_pair(
+    left: Option<IndexedPart>,
+    right: Option<IndexedPart>,
+) -> (Option<IndexedPart>, Option<IndexedPart>) {
+    match (left, right) {
+        (Some(l), Some(r)) if l.0 > r.0 => (Some(r), Some(l)),
+        other => other,
     }
 }
 
-fn full_row_text(
-    sheet: EntityId,
-    part: &Part,
-    resolver: &impl RefResolver,
-) -> Result<String, String> {
-    match part_index(sheet, Axis2::Rows, part, resolver) {
-        Some((index, absolute)) => Ok(format!("{}{}", if absolute { "$" } else { "" }, index)),
+/// Renders one side of a pinned-axis (full) range: a column name or a row
+/// number, `#REF!` when dead.
+fn axis_text(axis: Axis2, part: Option<(u32, bool)>) -> Result<String, String> {
+    match part {
         None => Ok("#REF!".to_string()),
+        Some((index, absolute)) => {
+            let dollar = if absolute { "$" } else { "" };
+            match axis {
+                Axis2::Rows => Ok(format!("{dollar}{index}")),
+                Axis2::Columns => {
+                    let name = number_to_column(index as i32)
+                        .ok_or_else(|| "column out of range".to_string())?;
+                    Ok(format!("{dollar}{name}"))
+                }
+            }
+        }
     }
 }
 
@@ -415,6 +439,9 @@ enum Axis2 {
     Rows,
     Columns,
 }
+
+/// A resolved part: `(display index, absolute flag)`.
+type IndexedPart = (u32, bool);
 
 /// One side (row or column) of an endpoint.
 #[derive(Debug, PartialEq)]
