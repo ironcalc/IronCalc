@@ -111,6 +111,13 @@ export interface MarkedToken {
   end: number;
 }
 
+// One collaborator's presence: the opaque JSON string it last published
+// (user name, selection, …) keyed by its collaboration client id.
+export interface CollabPresence {
+  clientId: number;
+  state: string;
+}
+
 // What the grammar accepts at a cursor position while typing a formula.
 // `{ FunctionName }` carries the partial name typed so far; `{ Argument }`
 // carries the function name and the 1-based argument index.
