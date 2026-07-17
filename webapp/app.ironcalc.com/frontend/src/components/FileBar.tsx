@@ -1,8 +1,14 @@
-import { IconButton, type Model, Tooltip } from "@ironcalc/workbook";
+import {
+  type CollabProvider,
+  IconButton,
+  type Model,
+  Tooltip,
+} from "@ironcalc/workbook";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
+import { CollabControls } from "./Collab/CollabControls";
 import { FileMenu } from "./Navigation/FileMenu";
 import { HelpMenu } from "./Navigation/HelpMenu";
 import { MobileMenu } from "./Navigation/MobileMenu";
@@ -31,6 +37,8 @@ export function FileBar(properties: {
   onLanguageChange: (language: string) => void;
   isDarkMode: boolean;
   onDarkModeChange: (isDark: boolean) => void;
+  collabProvider: CollabProvider | null;
+  onStartCollaboration: () => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
@@ -125,6 +133,10 @@ export function FileBar(properties: {
       <div ref={spacerRef} className="app-ic-file-bar-spacer" />
       <div className="app-ic-file-bar-right">
         <StorageWarning />
+        <CollabControls
+          provider={properties.collabProvider}
+          onStartCollaboration={properties.onStartCollaboration}
+        />
         <div className="app-ic-file-bar-dialog-container">
           <ShareButton onClick={() => setIsDialogOpen(true)} />
           {isDialogOpen && (
