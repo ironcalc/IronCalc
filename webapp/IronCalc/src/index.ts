@@ -8,7 +8,11 @@ export type {
 } from "./collab/CollabProvider";
 export { CollabProvider } from "./collab/CollabProvider";
 export type { CollabCursor } from "./collab/presence";
-export { colorForClient, decodeCursors } from "./collab/presence";
+export {
+  colorForClient,
+  decodeCursor,
+  decodeCursors,
+} from "./collab/presence";
 
 import i18n from "./i18n";
 import { IronCalcIcon, IronCalcIconWhite, IronCalcLogo } from "./icons";

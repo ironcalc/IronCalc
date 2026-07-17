@@ -114,6 +114,16 @@
       "copy_url": "URL kopieren",
       "copied": "Kopiert!",
       "info_text": "Jeder mit dem Link kann auf eine Kopie dieser Arbeitsmappe zugreifen"
+    },
+    "collab": {
+      "button": "Zusammenarbeiten",
+      "connected": "Live",
+      "connecting": "Verbinden…",
+      "disconnected": "Offline",
+      "copy_url": "URL kopieren",
+      "copied": "Kopiert!",
+      "info_text": "Jeder mit dem Link kann dieser Arbeitsmappe live beitreten und sie bearbeiten",
+      "you": "du"
     }
   },
   "loading_screen": {
