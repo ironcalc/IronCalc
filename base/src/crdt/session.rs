@@ -871,9 +871,40 @@ impl Pass1<'_, '_> {
             | Diff::SetShowGridLines { .. }
             | Diff::SetTheme { .. } => Ok(()),
 
-            // Semantic operations not yet supported: fail loudly.
-            Diff::MoveRows { .. } | Diff::MoveColumns { .. } => {
-                Err("collab: move rows/columns is not supported yet".to_string())
+            // Moves: pure position rewrites. The diff already carries the
+            // hidden-rows-adjusted delta (resolved by `move_rows_action`
+            // before the diff is recorded), so the translation never depends
+            // on replica-local hidden state. Undo replays the inverse move at
+            // current indices — exactly how the model applies it.
+            Diff::MoveRows {
+                sheet,
+                row,
+                row_count,
+                delta,
+            } => {
+                if invert {
+                    self.move_axis(*sheet, Axis::Rows, *row + *delta, *row_count, -*delta)
+                } else {
+                    self.move_axis(*sheet, Axis::Rows, *row, *row_count, *delta)
+                }
+            }
+            Diff::MoveColumns {
+                sheet,
+                column,
+                column_count,
+                delta,
+            } => {
+                if invert {
+                    self.move_axis(
+                        *sheet,
+                        Axis::Columns,
+                        *column + *delta,
+                        *column_count,
+                        -*delta,
+                    )
+                } else {
+                    self.move_axis(*sheet, Axis::Columns, *column, *column_count, *delta)
+                }
             }
             // Defined names: pass 2 re-syncs the whole (small) name map from
             // the post-batch model, which handles create/update/delete/rename
@@ -1058,6 +1089,58 @@ impl Pass1<'_, '_> {
         for mark in marks {
             self.touched.cells.insert(mark);
         }
+    }
+
+    /// Moves `count` rows/columns from display index `from` so the block ends
+    /// up starting at `from + delta` (the engine's block semantics): identity
+    /// is a map key, so a move is a last-write-wins overwrite of the position
+    /// registers — it cannot duplicate a line, and concurrent moves of the
+    /// same line resolve to the latest one. Cells, properties and keep-sets
+    /// travel with the ids untouched; id-form formula references follow
+    /// automatically.
+    fn move_axis(
+        &mut self,
+        sheet: u32,
+        axis: Axis,
+        from: i32,
+        count: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        if count <= 0 || delta == 0 {
+            return Ok(());
+        }
+        let sheet_id = self.ctx.sheet_at(sheet)?;
+        let order = self.ctx.order(sheet_id, axis)?;
+        let mut ids = Vec::with_capacity(count as usize);
+        for i in 0..count {
+            let index = (from + i) as u32;
+            ids.push(
+                order
+                    .id_at(index)
+                    .ok_or_else(|| format!("collab: index {index} out of range"))?,
+            );
+        }
+        for id in &ids {
+            self.ctx.order_mut(sheet_id, axis).remove(*id);
+        }
+        // In the block-less order, the destination is right before the
+        // element currently at `from + delta` (holds for both directions).
+        let axis_map = self.maps.axis(axis).0.clone();
+        for (slot, id) in ((from + delta) as u32..).zip(ids.iter()) {
+            let (lo, hi) = self.ctx.order_mut(sheet_id, axis).insert_bounds(slot);
+            *self.counter += 1;
+            let pos = unique_position(lo.as_deref(), hi.as_deref(), self.client_id, *self.counter);
+            axis_map.insert(&mut *self.txn, axis_key(sheet_id, *id, "p"), pos.as_str());
+            self.ctx.order_mut(sheet_id, axis).insert(*id, pos);
+            // A move is a positive op: it preempts a concurrent deletion
+            // (update-wins), matching the AegisSheet semantics.
+            match axis {
+                Axis::Rows => self.touched.keep_rows.insert((sheet_id, *id)),
+                Axis::Columns => self.touched.keep_cols.insert((sheet_id, *id)),
+            };
+        }
+        self.touch_at_risk_formulas();
+        Ok(())
     }
 
     fn delete_axis(
