@@ -24,6 +24,7 @@ interface SheetTabProps {
   onHideSheet: () => void;
   workbookState: WorkbookState;
   currentTheme: IronCalcTheme;
+  onMoveSheet: (fromIndex: number, toIndex: number) => void;
   model: Model;
 }
 
@@ -36,6 +37,7 @@ function SheetTab(props: SheetTabProps) {
     onSelected,
     currentTheme,
     model,
+    onMoveSheet,
   } = props;
   const { t } = useTranslation();
 
@@ -241,6 +243,21 @@ function SheetTab(props: SheetTabProps) {
           onDuplicateSheet={props.onDuplicateSheet}
           onHideSheet={props.onHideSheet}
           onDeleteSheet={() => setDeleteDialogOpen(true)}
+          onMoveLeft={() => {
+            const selectedIndex = model.getSelectedSheet();
+            if (selectedIndex > 0) {
+              onMoveSheet(selectedIndex, selectedIndex - 1);
+            }
+            handleCloseMenu();
+          }}
+          onMoveRight={() => {
+            const selectedIndex = model.getSelectedSheet();
+            const sheetCount = model.getWorksheetsProperties().length;
+            if (selectedIndex < sheetCount - 1) {
+              onMoveSheet(selectedIndex, selectedIndex + 1);
+            }
+            handleCloseMenu();
+          }}
         />
       </Menu>
 

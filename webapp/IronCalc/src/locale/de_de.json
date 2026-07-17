@@ -330,6 +330,8 @@
     "delete": "Löschen",
     "duplicate": "Duplizieren",
     "hide_sheet": "Tabellenblatt ausblenden",
+    "move_left": "Nach links verschieben",
+    "move_right": "Nach rechts verschieben",
     "open_menu": "Tabellenblattmenü öffnen",
     "rename": "Umbenennen"
   },

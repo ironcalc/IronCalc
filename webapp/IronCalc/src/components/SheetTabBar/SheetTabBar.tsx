@@ -23,6 +23,7 @@ export interface SheetTabBarProps {
   onSheetDeleted: () => void;
   onSheetDuplicated: () => void;
   onHideSheet: () => void;
+  onMoveSheet: (fromIndex: number, toIndex: number) => void;
   model: Model;
   onOpenRegionalSettings: () => void;
   /** When false, sheet add/rename/delete and regional settings affordances are hidden. */
@@ -101,6 +102,7 @@ function SheetTabBar(props: SheetTabBarProps) {
               workbookState={workbookState}
               model={props.model}
               currentTheme={props.model.getTheme()}
+              onMoveSheet={props.onMoveSheet}
             />
           ))}
         </div>
