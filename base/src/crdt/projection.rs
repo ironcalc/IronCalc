@@ -47,6 +47,9 @@ pub(crate) const MAP_KEEP_ROWS: &str = "keep_rows";
 pub(crate) const MAP_KEEP_COLS: &str = "keep_cols";
 pub(crate) const MAP_KEEP_SHEETS: &str = "keep_sheets";
 pub(crate) const MAP_NAMES: &str = "names";
+pub(crate) const MAP_STYLES: &str = "styles";
+pub(crate) const MAP_CELL_STYLES: &str = "cell_styles";
+pub(crate) const MAP_NAMED_STYLES: &str = "named_styles";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Axis {
@@ -65,6 +68,12 @@ pub(crate) struct SchemaMaps {
     pub keep_cols: MapRef,
     pub keep_sheets: MapRef,
     pub names: MapRef,
+    /// Content-addressed style pool: fnv1a-128 hash → bitcode bytes.
+    pub styles: MapRef,
+    /// Per-cell style references: same key as `cells` → pool hash.
+    pub cell_styles: MapRef,
+    /// Named-style definitions: name → bitcode of `(Style, StyleIncludes)`.
+    pub named_styles: MapRef,
 }
 
 impl SchemaMaps {
@@ -78,6 +87,9 @@ impl SchemaMaps {
             keep_cols: doc.get_or_insert_map(MAP_KEEP_COLS),
             keep_sheets: doc.get_or_insert_map(MAP_KEEP_SHEETS),
             names: doc.get_or_insert_map(MAP_NAMES),
+            styles: doc.get_or_insert_map(MAP_STYLES),
+            cell_styles: doc.get_or_insert_map(MAP_CELL_STYLES),
+            named_styles: doc.get_or_insert_map(MAP_NAMED_STYLES),
         }
     }
 
@@ -177,6 +189,8 @@ pub(crate) struct AxisEntryProj {
     /// Row height or column width.
     pub size: Option<f64>,
     pub hidden: bool,
+    /// Row/column style: pool hash.
+    pub style: Option<String>,
     /// Tombstone; the entity stays visible while its keep-set is non-empty.
     pub del: bool,
 }
@@ -203,6 +217,9 @@ pub(crate) struct SheetProj {
     /// `(column, row) → user input`. Includes masked cells of deleted
     /// rows/columns; visibility is decided by the axis orders.
     pub cells: BTreeMap<(EntityId, EntityId), String>,
+    /// `(column, row) → style pool hash` (independent LWW register per cell,
+    /// so concurrent content and style edits of the same cell both survive).
+    pub cell_styles: BTreeMap<(EntityId, EntityId), String>,
 }
 
 impl SheetProj {
@@ -232,6 +249,10 @@ pub(crate) struct Projection {
     /// Workbook-level LWW registers.
     pub locale: Option<String>,
     pub timezone: Option<String>,
+    /// Content-addressed style pool: hash → bitcode of `Style`.
+    pub styles: BTreeMap<String, Vec<u8>>,
+    /// Named styles: name → bitcode of `(Style, StyleIncludes)`.
+    pub named_styles: BTreeMap<String, Vec<u8>>,
 }
 
 impl Projection {
@@ -358,6 +379,7 @@ impl Projection {
                     "h" => entry.size = as_f64(&value),
                     "x" => entry.hidden = as_bool(&value).unwrap_or(false),
                     "d" => entry.del = as_bool(&value).unwrap_or(false),
+                    "sty" => entry.style = as_string(&value),
                     _ => {}
                 }
             }
@@ -366,6 +388,41 @@ impl Projection {
         for (key, value) in maps.names.iter(&txn) {
             if let Some(formula) = as_string(&value) {
                 proj.names.insert(key.to_string(), formula);
+            }
+        }
+
+        for (key, value) in maps.cell_styles.iter(&txn) {
+            let Some((sid, rest)) = key.split_once('!') else {
+                continue;
+            };
+            let Some((cid, rid)) = rest.split_once(':') else {
+                continue;
+            };
+            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
+                EntityId::decode(sid),
+                EntityId::decode(cid),
+                EntityId::decode(rid),
+            ) else {
+                continue;
+            };
+            if let Some(hash) = as_string(&value) {
+                proj.sheets
+                    .entry(sheet_id)
+                    .or_default()
+                    .cell_styles
+                    .insert((col_id, row_id), hash);
+            }
+        }
+
+        for (key, value) in maps.styles.iter(&txn) {
+            if let Out::Any(Any::Buffer(bytes)) = value {
+                proj.styles.insert(key.to_string(), bytes.to_vec());
+            }
+        }
+
+        for (key, value) in maps.named_styles.iter(&txn) {
+            if let Out::Any(Any::Buffer(bytes)) = value {
+                proj.named_styles.insert(key.to_string(), bytes.to_vec());
             }
         }
 
