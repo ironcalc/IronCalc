@@ -59,7 +59,7 @@ deps:
 # publishable web builds in pkg/ and pkg-xlsx/. They use --dev (no
 # optimizations, no wasm-opt) since they only exist to run the tests.
 tests:
-	wasm-pack build --dev --target nodejs --out-dir pkg-nodejs && node tests/test.mjs && node tests/test_cf.mjs
+	wasm-pack build --dev --target nodejs --out-dir pkg-nodejs && node tests/test.mjs && node tests/test_cf.mjs && node tests/test_collab.mjs
 	wasm-pack build --dev --target nodejs --out-dir pkg-nodejs-xlsx -- --features xlsx && node tests/test_xlsx.mjs
 
 lint:
