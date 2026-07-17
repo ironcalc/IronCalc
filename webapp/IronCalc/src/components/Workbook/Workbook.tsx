@@ -942,6 +942,10 @@ const Workbook = (props: {
             model.hideSheet(selectedSheet);
             setRedrawId((value) => value + 1);
           }}
+          onMoveSheet={(fromIndex: number, toIndex: number): void => {
+            model.moveSheet(fromIndex, toIndex);
+            setRedrawId((value) => value + 1);
+          }}
           onOpenRegionalSettings={() => {
             openDrawer("regionalSettings");
           }}

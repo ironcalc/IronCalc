@@ -330,6 +330,8 @@
     "delete": "Elimina",
     "duplicate": "Duplica",
     "hide_sheet": "Nascondi foglio",
+    "move_left": "Sposta a sinistra",
+    "move_right": "Sposta a destra",
     "open_menu": "Apri menu del foglio",
     "rename": "Rinomina"
   },

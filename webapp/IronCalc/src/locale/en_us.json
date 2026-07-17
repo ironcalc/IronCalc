@@ -330,6 +330,8 @@
     "delete": "Delete",
     "duplicate": "Duplicate",
     "hide_sheet": "Hide sheet",
+    "move_left": "Move left",
+    "move_right": "Move right",
     "open_menu": "Open sheet menu",
     "rename": "Rename"
   },

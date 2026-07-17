@@ -1,4 +1,6 @@
 import {
+  ArrowLeft,
+  ArrowRight,
   Copy,
   EyeOff,
   PaintBucket,
@@ -11,6 +13,8 @@ import { MenuItem } from "../Menu/MenuItem";
 
 interface SheetTabMenuProps {
   canDelete: boolean;
+  onMoveLeft: () => void;
+  onMoveRight: () => void;
   onStartEditing: () => void;
   onOpenColorPicker: () => void;
   onDuplicateSheet: () => void;
@@ -20,6 +24,8 @@ interface SheetTabMenuProps {
 
 export function SheetTabMenu({
   canDelete,
+  onMoveLeft,
+  onMoveRight,
   onStartEditing,
   onOpenColorPicker,
   onDuplicateSheet,
@@ -30,6 +36,12 @@ export function SheetTabMenu({
 
   return (
     <>
+      <MenuItem icon={<ArrowLeft />} onClick={onMoveLeft}>
+        {t("sheet_tab.move_left")}
+      </MenuItem>
+      <MenuItem icon={<ArrowRight />} onClick={onMoveRight}>
+        {t("sheet_tab.move_right")}
+      </MenuItem>
       <MenuItem icon={<TextCursorInput />} onClick={onStartEditing}>
         {t("sheet_tab.rename")}
       </MenuItem>
