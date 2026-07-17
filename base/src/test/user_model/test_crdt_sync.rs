@@ -35,6 +35,7 @@ fn sync(a: &mut Replica, b: &mut Replica) {
     if trace {
         a.session.assert_model_matches_shadow(&a.um, "replica A after apply");
         b.session.assert_model_matches_shadow(&b.um, "replica B after apply");
+        assert_converged(a, b);
     }
 }
 
@@ -436,7 +437,7 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..16) {
+            match rng.gen_range(0..17) {
                 0..=3 => {
                     let value = format!("v{}", rng.gen::<u16>());
                     if trace {
@@ -559,6 +560,21 @@ fn fuzz_round(seed: u64) {
                         }
                         let _ = replica.um.rename_sheet(index, &name);
                     }
+                }
+                15 => {
+                    use crate::expressions::types::Area;
+                    let value = if rng.gen_bool(0.7) { "true" } else { "" };
+                    let area = Area {
+                        sheet: 0,
+                        row,
+                        column,
+                        width: rng.gen_range(1..=2),
+                        height: rng.gen_range(1..=2),
+                    };
+                    if trace {
+                        eprintln!("{step}: {who} style R{row}C{column} font.b={value}");
+                    }
+                    let _ = replica.um.update_range_style(&area, "font.b", value);
                 }
                 _ => {
                     if trace {
