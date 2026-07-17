@@ -1,0 +1,77 @@
+.app-ic-collab-controls {
+  display: flex;
+  align-items: center;
+}
+
+.app-ic-collab-live-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-ic-collab-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.app-ic-collab-status-dot--connected {
+  background-color: #43a047;
+}
+
+.app-ic-collab-status-dot--connecting {
+  background-color: #f5a623;
+}
+
+.app-ic-collab-status-dot--disconnected {
+  background-color: #e53935;
+}
+
+.app-ic-collab-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.app-ic-collab-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  border: 2px solid #ffffff;
+  flex-shrink: 0;
+}
+
+.app-ic-collab-avatars .app-ic-collab-avatar + .app-ic-collab-avatar {
+  margin-left: -6px;
+}
+
+.app-ic-collab-avatar--overflow {
+  background-color: #757575;
+}
+
+.app-ic-collab-dialog-people {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.app-ic-collab-dialog-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .app-ic-collab-start-button-text {
+    display: none;
+  }
+}
