@@ -54,6 +54,18 @@ fn assert_converged(a: &Replica, b: &Replica) {
     names_a.sort();
     names_b.sort();
     assert_eq!(names_a, names_b, "defined names differ");
+    let mut styles_a = a.um.get_named_style_list();
+    let mut styles_b = b.um.get_named_style_list();
+    styles_a.sort();
+    styles_b.sort();
+    assert_eq!(styles_a, styles_b, "named style lists differ");
+    for name in &styles_a {
+        assert_eq!(
+            a.um.get_named_style(name).unwrap(),
+            b.um.get_named_style(name).unwrap(),
+            "named style {name:?} differs"
+        );
+    }
     for sheet in 0..sheets_a as u32 {
         let name_a = a.um.model.workbook.worksheet(sheet).unwrap().get_name();
         let name_b = b.um.model.workbook.worksheet(sheet).unwrap().get_name();
@@ -78,6 +90,15 @@ fn assert_converged(a: &Replica, b: &Replica) {
                 b.um.get_row_height(sheet, row).unwrap(),
                 "row {row} height differs on sheet {sheet}"
             );
+        }
+        for row in 1..=WINDOW_ROWS {
+            for column in 1..=WINDOW_COLUMNS {
+                assert_eq!(
+                    a.um.get_cell_style(sheet, row, column).unwrap(),
+                    b.um.get_cell_style(sheet, row, column).unwrap(),
+                    "style differs at sheet {sheet} R{row}C{column}"
+                );
+            }
         }
         for column in 1..=WINDOW_COLUMNS {
             assert_eq!(
@@ -732,6 +753,124 @@ fn resurrected_row_heals_references_to_it() {
     assert_eq!(b.um.get_cell_content(0, 1, 2), Ok("=A5*2".to_string()));
     assert_eq!(b.um.get_formatted_cell_value(0, 1, 2), Ok("14".to_string()));
     assert_eq!(b.um.get_cell_content(0, 5, 1), Ok("7".to_string()));
+}
+
+#[test]
+fn cell_style_syncs_and_survives_concurrent_content_edit() {
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 2, 2, "hello").unwrap();
+    sync(&mut a, &mut b);
+
+    // Style and content are independent registers: concurrent edits to the
+    // same cell both survive.
+    let area = Area {
+        sheet: 0,
+        row: 2,
+        column: 2,
+        width: 1,
+        height: 1,
+    };
+    a.um.update_range_style(&area, "font.b", "true").unwrap();
+    b.um.set_user_input(0, 2, 2, "world").unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(a.um.get_cell_content(0, 2, 2), Ok("world".to_string()));
+    assert!(a.um.get_cell_style(0, 2, 2).unwrap().font.b);
+    assert!(b.um.get_cell_style(0, 2, 2).unwrap().font.b);
+}
+
+#[test]
+fn style_travels_with_moved_row() {
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 3, 1, "styled").unwrap();
+    let area = Area {
+        sheet: 0,
+        row: 3,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+    a.um.update_range_style(&area, "font.i", "true").unwrap();
+    sync(&mut a, &mut b);
+
+    b.um.move_rows_action(0, 3, 1, 4).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert!(a.um.get_cell_style(0, 7, 1).unwrap().font.i);
+    assert!(!a.um.get_cell_style(0, 3, 1).unwrap().font.i);
+}
+
+#[test]
+fn range_clear_all_clears_style_remotely() {
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    let area = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 2,
+        height: 2,
+    };
+    a.um.set_user_input(0, 1, 1, "x").unwrap();
+    a.um.update_range_style(&area, "font.b", "true").unwrap();
+    sync(&mut a, &mut b);
+    assert!(b.um.get_cell_style(0, 2, 2).unwrap().font.b);
+
+    b.um.range_clear_all(&area).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert!(!a.um.get_cell_style(0, 2, 2).unwrap().font.b);
+    assert_eq!(a.um.get_cell_content(0, 1, 1), Ok(String::new()));
+}
+
+#[test]
+fn full_column_style_syncs() {
+    use crate::constants::LAST_ROW;
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    let full_column = Area {
+        sheet: 0,
+        row: 1,
+        column: 3,
+        width: 1,
+        height: LAST_ROW,
+    };
+    a.um.update_range_style(&full_column, "font.b", "true").unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    // Inherited by any cell of the column, including untouched ones.
+    assert!(b.um.get_cell_style(0, 33, 3).unwrap().font.b);
+}
+
+#[test]
+fn named_style_definitions_sync_and_apply() {
+    use crate::types::StyleIncludes;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+
+    let mut style = a.um.get_cell_style(0, 1, 1).unwrap();
+    style.font.b = true;
+    a.um.create_named_style("Bold Header", &style, StyleIncludes::default())
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert!(b.um.get_named_style_list().contains(&"Bold Header".to_string()));
+
+    // The other replica applies it; the resolved style replicates back.
+    b.um.set_selected_range(1, 1, 1, 1).unwrap();
+    b.um.on_apply_named_style("Bold Header").unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert!(a.um.get_cell_style(0, 1, 1).unwrap().font.b);
 }
 
 #[test]

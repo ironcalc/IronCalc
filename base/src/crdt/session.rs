@@ -49,7 +49,46 @@ use super::projection::{
     axis_key, cell_key, keep_key, keep_prefix, name_key, parse_name_key, sheet_keep_key,
     sheet_keep_prefix, sheet_meta_key, Axis, Projection, SchemaMaps, SheetProj,
 };
-use crate::types::{Color, SheetState};
+
+/// Ensures a style body is in the pool and returns its hash.
+fn ensure_style_in_pool(
+    txn: &mut TransactionMut,
+    maps: &SchemaMaps,
+    style: &Style,
+) -> String {
+    let bytes = bitcode::encode(style);
+    let hash = style_pool_hash(&bytes);
+    if maps.styles.get(&*txn, &hash).is_none() {
+        maps.styles
+            .insert(txn, hash.as_str(), yrs::Any::from(bytes));
+    }
+    hash
+}
+
+/// Decodes a style from the projection's pool.
+fn style_from_pool(proj: &Projection, hash: &str) -> Result<Style, String> {
+    let bytes = proj
+        .styles
+        .get(hash)
+        .ok_or("collab: missing style pool entry")?;
+    bitcode::decode(bytes).map_err(|e| format!("collab: corrupt style body: {e}"))
+}
+use crate::types::{Color, SheetState, Style, StyleIncludes};
+
+/// Deterministic 128-bit FNV-1a over the style's bitcode bytes — the key of
+/// the content-addressed style pool. Interning is content-based, so two
+/// replicas defining the same style converge on the same key by construction
+/// (no shared `xf_id` allocation ever crosses the wire).
+fn style_pool_hash(bytes: &[u8]) -> String {
+    const OFFSET: u128 = 0x6c62272e07bb014262b821756295c58d;
+    const PRIME: u128 = 0x0000000001000000000000000000013b;
+    let mut hash = OFFSET;
+    for byte in bytes {
+        hash ^= *byte as u128;
+        hash = hash.wrapping_mul(PRIME);
+    }
+    format!("{hash:032x}")
+}
 
 /// Session codec for tab colors (no serde_json in non-dev deps).
 fn color_to_doc(color: &Color) -> Option<String> {
@@ -322,6 +361,11 @@ struct Touched {
     names: bool,
     /// Re-sync workbook-level settings (locale, timezone).
     workbook: bool,
+    /// `(sheet, column, row)` whose *style* must be re-read (independent of
+    /// content: concurrent style and content edits both survive).
+    cell_styles: BTreeSet<(EntityId, EntityId, EntityId)>,
+    /// Re-sync the named-style definitions from the post-batch model.
+    named_styles: bool,
 }
 
 /// A live collaboration session for one [`UserModel`].
@@ -362,6 +406,7 @@ impl CollabSession {
                 )?;
             }
             sync_names(&mut txn, &maps, um, &resolver)?;
+            sync_named_styles(&mut txn, &maps, um)?;
             let settings = &um.model.workbook.settings;
             maps.meta
                 .insert(&mut txn, "wb.locale", settings.locale.as_str());
@@ -568,7 +613,7 @@ impl CollabSession {
             ws.cols.clear();
         }
         let resolver = DocResolver::from_projection(&self.shadow);
-        apply_full_sheet(um, sheet, sheet_id, sp, &resolver)?;
+        apply_full_sheet(um, sheet, sheet_id, sp, &resolver, &self.shadow)?;
         um.model.evaluate();
         Ok(())
     }
@@ -703,6 +748,9 @@ impl CollabSession {
         if old_proj.names != new_proj.names || rerender_all {
             reconcile_names(um, &new_proj, &resolver)?;
         }
+        if old_proj.named_styles != new_proj.named_styles {
+            reconcile_named_styles(um, &new_proj)?;
+        }
         for (index, (id, sp_new)) in new_sheets.iter().enumerate() {
             let sheet = index as u32;
             match old_proj.sheets.get(id).filter(|_| old_ids.contains(id)) {
@@ -713,10 +761,11 @@ impl CollabSession {
                     sp_old,
                     sp_new,
                     &resolver,
+                    &new_proj,
                     structural[index],
                     rerender_all,
                 )?,
-                None => apply_full_sheet(um, sheet, *id, sp_new, &resolver)?,
+                None => apply_full_sheet(um, sheet, *id, sp_new, &resolver, &new_proj)?,
             }
         }
         um.model.evaluate();
@@ -766,6 +815,8 @@ fn bootstrap_sheet(
         maps.meta
             .insert(txn, sheet_meta_key(sheet_id, "grid"), false);
     }
+    let default_style = um.model.workbook.styles.get_style(0)?;
+    let mut row_style_writes: Vec<(EntityId, Style)> = Vec::new();
     for row in &ws.rows {
         if row.r < 1 {
             continue;
@@ -782,7 +833,11 @@ fn bootstrap_sheet(
         if row.hidden {
             maps.rows.insert(txn, axis_key(sheet_id, id, "x"), true);
         }
+        if row.custom_format {
+            row_style_writes.push((id, um.model.workbook.styles.get_style(row.s)?));
+        }
     }
+    let mut col_style_writes: Vec<(EntityId, Style)> = Vec::new();
     for col in &ws.cols {
         for c in col.min..=col.max {
             if c < 1 {
@@ -799,24 +854,48 @@ fn bootstrap_sheet(
             if col.hidden {
                 maps.cols.insert(txn, axis_key(sheet_id, id, "x"), true);
             }
+            if let Some(index) = col.style {
+                col_style_writes.push((id, um.model.workbook.styles.get_style(index)?));
+            }
         }
     }
+    for (id, style) in row_style_writes {
+        let hash = ensure_style_in_pool(txn, maps, &style);
+        maps.rows
+            .insert(txn, axis_key(sheet_id, id, "sty"), hash.as_str());
+    }
+    for (id, style) in col_style_writes {
+        let hash = ensure_style_in_pool(txn, maps, &style);
+        maps.cols
+            .insert(txn, axis_key(sheet_id, id, "sty"), hash.as_str());
+    }
+    let mut cell_style_writes: Vec<(String, Style)> = Vec::new();
     for (row, row_cells) in &ws.sheet_data {
         for (column, cell) in row_cells {
-            if matches!(cell, Cell::EmptyCell { .. } | Cell::SpillCell { .. }) {
-                continue;
-            }
-            let content = read_cell_for_doc(um, sheet_index, *row, *column, sheet_id, resolver)?;
-            if content.is_empty() {
+            if matches!(cell, Cell::SpillCell { .. }) {
                 continue;
             }
             let (row_id, col_id) = (
                 EntityId::Original(*row as u32),
                 EntityId::Original(*column as u32),
             );
-            maps.cells
-                .insert(txn, cell_key(sheet_id, col_id, row_id), content.as_str());
+            if !matches!(cell, Cell::EmptyCell { .. }) {
+                let content =
+                    read_cell_for_doc(um, sheet_index, *row, *column, sheet_id, resolver)?;
+                if !content.is_empty() {
+                    maps.cells
+                        .insert(txn, cell_key(sheet_id, col_id, row_id), content.as_str());
+                }
+            }
+            let style = um.model.get_style_for_cell(sheet_index, *row, *column)?;
+            if style != default_style {
+                cell_style_writes.push((cell_key(sheet_id, col_id, row_id), style));
+            }
         }
+    }
+    for (key, style) in cell_style_writes {
+        let hash = ensure_style_in_pool(txn, maps, &style);
+        maps.cell_styles.insert(txn, key, hash.as_str());
     }
     Ok(())
 }
@@ -868,15 +947,18 @@ impl Pass1<'_, '_> {
                 width,
                 height,
                 ..
-            }
-            | Diff::RangeClearAll {
+            } => self.touch_rect(*sheet, *row, *column, *width, *height, false),
+            Diff::RangeClearAll {
                 sheet,
                 row,
                 column,
                 width,
                 height,
                 ..
-            } => self.touch_rect(*sheet, *row, *column, *width, *height, false),
+            } => {
+                self.touch_rect(*sheet, *row, *column, *width, *height, false)?;
+                self.touch_rect_styles(*sheet, *row, *column, *width, *height)
+            }
 
             // Row/column properties.
             Diff::SetRowHeight { sheet, row, .. } | Diff::SetRowHidden { sheet, row, .. } => {
@@ -985,18 +1067,44 @@ impl Pass1<'_, '_> {
                 Ok(())
             }
 
+            // Styles: like cell content, pass 2 reads the final resolved
+            // style from the model. `ApplyNamedStyle` replicates the
+            // *resolved* style; the link to the named style stays local
+            // (documented limitation: a later named-style update re-resolves
+            // only where links exist — mitigated by the conservative marking
+            // in the named-style arms below).
+            Diff::SetCellStyle {
+                sheet, row, column, ..
+            }
+            | Diff::ApplyNamedStyle {
+                sheet, row, column, ..
+            }
+            | Diff::CellClearFormatting {
+                sheet, row, column, ..
+            } => self.touch_cell_style(*sheet, *row, *column),
+            Diff::SetRowStyle { sheet, row, .. } | Diff::DeleteRowStyle { sheet, row, .. } => {
+                self.touch_axis_props(*sheet, Axis::Rows, *row)
+            }
+            Diff::SetColumnStyle { sheet, column, .. }
+            | Diff::DeleteColumnStyle { sheet, column, .. } => {
+                self.touch_axis_props(*sheet, Axis::Columns, *column)
+            }
+            Diff::CreateNamedStyle { .. } => {
+                self.touched.named_styles = true;
+                Ok(())
+            }
+            Diff::DeleteNamedStyle { .. } | Diff::UpdateNamedStyle { .. } => {
+                self.touched.named_styles = true;
+                // Updating/deleting a named style re-resolves every cell that
+                // links to it in this model. Which cells those are is not
+                // visible from outside, so conservatively re-read every
+                // styled location.
+                self.touch_all_styled_locations();
+                Ok(())
+            }
+
             // Not replicated in v1: purely visual state.
-            Diff::SetCellStyle { .. }
-            | Diff::ApplyNamedStyle { .. }
-            | Diff::CellClearFormatting { .. }
-            | Diff::SetColumnStyle { .. }
-            | Diff::SetRowStyle { .. }
-            | Diff::DeleteColumnStyle { .. }
-            | Diff::DeleteRowStyle { .. }
-            | Diff::CreateNamedStyle { .. }
-            | Diff::DeleteNamedStyle { .. }
-            | Diff::UpdateNamedStyle { .. }
-            | Diff::AddConditionalFormatting { .. }
+            Diff::AddConditionalFormatting { .. }
             | Diff::DeleteConditionalFormatting { .. }
             | Diff::UpdateConditionalFormatting { .. }
             | Diff::SwapConditionalFormattingPriority { .. }
@@ -1120,6 +1228,83 @@ impl Pass1<'_, '_> {
             self.touched.keep_cols.insert((sheet_id, col_id));
         }
         Ok(())
+    }
+
+    fn touch_cell_style(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        let sheet_id = self.ctx.sheet_at(sheet)?;
+        let row_id = self
+            .ctx
+            .order(sheet_id, Axis::Rows)?
+            .id_at(row as u32)
+            .ok_or_else(|| format!("collab: row {row} out of range"))?;
+        let col_id = self
+            .ctx
+            .order(sheet_id, Axis::Columns)?
+            .id_at(column as u32)
+            .ok_or_else(|| format!("collab: column {column} out of range"))?;
+        self.touched.cell_styles.insert((sheet_id, col_id, row_id));
+        self.touched.keep_rows.insert((sheet_id, row_id));
+        self.touched.keep_cols.insert((sheet_id, col_id));
+        Ok(())
+    }
+
+    /// Marks existing styled cells inside a rectangle (a clear can only
+    /// change cells that have a style; batch-earlier writes are marked
+    /// already).
+    fn touch_rect_styles(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), String> {
+        let sheet_id = self.ctx.sheet_at(sheet)?;
+        let Some(sp) = self.shadow.sheets.get(&sheet_id) else {
+            return Ok(());
+        };
+        let rows = self.ctx.order(sheet_id, Axis::Rows)?;
+        let cols = self.ctx.order(sheet_id, Axis::Columns)?;
+        let mut hits: Vec<(EntityId, EntityId)> = Vec::new();
+        for (col_id, row_id) in sp.cell_styles.keys() {
+            let (Some(r), Some(c)) = (rows.index_of(*row_id), cols.index_of(*col_id)) else {
+                continue;
+            };
+            let (r, c) = (r as i32, c as i32);
+            if r >= row && r < row + height && c >= column && c < column + width {
+                hits.push((*col_id, *row_id));
+            }
+        }
+        for (col_id, row_id) in hits {
+            self.touched.cell_styles.insert((sheet_id, col_id, row_id));
+        }
+        Ok(())
+    }
+
+    /// Conservatively marks every styled location known to the document
+    /// (used when a named-style change re-resolves an unknown set of cells).
+    fn touch_all_styled_locations(&mut self) {
+        let mut cell_marks: Vec<(EntityId, EntityId, EntityId)> = Vec::new();
+        let mut row_marks: Vec<(EntityId, EntityId)> = Vec::new();
+        let mut col_marks: Vec<(EntityId, EntityId)> = Vec::new();
+        for (sheet_id, sp) in &self.shadow.sheets {
+            for (col_id, row_id) in sp.cell_styles.keys() {
+                cell_marks.push((*sheet_id, *col_id, *row_id));
+            }
+            for (id, entry) in &sp.rows {
+                if entry.style.is_some() {
+                    row_marks.push((*sheet_id, *id));
+                }
+            }
+            for (id, entry) in &sp.cols {
+                if entry.style.is_some() {
+                    col_marks.push((*sheet_id, *id));
+                }
+            }
+        }
+        self.touched.cell_styles.extend(cell_marks);
+        self.touched.row_props.extend(row_marks);
+        self.touched.col_props.extend(col_marks);
     }
 
     fn touch_axis_props(&mut self, sheet: u32, axis: Axis, index: i32) -> Result<(), String> {
@@ -1612,6 +1797,8 @@ fn write_final_state(
         }
     }
 
+    let default_style = um.model.workbook.styles.get_style(0)?;
+
     for sheet_id in &touched.full_sheets {
         let Some(sheet) = ctx.sheet_index(*sheet_id) else {
             continue;
@@ -1619,14 +1806,10 @@ fn write_final_state(
         let ws = um.model.workbook.worksheet(sheet)?;
         let rows_order = ctx.order(*sheet_id, Axis::Rows)?;
         let cols_order = ctx.order(*sheet_id, Axis::Columns)?;
+        let mut style_writes: Vec<(String, Style)> = Vec::new();
         for (row, row_cells) in &ws.sheet_data {
             for (column, cell) in row_cells {
-                if matches!(cell, Cell::EmptyCell { .. } | Cell::SpillCell { .. }) {
-                    continue;
-                }
-                let content =
-                    read_cell_for_doc(um, sheet, *row, *column, *sheet_id, &resolver)?;
-                if content.is_empty() {
+                if matches!(cell, Cell::SpillCell { .. }) {
                     continue;
                 }
                 let (Some(_), Some(_)) = (
@@ -1639,10 +1822,38 @@ fn write_final_state(
                     EntityId::Original(*row as u32),
                     EntityId::Original(*column as u32),
                 );
-                maps.cells
-                    .insert(txn, cell_key(*sheet_id, col_id, row_id), content.as_str());
+                if !matches!(cell, Cell::EmptyCell { .. }) {
+                    let content =
+                        read_cell_for_doc(um, sheet, *row, *column, *sheet_id, &resolver)?;
+                    if !content.is_empty() {
+                        maps.cells.insert(
+                            txn,
+                            cell_key(*sheet_id, col_id, row_id),
+                            content.as_str(),
+                        );
+                    }
+                }
+                let style = um.model.get_style_for_cell(sheet, *row, *column)?;
+                if style != default_style {
+                    style_writes.push((cell_key(*sheet_id, col_id, row_id), style));
+                }
             }
         }
+        for (key, style) in style_writes {
+            let hash = ensure_style_in_pool(txn, maps, &style);
+            maps.cell_styles.insert(txn, key, hash.as_str());
+        }
+        let row_styles: Vec<(EntityId, Style)> = ws
+            .rows
+            .iter()
+            .filter(|row| row.r >= 1 && row.custom_format)
+            .map(|row| {
+                Ok((
+                    EntityId::Original(row.r as u32),
+                    um.model.workbook.styles.get_style(row.s)?,
+                ))
+            })
+            .collect::<Result<_, String>>()?;
         for row in &ws.rows {
             if row.r < 1 {
                 continue;
@@ -1658,6 +1869,62 @@ fn write_final_state(
             if row.hidden {
                 maps.rows.insert(txn, axis_key(*sheet_id, id, "x"), true);
             }
+        }
+        for (id, style) in row_styles {
+            let hash = ensure_style_in_pool(txn, maps, &style);
+            maps.rows
+                .insert(txn, axis_key(*sheet_id, id, "sty"), hash.as_str());
+        }
+        let mut col_writes: Vec<(EntityId, Option<f64>, bool, Option<Style>)> = Vec::new();
+        for col in &ws.cols {
+            for c in col.min..=col.max {
+                if c < 1 {
+                    continue;
+                }
+                let style = match col.style {
+                    Some(index) => Some(um.model.workbook.styles.get_style(index)?),
+                    None => None,
+                };
+                col_writes.push((
+                    EntityId::Original(c as u32),
+                    col.custom_width.then_some(col.width * COLUMN_WIDTH_FACTOR),
+                    col.hidden,
+                    style,
+                ));
+            }
+        }
+        for (id, width, hidden, style) in col_writes {
+            if let Some(width) = width {
+                maps.cols.insert(txn, axis_key(*sheet_id, id, "h"), width);
+            }
+            if hidden {
+                maps.cols.insert(txn, axis_key(*sheet_id, id, "x"), true);
+            }
+            if let Some(style) = style {
+                let hash = ensure_style_in_pool(txn, maps, &style);
+                maps.cols
+                    .insert(txn, axis_key(*sheet_id, id, "sty"), hash.as_str());
+            }
+        }
+    }
+
+    for (sheet_id, col_id, row_id) in &touched.cell_styles {
+        let Some(sheet) = ctx.sheet_index(*sheet_id) else {
+            continue;
+        };
+        let (Some(row), Some(column)) = (
+            ctx.order(*sheet_id, Axis::Rows)?.index_of(*row_id),
+            ctx.order(*sheet_id, Axis::Columns)?.index_of(*col_id),
+        ) else {
+            continue;
+        };
+        let style = um.model.get_style_for_cell(sheet, row as i32, column as i32)?;
+        let key = cell_key(*sheet_id, *col_id, *row_id);
+        if style == default_style {
+            maps.cell_styles.remove(txn, &key);
+        } else {
+            let hash = ensure_style_in_pool(txn, maps, &style);
+            maps.cell_styles.insert(txn, key, hash.as_str());
         }
     }
 
@@ -1687,6 +1954,17 @@ fn write_final_state(
             }
             _ => {
                 maps.rows.remove(txn, &hidden_key);
+            }
+        }
+        let style_key = axis_key(*sheet_id, *row_id, "sty");
+        match entry {
+            Some(r) if r.custom_format => {
+                let style = um.model.workbook.styles.get_style(r.s)?;
+                let hash = ensure_style_in_pool(txn, maps, &style);
+                maps.rows.insert(txn, style_key, hash.as_str());
+            }
+            _ => {
+                maps.rows.remove(txn, &style_key);
             }
         }
     }
@@ -1722,10 +2000,25 @@ fn write_final_state(
                 maps.cols.remove(txn, &hidden_key);
             }
         }
+        let style_key = axis_key(*sheet_id, *col_id, "sty");
+        match entry.and_then(|c| c.style) {
+            Some(index) => {
+                let style = um.model.workbook.styles.get_style(index)?;
+                let hash = ensure_style_in_pool(txn, maps, &style);
+                maps.cols.insert(txn, style_key, hash.as_str());
+            }
+            None => {
+                maps.cols.remove(txn, &style_key);
+            }
+        }
     }
 
     if touched.names {
         sync_names(txn, maps, um, &resolver)?;
+    }
+
+    if touched.named_styles {
+        sync_named_styles(txn, maps, um)?;
     }
 
     if touched.workbook {
@@ -1745,6 +2038,7 @@ fn write_final_state(
     positive_sheets.extend(touched.keep_cols.iter().map(|(s, _)| *s));
     positive_sheets.extend(touched.sheet_meta.iter().copied());
     positive_sheets.extend(touched.full_sheets.iter().copied());
+    positive_sheets.extend(touched.cell_styles.iter().map(|(s, _, _)| *s));
     for sheet_id in positive_sheets {
         if ctx.sheet_index(sheet_id).is_none() {
             continue; // deleted later in the same batch
@@ -1861,6 +2155,50 @@ fn sync_names(
     Ok(())
 }
 
+/// Re-syncs the named-style definitions from the post-batch model.
+fn sync_named_styles(
+    txn: &mut TransactionMut,
+    maps: &SchemaMaps,
+    um: &UserModel,
+) -> Result<(), String> {
+    let mut desired: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+    for name in um.get_named_style_list() {
+        let style = um.get_named_style(&name)?;
+        let includes = um.get_named_style_includes(&name)?;
+        desired.insert(name, bitcode::encode(&(style, includes)));
+    }
+    let current: Vec<(String, Option<Vec<u8>>)> = maps
+        .named_styles
+        .iter(&*txn)
+        .map(|(key, value)| {
+            let bytes = match value {
+                yrs::Out::Any(yrs::Any::Buffer(b)) => Some(b.to_vec()),
+                _ => None,
+            };
+            (key.to_string(), bytes)
+        })
+        .collect();
+    for (key, value) in &current {
+        match desired.get(key) {
+            Some(wanted) if Some(wanted) == value.as_ref() => {}
+            Some(wanted) => {
+                maps.named_styles
+                    .insert(txn, key.as_str(), yrs::Any::from(wanted.clone()));
+            }
+            None => {
+                maps.named_styles.remove(txn, key);
+            }
+        }
+    }
+    for (key, wanted) in &desired {
+        if !current.iter().any(|(k, _)| k == key) {
+            maps.named_styles
+                .insert(txn, key.as_str(), yrs::Any::from(wanted.clone()));
+        }
+    }
+    Ok(())
+}
+
 /// The replicated form of a cell: empty for blank and spill cells (spills are
 /// recomputed downstream, never shipped), id-form for formulas (canonical
 /// text with stable-id reference tokens), plain input text otherwise.
@@ -1950,6 +2288,42 @@ fn reconcile_names(
     Ok(())
 }
 
+/// Applies the document's named-style definitions to the model.
+///
+/// Known limitation (documented in the design doc): updating a definition
+/// re-resolves the cells *linked* to it in this model; links are local (the
+/// replicated per-cell styles are flattened), so a replica that applied a
+/// named style locally re-resolves those cells while the flattened doc values
+/// only catch up when the originating replica pushes them.
+fn reconcile_named_styles(um: &mut UserModel, proj: &Projection) -> Result<(), String> {
+    let mut desired: BTreeMap<String, (Style, StyleIncludes)> = BTreeMap::new();
+    for (name, bytes) in &proj.named_styles {
+        let decoded: (Style, StyleIncludes) = bitcode::decode(bytes)
+            .map_err(|e| format!("collab: corrupt named style body: {e}"))?;
+        desired.insert(name.clone(), decoded);
+    }
+    for name in um.get_named_style_list() {
+        if !desired.contains_key(&name) {
+            um.model.workbook.styles.delete_named_style_entry(&name)?;
+        }
+    }
+    for (name, (style, includes)) in &desired {
+        if um.get_named_style_list().contains(name) {
+            let current_style = um.get_named_style(name)?;
+            let current_includes = um.get_named_style_includes(name)?;
+            if current_style != *style || current_includes != *includes {
+                um.model.update_named_style(name, name, style, *includes)?;
+            }
+        } else {
+            um.model
+                .workbook
+                .styles
+                .create_named_style(name, style, *includes)?;
+        }
+    }
+    Ok(())
+}
+
 fn dedupe_names(sheets: &[(EntityId, &SheetProj)]) -> Vec<String> {
     let mut seen: BTreeSet<String> = BTreeSet::new();
     let mut names = Vec::with_capacity(sheets.len());
@@ -2016,6 +2390,7 @@ fn reconcile_sheet(
     sp_old: &SheetProj,
     sp_new: &SheetProj,
     resolver: &DocResolver,
+    proj: &Projection,
     structural: bool,
     rerender_all: bool,
 ) -> Result<(), String> {
@@ -2036,6 +2411,21 @@ fn reconcile_sheet(
             }
             set_projected_cell(um, sheet, sheet_id, resolver, key, "")?;
         }
+        // Cell style deltas (an independent register per cell).
+        let style_keys: BTreeSet<(EntityId, EntityId)> = sp_old
+            .cell_styles
+            .keys()
+            .chain(sp_new.cell_styles.keys())
+            .copied()
+            .collect();
+        for key in style_keys {
+            let old_hash = sp_old.cell_styles.get(&key);
+            let new_hash = sp_new.cell_styles.get(&key);
+            if old_hash == new_hash {
+                continue;
+            }
+            set_projected_cell_style(um, sheet, sheet_id, resolver, proj, &key, new_hash)?;
+        }
         let rows_new = resolver
             .rows
             .get(&sheet_id)
@@ -2049,29 +2439,46 @@ fn reconcile_sheet(
         for id in row_ids {
             let old_entry = sp_old.rows.get(&id);
             let new_entry = sp_new.rows.get(&id);
-            let old_props = old_entry.map(|e| (e.size, e.hidden)).unwrap_or((None, false));
-            let new_props = new_entry.map(|e| (e.size, e.hidden)).unwrap_or((None, false));
+            let old_props = old_entry
+                .map(|e| (e.size, e.hidden, e.style.clone()))
+                .unwrap_or((None, false, None));
+            let new_props = new_entry
+                .map(|e| (e.size, e.hidden, e.style.clone()))
+                .unwrap_or((None, false, None));
             if old_props == new_props {
                 continue;
             }
             let Some(row) = rows_new.index_of(id) else {
                 continue;
             };
-            apply_row_props(um, sheet, row as i32, new_props.0, new_props.1)?;
+            let style = pool_style_opt(proj, new_props.2.as_deref())?;
+            apply_row_props(um, sheet, row as i32, new_props.0, new_props.1, style.as_ref())?;
         }
         let col_ids: BTreeSet<EntityId> = sp_old.cols.keys().chain(sp_new.cols.keys()).copied().collect();
         for id in col_ids {
             let old_entry = sp_old.cols.get(&id);
             let new_entry = sp_new.cols.get(&id);
-            let old_props = old_entry.map(|e| (e.size, e.hidden)).unwrap_or((None, false));
-            let new_props = new_entry.map(|e| (e.size, e.hidden)).unwrap_or((None, false));
+            let old_props = old_entry
+                .map(|e| (e.size, e.hidden, e.style.clone()))
+                .unwrap_or((None, false, None));
+            let new_props = new_entry
+                .map(|e| (e.size, e.hidden, e.style.clone()))
+                .unwrap_or((None, false, None));
             if old_props == new_props {
                 continue;
             }
             let Some(column) = cols_new.index_of(id) else {
                 continue;
             };
-            apply_column_props(um, sheet, column as i32, new_props.0, new_props.1)?;
+            let style = pool_style_opt(proj, new_props.2.as_deref())?;
+            apply_column_props(
+                um,
+                sheet,
+                column as i32,
+                new_props.0,
+                new_props.1,
+                style.as_ref(),
+            )?;
         }
         return Ok(());
     }
@@ -2090,10 +2497,21 @@ fn reconcile_sheet(
         um.model
             .set_user_input(sheet, row as i32, column as i32, String::new())?;
     }
+    // Clear old cell styles at their old positions.
+    let default_style = um.model.workbook.styles.get_style(0)?;
+    for key in sp_old.cell_styles.keys() {
+        let (col_id, row_id) = key;
+        let (Some(row), Some(column)) = (rows_old.index_of(*row_id), cols_old.index_of(*col_id))
+        else {
+            continue;
+        };
+        um.model
+            .set_cell_style(sheet, row as i32, column as i32, &default_style)?;
+    }
     // Reset old row/column properties.
     let mut prop_rows: Vec<i32> = Vec::new();
     for (id, e) in &sp_old.rows {
-        if e.size.is_some() || e.hidden {
+        if e.size.is_some() || e.hidden || e.style.is_some() {
             if let Some(row) = rows_old.index_of(*id) {
                 prop_rows.push(row as i32);
             }
@@ -2104,14 +2522,14 @@ fn reconcile_sheet(
         ws.rows.retain(|r| !prop_rows.contains(&r.r));
     }
     for (id, e) in &sp_old.cols {
-        if e.size.is_some() || e.hidden {
+        if e.size.is_some() || e.hidden || e.style.is_some() {
             if let Some(column) = cols_old.index_of(*id) {
-                apply_column_props(um, sheet, column as i32, None, false)?;
+                apply_column_props(um, sheet, column as i32, None, false, None)?;
             }
         }
     }
     // Write the new state.
-    apply_sheet_content(um, sheet, sheet_id, sp_new, resolver)
+    apply_sheet_content(um, sheet, sheet_id, sp_new, resolver, proj)
 }
 
 fn apply_full_sheet(
@@ -2120,8 +2538,9 @@ fn apply_full_sheet(
     sheet_id: EntityId,
     sp: &SheetProj,
     resolver: &DocResolver,
+    proj: &Projection,
 ) -> Result<(), String> {
-    apply_sheet_content(um, sheet, sheet_id, sp, resolver)
+    apply_sheet_content(um, sheet, sheet_id, sp, resolver, proj)
 }
 
 fn apply_sheet_content(
@@ -2130,9 +2549,13 @@ fn apply_sheet_content(
     sheet_id: EntityId,
     sp: &SheetProj,
     resolver: &DocResolver,
+    proj: &Projection,
 ) -> Result<(), String> {
     for (key, value) in &sp.cells {
         set_projected_cell(um, sheet, sheet_id, resolver, key, value)?;
+    }
+    for (key, hash) in &sp.cell_styles {
+        set_projected_cell_style(um, sheet, sheet_id, resolver, proj, key, Some(hash))?;
     }
     let rows = resolver
         .rows
@@ -2143,24 +2566,58 @@ fn apply_sheet_content(
         .get(&sheet_id)
         .ok_or("collab: unknown sheet in resolver")?;
     for (id, e) in &sp.rows {
-        if e.size.is_none() && !e.hidden {
+        if e.size.is_none() && !e.hidden && e.style.is_none() {
             continue;
         }
         let Some(row) = rows.index_of(*id) else {
             continue;
         };
-        apply_row_props(um, sheet, row as i32, e.size, e.hidden)?;
+        let style = pool_style_opt(proj, e.style.as_deref())?;
+        apply_row_props(um, sheet, row as i32, e.size, e.hidden, style.as_ref())?;
     }
     for (id, e) in &sp.cols {
-        if e.size.is_none() && !e.hidden {
+        if e.size.is_none() && !e.hidden && e.style.is_none() {
             continue;
         }
         let Some(column) = cols.index_of(*id) else {
             continue;
         };
-        apply_column_props(um, sheet, column as i32, e.size, e.hidden)?;
+        let style = pool_style_opt(proj, e.style.as_deref())?;
+        apply_column_props(um, sheet, column as i32, e.size, e.hidden, style.as_ref())?;
     }
     Ok(())
+}
+
+fn pool_style_opt(proj: &Projection, hash: Option<&str>) -> Result<Option<Style>, String> {
+    match hash {
+        Some(hash) => Ok(Some(style_from_pool(proj, hash)?)),
+        None => Ok(None),
+    }
+}
+
+fn set_projected_cell_style(
+    um: &mut UserModel,
+    sheet: u32,
+    sheet_id: EntityId,
+    resolver: &DocResolver,
+    proj: &Projection,
+    key: &(EntityId, EntityId),
+    hash: Option<&String>,
+) -> Result<(), String> {
+    let (col_id, row_id) = key;
+    let (Some(rows), Some(cols)) = (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
+    else {
+        return Err("collab: unknown sheet in resolver".to_string());
+    };
+    let (Some(row), Some(column)) = (rows.index_of(*row_id), cols.index_of(*col_id)) else {
+        return Ok(()); // masked
+    };
+    let style = match hash {
+        Some(hash) => style_from_pool(proj, hash)?,
+        None => um.model.workbook.styles.get_style(0)?,
+    };
+    um.model
+        .set_cell_style(sheet, row as i32, column as i32, &style)
 }
 
 fn set_projected_cell(
@@ -2194,6 +2651,7 @@ fn apply_row_props(
     row: i32,
     height: Option<f64>,
     hidden: bool,
+    style: Option<&Style>,
 ) -> Result<(), String> {
     match height {
         Some(h) => um.model.set_row_height(sheet, row, h)?,
@@ -2204,8 +2662,23 @@ fn apply_row_props(
         }
     }
     um.model.set_row_hidden(sheet, row, hidden)?;
-    if height.is_none() && !hidden {
-        // set_row_hidden(false) may have materialized a default row record.
+    match style {
+        Some(style) => um.model.set_row_style(sheet, row, style)?,
+        None => {
+            let has_style = um
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .rows
+                .iter()
+                .any(|r| r.r == row && r.custom_format);
+            if has_style {
+                um.model.delete_row_style(sheet, row)?;
+            }
+        }
+    }
+    if height.is_none() && !hidden && style.is_none() {
+        // The setters above may have materialized a default row record.
         let ws = um.model.workbook.worksheet_mut(sheet)?;
         ws.rows.retain(|r| r.r != row);
     }
@@ -2218,10 +2691,26 @@ fn apply_column_props(
     column: i32,
     width: Option<f64>,
     hidden: bool,
+    style: Option<&Style>,
 ) -> Result<(), String> {
     um.model
         .set_column_width(sheet, column, width.unwrap_or(DEFAULT_COLUMN_WIDTH))?;
     um.model.set_column_hidden(sheet, column, hidden)?;
+    match style {
+        Some(style) => um.model.set_column_style(sheet, column, style)?,
+        None => {
+            let has_style = um
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .cols
+                .iter()
+                .any(|c| c.min <= column && column <= c.max && c.style.is_some());
+            if has_style {
+                um.model.delete_column_style(sheet, column)?;
+            }
+        }
+    }
     Ok(())
 }
 
