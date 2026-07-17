@@ -45,6 +45,17 @@ const WINDOW_COLUMNS: i32 = 15;
 /// Asserts both replicas are identical over a viewing window: sheet names,
 /// cell contents, formatted (evaluated) values, row heights and hidden flags.
 fn assert_converged(a: &Replica, b: &Replica) {
+    assert_models_converged(&a.um, &b.um);
+}
+
+/// Same as [`assert_converged`], over bare models (shared with the sync-peer
+/// tests, whose replicas carry a `SyncPeer` instead of a raw session).
+fn assert_models_converged(a: &UserModel, b: &UserModel) {
+    struct View<'a, 'b> {
+        um: &'b UserModel<'a>,
+    }
+    let a = View { um: a };
+    let b = View { um: b };
     let sheets_a = a.um.model.workbook.worksheets.len();
     let sheets_b = b.um.model.workbook.worksheets.len();
     assert_eq!(sheets_a, sheets_b, "sheet count differs");
@@ -1297,3 +1308,315 @@ fn formula_displacement_syncs_when_sequential() {
     assert_converged(&a, &b);
     assert_eq!(b.um.get_formatted_cell_value(0, 1, 2), Ok("7".to_string()));
 }
+
+// ---- sync-peer (transport protocol) tests ----------------------------------
+
+use crate::crdt::SyncPeer;
+use std::collections::VecDeque;
+
+struct PeerReplica {
+    um: UserModel<'static>,
+    peer: SyncPeer,
+}
+
+fn peer_replica(client_id: u64) -> PeerReplica {
+    let mut um = UserModel::from_model(new_empty_model());
+    let peer = SyncPeer::attach(&mut um, client_id).unwrap();
+    PeerReplica { um, peer }
+}
+
+/// Run both peers' connection handshakes and pump frames until quiescent.
+fn connect(a: &mut PeerReplica, b: &mut PeerReplica) {
+    let mut to_b: VecDeque<Vec<u8>> = a.peer.start_sync().into();
+    let mut to_a: VecDeque<Vec<u8>> = b.peer.start_sync().into();
+    let mut guard = 0;
+    while !(to_a.is_empty() && to_b.is_empty()) {
+        guard += 1;
+        assert!(guard < 100, "handshake does not quiesce");
+        if let Some(frame) = to_b.pop_front() {
+            let outcome = b.peer.handle_frame(&mut b.um, &frame).unwrap();
+            to_a.extend(outcome.replies);
+        }
+        if let Some(frame) = to_a.pop_front() {
+            let outcome = a.peer.handle_frame(&mut a.um, &frame).unwrap();
+            to_b.extend(outcome.replies);
+        }
+    }
+}
+
+/// Flush both peers' local edits and deliver the update frames, including any
+/// replies they trigger.
+fn flush_peers(a: &mut PeerReplica, b: &mut PeerReplica) {
+    if let Some(frame) = a.peer.flush_local(&mut a.um).unwrap() {
+        let outcome = b.peer.handle_frame(&mut b.um, &frame).unwrap();
+        for reply in outcome.replies {
+            a.peer.handle_frame(&mut a.um, &reply).unwrap();
+        }
+    }
+    if let Some(frame) = b.peer.flush_local(&mut b.um).unwrap() {
+        let outcome = a.peer.handle_frame(&mut a.um, &frame).unwrap();
+        for reply in outcome.replies {
+            b.peer.handle_frame(&mut b.um, &reply).unwrap();
+        }
+    }
+}
+
+#[test]
+fn peer_handshake_syncs_offline_edits() {
+    // Both sides edit before ever connecting; the y-sync handshake alone
+    // (SyncStep1/SyncStep2 both ways) must converge them, including edits
+    // still sitting untranslated in the local queue.
+    let mut a = peer_replica(1);
+    let mut b = peer_replica(2);
+    a.um.set_user_input(0, 1, 1, "10").unwrap();
+    a.um.set_user_input(0, 2, 1, "=A1*2").unwrap();
+    b.um.set_user_input(0, 1, 2, "offline").unwrap();
+    connect(&mut a, &mut b);
+    assert_models_converged(&a.um, &b.um);
+    assert_eq!(b.um.get_formatted_cell_value(0, 2, 1), Ok("20".to_string()));
+    assert_eq!(a.um.get_cell_content(0, 1, 2), Ok("offline".to_string()));
+}
+
+#[test]
+fn peer_update_frames_flow_after_connect() {
+    let mut a = peer_replica(1);
+    let mut b = peer_replica(2);
+    connect(&mut a, &mut b);
+    a.um.set_user_input(0, 1, 1, "5").unwrap();
+    let frame = a.peer.flush_local(&mut a.um).unwrap().expect("an update");
+    let outcome = b.peer.handle_frame(&mut b.um, &frame).unwrap();
+    assert!(outcome.applied_update, "update frame must mark the model dirty");
+    assert!(outcome.replies.is_empty(), "plain update needs no reply");
+    assert_eq!(b.um.get_formatted_cell_value(0, 1, 1), Ok("5".to_string()));
+
+    b.um.set_user_input(0, 1, 2, "=A1+1").unwrap();
+    flush_peers(&mut a, &mut b);
+    assert_models_converged(&a.um, &b.um);
+    assert_eq!(a.um.get_formatted_cell_value(0, 1, 2), Ok("6".to_string()));
+}
+
+#[test]
+fn peer_flush_without_edits_is_none() {
+    let mut a = peer_replica(1);
+    let mut b = peer_replica(2);
+    connect(&mut a, &mut b);
+    assert!(a.peer.flush_local(&mut a.um).unwrap().is_none());
+}
+
+#[test]
+fn peer_does_not_echo_received_updates() {
+    // Applying a remote update marks its blocks as sent: the receiver's next
+    // flush must not re-broadcast them (star topology: the relay already
+    // fanned them out).
+    let mut a = peer_replica(1);
+    let mut b = peer_replica(2);
+    connect(&mut a, &mut b);
+    a.um.set_user_input(0, 1, 1, "5").unwrap();
+    let frame = a.peer.flush_local(&mut a.um).unwrap().expect("an update");
+    b.peer.handle_frame(&mut b.um, &frame).unwrap();
+    assert!(
+        b.peer.flush_local(&mut b.um).unwrap().is_none(),
+        "receiving an update must not produce an outbound echo"
+    );
+}
+
+#[test]
+fn peer_idle_session_flush_is_the_empty_update() {
+    // Guards the EMPTY_UPDATE_V1 constant the peer uses to suppress empty
+    // frames: an idle session flush must encode as exactly [0, 0].
+    let mut um = UserModel::from_model(new_empty_model());
+    let mut session = CollabSession::attach(&mut um, 9).unwrap();
+    let _bootstrap = session.flush_local(&mut um).unwrap();
+    assert_eq!(session.flush_local(&mut um).unwrap(), vec![0u8, 0u8]);
+}
+
+#[test]
+fn peer_tolerates_duplicated_and_reordered_frames() {
+    let mut a = peer_replica(1);
+    let mut b = peer_replica(2);
+    connect(&mut a, &mut b);
+    a.um.set_user_input(0, 1, 1, "first").unwrap();
+    let frame1 = a.peer.flush_local(&mut a.um).unwrap().expect("an update");
+    a.um.set_user_input(0, 2, 1, "second").unwrap();
+    let frame2 = a.peer.flush_local(&mut a.um).unwrap().expect("an update");
+
+    // Deliver out of order: frame2 has a causal gap and parks in the pending
+    // queue; frame1 fills the gap and both integrate; the duplicate is a
+    // no-op.
+    let outcome = b.peer.handle_frame(&mut b.um, &frame2).unwrap();
+    assert!(!outcome.applied_update, "gapped update must be held back");
+    assert!(
+        !outcome.replies.is_empty(),
+        "a gapped update must trigger a resync request"
+    );
+    let outcome = b.peer.handle_frame(&mut b.um, &frame1).unwrap();
+    assert!(outcome.applied_update);
+    b.peer.handle_frame(&mut b.um, &frame1).unwrap();
+    assert_eq!(b.um.get_cell_content(0, 1, 1), Ok("first".to_string()));
+    assert_eq!(b.um.get_cell_content(0, 2, 1), Ok("second".to_string()));
+    assert_models_converged(&a.um, &b.um);
+}
+
+#[test]
+fn peer_reconnect_handshake_heals_gaps() {
+    // a↔b connected; c syncs with a only. b misses c's blocks (a does not
+    // relay — that is the server's job); a fresh handshake heals b.
+    let mut a = peer_replica(1);
+    let mut b = peer_replica(2);
+    let mut c = peer_replica(3);
+    connect(&mut a, &mut b);
+    a.um.set_user_input(0, 1, 1, "from a").unwrap();
+    flush_peers(&mut a, &mut b);
+
+    c.um.set_user_input(0, 5, 5, "from c").unwrap();
+    connect(&mut c, &mut a);
+    assert_models_converged(&a.um, &c.um);
+
+    assert_eq!(b.um.get_cell_content(0, 5, 5), Ok(String::new()));
+    connect(&mut a, &mut b);
+    assert_models_converged(&a.um, &b.um);
+    assert_eq!(b.um.get_cell_content(0, 5, 5), Ok("from c".to_string()));
+}
+
+#[test]
+fn peer_presence_exchange_and_clear() {
+    let mut a = peer_replica(1);
+    let mut b = peer_replica(2);
+    connect(&mut a, &mut b);
+
+    let frame = a.peer.set_presence(r#"{"name":"ana","cell":"A1"}"#).unwrap();
+    let outcome = b.peer.handle_frame(&mut b.um, &frame).unwrap();
+    assert!(outcome.presence_changed);
+    assert!(!outcome.applied_update);
+    assert_eq!(
+        b.peer.presence(),
+        vec![(1, r#"{"name":"ana","cell":"A1"}"#.to_string())]
+    );
+
+    let frame = b.peer.set_presence(r#"{"name":"bob"}"#).unwrap();
+    a.peer.handle_frame(&mut a.um, &frame).unwrap();
+    assert_eq!(a.peer.presence().len(), 2);
+
+    let frame = a.peer.clear_presence().unwrap();
+    let outcome = b.peer.handle_frame(&mut b.um, &frame).unwrap();
+    assert!(outcome.presence_changed);
+    assert_eq!(
+        b.peer.presence(),
+        vec![(2, r#"{"name":"bob"}"#.to_string())]
+    );
+}
+
+#[test]
+fn peer_presence_set_before_connect_travels_in_handshake() {
+    let mut a = peer_replica(1);
+    let mut b = peer_replica(2);
+    let _unsent = a.peer.set_presence(r#"{"name":"ana"}"#).unwrap();
+    connect(&mut a, &mut b);
+    assert_eq!(b.peer.presence(), vec![(1, r#"{"name":"ana"}"#.to_string())]);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn peer_fuzz_round(seed: u64) {
+    use rand::rngs::StdRng;
+    use rand::{Rng, SeedableRng};
+
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut a = peer_replica(1);
+    let mut b = peer_replica(2);
+    connect(&mut a, &mut b);
+
+    // Frames in flight, either direction. Delivery may duplicate frames but
+    // preserves order (a websocket pipe): yrs handles duplicates; reconnect
+    // handshakes heal anything a partition dropped.
+    let mut to_b: VecDeque<Vec<u8>> = VecDeque::new();
+    let mut to_a: VecDeque<Vec<u8>> = VecDeque::new();
+    for _step in 0..80 {
+        let on_a = rng.gen_bool(0.5);
+        let row = rng.gen_range(1..=20);
+        let column = rng.gen_range(1..=6);
+        match rng.gen_range(0..10) {
+            0..=3 => {
+                let value = format!("v{}", rng.gen::<u16>());
+                let um = if on_a { &mut a.um } else { &mut b.um };
+                um.set_user_input(0, row, column, &value).unwrap();
+            }
+            4 => {
+                let target = rng.gen_range(1..=20);
+                let um = if on_a { &mut a.um } else { &mut b.um };
+                um.set_user_input(0, row, column, &format!("=A{target}+1"))
+                    .unwrap();
+            }
+            5 => {
+                let um = if on_a { &mut a.um } else { &mut b.um };
+                um.insert_rows(0, row, 1).unwrap();
+            }
+            6 => {
+                let um = if on_a { &mut a.um } else { &mut b.um };
+                um.delete_rows(0, row, 1).unwrap();
+            }
+            7 => {
+                let (peer, queue) = if on_a {
+                    (&mut a.peer, &mut to_b)
+                } else {
+                    (&mut b.peer, &mut to_a)
+                };
+                let json = format!(r#"{{"cell":"R{row}C{column}"}}"#);
+                queue.push_back(peer.set_presence(&json).unwrap());
+            }
+            8 => {
+                // Flush pending edits into the pipe, sometimes duplicated.
+                let (peer, um, queue) = if on_a {
+                    (&mut a.peer, &mut a.um, &mut to_b)
+                } else {
+                    (&mut b.peer, &mut b.um, &mut to_a)
+                };
+                if let Some(frame) = peer.flush_local(um).unwrap() {
+                    if rng.gen_bool(0.2) {
+                        queue.push_back(frame.clone());
+                    }
+                    queue.push_back(frame);
+                }
+            }
+            _ => {
+                // Deliver one in-flight frame to the other side.
+                let (peer, um, queue, back) = if on_a {
+                    (&mut a.peer, &mut a.um, &mut to_a, &mut to_b)
+                } else {
+                    (&mut b.peer, &mut b.um, &mut to_b, &mut to_a)
+                };
+                if let Some(frame) = queue.pop_front() {
+                    let outcome = peer.handle_frame(um, &frame).unwrap();
+                    back.extend(outcome.replies);
+                }
+            }
+        }
+    }
+    // Drain the pipes, then a final reconnect handshake and convergence check.
+    while !(to_a.is_empty() && to_b.is_empty()) {
+        if let Some(frame) = to_b.pop_front() {
+            let outcome = b.peer.handle_frame(&mut b.um, &frame).unwrap();
+            to_a.extend(outcome.replies);
+        }
+        if let Some(frame) = to_a.pop_front() {
+            let outcome = a.peer.handle_frame(&mut a.um, &frame).unwrap();
+            to_b.extend(outcome.replies);
+        }
+    }
+    connect(&mut a, &mut b);
+    assert_models_converged(&a.um, &b.um);
+    assert_eq!(a.peer.presence().len(), b.peer.presence().len());
+}
+
+#[test]
+fn randomized_peer_protocol_fuzz() {
+    // Seeded and deterministic; CRDT_FUZZ_SEEDS=n stresses seeds 1..=n.
+    let seeds: Vec<u64> = match std::env::var("CRDT_FUZZ_SEEDS") {
+        Ok(n) => (1..=n.parse::<u64>().expect("CRDT_FUZZ_SEEDS must be a number")).collect(),
+        Err(_) => vec![3, 11, 77, 4321, 123_456],
+    };
+    for seed in seeds {
+        let result = std::panic::catch_unwind(|| peer_fuzz_round(seed));
+        assert!(result.is_ok(), "peer_fuzz_round failed for seed {seed}");
+    }
+}
+
