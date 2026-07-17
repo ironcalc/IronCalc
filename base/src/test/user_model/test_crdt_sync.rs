@@ -415,7 +415,7 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..12) {
+            match rng.gen_range(0..13) {
                 0..=3 => {
                     let value = format!("v{}", rng.gen::<u16>());
                     if trace {
@@ -497,6 +497,19 @@ fn fuzz_round(seed: u64) {
                             .um
                             .update_defined_name(&name, None, &name, None, &formula);
                     }
+                }
+                11 => {
+                    let count = rng.gen_range(1..=2);
+                    let delta = if rng.gen_bool(0.5) {
+                        rng.gen_range(1..=5)
+                    } else {
+                        -rng.gen_range(1..=5)
+                    };
+                    if trace {
+                        eprintln!("{step}: {who} move_rows {row} x{count} by {delta}");
+                    }
+                    // Out-of-bounds targets error and are skipped.
+                    let _ = replica.um.move_rows_action(0, row, count, delta);
                 }
                 _ => {
                     if trace {
@@ -630,7 +643,7 @@ fn engine_displacement_matches_codec_render_matrix() {
         "=Sheet2!B4*2",
         "=SUM(Sheet2!A2:A6)",
     ];
-    let ops: [fn(&mut Replica); 8] = [
+    let ops: [fn(&mut Replica); 12] = [
         |r| r.um.insert_rows(0, 3, 1).unwrap(),
         |r| r.um.insert_rows(0, 1, 2).unwrap(),
         |r| r.um.delete_rows(0, 5, 1).unwrap(),
@@ -639,6 +652,10 @@ fn engine_displacement_matches_codec_render_matrix() {
         |r| r.um.insert_columns(0, 3, 2).unwrap(),
         |r| r.um.delete_columns(0, 1, 1).unwrap(),
         |r| r.um.delete_columns(0, 2, 1).unwrap(),
+        |r| r.um.move_rows_action(0, 2, 2, 5).unwrap(),
+        |r| r.um.move_rows_action(0, 8, 1, -6).unwrap(),
+        |r| r.um.move_columns_action(0, 1, 1, 3).unwrap(),
+        |r| r.um.move_columns_action(0, 4, 2, -2).unwrap(),
     ];
     for formula in formulas {
         for (i, op) in ops.iter().enumerate() {
@@ -687,6 +704,132 @@ fn resurrected_row_heals_references_to_it() {
     assert_eq!(b.um.get_cell_content(0, 1, 2), Ok("=A5*2".to_string()));
     assert_eq!(b.um.get_formatted_cell_value(0, 1, 2), Ok("14".to_string()));
     assert_eq!(b.um.get_cell_content(0, 5, 1), Ok("7".to_string()));
+}
+
+#[test]
+fn edit_travels_with_concurrently_moved_row() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 2, 1, "payload").unwrap();
+    a.um.set_user_input(0, 3, 1, "second").unwrap();
+    sync(&mut a, &mut b);
+
+    // A moves rows 2–3 down to 7–8 while B edits a cell inside the block.
+    a.um.move_rows_action(0, 2, 2, 5).unwrap();
+    b.um.set_user_input(0, 2, 2, "edited").unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(a.um.get_cell_content(0, 7, 1), Ok("payload".to_string()));
+    assert_eq!(a.um.get_cell_content(0, 7, 2), Ok("edited".to_string()));
+    assert_eq!(a.um.get_cell_content(0, 8, 1), Ok("second".to_string()));
+    assert_eq!(a.um.get_cell_content(0, 2, 2), Ok(String::new()));
+}
+
+#[test]
+fn concurrent_moves_of_same_row_resolve_to_one_target() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 2, 1, "traveler").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.move_rows_action(0, 2, 1, 3).unwrap();
+    b.um.move_rows_action(0, 2, 1, 6).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    // Exactly one copy, at one of the two targets.
+    let mut hits = Vec::new();
+    for row in 1..=WINDOW_ROWS {
+        if a.um.get_cell_content(0, row, 1).unwrap() == "traveler" {
+            hits.push(row);
+        }
+    }
+    assert_eq!(hits.len(), 1, "row duplicated or lost: {hits:?}");
+    assert!(hits[0] == 5 || hits[0] == 8, "unexpected target {hits:?}");
+}
+
+#[test]
+fn move_with_hidden_rows_converges() {
+    // move_rows_action pre-adjusts the delta for locally hidden rows; the
+    // diff carries the resolved delta, so replicas agree regardless of what
+    // is hidden where.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 2, 1, "mover").unwrap();
+    a.um.set_user_input(0, 5, 1, "below").unwrap();
+    a.um.set_rows_hidden(0, 3, 4, true).unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.move_rows_action(0, 2, 1, 1).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+
+    // The adjusted move skipped the hidden block.
+    let mut position = None;
+    for row in 1..=WINDOW_ROWS {
+        if b.um.get_cell_content(0, row, 1).unwrap() == "mover" {
+            position = Some(row);
+        }
+    }
+    assert_eq!(position, Some(5));
+}
+
+#[test]
+fn moved_row_survives_concurrent_delete() {
+    // AegisSheet semantics: moving a row is a positive op that preempts a
+    // concurrent deletion of it (update-wins).
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 2, 1, "keep me").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.move_rows_action(0, 2, 1, 4).unwrap();
+    b.um.delete_rows(0, 2, 1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    let mut hits = 0;
+    for row in 1..=WINDOW_ROWS {
+        if a.um.get_cell_content(0, row, 1).unwrap() == "keep me" {
+            hits += 1;
+        }
+    }
+    assert_eq!(hits, 1, "moved row should survive the concurrent delete");
+}
+
+#[test]
+fn formula_follows_concurrently_moved_target() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 5, 1, "9").unwrap();
+    a.um.set_user_input(0, 1, 3, "=A5*2").unwrap();
+    sync(&mut a, &mut b);
+
+    b.um.move_rows_action(0, 5, 1, 4).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(a.um.get_cell_content(0, 1, 3), Ok("=A9*2".to_string()));
+    assert_eq!(a.um.get_formatted_cell_value(0, 1, 3), Ok("18".to_string()));
+}
+
+#[test]
+fn undo_of_move_returns_row_on_both_replicas() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 2, 1, "boomerang").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.move_rows_action(0, 2, 1, 5).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_cell_content(0, 7, 1), Ok("boomerang".to_string()));
+
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(b.um.get_cell_content(0, 2, 1), Ok("boomerang".to_string()));
+    assert_eq!(b.um.get_cell_content(0, 7, 1), Ok(String::new()));
 }
 
 #[test]
