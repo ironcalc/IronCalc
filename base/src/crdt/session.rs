@@ -19,13 +19,17 @@
 //! projection of it. Formula results never enter the document: after every
 //! reconcile the model re-evaluates.
 //!
-//! v1 scope notes:
-//! * Styles, conditional formatting, named styles, sheet color/state/gridlines
-//!   and themes are not replicated yet: those diffs are ignored.
-//! * Row/column moves, defined names and locale/timezone changes return an
-//!   error (loud, so tests catch scope creep).
-//! * Formulas are replicated as text; structural edits concurrent with
-//!   formula edits displace on one replica only (fixed in the id-ref phase).
+//! Current scope: cell content and styles (content-addressed pool), formulas
+//! in id-form, rows/columns (insert/delete/move, props, styles, update-wins
+//! keep-sets), sheets (CRUD, keep-sets, settings), defined names, named-style
+//! definitions, workbook locale/timezone. Not replicated yet: conditional
+//! formatting, borders as shared edges, merged cells, themes.
+//!
+//! Known styles limitation: applying a *named* style links the cell locally
+//! but replicates the flattened result, so updating a named style definition
+//! re-resolves cells only where links exist; the flattened doc entries catch
+//! up when the linking replica pushes (conservative re-marking keeps the
+//! originator consistent).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -576,7 +580,16 @@ impl CollabSession {
                     }
                 }
             }
-            write_final_state(&mut txn, &self.maps, um, &ctx, &touched, self.client_id, op_counter)?;
+            write_final_state(
+                &mut txn,
+                &self.maps,
+                um,
+                &ctx,
+                &touched,
+                &self.shadow,
+                self.client_id,
+                op_counter,
+            )?;
         }
         self.shadow = Projection::from_doc(&self.doc, &self.maps);
         // An undo that resurrected rows/columns at a drifted position leaves
@@ -1180,6 +1193,11 @@ impl Pass1<'_, '_> {
             .id_at(column as u32)
             .ok_or_else(|| format!("collab: column {column} out of range"))?;
         self.touched.cells.insert((sheet_id, col_id, row_id));
+        // Content operations can change the style too: an undo restores the
+        // whole old cell (or removes it), quote prefixes and date inputs
+        // restyle. Pass 2 skips the style write when it is unchanged, so the
+        // style register stays independent for plain content edits.
+        self.touched.cell_styles.insert((sheet_id, col_id, row_id));
         self.touched.keep_rows.insert((sheet_id, row_id));
         self.touched.keep_cols.insert((sheet_id, col_id));
         Ok(())
@@ -1224,6 +1242,7 @@ impl Pass1<'_, '_> {
         }
         for (col_id, row_id) in hits {
             self.touched.cells.insert((sheet_id, col_id, row_id));
+            self.touched.cell_styles.insert((sheet_id, col_id, row_id));
             self.touched.keep_rows.insert((sheet_id, row_id));
             self.touched.keep_cols.insert((sheet_id, col_id));
         }
@@ -1748,6 +1767,7 @@ fn write_final_state(
     um: &UserModel,
     ctx: &OrderCtx,
     touched: &Touched,
+    shadow: &Projection,
     client_id: u64,
     op_counter: u32,
 ) -> Result<(), String> {
@@ -1920,11 +1940,22 @@ fn write_final_state(
         };
         let style = um.model.get_style_for_cell(sheet, row as i32, column as i32)?;
         let key = cell_key(*sheet_id, *col_id, *row_id);
+        // Only write on change (vs the pre-batch shadow): content edits mark
+        // styles conservatively, and an unconditional rewrite would stomp a
+        // concurrent style edit, breaking the registers' independence.
+        let previous = shadow
+            .sheets
+            .get(sheet_id)
+            .and_then(|sp| sp.cell_styles.get(&(*col_id, *row_id)));
         if style == default_style {
-            maps.cell_styles.remove(txn, &key);
+            if previous.is_some() {
+                maps.cell_styles.remove(txn, &key);
+            }
         } else {
             let hash = ensure_style_in_pool(txn, maps, &style);
-            maps.cell_styles.insert(txn, key, hash.as_str());
+            if previous.map(String::as_str) != Some(hash.as_str()) {
+                maps.cell_styles.insert(txn, key, hash.as_str());
+            }
         }
     }
 
