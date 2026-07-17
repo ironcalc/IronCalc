@@ -1246,4 +1246,9 @@ impl Model {
     pub fn on_apply_named_style(&mut self, name: &str) -> Result<(), JsError> {
         self.model.on_apply_named_style(name).map_err(to_js_error)
     }
+
+    #[wasm_bindgen(js_name = "moveSheet")]
+    pub fn move_sheet(&mut self, sheet: u32, new_index: u32) -> Result<(), JsError> {
+        self.model.move_sheet(sheet, new_index).map_err(to_js_error)
+    }
 }
