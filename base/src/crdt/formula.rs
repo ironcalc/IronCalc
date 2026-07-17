@@ -510,12 +510,19 @@ fn parse_part(part: &str) -> Result<Part, String> {
     }
 }
 
-/// Does any reference in this id-form formula currently resolve past the end
-/// of the grid? Such formulas are demoted to plain text by the caller: the
-/// engine renders them as out-of-grid identifiers (`=A1048577`) which freeze
-/// (identifiers are never displaced), so an id-token would wrongly keep
-/// tracking structural changes.
-pub(crate) fn has_overflow_refs(
+/// Must this id-form formula be re-encoded from the model's current text?
+/// True when a structural edit drove it into a state where render-time
+/// resolution stops matching the engine's *stateful* displacement:
+///
+/// * **overflow** — a reference shifted past the end of the grid: the engine
+///   renders an out-of-grid identifier (`=A1048577`) which then freezes
+///   (identifiers are never displaced), while an id token would keep
+///   tracking;
+/// * **crossed range** — the engine physically swaps a normalized range's
+///   endpoints inside its parsed node, while the codec only swaps at render
+///   time; re-encoding realigns the stored endpoint assignment so a later
+///   deletion kills the same *positional* endpoint on every replica.
+pub(crate) fn needs_reencode(
     id_form: &str,
     own_sheet: EntityId,
     resolver: &impl RefResolver,
@@ -547,10 +554,11 @@ pub(crate) fn has_overflow_refs(
             },
             None => (own_sheet, payload.as_str()),
         };
-        for endpoint_text in rest.split(':') {
-            let Ok(endpoint) = parse_endpoint(endpoint_text) else {
-                continue;
-            };
+        let endpoints: Vec<Endpoint> = rest
+            .split(':')
+            .filter_map(|text| parse_endpoint(text).ok())
+            .collect();
+        for endpoint in &endpoints {
             for (axis, part) in [(Axis2::Columns, &endpoint.column), (Axis2::Rows, &endpoint.row)]
             {
                 if let Part::Id { id, .. } = part {
@@ -559,6 +567,22 @@ pub(crate) fn has_overflow_refs(
                         Axis2::Columns => resolver.resolve_column(sheet, *id),
                     };
                     if matches!(resolved, ResolvedIndex::Overflow(_)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        if let [left, right] = endpoints.as_slice() {
+            for (axis, l, r) in [
+                (Axis2::Columns, &left.column, &right.column),
+                (Axis2::Rows, &left.row, &right.row),
+            ] {
+                let (li, ri) = (
+                    part_index(sheet, axis, l, resolver),
+                    part_index(sheet, axis, r, resolver),
+                );
+                if let (Some(li), Some(ri)) = (li, ri) {
+                    if li.0 > ri.0 {
                         return true;
                     }
                 }
@@ -871,9 +895,9 @@ mod tests {
         );
         assert_eq!(render_formula(&encoded, S0, &resolver).unwrap(), "=A1048577");
         // The overflow scan flags the formula for demotion to plain text.
-        assert!(has_overflow_refs(&encoded, S0, &resolver));
+        assert!(needs_reencode(&encoded, S0, &resolver));
         let healthy = encode_formula("=A5", S0, &resolver).unwrap();
-        assert!(!has_overflow_refs(&healthy, S0, &resolver));
+        assert!(!needs_reencode(&healthy, S0, &resolver));
     }
 
     #[test]

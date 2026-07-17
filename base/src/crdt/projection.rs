@@ -45,6 +45,7 @@ pub(crate) const MAP_ROWS: &str = "rows";
 pub(crate) const MAP_COLS: &str = "cols";
 pub(crate) const MAP_KEEP_ROWS: &str = "keep_rows";
 pub(crate) const MAP_KEEP_COLS: &str = "keep_cols";
+pub(crate) const MAP_KEEP_SHEETS: &str = "keep_sheets";
 pub(crate) const MAP_NAMES: &str = "names";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -62,6 +63,7 @@ pub(crate) struct SchemaMaps {
     pub cols: MapRef,
     pub keep_rows: MapRef,
     pub keep_cols: MapRef,
+    pub keep_sheets: MapRef,
     pub names: MapRef,
 }
 
@@ -74,6 +76,7 @@ impl SchemaMaps {
             cols: doc.get_or_insert_map(MAP_COLS),
             keep_rows: doc.get_or_insert_map(MAP_KEEP_ROWS),
             keep_cols: doc.get_or_insert_map(MAP_KEEP_COLS),
+            keep_sheets: doc.get_or_insert_map(MAP_KEEP_SHEETS),
             names: doc.get_or_insert_map(MAP_NAMES),
         }
     }
@@ -106,6 +109,14 @@ pub(crate) fn keep_prefix(sheet: EntityId, id: EntityId) -> String {
 
 pub(crate) fn keep_key(sheet: EntityId, id: EntityId, client: u64) -> String {
     format!("{}{:x}", keep_prefix(sheet, id), client)
+}
+
+pub(crate) fn sheet_keep_prefix(sheet: EntityId) -> String {
+    format!("{}/", sheet.encode())
+}
+
+pub(crate) fn sheet_keep_key(sheet: EntityId, client: u64) -> String {
+    format!("{}{:x}", sheet_keep_prefix(sheet), client)
 }
 
 /// Key of a defined name: `<scope>|<name>` where scope is `g` (global) or a
@@ -178,6 +189,12 @@ pub(crate) struct SheetProj {
     pub del: bool,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
+    /// Tab color, session-encoded (`r#RRGGBB` / `t<idx>;<tint>`); absent = none.
+    pub color: Option<String>,
+    /// Sheet state (`hidden` / `veryHidden`); absent = visible.
+    pub state: Option<String>,
+    /// Grid lines flag; absent = shown (the default).
+    pub grid_lines: Option<bool>,
     pub rows: BTreeMap<EntityId, AxisEntryProj>,
     pub cols: BTreeMap<EntityId, AxisEntryProj>,
     /// Ids with at least one keep-set entry.
@@ -208,20 +225,35 @@ impl SheetProj {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub(crate) struct Projection {
     pub sheets: BTreeMap<EntityId, SheetProj>,
+    /// Sheet ids with at least one keep-set entry (update-wins for sheets).
+    pub keep_sheets: HashSet<EntityId>,
     /// Defined names: [`name_key`] → formula (id-form or plain text).
     pub names: BTreeMap<String, String>,
+    /// Workbook-level LWW registers.
+    pub locale: Option<String>,
+    pub timezone: Option<String>,
 }
 
 impl Projection {
     /// Visible sheets in display order: `(id, proj)` sorted by `(pos, id)`.
+    /// A sheet is visible iff it has no tombstone OR its keep-set is
+    /// non-empty (update-wins). Deterministic fixup: a workbook cannot have
+    /// zero sheets, so if concurrent deletions tombstoned everything, the
+    /// sheet with the smallest `(pos, id)` stays visible on every replica.
     pub(crate) fn visible_sheets(&self) -> Vec<(EntityId, &SheetProj)> {
         let mut sheets: Vec<(EntityId, &SheetProj)> = self
             .sheets
             .iter()
-            .filter(|(_, s)| !s.del)
+            .filter(|(id, s)| !s.del || self.keep_sheets.contains(id))
             .map(|(id, s)| (*id, s))
             .collect();
         sheets.sort_by(|a, b| (a.1.pos.as_str(), a.0).cmp(&(b.1.pos.as_str(), b.0)));
+        if sheets.is_empty() {
+            let mut all: Vec<(EntityId, &SheetProj)> =
+                self.sheets.iter().map(|(id, s)| (*id, s)).collect();
+            all.sort_by(|a, b| (a.1.pos.as_str(), a.0).cmp(&(b.1.pos.as_str(), b.0)));
+            sheets.extend(all.into_iter().take(1));
+        }
         sheets
     }
 
@@ -230,6 +262,14 @@ impl Projection {
         let mut proj = Projection::default();
 
         for (key, value) in maps.meta.iter(&txn) {
+            if let Some(field) = key.strip_prefix("wb.") {
+                match field {
+                    "locale" => proj.locale = as_string(&value),
+                    "tz" => proj.timezone = as_string(&value),
+                    _ => {}
+                }
+                continue;
+            }
             let Some(rest) = key.strip_prefix("s.") else {
                 continue;
             };
@@ -254,7 +294,19 @@ impl Projection {
                 "del" => sheet.del = as_bool(&value).unwrap_or(false),
                 "fr" => sheet.frozen_rows = as_i32(&value).unwrap_or(0),
                 "fc" => sheet.frozen_columns = as_i32(&value).unwrap_or(0),
+                "color" => sheet.color = as_string(&value),
+                "state" => sheet.state = as_string(&value),
+                "grid" => sheet.grid_lines = as_bool(&value),
                 _ => {}
+            }
+        }
+
+        for (key, _) in maps.keep_sheets.iter(&txn) {
+            let Some((sid, _client)) = key.split_once('/') else {
+                continue;
+            };
+            if let Some(sheet_id) = EntityId::decode(sid) {
+                proj.keep_sheets.insert(sheet_id);
             }
         }
 

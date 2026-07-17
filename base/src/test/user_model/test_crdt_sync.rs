@@ -415,7 +415,7 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..13) {
+            match rng.gen_range(0..16) {
                 0..=3 => {
                     let value = format!("v{}", rng.gen::<u16>());
                     if trace {
@@ -510,6 +510,34 @@ fn fuzz_round(seed: u64) {
                     }
                     // Out-of-bounds targets error and are skipped.
                     let _ = replica.um.move_rows_action(0, row, count, delta);
+                }
+                12 => {
+                    if trace {
+                        eprintln!("{step}: {who} new_sheet");
+                    }
+                    let _ = replica.um.new_sheet();
+                }
+                13 => {
+                    // Never sheet 0: the fuzz cells and names live there.
+                    let count = replica.um.model.workbook.worksheets.len() as u32;
+                    if count > 1 {
+                        let index = rng.gen_range(1..count);
+                        if trace {
+                            eprintln!("{step}: {who} delete_sheet {index}");
+                        }
+                        let _ = replica.um.delete_sheet(index);
+                    }
+                }
+                14 => {
+                    let count = replica.um.model.workbook.worksheets.len() as u32;
+                    if count > 1 {
+                        let index = rng.gen_range(1..count);
+                        let name = format!("R{}", rng.gen_range(1..=3));
+                        if trace {
+                            eprintln!("{step}: {who} rename sheet {index} -> {name}");
+                        }
+                        let _ = replica.um.rename_sheet(index, &name);
+                    }
                 }
                 _ => {
                     if trace {
@@ -704,6 +732,175 @@ fn resurrected_row_heals_references_to_it() {
     assert_eq!(b.um.get_cell_content(0, 1, 2), Ok("=A5*2".to_string()));
     assert_eq!(b.um.get_formatted_cell_value(0, 1, 2), Ok("14".to_string()));
     assert_eq!(b.um.get_cell_content(0, 5, 1), Ok("7".to_string()));
+}
+
+#[test]
+fn sheet_survives_concurrent_delete_when_edited() {
+    // Update-wins at sheet granularity: an edit inside a concurrently deleted
+    // sheet resurrects the whole sheet with all its content.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.set_user_input(1, 1, 1, "existing").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.delete_sheet(1).unwrap();
+    b.um.set_user_input(1, 2, 2, "concurrent edit").unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(a.um.model.workbook.worksheets.len(), 2);
+    assert_eq!(a.um.get_cell_content(1, 1, 1), Ok("existing".to_string()));
+    assert_eq!(
+        a.um.get_cell_content(1, 2, 2),
+        Ok("concurrent edit".to_string())
+    );
+}
+
+#[test]
+fn sheet_rename_vs_concurrent_delete_resurrects() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.set_user_input(1, 1, 1, "keep").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.delete_sheet(1).unwrap();
+    b.um.rename_sheet(1, "Renamed").unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(a.um.model.workbook.worksheets.len(), 2);
+    assert_eq!(
+        a.um.model.workbook.worksheet(1).unwrap().get_name(),
+        "Renamed"
+    );
+    assert_eq!(a.um.get_cell_content(1, 1, 1), Ok("keep".to_string()));
+}
+
+#[test]
+fn deleted_sheet_stays_deleted_without_concurrent_ops() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.set_user_input(1, 1, 1, "gone").unwrap();
+    sync(&mut a, &mut b);
+
+    b.um.delete_sheet(1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(a.um.model.workbook.worksheets.len(), 1);
+}
+
+#[test]
+fn concurrent_new_sheets_get_deterministic_names() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.new_sheet().unwrap();
+    a.um.set_user_input(1, 1, 1, "from A").unwrap();
+    b.um.new_sheet().unwrap();
+    b.um.set_user_input(1, 1, 1, "from B").unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(a.um.model.workbook.worksheets.len(), 3);
+    // Both were locally "Sheet2"; the later one (by position/id) gets a
+    // deterministic suffix on every replica.
+    let names: Vec<String> = (0..3)
+        .map(|i| a.um.model.workbook.worksheet(i).unwrap().get_name())
+        .collect();
+    assert!(names.contains(&"Sheet2".to_string()));
+    assert!(names.contains(&"Sheet2 (2)".to_string()));
+}
+
+#[test]
+fn concurrent_deletes_of_all_sheets_keep_one_deterministically() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    sync(&mut a, &mut b);
+
+    // Each replica deletes a different sheet; merged, everything would be
+    // tombstoned — the render-time fixup keeps one, the same one everywhere.
+    a.um.delete_sheet(0).unwrap();
+    b.um.delete_sheet(1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(a.um.model.workbook.worksheets.len(), 1);
+    assert_eq!(
+        a.um.model.workbook.worksheet(0).unwrap().get_name(),
+        b.um.model.workbook.worksheet(0).unwrap().get_name()
+    );
+}
+
+#[test]
+fn sheet_settings_sync() {
+    use crate::types::{Color, SheetState};
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.set_sheet_color(0, &Color::Rgb("#FFAA00".to_string())).unwrap();
+    a.um.set_show_grid_lines(0, false).unwrap();
+    a.um.hide_sheet(1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    let ws = b.um.model.workbook.worksheet(0).unwrap();
+    assert_eq!(ws.color, Color::Rgb("#FFAA00".to_string()));
+    assert!(!ws.show_grid_lines);
+    assert_eq!(
+        b.um.model.workbook.worksheet(1).unwrap().state,
+        SheetState::Hidden
+    );
+
+    // And back to defaults.
+    b.um.set_sheet_color(0, &Color::None).unwrap();
+    b.um.unhide_sheet(1).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(a.um.model.workbook.worksheet(0).unwrap().color, Color::None);
+    assert_eq!(
+        a.um.model.workbook.worksheet(1).unwrap().state,
+        SheetState::Visible
+    );
+}
+
+#[test]
+fn workbook_timezone_syncs() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.set_timezone("Europe/Berlin").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.model.workbook.settings.tz, "Europe/Berlin");
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn undo_of_sheet_delete_restores_content_on_both() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.set_user_input(1, 3, 3, "buried treasure").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.delete_sheet(1).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.model.workbook.worksheets.len(), 1);
+
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(b.um.model.workbook.worksheets.len(), 2);
+    assert_eq!(
+        b.um.get_cell_content(1, 3, 3),
+        Ok("buried treasure".to_string())
+    );
 }
 
 #[test]
