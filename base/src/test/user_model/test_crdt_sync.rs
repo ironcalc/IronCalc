@@ -6,8 +6,10 @@
 //! concurrent edits, exchange updates, and must end cell-by-cell identical —
 //! including evaluation results, which are never shipped.
 
+use crate::cf_types::{CfRule, CfRuleInput, ValueOperator};
 use crate::crdt::CollabSession;
 use crate::test::util::new_empty_model;
+use crate::types::{Color, Dxf, DxfFont};
 use crate::UserModel;
 
 struct Replica {
@@ -82,6 +84,11 @@ fn assert_models_converged(a: &UserModel, b: &UserModel) {
         let name_a = a.um.model.workbook.worksheet(sheet).unwrap().get_name();
         let name_b = b.um.model.workbook.worksheet(sheet).unwrap().get_name();
         assert_eq!(name_a, name_b, "sheet {sheet} name differs");
+        assert_eq!(
+            cf_snapshot(a.um, sheet),
+            cf_snapshot(b.um, sheet),
+            "conditional formatting differs on sheet {sheet}"
+        );
         for row in 1..=WINDOW_ROWS {
             for column in 1..=WINDOW_COLUMNS {
                 let content_a = a.um.get_cell_content(sheet, row, column).unwrap();
@@ -119,6 +126,44 @@ fn assert_models_converged(a: &UserModel, b: &UserModel) {
                 "column {column} width differs on sheet {sheet}"
             );
         }
+    }
+}
+
+/// Replica-comparable view of a sheet's CF rules: priority order with the
+/// replica-local dxf ids replaced by the resolved dxf contents.
+fn cf_snapshot(um: &UserModel, sheet: u32) -> Vec<(u32, String, CfRule, Option<Dxf>)> {
+    um.get_conditional_formatting_list(sheet)
+        .unwrap()
+        .into_iter()
+        .map(|view| {
+            let dxf = um
+                .get_dxf_for_conditional_formatting(sheet, view.index as u32)
+                .unwrap();
+            let mut rule = view.cf_rule;
+            rule.set_dxf_id(0);
+            (view.priority, view.range, rule, dxf)
+        })
+        .collect()
+}
+
+/// A simple bold-font dxf for CF tests.
+fn bold_dxf() -> Dxf {
+    Dxf {
+        font: Some(DxfFont {
+            b: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
+}
+
+fn cell_is_gt(threshold: &str) -> CfRuleInput {
+    CfRuleInput::CellIs {
+        operator: ValueOperator::GreaterThan,
+        formula: threshold.to_string(),
+        formula2: None,
+        format: bold_dxf(),
+        stop_if_true: false,
     }
 }
 
@@ -448,7 +493,7 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..17) {
+            match rng.gen_range(0..19) {
                 0..=3 => {
                     let value = format!("v{}", rng.gen::<u16>());
                     if trace {
@@ -586,6 +631,77 @@ fn fuzz_round(seed: u64) {
                         eprintln!("{step}: {who} style R{row}C{column} font.b={value}");
                     }
                     let _ = replica.um.update_range_style(&area, "font.b", value);
+                }
+                16 => {
+                    let hi = row + rng.gen_range(0..=5);
+                    let range = format!("A{row}:C{hi}");
+                    let rule = match rng.gen_range(0..3) {
+                        0 => cell_is_gt(&format!("A{}", rng.gen_range(1..=25))),
+                        1 => CfRuleInput::Formula {
+                            formula: format!("=$A${}>0", rng.gen_range(1..=25)),
+                            format: bold_dxf(),
+                            stop_if_true: rng.gen_bool(0.3),
+                        },
+                        _ => CfRuleInput::DataBar {
+                            min: None,
+                            max: None,
+                            positive_color: Color::Rgb("#00FF00".to_string()),
+                            negative_color: Color::Rgb("#FF0000".to_string()),
+                            is_gradient: false,
+                            show_value: true,
+                        },
+                    };
+                    if trace {
+                        eprintln!("{step}: {who} add cf {range}");
+                    }
+                    let _ = replica.um.add_conditional_formatting(0, &range, rule);
+                }
+                17 => {
+                    let count = replica
+                        .um
+                        .model
+                        .workbook
+                        .worksheet(0)
+                        .unwrap()
+                        .conditional_formatting
+                        .len();
+                    if count > 0 {
+                        let index = rng.gen_range(0..count) as u32;
+                        match rng.gen_range(0..4) {
+                            0 => {
+                                if trace {
+                                    eprintln!("{step}: {who} delete cf {index}");
+                                }
+                                let _ = replica.um.delete_conditional_formatting(0, index);
+                            }
+                            1 => {
+                                if trace {
+                                    eprintln!("{step}: {who} raise cf {index}");
+                                }
+                                let _ =
+                                    replica.um.raise_conditional_formatting_priority(0, index);
+                            }
+                            2 => {
+                                if trace {
+                                    eprintln!("{step}: {who} lower cf {index}");
+                                }
+                                let _ =
+                                    replica.um.lower_conditional_formatting_priority(0, index);
+                            }
+                            _ => {
+                                let range = format!("B{row}:D{}", row + 2);
+                                if trace {
+                                    eprintln!("{step}: {who} update cf {index} -> {range}");
+                                }
+                                let _ = replica.um.update_conditional_formatting(
+                                    0,
+                                    index,
+                                    &range,
+                                    cell_is_gt("3"),
+                                );
+                            }
+                        }
+                    }
                 }
                 _ => {
                     if trace {
@@ -898,6 +1014,163 @@ fn named_style_definitions_sync_and_apply() {
     sync(&mut a, &mut b);
     assert_converged(&a, &b);
     assert!(a.um.get_cell_style(0, 1, 1).unwrap().font.b);
+}
+
+#[test]
+fn cf_rule_syncs_to_remote_with_dxf() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.set_user_input(0, 1, 1, "5").unwrap();
+    a.um
+        .add_conditional_formatting(0, "A1:B4", cell_is_gt("3"))
+        .unwrap();
+    sync(&mut a, &mut b);
+
+    let rules = cf_snapshot(&b.um, 0);
+    assert_eq!(rules.len(), 1);
+    assert_eq!(rules[0].1, "A1:B4");
+    assert_eq!(rules[0].3, Some(bold_dxf()));
+    assert_converged(&a, &b);
+}
+
+/// Test 19 of the design doc: raising a rule's priority concurrently with a
+/// rule addition converges without index skew (priority is a fractional
+/// position write, not an index-keyed swap).
+#[test]
+fn cf_raise_priority_vs_concurrent_add() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um
+        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+        .unwrap();
+    a.um
+        .add_conditional_formatting(0, "B1:B5", cell_is_gt("2"))
+        .unwrap();
+    sync(&mut a, &mut b);
+
+    // A raises the first rule above the second; B adds a third rule.
+    a.um.raise_conditional_formatting_priority(0, 0).unwrap();
+    b.um
+        .add_conditional_formatting(0, "C1:C5", cell_is_gt("3"))
+        .unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    let rules = cf_snapshot(&a.um, 0);
+    assert_eq!(rules.len(), 3);
+    // The raise survives the merge: A1:A5 still outranks B1:B5.
+    let rank = |range: &str| rules.iter().position(|r| r.1 == range).unwrap();
+    assert!(rank("A1:A5") < rank("B1:B5"), "raise was lost: {rules:?}");
+}
+
+#[test]
+fn cf_concurrent_adds_converge_deterministically() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um
+        .add_conditional_formatting(0, "A1:A3", cell_is_gt("1"))
+        .unwrap();
+    b.um
+        .add_conditional_formatting(0, "B1:B3", cell_is_gt("2"))
+        .unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(cf_snapshot(&a.um, 0).len(), 2);
+}
+
+#[test]
+fn cf_update_vs_concurrent_delete_converges_order_independently() {
+    // Pair 1.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um
+        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+        .unwrap();
+    sync(&mut a, &mut b);
+    a.um
+        .update_conditional_formatting(0, 0, "A1:C4", cell_is_gt("7"))
+        .unwrap();
+    b.um.delete_conditional_formatting(0, 0).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    let outcome = cf_snapshot(&a.um, 0);
+
+    // Pair 2: reversed delivery order — same outcome.
+    let mut c = replica(1);
+    let mut d = replica(2);
+    c.um
+        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+        .unwrap();
+    sync(&mut c, &mut d);
+    c.um
+        .update_conditional_formatting(0, 0, "A1:C4", cell_is_gt("7"))
+        .unwrap();
+    d.um.delete_conditional_formatting(0, 0).unwrap();
+    let from_c = c.session.flush_local(&mut c.um).unwrap();
+    let from_d = d.session.flush_local(&mut d.um).unwrap();
+    d.session.apply_remote(&mut d.um, &from_c).unwrap();
+    c.session.apply_remote(&mut c.um, &from_d).unwrap();
+    assert_converged(&c, &d);
+    assert_eq!(cf_snapshot(&c.um, 0), outcome);
+}
+
+#[test]
+fn cf_range_follows_concurrent_row_insert() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um
+        .add_conditional_formatting(0, "A5:A10", cell_is_gt("0"))
+        .unwrap();
+    sync(&mut a, &mut b);
+
+    b.um.insert_rows(0, 3, 1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    let rules = cf_snapshot(&a.um, 0);
+    assert_eq!(rules[0].1, "A6:A11");
+}
+
+#[test]
+fn cf_undo_of_add_propagates() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um
+        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(cf_snapshot(&b.um, 0).len(), 1);
+
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(cf_snapshot(&b.um, 0).len(), 0);
+
+    a.um.redo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(cf_snapshot(&b.um, 0).len(), 1);
+}
+
+#[test]
+fn cf_travels_with_duplicated_sheet() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um
+        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+        .unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.duplicate_sheet(0).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    assert_eq!(cf_snapshot(&b.um, 1).len(), 1);
+    assert_eq!(cf_snapshot(&b.um, 1)[0].1, "A1:A5");
 }
 
 #[test]
