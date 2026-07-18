@@ -22,8 +22,9 @@
 //! Current scope: cell content and styles (content-addressed pool), formulas
 //! in id-form, rows/columns (insert/delete/move, props, styles, update-wins
 //! keep-sets), sheets (CRUD, keep-sets, settings), defined names, named-style
-//! definitions, workbook locale/timezone. Not replicated yet: conditional
-//! formatting, borders as shared edges, merged cells, themes.
+//! definitions, workbook locale/timezone, conditional formatting (stable rule
+//! ids, fractional priority positions, id-form ranges/formulas, inlined dxf
+//! bodies). Not replicated yet: borders as shared edges, merged cells, themes.
 //!
 //! Known styles limitation: applying a *named* style links the cell locally
 //! but replicates the flattened result, so updating a named style definition
@@ -37,10 +38,11 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, Map, ReadTxn, StateVector, Transact, TransactionMut, Update};
 
+use crate::cf_types::{CfRule, Cfvo, ConditionalFormatting};
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
 };
-use crate::types::Cell;
+use crate::types::{Cell, Dxf};
 use crate::user_model::history::{Diff, DiffType, QueueDiffs};
 use crate::UserModel;
 
@@ -133,6 +135,174 @@ fn state_from_doc(text: &str) -> Result<SheetState, String> {
         "veryHidden" => Ok(SheetState::VeryHidden),
         _ => Err("collab: malformed sheet state".to_string()),
     }
+}
+
+// ---- conditional formatting codec ----
+
+/// Applies `f` to every formula-valued string in a CF rule (`CellIs`
+/// formulas, `Formula` rules and `Cfvo::Formula` thresholds — date strings
+/// and text-operator values are not formulas).
+fn cf_rule_map_formulas(
+    rule: &mut CfRule,
+    f: &mut impl FnMut(&mut String) -> Result<(), String>,
+) -> Result<(), String> {
+    let map_cfvo = |cfvo: &mut Cfvo, f: &mut dyn FnMut(&mut String) -> Result<(), String>| {
+        if let Cfvo::Formula(text) = cfvo {
+            f(text)?;
+        }
+        Ok::<(), String>(())
+    };
+    match rule {
+        CfRule::CellIs {
+            formula, formula2, ..
+        } => {
+            f(formula)?;
+            if let Some(f2) = formula2 {
+                f(f2)?;
+            }
+        }
+        CfRule::Formula { formula, .. } => f(formula)?,
+        CfRule::ColorScale { thresholds } => {
+            for t in thresholds {
+                map_cfvo(&mut t.cfvo, f)?;
+            }
+        }
+        CfRule::DataBar { min, max, .. } => {
+            if let Some(min) = min {
+                map_cfvo(min, f)?;
+            }
+            if let Some(max) = max {
+                map_cfvo(max, f)?;
+            }
+        }
+        CfRule::IconSet { thresholds, .. } => {
+            for t in thresholds {
+                map_cfvo(&mut t.cfvo, f)?;
+            }
+        }
+        CfRule::IconRating { thresholds, .. } => {
+            for (cfvo, _) in thresholds {
+                map_cfvo(cfvo, f)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+/// The replicated form of one CF rule: the sqref and every formula in
+/// id-form where the codec can represent them (plain text fallback
+/// otherwise), the rule's dxf id zeroed (dxf ids are replica-local), and the
+/// dxf *content* carried alongside.
+fn encode_cf_body(
+    cf: &ConditionalFormatting,
+    sheet_id: EntityId,
+    resolver: &impl RefResolver,
+    dxfs: &[Dxf],
+) -> Vec<u8> {
+    let range =
+        encode_formula(&cf.range, sheet_id, resolver).unwrap_or_else(|_| cf.range.clone());
+    let mut rule = cf.cf_rule.clone();
+    let dxf = rule
+        .dxf_id()
+        .map(|id| dxfs.get(id as usize).cloned().unwrap_or_default());
+    rule.set_dxf_id(0);
+    let _ = cf_rule_map_formulas(&mut rule, &mut |text| {
+        if let Ok(id_form) = encode_formula(text, sheet_id, resolver) {
+            *text = id_form;
+        }
+        Ok(())
+    });
+    bitcode::encode(&(range, rule, dxf))
+}
+
+/// Decodes and renders a CF rule body against the current orders.
+fn render_cf_body(
+    bytes: &[u8],
+    sheet_id: EntityId,
+    resolver: &impl RefResolver,
+) -> Result<(String, CfRule, Option<Dxf>), String> {
+    let (range, mut rule, dxf): (String, CfRule, Option<Dxf>) =
+        bitcode::decode(bytes).map_err(|e| format!("collab: corrupt cf body: {e}"))?;
+    let range = if is_id_form(&range) {
+        render_formula(&range, sheet_id, resolver)?
+    } else {
+        range
+    };
+    cf_rule_map_formulas(&mut rule, &mut |text| {
+        if is_id_form(text) {
+            *text = render_formula(text, sheet_id, resolver)?;
+        }
+        Ok(())
+    })?;
+    Ok((range, rule, dxf))
+}
+
+/// Index of `dxf` in the pool, appending it if absent.
+fn intern_dxf(dxfs: &mut Vec<Dxf>, dxf: Dxf) -> u32 {
+    match dxfs.iter().position(|d| *d == dxf) {
+        Some(index) => index as u32,
+        None => {
+            dxfs.push(dxf);
+            (dxfs.len() - 1) as u32
+        }
+    }
+}
+
+/// Puts every sheet's CF list in canonical form: stable-ordered by priority,
+/// priorities renumbered 1..n. Canonical form makes the model's storage
+/// indices, the diff-recorded priorities and the document's fractional
+/// positions line up on every replica (the relative order — the only thing
+/// with visible semantics — is preserved).
+fn canonicalize_model_cf(um: &mut UserModel) -> Result<(), String> {
+    let sheet_count = um.model.workbook.worksheets.len() as u32;
+    for sheet in 0..sheet_count {
+        let ws = um.model.workbook.worksheet_mut(sheet)?;
+        ws.conditional_formatting.sort_by_key(|cf| cf.priority);
+        for (index, cf) in ws.conditional_formatting.iter_mut().enumerate() {
+            cf.priority = index as u32 + 1;
+        }
+    }
+    Ok(())
+}
+
+/// Rebuilds one sheet's CF list from the document projection: canonical
+/// `(pos, id)` order, priorities 1..n, ranges and formulas rendered against
+/// the current orders, dxf bodies interned into the local pool. Returns
+/// whether the model changed.
+fn reconcile_cf_sheet(
+    um: &mut UserModel,
+    sheet: u32,
+    sheet_id: EntityId,
+    sp: &SheetProj,
+    resolver: &impl RefResolver,
+) -> Result<bool, String> {
+    let mut rendered: Vec<(String, CfRule, Option<Dxf>)> = Vec::new();
+    for (_, entry) in sp.cf_canonical() {
+        let Some(bytes) = &entry.value else {
+            continue;
+        };
+        rendered.push(render_cf_body(bytes, sheet_id, resolver)?);
+    }
+    let dxfs = &mut um.model.workbook.styles.dxfs;
+    let mut desired: Vec<ConditionalFormatting> = Vec::with_capacity(rendered.len());
+    for (index, (range, mut rule, dxf)) in rendered.into_iter().enumerate() {
+        if rule.dxf_id().is_some() {
+            let dxf_id = intern_dxf(dxfs, dxf.unwrap_or_default());
+            rule.set_dxf_id(dxf_id);
+        }
+        desired.push(ConditionalFormatting {
+            range,
+            cf_rule: rule,
+            priority: index as u32 + 1,
+        });
+    }
+    let ws = um.model.workbook.worksheet_mut(sheet)?;
+    if ws.conditional_formatting == desired {
+        return Ok(false);
+    }
+    ws.conditional_formatting = desired;
+    Ok(true)
 }
 
 /// Sentinel "own sheet" used when encoding/rendering defined-name formulas:
@@ -370,6 +540,14 @@ struct Touched {
     cell_styles: BTreeSet<(EntityId, EntityId, EntityId)>,
     /// Re-sync the named-style definitions from the post-batch model.
     named_styles: bool,
+    /// Sheets whose CF registers must be re-synced from the post-batch model
+    /// (set by CF diffs and full-sheet pushes).
+    cf: BTreeSet<EntityId>,
+    /// Re-sync CF on every sheet: structural ops and renames displace CF
+    /// ranges/formulas in the model without emitting CF diffs (id-form
+    /// entries compare equal and cost no writes; divergent engine
+    /// displacement corners are healed by re-encoding).
+    cf_all: bool,
 }
 
 /// Transaction origin tag for updates applied from the wire; the sync peer's
@@ -397,6 +575,9 @@ impl CollabSession {
     pub fn attach(um: &mut UserModel, client_id: u64) -> Result<CollabSession, String> {
         // Absorb pending local diffs into the state we bootstrap from.
         let _ = um.flush_send_queue();
+        // Canonical CF form (deterministic across replicas bootstrapping the
+        // same file; relative rule order is preserved).
+        canonicalize_model_cf(um)?;
         let doc = Doc::with_client_id(client_id);
         let maps = SchemaMaps::attach(&doc);
         {
@@ -586,6 +767,8 @@ impl CollabSession {
         let mut ctx = OrderCtx::from_projection(&self.shadow);
         let mut touched = Touched::default();
         let mut repair: BTreeSet<EntityId> = BTreeSet::new();
+        let mut cf_orders: BTreeMap<EntityId, Vec<(EntityId, u32)>> = BTreeMap::new();
+        let mut cf_wrote = false;
         self.counter += 1;
         let op_counter = self.counter;
         {
@@ -598,6 +781,7 @@ impl CollabSession {
                 touched: &mut touched,
                 journal: &mut self.journal,
                 repair: &mut repair,
+                cf_orders: &mut cf_orders,
                 client_id: self.client_id,
                 counter: &mut self.counter,
             };
@@ -627,6 +811,24 @@ impl CollabSession {
                 self.client_id,
                 op_counter,
             )?;
+            let cf_scope: BTreeSet<EntityId> = if touched.cf_all {
+                ctx.sheets.iter().map(|(id, _)| *id).collect()
+            } else {
+                touched.cf.clone()
+            };
+            if !cf_scope.is_empty() {
+                cf_wrote = sync_cf(
+                    &mut txn,
+                    &self.maps,
+                    um,
+                    &ctx,
+                    &self.shadow,
+                    &mut cf_orders,
+                    &cf_scope,
+                    self.client_id,
+                    &mut self.counter,
+                )?;
+            }
         }
         self.shadow = Projection::from_doc(&self.doc, &self.maps);
         // An undo that resurrected rows/columns at a drifted position leaves
@@ -639,6 +841,23 @@ impl CollabSession {
         // display names (e.g. dissolve a duplicate-name suffix).
         let display_names = dedupe_names(&self.shadow.visible_sheets());
         align_sheet_display_names(um, &display_names)?;
+        // Canonical CF form: after any batch that touched CF, the model's
+        // lists follow the document (order, 1..n priorities, normalized
+        // text) so every replica stores byte-identical CF state. Structural
+        // batches (`cf_all`) are included even when nothing was written: the
+        // engine's CF displacement can leave e.g. a crossed range's corners
+        // textually swapped where the codec's render normalizes them — same
+        // ids, different text — and the render is the canonical form.
+        if cf_wrote || !touched.cf.is_empty() || touched.cf_all {
+            let resolver = DocResolver::from_projection(&self.shadow);
+            let mut changed = false;
+            for (index, (sheet_id, sp)) in self.shadow.visible_sheets().iter().enumerate() {
+                changed |= reconcile_cf_sheet(um, index as u32, *sheet_id, sp, &resolver)?;
+            }
+            if changed {
+                um.model.evaluate_conditional_formatting();
+            }
+        }
         Ok(())
     }
 
@@ -947,6 +1166,20 @@ fn bootstrap_sheet(
         let hash = ensure_style_in_pool(txn, maps, &style);
         maps.cell_styles.insert(txn, key, hash.as_str());
     }
+    // CF rules (in canonical form after attach): deterministic Original ids
+    // by storage index, positions by priority rank.
+    let dxfs = &um.model.workbook.styles.dxfs;
+    for (index, cf) in ws.conditional_formatting.iter().enumerate() {
+        let id = EntityId::Original(index as u32);
+        maps.cf.insert(
+            txn,
+            axis_key(sheet_id, id, "p"),
+            original_position(index as u32 + 1).as_str(),
+        );
+        let body = encode_cf_body(cf, sheet_id, resolver, dxfs);
+        maps.cf
+            .insert(txn, axis_key(sheet_id, id, "v"), yrs::Any::from(body));
+    }
     Ok(())
 }
 
@@ -962,6 +1195,10 @@ struct Pass1<'a, 'doc> {
     /// Sheets whose model state must be rebuilt from the document after this
     /// action (undo resurrects are doc-authoritative).
     repair: &'a mut BTreeSet<EntityId>,
+    /// Per-sheet mirror of the model's CF vector as it evolves through the
+    /// batch: `(rule id, priority)` at each storage index. Pass 2 uses the
+    /// final index↔id pairing to sync the registers from the model.
+    cf_orders: &'a mut BTreeMap<EntityId, Vec<(EntityId, u32)>>,
     client_id: u64,
     counter: &'a mut u32,
 }
@@ -973,6 +1210,15 @@ impl Pass1<'_, '_> {
             client: self.client_id,
             counter: *self.counter,
         }
+    }
+
+    /// The CF mirror for a sheet, lazily seeded from the shadow's canonical
+    /// order — which equals the model's storage order at batch start (the
+    /// canonical-form invariant maintained by attach/reconcile/translate).
+    fn cf_order_mut(&mut self, sheet_id: EntityId) -> &mut Vec<(EntityId, u32)> {
+        self.cf_orders
+            .entry(sheet_id)
+            .or_insert_with(|| cf_order_from_shadow(self.shadow, sheet_id))
     }
 
     fn translate(&mut self, diff: &Diff, invert: bool) -> Result<(), String> {
@@ -1097,9 +1343,16 @@ impl Pass1<'_, '_> {
                     self.new_sheet_at(*new_index, true)
                 }
             }
-            Diff::RenameSheet { index, .. }
-            | Diff::SetSheetColor { index, .. }
-            | Diff::SetSheetState { index, .. } => {
+            Diff::RenameSheet { index, .. } => {
+                let sheet_id = self.ctx.sheet_at(*index)?;
+                self.touched.sheet_meta.insert(sheet_id);
+                // Plain-text-fallback CF formulas mention sheet names; the
+                // compare in the CF sync heals any the engine rewrote (or
+                // failed to rewrite).
+                self.touched.cf_all = true;
+                Ok(())
+            }
+            Diff::SetSheetColor { index, .. } | Diff::SetSheetState { index, .. } => {
                 let sheet_id = self.ctx.sheet_at(*index)?;
                 self.touched.sheet_meta.insert(sheet_id);
                 Ok(())
@@ -1153,12 +1406,77 @@ impl Pass1<'_, '_> {
                 Ok(())
             }
 
+            // Conditional formatting: pass 1 only mirrors the engine's
+            // index/priority bookkeeping so rules keep a stable identity
+            // through the batch; the registers themselves are synced from the
+            // post-batch model in pass 2 (compare-and-write, like names).
+            Diff::AddConditionalFormatting {
+                sheet, priority, ..
+            } => {
+                let sheet_id = self.ctx.sheet_at(*sheet)?;
+                self.touched.cf.insert(sheet_id);
+                if invert {
+                    // The engine's undo removes the first rule whose priority
+                    // matches the recorded one.
+                    let order = self.cf_order_mut(sheet_id);
+                    if let Some(i) = order.iter().position(|(_, p)| p == priority) {
+                        order.remove(i);
+                    }
+                } else {
+                    let id = self.new_id();
+                    self.cf_order_mut(sheet_id).push((id, *priority));
+                }
+                Ok(())
+            }
+            Diff::DeleteConditionalFormatting {
+                sheet,
+                index,
+                old_priority,
+                ..
+            } => {
+                let sheet_id = self.ctx.sheet_at(*sheet)?;
+                self.touched.cf.insert(sheet_id);
+                if invert {
+                    let id = self.new_id();
+                    let order = self.cf_order_mut(sheet_id);
+                    let at = (*index as usize).min(order.len());
+                    order.insert(at, (id, *old_priority));
+                } else {
+                    let order = self.cf_order_mut(sheet_id);
+                    if (*index as usize) < order.len() {
+                        order.remove(*index as usize);
+                    }
+                }
+                Ok(())
+            }
+            Diff::UpdateConditionalFormatting { sheet, .. } => {
+                let sheet_id = self.ctx.sheet_at(*sheet)?;
+                self.touched.cf.insert(sheet_id);
+                Ok(())
+            }
+            Diff::SwapConditionalFormattingPriority {
+                sheet,
+                index_a,
+                index_b,
+                priority_a,
+                priority_b,
+            } => {
+                let sheet_id = self.ctx.sheet_at(*sheet)?;
+                self.touched.cf.insert(sheet_id);
+                // Mirror the engine: apply/redo writes the swapped values,
+                // undo restores the recorded ones.
+                let order = self.cf_order_mut(sheet_id);
+                if let Some(entry) = order.get_mut(*index_a as usize) {
+                    entry.1 = if invert { *priority_a } else { *priority_b };
+                }
+                if let Some(entry) = order.get_mut(*index_b as usize) {
+                    entry.1 = if invert { *priority_b } else { *priority_a };
+                }
+                Ok(())
+            }
+
             // Not replicated in v1: purely visual state.
-            Diff::AddConditionalFormatting { .. }
-            | Diff::DeleteConditionalFormatting { .. }
-            | Diff::UpdateConditionalFormatting { .. }
-            | Diff::SwapConditionalFormattingPriority { .. }
-            | Diff::SetTheme { .. } => Ok(()),
+            Diff::SetTheme { .. } => Ok(()),
 
             // Moves: pure position rewrites. The diff already carries the
             // hidden-rows-adjusted delta (resolved by `move_rows_action`
@@ -1207,10 +1525,13 @@ impl Pass1<'_, '_> {
             } => {
                 self.touched.names = true;
                 // A rename rewrites every dependent cell formula in the model
-                // (both directions, for undo); push those cells too.
+                // (both directions, for undo); push those cells too. CF
+                // formulas can reference defined names as well — the CF sync
+                // compare heals whatever the engine rewrote.
                 if !name.eq_ignore_ascii_case(new_name) {
                     self.touch_cells_mentioning(name);
                     self.touch_cells_mentioning(new_name);
+                    self.touched.cf_all = true;
                 }
                 Ok(())
             }
@@ -1423,6 +1744,10 @@ impl Pass1<'_, '_> {
         // Structural edits also displace defined-name formulas in the model;
         // the name map is re-synced in pass 2 (id-form entries are no-ops).
         self.touched.names = true;
+        // …and CF ranges/formulas (on every sheet: CF formulas can hold
+        // cross-sheet references). Id-form entries compare equal after
+        // displacement, so this is write-free in the common case.
+        self.touched.cf_all = true;
         let mut marks: Vec<(EntityId, EntityId, EntityId)> = Vec::new();
         let resolver = CtxResolver { ctx: self.ctx };
         for (sheet_id, sp) in &self.shadow.sheets {
@@ -1712,6 +2037,10 @@ impl Pass1<'_, '_> {
         self.touched.sheet_meta.insert(id);
         if full_content {
             self.touched.full_sheets.insert(id);
+            // A duplicated/restored sheet carries CF rules without CF diffs;
+            // the CF sync pairs the model's list against the (empty) mirror
+            // and allocates fresh rule ids for the surplus.
+            self.touched.cf.insert(id);
         }
         Ok(())
     }
@@ -1779,6 +2108,7 @@ impl Pass1<'_, '_> {
                 self.ctx.cols.insert(sheet, cols);
                 self.touched.sheet_meta.insert(sheet);
                 self.touched.full_sheets.insert(sheet);
+                self.touched.cf.insert(sheet);
                 Ok(())
             }
             other => {
@@ -2107,6 +2437,7 @@ fn write_final_state(
     positive_sheets.extend(touched.sheet_meta.iter().copied());
     positive_sheets.extend(touched.full_sheets.iter().copied());
     positive_sheets.extend(touched.cell_styles.iter().map(|(s, _, _)| *s));
+    positive_sheets.extend(touched.cf.iter().copied());
     for sheet_id in positive_sheets {
         if ctx.sheet_index(sheet_id).is_none() {
             continue; // deleted later in the same batch
@@ -2265,6 +2596,134 @@ fn sync_named_styles(
         }
     }
     Ok(())
+}
+
+/// The canonical CF order of a sheet as described by a projection, with
+/// priorities 1..n (the canonical-form invariant makes this equal to the
+/// model's storage vector at batch start).
+fn cf_order_from_shadow(shadow: &Projection, sheet_id: EntityId) -> Vec<(EntityId, u32)> {
+    match shadow.sheets.get(&sheet_id) {
+        Some(sp) => sp
+            .cf_canonical()
+            .iter()
+            .enumerate()
+            .map(|(index, (id, _))| (*id, index as u32 + 1))
+            .collect(),
+        None => Vec::new(),
+    }
+}
+
+/// Pass 2 for conditional formatting: makes the document's CF registers for
+/// the given sheets match the post-batch model. Compare-and-write keeps this
+/// free of doc writes when id-form entries already render to the model state
+/// (the common case under structural edits — ids track the displacement), so
+/// concurrent remote CF edits are not stomped; where the engine's CF
+/// displacement diverges from the codec's range semantics (e.g. a deleted
+/// range corner leaves the sqref untouched), the model text is re-encoded and
+/// the document follows the engine. Returns whether anything was written.
+#[allow(clippy::too_many_arguments)]
+fn sync_cf(
+    txn: &mut TransactionMut,
+    maps: &SchemaMaps,
+    um: &UserModel,
+    ctx: &OrderCtx,
+    shadow: &Projection,
+    cf_orders: &mut BTreeMap<EntityId, Vec<(EntityId, u32)>>,
+    scope: &BTreeSet<EntityId>,
+    client_id: u64,
+    counter: &mut u32,
+) -> Result<bool, String> {
+    let resolver = DocResolver::from_ctx(ctx, um)?;
+    let dxfs = &um.model.workbook.styles.dxfs;
+    let mut wrote = false;
+    let read_pos = |txn: &TransactionMut, key: &str| -> Option<String> {
+        match maps.cf.get(txn, key) {
+            Some(yrs::Out::Any(yrs::Any::String(s))) => Some(s.to_string()),
+            _ => None,
+        }
+    };
+    for sheet_id in scope {
+        let Some(sheet) = ctx.sheet_index(*sheet_id) else {
+            continue; // deleted later in the same batch
+        };
+        let model_cf = &um.model.workbook.worksheet(sheet)?.conditional_formatting;
+        let order = cf_orders
+            .entry(*sheet_id)
+            .or_insert_with(|| cf_order_from_shadow(shadow, *sheet_id));
+        // Full-sheet pushes (duplicate, sheet resurrect) carry CF rules
+        // without CF diffs: pair by index, allocate fresh ids for the
+        // surplus, drop the excess.
+        order.truncate(model_cf.len());
+        while order.len() < model_cf.len() {
+            *counter += 1;
+            let id = EntityId::Inserted {
+                client: client_id,
+                counter: *counter,
+            };
+            order.push((id, 0));
+        }
+        // Remove the registers of vanished rules.
+        let live: BTreeSet<EntityId> = order.iter().map(|(id, _)| *id).collect();
+        let prefix = format!("{}!", sheet_id.encode());
+        let stale: Vec<String> = maps
+            .cf
+            .iter(&*txn)
+            .filter_map(|(key, _)| {
+                let rest = key.strip_prefix(prefix.as_str())?;
+                let (rid, _) = rest.rsplit_once('.')?;
+                let rule_id = EntityId::decode(rid)?;
+                if live.contains(&rule_id) {
+                    None
+                } else {
+                    Some(key.to_string())
+                }
+            })
+            .collect();
+        for key in stale {
+            maps.cf.remove(txn, &key);
+            wrote = true;
+        }
+        // Walk the rules in canonical (model priority) order: fix positions
+        // that are missing or out of order, and bodies that differ.
+        let mut ranks: Vec<usize> = (0..order.len()).collect();
+        ranks.sort_by_key(|&index| model_cf[index].priority);
+        let mut prev: Option<String> = None;
+        for (rank, &index) in ranks.iter().enumerate() {
+            let (rule_id, _) = order[index];
+            let pos_key = axis_key(*sheet_id, rule_id, "p");
+            let current_pos = read_pos(txn, &pos_key);
+            let pos = match current_pos {
+                Some(p) if prev.as_deref().is_none_or(|q| p.as_str() > q) => p,
+                _ => {
+                    // Upper bound: the first later entry whose existing
+                    // position is still usable in the new order.
+                    let upper = ranks[rank + 1..].iter().find_map(|&j| {
+                        let key = axis_key(*sheet_id, order[j].0, "p");
+                        read_pos(txn, &key)
+                            .filter(|p| prev.as_deref().is_none_or(|q| p.as_str() > q))
+                    });
+                    *counter += 1;
+                    let pos =
+                        unique_position(prev.as_deref(), upper.as_deref(), client_id, *counter);
+                    maps.cf.insert(txn, pos_key, pos.as_str());
+                    wrote = true;
+                    pos
+                }
+            };
+            prev = Some(pos);
+            let desired = encode_cf_body(&model_cf[index], *sheet_id, &resolver, dxfs);
+            let val_key = axis_key(*sheet_id, rule_id, "v");
+            let current = match maps.cf.get(&*txn, &val_key) {
+                Some(yrs::Out::Any(yrs::Any::Buffer(bytes))) => Some(bytes.to_vec()),
+                _ => None,
+            };
+            if current.as_deref() != Some(desired.as_slice()) {
+                maps.cf.insert(txn, val_key, yrs::Any::from(desired));
+                wrote = true;
+            }
+        }
+    }
+    Ok(wrote)
 }
 
 /// The replicated form of a cell: empty for blank and spill cells (spills are
@@ -2548,6 +3007,12 @@ fn reconcile_sheet(
                 style.as_ref(),
             )?;
         }
+        // CF rules: rebuilt when their registers changed, or when any sheet
+        // changed structurally (id-form CF ranges/formulas render against the
+        // new orders; formulas can reference other sheets).
+        if sp_old.cf != sp_new.cf || rerender_all {
+            reconcile_cf_sheet(um, sheet, sheet_id, sp_new, resolver)?;
+        }
         return Ok(());
     }
 
@@ -2653,6 +3118,7 @@ fn apply_sheet_content(
         let style = pool_style_opt(proj, e.style.as_deref())?;
         apply_column_props(um, sheet, column as i32, e.size, e.hidden, style.as_ref())?;
     }
+    reconcile_cf_sheet(um, sheet, sheet_id, sp, resolver)?;
     Ok(())
 }
 
