@@ -22,6 +22,8 @@
 //! | `cols`      | same fields as `rows`      | (`.h` is the column width)     |
 //! | `keep_rows` | `<sid>!<rid>/<client36>`   | op counter (int) — keep-set    |
 //! | `keep_cols` | `<sid>!<cid>/<client36>`   | op counter (int)               |
+//! | `cf`        | `<sid>!<ruleId>.p`         | fractional position (string)   |
+//! |             | `<sid>!<ruleId>.v`         | bitcode `(range, rule, dxf)`   |
 //!
 //! Update-wins deletion: a row/column is visible iff it has no `.d` tombstone
 //! OR its keep-set is non-empty. Deleting clears the keep entries the deleter
@@ -50,6 +52,7 @@ pub(crate) const MAP_NAMES: &str = "names";
 pub(crate) const MAP_STYLES: &str = "styles";
 pub(crate) const MAP_CELL_STYLES: &str = "cell_styles";
 pub(crate) const MAP_NAMED_STYLES: &str = "named_styles";
+pub(crate) const MAP_CF: &str = "cf";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Axis {
@@ -74,6 +77,11 @@ pub(crate) struct SchemaMaps {
     pub cell_styles: MapRef,
     /// Named-style definitions: name → bitcode of `(Style, StyleIncludes)`.
     pub named_styles: MapRef,
+    /// Conditional-formatting rules: `<sid>!<ruleId>.p` → fractional position
+    /// (priority order), `<sid>!<ruleId>.v` → bitcode of
+    /// `(range, CfRule, Option<Dxf>)` with id-form range/formulas and the
+    /// dxf content inlined (dxf ids are replica-local).
+    pub cf: MapRef,
 }
 
 impl SchemaMaps {
@@ -90,6 +98,7 @@ impl SchemaMaps {
             styles: doc.get_or_insert_map(MAP_STYLES),
             cell_styles: doc.get_or_insert_map(MAP_CELL_STYLES),
             named_styles: doc.get_or_insert_map(MAP_NAMED_STYLES),
+            cf: doc.get_or_insert_map(MAP_CF),
         }
     }
 
@@ -182,6 +191,20 @@ fn as_i32(value: &Out) -> Option<i32> {
     }
 }
 
+/// Materialized state of one conditional-formatting rule. The rule exists
+/// while its body (`value`) is present; a pos-only remnant (concurrent
+/// delete vs. reorder) is treated as deleted.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub(crate) struct CfRuleProj {
+    /// Fractional position: ascending position = ascending priority number
+    /// (the highest position wins the evaluation, like the engine's highest
+    /// priority number). Missing pos (concurrent delete vs. body update)
+    /// sorts first, tie-broken by rule id.
+    pub pos: Option<String>,
+    /// bitcode of `(range, CfRule, Option<Dxf>)`.
+    pub value: Option<Vec<u8>>,
+}
+
 /// Materialized state of one row or column.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub(crate) struct AxisEntryProj {
@@ -220,9 +243,26 @@ pub(crate) struct SheetProj {
     /// `(column, row) → style pool hash` (independent LWW register per cell,
     /// so concurrent content and style edits of the same cell both survive).
     pub cell_styles: BTreeMap<(EntityId, EntityId), String>,
+    /// Conditional-formatting rules by stable rule id.
+    pub cf: BTreeMap<EntityId, CfRuleProj>,
 }
 
 impl SheetProj {
+    /// Live CF rules in canonical order: sorted by `(pos, id)`; entries
+    /// without a body are remnants of a delete and are skipped.
+    pub(crate) fn cf_canonical(&self) -> Vec<(EntityId, &CfRuleProj)> {
+        let mut rules: Vec<(EntityId, &CfRuleProj)> = self
+            .cf
+            .iter()
+            .filter(|(_, e)| e.value.is_some())
+            .map(|(id, e)| (*id, e))
+            .collect();
+        rules.sort_by(|a, b| {
+            (a.1.pos.as_deref().unwrap_or(""), a.0).cmp(&(b.1.pos.as_deref().unwrap_or(""), b.0))
+        });
+        rules
+    }
+
     pub(crate) fn axis_order(&self, axis: Axis) -> AxisOrder {
         let (entries, keeps, max) = match axis {
             Axis::Rows => (&self.rows, &self.keep_rows, MAX_ROW),
@@ -423,6 +463,36 @@ impl Projection {
         for (key, value) in maps.named_styles.iter(&txn) {
             if let Out::Any(Any::Buffer(bytes)) = value {
                 proj.named_styles.insert(key.to_string(), bytes.to_vec());
+            }
+        }
+
+        for (key, value) in maps.cf.iter(&txn) {
+            let Some((sid, rest)) = key.split_once('!') else {
+                continue;
+            };
+            let Some((rid, field)) = rest.rsplit_once('.') else {
+                continue;
+            };
+            let (Some(sheet_id), Some(rule_id)) =
+                (EntityId::decode(sid), EntityId::decode(rid))
+            else {
+                continue;
+            };
+            let entry = proj
+                .sheets
+                .entry(sheet_id)
+                .or_default()
+                .cf
+                .entry(rule_id)
+                .or_default();
+            match field {
+                "p" => entry.pos = as_string(&value),
+                "v" => {
+                    if let Out::Any(Any::Buffer(bytes)) = value {
+                        entry.value = Some(bytes.to_vec());
+                    }
+                }
+                _ => {}
             }
         }
 
