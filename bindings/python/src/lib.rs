@@ -170,6 +170,29 @@ impl PyModel {
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 
+    /// Get the raw evaluated cell value as a native Python object.
+    /// Returns float for numbers, str for text, bool for booleans, None for empty cells.
+    pub fn get_cell_value(
+        &self,
+        py: Python<'_>,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> PyResult<PyObject> {
+        use pyo3::IntoPyObjectExt;
+        let value = self
+            .model
+            .get_cell_value_by_index(sheet, row, column)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+        let obj = match value {
+            xlsx::base::cell::CellValue::None => py.None(),
+            xlsx::base::cell::CellValue::String(s) => s.into_py_any(py)?,
+            xlsx::base::cell::CellValue::Number(n) => n.into_py_any(py)?,
+            xlsx::base::cell::CellValue::Boolean(b) => b.into_py_any(py)?,
+        };
+        Ok(obj)
+    }
+
     // Set styles
     pub fn set_cell_style(
         &mut self,
