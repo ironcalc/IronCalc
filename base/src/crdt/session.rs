@@ -3427,6 +3427,17 @@ fn reconcile_sheet(
             };
             let style = pool_style_opt(proj, new_props.2.as_deref())?;
             apply_row_props(um, sheet, row as i32, new_props.0, new_props.1, style.as_ref())?;
+            if old_props.2 != new_props.2 {
+                reinherit_cell_styles(
+                    um,
+                    sheet,
+                    sheet_id,
+                    sp_new,
+                    resolver,
+                    proj,
+                    ReinheritScope::Row(row as i32),
+                )?;
+            }
         }
         let col_ids: BTreeSet<EntityId> = sp_old.cols.keys().chain(sp_new.cols.keys()).copied().collect();
         for id in col_ids {
@@ -3453,6 +3464,17 @@ fn reconcile_sheet(
                 new_props.1,
                 style.as_ref(),
             )?;
+            if old_props.2 != new_props.2 {
+                reinherit_cell_styles(
+                    um,
+                    sheet,
+                    sheet_id,
+                    sp_new,
+                    resolver,
+                    proj,
+                    ReinheritScope::Column(column as i32),
+                )?;
+            }
         }
         // Border edge deltas: recompute the cells adjacent to every changed
         // edge (they may have no style register of their own).
@@ -3612,6 +3634,17 @@ fn apply_sheet_content(
         let style = pool_style_opt(proj, e.style.as_deref())?;
         apply_column_props(um, sheet, column as i32, e.size, e.hidden, style.as_ref())?;
     }
+    // Cells are written before the row/column props above, so a register-less
+    // cell froze whatever the model inherited at that moment.
+    reinherit_cell_styles(
+        um,
+        sheet,
+        sheet_id,
+        sp,
+        resolver,
+        proj,
+        ReinheritScope::Sheet,
+    )?;
     reconcile_cf_sheet(um, sheet, sheet_id, sp, resolver)?;
     Ok(())
 }
@@ -3773,6 +3806,73 @@ fn apply_row_props(
         // The setters above may have materialized a default row record.
         let ws = um.model.workbook.worksheet_mut(sheet)?;
         ws.rows.retain(|r| r.r != row);
+    }
+    Ok(())
+}
+
+/// Which model cells `reinherit_cell_styles` re-derives.
+enum ReinheritScope {
+    Row(i32),
+    Column(i32),
+    Sheet,
+}
+
+/// The engine freezes the inherited (row/column) style into a cell at
+/// creation time, while the document keeps register-less cells implicit. A
+/// remote change to an inherited style therefore has to be pushed into the
+/// existing register-less cells, so their rendered style stays a pure
+/// function of the document (cells with their own register are untouched).
+fn reinherit_cell_styles(
+    um: &mut UserModel,
+    sheet: u32,
+    sheet_id: EntityId,
+    sp: &SheetProj,
+    resolver: &DocResolver,
+    proj: &Projection,
+    scope: ReinheritScope,
+) -> Result<(), String> {
+    let (Some(rows), Some(cols)) = (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
+    else {
+        return Ok(());
+    };
+    let ws = um.model.workbook.worksheet(sheet)?;
+    let mut coords: Vec<(i32, i32)> = Vec::new();
+    for (row, row_data) in &ws.sheet_data {
+        if let ReinheritScope::Row(target) = scope {
+            if *row != target {
+                continue;
+            }
+        }
+        for column in row_data.keys() {
+            if let ReinheritScope::Column(target) = scope {
+                if *column != target {
+                    continue;
+                }
+            }
+            coords.push((*row, *column));
+        }
+    }
+    for (row, column) in coords {
+        let (Some(row_id), Some(col_id)) = (rows.id_at(row as u32), cols.id_at(column as u32))
+        else {
+            continue;
+        };
+        if sp.cell_styles.contains_key(&(col_id, row_id)) {
+            continue; // governed by its own register
+        }
+        // Mirror the engine's inheritance order: row style, then column.
+        let hash = sp
+            .rows
+            .get(&row_id)
+            .and_then(|e| e.style.as_deref())
+            .or_else(|| sp.cols.get(&col_id).and_then(|e| e.style.as_deref()));
+        let inherited = match hash {
+            Some(hash) => style_from_pool(proj, hash)?,
+            None => um.model.workbook.styles.get_style(0)?,
+        };
+        if um.model.get_style_for_cell(sheet, row, column)? != inherited {
+            um.model.set_cell_style(sheet, row, column, &inherited)?;
+        }
     }
     Ok(())
 }
