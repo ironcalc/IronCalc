@@ -10,7 +10,8 @@
 //!
 //! | map         | key                        | value                          |
 //! |-------------|----------------------------|--------------------------------|
-//! | `meta`      | `s.<sid>.name`             | sheet name (string)            |
+//! | `meta`      | `wb.name` / `.locale` / `.tz` | workbook LWW registers      |
+//! |             | `s.<sid>.name`             | sheet name (string)            |
 //! |             | `s.<sid>.pos`              | fractional position (string)   |
 //! |             | `s.<sid>.del`              | `true` (tombstone)             |
 //! |             | `s.<sid>.fr` / `.fc`       | frozen rows / columns (int)    |
@@ -24,6 +25,8 @@
 //! | `keep_cols` | `<sid>!<cid>/<client36>`   | op counter (int)               |
 //! | `cf`        | `<sid>!<ruleId>.p`         | fractional position (string)   |
 //! |             | `<sid>!<ruleId>.v`         | bitcode `(range, rule, dxf)`   |
+//! | `edges`     | `<sid>!v.<cid>:<rid>`      | border item (line left of col) |
+//! |             | `<sid>!h.<cid>:<rid>`      | border item (line top of row)  |
 //!
 //! Update-wins deletion: a row/column is visible iff it has no `.d` tombstone
 //! OR its keep-set is non-empty. Deleting clears the keep entries the deleter
@@ -53,6 +56,7 @@ pub(crate) const MAP_STYLES: &str = "styles";
 pub(crate) const MAP_CELL_STYLES: &str = "cell_styles";
 pub(crate) const MAP_NAMED_STYLES: &str = "named_styles";
 pub(crate) const MAP_CF: &str = "cf";
+pub(crate) const MAP_EDGES: &str = "edges";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Axis {
@@ -82,6 +86,12 @@ pub(crate) struct SchemaMaps {
     /// `(range, CfRule, Option<Dxf>)` with id-form range/formulas and the
     /// dxf content inlined (dxf ids are replica-local).
     pub cf: MapRef,
+    /// Border-edge registers, one per grid line: `<sid>!v.<cid>:<rid>` is the
+    /// line left of column `cid` at row `rid`; `<sid>!h.<cid>:<rid>` is the
+    /// line on top of row `rid` at column `cid`. Value: session-encoded
+    /// `BorderItem`. One identity per line dissolves the shared-edge
+    /// conflict between adjacent cells' styles by construction.
+    pub edges: MapRef,
 }
 
 impl SchemaMaps {
@@ -99,6 +109,7 @@ impl SchemaMaps {
             cell_styles: doc.get_or_insert_map(MAP_CELL_STYLES),
             named_styles: doc.get_or_insert_map(MAP_NAMED_STYLES),
             cf: doc.get_or_insert_map(MAP_CF),
+            edges: doc.get_or_insert_map(MAP_EDGES),
         }
     }
 
@@ -138,6 +149,18 @@ pub(crate) fn sheet_keep_prefix(sheet: EntityId) -> String {
 
 pub(crate) fn sheet_keep_key(sheet: EntityId, client: u64) -> String {
     format!("{}{:x}", sheet_keep_prefix(sheet), client)
+}
+
+/// Key of a border edge register: `axis` is `'v'` (line left of the column)
+/// or `'h'` (line on top of the row).
+pub(crate) fn edge_key(sheet: EntityId, axis: char, column: EntityId, row: EntityId) -> String {
+    format!(
+        "{}!{}.{}:{}",
+        sheet.encode(),
+        axis,
+        column.encode(),
+        row.encode()
+    )
 }
 
 /// Key of a defined name: `<scope>|<name>` where scope is `g` (global) or a
@@ -245,6 +268,12 @@ pub(crate) struct SheetProj {
     pub cell_styles: BTreeMap<(EntityId, EntityId), String>,
     /// Conditional-formatting rules by stable rule id.
     pub cf: BTreeMap<EntityId, CfRuleProj>,
+    /// Vertical border edges: `(col_id, row_id) → encoded BorderItem`, the
+    /// line **left of** `col_id` at `row_id`.
+    pub v_edges: BTreeMap<(EntityId, EntityId), String>,
+    /// Horizontal border edges: `(col_id, row_id) → encoded BorderItem`, the
+    /// line **on top of** `row_id` at `col_id`.
+    pub h_edges: BTreeMap<(EntityId, EntityId), String>,
 }
 
 impl SheetProj {
@@ -287,6 +316,7 @@ pub(crate) struct Projection {
     /// Defined names: [`name_key`] → formula (id-form or plain text).
     pub names: BTreeMap<String, String>,
     /// Workbook-level LWW registers.
+    pub name: Option<String>,
     pub locale: Option<String>,
     pub timezone: Option<String>,
     /// Content-addressed style pool: hash → bitcode of `Style`.
@@ -325,6 +355,7 @@ impl Projection {
         for (key, value) in maps.meta.iter(&txn) {
             if let Some(field) = key.strip_prefix("wb.") {
                 match field {
+                    "name" => proj.name = as_string(&value),
                     "locale" => proj.locale = as_string(&value),
                     "tz" => proj.timezone = as_string(&value),
                     _ => {}
@@ -463,6 +494,38 @@ impl Projection {
         for (key, value) in maps.named_styles.iter(&txn) {
             if let Out::Any(Any::Buffer(bytes)) = value {
                 proj.named_styles.insert(key.to_string(), bytes.to_vec());
+            }
+        }
+
+        for (key, value) in maps.edges.iter(&txn) {
+            let Some((sid, rest)) = key.split_once('!') else {
+                continue;
+            };
+            let Some((axis, ids)) = rest.split_once('.') else {
+                continue;
+            };
+            let Some((cid, rid)) = ids.split_once(':') else {
+                continue;
+            };
+            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
+                EntityId::decode(sid),
+                EntityId::decode(cid),
+                EntityId::decode(rid),
+            ) else {
+                continue;
+            };
+            let Some(item) = as_string(&value) else {
+                continue;
+            };
+            let sheet = proj.sheets.entry(sheet_id).or_default();
+            match axis {
+                "v" => {
+                    sheet.v_edges.insert((col_id, row_id), item);
+                }
+                "h" => {
+                    sheet.h_edges.insert((col_id, row_id), item);
+                }
+                _ => {}
             }
         }
 

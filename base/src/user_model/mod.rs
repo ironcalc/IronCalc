@@ -2,7 +2,7 @@
 
 mod autofill;
 mod border;
-mod border_utils;
+pub(crate) mod border_utils;
 mod clipboard;
 mod common;
 mod conditional_formatting;

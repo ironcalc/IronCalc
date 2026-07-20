@@ -118,7 +118,11 @@ export function FileBar(properties: {
           name={properties.model.getName()}
           onNameChange={(name) => {
             properties.model.setName(name);
-            updateNameSelectedWorkbook(properties.model, name);
+            if (!properties.collabProvider) {
+              // Collab sessions live on the relay server; the "selected"
+              // localStorage entry is some unrelated local workbook.
+              updateNameSelectedWorkbook(properties.model, name);
+            }
             properties.setLocalStorageId((id) => id + 1);
           }}
           maxWidth={maxTitleWidth}
