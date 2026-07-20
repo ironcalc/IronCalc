@@ -84,8 +84,9 @@ function App() {
 
       if (collabRoom) {
         // Collaborative session: the room document is authoritative, so we
-        // start from a blank workbook and let the sync handshake fill it in.
-        const collabModel = createModelWithSafeTimezone(collabRoom);
+        // start from a blank workbook (empty name included — the real name
+        // arrives with the sync) and let the handshake fill it in.
+        const collabModel = createModelWithSafeTimezone("");
         const provider = new CollabProvider(
           collabModel,
           `${collabServerUrl()}/${encodeURIComponent(collabRoom)}`,
@@ -172,6 +173,19 @@ function App() {
     }, 1000);
     return () => clearInterval(interval);
   }, [model, collabProvider]);
+
+  useEffect(() => {
+    if (!collabProvider || !model) return;
+    // Repaint the title bar when a remote update changes the workbook name.
+    let lastName = model.getName();
+    return collabProvider.onRemoteUpdate(() => {
+      const name = model.getName();
+      if (name !== lastName) {
+        lastName = name;
+        setLocalStorageId((id) => id + 1);
+      }
+    });
+  }, [collabProvider, model]);
 
   useEffect(() => {
     if (!collabProvider) return;
