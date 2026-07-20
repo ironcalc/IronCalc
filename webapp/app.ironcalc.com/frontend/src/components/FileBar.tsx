@@ -123,9 +123,13 @@ export function FileBar(properties: {
           name={properties.model.getName()}
           onNameChange={(name) => {
             properties.model.setName(name);
-            updateNameSelectedWorkbook(properties.model, name).catch((e) =>
-              console.error("Failed saving new name", e),
-            );
+            if (!properties.collabProvider) {
+              // Collab sessions live on the relay server; the "selected"
+              // storage entry is some unrelated local workbook.
+              updateNameSelectedWorkbook(properties.model, name).catch((e) =>
+                console.error("Failed saving new name", e),
+              );
+            }
           }}
           maxWidth={maxTitleWidth}
         />
