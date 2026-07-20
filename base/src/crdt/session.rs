@@ -22,12 +22,12 @@
 //! Current scope: cell content and styles (content-addressed pool), formulas
 //! in id-form, rows/columns (insert/delete/move, props, styles, update-wins
 //! keep-sets), sheets (CRUD, keep-sets, settings), defined names, named-style
-//! definitions, workbook locale/timezone, conditional formatting (stable rule
+//! definitions, workbook name/locale/timezone/theme, conditional formatting (stable rule
 //! ids, fractional priority positions, id-form ranges/formulas, inlined dxf
 //! bodies), borders (one LWW register per grid line; cell styles replicate
 //! without the shared sides, which compose back from the edge registers —
 //! only into cells that have a style register, so the bordered set is a pure
-//! function of the document). Not replicated yet: merged cells, themes.
+//! function of the document). Not replicated yet: merged cells.
 //!
 //! Known styles limitation: applying a *named* style links the cell locally
 //! but replicates the flattened result, so updating a named style definition
@@ -83,7 +83,7 @@ fn style_from_pool(proj: &Projection, hash: &str) -> Result<Style, String> {
         .ok_or("collab: missing style pool entry")?;
     bitcode::decode(bytes).map_err(|e| format!("collab: corrupt style body: {e}"))
 }
-use crate::types::{Color, SheetState, Style, StyleIncludes};
+use crate::types::{Color, SheetState, Style, StyleIncludes, Theme};
 
 /// Deterministic 128-bit FNV-1a over the style's bitcode bytes — the key of
 /// the content-addressed style pool. Interning is content-based, so two
@@ -803,6 +803,12 @@ impl CollabSession {
             if !name.is_empty() {
                 maps.meta.insert(&mut txn, "wb.name", name.as_str());
             }
+            // Same idea: only a non-default theme claims the register.
+            let theme = &um.model.workbook.theme;
+            if *theme != Theme::default() {
+                maps.meta
+                    .insert(&mut txn, "wb.theme", yrs::Any::from(bitcode::encode(theme)));
+            }
         }
         let shadow = Projection::from_doc(&doc, &maps);
         Ok(CollabSession {
@@ -1219,6 +1225,13 @@ impl CollabSession {
                 um.model.set_timezone(timezone)?;
             }
         }
+        if let Some(bytes) = &new_proj.theme {
+            let theme: Theme = bitcode::decode(bytes)
+                .map_err(|e| format!("collab: corrupt theme body: {e}"))?;
+            if um.model.workbook.theme != theme {
+                um.model.set_theme(theme);
+            }
+        }
         // Content. First find the sheets whose row/column order changed: any
         // such change can shift the *rendering* of id-form formulas on every
         // sheet (cross-sheet references), so even sheets on the fast delta
@@ -1619,7 +1632,7 @@ impl Pass1<'_, '_> {
                 Ok(())
             }
             // Workbook-level LWW registers, read from the post-batch model.
-            Diff::SetLocale { .. } | Diff::SetTimezone { .. } => {
+            Diff::SetLocale { .. } | Diff::SetTimezone { .. } | Diff::SetTheme { .. } => {
                 self.touched.workbook = true;
                 Ok(())
             }
@@ -1728,9 +1741,6 @@ impl Pass1<'_, '_> {
                 }
                 Ok(())
             }
-
-            // Not replicated in v1: purely visual state.
-            Diff::SetTheme { .. } => Ok(()),
 
             // Moves: pure position rewrites. The diff already carries the
             // hidden-rows-adjusted delta (resolved by `move_rows_action`
@@ -2728,6 +2738,8 @@ fn write_final_state(
         maps.meta
             .insert(txn, "wb.locale", settings.locale.as_str());
         maps.meta.insert(txn, "wb.tz", settings.tz.as_str());
+        let theme = bitcode::encode(&um.model.workbook.theme);
+        maps.meta.insert(txn, "wb.theme", yrs::Any::from(theme));
     }
 
     // Sheet keep-sets: every positive op on a sheet keeps it alive against a
