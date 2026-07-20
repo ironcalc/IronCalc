@@ -11,6 +11,7 @@
 //! | map         | key                        | value                          |
 //! |-------------|----------------------------|--------------------------------|
 //! | `meta`      | `wb.name` / `.locale` / `.tz` | workbook LWW registers      |
+//! |             | `wb.theme`                 | bitcode of `Theme`             |
 //! |             | `s.<sid>.name`             | sheet name (string)            |
 //! |             | `s.<sid>.pos`              | fractional position (string)   |
 //! |             | `s.<sid>.del`              | `true` (tombstone)             |
@@ -319,6 +320,8 @@ pub(crate) struct Projection {
     pub name: Option<String>,
     pub locale: Option<String>,
     pub timezone: Option<String>,
+    /// Bitcode of `Theme`.
+    pub theme: Option<Vec<u8>>,
     /// Content-addressed style pool: hash → bitcode of `Style`.
     pub styles: BTreeMap<String, Vec<u8>>,
     /// Named styles: name → bitcode of `(Style, StyleIncludes)`.
@@ -358,6 +361,11 @@ impl Projection {
                     "name" => proj.name = as_string(&value),
                     "locale" => proj.locale = as_string(&value),
                     "tz" => proj.timezone = as_string(&value),
+                    "theme" => {
+                        if let Out::Any(Any::Buffer(bytes)) = &value {
+                            proj.theme = Some(bytes.to_vec());
+                        }
+                    }
                     _ => {}
                 }
                 continue;
