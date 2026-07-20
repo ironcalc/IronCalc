@@ -53,6 +53,29 @@ function randomClientId(): number {
   return buffer[0];
 }
 
+const RANDOM_USER_NAMES = [
+  "Amber Fox",
+  "Crimson Ibis",
+  "Coral Heron",
+  "Golden Lynx",
+  "Indigo Otter",
+  "Ivory Falcon",
+  "Jade Swallow",
+  "Marble Wren",
+  "Onyx Swift",
+  "Opal Finch",
+  "Saffron Crane",
+  "Scarlet Tanager",
+  "Silver Marten",
+  "Teal Kingfisher",
+  "Velvet Sparrow",
+  "Willow Egret",
+];
+
+function randomUserName(): string {
+  return RANDOM_USER_NAMES[Math.floor(Math.random() * RANDOM_USER_NAMES.length)];
+}
+
 export class CollabProvider {
   readonly clientId: number;
   readonly userName: string;
@@ -87,7 +110,7 @@ export class CollabProvider {
       options.createWebSocket ??
       ((wsUrl: string) => new WebSocket(wsUrl) as unknown as CollabWebSocket);
     this.clientId = options.clientId ?? randomClientId();
-    this.userName = options.userName ?? "Guest";
+    this.userName = options.userName ?? randomUserName();
     if (!model.collabIsAttached()) {
       model.collabAttach(this.clientId);
     }
