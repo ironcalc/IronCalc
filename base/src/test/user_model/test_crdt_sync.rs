@@ -465,9 +465,13 @@ fn undo_only_reverts_own_operation() {
 fn randomized_convergence_fuzz() {
     // Seeded and deterministic: any failure is reproducible by seed.
     // Set CRDT_FUZZ_SEEDS=n to stress with seeds 1..=n locally.
-    let seeds: Vec<u64> = match std::env::var("CRDT_FUZZ_SEEDS") {
-        Ok(n) => (1..=n.parse::<u64>().expect("CRDT_FUZZ_SEEDS must be a number")).collect(),
-        Err(_) => vec![1, 7, 42, 1234, 987_654],
+    let seeds: Vec<u64> = if let Ok(only) = std::env::var("CRDT_FUZZ_ONLY") {
+        vec![only.parse().expect("CRDT_FUZZ_ONLY must be a number")]
+    } else {
+        match std::env::var("CRDT_FUZZ_SEEDS") {
+            Ok(n) => (1..=n.parse::<u64>().expect("CRDT_FUZZ_SEEDS must be a number")).collect(),
+            Err(_) => vec![1, 7, 42, 1234, 987_654],
+        }
     };
     for seed in seeds {
         let result = std::panic::catch_unwind(|| fuzz_round(seed));
@@ -493,7 +497,7 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..19) {
+            match rng.gen_range(0..20) {
                 0..=3 => {
                     let value = format!("v{}", rng.gen::<u16>());
                     if trace {
@@ -702,6 +706,30 @@ fn fuzz_round(seed: u64) {
                             }
                         }
                     }
+                }
+                18 => {
+                    use crate::expressions::types::Area;
+                    let kinds = ["All", "Outer", "Inner", "Top", "Left", "CenterH", "None"];
+                    let kind = kinds[rng.gen_range(0..kinds.len())];
+                    let styles = ["thin", "medium", "thick"];
+                    let border_style = styles[rng.gen_range(0..styles.len())];
+                    let height = rng.gen_range(1..=3);
+                    let width = rng.gen_range(1..=3);
+                    if trace {
+                        eprintln!(
+                            "{step}: {who} border {kind} {border_style} R{row}C{column} {height}x{width}"
+                        );
+                    }
+                    let _ = replica.um.set_area_with_border(
+                        &Area {
+                            sheet: 0,
+                            row,
+                            column,
+                            width,
+                            height,
+                        },
+                        &border_area(border_style, kind),
+                    );
                 }
                 _ => {
                     if trace {
@@ -1016,6 +1044,158 @@ fn named_style_definitions_sync_and_apply() {
     assert!(a.um.get_cell_style(0, 1, 1).unwrap().font.b);
 }
 
+fn border_area(style: &str, kind: &str) -> crate::BorderArea {
+    serde_json::from_str(&format!(
+        r##"{{"item": {{"style": "{style}", "color": "#333333"}}, "type": "{kind}"}}"##
+    ))
+    .unwrap()
+}
+
+fn set_border(um: &mut UserModel, row: i32, column: i32, height: i32, width: i32, style: &str, kind: &str) {
+    use crate::expressions::types::Area;
+    um.set_area_with_border(
+        &Area {
+            sheet: 0,
+            row,
+            column,
+            width,
+            height,
+        },
+        &border_area(style, kind),
+    )
+    .unwrap();
+}
+
+#[test]
+fn border_syncs_to_remote() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    set_border(&mut a.um, 1, 1, 2, 2, "thin", "All");
+    sync(&mut a, &mut b);
+
+    let border = b.um.get_cell_style(0, 1, 1).unwrap().border;
+    assert!(border.top.is_some(), "top border missing: {border:?}");
+    assert!(border.left.is_some());
+    assert!(border.right.is_some());
+    assert!(border.bottom.is_some());
+    assert_converged(&a, &b);
+}
+
+/// Test 18 of the design doc: the line between columns B and C is one
+/// register, so concurrent borders around `A1:B2` and `C1:D2` converge with
+/// both adjacent sides equal (no split-edge disagreement).
+#[test]
+fn shared_edge_between_adjacent_ranges_converges() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    set_border(&mut a.um, 1, 1, 2, 2, "thick", "Outer");
+    set_border(&mut b.um, 1, 3, 2, 2, "thin", "Outer");
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    for row in 1..=2 {
+        let right_of_b = a.um.get_cell_style(0, row, 2).unwrap().border.right;
+        let left_of_c = a.um.get_cell_style(0, row, 3).unwrap().border.left;
+        assert!(right_of_b.is_some(), "shared edge vanished");
+        assert_eq!(
+            right_of_b, left_of_c,
+            "shared edge is incoherent at row {row}"
+        );
+    }
+}
+
+#[test]
+fn border_survives_concurrent_style_edit_on_same_cell() {
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    set_border(&mut a.um, 2, 2, 1, 1, "medium", "All");
+    b.um.update_range_style(
+        &Area {
+            sheet: 0,
+            row: 2,
+            column: 2,
+            width: 1,
+            height: 1,
+        },
+        "font.b",
+        "true",
+    )
+    .unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    // The edge registers are independent of the style register, so the
+    // border always survives (the bold flag resolves by LWW on the style).
+    let border = a.um.get_cell_style(0, 2, 2).unwrap().border;
+    assert!(border.top.is_some(), "border lost to concurrent style edit");
+}
+
+#[test]
+fn border_travels_with_concurrent_row_insert() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    set_border(&mut a.um, 5, 1, 1, 2, "thin", "All");
+    sync(&mut a, &mut b);
+
+    b.um.insert_rows(0, 3, 1).unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    let border = a.um.get_cell_style(0, 6, 1).unwrap().border;
+    assert!(border.top.is_some(), "border did not travel with its row");
+    let border = a.um.get_cell_style(0, 5, 1).unwrap().border;
+    assert!(border.top.is_none(), "stale border at the old position");
+}
+
+#[test]
+fn border_clear_propagates() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    set_border(&mut a.um, 1, 1, 2, 2, "thin", "All");
+    sync(&mut a, &mut b);
+    assert!(b.um.get_cell_style(0, 1, 1).unwrap().border.top.is_some());
+
+    b.um.set_area_with_border(
+        &crate::expressions::types::Area {
+            sheet: 0,
+            row: 1,
+            column: 1,
+            width: 2,
+            height: 2,
+        },
+        &border_area("thick", "None"),
+    )
+    .unwrap();
+    sync(&mut a, &mut b);
+
+    assert_converged(&a, &b);
+    let border = a.um.get_cell_style(0, 1, 1).unwrap().border;
+    assert!(border.top.is_none(), "border not cleared: {border:?}");
+}
+
+#[test]
+fn border_undo_removes_border_on_both_replicas() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    set_border(&mut a.um, 2, 2, 1, 1, "thin", "All");
+    sync(&mut a, &mut b);
+    assert!(b.um.get_cell_style(0, 2, 2).unwrap().border.top.is_some());
+
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    let border = b.um.get_cell_style(0, 2, 2).unwrap().border;
+    assert!(border.top.is_none(), "undone border survived: {border:?}");
+    // The neighbouring cells must not have grown materialized borders.
+    let border = b.um.get_cell_style(0, 2, 3).unwrap().border;
+    assert!(border.left.is_none(), "neighbour kept the edge: {border:?}");
+}
+
 #[test]
 fn cf_rule_syncs_to_remote_with_dxf() {
     let mut a = replica(1);
@@ -1317,6 +1497,48 @@ fn workbook_timezone_syncs() {
     a.um.set_timezone("Europe/Berlin").unwrap();
     sync(&mut a, &mut b);
     assert_eq!(b.um.model.workbook.settings.tz, "Europe/Berlin");
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn workbook_name_syncs() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    a.um.set_name("Budget 2026");
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_name(), "Budget 2026");
+    assert_converged(&a, &b);
+}
+
+/// A joiner attaches a blank workbook with an empty name (the webapp's
+/// `?room=` flow): it must adopt the host's name instead of competing.
+#[test]
+fn joiner_with_empty_name_adopts_host_name() {
+    let mut um_a = UserModel::from_model(new_empty_model());
+    um_a.set_name("Quarterly report");
+    let session_a = CollabSession::attach(&mut um_a, 1).unwrap();
+    let mut a = Replica {
+        um: um_a,
+        session: session_a,
+    };
+
+    let mut um_b = UserModel::from_model(new_empty_model());
+    um_b.set_name("");
+    let session_b = CollabSession::attach(&mut um_b, 2).unwrap();
+    let mut b = Replica {
+        um: um_b,
+        session: session_b,
+    };
+
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_name(), "Quarterly report");
+    assert_converged(&a, &b);
+
+    // A later rename on either side propagates.
+    b.um.set_name("Quarterly report v2");
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_name(), "Quarterly report v2");
     assert_converged(&a, &b);
 }
 

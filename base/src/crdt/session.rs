@@ -24,7 +24,10 @@
 //! keep-sets), sheets (CRUD, keep-sets, settings), defined names, named-style
 //! definitions, workbook locale/timezone, conditional formatting (stable rule
 //! ids, fractional priority positions, id-form ranges/formulas, inlined dxf
-//! bodies). Not replicated yet: borders as shared edges, merged cells, themes.
+//! bodies), borders (one LWW register per grid line; cell styles replicate
+//! without the shared sides, which compose back from the edge registers —
+//! only into cells that have a style register, so the bordered set is a pure
+//! function of the document). Not replicated yet: merged cells, themes.
 //!
 //! Known styles limitation: applying a *named* style links the cell locally
 //! but replicates the flattened result, so updating a named style definition
@@ -42,7 +45,8 @@ use crate::cf_types::{CfRule, Cfvo, ConditionalFormatting};
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
 };
-use crate::types::{Cell, Dxf};
+use crate::types::{BorderItem, BorderStyle, Cell, Dxf};
+use crate::user_model::border_utils::is_max_border;
 use crate::user_model::history::{Diff, DiffType, QueueDiffs};
 use crate::UserModel;
 
@@ -52,8 +56,8 @@ use super::formula::{
 use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
 use super::order::{original_position, unique_position, AxisOrder, ResolvedIndex};
 use super::projection::{
-    axis_key, cell_key, keep_key, keep_prefix, name_key, parse_name_key, sheet_keep_key,
-    sheet_keep_prefix, sheet_meta_key, Axis, Projection, SchemaMaps, SheetProj,
+    axis_key, cell_key, edge_key, keep_key, keep_prefix, name_key, parse_name_key,
+    sheet_keep_key, sheet_keep_prefix, sheet_meta_key, Axis, Projection, SchemaMaps, SheetProj,
 };
 
 /// Ensures a style body is in the pool and returns its hash.
@@ -135,6 +139,76 @@ fn state_from_doc(text: &str) -> Result<SheetState, String> {
         "veryHidden" => Ok(SheetState::VeryHidden),
         _ => Err("collab: malformed sheet state".to_string()),
     }
+}
+
+// ---- border edge codec ----
+
+/// Session codec for a border item: `<style>;<encoded color or empty>`.
+fn border_item_to_doc(item: &BorderItem) -> String {
+    format!(
+        "{};{}",
+        item.style,
+        color_to_doc(&item.color).unwrap_or_default()
+    )
+}
+
+fn border_item_from_doc(text: &str) -> Result<BorderItem, String> {
+    let (style, color) = text
+        .split_once(';')
+        .ok_or("collab: malformed border item")?;
+    let style = match style {
+        "thin" => BorderStyle::Thin,
+        "medium" => BorderStyle::Medium,
+        "thick" => BorderStyle::Thick,
+        "double" => BorderStyle::Double,
+        "dotted" => BorderStyle::Dotted,
+        "slantdashdot" => BorderStyle::SlantDashDot,
+        "mediumdashed" => BorderStyle::MediumDashed,
+        "mediumdashdotdot" => BorderStyle::MediumDashDotDot,
+        "mediumdashdot" => BorderStyle::MediumDashDot,
+        _ => return Err("collab: malformed border style".to_string()),
+    };
+    let color = if color.is_empty() {
+        Color::None
+    } else {
+        color_from_doc(color)?
+    };
+    Ok(BorderItem { style, color })
+}
+
+/// The heavier of two optional border sides — the engine's visible edge:
+/// after any `set_area_with_border`, the intended value always equals
+/// `max(primary side, neighbour side)` (the primary side is written
+/// absolutely; the neighbour is demoted only when it was heavier).
+fn max_border_side<'a>(
+    a: Option<&'a BorderItem>,
+    b: Option<&'a BorderItem>,
+) -> Option<&'a BorderItem> {
+    if is_max_border(a, b) {
+        b
+    } else {
+        a
+    }
+}
+
+/// Does the style carry any shared border side?
+fn has_edge_borders(style: &Style) -> bool {
+    style.border.left.is_some()
+        || style.border.right.is_some()
+        || style.border.top.is_some()
+        || style.border.bottom.is_some()
+}
+
+/// A style with the shared border sides removed: left/right/top/bottom
+/// replicate as edge registers, so the style channel must not carry them.
+/// Diagonal borders are cell-local and stay.
+fn strip_edge_borders(style: &Style) -> Style {
+    let mut stripped = style.clone();
+    stripped.border.left = None;
+    stripped.border.right = None;
+    stripped.border.top = None;
+    stripped.border.bottom = None;
+    stripped
 }
 
 // ---- conditional formatting codec ----
@@ -247,6 +321,129 @@ fn intern_dxf(dxfs: &mut Vec<Dxf>, dxf: Dxf) -> u32 {
             (dxfs.len() - 1) as u32
         }
     }
+}
+
+/// Rewrites the model's border sides around every touched cell to the edge
+/// registers' values: both adjacent sides of a line get the register value.
+/// The visible result is unchanged (the register already holds the heavier,
+/// i.e. visible, side), but the representation becomes replica-identical —
+/// the engine itself leaves the two sides incoherent when a lighter border
+/// is set next to a heavier neighbour.
+fn canonicalize_borders(
+    um: &mut UserModel,
+    shadow: &Projection,
+    touched: &Touched,
+    all: bool,
+) -> Result<(), String> {
+    let resolver = DocResolver::from_projection(shadow);
+    let visible = shadow.visible_sheets();
+    // Touched cells plus their four neighbours (an edge write may require
+    // rewriting the neighbour's side).
+    let mut cells: BTreeSet<(u32, EntityId, EntityId, EntityId)> = BTreeSet::new();
+    for (sheet_id, col_id, row_id) in &touched.cell_styles {
+        let Some(index) = visible.iter().position(|(id, _)| id == sheet_id) else {
+            continue;
+        };
+        let sheet = index as u32;
+        let (Some(rows), Some(cols)) = (resolver.rows.get(sheet_id), resolver.cols.get(sheet_id))
+        else {
+            continue;
+        };
+        let (Some(row), Some(column)) = (rows.index_of(*row_id), cols.index_of(*col_id)) else {
+            continue;
+        };
+        cells.insert((sheet, *sheet_id, *col_id, *row_id));
+        if column > 1 {
+            if let Some(prev) = cols.id_at(column - 1) {
+                cells.insert((sheet, *sheet_id, prev, *row_id));
+            }
+        }
+        if let Some(next) = cols.id_at(column + 1) {
+            cells.insert((sheet, *sheet_id, next, *row_id));
+        }
+        if row > 1 {
+            if let Some(prev) = rows.id_at(row - 1) {
+                cells.insert((sheet, *sheet_id, *col_id, prev));
+            }
+        }
+        if let Some(next) = rows.id_at(row + 1) {
+            cells.insert((sheet, *sheet_id, *col_id, next));
+        }
+    }
+    // Structural passes: a deleted row/column orphans the edge registers
+    // keyed by its ids while the model keeps the border sides. Re-derive
+    // every register cell from the (still visible) edges and strip stale
+    // sides from every bordered model cell that has no register.
+    if all {
+        for (index, (sheet_id, sp)) in visible.iter().enumerate() {
+            let sheet = index as u32;
+            let (Some(rows), Some(cols)) =
+                (resolver.rows.get(sheet_id), resolver.cols.get(sheet_id))
+            else {
+                continue;
+            };
+            for (col_id, row_id) in sp.cell_styles.keys() {
+                cells.insert((sheet, *sheet_id, *col_id, *row_id));
+            }
+            let ws = um.model.workbook.worksheet(sheet)?;
+            let mut coords: Vec<(i32, i32)> = Vec::new();
+            for (row, row_data) in &ws.sheet_data {
+                for column in row_data.keys() {
+                    coords.push((*row, *column));
+                }
+            }
+            for (row, column) in coords {
+                let Some(style) = um.model.get_cell_style_or_none(sheet, row, column)? else {
+                    continue;
+                };
+                if !has_edge_borders(&style) {
+                    continue;
+                }
+                let (Some(row_id), Some(col_id)) =
+                    (rows.id_at(row as u32), cols.id_at(column as u32))
+                else {
+                    continue;
+                };
+                cells.insert((sheet, *sheet_id, col_id, row_id));
+            }
+        }
+    }
+    for (sheet, sheet_id, col_id, row_id) in cells {
+        let Some(sp) = shadow.sheets.get(&sheet_id) else {
+            continue;
+        };
+        let (Some(rows), Some(cols)) = (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
+        else {
+            continue;
+        };
+        let (Some(row), Some(column)) = (rows.index_of(row_id), cols.index_of(col_id)) else {
+            continue;
+        };
+        let (row, column) = (row as i32, column as i32);
+        // Register cells compose the surrounding edges; bordered cells
+        // without a register carry stale sides and are stripped. Cells with
+        // neither an explicit style nor a register are left alone.
+        let has_register = sp.cell_styles.contains_key(&(col_id, row_id));
+        if !has_register
+            && um.model.get_cell_style_or_none(sheet, row, column)?.is_none()
+        {
+            continue;
+        }
+        let current = um.model.get_style_for_cell(sheet, row, column)?;
+        let mut desired = strip_edge_borders(&current);
+        if has_register {
+            let (left, right, top, bottom) =
+                edge_sides_for_cell(sp, &resolver, sheet_id, col_id, row_id)?;
+            desired.border.left = left;
+            desired.border.right = right;
+            desired.border.top = top;
+            desired.border.bottom = bottom;
+        }
+        if desired != current {
+            um.model.set_cell_style(sheet, row, column, &desired)?;
+        }
+    }
+    Ok(())
 }
 
 /// Puts every sheet's CF list in canonical form: stable-ordered by priority,
@@ -600,6 +797,12 @@ impl CollabSession {
             maps.meta
                 .insert(&mut txn, "wb.locale", settings.locale.as_str());
             maps.meta.insert(&mut txn, "wb.tz", settings.tz.as_str());
+            // An empty name means "adopt the room's": a joiner attaching a
+            // blank workbook must not compete with the host's register.
+            let name = um.get_name();
+            if !name.is_empty() {
+                maps.meta.insert(&mut txn, "wb.name", name.as_str());
+            }
         }
         let shadow = Projection::from_doc(&doc, &maps);
         Ok(CollabSession {
@@ -753,6 +956,15 @@ impl CollabSession {
     // ---- outbound ----
 
     pub(crate) fn translate_queue(&mut self, um: &mut UserModel) -> Result<(), String> {
+        // `UserModel::set_name` bypasses the diff queue, so local renames are
+        // caught by comparing the model against the shadow register.
+        let name = um.get_name();
+        if !name.is_empty() && self.shadow.name.as_ref() != Some(&name) {
+            let mut txn = self.doc.transact_mut();
+            self.maps.meta.insert(&mut txn, "wb.name", name.as_str());
+            drop(txn);
+            self.shadow.name = Some(name);
+        }
         let bytes = um.flush_send_queue();
         let queue: Vec<QueueDiffs> =
             bitcode::decode(&bytes).map_err(|e| format!("collab: cannot decode queue: {e}"))?;
@@ -857,6 +1069,13 @@ impl CollabSession {
             if changed {
                 um.model.evaluate_conditional_formatting();
             }
+        }
+        // Canonical border form: both sides of every touched edge follow the
+        // edge register (see `canonicalize_borders`); structural batches
+        // re-derive every bordered cell (orphaned edges of deleted
+        // rows/columns disappear while the engine keeps the sides).
+        if !touched.cell_styles.is_empty() || touched.cf_all {
+            canonicalize_borders(um, &self.shadow, &touched, touched.cf_all)?;
         }
         Ok(())
     }
@@ -985,6 +1204,11 @@ impl CollabSession {
             }
         }
         // Workbook-level registers.
+        if let Some(name) = &new_proj.name {
+            if !name.is_empty() && um.get_name() != *name {
+                um.set_name(name);
+            }
+        }
         if let Some(locale) = &new_proj.locale {
             if um.model.workbook.settings.locale != *locale {
                 um.model.set_locale(locale)?;
@@ -1036,6 +1260,12 @@ impl CollabSession {
                 )?,
                 None => apply_full_sheet(um, sheet, *id, sp_new, &resolver, &new_proj)?,
             }
+        }
+        // Structural changes orphan/revive edge registers wholesale;
+        // re-derive every bordered cell from the visible edges (mirrors the
+        // outbound canonicalization).
+        if rerender_all {
+            canonicalize_borders(um, &new_proj, &Touched::default(), true)?;
         }
         um.model.evaluate();
         self.shadow = new_proj;
@@ -1139,6 +1369,7 @@ fn bootstrap_sheet(
             .insert(txn, axis_key(sheet_id, id, "sty"), hash.as_str());
     }
     let mut cell_style_writes: Vec<(String, Style)> = Vec::new();
+    let mut edge_marks: Vec<(u32, u32)> = Vec::new();
     for (row, row_cells) in &ws.sheet_data {
         for (column, cell) in row_cells {
             if matches!(cell, Cell::SpillCell { .. }) {
@@ -1157,14 +1388,37 @@ fn bootstrap_sheet(
                 }
             }
             let style = um.model.get_style_for_cell(sheet_index, *row, *column)?;
-            if style != default_style {
-                cell_style_writes.push((cell_key(sheet_id, col_id, row_id), style));
+            let stripped = strip_edge_borders(&style);
+            let owns_edges = um
+                .model
+                .get_cell_style_or_none(sheet_index, *row, *column)?
+                .is_some_and(|s| has_edge_borders(&s));
+            if stripped != default_style || owns_edges {
+                cell_style_writes.push((cell_key(sheet_id, col_id, row_id), stripped));
             }
+            edge_marks.push((*row as u32, *column as u32));
         }
     }
     for (key, style) in cell_style_writes {
         let hash = ensure_style_in_pool(txn, maps, &style);
         maps.cell_styles.insert(txn, key, hash.as_str());
+    }
+    // Border edges (deterministic Original ids at bootstrap).
+    for (row, column) in edge_marks {
+        for (axis, edge_column, edge_row, value) in
+            desired_cell_edges(um, sheet_index, row, column)?
+        {
+            if let Some(item) = value {
+                let key = edge_key(
+                    sheet_id,
+                    axis,
+                    EntityId::Original(edge_column),
+                    EntityId::Original(edge_row),
+                );
+                maps.edges
+                    .insert(txn, key, border_item_to_doc(&item).as_str());
+            }
+        }
     }
     // CF rules (in canonical form after attach): deterministic Original ids
     // by storage index, positions by priority rank.
@@ -1650,6 +1904,34 @@ impl Pass1<'_, '_> {
             let (r, c) = (r as i32, c as i32);
             if r >= row && r < row + height && c >= column && c < column + width {
                 hits.push((*col_id, *row_id));
+            }
+        }
+        // Border-only cells have no style register; cells adjacent to an
+        // edge inside the rectangle must re-derive their edges too.
+        for ((col_id, row_id), is_v) in sp
+            .v_edges
+            .keys()
+            .map(|k| (*k, true))
+            .chain(sp.h_edges.keys().map(|k| (*k, false)))
+        {
+            let (Some(r), Some(c)) = (rows.index_of(row_id), cols.index_of(col_id)) else {
+                continue;
+            };
+            for (rr, cc) in [
+                (r as i32, c as i32),
+                if is_v {
+                    (r as i32, c as i32 - 1)
+                } else {
+                    (r as i32 - 1, c as i32)
+                },
+            ] {
+                if rr >= row && rr < row + height && cc >= column && cc < column + width {
+                    let (Some(rid), Some(cid)) = (rows.id_at(rr as u32), cols.id_at(cc as u32))
+                    else {
+                        continue;
+                    };
+                    hits.push((cid, rid));
+                }
             }
         }
         for (col_id, row_id) in hits {
@@ -2194,6 +2476,7 @@ fn write_final_state(
         let rows_order = ctx.order(*sheet_id, Axis::Rows)?;
         let cols_order = ctx.order(*sheet_id, Axis::Columns)?;
         let mut style_writes: Vec<(String, Style)> = Vec::new();
+        let mut edge_marks: Vec<(EntityId, EntityId)> = Vec::new();
         for (row, row_cells) in &ws.sheet_data {
             for (column, cell) in row_cells {
                 if matches!(cell, Cell::SpillCell { .. }) {
@@ -2221,14 +2504,23 @@ fn write_final_state(
                     }
                 }
                 let style = um.model.get_style_for_cell(sheet, *row, *column)?;
-                if style != default_style {
-                    style_writes.push((cell_key(*sheet_id, col_id, row_id), style));
+                let stripped = strip_edge_borders(&style);
+                let owns_edges = um
+                    .model
+                    .get_cell_style_or_none(sheet, *row, *column)?
+                    .is_some_and(|s| has_edge_borders(&s));
+                if stripped != default_style || owns_edges {
+                    style_writes.push((cell_key(*sheet_id, col_id, row_id), stripped));
                 }
+                edge_marks.push((col_id, row_id));
             }
         }
         for (key, style) in style_writes {
             let hash = ensure_style_in_pool(txn, maps, &style);
             maps.cell_styles.insert(txn, key, hash.as_str());
+        }
+        for (col_id, row_id) in edge_marks {
+            sync_cell_edges(txn, maps, um, ctx, shadow, *sheet_id, col_id, row_id)?;
         }
         let row_styles: Vec<(EntityId, Style)> = ws
             .rows
@@ -2305,7 +2597,18 @@ fn write_final_state(
         ) else {
             continue;
         };
+        // The style channel carries the style *without* the shared border
+        // sides — those replicate as edge registers below. A border-only
+        // explicit style still gets a (default-hash) register: its presence
+        // is what tells receivers this cell composes the surrounding edges
+        // (edges are never materialized onto style-less cells, so that undo
+        // of a border op converges back to no border).
         let style = um.model.get_style_for_cell(sheet, row as i32, column as i32)?;
+        let stripped = strip_edge_borders(&style);
+        let owns_edges = um
+            .model
+            .get_cell_style_or_none(sheet, row as i32, column as i32)?
+            .is_some_and(|s| has_edge_borders(&s));
         let key = cell_key(*sheet_id, *col_id, *row_id);
         // Only write on change (vs the pre-batch shadow): content edits mark
         // styles conservatively, and an unconditional rewrite would stomp a
@@ -2314,16 +2617,17 @@ fn write_final_state(
             .sheets
             .get(sheet_id)
             .and_then(|sp| sp.cell_styles.get(&(*col_id, *row_id)));
-        if style == default_style {
+        if stripped == default_style && !owns_edges {
             if previous.is_some() {
                 maps.cell_styles.remove(txn, &key);
             }
         } else {
-            let hash = ensure_style_in_pool(txn, maps, &style);
+            let hash = ensure_style_in_pool(txn, maps, &stripped);
             if previous.map(String::as_str) != Some(hash.as_str()) {
                 maps.cell_styles.insert(txn, key, hash.as_str());
             }
         }
+        sync_cell_edges(txn, maps, um, ctx, shadow, *sheet_id, *col_id, *row_id)?;
     }
 
     for (sheet_id, row_id) in &touched.row_props {
@@ -2593,6 +2897,137 @@ fn sync_named_styles(
         if !current.iter().any(|(k, _)| k == key) {
             maps.named_styles
                 .insert(txn, key.as_str(), yrs::Any::from(wanted.clone()));
+        }
+    }
+    Ok(())
+}
+
+/// One desired edge around a cell, in display coordinates:
+/// `(axis, edge column, edge row, value)`.
+type DesiredEdge = (char, u32, u32, Option<BorderItem>);
+
+/// The desired edge values around one model cell, in display coordinates:
+/// `(axis, edge column, edge row, value)` where a `'v'` edge is the line
+/// left of `edge column` and an `'h'` edge the line on top of `edge row`.
+/// Each value is the heavier of the two adjacent *resolved* sides — the
+/// engine's visible edge (`set_area_with_border` writes the primary side
+/// absolutely and demotes the neighbour only when it was heavier, so the
+/// intended value is always the max).
+fn desired_cell_edges(
+    um: &UserModel,
+    sheet: u32,
+    row: u32,
+    column: u32,
+) -> Result<Vec<DesiredEdge>, String> {
+    const LEFT: u8 = 0;
+    const RIGHT: u8 = 1;
+    const TOP: u8 = 2;
+    const BOTTOM: u8 = 3;
+    let resolved_side = |row: u32, column: u32, which: u8| -> Result<Option<BorderItem>, String> {
+        let style = um.model.get_style_for_cell(sheet, row as i32, column as i32)?;
+        Ok(match which {
+            LEFT => style.border.left,
+            RIGHT => style.border.right,
+            TOP => style.border.top,
+            _ => style.border.bottom,
+        })
+    };
+    let max_owned = |a: Option<BorderItem>, b: Option<BorderItem>| -> Option<BorderItem> {
+        max_border_side(a.as_ref(), b.as_ref()).cloned()
+    };
+    let mut edges: Vec<DesiredEdge> = Vec::with_capacity(4);
+    let before = if column > 1 {
+        resolved_side(row, column - 1, RIGHT)?
+    } else {
+        None
+    };
+    edges.push((
+        'v',
+        column,
+        row,
+        max_owned(before, resolved_side(row, column, LEFT)?),
+    ));
+    if column < MAX_COLUMN {
+        edges.push((
+            'v',
+            column + 1,
+            row,
+            max_owned(
+                resolved_side(row, column, RIGHT)?,
+                resolved_side(row, column + 1, LEFT)?,
+            ),
+        ));
+    }
+    let before = if row > 1 {
+        resolved_side(row - 1, column, BOTTOM)?
+    } else {
+        None
+    };
+    edges.push((
+        'h',
+        column,
+        row,
+        max_owned(before, resolved_side(row, column, TOP)?),
+    ));
+    if row < MAX_ROW {
+        edges.push((
+            'h',
+            column,
+            row + 1,
+            max_owned(
+                resolved_side(row, column, BOTTOM)?,
+                resolved_side(row + 1, column, TOP)?,
+            ),
+        ));
+    }
+    Ok(edges)
+}
+
+/// Writes the four edge registers surrounding one cell from the post-batch
+/// model. Comparing against the shadow keeps untouched edges write-free, so
+/// concurrent remote edge writes are not stomped.
+#[allow(clippy::too_many_arguments)]
+fn sync_cell_edges(
+    txn: &mut TransactionMut,
+    maps: &SchemaMaps,
+    um: &UserModel,
+    ctx: &OrderCtx,
+    shadow: &Projection,
+    sheet_id: EntityId,
+    col_id: EntityId,
+    row_id: EntityId,
+) -> Result<(), String> {
+    let Some(sheet) = ctx.sheet_index(sheet_id) else {
+        return Ok(());
+    };
+    let rows = ctx.order(sheet_id, Axis::Rows)?;
+    let cols = ctx.order(sheet_id, Axis::Columns)?;
+    let (Some(row), Some(column)) = (rows.index_of(row_id), cols.index_of(col_id)) else {
+        return Ok(());
+    };
+    let sp = shadow.sheets.get(&sheet_id);
+    for (axis, edge_column, edge_row, value) in desired_cell_edges(um, sheet, row, column)? {
+        let (Some(edge_col_id), Some(edge_row_id)) = (cols.id_at(edge_column), rows.id_at(edge_row))
+        else {
+            continue;
+        };
+        let desired = value.as_ref().map(border_item_to_doc);
+        let previous = sp.and_then(|sp| match axis {
+            'v' => sp.v_edges.get(&(edge_col_id, edge_row_id)),
+            _ => sp.h_edges.get(&(edge_col_id, edge_row_id)),
+        });
+        let key = edge_key(sheet_id, axis, edge_col_id, edge_row_id);
+        match desired {
+            Some(value) => {
+                if previous.map(String::as_str) != Some(value.as_str()) {
+                    maps.edges.insert(txn, key, value.as_str());
+                }
+            }
+            None => {
+                if previous.is_some() {
+                    maps.edges.remove(txn, &key);
+                }
+            }
         }
     }
     Ok(())
@@ -3007,6 +3442,53 @@ fn reconcile_sheet(
                 style.as_ref(),
             )?;
         }
+        // Border edge deltas: recompute the cells adjacent to every changed
+        // edge (they may have no style register of their own).
+        let mut edge_cells: BTreeSet<(EntityId, EntityId)> = BTreeSet::new();
+        let v_keys: BTreeSet<(EntityId, EntityId)> = sp_old
+            .v_edges
+            .keys()
+            .chain(sp_new.v_edges.keys())
+            .copied()
+            .collect();
+        for key in v_keys {
+            if sp_old.v_edges.get(&key) == sp_new.v_edges.get(&key) {
+                continue;
+            }
+            let (col_id, row_id) = key;
+            edge_cells.insert((col_id, row_id));
+            if let Some(column) = cols_new.index_of(col_id) {
+                if column > 1 {
+                    if let Some(prev) = cols_new.id_at(column - 1) {
+                        edge_cells.insert((prev, row_id));
+                    }
+                }
+            }
+        }
+        let h_keys: BTreeSet<(EntityId, EntityId)> = sp_old
+            .h_edges
+            .keys()
+            .chain(sp_new.h_edges.keys())
+            .copied()
+            .collect();
+        for key in h_keys {
+            if sp_old.h_edges.get(&key) == sp_new.h_edges.get(&key) {
+                continue;
+            }
+            let (col_id, row_id) = key;
+            edge_cells.insert((col_id, row_id));
+            if let Some(row) = rows_new.index_of(row_id) {
+                if row > 1 {
+                    if let Some(prev) = rows_new.id_at(row - 1) {
+                        edge_cells.insert((col_id, prev));
+                    }
+                }
+            }
+        }
+        for key in edge_cells {
+            let hash = sp_new.cell_styles.get(&key);
+            set_projected_cell_style(um, sheet, sheet_id, resolver, proj, &key, hash)?;
+        }
         // CF rules: rebuilt when their registers changed, or when any sheet
         // changed structurally (id-form CF ranges/formulas render against the
         // new orders; formulas can reference other sheets).
@@ -3129,6 +3611,45 @@ fn pool_style_opt(proj: &Projection, hash: Option<&str>) -> Result<Option<Style>
     }
 }
 
+/// The border sides of a cell as described by the surrounding edge
+/// registers: `(left, right, top, bottom)`.
+fn edge_sides_for_cell(
+    sp: &SheetProj,
+    resolver: &DocResolver,
+    sheet_id: EntityId,
+    col_id: EntityId,
+    row_id: EntityId,
+) -> Result<CellBorderSides, String> {
+    let (Some(rows), Some(cols)) = (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
+    else {
+        return Err("collab: unknown sheet in resolver".to_string());
+    };
+    let (Some(row), Some(column)) = (rows.index_of(row_id), cols.index_of(col_id)) else {
+        return Ok((None, None, None, None)); // masked
+    };
+    let parse = |text: Option<&String>| -> Result<Option<BorderItem>, String> {
+        text.map(|t| border_item_from_doc(t)).transpose()
+    };
+    let left = parse(sp.v_edges.get(&(col_id, row_id)))?;
+    let right = match cols.id_at(column + 1) {
+        Some(next) => parse(sp.v_edges.get(&(next, row_id)))?,
+        None => None,
+    };
+    let top = parse(sp.h_edges.get(&(col_id, row_id)))?;
+    let bottom = match rows.id_at(row + 1) {
+        Some(next) => parse(sp.h_edges.get(&(col_id, next)))?,
+        None => None,
+    };
+    Ok((left, right, top, bottom))
+}
+
+type CellBorderSides = (
+    Option<BorderItem>,
+    Option<BorderItem>,
+    Option<BorderItem>,
+    Option<BorderItem>,
+);
+
 fn set_projected_cell_style(
     um: &mut UserModel,
     sheet: u32,
@@ -3146,10 +3667,35 @@ fn set_projected_cell_style(
     let (Some(row), Some(column)) = (rows.index_of(*row_id), cols.index_of(*col_id)) else {
         return Ok(()); // masked
     };
-    let style = match hash {
-        Some(hash) => style_from_pool(proj, hash)?,
-        None => um.model.workbook.styles.get_style(0)?,
+    // Edges compose ONLY into cells that have a style register — a pure
+    // function of the document, so every replica materializes the same set
+    // of bordered cells regardless of local history. A cell without a
+    // register renders default (and never grows borders), which also makes
+    // a border op's undo (register + edges removed) converge back to no
+    // border.
+    let Some(hash) = hash else {
+        if um
+            .model
+            .get_cell_style_or_none(sheet, row as i32, column as i32)?
+            .is_some()
+        {
+            let default_style = um.model.workbook.styles.get_style(0)?;
+            um.model
+                .set_cell_style(sheet, row as i32, column as i32, &default_style)?;
+        }
+        return Ok(());
     };
+    // Pool styles are stored without the shared border sides; those come
+    // from the edge registers.
+    let mut style = style_from_pool(proj, hash)?;
+    let (left, right, top, bottom) = match proj.sheets.get(&sheet_id) {
+        Some(sp) => edge_sides_for_cell(sp, resolver, sheet_id, *col_id, *row_id)?,
+        None => (None, None, None, None),
+    };
+    style.border.left = left;
+    style.border.right = right;
+    style.border.top = top;
+    style.border.bottom = bottom;
     um.model
         .set_cell_style(sheet, row as i32, column as i32, &style)
 }
