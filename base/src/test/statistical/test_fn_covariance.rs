@@ -55,3 +55,24 @@ fn arrays_mixed() {
     assert_eq!(model._get_text("C1"), *"5");
     assert_eq!(model._get_text("C2"), *"6.666666667");
 }
+
+#[test]
+fn arguments() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=COVARIANCE.P()");
+    model._set("A2", "=COVARIANCE.S()");
+    model._set("A3", "=COVARIANCE.P(1)");
+    model._set("A4", "=COVARIANCE.S(1)");
+    model._set("A5", "=COVARIANCE.P({1}, {2})");
+    model._set("A6", "=COVARIANCE.S({1}, {2})");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+    assert_eq!(model._get_text("A5"), *"0");
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
+}
