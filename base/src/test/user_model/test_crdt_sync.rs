@@ -68,6 +68,7 @@ fn assert_models_converged(a: &UserModel, b: &UserModel) {
     names_a.sort();
     names_b.sort();
     assert_eq!(names_a, names_b, "defined names differ");
+    assert_eq!(a.um.get_theme(), b.um.get_theme(), "workbook theme differs");
     let mut styles_a = a.um.get_named_style_list();
     let mut styles_b = b.um.get_named_style_list();
     styles_a.sort();
@@ -497,7 +498,7 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..20) {
+            match rng.gen_range(0..21) {
                 0..=3 => {
                     let value = format!("v{}", rng.gen::<u16>());
                     if trace {
@@ -730,6 +731,15 @@ fn fuzz_round(seed: u64) {
                         },
                         &border_area(border_style, kind),
                     );
+                }
+                19 => {
+                    let mut theme = replica.um.get_theme();
+                    theme.name = format!("Fuzz{}", rng.gen_range(1..=3));
+                    theme.accent1 = format!("#{:06X}", rng.gen::<u32>() & 0xFF_FFFF);
+                    if trace {
+                        eprintln!("{step}: {who} set theme {} {}", theme.name, theme.accent1);
+                    }
+                    replica.um.set_theme(theme);
                 }
                 _ => {
                     if trace {
@@ -1497,6 +1507,26 @@ fn workbook_timezone_syncs() {
     a.um.set_timezone("Europe/Berlin").unwrap();
     sync(&mut a, &mut b);
     assert_eq!(b.um.model.workbook.settings.tz, "Europe/Berlin");
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn workbook_theme_syncs() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    let mut theme = a.um.get_theme();
+    theme.name = "Midnight".to_string();
+    theme.accent1 = "#FF0000".to_string();
+    a.um.set_theme(theme.clone());
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_theme(), theme);
+    assert_converged(&a, &b);
+
+    // Undo on the originator reverts both replicas.
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_theme().name, "Office");
     assert_converged(&a, &b);
 }
 
