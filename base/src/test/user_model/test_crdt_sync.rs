@@ -1031,6 +1031,111 @@ fn full_column_style_syncs() {
     assert!(b.um.get_cell_style(0, 33, 3).unwrap().font.b);
 }
 
+/// Two-browser repro: replica B, offline, fills column E yellow and column F
+/// blue; replica A concurrently types "Adios" in E4 and "Hola" in F6. After
+/// the merge those cells must show the column fill on both replicas — not a
+/// white (default) background.
+#[test]
+fn concurrent_cell_write_inherits_offline_column_fill() {
+    use crate::constants::LAST_ROW;
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+
+    // B goes offline and fills the full columns E and F.
+    let full_column = |column| Area {
+        sheet: 0,
+        row: 1,
+        column,
+        width: 1,
+        height: LAST_ROW,
+    };
+    b.um.update_range_style(&full_column(5), "fill.bg_color", "#FFFF00")
+        .unwrap();
+    b.um.update_range_style(&full_column(6), "fill.bg_color", "#0000FF")
+        .unwrap();
+
+    // Meanwhile A writes values into those columns.
+    a.um.set_user_input(0, 6, 6, "Hola").unwrap(); // F6
+    a.um.set_user_input(0, 4, 5, "Adios").unwrap(); // E4
+
+    // B comes back online.
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+
+    let yellow = Color::Rgb("#FFFF00".to_string());
+    let blue = Color::Rgb("#0000FF".to_string());
+    for (replica, name) in [(&a, "A"), (&b, "B")] {
+        assert_eq!(
+            replica.um.get_cell_content(0, 4, 5),
+            Ok("Adios".to_string()),
+            "E4 content on replica {name}"
+        );
+        assert_eq!(
+            replica.um.get_cell_content(0, 6, 6),
+            Ok("Hola".to_string()),
+            "F6 content on replica {name}"
+        );
+        // An untouched cell of the column carries the fill…
+        assert_eq!(
+            replica.um.get_cell_style(0, 20, 5).unwrap().fill.color,
+            yellow,
+            "E20 fill on replica {name}"
+        );
+        // …and so must the cells that were written concurrently.
+        assert_eq!(
+            replica.um.get_cell_style(0, 4, 5).unwrap().fill.color,
+            yellow,
+            "E4 fill on replica {name}"
+        );
+        assert_eq!(
+            replica.um.get_cell_style(0, 6, 6).unwrap().fill.color,
+            blue,
+            "F6 fill on replica {name}"
+        );
+    }
+}
+
+/// Same inheritance rule on the catch-up path: a late joiner receives a
+/// document whose cells were typed concurrently with a column fill (no cell
+/// style register) and must render them with the column fill.
+#[test]
+fn late_joiner_inherits_column_fill_on_registerless_cells() {
+    use crate::constants::LAST_ROW;
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    sync(&mut a, &mut b);
+    b.um.update_range_style(
+        &Area {
+            sheet: 0,
+            row: 1,
+            column: 5,
+            width: 1,
+            height: LAST_ROW,
+        },
+        "fill.bg_color",
+        "#FFFF00",
+    )
+    .unwrap();
+    a.um.set_user_input(0, 4, 5, "Adios").unwrap();
+    sync(&mut a, &mut b);
+
+    let mut c = replica(3);
+    let sv = c.session.state_vector();
+    let update = a.session.encode_state_since(&sv).unwrap();
+    c.session.apply_remote(&mut c.um, &update).unwrap();
+
+    assert_models_converged(&a.um, &c.um);
+    assert_eq!(c.um.get_cell_content(0, 4, 5), Ok("Adios".to_string()));
+    assert_eq!(
+        c.um.get_cell_style(0, 4, 5).unwrap().fill.color,
+        Color::Rgb("#FFFF00".to_string()),
+        "late joiner shows a white E4"
+    );
+}
+
 #[test]
 fn named_style_definitions_sync_and_apply() {
     use crate::types::StyleIncludes;
