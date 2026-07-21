@@ -366,16 +366,16 @@ impl<'a> Model<'a> {
             return Err(CalcResult::new_args_number_error(cell));
         }
 
-        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return Err(e),
+        let (db_left, db_right) = {
+            let r = self.get_reference(&args[0], cell)?;
+            (r.left, r.right)
         };
 
         let field_col = self.resolve_db_field_column(db_left, db_right, &args[1], cell)?;
 
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return Err(e),
+        let criteria = {
+            let r = self.get_reference(&args[2], cell)?;
+            (r.left, r.right)
         };
 
         if db_right.row <= db_left.row {

@@ -191,10 +191,9 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
     let mut byte_index = 0;
     for (char_index, c) in ch.enumerate() {
         if char_index + 1 >= start {
-            if let Some(m) = re.find(&text[byte_index..]) {
+            {
+                let m = re.find(&text[byte_index..])?;
                 return Some((text[0..(m.start() + byte_index)].chars().count() as i32) + 1);
-            } else {
-                return None;
             }
         }
         byte_index += c.len_utf8();

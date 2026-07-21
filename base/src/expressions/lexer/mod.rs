@@ -512,14 +512,14 @@ impl<'a> Lexer<'a> {
         let position = self.position;
         if position >= self.len {
             return Err(self.set_error(
-                &format!("Error, expected {} found EOF", &ch_expected),
+                &format!("Error, expected {} found EOF", ch_expected),
                 self.position,
             ));
         } else {
             let ch = self.chars[position];
             if ch_expected != ch {
                 return Err(self.set_error(
-                    &format!("Error, expected {} found {}", &ch_expected, &ch),
+                    &format!("Error, expected {} found {}", ch_expected, ch),
                     self.position,
                 ));
             }

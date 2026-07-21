@@ -10,9 +10,9 @@ impl<'a> Model<'a> {
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
         let raw = match self.evaluate_node_in_context(arg, cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v.into_iter().flatten().collect::<Vec<_>>(),
-                Err(e) => return Err(e),
+            CalcResult::Range { left, right } => {
+                let v = self.values_from_range(left, right)?;
+                v.into_iter().flatten().collect::<Vec<_>>()
             },
             CalcResult::Array(arr) => match self.values_from_array(arr) {
                 Ok(v) => v.into_iter().flatten().collect::<Vec<_>>(),

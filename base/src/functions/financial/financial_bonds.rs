@@ -695,22 +695,22 @@ fn parse_coupon_args(
     if !(3..=4).contains(&arg_count) {
         return Err(CalcResult::new_args_number_error(cell));
     }
-    let settlement = match model.get_number_no_bools(&args[0], cell) {
-        Ok(f) => f.floor() as i64,
-        Err(e) => return Err(e),
+    let settlement = {
+        let f = model.get_number_no_bools(&args[0], cell)?;
+        f.floor() as i64
     };
-    let maturity = match model.get_number_no_bools(&args[1], cell) {
-        Ok(f) => f.floor() as i64,
-        Err(e) => return Err(e),
+    let maturity = {
+        let f = model.get_number_no_bools(&args[1], cell)?;
+        f.floor() as i64
     };
-    let frequency = match model.get_number_no_bools(&args[2], cell) {
-        Ok(f) => f.floor() as u32,
-        Err(e) => return Err(e),
+    let frequency = {
+        let f = model.get_number_no_bools(&args[2], cell)?;
+        f.floor() as u32
     };
     let basis = if arg_count == 4 {
-        match model.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return Err(e),
+        {
+            let f = model.get_number_no_bools(&args[3], cell)?;
+            f.floor() as u32
         }
     } else {
         0

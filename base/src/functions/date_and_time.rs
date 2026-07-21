@@ -1153,7 +1153,7 @@ impl<'a> Model<'a> {
                         return CalcResult::Error {
                             error: Error::VALUE,
                             origin: cell,
-                            message: format!("Invalid timezone: {}", &tz_str),
+                            message: format!("Invalid timezone: {}", tz_str),
                         }
                     }
                 };
@@ -1193,7 +1193,7 @@ impl<'a> Model<'a> {
                         return CalcResult::Error {
                             error: Error::VALUE,
                             origin: cell,
-                            message: format!("Invalid timezone: {}", &tz_str),
+                            message: format!("Invalid timezone: {}", tz_str),
                         }
                     }
                 };

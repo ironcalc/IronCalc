@@ -941,8 +941,6 @@ fn stringify(
         ErrorKind(kind) => format!("{kind}"),
         ParseErrorKind {
             formula,
-            position: _,
-            message: _,
             ..
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),

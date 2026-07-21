@@ -49,19 +49,17 @@ impl<'a> Model<'a> {
         let data = self.eval_to_array(&args[0], cell)?;
 
         let ignore: u8 = if args.len() >= 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(n) => {
-                    let n = n as i64;
-                    if !(0..=3).contains(&n) {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "ignore must be 0, 1, 2, or 3".to_string(),
-                        ));
-                    }
-                    n as u8
+            {
+                let n = self.get_number(&args[1], cell)?;
+                let n = n as i64;
+                if !(0..=3).contains(&n) {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "ignore must be 0, 1, 2, or 3".to_string(),
+                    ));
                 }
-                Err(e) => return Err(e),
+                n as u8
             }
         } else {
             0
