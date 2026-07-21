@@ -10,7 +10,7 @@ fn test_gridlines_issue_1269() {
 
     // sheet 0 has no gridlines and default selection
     let sheet0 = model.workbook.worksheet(0).unwrap();
-    assert_eq!(sheet0.show_grid_lines, false);
+    assert!(!sheet0.show_grid_lines);
     let view0 = sheet0.views.get(&0).unwrap();
     assert_eq!(
         view0,
@@ -23,12 +23,12 @@ fn test_gridlines_issue_1269() {
         }
     );
 
-    // sheet 1 has gridlines and a selection
+    // sheet 1 has no gridlines
     let sheet1 = model.workbook.worksheet(1).unwrap();
-    assert_eq!(sheet1.show_grid_lines, false);
+    assert!(!sheet1.show_grid_lines);
     assert_eq!(sheet1.views.len(), 1);
 
     let sheet2 = model.workbook.worksheet(2).unwrap();
-    assert_eq!(sheet2.show_grid_lines, true);
+    assert!(sheet2.show_grid_lines);
     assert_eq!(sheet2.views.len(), 1);
 }
