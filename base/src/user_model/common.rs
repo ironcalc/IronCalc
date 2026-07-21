@@ -475,6 +475,92 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
+    /// Sets the raw input of many cells as a **single** undoable action.
+    ///
+    /// Each tuple is `(sheet, row, column, value)`. Every input is applied and
+    /// recorded into **one** history entry, so a single [`undo`](UserModel::undo)
+    /// reverts the whole batch (and a single [`redo`](UserModel::redo) re-applies
+    /// it), and the workbook evaluates once at the end. This is the scattered-cell
+    /// analogue of [`set_user_input`](UserModel::set_user_input): use it when a set
+    /// of non-contiguous cells must change together — e.g. a find-and-replace across
+    /// a sheet — instead of paying one undo step per cell.
+    ///
+    /// Unlike [`paste_csv_string`](UserModel::paste_csv_string) it does not clear a
+    /// rectangle first: only the listed cells are touched, so unrelated cells
+    /// (formulas, array formulas, typed values) sitting between the targets are left
+    /// untouched. The batch is atomic: coordinates are validated up front and, should
+    /// any write fail part-way, the writes already made are rolled back — so a
+    /// rejected batch never leaves a partial write behind. An empty slice is a no-op
+    /// (no history entry).
+    ///
+    /// See also:
+    /// * [UserModel::set_user_input]
+    /// * [UserModel::paste_csv_string]
+    pub fn set_user_inputs(&mut self, inputs: &[(u32, i32, i32, String)]) -> Result<(), String> {
+        // Validate every coordinate AND snapshot every target's pre-batch value up
+        // front — before writing anything. Reading everything first is what makes the
+        // batch all-or-nothing:
+        //   * a bad coordinate is rejected without mutating the model, and
+        //   * every `old_value` is captured before the first write, so it reflects the
+        //     true pre-batch state (never a value that an earlier write in this same
+        //     batch already changed — e.g. by clearing a dynamic spill), and a
+        //     mid-batch write failure can be rolled back to exactly that state.
+        let mut diff_list = Vec::with_capacity(inputs.len());
+        for (sheet, row, column, value) in inputs {
+            let (sheet, row, column) = (*sheet, *row, *column);
+            let worksheet = self.model.workbook.worksheet(sheet)?;
+            if !is_valid_column_number(column) {
+                return Err("Invalid column".to_string());
+            }
+            if !is_valid_row(row) {
+                return Err("Invalid row".to_string());
+            }
+            let old_value = worksheet.cell(row, column).cloned();
+            // A spill cell's value derives from its anchor, so record the old value as
+            // None (mirrors set_user_input) — undo re-spills it from the anchor.
+            let old_value = if matches!(old_value, Some(Cell::SpillCell { .. })) {
+                None
+            } else {
+                old_value
+            };
+            diff_list.push(Diff::SetCellValue {
+                sheet,
+                row,
+                column,
+                new_value: value.to_string(),
+                old_value: Box::new(old_value),
+            });
+        }
+        if diff_list.is_empty() {
+            return Ok(());
+        }
+
+        // Apply the writes. Because every old_value was snapshotted above, if a write
+        // fails part-way we can restore the writes already made (and any partial
+        // mutation from the failing call) to their pre-batch values before surfacing
+        // the error, keeping the batch all-or-nothing.
+        for (index, (sheet, row, column, value)) in inputs.iter().enumerate() {
+            if let Err(e) = self
+                .model
+                .set_user_input(*sheet, *row, *column, value.to_string())
+            {
+                // Revert cells 0..=index from their snapshots (apply_undo_diff_list
+                // restores in reverse and re-evaluates). Ignore a secondary error so
+                // the original cause is what the caller sees.
+                let revert = diff_list[..=index].to_vec();
+                let _ = self.apply_undo_diff_list(&revert);
+                return Err(e);
+            }
+        }
+
+        // One diff list => one history/send-queue entry => a single undo reverts the
+        // whole batch. Evaluate once at the end (a no-op while a caller has evaluation
+        // paused; one coalesced recompute otherwise) — the paste_csv_string pattern.
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
     /// Returns the content of a cell
     ///
     /// See also:
