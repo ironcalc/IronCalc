@@ -85,7 +85,8 @@ function CollabDialog(properties: {
                 : t("file_bar.collab.copy_url")}
             </Button>
           </div>
-          <div className="app-ic-collab-dialog-people">
+        </div>
+        <div className="app-ic-collab-dialog-people">
             {collaborators.map((collaborator) => (
               <div
                 key={collaborator.clientId}
@@ -103,7 +104,6 @@ function CollabDialog(properties: {
                 </span>
               </div>
             ))}
-          </div>
         </div>
         <div className="app-ic-share-dialog-footer">
           <Radio />
