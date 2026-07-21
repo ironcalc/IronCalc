@@ -770,9 +770,7 @@ impl<'a> Model<'a> {
             }
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
             ParseErrorKind {
-                formula,
-                message,
-                ..
+                formula, message, ..
             } => CalcResult::new_error(
                 Error::ERROR,
                 cell,

@@ -18,7 +18,7 @@ impl<'a> Model<'a> {
                 CalcResult::Range { left, right } => {
                     let v = self.values_from_range(left, right)?;
                     values.extend(v.into_iter().flatten())
-                },
+                }
                 CalcResult::Array(arr) => match self.values_from_array(arr) {
                     Ok(v) => values.extend(v.into_iter().flatten()),
                     Err(e) => {
