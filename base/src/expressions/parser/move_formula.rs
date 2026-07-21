@@ -496,8 +496,6 @@ fn to_string_moved(
         ErrorKind(kind) => format!("{kind}"),
         ParseErrorKind {
             formula,
-            message: _,
-            position: _,
             ..
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
