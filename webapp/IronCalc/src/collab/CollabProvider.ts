@@ -54,26 +54,49 @@ function randomClientId(): number {
 }
 
 const RANDOM_USER_NAMES = [
-  "Amber Fox",
-  "Crimson Ibis",
-  "Coral Heron",
-  "Golden Lynx",
-  "Indigo Otter",
-  "Ivory Falcon",
-  "Jade Swallow",
-  "Marble Wren",
-  "Onyx Swift",
-  "Opal Finch",
-  "Saffron Crane",
-  "Scarlet Tanager",
-  "Silver Marten",
-  "Teal Kingfisher",
-  "Velvet Sparrow",
-  "Willow Egret",
+  "Amber",
+  "Crimson",
+  "Coral",
+  "Golden",
+  "Indigo",
+  "Ivory",
+  "Jade",
+  "Marble",
+  "Onyx",
+  "Opal",
+  "Saffron",
+  "Scarlet",
+  "Silver",
+  "Teal",
+  "Velvet",
+  "Willow",
+];
+
+const RANDOM_USER_LASTNAMES = [
+  "Fox",
+  "Ibis",
+  "Heron",
+  "Lynx",
+  "Otter",
+  "Falcon",
+  "Swallow",
+  "Wren",
+  "Swift",
+  "Finch",
+  "Crane",
+  "Tanager",
+  "Marten",
+  "Kingfisher",
+  "Sparrow",
+  "Egret",
 ];
 
 function randomUserName(): string {
-  return RANDOM_USER_NAMES[Math.floor(Math.random() * RANDOM_USER_NAMES.length)];
+  const firstName =
+    RANDOM_USER_NAMES[Math.floor(Math.random() * RANDOM_USER_NAMES.length)];
+  const lastName =
+    RANDOM_USER_LASTNAMES[Math.floor(Math.random() * RANDOM_USER_LASTNAMES.length)];
+  return `${firstName} ${lastName}`;
 }
 
 export class CollabProvider {
