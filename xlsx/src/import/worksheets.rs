@@ -724,7 +724,15 @@ fn get_sheet_view(ws: Node) -> SheetView {
             range: [row1, column1, row2, column2],
         }
     } else {
-        SheetView::default()
+        SheetView {
+            frozen_rows,
+            frozen_columns,
+            selected_row: 1,
+            selected_column: 1,
+            is_selected,
+            show_grid_lines,
+            range: [1, 1, 1, 1],
+        }
     }
 }
 
