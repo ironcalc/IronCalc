@@ -939,10 +939,7 @@ fn stringify(
             }
         },
         ErrorKind(kind) => format!("{kind}"),
-        ParseErrorKind {
-            formula,
-            ..
-        } => formula.to_string(),
+        ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         SpillRangeOperator { child } => {
             if export_to_excel {
