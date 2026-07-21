@@ -422,6 +422,83 @@ fn concurrent_sheet_rename_is_lww() {
     assert!(name == "From A" || name == "From B");
 }
 
+fn sheet_names(um: &UserModel) -> Vec<String> {
+    um.model
+        .workbook
+        .worksheets
+        .iter()
+        .map(|ws| ws.get_name())
+        .collect()
+}
+
+#[test]
+fn sheet_move_syncs_to_remote() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.new_sheet().unwrap();
+    a.um.set_user_input(0, 1, 1, "on first").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.move_sheet(0, 2).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(sheet_names(&b.um), ["Sheet2", "Sheet3", "Sheet1"]);
+    // The content moved with the sheet, on both replicas.
+    assert_eq!(b.um.get_cell_content(2, 1, 1), Ok("on first".to_string()));
+}
+
+#[test]
+fn concurrent_sheet_moves_converge() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.new_sheet().unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.move_sheet(0, 2).unwrap();
+    b.um.move_sheet(2, 0).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(sheet_names(&a.um), sheet_names(&b.um));
+}
+
+#[test]
+fn sheet_move_vs_concurrent_delete_update_wins() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.new_sheet().unwrap();
+    a.um.set_user_input(1, 1, 1, "survivor").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.move_sheet(1, 2).unwrap();
+    b.um.delete_sheet(1).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    // The move is a positive op: it preempts the concurrent deletion.
+    assert_eq!(sheet_names(&a.um), ["Sheet1", "Sheet3", "Sheet2"]);
+    assert_eq!(a.um.get_cell_content(2, 1, 1), Ok("survivor".to_string()));
+}
+
+#[test]
+fn undo_of_sheet_move_propagates() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.new_sheet().unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.move_sheet(2, 0).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(sheet_names(&b.um), ["Sheet3", "Sheet1", "Sheet2"]);
+
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(sheet_names(&b.um), ["Sheet1", "Sheet2", "Sheet3"]);
+}
+
 #[test]
 fn undo_of_delete_rows_resurrects_same_rows() {
     let mut a = replica(1);
@@ -498,7 +575,7 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..21) {
+            match rng.gen_range(0..22) {
                 0..=3 => {
                     let value = format!("v{}", rng.gen::<u16>());
                     if trace {
@@ -740,6 +817,19 @@ fn fuzz_round(seed: u64) {
                         eprintln!("{step}: {who} set theme {} {}", theme.name, theme.accent1);
                     }
                     replica.um.set_theme(theme);
+                }
+                20 => {
+                    // Keep sheet 0 in place: the fuzz cells and names live
+                    // there.
+                    let count = replica.um.model.workbook.worksheets.len() as u32;
+                    if count > 2 {
+                        let from = rng.gen_range(1..count);
+                        let to = rng.gen_range(1..count);
+                        if trace {
+                            eprintln!("{step}: {who} move_sheet {from} -> {to}");
+                        }
+                        let _ = replica.um.move_sheet(from, to);
+                    }
                 }
                 _ => {
                     if trace {
