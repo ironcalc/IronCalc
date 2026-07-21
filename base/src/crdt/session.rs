@@ -1174,6 +1174,20 @@ impl CollabSession {
                 working.remove(index);
             }
         }
+        // Reorder surviving sheets to match the document (remote moves):
+        // pull each id into place left-to-right; positions left of `i` are
+        // already final, so every pull is a plain `Model::move_sheet`.
+        for (i, id) in new_ids.iter().enumerate() {
+            if working.get(i) == Some(id) {
+                continue;
+            }
+            let Some(j) = working.iter().position(|x| x == id) else {
+                continue;
+            };
+            um.model.move_sheet(j as u32, i as u32)?;
+            let moved = working.remove(j);
+            working.insert(i, moved);
+        }
         debug_assert_eq!(working, new_ids, "sheet alignment failed");
         align_sheet_display_names(um, &display_names)?;
         // Frozen panes and per-sheet settings.
@@ -1608,6 +1622,16 @@ impl Pass1<'_, '_> {
                 } else {
                     let _ = source_index;
                     self.new_sheet_at(*new_index, true)
+                }
+            }
+            Diff::MoveSheet {
+                sheet_index,
+                new_index,
+            } => {
+                if invert {
+                    self.move_sheet_at(*new_index, *sheet_index)
+                } else {
+                    self.move_sheet_at(*sheet_index, *new_index)
                 }
             }
             Diff::RenameSheet { index, .. } => {
@@ -2334,6 +2358,43 @@ impl Pass1<'_, '_> {
             // and allocates fresh rule ids for the surplus.
             self.touched.cf.insert(id);
         }
+        Ok(())
+    }
+
+    /// Mirrors `Model::move_sheet`: remove at `from`, insert at `to`. A pure
+    /// position rewrite — the sheet keeps its id, so its content, references
+    /// and meta are untouched. Marking `sheet_meta` doubles as the positive
+    /// op that preempts a concurrent deletion (update-wins).
+    fn move_sheet_at(&mut self, from: u32, to: u32) -> Result<(), String> {
+        if from == to {
+            return Ok(());
+        }
+        let len = self.ctx.sheets.len();
+        if from as usize >= len || to as usize >= len {
+            return Err(format!("collab: sheet move {from}->{to} out of range"));
+        }
+        let (id, _) = self.ctx.sheets.remove(from as usize);
+        let lower = if to >= 1 {
+            self.ctx
+                .sheets
+                .get(to as usize - 1)
+                .map(|(_, pos)| pos.clone())
+        } else {
+            None
+        };
+        let upper = self.ctx.sheets.get(to as usize).map(|(_, pos)| pos.clone());
+        *self.counter += 1;
+        let pos = unique_position(
+            lower.as_deref(),
+            upper.as_deref(),
+            self.client_id,
+            *self.counter,
+        );
+        self.maps
+            .meta
+            .insert(&mut *self.txn, sheet_meta_key(id, "pos"), pos.as_str());
+        self.ctx.sheets.insert(to as usize, (id, pos));
+        self.touched.sheet_meta.insert(id);
         Ok(())
     }
 
