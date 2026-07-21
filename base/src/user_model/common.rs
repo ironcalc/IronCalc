@@ -478,10 +478,37 @@ impl<'a> UserModel<'a> {
     /// Returns the content of a cell
     ///
     /// See also:
-    /// * [Model::get_cell_content]
+    /// * [Model::get_localized_cell_content]
     #[inline]
     pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
         self.model.get_localized_cell_content(sheet, row, column)
+    }
+
+    /// Returns the editable content of a cell.
+    /// If a cell is part of a dynamic array or an array formula, it will return an empty string.
+    /// Otherwise it will return the content of the cell.
+    ///
+    /// See also:
+    /// * [Model::get_localized_cell_content]
+    /// * [UserModel::get_cell_array_structure]
+    /// * [UserModel::get_cell_content]
+    #[inline]
+    pub fn get_editable_cell_content(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<String, String> {
+        let structure = self.get_cell_array_structure(sheet, row, column)?;
+        match structure {
+            CellArrayStructure::SingleCell
+            | CellArrayStructure::DynamicAnchor(_, _)
+            | CellArrayStructure::ArrayAnchor(_, _) => {
+                self.model.get_localized_cell_content(sheet, row, column)
+            }
+            CellArrayStructure::DynamicChild(_, _, _, _)
+            | CellArrayStructure::ArrayChild(_, _, _, _) => Ok("".to_string()),
+        }
     }
 
     /// Returns completion information for a formula being edited in a cell.

@@ -191,6 +191,18 @@ impl Model {
             .map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "getEditableCellContent")]
+    pub fn get_editable_cell_content(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<String, JsError> {
+        self.model
+            .get_editable_cell_content(sheet, row, column)
+            .map_err(to_js_error)
+    }
+
     /// Returns completion information for a formula being edited in a cell.
     /// `formula` is the raw cell input (it may start with `=`) and `cursor` is a
     /// char offset into it.

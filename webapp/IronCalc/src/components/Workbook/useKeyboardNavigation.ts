@@ -57,6 +57,7 @@ interface Options {
 // * F2: start editing
 // * Ctrl+Space: select column
 // * Shift+Space: select row
+// * F4: cycle through absolute/relative references
 //
 // # Not implemented yet:
 // * Ctrl+a: select all (continuous area around the selection, if it exists,
