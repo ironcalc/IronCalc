@@ -103,6 +103,40 @@ fn test_proper_basic() {
     assert_eq!(model._get_text("A3"), "It'S A Test");
 }
 
+// ── TRIM ──────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_trim_collapse_internal_runs() {
+    let mut model = new_empty_model();
+    // Leading/trailing spaces trimmed AND internal runs collapsed to a single space.
+    model._set("A1", "=TRIM(\"  hello   world  \")");
+    // Interior-only collapse (ends already correct) — the load-bearing regressions.
+    model._set("A2", "=TRIM(\"a    b\")");
+    model._set("A3", "=TRIM(\"no  extra\")");
+    // No change needed.
+    model._set("A4", "=TRIM(\"single\")");
+    // All spaces collapse to empty string.
+    model._set("A5", "=TRIM(\"   \")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "hello world");
+    assert_eq!(model._get_text("A2"), "a b");
+    assert_eq!(model._get_text("A3"), "no extra");
+    assert_eq!(model._get_text("A4"), "single");
+    assert_eq!(model._get_text("A5"), "");
+}
+
+#[test]
+fn test_trim_only_ascii_space() {
+    let mut model = new_empty_model();
+    // Tabs (0x09) must NOT be collapsed or trimmed — TRIM is 0x20-only.
+    model._set("A1", "=TRIM(\"a\"&CHAR(9)&CHAR(9)&\"b\")");
+    // Non-breaking space (0xA0) must NOT be trimmed.
+    model._set("A2", "=TRIM(CHAR(160)&\"x\"&CHAR(160))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "a\u{9}\u{9}b");
+    assert_eq!(model._get_text("A2"), "\u{a0}x\u{a0}");
+}
+
 // ── REPLACE ───────────────────────────────────────────────────────────────────
 
 #[test]

@@ -532,7 +532,17 @@ impl<'a> Model<'a> {
                     }
                 }
             };
-            return CalcResult::String(s.trim().to_owned());
+            // Excel TRIM operates on the ASCII space (0x20) only: it removes
+            // leading and trailing spaces and collapses each internal run of two
+            // or more spaces to a single space. It must NOT touch tab (0x09),
+            // non-breaking space (0xA0), or any other Unicode whitespace, so we
+            // deliberately split on ' ' rather than using `str::trim`.
+            let trimmed = s
+                .split(' ')
+                .filter(|w| !w.is_empty())
+                .collect::<Vec<_>>()
+                .join(" ");
+            return CalcResult::String(trimmed);
         }
         CalcResult::new_args_number_error(cell)
     }
