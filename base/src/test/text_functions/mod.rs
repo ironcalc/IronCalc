@@ -51,6 +51,38 @@ fn test_dollar_basic() {
     assert_eq!(model._get_text("A4"), "$1,200");
 }
 
+#[test]
+fn test_dollar_negative_rounds_to_zero() {
+    let mut model = new_empty_model();
+    // A negative number whose magnitude rounds to zero must NOT be parenthesized.
+    model._set("A1", "=DOLLAR(-0.001, 2)");
+    // A real negative still uses parentheses.
+    model._set("A2", "=DOLLAR(-1234.567, 2)");
+    // A negative that rounds to zero to the left of the decimal point.
+    model._set("A3", "=DOLLAR(-50, -3)");
+    // Zero itself is unsigned.
+    model._set("A4", "=DOLLAR(0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "$0.00");
+    assert_eq!(model._get_text("A2"), "($1,234.57)");
+    assert_eq!(model._get_text("A3"), "$0");
+    assert_eq!(model._get_text("A4"), "$0.00");
+}
+
+#[test]
+fn test_dollar_vectors() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DOLLAR(1234.567)");
+    model._set("A2", "=DOLLAR(99.9, 0)");
+    model._set("A3", "=DOLLAR(12345.67, -2)");
+    model._set("A4", "=DOLLAR(50, -3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "$1,234.57");
+    assert_eq!(model._get_text("A2"), "$100");
+    assert_eq!(model._get_text("A3"), "$12,300");
+    assert_eq!(model._get_text("A4"), "$0");
+}
+
 // ── FIXED ─────────────────────────────────────────────────────────────────────
 
 #[test]

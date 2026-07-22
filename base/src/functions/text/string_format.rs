@@ -74,7 +74,10 @@ impl<'a> Model<'a> {
             2
         };
         let formatted = format_abs(value.abs(), decimals, true);
-        let result = if value < 0.0 {
+        // A negative number whose magnitude rounds to zero (e.g. DOLLAR(-0.001, 2))
+        // must format as an unsigned "$0.00", not the parenthesized "($0.00)".
+        let rounds_to_zero = formatted.bytes().all(|b| matches!(b, b'0' | b',' | b'.'));
+        let result = if value < 0.0 && !rounds_to_zero {
             format!("(${})", formatted)
         } else {
             format!("${}", formatted)
