@@ -213,3 +213,32 @@ fn test_xmatch_row_vector() {
     model.evaluate();
     assert_eq!(model._get_text("A3"), "2");
 }
+
+// ── array constants as lookup_array ─────────────────────────────────────────────
+
+#[test]
+fn test_xmatch_array_constant_wildcard() {
+    let mut model = new_empty_model();
+    // Wildcard match against an in-formula array constant.
+    model._set("A1", r#"=XMATCH("ban*", {"apple","banana","cherry"}, 2)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+}
+
+#[test]
+fn test_xmatch_array_constant_numeric() {
+    let mut model = new_empty_model();
+    // Exact numeric match against a numeric array constant.
+    model._set("A1", "=XMATCH(30, {10,20,30,40,50})");
+    // Exact-or-next-larger against a numeric array constant.
+    model._set("A2", "=XMATCH(35, {10,20,30,40,50}, 1)");
+    // A column-oriented array constant works too.
+    model._set("A3", "=XMATCH(30, {10;20;30;40;50})");
+    // Not found is #N/A, not #VALUE!.
+    model._set("A4", "=XMATCH(99, {10,20,30})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    assert_eq!(model._get_text("A2"), "4");
+    assert_eq!(model._get_text("A3"), "3");
+    assert_eq!(model._get_text("A4"), "#N/A");
+}
