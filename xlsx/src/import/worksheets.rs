@@ -974,10 +974,14 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                 let formula_node = fs[0];
                 let mut formula_type = formula_node.attribute("t").unwrap_or("normal");
                 let formula_ref = formula_node.attribute("ref");
-                if formula_node.attribute("ca") == Some("1")
+                if formula_type == "normal"
+                    && formula_node.attribute("ca") == Some("1")
                     && formula_node.text().is_none()
                     && !formula_node.children().any(|n| n.is_element())
                 {
+                    // A daughter cell of a shared formula (<f t="shared" ca="1" si="1"/>) is
+                    // also empty and may carry ca="1"; only an untyped <f ca="1"/> is a
+                    // volatile spill placeholder.
                     // This is a volatile formula that needs to be recalculated at each calculation.
                     // exit the if statement
                     // <f ca="1"/>
