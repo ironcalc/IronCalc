@@ -62,10 +62,12 @@ impl<'a> Model<'a> {
             true
         };
 
+        // When `sheet_text` is present the `!` separator is always emitted, even
+        // for an empty string: ADDRESS(1,1,1,TRUE,"") is "!$A$1" in Excel. A
+        // `sheet_text` that is omitted entirely produces no prefix.
         let sheet_prefix = if args.len() == 5 {
             match self.get_string(&args[4], cell) {
-                Ok(s) if !s.is_empty() => format!("{}!", quote_name(&s)),
-                Ok(_) => String::new(),
+                Ok(s) => format!("{}!", quote_name(&s)),
                 Err(e) => return e,
             }
         } else {

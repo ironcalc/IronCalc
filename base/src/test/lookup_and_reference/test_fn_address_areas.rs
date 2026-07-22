@@ -68,6 +68,30 @@ fn test_address_large_column() {
     assert_eq!(model._get_text("A1"), "$AA$1");
 }
 
+#[test]
+fn test_address_empty_sheet_text() {
+    let mut model = new_empty_model();
+    // A present-but-empty sheet_text still emits the "!" separator.
+    model._set("A1", r#"=ADDRESS(1,1,1,TRUE,"")"#);
+    // An omitted sheet_text emits no prefix.
+    model._set("A2", "=ADDRESS(1,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "!$A$1");
+    assert_eq!(model._get_text("A2"), "$A$1");
+}
+
+#[test]
+fn test_address_quoted_sheet_text() {
+    let mut model = new_empty_model();
+    // A name that needs quoting is wrapped in single quotes.
+    model._set("A1", r#"=ADDRESS(1,1,1,TRUE,"My Sheet")"#);
+    // The maximum column still renders correctly with a sheet prefix.
+    model._set("A2", "=ADDRESS(1,16384)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "'My Sheet'!$A$1");
+    assert_eq!(model._get_text("A2"), "$XFD$1");
+}
+
 // ── AREAS ─────────────────────────────────────────────────────────────────────
 
 #[test]
