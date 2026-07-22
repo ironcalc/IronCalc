@@ -1,7 +1,7 @@
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
-use std::collections::{Bound, HashMap};
+use std::collections::{Bound, HashMap, HashSet};
 use std::num::NonZeroU32;
 use std::ops::RangeBounds;
 
@@ -124,6 +124,34 @@ impl FractionalIndex {
                     },
                 );
                 next_alias
+            }
+        }
+    }
+
+    pub fn remove_key(&mut self, key: &FractionalKey) -> Option<KeyAlias> {
+        match self.index.binary_search_by_key(&key, |e| &e.key) {
+            Ok(found) => {
+                let e = self.index.remove(found);
+                if e.origin == Origin::Moved {
+                    self.origins.remove(&e.alias);
+                }
+                Some(e.alias)
+            }
+            Err(_) => {
+                // maybe keys is among the origins (key refers to moved element origin id)
+                let mut result = None;
+                for (alias, fkey) in self.origins.iter() {
+                    if fkey == key {
+                        result = Some(*alias);
+                        break;
+                    }
+                }
+
+                if let Some(alias) = result {
+                    self.index.retain(|e| e.alias != alias);
+                    self.origins.remove(&alias);
+                }
+                result
             }
         }
     }
@@ -440,9 +468,35 @@ mod test {
         assert_eq!(fi.index.iter().filter(|e| e.alias == b).count(), 1);
     }
 
-    /// Two peers concurrently move the *same* element to different positions. After exchanging their
-    /// serialized payloads (`iter` -> `merge_iter`) the element must resolve to a single position
-    /// (no duplication) and both peers must end up with the exact same view.
+    #[test]
+    fn remove_drops_element() {
+        let mut fi = FractionalIndex::new(Default::default());
+        let a = fi.create_key(0).unwrap().key.clone(); // [A]
+        let b = fi.create_key(1).unwrap().key.clone(); // [A B]
+        let c = fi.create_key(2).unwrap().key.clone(); // [A B C]
+
+        // Remove a Direct element from the middle.
+        let alias_b = fi.remove_key(&b).unwrap();
+        assert_eq!(fi.len(), 2);
+        let view: Vec<_> = fi.view().cloned().collect();
+        assert_eq!(view, vec![a.clone(), c.clone()]);
+        // Its alias is gone and cannot be removed twice.
+        assert!(fi.index.iter().all(|e| e.alias != alias_b));
+        assert_eq!(fi.remove_key(&b), None);
+
+        // Move C to the front, then remove it by its *identity* key (not its new position key).
+        fi.move_to(1..2, 0); // view: [C A]
+        assert_eq!(
+            fi.view().cloned().collect::<Vec<_>>(),
+            vec![c.clone(), a.clone()]
+        );
+        let alias_c = fi.remove_key(&c).unwrap();
+        assert_eq!(fi.len(), 1);
+        assert_eq!(fi.view().cloned().collect::<Vec<_>>(), vec![a]);
+        // Moved bookkeeping is cleaned up.
+        assert!(!fi.origins.contains_key(&alias_c));
+    }
+
     #[test]
     fn concurrent_move_of_same_element_converges() {
         // Distinct session suffixes => the two peers never generate colliding keys.
