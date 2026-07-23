@@ -2008,7 +2008,15 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "probability",
+        "number",
+        "Left-tail probability between 0 and 1 associated with the F cumulative distribution"
+      ],
+      ["deg_freedom1", "integer", "The numerator degrees of freedom"],
+      ["deg_freedom2", "integer", "The denominator degrees of freedom"]
+    ],
     "description": "Returns the inverse of the left-tailed F-distribution - the F-value at which the CDF equals a given probability. Use it to find critical values for F-tests or to construct F-distribution confidence intervals.",
     "examples": ["=F.INV(0.95, 5, 10) returns the 95th-percentile F-value."]
   },
