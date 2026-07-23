@@ -2602,7 +2602,17 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["sample_s", "integer", "Count of successful draws in the sample"],
+      ["number_sample", "integer", "How many items were drawn"],
+      ["population_s", "integer", "Total successes available in the whole population"],
+      ["number_pop", "integer", "Total size of the population"],
+      [
+        "cumulative",
+        "logical",
+        "TRUE for the cumulative distribution function; FALSE for the probability mass function"
+      ]
+    ],
     "description": "Returns the hypergeometric distribution probability - the probability of exactly k successes when drawing n items without replacement from a population of N containing K successes. Use it for quality sampling when items are not returned after each draw.",
     "examples": [
       "=HYPGEOM.DIST(3, 10, 20, 100, FALSE) returns the exact probability."
