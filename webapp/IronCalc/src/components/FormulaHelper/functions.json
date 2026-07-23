@@ -3511,7 +3511,11 @@
     "category": 9,
     "tags": [],
     "args": [
-      ["x", "number", "Point at which to evaluate the distribution"],
+      [
+        "x",
+        "number",
+        "Point at which to evaluate the distribution; must be positive"
+      ],
       ["mean", "number", "Mean of the variable's natural logarithm"],
       [
         "standard_dev",
