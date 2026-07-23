@@ -2175,7 +2175,13 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "y",
+        "number",
+        "The value for which to perform the inverse of the transformation"
+      ]
+    ],
     "description": "Returns the inverse of the Fisher transformation - converts a Fisher z-value back to a correlation coefficient. Use it after computing confidence intervals in z-space to report results as r-values.",
     "examples": ["=FISHERINV(1.099) returns approximately 0.8."]
   },
