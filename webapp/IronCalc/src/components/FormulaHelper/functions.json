@@ -3195,7 +3195,14 @@
     "tier": 0,
     "category": 8,
     "tags": [],
-    "args": [],
+    "args": [
+      ["number", "number", "The value you want to round up"],
+      [
+        "significance*",
+        "number",
+        "The multiple to round up to; defaults to 1 when omitted"
+      ]
+    ],
     "description": "Rounds a number up toward positive infinity to the nearest multiple of significance. Equivalent to CEILING.PRECISE - provided for ISO standard compatibility.",
     "examples": ["=ISO.CEILING(4.3, 0.5) returns 4.5."]
   },
