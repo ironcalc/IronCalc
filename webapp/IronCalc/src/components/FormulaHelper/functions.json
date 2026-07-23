@@ -3510,7 +3510,16 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "number", "Point at which to evaluate the distribution"],
+      ["mean", "number", "Mean of the variable's natural logarithm"],
+      ["standard_dev", "number", "Standard deviation of the variable's natural logarithm"],
+      [
+        "cumulative",
+        "logical",
+        "TRUE for the cumulative distribution function; FALSE for the probability density function"
+      ]
+    ],
     "description": "Returns the log-normal distribution probability (CDF or PDF). Use it to model data that is the product of many positive factors - stock prices, income distributions, particle sizes.",
     "examples": [
       "=LOGNORM.DIST(4, 1, 0.5, TRUE) returns the cumulative probability."
