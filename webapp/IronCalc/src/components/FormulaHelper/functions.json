@@ -2042,7 +2042,10 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["array1", "range", "The first array or range of data"],
+      ["array2", "range", "The second array or range of data"]
+    ],
     "description": "Returns the p-value for an F-test comparing the variances of two datasets. Use it to determine whether two groups have significantly different variability before applying certain other statistical tests.",
     "examples": ["=F.TEST(A2:A20, B2:B20) returns the two-tailed p-value."]
   },
