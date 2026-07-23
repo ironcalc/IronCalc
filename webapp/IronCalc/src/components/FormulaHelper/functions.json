@@ -2461,7 +2461,14 @@
     "tier": 0,
     "category": 3,
     "tags": [],
-    "args": [],
+    "args": [
+      ["number", "number", "The value to compare against the step threshold"],
+      [
+        "step*",
+        "number",
+        "The cutoff to compare against; defaults to zero when omitted"
+      ]
+    ],
     "description": "Returns 1 if a number is greater than or equal to a step value, and 0 otherwise. Use it to implement threshold comparisons in engineering models without writing an IF formula.",
     "examples": ["=GESTEP(5, 3) returns 1; =GESTEP(2, 3) returns 0."]
   },
