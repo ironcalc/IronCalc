@@ -4572,7 +4572,15 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "integer", "Number of events to evaluate the probability for"],
+      ["mean", "number", "Expected average number of events"],
+      [
+        "cumulative",
+        "logical",
+        "TRUE for the cumulative distribution function; FALSE for the probability mass function"
+      ]
+    ],
     "description": "Returns the Poisson distribution probability for a given number of events and average rate. Use it to model the probability of a count of rare, independent events - customer arrivals, server requests, or defects per unit.",
     "examples": [
       "=POISSON.DIST(3, 5, FALSE) returns P(X=3) when the average is 5 events."
