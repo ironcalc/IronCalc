@@ -1688,7 +1688,6 @@ export default class WorksheetCanvas {
       (selectedColumn < topLeftCell.column && selectedColumn > frozenColumns)
     ) {
       cellOutline.style.visibility = "hidden";
-      cellOutlineHandle.style.visibility = "hidden";
     }
 
     // Position the cell outline and clip it
