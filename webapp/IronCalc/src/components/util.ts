@@ -33,13 +33,6 @@ export const isNavigationKey = (key: string): key is NavigationKey =>
     key,
   );
 
-interface RangeCorners {
-  rowStart: number;
-  rowEnd: number;
-  columnStart: number;
-  columnEnd: number;
-}
-
 interface FormatRangeOptions {
   // Use absolute references like '$A$1'
   absolute?: boolean;
@@ -61,7 +54,7 @@ const cellToString = (
  * collapsing 1x1 ranges to a single cell.
  */
 function formatRange(
-  range: RangeCorners,
+  range: Area,
   { absolute = false, sheetName = "" }: FormatRangeOptions = {},
 ): string {
   const rowMin = Math.min(range.rowStart, range.rowEnd);
@@ -102,7 +95,7 @@ export const getCellAddress = (
 // Returns the range as a formula reference relative to referenceSheet,
 // e.g. 'A1:B2' on the same sheet or 'Sheet2!A1:B2' on another
 export function rangeToStr(
-  range: RangeCorners & { sheet: number },
+  range: Area & { sheet: number },
   referenceSheet: number,
   referenceName: string,
 ): string {
