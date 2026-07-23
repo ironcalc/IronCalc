@@ -9,11 +9,13 @@
 
 mod formula;
 mod ids;
+mod materialize;
 mod order;
 mod projection;
 mod session;
 mod sync;
 
 pub use ids::EntityId;
+pub use materialize::materialize_doc_update;
 pub use session::CollabSession;
 pub use sync::{FrameOutcome, SyncPeer};
