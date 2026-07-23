@@ -1996,7 +1996,11 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "number", "The value at which to evaluate the function"],
+      ["deg_freedom1", "integer", "The numerator degrees of freedom"],
+      ["deg_freedom2", "integer", "The denominator degrees of freedom"]
+    ],
     "description": "Returns the right-tailed F-distribution probability. Use it to find the p-value for an F-test - values near 0 indicate that the variances are significantly different.",
     "examples": ["=F.DIST.RT(2.5, 5, 10) returns the right-tail p-value."]
   },
