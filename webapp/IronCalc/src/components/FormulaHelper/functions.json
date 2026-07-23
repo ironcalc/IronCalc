@@ -3993,7 +3993,20 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "number_f",
+        "integer",
+        "How many failures occur before the successes are reached"
+      ],
+      ["number_s", "integer", "The target number of successes to stop at"],
+      ["probability_s", "number", "Chance of success on each individual trial"],
+      [
+        "cumulative",
+        "logical",
+        "TRUE for the cumulative distribution function; FALSE for the probability density function"
+      ]
+    ],
     "description": "Returns the negative binomial distribution probability - the probability of exactly k failures before achieving the r-th success. Use it in reliability testing and sequential sampling scenarios.",
     "examples": [
       "=NEGBINOM.DIST(5, 3, 0.5, FALSE) returns the probability of 5 failures before the 3rd success."
