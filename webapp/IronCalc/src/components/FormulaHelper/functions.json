@@ -3748,7 +3748,15 @@
     "tier": 0,
     "category": 10,
     "tags": [],
-    "args": [],
+    "args": [
+      ["text", "text", "Source string"],
+      [
+        "start_num",
+        "integer",
+        "1-based character position where the extraction begins"
+      ],
+      ["num_bytes", "integer", "How many bytes to pull from that position"]
+    ],
     "description": "Like MID but counts positions and lengths in bytes rather than characters. Used for double-byte character processing in East Asian locales.",
     "examples": ["=MIDB(A2, 3, 4) returns 4 bytes starting at byte position 3."]
   },
