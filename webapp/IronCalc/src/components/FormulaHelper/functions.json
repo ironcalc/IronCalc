@@ -3351,7 +3351,14 @@
     "tier": 0,
     "category": 10,
     "tags": [],
-    "args": [],
+    "args": [
+      ["text", "text", "Source string"],
+      [
+        "num_bytes*",
+        "integer",
+        "How many bytes to take from the start; defaults to 1 when omitted"
+      ]
+    ],
     "description": "Like LEFT but counts characters in bytes. Use it in East Asian locales where double-byte characters each take two bytes.",
     "examples": ["=LEFTB(A2, 4) returns the leftmost 4 bytes."]
   },
