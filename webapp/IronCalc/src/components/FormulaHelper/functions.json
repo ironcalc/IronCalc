@@ -2161,7 +2161,13 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "x",
+        "number",
+        "The value to transform; must be greater than -1 and less than 1"
+      ]
+    ],
     "description": "Returns the Fisher transformation of a correlation coefficient r, converting it to a value with approximately normal distribution. Use it to construct confidence intervals for r or to test whether two correlations are significantly different.",
     "examples": ["=FISHER(0.8) returns approximately 1.099."]
   },
