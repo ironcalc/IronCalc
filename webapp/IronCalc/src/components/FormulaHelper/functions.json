@@ -2605,7 +2605,11 @@
     "args": [
       ["sample_s", "integer", "Count of successful draws in the sample"],
       ["number_sample", "integer", "How many items were drawn"],
-      ["population_s", "integer", "Total successes available in the whole population"],
+      [
+        "population_s",
+        "integer",
+        "Total successes available in the whole population"
+      ],
       ["number_pop", "integer", "Total size of the population"],
       [
         "cumulative",
