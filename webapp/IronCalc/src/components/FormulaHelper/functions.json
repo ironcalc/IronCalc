@@ -3513,7 +3513,11 @@
     "args": [
       ["x", "number", "Point at which to evaluate the distribution"],
       ["mean", "number", "Mean of the variable's natural logarithm"],
-      ["standard_dev", "number", "Standard deviation of the variable's natural logarithm"],
+      [
+        "standard_dev",
+        "number",
+        "Standard deviation of the variable's natural logarithm"
+      ],
       [
         "cumulative",
         "logical",
@@ -3536,7 +3540,11 @@
         "Cumulative probability between 0 and 1 for the log-normal distribution"
       ],
       ["mean", "number", "Mean of the variable's natural logarithm"],
-      ["standard_dev", "number", "Standard deviation of the variable's natural logarithm"]
+      [
+        "standard_dev",
+        "number",
+        "Standard deviation of the variable's natural logarithm"
+      ]
     ],
     "description": "Returns the inverse of the log-normal cumulative distribution - the value at a given percentile. Use it to find percentile values for a log-normally distributed variable.",
     "examples": ["=LOGNORM.INV(0.9, 1, 0.5) returns the 90th percentile."]
