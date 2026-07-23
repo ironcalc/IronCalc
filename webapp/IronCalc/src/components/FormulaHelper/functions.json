@@ -3281,7 +3281,10 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["number1", "number_or_range", "First value or range"],
+      ["...", "number_or_range", "Additional values or ranges"]
+    ],
     "description": "Returns the kurtosis of a dataset - a measure of how heavy the tails are compared to a normal distribution. Positive kurtosis means more extreme outliers than normal; negative means fewer. Use it to understand whether your data has unusual outlier behavior.",
     "examples": ["=KURT(A2:A100) returns the excess kurtosis."]
   },
