@@ -66,6 +66,10 @@ const ConditionalFormatting = ({
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOption, setFilterOption] = useState("sheet");
+  // Only these rows get a view-transition-name, so off-screen rows don't flash.
+  const [transitioningIds, setTransitioningIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const { t } = useTranslation();
 
   function getSanitizedSelectedArea(): string {
@@ -198,12 +202,27 @@ const ConditionalFormatting = ({
       }
       onUpdate();
     };
-    // flushSync ensures the DOM is updated before the transition snapshots it.
-    if (typeof document.startViewTransition === "function") {
-      document.startViewTransition(() => flushSync(applyReorder));
-    } else {
+    if (typeof document.startViewTransition !== "function") {
       applyReorder();
+      return;
     }
+    // Name only the two swapped rows for the transition.
+    const pos = rules.findIndex((r) => r.id === rule.id);
+    const neighbor = lower ? rules[pos + 1] : rules[pos - 1];
+    const names = new Set([rule.id]);
+    if (neighbor) {
+      names.add(neighbor.id);
+    }
+    // flushSync ensures the names are in the DOM before the transition snapshots it.
+    flushSync(() => setTransitioningIds(names));
+    const transition = document.startViewTransition(() =>
+      flushSync(applyReorder),
+    );
+    transition.finished.finally(() =>
+      setTransitioningIds((current) =>
+        current === names ? new Set() : current,
+      ),
+    );
   };
 
   if (isEditView) {
@@ -425,7 +444,11 @@ const ConditionalFormatting = ({
                     <div
                       key={rule.id}
                       className={`ic-cf-list-item${isActive ? " ic-cf-list-item--selected" : ""}`}
-                      style={{ viewTransitionName: `ic-cf-rule-${rule.id}` }}
+                      style={{
+                        viewTransitionName: transitioningIds.has(rule.id)
+                          ? `ic-cf-rule-${rule.id}`
+                          : undefined,
+                      }}
                       // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
                       tabIndex={0}
                       onClick={() => selectRuleRange(rule)}
