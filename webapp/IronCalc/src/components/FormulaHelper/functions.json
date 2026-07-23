@@ -4044,11 +4044,24 @@
       "=NETWORKDAYS(A2, B2, Holidays) returns the count of business days, skipping dates listed in the Holidays range."
     ]
   },
-  "networkdaysintl": {
+  "networkdays.intl": {
     "tier": 0,
     "category": 2,
     "tags": [],
-    "args": [],
+    "args": [
+      ["start_date", "date", "First day of the period"],
+      ["end_date", "date", "Last day of the period"],
+      [
+        "weekend*",
+        "any",
+        "Weekend number code or 7-character day mask; defaults to Saturday and Sunday"
+      ],
+      [
+        "holidays*",
+        "range",
+        "Optional list of dates to exclude as non-working days"
+      ]
+    ],
     "description": "Like NETWORKDAYS, but lets you define which days of the week are the weekend using a mask or preset code. Use it for international teams where the weekend might be Friday–Saturday or another combination.",
     "examples": [
       "=NETWORKDAYS.INTL(A2, B2, 7, Holidays) treats Friday and Saturday as the weekend."
