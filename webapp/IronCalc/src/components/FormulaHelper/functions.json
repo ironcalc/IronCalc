@@ -2024,7 +2024,15 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "probability",
+        "number",
+        "Right-tail probability between 0 and 1 associated with the F cumulative distribution"
+      ],
+      ["deg_freedom1", "integer", "The numerator degrees of freedom"],
+      ["deg_freedom2", "integer", "The denominator degrees of freedom"]
+    ],
     "description": "Returns the inverse of the right-tailed F-distribution. Use it to find the critical F-value at a given significance level for an F-test.",
     "examples": [
       "=F.INV.RT(0.05, 5, 10) returns the critical value at the 5% level."
