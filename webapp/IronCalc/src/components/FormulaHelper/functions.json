@@ -2423,7 +2423,13 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "z",
+        "number",
+        "The number of standard deviations from the mean at which to evaluate the probability"
+      ]
+    ],
     "description": "Returns the probability that a standard normal variable falls between 0 and z - equal to Φ(z) − 0.5. Use it when you need the one-sided probability from the mean to a specific z-score.",
     "examples": ["=GAUSS(1) returns approximately 0.3413."]
   },
