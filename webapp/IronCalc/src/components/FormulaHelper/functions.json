@@ -1977,7 +1977,16 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "number", "The value at which to evaluate the function"],
+      ["deg_freedom1", "integer", "The numerator degrees of freedom"],
+      ["deg_freedom2", "integer", "The denominator degrees of freedom"],
+      [
+        "cumulative",
+        "logical",
+        "TRUE for the cumulative distribution function; FALSE for the probability density function"
+      ]
+    ],
     "description": "Returns the F-distribution probability (left-tailed CDF or PDF). Use it in ANOVA and regression analysis when evaluating variance ratios.",
     "examples": [
       "=F.DIST(2.5, 5, 10, TRUE) returns the left-tail probability for an F-statistic of 2.5."
