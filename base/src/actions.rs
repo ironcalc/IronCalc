@@ -7,6 +7,8 @@ use crate::expressions::parser::stringify::{
 use crate::expressions::parser::Parser as ExprParser;
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils;
+use crate::language::get_default_language;
+use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
 use crate::types::{ArrayKind, Cell};
 
@@ -142,6 +144,8 @@ fn displace_cf_sqref(sqref: &str, data: &DisplaceData, sheet: u32) -> String {
 // I feel this is unimportant for now.
 
 /// Displaces a single formula string (with or without leading `=`) using `to_string_displaced`.
+/// CF formulas are stored in English (see [Model::user_formula_to_internal]),
+/// so the caller must have the parser in the default (English) locale/language.
 fn displace_cf_formula_str(
     parser: &mut ExprParser<'_>,
     formula: &str,
@@ -152,7 +156,13 @@ fn displace_cf_formula_str(
     let has_eq = trimmed.starts_with('=');
     let body = if has_eq { &trimmed[1..] } else { trimmed };
     let node = parser.parse(body, context);
-    let displaced = to_string_displaced(&node, context, data);
+    let displaced = to_string_displaced(
+        &node,
+        context,
+        data,
+        get_default_locale(),
+        get_default_language(),
+    );
     if has_eq {
         format!("={displaced}")
     } else {
@@ -280,8 +290,17 @@ impl<'a> Model<'a> {
                 column,
             };
             // FIXME: This is not a very performant way if the formula has changed :S.
+            // Both strings must be in the active locale/language: the displaced
+            // one is written back through the (localized) parser, and comparing
+            // against an English rendering would flag every formula as changed.
             let formula = to_localized_string(node, &cell_reference, self.locale, self.language);
-            let formula_displaced = to_string_displaced(node, &cell_reference, displace_data);
+            let formula_displaced = to_string_displaced(
+                node,
+                &cell_reference,
+                displace_data,
+                self.locale,
+                self.language,
+            );
             if formula != formula_displaced {
                 self.update_cell_with_formula(sheet, row, column, format!("={formula_displaced}"))?;
             };
@@ -322,6 +341,12 @@ impl<'a> Model<'a> {
         }
 
         // Phase 2: displace formula fields (requires &mut self.parser) then write back.
+        // CF formulas are stored in English, so parse them with the default
+        // locale/language regardless of the active ones.
+        let locale = self.locale;
+        let language = self.language;
+        self.parser.set_locale(get_default_locale());
+        self.parser.set_language(get_default_language());
         for (idx, new_range, rule, anchor_row, anchor_col) in phase1 {
             let context = CellReferenceRC {
                 sheet: sheet_name.clone(),
@@ -333,6 +358,8 @@ impl<'a> Model<'a> {
             self.workbook.worksheets[sheet as usize].conditional_formatting[idx].range = new_range;
             self.workbook.worksheets[sheet as usize].conditional_formatting[idx].cf_rule = new_rule;
         }
+        self.parser.set_locale(locale);
+        self.parser.set_language(language);
     }
 
     /// Retrieves the column indices for a specific row in a given sheet, sorted in ascending or descending order.

@@ -204,11 +204,9 @@ pub fn to_string_displaced(
     node: &Node,
     context: &CellReferenceRC,
     displace_data: &DisplaceData,
+    locale: &Locale,
+    language: &Language,
 ) -> String {
-    #[allow(clippy::expect_used)]
-    let locale = get_locale("en").expect("");
-    #[allow(clippy::expect_used)]
-    let language = get_language("en").expect("");
     stringify(node, Some(context), displace_data, false, locale, language)
 }
 
