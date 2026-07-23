@@ -3374,7 +3374,7 @@
     "tier": 0,
     "category": 10,
     "tags": [],
-    "args": [],
+    "args": [["text", "text", "String whose byte length you want"]],
     "description": "Returns the number of bytes in a text string, counting double-byte characters as two. Use it in East Asian locales to measure byte length rather than character count.",
     "examples": ["=LENB(A2) returns the byte length."]
   },
