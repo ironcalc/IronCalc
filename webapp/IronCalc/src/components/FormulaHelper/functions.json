@@ -6916,7 +6916,15 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["array", "range", "The data set to test the value against"],
+      ["x", "number", "Hypothesized population mean to test"],
+      [
+        "sigma*",
+        "number",
+        "Known population standard deviation; if omitted, the sample standard deviation is used"
+      ]
+    ],
     "description": "Returns the one-tailed p-value of a z-test - the probability that the sample mean is at least as extreme as observed, given a hypothesized population mean. Use it to test whether a sample mean is consistent with a known or assumed population mean.",
     "examples": [
       "=Z.TEST(A2:A30, 50, 10) tests the sample against a hypothesized mean of 50 with standard deviation 10."
