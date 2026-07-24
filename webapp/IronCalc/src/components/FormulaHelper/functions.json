@@ -1053,7 +1053,7 @@
     "tags": [],
     "args": [
       ["array1", "number_or_range", "First dataset"],
-      ["...", "number_or_range", "Second dataset"]
+      ["array2", "number_or_range", "Second dataset"]
     ],
     "description": "Returns the Pearson correlation coefficient (r) between two datasets, ranging from −1 to 1. Use it to measure how strongly two variables move together - for instance, whether advertising spend correlates with sales.",
     "examples": [
@@ -3025,7 +3025,7 @@
     "args": [
       ["known_ys", "number_or_range", "Dependent (y) data points"],
       [
-        "...",
+        "known_xs",
         "number_or_range",
         "Independent (x) data points, same count as known_ys"
       ]
@@ -4370,7 +4370,7 @@
     "tags": [],
     "args": [
       ["array1", "number_or_range", "First dataset"],
-      ["...", "number_or_range", "Second dataset, same size as array1"]
+      ["array2", "number_or_range", "Second dataset, same size as array1"]
     ],
     "description": "Returns the Pearson product-moment correlation coefficient between two datasets. Functionally identical to CORREL - use either one to measure the linear relationship between two variables.",
     "examples": [
@@ -5412,7 +5412,7 @@
     "args": [
       ["known_ys", "number_or_range", "Dependent (y) data points"],
       [
-        "...",
+        "known_xs",
         "number_or_range",
         "Independent (x) data points, same count as known_ys"
       ]
@@ -5722,7 +5722,7 @@
     "tags": [],
     "args": [
       ["array_x", "number_or_range", "X values"],
-      ["...", "number_or_range", "Y values, same count as array_x"]
+      ["array_y", "number_or_range", "Y values, same count as array_x"]
     ],
     "description": "Returns the sum of differences of squares of corresponding values in two arrays: Σ(x²−y²). Used in specialized mathematical and physics calculations.",
     "examples": ["=SUMX2MY2(A2:A5, B2:B5) computes Σ(A²−B²)."]
@@ -5733,7 +5733,7 @@
     "tags": [],
     "args": [
       ["array_x", "number_or_range", "X values"],
-      ["...", "number_or_range", "Y values, same count as array_x"]
+      ["array_y", "number_or_range", "Y values, same count as array_x"]
     ],
     "description": "Returns the sum of sums of squares of corresponding values in two arrays: Σ(x²+y²). Useful for computing the sum of squared magnitudes of paired values.",
     "examples": ["=SUMX2PY2(A2:A5, B2:B5) computes Σ(A²+B²)."]
@@ -5744,7 +5744,7 @@
     "tags": [],
     "args": [
       ["array_x", "number_or_range", "X values"],
-      ["...", "number_or_range", "Y values, same count as array_x"]
+      ["array_y", "number_or_range", "Y values, same count as array_x"]
     ],
     "description": "Returns the sum of squared differences of corresponding values in two arrays: Σ(x−y)². Use it to compute the total squared error between two sets of values - for example, between predictions and actuals.",
     "examples": ["=SUMXMY2(predicted, actual) returns Σ(pred−actual)²."]
