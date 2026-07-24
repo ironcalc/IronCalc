@@ -6697,11 +6697,24 @@
       "=WORKDAY(A2, 10, Holidays) returns the date 10 business days after A2."
     ]
   },
-  "workdayintl": {
+  "workday.intl": {
     "tier": 0,
     "category": 2,
     "tags": [],
-    "args": [],
+    "args": [
+      ["start_date", "date", "Starting date"],
+      ["days", "integer", "Working days to advance; negative moves backward"],
+      [
+        "weekend*",
+        "any",
+        "Weekend number code or 7-character day mask; defaults to Saturday and Sunday"
+      ],
+      [
+        "holidays*",
+        "range",
+        "Optional list of additional non-working dates to skip"
+      ]
+    ],
     "description": "Like WORKDAY, but lets you define a custom weekend using a mask or preset code. Use it when your organization operates on a non-standard weekly schedule - for instance, a Friday–Saturday weekend.",
     "examples": [
       "=WORKDAY.INTL(A2, 10, 7, Holidays) treats Friday and Saturday as the weekend."
