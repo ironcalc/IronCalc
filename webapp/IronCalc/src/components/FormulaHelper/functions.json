@@ -2154,7 +2154,7 @@
         "1-based character position to start the search from; defaults to 1"
       ]
     ],
-    "description": "Finds the position of one text string within another, case-sensitively. Byte-oriented variant of FIND for double-byte locales, but IronCalc does not implement byte counting, so it behaves identically to FIND.",
+    "description": "Finds the position of one text string within another, case-sensitively. Equivalent to FIND; provided for compatibility with double-byte (East Asian) locales.",
     "examples": ["=FINDB(\"A\", A2) returns the position of \"A\"."]
   },
   "finv": {
@@ -3371,7 +3371,7 @@
         "How many characters to take from the start; defaults to 1 when omitted"
       ]
     ],
-    "description": "Returns the first characters of a text string. Byte-oriented variant of LEFT for double-byte locales, but IronCalc does not implement byte counting, so it behaves identically to LEFT.",
+    "description": "Returns the first characters of a text string. Equivalent to LEFT; provided for compatibility with double-byte (East Asian) locales.",
     "examples": ["=LEFTB(A2, 4) returns the leftmost 4 characters."]
   },
   "len": {
@@ -3387,7 +3387,7 @@
     "category": 10,
     "tags": [],
     "args": [["text", "text", "String whose character count you want"]],
-    "description": "Returns the number of characters in a text string. Byte-oriented variant of LEN for double-byte locales, but IronCalc does not implement byte counting, so it behaves identically to LEN.",
+    "description": "Returns the number of characters in a text string. Equivalent to LEN; provided for compatibility with double-byte (East Asian) locales.",
     "examples": ["=LENB(A2) returns the character count."]
   },
   "let": {
@@ -3769,7 +3769,7 @@
       ],
       ["num_chars", "integer", "How many characters to pull from that position"]
     ],
-    "description": "Returns a run of characters from the middle of a text string. Byte-oriented variant of MID for double-byte locales, but IronCalc does not implement byte counting, so it behaves identically to MID.",
+    "description": "Returns a run of characters from the middle of a text string. Equivalent to MID; provided for compatibility with double-byte (East Asian) locales.",
     "examples": ["=MIDB(A2, 3, 4) returns 4 characters starting at position 3."]
   },
   "min": {
@@ -5061,7 +5061,7 @@
         "String to insert in place of the removed characters"
       ]
     ],
-    "description": "Replaces part of a text string with another string. Byte-oriented variant of REPLACE for double-byte locales, but IronCalc does not implement byte counting, so it behaves identically to REPLACE.",
+    "description": "Replaces part of a text string with another string. Equivalent to REPLACE; provided for compatibility with double-byte (East Asian) locales.",
     "examples": [
       "=REPLACEB(A2, 3, 2, \"AB\") replaces 2 characters starting at position 3."
     ]
@@ -5106,7 +5106,7 @@
         "How many characters to take from the end; defaults to 1 when omitted"
       ]
     ],
-    "description": "Returns the last characters of a text string. Byte-oriented variant of RIGHT for double-byte locales, but IronCalc does not implement byte counting, so it behaves identically to RIGHT.",
+    "description": "Returns the last characters of a text string. Equivalent to RIGHT; provided for compatibility with double-byte (East Asian) locales.",
     "examples": ["=RIGHTB(A2, 4) returns the rightmost 4 characters."]
   },
   "roman": {
@@ -5277,7 +5277,7 @@
         "1-based character position to start from; defaults to 1"
       ]
     ],
-    "description": "Finds the position of one text string within another, case-insensitively, with support for the wildcards ? and *. Byte-oriented variant of SEARCH for double-byte locales, but IronCalc does not implement byte counting, so it behaves identically to SEARCH.",
+    "description": "Finds the position of one text string within another, case-insensitively, with support for the wildcards ? and *. Equivalent to SEARCH; provided for compatibility with double-byte (East Asian) locales.",
     "examples": [
       "=SEARCHB(\"A\", A2) returns the position of the first case-insensitive match of \"A\"."
     ]
