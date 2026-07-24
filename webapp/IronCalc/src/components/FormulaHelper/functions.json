@@ -5313,7 +5313,16 @@
     "tier": 0,
     "category": 8,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "number", "Value fed into the power series"],
+      ["n", "number", "Starting exponent applied to x"],
+      ["m", "number", "Amount the exponent grows by for each successive term"],
+      [
+        "coefficients",
+        "range",
+        "Multipliers for each term; the count determines how many terms the series has"
+      ]
+    ],
     "description": "Returns the sum of a power series: Σ aᵢ × x^(n+m×i). Use it in engineering and mathematics to evaluate polynomial approximations of functions.",
     "examples": [
       "=SERIESSUM(x, 0, 1, coefficients) evaluates the polynomial at x using the given coefficient array."
