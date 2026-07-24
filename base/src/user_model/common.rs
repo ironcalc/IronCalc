@@ -1155,6 +1155,8 @@ impl<'a> UserModel<'a> {
             });
         }
 
+        // Snapshot the frozen-rows count before the delete shrinks it, so undo can restore it.
+        let old_frozen_rows = self.model.workbook.worksheet(sheet)?.frozen_rows;
         // The links of the deleted rows cannot be restored by re-inserting the
         // rows: capture them for undo. Links below the deleted rows just shift
         // with their cells, [`Model::delete_rows`] takes care of them.
@@ -1173,6 +1175,7 @@ impl<'a> UserModel<'a> {
             row,
             count: row_count,
             old_data,
+            old_frozen_rows,
         });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
@@ -1231,6 +1234,8 @@ impl<'a> UserModel<'a> {
             });
         }
 
+        // Snapshot the frozen-columns count before the delete shrinks it, so undo can restore it.
+        let old_frozen_columns = self.model.workbook.worksheet(sheet)?.frozen_columns;
         // The links of the deleted columns cannot be restored by re-inserting
         // the columns: capture them for undo. Links to the right of the deleted
         // columns just shift with their cells, [`Model::delete_columns`] takes
@@ -1250,6 +1255,7 @@ impl<'a> UserModel<'a> {
             column,
             count: column_count,
             old_data,
+            old_frozen_columns,
         });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
