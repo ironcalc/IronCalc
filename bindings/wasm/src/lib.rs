@@ -12,6 +12,7 @@ use ironcalc_base::{
         types::Area,
         utils::{column_to_number, number_to_column, quote_name as quote_name_ic},
     },
+    task::FinanceFetchTask,
     types::{CellType, Color, Style, StyleIncludes},
     worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
@@ -172,6 +173,34 @@ impl Model {
 
     pub fn evaluate(&mut self) {
         self.model.evaluate();
+    }
+
+    /// Return pending tasks as a typed JS array.
+    /// Call after `evaluate()`
+    #[wasm_bindgen(js_name = "takeTasks", unchecked_return_type = "Task[]")]
+    pub fn take_tasks(&mut self) -> Result<JsValue, JsError> {
+        let tasks = self.model.take_tasks();
+        serde_wasm_bindgen::to_value(&tasks).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Complete a pending finance task by feeding its result back into the model.
+    /// `task` is a Task object as returned by `takeTasks()`.
+    /// `result` is the output for that task
+    /// After calling, re-evaluate to see the actual value.
+    #[wasm_bindgen(js_name = "completeFinancialTask")]
+    pub fn complete_financial_task(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "FinanceFetchTask")] task: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "FinanceResult")] result: JsValue,
+    ) -> Result<(), JsError> {
+        let task: FinanceFetchTask =
+            serde_wasm_bindgen::from_value(task).map_err(|e| to_js_error(e.to_string()))?;
+
+        let result: Result<f64, ironcalc_base::finance::provider::FinanceError> =
+            serde_wasm_bindgen::from_value(result).map_err(|e| to_js_error(e.to_string()))?;
+        self.model.complete_financial_task(task, result);
+
+        Ok(())
     }
 
     #[wasm_bindgen(js_name = "flushSendQueue")]
