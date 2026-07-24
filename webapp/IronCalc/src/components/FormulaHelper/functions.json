@@ -5193,7 +5193,14 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["known_ys", "number_or_range", "Dependent (y) data points"],
+      [
+        "known_xs",
+        "number_or_range",
+        "Independent (x) data points, same count as known_ys"
+      ]
+    ],
     "description": "Returns the square of the Pearson correlation coefficient (R²) - the proportion of variance in y explained by x. Use it to evaluate how well a linear regression fits your data; R²=1 means a perfect fit.",
     "examples": ["=RSQ(B2:B20, A2:A20) returns R² for the linear relationship."]
   },
