@@ -3753,7 +3753,7 @@
       [
         "start_num",
         "integer",
-        "1-based character position where the extraction begins"
+        "1-based byte position where the extraction begins"
       ],
       ["num_bytes", "integer", "How many bytes to pull from that position"]
     ],
@@ -4004,7 +4004,7 @@
       [
         "cumulative",
         "logical",
-        "TRUE for the cumulative distribution function; FALSE for the probability density function"
+        "TRUE for the cumulative distribution function; FALSE for the probability mass function"
       ]
     ],
     "description": "Returns the negative binomial distribution probability - the probability of exactly k failures before achieving the r-th success. Use it in reliability testing and sequential sampling scenarios.",
