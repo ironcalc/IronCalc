@@ -550,6 +550,13 @@ impl<'a> Model<'a> {
 
         worksheet.cols = new_columns;
 
+        // Excel freeze-pane tracking: inserting columns within or before the frozen band
+        // (columns 1..=frozen_columns, 1-based) pushes the freeze boundary right, growing the
+        // band; inserting entirely to the right of the band leaves the boundary unchanged.
+        if column <= worksheet.frozen_columns {
+            worksheet.frozen_columns += column_count;
+        }
+
         Ok(())
     }
 
@@ -671,6 +678,15 @@ impl<'a> Model<'a> {
             }
         }
         worksheet.cols = new_columns;
+
+        // Excel freeze-pane tracking: deleting columns that fall within the frozen band
+        // (columns 1..=frozen_columns, 1-based) shrinks the band by the number of frozen columns
+        // removed; deletions entirely to the right of the band leave the boundary unchanged.
+        if column <= worksheet.frozen_columns {
+            let last_deleted = column + column_count - 1;
+            let deleted_in_band = last_deleted.min(worksheet.frozen_columns) - column + 1;
+            worksheet.frozen_columns -= deleted_in_band;
+        }
 
         Ok(())
     }
@@ -857,6 +873,14 @@ impl<'a> Model<'a> {
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
 
+        // Excel freeze-pane tracking: inserting rows within or above the frozen band
+        // (rows 1..=frozen_rows, 1-based) pushes the freeze boundary down, growing the band;
+        // inserting entirely below the band leaves the boundary unchanged.
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        if row <= worksheet.frozen_rows {
+            worksheet.frozen_rows += row_count;
+        }
+
         Ok(())
     }
 
@@ -925,6 +949,17 @@ impl<'a> Model<'a> {
         };
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
+
+        // Excel freeze-pane tracking: deleting rows that fall within the frozen band
+        // (rows 1..=frozen_rows, 1-based) shrinks the band by the number of frozen rows removed;
+        // deletions entirely below the band leave the boundary unchanged.
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        if row <= worksheet.frozen_rows {
+            let last_deleted = row + row_count - 1;
+            let deleted_in_band = last_deleted.min(worksheet.frozen_rows) - row + 1;
+            worksheet.frozen_rows -= deleted_in_band;
+        }
+
         Ok(())
     }
 
