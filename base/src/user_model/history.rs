@@ -134,6 +134,9 @@ pub(crate) enum Diff {
         row: i32,
         count: i32,
         old_data: Vec<RowData>,
+        // Frozen-rows count before the delete. Undo re-inserts the rows via `insert_rows`, which
+        // can only regrow the frozen band partially, so the pre-delete count is restored directly.
+        old_frozen_rows: i32,
     },
     InsertColumns {
         sheet: u32,
@@ -145,6 +148,8 @@ pub(crate) enum Diff {
         column: i32,
         count: i32,
         old_data: Vec<ColumnData>,
+        // Frozen-columns count before the delete (see `DeleteRows::old_frozen_rows`).
+        old_frozen_columns: i32,
     },
     DeleteSheet {
         sheet: u32,

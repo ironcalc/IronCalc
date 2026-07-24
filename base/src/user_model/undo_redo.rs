@@ -248,6 +248,7 @@ impl<'a> UserModel<'a> {
                     row,
                     count: _,
                     old_data,
+                    old_frozen_rows,
                 } => {
                     needs_evaluation = true;
                     self.model
@@ -260,6 +261,9 @@ impl<'a> UserModel<'a> {
                         }
                         worksheet.sheet_data.insert(r, row_data.data.clone());
                     }
+                    // `insert_rows` only regrows the frozen band partially; restore the exact
+                    // pre-delete count so a delete that shrank the band round-trips on undo.
+                    worksheet.frozen_rows = *old_frozen_rows;
                 }
                 Diff::InsertColumns {
                     sheet,
@@ -274,6 +278,7 @@ impl<'a> UserModel<'a> {
                     column,
                     count: _,
                     old_data,
+                    old_frozen_columns,
                 } => {
                     needs_evaluation = true;
                     self.model
@@ -291,6 +296,9 @@ impl<'a> UserModel<'a> {
                             worksheet.set_column_width_and_style(c, width, hidden, style)?;
                         }
                     }
+                    // `insert_columns` only regrows the frozen band partially; restore the exact
+                    // pre-delete count so a delete that shrank the band round-trips on undo.
+                    worksheet.frozen_columns = *old_frozen_columns;
                 }
                 Diff::SetFrozenRowsCount {
                     sheet,
@@ -766,6 +774,7 @@ impl<'a> UserModel<'a> {
                     row,
                     count,
                     old_data: _,
+                    old_frozen_rows: _,
                 } => {
                     self.model.delete_rows(*sheet, *row, *count)?;
                     needs_evaluation = true;
@@ -783,6 +792,7 @@ impl<'a> UserModel<'a> {
                     column,
                     count,
                     old_data: _,
+                    old_frozen_columns: _,
                 } => {
                     self.model.delete_columns(*sheet, *column, *count)?;
                     needs_evaluation = true;
