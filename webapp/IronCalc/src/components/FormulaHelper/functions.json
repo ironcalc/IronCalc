@@ -5831,7 +5831,15 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "number", "Point at which to evaluate the distribution"],
+      ["deg_freedom", "integer", "Number of degrees of freedom; at least 1"],
+      [
+        "cumulative",
+        "logical",
+        "TRUE for the cumulative distribution function; FALSE for the probability density function"
+      ]
+    ],
     "description": "Returns the Student's t-distribution probability (left-tailed CDF or PDF). Use it in hypothesis testing for small samples when the population standard deviation is unknown.",
     "examples": [
       "=T.DIST(2.0, 10, TRUE) returns the left-tail probability with 10 degrees of freedom."
@@ -5841,7 +5849,14 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "x",
+        "number",
+        "Point at which to evaluate the distribution; must be non-negative"
+      ],
+      ["deg_freedom", "integer", "Number of degrees of freedom; at least 1"]
+    ],
     "description": "Returns the two-tailed t-distribution probability for a given t-statistic. Use it for two-tailed t-tests - when you're testing whether a difference is non-zero in either direction.",
     "examples": ["=T.DIST.2T(2.0, 10) returns the two-tailed p-value."]
   },
@@ -5849,7 +5864,10 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["x", "number", "Point at which to evaluate the distribution"],
+      ["deg_freedom", "integer", "Number of degrees of freedom; at least 1"]
+    ],
     "description": "Returns the right-tailed t-distribution probability. Use it for one-tailed t-tests where you're testing whether a value is greater than a null hypothesis value.",
     "examples": ["=T.DIST.RT(2.0, 10) returns the right-tail p-value."]
   },
@@ -5857,7 +5875,14 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "probability",
+        "number",
+        "Left-tail probability between 0 and 1 for the t-distribution"
+      ],
+      ["deg_freedom", "integer", "Number of degrees of freedom; at least 1"]
+    ],
     "description": "Returns the inverse of the left-tailed t-distribution - the t-value at a given probability. Use it to find critical values for one-tailed tests or to construct confidence intervals.",
     "examples": [
       "=T.INV(0.95, 10) returns the one-tailed 95th-percentile t-value."
@@ -5867,7 +5892,14 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "probability",
+        "number",
+        "Two-tailed probability between 0 and 1 for the t-distribution"
+      ],
+      ["deg_freedom", "integer", "Number of degrees of freedom; at least 1"]
+    ],
     "description": "Returns the inverse of the two-tailed t-distribution. Use it to find the critical t-value for a two-tailed hypothesis test at a given significance level.",
     "examples": [
       "=T.INV.2T(0.05, 10) returns the critical value for a 5% two-tailed test with 10 degrees of freedom."
@@ -5877,7 +5909,20 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["array1", "range", "The first data set"],
+      ["array2", "range", "The second data set"],
+      [
+        "tails",
+        "integer",
+        "Number of distribution tails: 1 for one-tailed, 2 for two-tailed"
+      ],
+      [
+        "type",
+        "integer",
+        "Test kind: 1 paired, 2 two-sample equal variance, 3 two-sample unequal variance"
+      ]
+    ],
     "description": "Returns the p-value for a Student's t-test comparing two datasets. Use it to determine whether the difference in means between two groups is statistically significant.",
     "examples": [
       "=T.TEST(A2:A20, B2:B20, 2, 2) performs a two-tailed, two-sample t-test."
