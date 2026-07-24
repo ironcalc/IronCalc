@@ -5035,7 +5035,20 @@
     "tier": 0,
     "category": 10,
     "tags": [],
-    "args": [],
+    "args": [
+      ["old_text", "text", "Original string"],
+      [
+        "start_num",
+        "integer",
+        "1-based byte position of the first byte to replace"
+      ],
+      ["num_bytes", "integer", "Number of bytes to remove from old_text"],
+      [
+        "new_text",
+        "text",
+        "String to insert in place of the removed bytes"
+      ]
+    ],
     "description": "Like REPLACE but counts positions and lengths in bytes. Used for double-byte character processing in East Asian locales.",
     "examples": [
       "=REPLACEB(A2, 3, 2, \"AB\") replaces 2 bytes starting at byte 3."
