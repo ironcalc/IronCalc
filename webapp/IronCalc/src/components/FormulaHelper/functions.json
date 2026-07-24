@@ -5626,7 +5626,14 @@
     "tier": 0,
     "category": 9,
     "tags": [],
-    "args": [],
+    "args": [
+      ["known_ys", "number_or_range", "Dependent (y) data points"],
+      [
+        "known_xs",
+        "number_or_range",
+        "Independent (x) data points, same count as known_ys"
+      ]
+    ],
     "description": "Returns the standard error of the predicted y values in a linear regression - a measure of how accurate the regression line's predictions are on average. Use it to gauge the precision of your linear model.",
     "examples": [
       "=STEYX(B2:B20, A2:A20) returns the standard error of the estimate."
