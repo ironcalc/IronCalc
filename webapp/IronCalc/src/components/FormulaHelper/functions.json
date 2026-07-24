@@ -5248,7 +5248,19 @@
     "tier": 0,
     "category": 10,
     "tags": [],
-    "args": [],
+    "args": [
+      [
+        "find_text",
+        "text",
+        "Substring to locate; supports the wildcards ? and *"
+      ],
+      ["within_text", "text", "String to search inside"],
+      [
+        "start_num*",
+        "integer",
+        "1-based byte position to start from; defaults to 1"
+      ]
+    ],
     "description": "Like SEARCH but counts positions in bytes for East Asian locales.",
     "examples": [
       "=SEARCHB(\"A\", A2) returns the byte position of the first case-insensitive match of \"A\"."
