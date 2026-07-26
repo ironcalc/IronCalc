@@ -178,7 +178,7 @@ impl PyModel {
         sheet: u32,
         row: i32,
         column: i32,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         use pyo3::IntoPyObjectExt;
         let value = self
             .model
