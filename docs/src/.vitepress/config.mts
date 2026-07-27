@@ -1514,6 +1514,10 @@ export default defineConfig({
                 link: "/functions/math_and_trigonometry/odd",
               },
               {
+                text: "PERCENTOF",
+                link: "/functions/math_and_trigonometry/percentof",
+              },
+              {
                 text: "PI",
                 link: "/functions/math_and_trigonometry/pi",
               },
