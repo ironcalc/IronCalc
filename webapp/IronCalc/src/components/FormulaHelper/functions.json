@@ -135,6 +135,28 @@
       "=AMORDEGRC(10000, A2, B2, 1000, 1, 0.15) returns the second period's depreciation."
     ]
   },
+  "amorlinc": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["cost", "number", "Purchase cost of the asset"],
+      ["date_purchased", "date", "Date the asset was bought"],
+      ["first_period", "date", "End date of the first accounting period"],
+      ["salvage", "number", "Residual value at the end of the asset's life"],
+      ["period", "integer", "Accounting period to depreciate, starting at 0"],
+      ["rate", "number", "Annual depreciation rate as a decimal"],
+      [
+        "basis*",
+        "integer",
+        "Year basis: 0=360-day NASD (default), 1=actual, 3=365-day, 4=360-day European; 2 is not allowed"
+      ]
+    ],
+    "description": "Returns the depreciation of an asset for one accounting period under the French straight-line system, prorating the first period when the asset is bought part way through it. Each full period writes off the same amount, unlike AMORDEGRC which front-loads it.",
+    "examples": [
+      "=AMORLINC(10000, A2, B2, 1000, 1, 0.15) returns the second period's depreciation."
+    ]
+  },
   "and": {
     "tier": 0,
     "category": 6,
