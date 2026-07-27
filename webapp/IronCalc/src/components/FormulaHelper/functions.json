@@ -1741,6 +1741,27 @@
       "=DSUM(A1:D100, \"Revenue\", F1:F2) sums all revenue rows where the criteria are met."
     ]
   },
+  "duration": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      ["coupon", "number", "Annual coupon rate as a decimal"],
+      ["yld", "number", "Annual yield as a decimal"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention (0=US 30/360 default)"]
+    ],
+    "description": "Returns the Macaulay duration of a bond paying periodic interest: the weighted-average time in years until its cash flows are received. Use it to compare how sensitive different bonds are to a change in interest rates.",
+    "examples": [
+      "=DURATION(A2, B2, 0.05, 0.04, 2, 0) returns the duration in years of a semiannual bond."
+    ]
+  },
   "dvar": {
     "tier": 0,
     "category": 1,
