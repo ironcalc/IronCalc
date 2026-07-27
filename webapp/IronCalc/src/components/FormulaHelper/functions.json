@@ -1228,6 +1228,25 @@
       "=COUPNCD(A2, B2, 2) returns the date of the next coupon payment after settlement."
     ]
   },
+  "coupnum": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention; accepted but not used"]
+    ],
+    "description": "Returns how many coupon payments are still due between settlement and maturity, counting the next one and rounding up to a whole coupon. Use it to size a bond's remaining cash flows.",
+    "examples": [
+      "=COUPNUM(A2, B2, 2) returns 10 for a semiannual bond with five years left to run."
+    ]
+  },
   "covar": {
     "tier": 0,
     "category": 11,
