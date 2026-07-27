@@ -1190,6 +1190,25 @@
       "=COUPDAYS(A2, B2, 2, 0) returns 180 for a semiannual bond on a 30/360 basis."
     ]
   },
+  "coupdaysnc": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention (0=US 30/360 default)"]
+    ],
+    "description": "Returns the number of days from the settlement date to the next coupon date. It tells a buyer how long they must wait for the first interest payment, and completes the coupon period alongside COUPDAYBS.",
+    "examples": [
+      "=COUPDAYSNC(A2, B2, 2, 0) returns the days remaining until the next coupon is paid."
+    ]
+  },
   "covar": {
     "tier": 0,
     "category": 11,
