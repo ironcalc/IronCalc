@@ -6975,6 +6975,28 @@
       "=YEARFRAC(A2, B2, 1) returns the actual fraction of a year between the two dates."
     ]
   },
+  "yield": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      ["rate", "number", "Annual coupon rate as a decimal"],
+      ["pr", "number", "Price per $100 face value"],
+      ["redemption", "number", "Redemption value per $100 face value"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention (0=US 30/360 default)"]
+    ],
+    "description": "Returns the annual yield of a security that pays periodic interest, the return earned by holding a bond bought at a given price to maturity. It is the inverse of PRICE: the yield at which the bond's cash flows discount back to pr.",
+    "examples": [
+      "=YIELD(A2, B2, 0.05, 98, 100, 2, 0) returns the yield of a semiannual bond bought below par."
+    ]
+  },
   "yielddisc": {
     "tier": 0,
     "category": 4,
