@@ -4386,6 +4386,30 @@
     "description": "Rounds a number up to the nearest odd integer. Use it when you need to ensure a value is odd - for example, certain packaging, layout, or algorithm requirements.",
     "examples": ["=ODD(4) returns 5; =ODD(-4) returns -5."]
   },
+  "oddfprice": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      ["issue", "date", "Issue date of the security"],
+      ["first_coupon", "date", "First coupon date of the security"],
+      ["rate", "number", "Annual coupon rate as a decimal"],
+      ["yld", "number", "Annual yield as a decimal"],
+      ["redemption", "number", "Redemption value per $100 face value"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention (0=US 30/360 default)"]
+    ],
+    "description": "Returns the price per $100 face value of a security whose first period is odd, meaning the first coupon covers a shorter or longer span than the regular ones. Use it for bonds issued between coupon dates, where PRICE would misstate the value.",
+    "examples": [
+      "=ODDFPRICE(A2, B2, C2, D2, 0.05, 0.04, 100, 2, 0) prices a bond with a short first coupon."
+    ]
+  },
   "offset": {
     "tier": 0,
     "category": 7,
