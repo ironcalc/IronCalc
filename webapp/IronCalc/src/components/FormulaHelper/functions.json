@@ -1247,6 +1247,25 @@
       "=COUPNUM(A2, B2, 2) returns 10 for a semiannual bond with five years left to run."
     ]
   },
+  "couppcd": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention; accepted but not used"]
+    ],
+    "description": "Returns the most recent coupon date at or before the settlement date, the point from which interest has been accruing to the seller. The result is a serial number, so format the cell as a date to read it.",
+    "examples": [
+      "=COUPPCD(A2, B2, 2) returns the date of the last coupon paid before settlement."
+    ]
+  },
   "covar": {
     "tier": 0,
     "category": 11,
