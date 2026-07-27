@@ -1152,6 +1152,25 @@
       "=COUNTIFS(B2:B100, \"West\", C2:C100, \">1000\") counts rows where region is West and sales exceed 1000."
     ]
   },
+  "coupdaybs": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention (0=US 30/360 default)"]
+    ],
+    "description": "Returns the number of days from the start of the current coupon period to the settlement date. This is the span the seller has already earned interest over, so it drives the accrued interest a buyer must pay on top of the price.",
+    "examples": [
+      "=COUPDAYBS(A2, B2, 2, 0) returns the days elapsed in the coupon period at settlement."
+    ]
+  },
   "covar": {
     "tier": 0,
     "category": 11,
