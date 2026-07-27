@@ -1171,6 +1171,25 @@
       "=COUPDAYBS(A2, B2, 2, 0) returns the days elapsed in the coupon period at settlement."
     ]
   },
+  "coupdays": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention (0=US 30/360 default)"]
+    ],
+    "description": "Returns the total number of days in the coupon period that contains the settlement date. It is the denominator when working out what fraction of a coupon has accrued, so COUPDAYBS divided by COUPDAYS gives the share the seller has earned.",
+    "examples": [
+      "=COUPDAYS(A2, B2, 2, 0) returns 180 for a semiannual bond on a 30/360 basis."
+    ]
+  },
   "covar": {
     "tier": 0,
     "category": 11,
