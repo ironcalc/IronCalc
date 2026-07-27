@@ -3769,6 +3769,27 @@
     "description": "Returns the determinant of a square matrix. Use it in linear algebra - for instance, to check whether a system of equations has a unique solution (a non-zero determinant) or to apply Cramer's rule.",
     "examples": ["=MDETERM(A1:D4) returns the determinant of the 4×4 matrix."]
   },
+  "mduration": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      ["coupon", "number", "Annual coupon rate as a decimal"],
+      ["yld", "number", "Annual yield as a decimal"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention (0=US 30/360 default)"]
+    ],
+    "description": "Returns the modified Macaulay duration of a bond with an assumed par value of $100. It rescales DURATION by the yield per period, giving the approximate percentage change in price for a one-point change in yield.",
+    "examples": [
+      "=MDURATION(A2, B2, 0.05, 0.04, 2, 0) returns the modified duration of a semiannual bond."
+    ]
+  },
   "median": {
     "tier": 0,
     "category": 9,
