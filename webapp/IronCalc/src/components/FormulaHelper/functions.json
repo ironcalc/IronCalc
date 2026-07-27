@@ -4445,6 +4445,19 @@
     "description": "Returns the k-th percentile of a dataset, including the 0th (minimum) and 100th (maximum) percentiles.",
     "examples": ["=PERCENTILE.INC(A2:A20, 0.9) returns the 90th percentile."]
   },
+  "percentof": {
+    "tier": 0,
+    "category": 8,
+    "tags": [],
+    "args": [
+      ["data_subset", "number_or_range", "The values making up the subset"],
+      ["data_all", "number_or_range", "The values making up the whole set"]
+    ],
+    "description": "Returns the share a subset represents of a whole, equivalent to =SUM(data_subset)/SUM(data_all). Mostly used inside GROUPBY and PIVOTBY. The result is a fraction, so format the cell as a percentage.",
+    "examples": [
+      "=PERCENTOF(B2:B5, B2:B20) returns the share the first four values contribute to the whole range."
+    ]
+  },
   "percentrank": {
     "tier": 0,
     "category": 11,
