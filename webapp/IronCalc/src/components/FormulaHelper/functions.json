@@ -2372,6 +2372,25 @@
     "description": "Returns the value of the gamma function Γ(x), which extends the factorial to non-integer values (Γ(n) = (n-1)! for positive integers). Use it in advanced probability and statistics.",
     "examples": ["=GAMMA(5) returns 24 (= 4!)."]
   },
+  "gamma.dist": {
+    "tier": 0,
+    "category": 9,
+    "tags": [],
+    "args": [
+      ["x", "number", "Non-negative value to evaluate"],
+      ["alpha", "number", "Shape parameter (must be positive)"],
+      ["beta", "number", "Scale parameter (must be positive)"],
+      [
+        "cumulative",
+        "logical",
+        "TRUE for the cumulative distribution; FALSE for the probability density"
+      ]
+    ],
+    "description": "Returns the gamma distribution probability (CDF or PDF). Use it to model waiting times and other positive-valued data.",
+    "examples": [
+      "=GAMMA.DIST(2, 2, 1, TRUE) returns the cumulative probability."
+    ]
+  },
   "gamma.inv": {
     "tier": 0,
     "category": 9,
@@ -2386,7 +2405,7 @@
   },
   "gammadist": {
     "tier": 0,
-    "category": 9,
+    "category": 11,
     "tags": [],
     "args": [
       ["x", "number", "Non-negative value to evaluate"],
