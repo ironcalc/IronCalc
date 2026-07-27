@@ -113,6 +113,28 @@
     "description": "Returns a cell address as a text string given a row number and column number. Use it to build dynamic cell references you can then pass to INDIRECT - for instance, constructing a reference from a formula-driven row and column.",
     "examples": ["=ADDRESS(2, 3) returns \"$C$2\"."]
   },
+  "amordegrc": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["cost", "number", "Purchase cost of the asset"],
+      ["date_purchased", "date", "Date the asset was bought"],
+      ["first_period", "date", "End date of the first accounting period"],
+      ["salvage", "number", "Residual value at the end of the asset's life"],
+      ["period", "integer", "Accounting period to depreciate, starting at 0"],
+      ["rate", "number", "Annual depreciation rate as a decimal"],
+      [
+        "basis*",
+        "integer",
+        "Year basis: 0=360-day NASD (default), 1=actual, 3=365-day, 4=360-day European; 2 is not allowed"
+      ]
+    ],
+    "description": "Returns the depreciation of an asset for one accounting period under the French declining-balance system, prorating the first period when the asset is bought part way through it. It works like AMORLINC but applies a coefficient set by the asset's life, so depreciation is heavier in the early periods.",
+    "examples": [
+      "=AMORDEGRC(10000, A2, B2, 1000, 1, 0.15) returns the second period's depreciation."
+    ]
+  },
   "and": {
     "tier": 0,
     "category": 6,
