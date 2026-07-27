@@ -4712,6 +4712,28 @@
       "=PPMT(rate, period, nper, pv) returns the principal for that period."
     ]
   },
+  "price": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      ["rate", "number", "Annual coupon rate as a decimal"],
+      ["yld", "number", "Annual yield as a decimal"],
+      ["redemption", "number", "Redemption value per $100 face value"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention (0=US 30/360 default)"]
+    ],
+    "description": "Returns the price per $100 face value of a security that pays periodic interest. Use it to value a coupon bond at a given yield: the price comes out above 100 when the coupon beats the yield, and below when it trails.",
+    "examples": [
+      "=PRICE(A2, B2, 0.05, 0.04, 100, 2, 0) prices a semiannual bond yielding less than its coupon."
+    ]
+  },
   "pricedisc": {
     "tier": 0,
     "category": 4,
