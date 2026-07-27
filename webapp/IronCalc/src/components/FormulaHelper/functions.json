@@ -1209,6 +1209,25 @@
       "=COUPDAYSNC(A2, B2, 2, 0) returns the days remaining until the next coupon is paid."
     ]
   },
+  "coupncd": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["settlement", "date", "Settlement date of the security"],
+      ["maturity", "date", "Maturity date of the security"],
+      [
+        "frequency",
+        "integer",
+        "Coupon payments per year: 1=annual, 2=semiannual, 4=quarterly"
+      ],
+      ["basis*", "integer", "Day-count convention; accepted but not used"]
+    ],
+    "description": "Returns the first coupon date falling after the settlement date, counting back from maturity at the given frequency. The result is a serial number, so format the cell as a date to read it.",
+    "examples": [
+      "=COUPNCD(A2, B2, 2) returns the date of the next coupon payment after settlement."
+    ]
+  },
   "covar": {
     "tier": 0,
     "category": 11,
