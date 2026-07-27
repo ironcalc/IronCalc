@@ -6913,6 +6913,36 @@
     "description": "Like VAR.P but includes text and logical values. Use it for population variance over a mixed-type range.",
     "examples": ["=VARPA(A2:A100)."]
   },
+  "vdb": {
+    "tier": 0,
+    "category": 4,
+    "tags": [],
+    "args": [
+      ["cost", "number", "Initial cost of the asset"],
+      ["salvage", "number", "Residual value at end of useful life"],
+      ["life", "number", "Number of periods in the asset's useful life"],
+      [
+        "start_period",
+        "number",
+        "First period to depreciate, in units of life"
+      ],
+      ["end_period", "number", "Last period to depreciate, in units of life"],
+      [
+        "factor*",
+        "number",
+        "Depreciation rate multiplier; defaults to 2 for double-declining balance"
+      ],
+      [
+        "no_switch*",
+        "logical",
+        "TRUE keeps declining balance throughout; FALSE (default) switches to straight line once that gives more"
+      ]
+    ],
+    "description": "Returns the depreciation of an asset over a span of periods using the variable declining balance method. Unlike DDB it covers a range rather than a single period, accepts partial periods, and by default switches to straight line once that writes off more.",
+    "examples": [
+      "=VDB(10000, 1000, 10, 0, 0.5) returns the depreciation for the first half of year one."
+    ]
+  },
   "vlookup": {
     "tier": 0,
     "category": 7,
