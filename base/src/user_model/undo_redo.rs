@@ -525,6 +525,12 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.set_timezone(old_value)?;
                 }
+                Diff::SetWorkbookName {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.workbook.name = old_value.clone();
+                }
                 Diff::CreateNamedStyle {
                     name,
                     style: _,
@@ -955,6 +961,12 @@ impl<'a> UserModel<'a> {
                     new_value,
                 } => {
                     self.model.set_timezone(new_value)?;
+                }
+                Diff::SetWorkbookName {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.workbook.name = new_value.clone();
                 }
                 Diff::CreateNamedStyle {
                     name,

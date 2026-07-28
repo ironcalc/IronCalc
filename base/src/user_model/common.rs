@@ -307,6 +307,14 @@ impl<'a> UserModel<'a> {
 
     /// Sets the name of a workbook
     pub fn set_name(&mut self, name: &str) {
+        let old_value = self.model.workbook.name.clone();
+        if old_value == name {
+            return;
+        }
+        self.push_diff_list(vec![Diff::SetWorkbookName {
+            old_value,
+            new_value: name.to_string(),
+        }]);
         self.model.workbook.name = name.to_string();
     }
 

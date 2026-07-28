@@ -138,3 +138,33 @@ fn get_and_set_name() {
     model.set_name("Another name");
     assert_eq!(model.get_name(), "Another name");
 }
+
+#[test]
+fn set_name_undo_redo() {
+    let mut model = UserModel::new_empty("MyWorkbook123", "en", "UTC", "en").unwrap();
+    model.set_name("Another name");
+    assert_eq!(model.get_name(), "Another name");
+
+    model.undo().unwrap();
+    assert_eq!(model.get_name(), "MyWorkbook123");
+
+    model.redo().unwrap();
+    assert_eq!(model.get_name(), "Another name");
+
+    let send_queue = model.flush_send_queue();
+
+    let mut model2 = UserModel::new_empty("MyWorkbook123", "en", "UTC", "en").unwrap();
+    model2.apply_external_diffs(&send_queue).unwrap();
+    assert_eq!(model2.get_name(), "Another name");
+}
+
+#[test]
+fn set_name_with_same_name_is_not_added_to_history() {
+    let mut model = UserModel::new_empty("MyWorkbook123", "en", "UTC", "en").unwrap();
+    model.set_name("Another name");
+    // A no-op rename must not push a new entry to the undo stack
+    model.set_name("Another name");
+
+    model.undo().unwrap();
+    assert_eq!(model.get_name(), "MyWorkbook123");
+}

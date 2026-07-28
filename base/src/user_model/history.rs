@@ -234,6 +234,10 @@ pub(crate) enum Diff {
         old_value: String,
         new_value: String,
     },
+    SetWorkbookName {
+        old_value: String,
+        new_value: String,
+    },
     SetTimezone {
         old_value: String,
         new_value: String,
