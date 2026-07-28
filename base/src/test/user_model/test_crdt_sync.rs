@@ -1734,6 +1734,27 @@ fn workbook_name_syncs() {
     sync(&mut a, &mut b);
     assert_eq!(b.um.get_name(), "Budget 2026");
     assert_converged(&a, &b);
+
+    // Undo on the originator reverts both replicas.
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_name(), "model");
+    assert_eq!(b.um.get_name(), "model");
+    assert_converged(&a, &b);
+
+    // Redo restores it on both.
+    a.um.redo().unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_name(), "Budget 2026");
+    assert_converged(&a, &b);
+
+    // The remote rename never entered the receiver's history: undo on the
+    // receiver is a no-op and must not revert or echo anything.
+    b.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_name(), "Budget 2026");
+    assert_eq!(b.um.get_name(), "Budget 2026");
+    assert_converged(&a, &b);
 }
 
 /// A joiner attaches a blank workbook with an empty name (the webapp's
