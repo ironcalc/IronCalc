@@ -962,15 +962,6 @@ impl CollabSession {
     // ---- outbound ----
 
     pub(crate) fn translate_queue(&mut self, um: &mut UserModel) -> Result<(), String> {
-        // `UserModel::set_name` bypasses the diff queue, so local renames are
-        // caught by comparing the model against the shadow register.
-        let name = um.get_name();
-        if !name.is_empty() && self.shadow.name.as_ref() != Some(&name) {
-            let mut txn = self.doc.transact_mut();
-            self.maps.meta.insert(&mut txn, "wb.name", name.as_str());
-            drop(txn);
-            self.shadow.name = Some(name);
-        }
         let bytes = um.flush_send_queue();
         let queue: Vec<QueueDiffs> =
             bitcode::decode(&bytes).map_err(|e| format!("collab: cannot decode queue: {e}"))?;
@@ -1223,10 +1214,12 @@ impl CollabSession {
                 um.model.set_show_grid_lines(sheet, desired_grid)?;
             }
         }
-        // Workbook-level registers.
+        // Workbook-level registers. Applied with raw model writes:
+        // `UserModel::set_name` would record the remote rename in the local
+        // undo history and echo it back through the send queue.
         if let Some(name) = &new_proj.name {
             if !name.is_empty() && um.get_name() != *name {
-                um.set_name(name);
+                um.model.workbook.name = name.clone();
             }
         }
         if let Some(locale) = &new_proj.locale {
@@ -1656,7 +1649,10 @@ impl Pass1<'_, '_> {
                 Ok(())
             }
             // Workbook-level LWW registers, read from the post-batch model.
-            Diff::SetLocale { .. } | Diff::SetTimezone { .. } | Diff::SetTheme { .. } => {
+            Diff::SetLocale { .. }
+            | Diff::SetTimezone { .. }
+            | Diff::SetTheme { .. }
+            | Diff::SetWorkbookName { .. } => {
                 self.touched.workbook = true;
                 Ok(())
             }
@@ -2801,6 +2797,12 @@ fn write_final_state(
         maps.meta.insert(txn, "wb.tz", settings.tz.as_str());
         let theme = bitcode::encode(&um.model.workbook.theme);
         maps.meta.insert(txn, "wb.theme", yrs::Any::from(theme));
+        // An empty name means "adopt the room's" (see attach), so it is
+        // never written to the register.
+        let name = um.get_name();
+        if !name.is_empty() {
+            maps.meta.insert(txn, "wb.name", name.as_str());
+        }
     }
 
     // Sheet keep-sets: every positive op on a sheet keeps it alive against a
