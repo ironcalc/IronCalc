@@ -514,11 +514,14 @@ jobs:
         run: ls -R ./npm
         shell: bash
 
+      # OIDC trusted publishing needs npm >= 11.5.1
+      - name: Update npm
+        run: npm install -g npm@latest
+
       - name: Publish
         run: |
           echo "${{ github.event.inputs.publish }}"
           if [ "${{ github.event.inputs.publish }}" = "true" ]; then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
             npm publish --access public
             echo "Published to npm"
           else
@@ -526,7 +529,6 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # --- WASM and Workbook Jobs ---
   build-test-wasm:
@@ -610,14 +612,13 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+      # OIDC trusted publishing needs npm >= 11.5.1
+      - name: Update npm
+        run: npm install -g npm@latest
       - name: Publish
         if: ${{ steps.wasm_check.outputs.skip != 'true' && github.event.inputs.publish == 'true' }}
         working-directory: bindings/wasm/pkg
-        run: |
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-          npm publish --access public
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
 
   publish-workbook:
     name: Publish @ironcalc/workbook
@@ -660,11 +661,10 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+      # OIDC trusted publishing needs npm >= 11.5.1
+      - name: Update npm
+        run: npm install -g npm@latest
       - name: Publish
         if: ${{ steps.workbook_check.outputs.skip != 'true' && github.event.inputs.publish == 'true' }}
         working-directory: webapp/IronCalc
-        run: |
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-          npm publish --access public
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

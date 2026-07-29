@@ -17,5 +17,10 @@
   },
   "libc": [
     "musl"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ironcalc/IronCalc.git",
+    "directory": "bindings/nodejs/npm/linux-arm64-musl"
+  }
 }
