@@ -67,6 +67,7 @@ RUN bash -lc 'set -euo pipefail; \
 
 # ---------- server runtime ----------
 FROM debian:bookworm-slim AS server-runtime
+LABEL org.opencontainers.image.source=https://github.com/ironcalc/IronCalc
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -82,6 +83,7 @@ CMD ["./ironcalc_server"]
 
 # ---------- caddy runtime (serves frontend + reverse-proxy /api) ----------
 FROM caddy:latest AS caddy-runtime
+LABEL org.opencontainers.image.source=https://github.com/ironcalc/IronCalc
 
 WORKDIR /srv
 
