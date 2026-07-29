@@ -2,7 +2,7 @@
 project = 'IronCalc'
 author = 'Nicolás Hatcher'
 
-release = '0.8.1'
+release = '0.8.2'
 version = '0.8'
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon']
