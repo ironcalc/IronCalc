@@ -5,7 +5,7 @@
   "types": "index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ironcalc/ironcalc.git",
+    "url": "git+https://github.com/ironcalc/IronCalc.git",
     "directory": "bindings/nodejs"
   },
   "homepage": "https://www.ironcalc.com/",

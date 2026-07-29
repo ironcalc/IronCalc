@@ -17,5 +17,10 @@
   },
   "libc": [
     "glibc"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ironcalc/IronCalc.git",
+    "directory": "bindings/nodejs/npm/linux-riscv64-gnu"
+  }
 }
