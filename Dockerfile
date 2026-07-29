@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && bash -lc '\
          export NVM_DIR="$HOME/.nvm" && \
          source "$NVM_DIR/nvm.sh" && \
-         nvm install 22 && nvm alias default 22 && \
+         nvm install 24 && nvm alias default 24 && \
          nroot="$NVM_DIR/versions/node/$(nvm version default)/bin" && \
          ln -sf "$nroot/node" /usr/local/bin/node && \
          ln -sf "$nroot/npm"  /usr/local/bin/npm  && \

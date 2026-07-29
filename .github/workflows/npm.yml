@@ -35,6 +35,7 @@ jobs:
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
             build: |
               set -e &&
+              git config --global --add safe.directory /build &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               corepack enable &&
@@ -68,6 +69,7 @@ jobs:
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
             build: |
               set -e &&
+              git config --global --add safe.directory /build &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               rustup target add aarch64-unknown-linux-gnu &&
@@ -145,11 +147,13 @@ jobs:
         working-directory: ./bindings/nodejs
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
       - name: Setup node
         uses: actions/setup-node@v4
         if: ${{ !matrix.settings.docker }}
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
       - name: Enable pnpm (corepack)
@@ -214,7 +218,7 @@ jobs:
           - host: windows-latest
             target: x86_64-pc-windows-msvc
         node:
-          - '20'
+          - '24'
     runs-on: ${{ matrix.settings.host }}
     defaults:
       run:
@@ -252,7 +256,7 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - '20'
+          - '24'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -289,7 +293,7 @@ jobs:
   #     fail-fast: false
   #     matrix:
   #       node:
-  #         - '20'
+  #         - '24'
   #   runs-on: ubuntu-latest
   #   defaults:
   #     run:
@@ -328,7 +332,7 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - '20'
+          - '24'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -419,7 +423,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
       - name: Enable pnpm (corepack)
@@ -473,7 +477,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
 
@@ -530,10 +534,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Install wasm build tooling
         run: npm install -g wasm-pack typescript
       - name: Test wasm package (nodejs target)
@@ -559,7 +565,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Download wasm pkg artifact
         uses: actions/download-artifact@v4
         with:
@@ -585,7 +591,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Download wasm pkg artifact
         uses: actions/download-artifact@v4
         with:
@@ -624,7 +630,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Download wasm pkg artifact
         uses: actions/download-artifact@v4
         with:
