@@ -1,6 +1,6 @@
 [package]
 name = "ironcalc"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["Nicolás Hatcher <nicolas@theuniverse.today>"]
 edition = "2021"
 homepage = "https://www.ironcalc.com"
