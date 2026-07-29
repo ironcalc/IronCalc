@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-tags: ${{ github.ref_type != 'tag' }}
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
@@ -49,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-tags: ${{ github.ref_type != 'tag' }}
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
@@ -75,7 +75,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-tags: ${{ github.ref_type != 'tag' }}
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
@@ -97,7 +97,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-tags: ${{ github.ref_type != 'tag' }}
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:

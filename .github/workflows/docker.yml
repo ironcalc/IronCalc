@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-tags: ${{ github.ref_type != 'tag' }}
 
       - name: Log in to ghcr.io
         uses: docker/login-action@v3
