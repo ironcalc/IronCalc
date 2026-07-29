@@ -16,7 +16,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-tags: ${{ github.ref_type != 'tag' }}
 
       - name: Update Rust
         run: rustup update stable

@@ -152,7 +152,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-tags: ${{ github.ref_type != 'tag' }}
       - name: Setup node
         uses: actions/setup-node@v4
         if: ${{ !matrix.settings.docker }}
@@ -542,7 +542,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-tags: ${{ github.ref_type != 'tag' }}
       - name: Setup node
         uses: actions/setup-node@v4
         with:
