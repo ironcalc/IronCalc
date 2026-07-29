@@ -150,11 +150,11 @@ jobs:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-tags: ${{ github.ref_type != 'tag' }}
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         if: ${{ !matrix.settings.docker }}
         with:
           node-version: 24
@@ -172,7 +172,7 @@ jobs:
           toolchain: 1.90.0
           targets: ${{ matrix.settings.target }}
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -204,7 +204,7 @@ jobs:
         if: ${{ !matrix.settings.docker }}
         shell: bash
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bindings-${{ matrix.settings.target }}
           path: bindings/nodejs/${{ env.APP_NAME }}.*.node
@@ -228,9 +228,9 @@ jobs:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -243,7 +243,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-${{ matrix.settings.target }}
           path: bindings/nodejs/
@@ -266,9 +266,9 @@ jobs:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -280,7 +280,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-x86_64-unknown-linux-gnu
           path: bindings/nodejs/
@@ -303,9 +303,9 @@ jobs:
   #     run:
   #       working-directory: ./bindings/nodejs
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v7
   #     - name: Setup node
-  #       uses: actions/setup-node@v4
+  #       uses: actions/setup-node@v7
   #       with:
   #         node-version: ${{ matrix.node }}
   #         cache: npm
@@ -319,7 +319,7 @@ jobs:
   #         pnpm config set supportedArchitectures.libc musl
   #         pnpm install --frozen-lockfile
   #     - name: Download artifacts
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: bindings-x86_64-unknown-linux-musl
   #         path: bindings/nodejs/
@@ -342,9 +342,9 @@ jobs:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-aarch64-unknown-linux-gnu
           path: bindings/nodejs/
@@ -361,7 +361,7 @@ jobs:
           pnpm config set supportedArchitectures.libc glibc
           pnpm install --frozen-lockfile
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
       - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -385,9 +385,9 @@ jobs:
   #     run:
   #       working-directory: ./bindings/nodejs
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v7
   #     - name: Download artifacts
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: bindings-aarch64-unknown-linux-musl
   #         path: bindings/nodejs/
@@ -400,7 +400,7 @@ jobs:
   #         pnpm config set supportedArchitectures.libc musl
   #         pnpm install --frozen-lockfile
   #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v3
+  #       uses: docker/setup-qemu-action@v4
   #       with:
   #         platforms: arm64
   #     - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -423,9 +423,9 @@ jobs:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -437,12 +437,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download macOS x64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-x86_64-apple-darwin
           path: bindings/nodejs/artifacts
       - name: Download macOS arm64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-aarch64-apple-darwin
           path: bindings/nodejs/artifacts
@@ -456,7 +456,7 @@ jobs:
       - name: Combine binaries
         run: pnpm run universal
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bindings-universal-apple-darwin
           path: bindings/nodejs/${{ env.APP_NAME }}.*.node
@@ -476,10 +476,10 @@ jobs:
       - universal-macOS
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -494,7 +494,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download all artifacts (flatten)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: bindings-*
           path: ./bindings/nodejs
@@ -540,11 +540,11 @@ jobs:
     name: Build and test @ironcalc/wasm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-tags: ${{ github.ref_type != 'tag' }}
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Install wasm build tooling
@@ -556,7 +556,7 @@ jobs:
         working-directory: bindings/wasm
         run: make
       - name: Upload wasm pkg artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wasm-pkg
           path: bindings/wasm/pkg
@@ -568,13 +568,13 @@ jobs:
     needs:
       - build-test-wasm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Download wasm pkg artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: wasm-pkg
           path: bindings/wasm/pkg
@@ -594,13 +594,13 @@ jobs:
     needs:
       - build-test-wasm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Download wasm pkg artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: wasm-pkg
           path: bindings/wasm/pkg
@@ -632,13 +632,13 @@ jobs:
       - build-test-workbook
       - publish-wasm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Download wasm pkg artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: wasm-pkg
           path: bindings/wasm/pkg
