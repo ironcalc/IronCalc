@@ -1,6 +1,6 @@
 {
   "name": "@ironcalc/nodejs-linux-arm64-musl",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "os": [
     "linux"
   ],
