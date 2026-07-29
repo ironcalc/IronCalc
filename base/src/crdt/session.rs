@@ -43,7 +43,7 @@ use yrs::{Doc, Map, ReadTxn, StateVector, Transact, TransactionMut, Update};
 
 use crate::cf_types::{CfRule, Cfvo, ConditionalFormatting};
 use crate::constants::{
-    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
+    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, ROW_HEIGHT_FACTOR,
 };
 use crate::types::{BorderItem, BorderStyle, Cell, Dxf};
 use crate::user_model::border_utils::is_max_border;
@@ -3969,5 +3969,3 @@ fn apply_column_props(
     Ok(())
 }
 
-// Silence an unused-constant warning until row-height defaults are needed.
-const _: f64 = DEFAULT_ROW_HEIGHT;
