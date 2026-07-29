@@ -55,7 +55,7 @@ INFO returns a [text](/features/value-types#text) string, a [number](/features/v
 
 | Formula | Result | Comment |
 |---|---|---|
-| `=INFO("release")` | `"v0.7.1-202-g847240b0"` | IronCalc version (example; actual output depends on the build and may include a leading `v` and additional suffixes) |
+| `=INFO("release")` | `"v0.8.0-12-g847240b0"` | IronCalc version (example; actual output depends on the build and may include a leading `v` and additional suffixes) |
 | `=INFO("system")` | `"browser"` | Running in the web app |
 | `=INFO("numfile")` | `3` | Workbook has 3 sheets |
 | `=INFO("recalc")` | `"Automatic"` | Always automatic in IronCalc |

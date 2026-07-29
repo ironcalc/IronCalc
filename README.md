@@ -87,7 +87,7 @@ And visit <http://0.0.0.0:8000/ironcalc/>
 Add the dependency to `Cargo.toml`:
 ```toml
 [dependencies]
-ironcalc = { git = "https://github.com/ironcalc/IronCalc", version = "0.5"}
+ironcalc = { git = "https://github.com/ironcalc/IronCalc", version = "0.8"}
 ```
 
 And then use this code in `main.rs`:
