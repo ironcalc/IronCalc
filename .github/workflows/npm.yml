@@ -3,10 +3,14 @@ env:
   DEBUG: napi:*
   APP_NAME: nodejs
   MACOSX_DEPLOYMENT_TARGET: '10.13'
+  # true when triggered by a version tag or manually dispatched with publish=true
+  RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish == 'true' }}
 permissions:
   contents: read
   id-token: write
 'on':
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       publish:
@@ -520,12 +524,15 @@ jobs:
 
       - name: Publish
         run: |
-          echo "${{ github.event.inputs.publish }}"
-          if [ "${{ github.event.inputs.publish }}" = "true" ]; then
+          LOCAL="$(npm pkg get version | tr -d '"')"
+          REMOTE="$(npm view @ironcalc/nodejs version || true)"
+          if [ "$RELEASE" != "true" ]; then
+            echo "Not a release, skipping publish"
+          elif [ "$LOCAL" = "$REMOTE" ]; then
+            echo "@ironcalc/nodejs $LOCAL is already published, skipping"
+          else
             npm publish --access public
             echo "Published to npm"
-          else
-            echo "Not a release, skipping publish"
           fi
 
   # --- WASM and Workbook Jobs ---
@@ -614,7 +621,7 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
       - name: Publish
-        if: ${{ steps.wasm_check.outputs.skip != 'true' && github.event.inputs.publish == 'true' }}
+        if: ${{ steps.wasm_check.outputs.skip != 'true' && env.RELEASE == 'true' }}
         working-directory: bindings/wasm/pkg
         run: npm publish --access public
 
@@ -663,6 +670,6 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
       - name: Publish
-        if: ${{ steps.workbook_check.outputs.skip != 'true' && github.event.inputs.publish == 'true' }}
+        if: ${{ steps.workbook_check.outputs.skip != 'true' && env.RELEASE == 'true' }}
         working-directory: webapp/IronCalc
         run: npm publish --access public

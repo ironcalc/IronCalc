@@ -1,24 +1,46 @@
-name: Publish
+name: Publish crates
 
 on:
   push:
-    branches: ["main"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   publish:
-    name: Publish
+    name: Publish to crates.io
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+        with:
+          fetch-tags: true
 
       - name: Update Rust
         run: rustup update stable
 
-      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} --manifest-path base/Cargo.toml || true
+      - name: Publish ironcalc_base
+        run: |
+          LOCAL="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "ironcalc_base").version')"
+          REMOTE="$(curl -s -A ironcalc-ci https://crates.io/api/v1/crates/ironcalc_base | jq -r '.crate.max_version')"
+          if [ "$LOCAL" = "$REMOTE" ]; then
+            echo "ironcalc_base $LOCAL is already on crates.io, skipping"
+          else
+            cargo publish --token "$CARGO_REGISTRY_TOKEN" --manifest-path base/Cargo.toml
+          fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      
-      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} --manifest-path xlsx/Cargo.toml || true
+
+      - name: Publish ironcalc
+        run: |
+          LOCAL="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "ironcalc").version')"
+          REMOTE="$(curl -s -A ironcalc-ci https://crates.io/api/v1/crates/ironcalc | jq -r '.crate.max_version')"
+          if [ "$LOCAL" = "$REMOTE" ]; then
+            echo "ironcalc $LOCAL is already on crates.io, skipping"
+          else
+            cargo publish --token "$CARGO_REGISTRY_TOKEN" --manifest-path xlsx/Cargo.toml
+          fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
