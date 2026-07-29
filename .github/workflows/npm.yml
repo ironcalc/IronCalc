@@ -4,7 +4,7 @@ env:
   APP_NAME: nodejs
   MACOSX_DEPLOYMENT_TARGET: '10.13'
 permissions:
-  contents: write
+  contents: read
   id-token: write
 'on':
   workflow_dispatch:
@@ -527,8 +527,6 @@ jobs:
           else
             echo "Not a release, skipping publish"
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # --- WASM and Workbook Jobs ---
   build-test-wasm:
