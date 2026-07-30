@@ -77,8 +77,6 @@ fn test_fn_log_norm_arguments() {
     model._set("B4", "=LOGNORM.INV(0.5, 3.5, 1.2)");
     model._set("B5", "=LOGNORM.INV(0.5, 3.5, 1.2, 0)");
 
-
-
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#ERROR!");
