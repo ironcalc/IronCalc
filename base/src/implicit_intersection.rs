@@ -11,6 +11,14 @@ pub(crate) fn implicit_intersection(
 ) -> Option<CellReferenceIndex> {
     let left = &range.left;
     let right = &range.right;
+    // A single-cell "range" intersects to itself, on its own sheet. This holds
+    // even when that sheet differs from the calling cell's — e.g. `@Sheet2!B3`,
+    // or an `@`-decorated `OFFSET(INDIRECT("Sheet2!B3"),..)` that resolves to a
+    // single cross-sheet cell. Handle it before the same-sheet guard below, which
+    // would otherwise reject the cross-sheet case and yield #VALUE!.
+    if left.sheet == right.sheet && left.row == right.row && left.column == right.column {
+        return Some(*left);
+    }
     let sheet = cell_reference.sheet;
     // If they are not all in the same sheet there is no intersection
     if sheet != left.sheet && sheet != right.sheet {
@@ -35,13 +43,6 @@ pub(crate) fn implicit_intersection(
             sheet,
             row: left.row,
             column,
-        });
-    } else if left.row == right.row && left.column == right.column {
-        // If the range is a single cell, then return it.
-        return Some(CellReferenceIndex {
-            sheet,
-            row: left.row,
-            column: right.column,
         });
     }
     None
