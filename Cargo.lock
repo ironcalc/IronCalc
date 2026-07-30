@@ -913,8 +913,19 @@ dependencies = [
  "ironcalc",
  "pyo3",
  "pyo3-build-config",
+ "pythonize",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "pythonize"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3a8f29db331e28c332c63496cfcbb822aca3d7320bc08b655d7fd0c29c50ede"
+dependencies = [
+ "pyo3",
+ "serde",
 ]
 
 [[package]]
