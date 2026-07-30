@@ -204,15 +204,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let alpha = match self.get_number_no_bools(&args[0], cell) {
+        let alpha = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[1], cell) {
+        let std_dev = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let size = match self.get_number_no_bools(&args[2], cell) {
+        let size = match self.get_number(&args[2], cell) {
             Ok(f) => f.floor(),
             Err(e) => return e,
         };
@@ -265,21 +265,21 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let alpha = match self.get_number_no_bools(&args[0], cell) {
+        let alpha = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[1], cell) {
+        let std_dev = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let size = match self.get_number_no_bools(&args[2], cell) {
+        let size = match self.get_number(&args[2], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
 
         // Domain checks
-        if alpha <= 0.0 || alpha >= 1.0 || std_dev <= 0.0 {
+        if alpha <= 0.0 || alpha >= 1.0 || std_dev <= 0.0 || size <= 0.0 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
