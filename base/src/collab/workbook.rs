@@ -1,21 +1,23 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use crate::cf_types::CfRule;
-use crate::collab::fractional_index::{FractionalIndex, KeyAlias};
+use crate::collab::fractional_index::{FractionalIndex, FractionalKey};
+use crate::collab::log::Lww;
 use crate::collab::model::{StableCellAddress, StableRange};
+use crate::collab::patch::CellInput;
 use crate::expressions::parser::DefinedNameS;
 use crate::expressions::token::Error;
 use crate::types::{
-    Cell, Color, DefinedName, Metadata, SheetState, Styles, Theme, Workbook, WorkbookSettings,
+    Cell, Color, DefinedName, Metadata, SheetState, Style, Theme, Workbook, WorkbookSettings,
     WorkbookView, Worksheet, WorksheetView,
 };
 use crate::worksheet::{NavigationDirection, WorksheetDimension};
+use serde::{Deserialize, Serialize};
 
 pub struct CollaborativeWorkbook {
-    pub shared_strings: Vec<String>,
     pub defined_names: Vec<DefinedName>,
     pub worksheets: Vec<CollaborativeWorksheet>,
-    pub styles: Styles,
     pub name: String,
     pub settings: WorkbookSettings,
     pub metadata: Metadata,
@@ -23,6 +25,26 @@ pub struct CollaborativeWorkbook {
     pub views: HashMap<u32, WorkbookView>,
     pub theme: Theme,
     pub sheet_order: FractionalIndex,
+    /// Deduplicates the styles held by cells, rows and columns, so that the many cells sharing a
+    /// style share one allocation.
+    ///
+    /// Purely local: interning affects only how this replica stores styles, never how concurrent
+    /// writes are resolved.
+    style_intern: HashSet<Arc<Style>>,
+}
+
+impl CollaborativeWorkbook {
+    /// Return the shared [`Style`] equal to `style`, inserting it if this is the first time it is
+    /// seen.
+    pub fn intern_style(&mut self, style: Style) -> Arc<Style> {
+        let style = Arc::new(style);
+        //TODO: replace with `HashSet::entry` once it goes out of nightly
+        if let Some(interned) = self.style_intern.get(&style) {
+            return interned.clone();
+        }
+        self.style_intern.insert(style.clone());
+        style
+    }
 }
 
 impl CollaborativeWorkbook {
@@ -57,41 +79,46 @@ impl CollaborativeWorkbook {
 /// Collaborative counterpart of [`Worksheet`].
 pub struct CollaborativeWorksheet {
     pub name: String,
-    /// A `KeyAlias` obtained from `CollaborativeWorkbook::sheet_order`. We use [FractionalKey]
-    /// for worksheets for concurrent inserts.
-    pub sheet_id: KeyAlias,
+    /// The key this worksheet was minted with in `CollaborativeWorkbook::sheet_order`, which is also
+    /// how patches address it — see [`SheetId`](crate::collab::patch::SheetId).
+    pub sheet_id: FractionalKey,
     pub state: SheetState,
     pub color: Color,
     pub rows_index: FractionalIndex,
     pub cols_index: FractionalIndex,
-    pub sheet_data: HashMap<KeyAlias, HashMap<KeyAlias, Cell>>,
+    /// Authored cell contents, row-major. Cells the user never typed into have no entry.
+    pub cell_values: HashMap<FractionalKey, HashMap<FractionalKey, Lww<CellInput>>>,
+    /// Cell styles, row-major, kept apart from [`Self::cell_values`] because most cells carry no
+    /// style of their own. Styles are interned, so cells sharing a style share one allocation.
+    pub cell_styles: HashMap<FractionalKey, HashMap<FractionalKey, Lww<Arc<Style>>>>,
 
-    pub rows: HashMap<KeyAlias, RowProperties>,
-    pub cols: HashMap<KeyAlias, ColProperties>,
+    pub rows: HashMap<FractionalKey, RowProperties>,
+    pub cols: HashMap<FractionalKey, ColProperties>,
 
-    pub shared_formulas: Vec<String>,
     pub merge_cells: Vec<StableRange>,
     pub comments: Vec<CollaborativeComment>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
     pub views: HashMap<u32, WorksheetView>,
     pub show_grid_lines: bool,
-    pub conditional_formatting: Vec<CollaborativeConditionalFormatting>,
+    /// Identity and priority of every conditional formatting rule: a rule is identified by the
+    /// [`FractionalKey`] minted when it was created, and its priority is its position here.
+    pub cf_index: FractionalIndex,
+    pub conditional_formatting: HashMap<FractionalKey, CollaborativeConditionalFormatting>,
 }
 
 impl CollaborativeWorksheet {
-    fn row_alias(&self, row: i32) -> Option<KeyAlias> {
+    fn row_alias(&self, row: i32) -> Option<FractionalKey> {
         todo!()
     }
-    fn col_alias(&self, column: i32) -> Option<KeyAlias> {
+    fn col_alias(&self, column: i32) -> Option<FractionalKey> {
         todo!()
     }
-    /// Alias -> sorted position. Requires a reverse lookup on `FractionalIndex`
-    /// (see the note at the bottom — it currently only offers key->alias).
-    fn row_position(&self, alias: KeyAlias) -> Option<i32> {
+    /// Key -> sorted position, over `FractionalIndex::position_of`.
+    fn row_position(&self, key: FractionalKey) -> Option<i32> {
         todo!()
     }
-    fn col_position(&self, alias: KeyAlias) -> Option<i32> {
+    fn col_position(&self, key: FractionalKey) -> Option<i32> {
         todo!()
     }
 
@@ -99,7 +126,7 @@ impl CollaborativeWorksheet {
         todo!()
     }
     /// Ensure a stable key exists for `row`/`column`.
-    fn resolve_or_create(&mut self, row: i32, column: i32) -> (KeyAlias, KeyAlias) {
+    fn resolve_or_create(&mut self, row: i32, column: i32) -> (FractionalKey, FractionalKey) {
         todo!()
     }
 
@@ -295,21 +322,26 @@ impl CollaborativeWorksheet {
     }
 }
 
+/// Each of `height`, `hidden` and `style` is an independent register, so a concurrent resize and
+/// hide both survive.
 pub struct RowProperties {
-    pub height: f64,
+    pub height: Lww<f64>,
+    pub hidden: Lww<bool>,
+    pub style: Lww<Option<Arc<Style>>>,
     pub custom_format: bool,
     pub custom_height: bool,
-    pub s: i32,
-    pub hidden: bool,
 }
 
+/// Each of `width`, `hidden` and `style` is an independent register, so a concurrent resize and
+/// hide both survive.
 pub struct ColProperties {
-    pub width: f64,
+    pub width: Lww<f64>,
+    pub hidden: Lww<bool>,
+    pub style: Lww<Option<Arc<Style>>>,
     pub custom_width: bool,
-    pub hidden: bool,
-    pub style: Option<i32>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CollaborativeComment {
     pub text: String,
     pub author_name: String,
@@ -317,16 +349,17 @@ pub struct CollaborativeComment {
     pub cell_ref: StableCellAddress,
 }
 
+/// Priority is deliberately absent: it is the rule's position in
+/// [`CollaborativeWorksheet::cf_index`].
 pub struct CollaborativeConditionalFormatting {
     pub range: Vec<StableRange>,
     pub cf_rule: CfRule,
-    pub priority: u32,
 }
 
 pub struct CollaborativeTable {
     pub name: String,
     pub display_name: String,
-    pub sheet_id: KeyAlias,
+    pub sheet_id: FractionalKey,
     pub reference: StableRange,
     // --- carried over from `Table` verbatim (non-positional) ---
     // pub totals_row_count: u32,

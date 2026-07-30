@@ -1,62 +1,71 @@
+//! Replicated operations.
+//!
+//! A [`Patch`] is an assignment `register ← value`. The register is addressed by a scope (workbook,
+//! sheet, row, column, cell, defined name, ...) together with a *property discriminant*, and removal
+//! is expressed as `None` rather than a dedicated operation.
+//!
+//! The property discriminant being part of the register address is what makes concurrent edits to
+//! different properties of the same object survive: renaming a sheet and recolouring it are writes
+//! to two different registers, so neither loses. Collapsing a property sub-enum into a single
+//! register would silently change that.
+//!
+//! Patches must be **index-free**: they may not carry values whose meaning depends on a replica's
+//! local tables. Style indices into `Styles.cell_xfs`, shared-string indices and shared-formula
+//! indices are all assigned by local insertion order, so two replicas can mint the same index for
+//! different content. Patches therefore carry resolved values ([`Style`], the formula text, ...) and
+//! each replica interns them locally on apply. Rows, columns and sheets are addressed by
+//! [`FractionalKey`] instead, which every replica agrees on by construction.
+//!
+//! Every `prev` field is undo data. It is `#[serde(skip)]`, so it is populated only on locally
+//! generated patches and is absent on anything received from a peer.
+
 use crate::cf_types::CfRule;
 use crate::collab::fractional_index::FractionalKey;
+use crate::collab::log::Timestamp;
 use crate::collab::model::{StableCellAddress, StableRange};
-use crate::collab::workbook::CollaborativeWorkbook;
+use crate::collab::workbook::{CollaborativeComment, CollaborativeWorkbook};
 use crate::collab::DynError;
-use crate::types::{Cell, Color, Style, Theme};
-use crate::user_model::history::{ColumnData, Diff, RowData};
+use crate::expressions::token::Error;
+use crate::types::{ArrayKind, Color, SheetState, Style, Theme};
+use crate::user_model::history::Diff;
 use serde::{Deserialize, Serialize};
 
 pub type SheetId = FractionalKey;
 
 #[derive(Serialize, Deserialize)]
 pub enum Patch {
-    SetCell {
+    // ---- Cells ----
+    /// `value: None` clears the cell's contents. A range clear fans out to one patch per populated
+    /// cell, so that every write stays a single-register assignment.
+    SetCellValue {
         sheet: SheetId,
         at: StableCellAddress,
-        input: String, //TODO: evaluate it to final value?
+        value: Option<CellInput>,
 
-        /// Previous value. Used only for undo/redo.
         #[serde(skip)]
-        prev: Box<Option<Cell>>,
+        prev: Box<Option<CellInput>>,
     },
+    /// `value` is a [`CellInput::Array`], or `None` to clear the array. `prev` covers the whole
+    /// range the array occupied, which is why this is not folded into [`Patch::SetCellValue`].
     SetArrayValue {
         sheet: SheetId,
         anchor: StableCellAddress,
-        range: StableRange,
-        input: String, //TODO: evaluate it to final value?
+        value: Option<CellInput>,
 
-        /// Previous value. Used only for undo/redo.
         #[serde(skip)]
-        prev: Vec<Vec<Option<Cell>>>,
+        prev: Vec<Vec<Option<CellInput>>>,
     },
+    /// `style: None` clears the cell's formatting.
     SetCellStyle {
         sheet: SheetId,
         at: StableCellAddress,
-        style: Option<Box<Style>>, //TODO: change style into something that can cover individual properties
-
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: Box<Option<Style>>,
-    },
-    SetColumnStyle {
-        sheet: SheetId,
-        col: FractionalKey,
         style: Option<Box<Style>>,
 
-        /// Previous value. Used only for undo/redo.
         #[serde(skip)]
         prev: Box<Option<Style>>,
     },
-    SetRowStyle {
-        sheet: SheetId,
-        row: FractionalKey,
-        style: Option<Box<Style>>,
 
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: Box<Option<Style>>,
-    },
+    // ---- Rows ----
     InsertRows {
         sheet: SheetId,
         keys: Vec<FractionalKey>,
@@ -65,10 +74,26 @@ pub enum Patch {
         sheet: SheetId,
         keys: Vec<FractionalKey>,
 
-        /// Previous value. Used only for undo/redo.
         #[serde(skip)]
-        prev: Vec<RowData>,
+        prev: Vec<RowSnapshot>,
     },
+    /// Moved keys are regenerated relative to `dest`.
+    MoveRows {
+        sheet: SheetId,
+        keys: Vec<FractionalKey>,
+        dest: FractionalKey,
+    },
+    SetRowProperty {
+        sheet: SheetId,
+        row: FractionalKey,
+        property: RowProperty,
+
+        /// Same discriminant as `property`, holding the value it replaced.
+        #[serde(skip)]
+        prev: Option<RowProperty>,
+    },
+
+    // ---- Columns ----
     InsertColumns {
         sheet: SheetId,
         keys: Vec<FractionalKey>,
@@ -77,178 +102,280 @@ pub enum Patch {
         sheet: SheetId,
         keys: Vec<FractionalKey>,
 
-        /// Previous value. Used only for undo/redo.
         #[serde(skip)]
-        prev: Vec<ColumnData>,
+        prev: Vec<ColumnSnapshot>,
     },
-    NewSheet {
-        /// Position + identity of the new sheet in `sheet_order` (its alias is
-        /// derived locally on apply).
-        key: FractionalKey,
-        name: String,
-    },
-    DuplicateSheet {
-        source: FractionalKey,
-        new_key: FractionalKey,
-    },
-    RenameSheet {
-        sheet: SheetId,
-        name: String,
-
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: String,
-    },
-    SetSheetColor {
-        sheet: SheetId,
-        value: Color,
-        prev: Color,
-    },
-    SetShowGridLines {
-        sheet: SheetId,
-        value: bool,
-
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: bool,
-    },
-    SetFrozenRowsCount {
-        sheet: SheetId,
-        value: i32,
-
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: i32,
-    },
-    SetFrozenColumnsCount {
-        sheet: SheetId,
-        value: i32,
-
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: i32,
-    },
-
-    // ---- Workbook-global LWW registers ----
-    SetTheme {
-        value: Box<Theme>,
-
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: Box<Theme>,
-    },
-    SetLocale {
-        value: String,
-
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: String,
-    },
-    SetTimezone {
-        value: String,
-
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: String,
-    },
-
-    // ---- Defined names (LWW-map keyed by `(scope, name)`) ----
-    CreateDefinedName {
-        scope: Option<FractionalKey>,
-        name: String,
-        formula: String,
-    },
-    DeleteDefinedName {
-        scope: Option<FractionalKey>,
-        name: String,
-
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev: String,
-    },
-    UpdateDefinedName {
-        scope: Option<FractionalKey>,
-        name: String,
-        new_name: String,
-        new_scope: Option<FractionalKey>,
-        new_formula: String,
-        /// Previous value. Used only for undo/redo.
-        #[serde(skip)]
-        prev_formula: String,
-    },
-
-    // ---- Column / row moves (re-key to a new fractional position) ----
     MoveColumns {
         sheet: SheetId,
         keys: Vec<FractionalKey>,
-        /// Destination anchor; moved keys are regenerated relative to it.
         dest: FractionalKey,
     },
-    MoveRows {
+    SetColumnProperty {
+        sheet: SheetId,
+        col: FractionalKey,
+        property: ColProperty,
+
+        /// Same discriminant as `property`, holding the value it replaced.
+        #[serde(skip)]
+        prev: Option<ColProperty>,
+    },
+
+    // ---- Sheets ----
+    /// `content: None` creates a blank sheet. `Some(..)` covers both duplicating an existing sheet
+    /// and undoing a [`Patch::DeleteSheet`] — in the latter case `key` is the deleted sheet's own
+    /// key, so existing [`SheetId`] references resolve again.
+    ///
+    /// The content is captured on the authoring replica at commit time, never resolved at apply
+    /// time. Resolving on apply would make the result depend on which concurrent edits to the source
+    /// sheet a replica had already seen, and replicas would diverge.
+    AddSheet {
+        key: FractionalKey,
+        name: String,
+        content: Option<Box<SheetContent>>,
+    },
+    DeleteSheet {
+        sheet: SheetId,
+
+        #[serde(skip)]
+        prev: Option<Box<SheetContent>>,
+    },
+    SetSheetProperty {
+        sheet: SheetId,
+        property: SheetProperty,
+
+        /// Same discriminant as `property`, holding the value it replaced.
+        #[serde(skip)]
+        prev: Option<SheetProperty>,
+    },
+
+    // ---- Workbook ----
+    SetWorkbookProperty {
+        property: WorkbookProperty,
+
+        /// Same discriminant as `property`, holding the value it replaced.
+        #[serde(skip)]
+        prev: Option<WorkbookProperty>,
+    },
+
+    // ---- Defined names (keyed by `(scope, name)`) ----
+    /// `formula: None` deletes the name. A rename fans out to two patches — a delete of the old name
+    /// and a write of the new one — so two peers renaming the same name concurrently end up with
+    /// both new names present.
+    SetDefinedName {
+        scope: Option<SheetId>,
+        name: String,
+        formula: Option<String>,
+
+        #[serde(skip)]
+        prev: Option<String>,
+    },
+
+    // ---- Named styles (keyed by name) ----
+    /// `definition: None` deletes the style.
+    SetNamedStyle {
+        name: String,
+        definition: Option<Box<NamedStyle>>,
+
+        #[serde(skip)]
+        prev: Option<Box<NamedStyle>>,
+    },
+
+    // ---- Conditional formatting ----
+    // A rule is identified by the `FractionalKey` minted when it was created, and its priority is
+    // its position in the worksheet's conditional formatting index. Reordering is therefore a move,
+    // not a property write, and the `u32` priority together with the swap operation it required both
+    // disappear.
+    AddConditionalFormat {
+        sheet: SheetId,
+        key: FractionalKey,
+        rule: Box<CfRule>,
+        ranges: Vec<StableRange>,
+    },
+    DeleteConditionalFormat {
+        sheet: SheetId,
+        key: FractionalKey,
+
+        #[serde(skip)]
+        prev: Option<Box<ConditionalFormatState>>,
+    },
+    /// Raising or lowering a rule's priority: the moved keys are regenerated relative to `dest`.
+    MoveConditionalFormats {
         sheet: SheetId,
         keys: Vec<FractionalKey>,
         dest: FractionalKey,
     },
+    SetConditionalFormat {
+        sheet: SheetId,
+        key: FractionalKey,
+        property: CfProperty,
 
-    // ---- Named styles (LWW-map keyed by name) ----
-    CreateNamedStyle {
-        name: String,
-        xf_id: i32,
+        /// Same discriminant as `property`, holding the value it replaced.
+        #[serde(skip)]
+        prev: Option<CfProperty>,
     },
-    DeleteNamedStyle {
-        name: String,
-        prev_xf_id: i32,
-    },
-    UpdateNamedStyle {
-        name: String,
-        new_name: String,
-        prev_xf_id: i32,
-        new_xf_id: i32,
-    },
+}
 
-    // ---- Conditional formatting ----
-    // Each rule gets a stable `cf_id` (the `OpId` of its creating patch) in place
-    // of the positional `index`, and a fractional `priority` in place of `u32`,
-    // so ordering survives concurrent inserts and a "swap" is just a re-priority.
-    AddConditionalFormatting {
-        sheet: SheetId,
-        ranges: Vec<StableRange>,
-        rule: Box<CfRule>,
-        priority: FractionalKey,
-    },
-    DeleteConditionalFormatting {
-        sheet: SheetId,
-        prev_ranges: Vec<StableRange>,
-        prev_rule: Box<CfRule>,
-        prev_priority: FractionalKey,
-    },
-    UpdateConditionalFormatting {
-        sheet: SheetId,
-        prev_ranges: Vec<StableRange>,
-        prev_rule: Box<CfRule>,
-        ranges: Vec<StableRange>,
-        rule: Box<CfRule>,
-    },
-    /// Replaces `Diff::SwapConditionalFormattingPriority`: with fractional
-    /// priorities a swap is two independent re-priority ops, so `diff_to_patch`
-    /// emits one `SetConditionalFormattingPriority` per affected rule.
-    SetConditionalFormattingPriority {
-        sheet: SheetId,
-        priority: FractionalKey,
-        prev_priority: FractionalKey,
+/// A property of a single row. Each variant is a distinct register.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum RowProperty {
+    /// `None` deletes the row style.
+    Style(Option<Box<Style>>),
+    Height(f64),
+    Hidden(bool),
+}
+
+/// A property of a single column. Each variant is a distinct register.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ColProperty {
+    /// `None` deletes the column style.
+    Style(Option<Box<Style>>),
+    Width(f64),
+    Hidden(bool),
+}
+
+/// A property of a single worksheet. Each variant is a distinct register.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum SheetProperty {
+    Name(String),
+    Color(Color),
+    State(SheetState),
+    ShowGridLines(bool),
+    FrozenRows(i32),
+    FrozenColumns(i32),
+}
+
+/// A workbook-global property. Each variant is a distinct register.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum WorkbookProperty {
+    Theme(Box<Theme>),
+    Locale(String),
+    Timezone(String),
+}
+
+/// A property of a single conditional formatting rule. Each variant is a distinct register.
+///
+/// Priority is deliberately absent: it is the rule's position in the worksheet's conditional
+/// formatting index, changed with [`Patch::MoveConditionalFormats`].
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum CfProperty {
+    Rule(Box<CfRule>),
+    Ranges(Vec<StableRange>),
+}
+
+/// A named cell style, carried by value rather than as an `xf_id` index into
+/// `Styles.cell_style_xfs`, which is assigned per replica. `builtin_id` is an OOXML constant and is
+/// safe to replicate as-is.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NamedStyle {
+    pub style: Style,
+    pub builtin_id: i32,
+}
+
+/// A conditional formatting rule, without its priority — priority is the rule's position in the
+/// worksheet's conditional formatting index.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConditionalFormatState {
+    pub rule: CfRule,
+    pub ranges: Vec<StableRange>,
+}
+
+/// A complete worksheet payload, used to seed [`Patch::AddSheet`] and to restore a
+/// [`Patch::DeleteSheet`]. The sheet's name is carried by `AddSheet` itself and so is absent here.
+///
+/// Every field is index-free — see the module documentation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SheetContent {
+    pub state: SheetState,
+    pub color: Color,
+    pub show_grid_lines: bool,
+    pub frozen_rows: i32,
+    pub frozen_columns: i32,
+    /// Ordered by [`FractionalKey`].
+    pub rows: Vec<(FractionalKey, RowState)>,
+    /// Ordered by [`FractionalKey`].
+    pub columns: Vec<(FractionalKey, ColState)>,
+    /// Cell contents and cell styles are kept apart because most cells carry no style of their own,
+    /// and they are separate registers in any case.
+    pub cell_values: Vec<(StableCellAddress, CellInput)>,
+    pub cell_styles: Vec<(StableCellAddress, Style)>,
+    pub merge_cells: Vec<StableRange>,
+    pub comments: Vec<CollaborativeComment>,
+    /// Ordered by [`FractionalKey`], which is both each rule's identity and its priority.
+    pub conditional_formatting: Vec<(FractionalKey, ConditionalFormatState)>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RowState {
+    pub height: f64,
+    pub hidden: bool,
+    pub style: Option<Box<Style>>,
+    pub custom_height: bool,
+    pub custom_format: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ColState {
+    pub width: f64,
+    pub hidden: bool,
+    pub style: Option<Box<Style>>,
+    pub custom_width: bool,
+}
+
+/// Everything a [`Patch::DeleteRows`] removed, so that undo can put it back. Local-only undo data.
+#[derive(Clone, Debug)]
+pub struct RowSnapshot {
+    pub key: FractionalKey,
+    pub state: RowState,
+    /// Keyed by column.
+    pub cell_values: Vec<(FractionalKey, CellInput)>,
+    /// Keyed by column.
+    pub cell_styles: Vec<(FractionalKey, Style)>,
+}
+
+/// Everything a [`Patch::DeleteColumns`] removed, so that undo can put it back. Local-only undo
+/// data.
+#[derive(Clone, Debug)]
+pub struct ColumnSnapshot {
+    pub key: FractionalKey,
+    pub state: ColState,
+    /// Keyed by row.
+    pub cell_values: Vec<(FractionalKey, CellInput)>,
+    /// Keyed by row.
+    pub cell_styles: Vec<(FractionalKey, Style)>,
+}
+
+/// The contents of a cell as authored, never as evaluated.
+///
+/// Literals are carried already parsed rather than as the text the user typed: parsing depends on
+/// the workbook locale, which is itself a replicated register, so re-parsing on each replica could
+/// resolve differently. Formulas are carried in the internal (English) form for the same reason.
+///
+/// Evaluated results — [`FormulaValue`](crate::types::FormulaValue), spill values and spill cells —
+/// are derived state. They are recomputed locally and never replicated.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum CellInput {
+    Number(f64),
+    Boolean(bool),
+    Text(String),
+    Error(Error),
+    Formula(String),
+    /// The anchor of an array formula. The cells it spills into are derived, not stored.
+    Array {
+        formula: String,
+        range: StableRange,
+        kind: ArrayKind,
     },
 }
 
 impl CollaborativeWorkbook {
-    /// Convert an undo/redo [`Diff`] into the collaborative patches that realise
-    /// it. Returns a `Vec` because some diffs fan out (`UpdateDefinedName`
-    /// rename, `SwapConditionalFormattingPriority`, `DuplicateSheet`); an
-    /// undo-only artifact may yield `[]`.
+    /// Convert an undo/redo [`Diff`] into the collaborative patches that realise it. Returns a `Vec`
+    /// because some diffs fan out: a range clear becomes one patch per populated cell, a duplicated
+    /// sheet becomes an [`Patch::AddSheet`] carrying its content, a defined-name rename becomes a
+    /// delete plus a write, and a priority swap becomes a single
+    /// [`Patch::MoveConditionalFormats`].
     ///
-    /// Takes `&mut self` to (a) resolve `i32`/`u32` positions to stable keys via
-    /// the collaborative indices and (b) mint fresh [`OpId`]s from the session
-    /// clock. `prev` values are read straight off the `Diff`, so no separate
-    /// workbook lookup is needed for them.
+    /// Takes `&mut self` to resolve `i32`/`u32` positions to stable keys via the collaborative
+    /// indices. `prev` values are read straight off the `Diff`.
     fn diff_to_patch(&mut self, diff: Diff) -> Vec<Patch> {
         match diff {
             Diff::SetCellValue { .. } => todo!(),
@@ -296,43 +423,35 @@ impl CollaborativeWorkbook {
         }
     }
 
-    /// Apply a patch, resolving it against this workbook's CRDT state:
-    /// LWW registers keep the write iff `patch.id` beats the stored `OpId`;
-    /// sequence ops insert/tombstone keys in the relevant `FractionalIndex`;
-    /// map ops do per-entry LWW put/remove.
-    fn apply_patch(&mut self, patch: Patch) -> Result<(), DynError> {
+    /// Apply a patch against this workbook's CRDT state. `timestamp` is derived from the enclosing
+    /// commit and is shared by every patch in it, so a register written twice by the same commit
+    /// resolves to the last write.
+    ///
+    /// Applying must be total: a patch addressing a row, sheet or rule that is no longer present is
+    /// a no-op, not an error.
+    fn apply_patch(&mut self, patch: Patch, timestamp: &Timestamp) -> Result<(), DynError> {
         match patch {
-            Patch::SetCell { .. } => todo!(),
+            Patch::SetCellValue { .. } => todo!(),
             Patch::SetArrayValue { .. } => todo!(),
             Patch::SetCellStyle { .. } => todo!(),
-            Patch::SetColumnStyle { .. } => todo!(),
-            Patch::SetRowStyle { .. } => todo!(),
             Patch::InsertRows { .. } => todo!(),
             Patch::DeleteRows { .. } => todo!(),
+            Patch::MoveRows { .. } => todo!(),
+            Patch::SetRowProperty { .. } => todo!(),
             Patch::InsertColumns { .. } => todo!(),
             Patch::DeleteColumns { .. } => todo!(),
-            Patch::NewSheet { .. } => todo!(),
-            Patch::DuplicateSheet { .. } => todo!(),
-            Patch::RenameSheet { .. } => todo!(),
-            Patch::SetSheetColor { .. } => todo!(),
-            Patch::SetShowGridLines { .. } => todo!(),
-            Patch::SetFrozenRowsCount { .. } => todo!(),
-            Patch::SetFrozenColumnsCount { .. } => todo!(),
-            Patch::SetTheme { .. } => todo!(),
-            Patch::SetLocale { .. } => todo!(),
-            Patch::SetTimezone { .. } => todo!(),
-            Patch::CreateDefinedName { .. } => todo!(),
-            Patch::DeleteDefinedName { .. } => todo!(),
-            Patch::UpdateDefinedName { .. } => todo!(),
             Patch::MoveColumns { .. } => todo!(),
-            Patch::MoveRows { .. } => todo!(),
-            Patch::CreateNamedStyle { .. } => todo!(),
-            Patch::DeleteNamedStyle { .. } => todo!(),
-            Patch::UpdateNamedStyle { .. } => todo!(),
-            Patch::AddConditionalFormatting { .. } => todo!(),
-            Patch::DeleteConditionalFormatting { .. } => todo!(),
-            Patch::UpdateConditionalFormatting { .. } => todo!(),
-            Patch::SetConditionalFormattingPriority { .. } => todo!(),
+            Patch::SetColumnProperty { .. } => todo!(),
+            Patch::AddSheet { .. } => todo!(),
+            Patch::DeleteSheet { .. } => todo!(),
+            Patch::SetSheetProperty { .. } => todo!(),
+            Patch::SetWorkbookProperty { .. } => todo!(),
+            Patch::SetDefinedName { .. } => todo!(),
+            Patch::SetNamedStyle { .. } => todo!(),
+            Patch::AddConditionalFormat { .. } => todo!(),
+            Patch::DeleteConditionalFormat { .. } => todo!(),
+            Patch::MoveConditionalFormats { .. } => todo!(),
+            Patch::SetConditionalFormat { .. } => todo!(),
         }
     }
 }

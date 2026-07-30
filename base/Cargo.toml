@@ -20,7 +20,7 @@ collab = []
 serde = { version = "1.0", features = ["derive"] }
 ryu = "1.0"
 chrono = "0.4"
-bitcode = "0.6.8"
+bitcode = { version = "0.6.8", features = ["serde"] }
 csv = "1.3.0"
 statrs = { version = "0.18.0", default-features = false, features = [] }
 smallvec = { version = "1.15.2", features = ["bincode", "serde", "const_generics", "const_new", "union"] }
