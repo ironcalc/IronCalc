@@ -20,7 +20,7 @@ panic). You can catch these exceptions in Python as follows:
 ^^^^^^^^^^^^
 An enum with the type of a cell content, following Excel's ``TYPE()``
 convention: ``Number``, ``Text``, ``LogicalValue``, ``ErrorValue``, ``Array``
-and ``CompoundData``. Returned by :meth:`get_cell_type`.
+and ``CompoundData``. Returned by ``get_cell_type``.
 
 Style dictionaries
 ^^^^^^^^^^^^^^^^^^
