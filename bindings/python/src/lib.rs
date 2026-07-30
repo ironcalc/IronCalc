@@ -59,12 +59,22 @@ pub(crate) fn area(
     end_row: i32,
     end_column: i32,
 ) -> Area {
+    let (row1, row2) = if start_row <= end_row {
+        (start_row, end_row)
+    } else {
+        (end_row, start_row)
+    };
+    let (col1, col2) = if start_column <= end_column {
+        (start_column, end_column)
+    } else {
+        (end_column, start_column)
+    };
     Area {
         sheet,
-        row: start_row,
-        column: start_column,
-        width: end_column - start_column + 1,
-        height: end_row - start_row + 1,
+        row: row1,
+        column: col1,
+        width: col2 - col1 + 1,
+        height: row2 - row1 + 1,
     }
 }
 
