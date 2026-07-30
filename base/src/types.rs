@@ -1,6 +1,10 @@
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
 
 use crate::{cf_types::ConditionalFormatting, expressions::token::Error};
 
@@ -12,7 +16,7 @@ fn is_false(b: &bool) -> bool {
     !*b
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, Clone, Default)]
 #[serde(untagged)]
 pub enum Color {
     Rgb(String),
@@ -21,6 +25,52 @@ pub enum Color {
     /// No color — equivalent to OOXML `<color auto="1"/>` or absence of `<color>`.
     #[default]
     None,
+}
+
+impl Color {
+    /// Bit pattern of a theme tint, normalised so that equality and hashing agree.
+    ///
+    /// `f64`'s own `==` cannot back an [`Eq`] implementation: it is not reflexive, because
+    /// `NaN != NaN`. A `Color` holding a NaN tint would therefore never compare equal to itself and
+    /// could never be found again once used as a hash key. Normalising collapses every NaN to one
+    /// bit pattern, and `-0.0` to `0.0` so that the two spellings of "no tint" stay equal as they
+    /// are under `f64` comparison.
+    fn tint_key(tint: f64) -> u64 {
+        if tint.is_nan() {
+            f64::NAN.to_bits()
+        } else {
+            (tint + 0.0).to_bits()
+        }
+    }
+}
+
+impl PartialEq for Color {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Color::Rgb(a), Color::Rgb(b)) => a == b,
+            (Color::Theme(a_slot, a_tint), Color::Theme(b_slot, b_tint)) => {
+                a_slot == b_slot && Color::tint_key(*a_tint) == Color::tint_key(*b_tint)
+            }
+            (Color::None, Color::None) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Color {}
+
+impl Hash for Color {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Color::Rgb(rgb) => rgb.hash(state),
+            Color::Theme(slot, tint) => {
+                slot.hash(state);
+                Color::tint_key(*tint).hash(state);
+            }
+            Color::None => {}
+        }
+    }
 }
 
 /// Valid hex colors are #FFAABB
@@ -145,7 +195,7 @@ pub struct DefinedName {
 /// * state:
 ///   18.18.68 ST_SheetState (Sheet Visibility Types)
 ///   hidden, veryHidden, visible
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub enum SheetState {
     Visible,
     Hidden,
@@ -346,7 +396,7 @@ pub enum SpillValue {
 }
 
 /// Whether an array formula is a CSE (Ctrl+Shift+Enter) formula or a dynamic formula.
-#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, Clone, PartialEq)]
 pub enum ArrayKind {
     /// Ctrl+Shift+Enter array formula: fills a fixed declared range.
     Cse,
@@ -535,7 +585,7 @@ impl Default for Styles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
@@ -577,7 +627,7 @@ impl Default for NumFmt {
 // ST_FontScheme simple type (§18.18.33).
 // Usually major fonts are used for styles like headings,
 // and minor fonts are used for body and paragraph text.
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "lowercase")]
 #[derive(Default)]
 pub enum FontScheme {
@@ -597,7 +647,7 @@ impl Display for FontScheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Font {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
@@ -641,14 +691,14 @@ impl Default for Font {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone, Default)]
 pub struct Fill {
     #[serde(skip_serializing_if = "Color::is_none")]
     #[serde(default)]
     pub color: Color,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "lowercase")]
 #[derive(Default)]
 pub enum HorizontalAlignment {
@@ -687,7 +737,7 @@ impl Display for HorizontalAlignment {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "lowercase")]
 #[derive(Default)]
 pub enum VerticalAlignment {
@@ -718,7 +768,7 @@ impl Display for VerticalAlignment {
 }
 
 // 1762
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone, Default)]
 pub struct Alignment {
     #[serde(default)]
     #[serde(skip_serializing_if = "HorizontalAlignment::is_default")]
@@ -825,7 +875,7 @@ impl Default for CellStyles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, PartialOrd, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, PartialOrd, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum BorderStyle {
     Thin,
@@ -855,7 +905,7 @@ impl Display for BorderStyle {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct BorderItem {
     pub style: BorderStyle,
     #[serde(skip_serializing_if = "Color::is_none")]
@@ -863,7 +913,7 @@ pub struct BorderItem {
     pub color: Color,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone, Default)]
 pub struct Border {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
