@@ -49,3 +49,34 @@ fn test_fn_confidence_t_smoke() {
     assert_eq!(model._get_text("A5"), *"#DIV/0!");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 }
+
+#[test]
+fn test_fn_confidence_arguments() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=CONFIDENCE.NORM()");
+    model._set("A2", "=CONFIDENCE.NORM(0.3)");
+    model._set("A3", "=CONFIDENCE.NORM(0.3, 0.5)");
+    model._set("A4", "=CONFIDENCE.NORM(0.3, 0.5, 2)");
+    model._set("A5", "=CONFIDENCE.NORM(0.3, 0.5, 2, 1)");
+
+    model._set("B1", "=CONFIDENCE.T()");
+    model._set("B2", "=CONFIDENCE.T(0.3)");
+    model._set("B3", "=CONFIDENCE.T(0.3, 0.5)");
+    model._set("B4", "=CONFIDENCE.T(0.3, 0.5, 2)");
+    model._set("B5", "=CONFIDENCE.T(0.3, 0.5, 2, 1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"0.366434539");
+    assert_eq!(model._get_text("A5"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B1"), *"#ERROR!");
+    assert_eq!(model._get_text("B2"), *"#ERROR!");
+    assert_eq!(model._get_text("B3"), *"#ERROR!");
+    assert_eq!(model._get_text("B4"), *"0.693887599");
+    assert_eq!(model._get_text("B5"), *"#ERROR!");
+}
