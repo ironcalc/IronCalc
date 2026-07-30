@@ -10,7 +10,7 @@
 //!    This is for user formulas. References are like `D4`, `D$4` or `F5:T10`
 //! 2. R1C1, internal or runtime mode
 //!    A reference like R1C1 refers to $A$1 and R3C4 to $D$4
-//!    R[2]C[5] refers to a cell two rows below and five columns to the right
+//!    `R[2]C[5]` refers to a cell two rows below and five columns to the right
 //!    It uses the 'en' locale and language.
 //!    This is used internally at runtime.
 //!
