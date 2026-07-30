@@ -547,7 +547,7 @@ impl<'a> Model<'a> {
     ///
     /// Sheet order is only a position in the worksheet vector; formulas key off
     /// the sheet name (and defined names off the sheet id), so cross-sheet
-    /// references stay valid across a move — [reset_parsed_structures] re-resolves
+    /// references stay valid across a move — `reset_parsed_structures` re-resolves
     /// every reference by name against the reordered vector.
     ///
     /// Fails if either index is out of range. Moving a sheet to its current

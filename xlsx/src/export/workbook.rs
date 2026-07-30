@@ -1,5 +1,4 @@
 #![allow(clippy::unwrap_used)]
-//! <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
 
 //! A workbook is composed of workbook-level properties and a collection of 1 or more sheets.
 //! The workbook part and corresponding properties comprise data
@@ -9,11 +8,13 @@
 //! an enumeration of the worksheets in the workbook.
 //! This is the XML for the smallest possible (blank) workbook:
 //!
+//! ```xml
 //! <workbook>
 //!   <sheets>
 //!     <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
 //!   </sheets>
 //! </workbook>
+//! ```
 //!
 //! Note that this workbook has a single sheet, named Sheet1. An Id for the sheet is required, and a relationship Id
 //! pointing to the location of the sheet definition is also required.

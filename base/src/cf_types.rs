@@ -349,7 +349,7 @@ pub(crate) enum CfCellResult {
         negative_color: Color,
         is_gradient: bool,
         value: f64,
-        /// Proportion [0,1] at which the zero axis falls within the cell width.
+        /// Proportion \[0,1\] at which the zero axis falls within the cell width.
         axis_position: f64,
         show_value: bool,
     },
@@ -389,7 +389,7 @@ pub struct CfDataBar {
     pub is_gradient: bool,
     /// Proportion of the bar to fill, in \[0.0, 1.0\].
     pub value: f64,
-    /// Proportion [0,1] at which the zero axis falls within the cell width.
+    /// Proportion \[0,1\] at which the zero axis falls within the cell width.
     pub axis_position: f64,
     pub show_value: bool,
 }

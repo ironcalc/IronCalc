@@ -6,15 +6,19 @@
 //! In IronCalc _all_ formulas are shared and there is a list of shared formulas much like there is a list of shared strings.
 //! In Excel the situation in more nuanced. A shared formula is shared amongst a rage of cells.
 //! The top left cell would be the "mother" cell that would contain the shared formula:
+//! ```xml
 //! <c r="F4" t="str">
 //!    <f t="shared" ref="F4:F8" si="42">A4+C4</f>
 //!    <v>123</v>
 //! </c>
+//! ```
 //! Cells in the range F4:F8 will then link to that formula like so:
+//! ```xml
 //! <c r="F6">
 //!   <f t="shared" si="42"/>
 //!   <v>1</v>
 //! </c>
+//! ```
 //! Formula in F6 would then be 'A6+C6'
 use std::collections::HashMap;
 
