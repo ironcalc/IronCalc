@@ -15,15 +15,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
+        let x = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let mean = match self.get_number_no_bools(&args[1], cell) {
+        let mean = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[2], cell) {
+        let std_dev = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -76,15 +76,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let p = match self.get_number_no_bools(&args[0], cell) {
+        let p = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let mean = match self.get_number_no_bools(&args[1], cell) {
+        let mean = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[2], cell) {
+        let std_dev = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
