@@ -117,3 +117,54 @@ fn test_fn_norm_s_inv_smoke() {
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
 }
+
+#[test]
+fn test_fn_norm_arguments() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=NORM.DIST()");
+    model._set("A2", "=NORM.DIST(0)");
+    model._set("A3", "=NORM.DIST(0, 0)");
+    model._set("A4", "=NORM.DIST(0, 0, 1)");
+    model._set("A5", "=NORM.DIST(0, 0, 1, TRUE)");
+    model._set("A6", "=NORM.DIST(0, 0, 1, TRUE, 1)");
+
+    model._set("B1", "=NORM.INV()");
+    model._set("B2", "=NORM.INV(0.5)");
+    model._set("B3", "=NORM.INV(0.5, 40)");
+    model._set("B4", "=NORM.INV(0.5, 40, 1.5)");
+    model._set("B5", "=NORM.INV(0.5, 40, 1.5, 1)");
+
+    model._set("C1", "=NORM.S.DIST()");
+    model._set("C2", "=NORM.S.DIST(0)");
+    model._set("C3", "=NORM.S.DIST(0, TRUE)");
+    model._set("C4", "=NORM.S.DIST(0, TRUE, 1)");
+
+    model._set("D1", "=NORM.S.INV()");
+    model._set("D2", "=NORM.S.INV(0.5)");
+    model._set("D3", "=NORM.S.INV(0.5, 1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+    assert_eq!(model._get_text("A5"), *"0.5");
+    assert_eq!(model._get_text("A6"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B1"), *"#ERROR!");
+    assert_eq!(model._get_text("B2"), *"#ERROR!");
+    assert_eq!(model._get_text("B3"), *"#ERROR!");
+    assert_eq!(model._get_text("B4"), *"40");
+    assert_eq!(model._get_text("B5"), *"#ERROR!");
+
+    assert_eq!(model._get_text("C1"), *"#ERROR!");
+    assert_eq!(model._get_text("C2"), *"#ERROR!");
+    assert_eq!(model._get_text("C3"), *"0.5");
+    assert_eq!(model._get_text("C4"), *"#ERROR!");
+
+    assert_eq!(model._get_text("D1"), *"#ERROR!");
+    assert_eq!(model._get_text("D2"), *"0");
+    assert_eq!(model._get_text("D3"), *"#ERROR!");
+}
