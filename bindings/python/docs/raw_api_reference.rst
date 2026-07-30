@@ -1,210 +1,163 @@
-
 Raw API Reference
 -----------------
 
-In general methods in IronCalc use a 0-index base for the the sheet index and 1-index base for the row and column indexes.
+The raw API (:class:`Model`) is a low level API. Nothing is evaluated
+automatically: call :meth:`evaluate` after making changes, otherwise the
+workbook may be in an inconsistent state. There is no undo/redo history and no
+diffs are produced. It is faster and more flexible than the user API, but
+easier to get wrong.
 
+Conventions are the same as in the user API: 0-based ``sheet`` indexes,
+1-based ``row`` and ``column`` indexes, dictionaries for complex values and
+:class:`WorkbookError` on invalid input.
+
+Evaluation and persistence
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. method:: evaluate()
 
-   Evaluates the model. This needs to be done after each change, otherwise the model might be on a broken state.
+   Evaluates the workbook. Call this after each batch of changes.
+
+.. method:: save_to_xlsx(file: str)
+.. method:: save_to_icalc(file: str)
+.. method:: to_bytes() -> bytes
+
+Setting values
+^^^^^^^^^^^^^^
 
 .. method:: set_user_input(sheet: int, row: int, column: int, value: str)
 
-      Sets an input in a cell, as would be done by a user typing into a spreadsheet cell.
+   Sets the input of a cell as a user would type it: ``"3.5"`` is a number,
+   ``"Hello"`` a string, ``"=A1*2"`` a formula.
 
-      :param sheet: The sheet index (0-based).
-      :param row: The 1-based row index (first row is 1).
-      :param column: The 1-based column index (column “A” is 1).
-      :param value: The value to set, e.g. ``"123"`` or ``"=A1*2"``.
+.. method:: update_cell_with_text(sheet: int, row: int, column: int, value: str)
+
+   Sets a string value without input parsing (``"123"`` stays a string).
+
+.. method:: update_cell_with_number(sheet: int, row: int, column: int, value: float)
+.. method:: update_cell_with_bool(sheet: int, row: int, column: int, value: bool)
+.. method:: update_cell_with_formula(sheet: int, row: int, column: int, formula: str)
+.. method:: set_user_array_formula(sheet, row, column, width, height, formula: str)
+
+   Sets an array (spill) formula covering ``width`` x ``height`` cells.
 
 .. method:: clear_cell_contents(sheet: int, row: int, column: int)
 
-      Removes the content of the cell but leaves the style intact.
+   Clears the content of a single cell, keeping the formatting.
 
-      :param sheet: The sheet index (0-based).
-      :param row: The 1-based row index (first row is 1).
-      :param column: The 1-based column index (column “A” is 1).
+.. method:: range_clear_contents(sheet, start_row, start_column, end_row, end_column)
+.. method:: range_clear_all(sheet, start_row, start_column, end_row, end_column)
 
-.. method:: get_cell_content(sheet: int, row: int, column: int) -> str
+Getting values
+^^^^^^^^^^^^^^
 
-      Returns the raw content of a cell. If the cell contains a formula,
-      the returned string starts with ``"="``.
+.. method:: get_cell_value(sheet: int, row: int, column: int)
 
-      :param sheet: The sheet index (0-based).
-      :param row: The 1-based row index.
-      :param column: The 1-based column index.
-      :returns: The raw content, or an empty string if the cell is empty.
+   Returns the value of a cell as a native Python value: ``None``, ``str``,
+   ``float`` or ``bool``.
 
-.. method:: get_cell_type(sheet: int, row: int, column: int) -> PyCellType
+.. method:: get_cell_value_by_ref(cell_ref: str)
 
-      Returns the type of the cell (number, boolean, string, error, etc.).
-
-      :param sheet: The sheet index (0-based).
-      :param row: The 1-based row index.
-      :param column: The 1-based column index.
-      :rtype: PyCellType
+   Same, with a reference like ``"Sheet1!C4"``.
 
 .. method:: get_formatted_cell_value(sheet: int, row: int, column: int) -> str
 
-      Returns the cell’s value as a formatted string, taking into
-      account any number/currency/date formatting.
+   Returns the value formatted with the cell's number format (i.e. ``"$5.75"``).
 
-      :param sheet: The sheet index (0-based).
-      :param row: The 1-based row index.
-      :param column: The 1-based column index.
-      :returns: Formatted string of the cell’s value.
+.. method:: get_cell_content(sheet: int, row: int, column: int) -> str
 
-.. method:: set_cell_style(sheet: int, row: int, column: int, style: PyStyle)
+   Returns the content as seen in the editor: the formula if there is one, the
+   raw value otherwise.
 
-      Sets the style of the cell at (sheet, row, column).
+.. method:: get_cell_formula(sheet: int, row: int, column: int) -> str | None
+.. method:: get_cell_type(sheet: int, row: int, column: int) -> CellType
+.. method:: is_empty_cell(sheet: int, row: int, column: int) -> bool
+.. method:: get_all_cells() -> list[tuple[int, int, int]]
 
-      :param sheet: The sheet index (0-based).
-      :param row: The 1-based row index.
-      :param column: The 1-based column index.
-      :param style: A PyStyle object specifying the style.
+   Returns all non-empty cells as ``(sheet, row, column)`` tuples.
 
-.. method:: get_cell_style(sheet: int, row: int, column: int) -> PyStyle
+.. method:: get_sheet_dimensions(sheet: int) -> (int, int, int, int)
 
-      Retrieves the style of the specified cell.
+   Returns ``(min_row, max_row, min_column, max_column)`` of the non-empty
+   cells; ``(1, 1, 1, 1)`` for an empty sheet.
 
-      :param sheet: The sheet index (0-based).
-      :param row: The 1-based row index.
-      :param column: The 1-based column index.
-      :returns: A PyStyle object describing the cell’s style.
+.. method:: get_sheet_markup(sheet: int) -> str
+
+   Returns a markdown-like table of the sheet (formulas, not values), useful
+   for debugging and tests.
+
+Styles
+^^^^^^
+
+Styles are dictionaries; see :doc:`objects`.
+
+.. method:: get_cell_style(sheet: int, row: int, column: int) -> dict
+.. method:: set_cell_style(sheet: int, row: int, column: int, style: dict)
+.. method:: get_column_style(sheet: int, column: int) -> dict | None
+.. method:: set_column_style(sheet: int, column: int, style: dict)
+.. method:: delete_column_style(sheet: int, column: int)
+.. method:: get_row_style(sheet: int, row: int) -> dict | None
+.. method:: set_row_style(sheet: int, row: int, style: dict)
+.. method:: delete_row_style(sheet: int, row: int)
+
+Rows and columns
+^^^^^^^^^^^^^^^^
 
 .. method:: insert_rows(sheet: int, row: int, row_count: int)
-
-      Inserts new rows.
-
-      :param sheet: The sheet index (0-based).
-      :param row: The position before which new rows are inserted (1-based).
-      :param row_count: The number of rows to insert.
-
 .. method:: insert_columns(sheet: int, column: int, column_count: int)
-
-      Inserts new columns.
-
-      :param sheet: The sheet index (0-based).
-      :param column: The position before which new columns are inserted (1-based).
-      :param column_count: The number of columns to insert.
-
 .. method:: delete_rows(sheet: int, row: int, row_count: int)
-
-      Deletes a range of rows.
-
-      :param sheet: The sheet index (0-based).
-      :param row: The starting row to delete (1-based).
-      :param row_count: How many rows to delete.
-
 .. method:: delete_columns(sheet: int, column: int, column_count: int)
-
-      Deletes a range of columns.
-
-      :param sheet: The sheet index (0-based).
-      :param column: The starting column to delete (1-based).
-      :param column_count: How many columns to delete.
-
 .. method:: get_column_width(sheet: int, column: int) -> float
-
-      Retrieves the width of a given column.
-
-      :param sheet: The sheet index (0-based).
-      :param column: The 1-based column index.
-      :rtype: float
-
 .. method:: get_row_height(sheet: int, row: int) -> float
-
-      Retrieves the height of a given row.
-
-      :param sheet: The sheet index (0-based).
-      :param row: The 1-based row index.
-      :rtype: float
-
 .. method:: set_column_width(sheet: int, column: int, width: float)
-
-      Sets the width of a given column.
-
-      :param sheet: The sheet index (0-based).
-      :param column: The 1-based column index.
-      :param width: The desired width (float).
-
 .. method:: set_row_height(sheet: int, row: int, height: float)
-
-      Sets the height of a given row.
-
-      :param sheet: The sheet index (0-based).
-      :param row: The 1-based row index.
-      :param height: The desired height (float).
-
-.. method:: get_frozen_columns_count(sheet: int) -> int
-
-      Returns the number of columns frozen (pinned) on the left side of the sheet.
-
-      :param sheet: The sheet index (0-based).
-      :rtype: int
-
+.. method:: set_column_hidden(sheet: int, column: int, hidden: bool)
+.. method:: set_row_hidden(sheet: int, row: int, hidden: bool)
+.. method:: is_column_hidden(sheet: int, column: int) -> bool
+.. method:: is_row_hidden(sheet: int, row: int) -> bool
 .. method:: get_frozen_rows_count(sheet: int) -> int
-
-      Returns the number of rows frozen (pinned) at the top of the sheet.
-
-      :param sheet: The sheet index (0-based).
-      :rtype: int
-
+.. method:: get_frozen_columns_count(sheet: int) -> int
+.. method:: set_frozen_rows_count(sheet: int, row_count: int)
 .. method:: set_frozen_columns_count(sheet: int, column_count: int)
 
-      Sets how many columns are frozen (pinned) on the left.
-
-      :param sheet: The sheet index (0-based).
-      :param column_count: The number of frozen columns (0-based).
-
-.. method:: set_frozen_rows_count(sheet: int, row_count: int)
-
-      Sets how many rows are frozen (pinned) at the top.
-
-      :param sheet: The sheet index (0-based).
-      :param row_count: The number of frozen rows (0-based).
-
-.. method:: get_worksheets_properties() -> List[PySheetProperty]
-
-      Returns a list of :class:`PySheetProperty` describing each worksheet’s
-      name, visibility state, ID, and tab color.
-
-      :rtype: list of PySheetProperty
-
-.. method:: set_sheet_color(sheet: int, color: str)
-
-      Sets the tab color of a sheet. Use an empty string to clear the color.
-
-      :param sheet: The sheet index (0-based).
-      :param color: A color in “#RRGGBB” format, or empty to remove color.
+Sheets
+^^^^^^
 
 .. method:: add_sheet(sheet_name: str)
-
-      Creates a new sheet with the specified name.
-
-      :param sheet_name: The name to give the new sheet.
-
 .. method:: new_sheet()
 
-      Creates a new sheet with an auto-generated name.
+   Adds a sheet with an automatically generated name.
 
 .. method:: delete_sheet(sheet: int)
-
-      Deletes the sheet at the given index.
-
-      :param sheet: The sheet index (0-based).
-
 .. method:: rename_sheet(sheet: int, new_name: str)
+.. method:: set_sheet_color(sheet: int, color)
 
-      Renames the sheet at the given index.
+   ``color`` is ``None``, ``"#RRGGBB"`` or ``[theme_index, tint]``.
 
-      :param sheet: The sheet index (0-based).
-      :param new_name: The new sheet name.
+.. method:: set_sheet_state(sheet: int, state: str)
 
-.. method:: test_panic()
+   ``state`` is ``"visible"``, ``"hidden"`` or ``"veryHidden"``.
 
-      A test method that deliberately panics in Rust.
-      Used for testing panic handling at the method level.
+.. method:: get_worksheets_properties() -> list[dict]
+.. method:: set_show_grid_lines(sheet: int, show_grid_lines: bool)
 
-      :raises WorkbookError: (wrapped Rust panic)
+Defined names
+^^^^^^^^^^^^^
+
+.. method:: get_defined_name_list() -> list[dict]
+.. method:: new_defined_name(name: str, scope: int | None, formula: str)
+.. method:: update_defined_name(name, scope, new_name, new_scope, new_formula)
+.. method:: delete_defined_name(name: str, scope: int | None)
+
+Workbook properties
+^^^^^^^^^^^^^^^^^^^
+
+.. method:: get_theme() -> dict
+.. method:: set_theme(theme: dict)
+.. method:: get_timezone() -> str
+.. method:: set_timezone(timezone: str)
+.. method:: get_locale() -> str
+.. method:: set_locale(locale: str)
+.. method:: get_language() -> str
+.. method:: set_language(language: str)
+.. method:: get_fmt_settings() -> dict

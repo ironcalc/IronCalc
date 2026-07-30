@@ -2,36 +2,63 @@
 Usage Examples
 --------------
 
-Creating an Empty Model
-^^^^^^^^^^^^^^^^^^^^^^^
+All the examples on this page live in ``docs/examples`` in the repository and
+are run as part of the test suite, so they always work with the current
+version.
 
-.. code-block:: python
+The two APIs
+^^^^^^^^^^^^
 
-   import ironcalc as ic
+IronCalc ships two APIs:
 
-   model = ic.create("My Workbook", "en", "UTC", "en")
+* The **user API** (:class:`UserModel`): the same high level API used by the
+  IronCalc web application. Every action evaluates the workbook, keeps
+  undo/redo history and produces diffs for collaboration.
+* The **raw API** (:class:`Model`): a low level API. Nothing is evaluated
+  automatically (call :meth:`Model.evaluate` yourself), there is no undo/redo
+  and no diffs are produced.
 
-Loading from XLSX
-^^^^^^^^^^^^^^^^^
+.. literalinclude:: examples/simple.py
+   :language: python
 
-.. code-block:: python
+A styled report
+^^^^^^^^^^^^^^^
 
-   import ironcalc as ic
+Building a small sales report: bold headers, background colors, currency
+formats, borders and column widths, saved as xlsx.
 
-   model = ic.load_from_xlsx("example.xlsx", "en", "UTC", "en")
+.. literalinclude:: examples/styled_report.py
+   :language: python
 
-Modifying and Saving
+Conditional formatting
+^^^^^^^^^^^^^^^^^^^^^^
+
+Color scales and cell-is rules. Rules are plain dictionaries with the same
+shape used by the IronCalc web application.
+
+.. literalinclude:: examples/conditional_formatting.py
+   :language: python
+
+Reading an xlsx file
 ^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: python
+Values come back as native Python types (``None``, ``str``, ``float`` or
+``bool``).
 
-   model = ic.create("model", "en", "UTC", "en")
-   model.set_user_input(0, 1, 1, "123")
-   model.set_user_input(0, 1, 2, "=A1*2")
-   model.evaluate()
+.. literalinclude:: examples/read_xlsx.py
+   :language: python
 
-   # Save to XLSX
-   model.save_to_xlsx("updated.xlsx")
+Importing CSV data
+^^^^^^^^^^^^^^^^^^
 
-   # Or save to the binary format
-   model.save_to_icalc("my_workbook.icalc")
+.. literalinclude:: examples/csv_import.py
+   :language: python
+
+Collaboration with diffs
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Two models can be kept in sync by exchanging binary diffs, the same mechanism
+the IronCalc web application uses for real time collaboration.
+
+.. literalinclude:: examples/collaboration.py
+   :language: python
