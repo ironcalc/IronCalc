@@ -224,6 +224,10 @@ export default defineConfig({
                 link: "/functions/lookup_and_reference/transpose",
               },
               {
+                text: "TRIMRANGE",
+                link: "/functions/lookup_and_reference/trimrange",
+              },
+              {
                 text: "UNIQUE",
                 link: "/functions/lookup_and_reference/unique",
               },
@@ -1215,6 +1219,34 @@ export default defineConfig({
             link: "/functions/text",
             items: [
               {
+                text: "CONCAT",
+                link: "/functions/text/concat",
+              },
+              {
+                text: "CONCATENATE",
+                link: "/functions/text/concatenate",
+              },
+              {
+                text: "EXACT",
+                link: "/functions/text/exact",
+              },
+              {
+                text: "FIND",
+                link: "/functions/text/find",
+              },
+              {
+                text: "LEFT",
+                link: "/functions/text/left",
+              },
+              {
+                text: "LEN",
+                link: "/functions/text/len",
+              },
+              {
+                text: "LOWER",
+                link: "/functions/text/lower",
+              },
+              {
                 text: "MID",
                 link: "/functions/text/mid",
               },
@@ -1233,6 +1265,18 @@ export default defineConfig({
               {
                 text: "PROPER",
                 link: "/functions/text/proper",
+              },
+              {
+                text: "REGEXEXTRACT",
+                link: "/functions/text/regexextract",
+              },
+              {
+                text: "REGEXREPLACE",
+                link: "/functions/text/regexreplace",
+              },
+              {
+                text: "REGEXTEST",
+                link: "/functions/text/regextest",
               },
               {
                 text: "REPLACE",
@@ -1929,29 +1973,6 @@ export default defineConfig({
               {
                 text: "TYPE",
                 link: "/functions/information/type",
-              },
-            ],
-          },
-          {
-            text: "Uncategorized",
-            collapsed: true,
-            link: "/functions/uncategorized",
-            items: [
-              {
-                text: "REGEXTEST",
-                link: "/functions/uncategorized/regextest",
-              },
-              {
-                text: "REGEXEXTRACT",
-                link: "/functions/uncategorized/regexextract",
-              },
-              {
-                text: "REGEXREPLACE",
-                link: "/functions/uncategorized/regexreplace:",
-              },
-              {
-                text: "TRIMRANGE",
-                link: "/functions/uncategorized/trimrange",
               },
             ],
           },
