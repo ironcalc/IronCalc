@@ -1219,12 +1219,36 @@ export default defineConfig({
             link: "/functions/text",
             items: [
               {
+                text: "ARRAYTOTEXT",
+                link: "/functions/text/arraytotext",
+              },
+              {
+                text: "ASC",
+                link: "/functions/text/asc",
+              },
+              {
+                text: "CHAR",
+                link: "/functions/text/char",
+              },
+              {
+                text: "CLEAN",
+                link: "/functions/text/clean",
+              },
+              {
+                text: "CODE",
+                link: "/functions/text/code",
+              },
+              {
                 text: "CONCAT",
                 link: "/functions/text/concat",
               },
               {
                 text: "CONCATENATE",
                 link: "/functions/text/concatenate",
+              },
+              {
+                text: "DOLLAR",
+                link: "/functions/text/dollar",
               },
               {
                 text: "EXACT",
@@ -1235,12 +1259,28 @@ export default defineConfig({
                 link: "/functions/text/find",
               },
               {
+                text: "FINDB",
+                link: "/functions/text/findb",
+              },
+              {
+                text: "FIXED",
+                link: "/functions/text/fixed",
+              },
+              {
                 text: "LEFT",
                 link: "/functions/text/left",
               },
               {
+                text: "LEFTB",
+                link: "/functions/text/leftb",
+              },
+              {
                 text: "LEN",
                 link: "/functions/text/len",
+              },
+              {
+                text: "LENB",
+                link: "/functions/text/lenb",
               },
               {
                 text: "LOWER",
@@ -1283,8 +1323,8 @@ export default defineConfig({
                 link: "/functions/text/replace",
               },
               {
-                text: "REPLACEBS",
-                link: "/functions/text/replacebs",
+                text: "REPLACEB",
+                link: "/functions/text/replaceb",
               },
               {
                 text: "REPT",
