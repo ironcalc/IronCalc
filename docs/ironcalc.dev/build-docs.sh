@@ -65,12 +65,14 @@ cd "$ROOT_DIR/bindings/wasm"
 if [ ! -f pkg/wasm.d.ts ]; then
   make
 fi
-npx --yes typedoc --out "$DIST_DIR/wasm"
+pnpm install --frozen-lockfile --silent
+npx typedoc --out "$DIST_DIR/wasm"
 
 # Nodejs bindings documentation (https://ironcalc.dev/nodejs)
 echo "Building nodejs docs..."
 cd "$ROOT_DIR/bindings/nodejs"
-npx --yes typedoc --out "$DIST_DIR/nodejs"
+pnpm install --frozen-lockfile --silent
+npx typedoc --out "$DIST_DIR/nodejs"
 
 echo "Site generated in $DIST_DIR"
 echo "Preview it with: python3 -m http.server --directory $DIST_DIR"
