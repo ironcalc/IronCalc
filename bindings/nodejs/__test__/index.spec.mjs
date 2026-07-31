@@ -1,7 +1,16 @@
 import test from 'ava'
 
-import { UserModel, Model } from '../index.js';
- 
+import {
+  UserModel,
+  Model,
+  CellType,
+  columnNameFromNumber,
+  columnNumberFromName,
+  quoteName,
+  getAllTimezones,
+  getSupportedLocales,
+} from '../index.js';
+
 test('User Model smoke test', (t) => {
   const model = new UserModel("Workbook1", "en", "UTC", "en");
 
@@ -18,3 +27,143 @@ test('Raw API smoke test', (t) => {
   t.is(model.getFormattedCellValue(0, 1, 1), '2');
 });
 
+test('constructor arguments are optional', (t) => {
+  const model = new UserModel("Workbook1");
+  model.setUserInput(0, 1, 1, "=2*3");
+  t.is(model.getFormattedCellValue(0, 1, 1), '6');
+});
+
+test('cell types', (t) => {
+  const model = new UserModel("Workbook1");
+  model.setUserInput(0, 1, 1, "42");
+  model.setUserInput(0, 1, 2, "Hello");
+  model.setUserInput(0, 1, 3, "true");
+  t.is(model.getCellType(0, 1, 1), CellType.Number);
+  t.is(model.getCellType(0, 1, 2), CellType.Text);
+  t.is(model.getCellType(0, 1, 3), CellType.LogicalValue);
+});
+
+test('raw cell values', (t) => {
+  const model = new Model("Workbook1");
+  model.updateCellWithNumber(0, 1, 1, 3.5);
+  model.updateCellWithText(0, 1, 2, "Hello");
+  model.updateCellWithBool(0, 1, 3, true);
+  model.updateCellWithFormula(0, 1, 4, "=A1*2");
+  model.evaluate();
+  t.is(model.getCellValue(0, 1, 1), 3.5);
+  t.is(model.getCellValue(0, 1, 2), "Hello");
+  t.is(model.getCellValue(0, 1, 3), true);
+  t.is(model.getCellValue(0, 1, 4), 7);
+  t.is(model.getCellValueByRef("Sheet1!A1"), 3.5);
+  t.is(model.getCellFormula(0, 1, 4), "=A1*2");
+  t.is(model.getCellValue(0, 2, 1), null);
+  t.true(model.isEmptyCell(0, 2, 1));
+});
+
+test('styles', (t) => {
+  const model = new UserModel("Workbook1");
+  model.updateRangeStyle(0, 1, 1, 2, 2, "font.b", "true");
+  const style = model.getCellStyle(0, 1, 1);
+  t.true(style.font.b);
+
+  model.setAreaWithBorder(0, 1, 1, 2, 2, {
+    item: { style: "thin", color: "#FF0000" },
+    type: "All",
+  });
+  t.deepEqual(model.getCellStyle(0, 1, 1).border.top, {
+    style: "thin",
+    color: "#FF0000",
+  });
+});
+
+test('named styles', (t) => {
+  const model = new UserModel("Workbook1");
+  const style = model.getCellStyle(0, 1, 1);
+  style.font.i = true;
+  model.createNamedStyle("italics", style, null);
+  t.true(model.getNamedStyleList().includes("italics"));
+  t.true(model.getNamedStyle("italics").font.i);
+});
+
+test('defined names', (t) => {
+  const model = new UserModel("Workbook1");
+  model.newDefinedName("myname", null, "Sheet1!$A$1");
+  const names = model.getDefinedNameList();
+  t.is(names.length, 1);
+  t.is(names[0].name, "myname");
+  t.is(names[0].formula, "Sheet1!$A$1");
+});
+
+test('conditional formatting', (t) => {
+  const model = new UserModel("Workbook1");
+  model.addConditionalFormatting(0, "A1:B10", {
+    type: "CellIs",
+    operator: "GreaterThan",
+    formula: "5",
+    formula2: null,
+    format: { fill: { color: "#FF0000" } },
+    stop_if_true: false,
+  });
+  const rules = model.getConditionalFormattingList(0);
+  t.is(rules.length, 1);
+  t.is(rules[0].cf_rule.type, "CellIs");
+  t.deepEqual(model.getDxfForConditionalFormatting(0, 0).fill, {
+    color: "#FF0000",
+  });
+});
+
+test('sheets', (t) => {
+  const model = new UserModel("Workbook1");
+  model.newSheet();
+  model.renameSheet(1, "Data");
+  model.setSheetColor(1, "#00FF00");
+  const sheets = model.getWorksheetsProperties();
+  t.is(sheets.length, 2);
+  t.is(sheets[1].name, "Data");
+  t.is(sheets[1].color, "#00FF00");
+});
+
+test('undo redo', (t) => {
+  const model = new UserModel("Workbook1");
+  t.false(model.canUndo());
+  model.setUserInput(0, 1, 1, "42");
+  t.true(model.canUndo());
+  model.undo();
+  t.is(model.getFormattedCellValue(0, 1, 1), "");
+  t.true(model.canRedo());
+  model.redo();
+  t.is(model.getFormattedCellValue(0, 1, 1), "42");
+});
+
+test('bytes roundtrip', (t) => {
+  const model = new UserModel("Workbook1");
+  model.setUserInput(0, 1, 1, "=6*7");
+  const clone = UserModel.fromBytes(model.toBytes());
+  t.is(clone.getFormattedCellValue(0, 1, 1), "42");
+});
+
+test('collaboration diffs', (t) => {
+  const model = new UserModel("Workbook1");
+  const peer = UserModel.fromBytes(model.toBytes());
+  model.setUserInput(0, 1, 1, "=6*7");
+  peer.applyExternalDiffs(model.flushSendQueue());
+  t.is(peer.getFormattedCellValue(0, 1, 1), "42");
+});
+
+test('theme colors', (t) => {
+  const model = new UserModel("Workbook1");
+  model.setSheetColor(0, [4, 0.2]);
+  const sheets = model.getWorksheetsProperties();
+  t.deepEqual(sheets[0].color, [4, 0.2]);
+  t.regex(model.resolveColor([4, 0.2]), /^#[0-9A-F]{6}$/i);
+  t.is(model.resolveColor(null), "");
+  t.throws(() => model.setSheetColor(0, "#ZZZ"));
+});
+
+test('utility functions', (t) => {
+  t.is(columnNameFromNumber(28), "AB");
+  t.is(columnNumberFromName("AB"), 28);
+  t.is(quoteName("My Sheet"), "'My Sheet'");
+  t.true(getAllTimezones().includes("Europe/Berlin"));
+  t.true(getSupportedLocales().includes("en"));
+});
