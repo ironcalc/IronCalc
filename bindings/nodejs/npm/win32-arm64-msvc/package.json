@@ -1,6 +1,6 @@
 {
   "name": "@ironcalc/nodejs-win32-arm64-msvc",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "os": [
     "win32"
   ],

@@ -11,7 +11,7 @@
 //! ironcalc_base = { git = "https://github.com/ironcalc/IronCalc" }
 //! ```
 //!
-//! <small> until version 0.5.0 you should use the git dependencies as stated </small>
+//! <small> until version 1.0.0 you should use the git dependencies as stated </small>
 //!
 //! In this example we use the excel function `CONCAT` to concatenate strings in cells `A1` and `B1`:
 //!

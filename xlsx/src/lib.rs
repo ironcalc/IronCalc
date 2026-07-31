@@ -9,7 +9,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! ironcalc = { git = "https://github.com/ironcalc/IronCalc", tag = "v0.5.0" }
+//! ironcalc = { git = "https://github.com/ironcalc/IronCalc", tag = "v0.8.3" }
 //! ```
 //!
 //! A simple example with some numbers, a new sheet and a formula:
