@@ -39,3 +39,22 @@ fn test_fn_poisson_dist_smoke() {
     assert_eq!(model._get_text("A8"), *"0");
     assert_eq!(model._get_text("A9"), *"1");
 }
+
+#[test]
+fn test_fn_poisson_dist_arguments() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=POISSON.DIST()");
+    model._set("A2", "=POISSON.DIST(2)");
+    model._set("A3", "=POISSON.DIST(2, 5)");
+    model._set("A4", "=POISSON.DIST(2, 5, TRUE)");
+    model._set("A5", "=POISSON.DIST(2, 5, TRUE, 1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"0.124652019");
+    assert_eq!(model._get_text("A5"), *"#ERROR!");
+}
