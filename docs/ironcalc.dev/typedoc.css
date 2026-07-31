@@ -1,0 +1,16 @@
+/* IronCalc brand overrides for the TypeDoc default theme */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --light-color-link: #d68742;
+  --light-color-focus-outline: #f2994a;
+  --light-color-background: #fcfcfc;
+
+  --dark-color-link: #f2994a;
+  --dark-color-focus-outline: #f2994a;
+}
+
+body {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
