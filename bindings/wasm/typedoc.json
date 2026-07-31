@@ -1,0 +1,13 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "IronCalc Wasm",
+  "entryPoints": ["pkg/wasm.d.ts"],
+  "tsconfig": "tsconfig.doc.json",
+  "readme": "README.pkg.md",
+  "customCss": "../../docs/ironcalc.dev/typedoc.css",
+  "navigationLinks": {
+    "ironcalc.dev": "https://ironcalc.dev",
+    "GitHub": "https://github.com/ironcalc/ironcalc"
+  },
+  "hideGenerator": true
+}
