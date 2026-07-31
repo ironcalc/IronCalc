@@ -16,9 +16,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
          nroot="$NVM_DIR/versions/node/$(nvm version default)/bin" && \
          ln -sf "$nroot/node" /usr/local/bin/node && \
          ln -sf "$nroot/npm"  /usr/local/bin/npm  && \
-         ln -sf "$nroot/npx"  /usr/local/bin/npx \
+         ln -sf "$nroot/npx"  /usr/local/bin/npx  && \
+         npm install -g pnpm@9.15.4 && \
+         ln -sf "$nroot/pnpm" /usr/local/bin/pnpm \
        ' \
-    && npm install typescript \
     && rm -rf /var/lib/apt/lists/*
 
 # build the server

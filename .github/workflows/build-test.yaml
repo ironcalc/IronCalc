@@ -26,7 +26,6 @@ jobs:
       - name: Install node dependencies
         run: |
           curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-          npm install -g typescript
       - name: Lint
         run: make lint
   test-rust:
@@ -56,7 +55,7 @@ jobs:
       - name: Install node dependencies
         run: |
           curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-          npm install -g typescript
+          npm install -g pnpm@9.15.4
       - name: JS Tests
         run: make test-js
   test-python:

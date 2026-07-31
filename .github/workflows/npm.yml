@@ -548,7 +548,8 @@ jobs:
         with:
           node-version: 24
       - name: Install wasm build tooling
-        run: npm install -g wasm-pack typescript
+        run: |
+          npm install -g wasm-pack pnpm@9.15.4
       - name: Test wasm package (nodejs target)
         working-directory: bindings/wasm
         run: make tests
