@@ -1,7 +1,10 @@
-use serde::{Deserialize, Serialize};
+use serde::de::{SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::Bound;
+use std::fmt;
 use std::ops::RangeBounds;
 
+use crate::collab::codec::{decode_entries, encode_entries, CodecError, FORMAT_VERSION};
 pub use crate::collab::fractional_key::{
     FractionalKey, KeyBuf, INLINE_CAP, MAX_KEY_LEN, SESSION_SUFFIX_LEN,
 };
@@ -52,7 +55,7 @@ impl Entry {
 
 /// A collection of [FractionalKey]s that enables producing them in a way that matches their desired
 /// order.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FractionalIndex {
     /// Fractional keys, sorted by the position each currently occupies ([Entry::key]).
     /// This space contains un-moved elements, or destinations of moved elements.
@@ -61,7 +64,7 @@ pub struct FractionalIndex {
     /// This space contains moved and tombstoned elements.
     moved: Vec<Entry>,
 
-    #[serde(skip)]
+    /// Suffix this replica mints new keys with. Never serialized — see [Self::decode].
     pub suffix: [u8; Self::SESSION_HASH_SIZE],
 }
 
@@ -69,12 +72,16 @@ impl FractionalIndex {
     const SESSION_HASH_SIZE: usize = SESSION_SUFFIX_LEN;
 
     /// The longest position a [FractionalKey] can carry once its session suffix is appended.
-    const MAX_POSITION_LEN: usize = MAX_KEY_LEN - SESSION_SUFFIX_LEN;
+    const MAX_POSITION_LEN: usize = crate::collab::codec::MAX_POSITION_LEN;
 
-    pub fn new(suffix: [u8; Self::SESSION_HASH_SIZE]) -> Self {
+    pub fn new(
+        active: Vec<Entry>,
+        moved: Vec<Entry>,
+        suffix: [u8; Self::SESSION_HASH_SIZE],
+    ) -> Self {
         FractionalIndex {
-            active: Vec::new(),
-            moved: Vec::new(),
+            active,
+            moved,
             suffix,
         }
     }
@@ -458,6 +465,95 @@ impl FractionalIndex {
             Err(i) => self.moved.insert(i, e),
         }
     }
+
+    /// The whole index as bytes: a version byte, then each space as a column table.
+    ///
+    /// The two spaces are written back to back and read back the same way, so the split between them
+    /// costs nothing beyond each table's own entry count. See [codec](crate::collab::codec) for the
+    /// layout and for why an index is worth encoding by column rather than by entry.
+    pub fn encode(&self) -> Result<Vec<u8>, CodecError> {
+        let mut out = Vec::new();
+        out.push(FORMAT_VERSION);
+        encode_entries(&self.active, &mut out)?;
+        encode_entries(&self.moved, &mut out)?;
+        Ok(out)
+    }
+
+    /// Reads back what [Self::encode] wrote.
+    ///
+    /// `suffix` is the **local** session's, not the one that wrote the bytes: it is what this replica
+    /// will mint new keys with, and it has to differ from every peer's or two replicas generate
+    /// colliding keys. Nothing in the payload names it, deliberately — a snapshot is restored by
+    /// whichever replica loads it, and it is that replica's identity that matters.
+    pub fn decode(bytes: &[u8], suffix: [u8; Self::SESSION_HASH_SIZE]) -> Result<Self, CodecError> {
+        let (&version, mut input) = bytes.split_first().ok_or(CodecError::UnexpectedEof)?;
+        if version != FORMAT_VERSION {
+            return Err(CodecError::UnsupportedVersion(version));
+        }
+        let active = decode_entries(&mut input)?;
+        let moved = decode_entries(&mut input)?;
+        if !input.is_empty() {
+            return Err(CodecError::TrailingBytes(input.len()));
+        }
+        Ok(FractionalIndex {
+            active,
+            moved,
+            suffix,
+        })
+    }
+}
+
+/// The columnar encoding is the representation in *every* serde format, human-readable ones
+/// included: an index is bulk machine state, and there is no readable rendering of a few dozen bytes
+/// standing in for ten thousand keys that would be worth a second code path to maintain.
+///
+/// [Entry] keeps its own derive, so a legible dump of an index's contents is still a `{:?}` or a
+/// `serde_json::to_string` over [FractionalIndex::iter] away.
+impl Serialize for FractionalIndex {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let bytes = self.encode().map_err(serde::ser::Error::custom)?;
+        serializer.serialize_bytes(&bytes)
+    }
+}
+
+impl<'de> Deserialize<'de> for FractionalIndex {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_bytes(FractionalIndexVisitor)
+    }
+}
+
+/// Accepts every shape a format may hand the payload over in: borrowed bytes, an owned buffer, or a
+/// sequence of `u8`. Which one it is depends on the format — bitcode calls `visit_bytes`, others hand
+/// over an owned buffer, and a format without native byte support (serde_json among them) renders
+/// `serialize_bytes` as a sequence.
+///
+/// The session suffix is not in the payload, so a deserialized index comes back with a zeroed one,
+/// exactly as it did under `#[serde(skip)]`. A replica that means to *mint* keys through the index
+/// has to come in through [FractionalIndex::decode] with its own session instead.
+struct FractionalIndexVisitor;
+
+impl<'de> Visitor<'de> for FractionalIndexVisitor {
+    type Value = FractionalIndex;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "an encoded fractional index, as a byte sequence")
+    }
+
+    fn visit_bytes<E: serde::de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+        FractionalIndex::decode(v, Default::default()).map_err(E::custom)
+    }
+
+    fn visit_byte_buf<E: serde::de::Error>(self, v: Vec<u8>) -> Result<Self::Value, E> {
+        self.visit_bytes(&v)
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        let mut bytes = Vec::with_capacity(seq.size_hint().unwrap_or(0));
+        while let Some(b) = seq.next_element::<u8>()? {
+            bytes.push(b);
+        }
+        self.visit_bytes(&bytes)
+    }
 }
 
 enum InsertStrategy {
@@ -609,8 +705,10 @@ impl Iterator for CreateKeys {
 
 #[cfg(test)]
 mod test {
-    use super::{gap_capacity, FractionalIndex, FractionalKey};
+    use super::{gap_capacity, CodecError, Entry, FractionalIndex, FractionalKey};
+    use std::alloc::System;
     use std::collections::HashSet;
+    use std::time::SystemTime;
 
     /// The identity of every entry, in stored order. An identity is stable per element across a
     /// `move_to`, so this tracks element movement *within* a single [FractionalIndex].
@@ -620,7 +718,7 @@ mod test {
 
     #[test]
     fn fractional_index() {
-        let mut fi = FractionalIndex::new(Default::default());
+        let mut fi = FractionalIndex::default();
 
         let k2 = fi.create_key(0).unwrap().clone(); // [.]
         let k1 = fi.create_key(0).unwrap().clone(); // [. k2]
@@ -642,17 +740,17 @@ mod test {
 
     #[test]
     fn fractional_indexes() {
-        let mut fi = FractionalIndex::new(Default::default());
+        let mut fi = FractionalIndex::default();
 
         let k1 = fi.create_key(0).unwrap().clone(); // [.]
         let k2 = fi.create_key(1).unwrap().clone(); // [k1 .]
 
-        let keys = fi.create_keys(1, 2_000_000);
+        let keys: Vec<_> = fi.create_keys(1, 2_000_000).collect();
 
-        let mut last = k1;
-        for k in keys {
+        let mut last = &k1;
+        for k in keys.iter() {
             assert!(k > last, "{k:?} should be higher than previous one");
-            assert!(k < k2, "{k:?} should be lower than the upper boundary");
+            assert!(k < &k2, "{k:?} should be lower than the upper boundary");
             assert!(k.is_inline(), "{k:?} should be inlined");
             last = k;
         }
@@ -689,7 +787,7 @@ mod test {
     /// at its old one, and it must not be duplicated.
     #[test]
     fn move_to_relocates_element() {
-        let mut fi = FractionalIndex::new(Default::default());
+        let mut fi = FractionalIndex::default();
         let a = fi.create_key(0).unwrap().clone(); // [A]
         let b = fi.create_key(1).unwrap().clone(); // [A B]
         let c = fi.create_key(2).unwrap().clone(); // [A B C]
@@ -712,7 +810,7 @@ mod test {
     /// A second move must not overwrite the identity the first one preserved.
     #[test]
     fn identity_survives_repeated_moves() {
-        let mut fi = FractionalIndex::new(Default::default());
+        let mut fi = FractionalIndex::default();
         let a = fi.create_key(0).unwrap().clone(); // [A]
         let b = fi.create_key(1).unwrap().clone(); // [A B]
         let c = fi.create_key(2).unwrap().clone(); // [A B C]
@@ -727,7 +825,7 @@ mod test {
 
     #[test]
     fn remove_drops_element() {
-        let mut fi = FractionalIndex::new(Default::default());
+        let mut fi = FractionalIndex::default();
         let a = fi.create_key(0).unwrap().clone(); // [A]
         let b = fi.create_key(1).unwrap().clone(); // [A B]
         let c = fi.create_key(2).unwrap().clone(); // [A B C]
@@ -753,8 +851,8 @@ mod test {
     #[test]
     fn concurrent_move_of_same_element_converges() {
         // Distinct session suffixes => the two peers never generate colliding keys.
-        let mut a = FractionalIndex::new([b'a', 0, 0, 0]);
-        let mut b = FractionalIndex::new([b'b', 0, 0, 0]);
+        let mut a = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
+        let mut b = FractionalIndex::new(vec![], vec![], [b'b', 0, 0, 0]);
 
         // Shared initial list [0 x1 x2]: A creates it, B replicates via the merge payload.
         let k0 = a.create_key(0).unwrap().clone();
@@ -784,5 +882,65 @@ mod test {
         assert_eq!(a.len(), 3, "moved element must not be duplicated on peer A");
         assert_eq!(b.len(), 3, "moved element must not be duplicated on peer B");
         assert_eq!(a.view().filter(|k| **k == k1).count(), 1);
+    }
+
+    #[test]
+    fn encode_roundtrips_an_index_with_both_spaces_populated() {
+        let suffix = [b'z', 1, 2, 3];
+        let mut fi = FractionalIndex::new(vec![], vec![], suffix);
+        let a = fi.create_key(0).unwrap().clone();
+        let b = fi.create_key(1).unwrap().clone();
+        let c = fi.create_key(2).unwrap().clone();
+        let d = fi.create_key(3).unwrap().clone();
+
+        fi.move_to(1..3, 4); // parks b and c, minting a destination for each
+        fi.remove_key(&d); // tombstones d
+        assert!(
+            !fi.moved.is_empty(),
+            "this test is only meaningful with a populated moved space"
+        );
+
+        let bytes = fi.encode().unwrap();
+        let decoded = FractionalIndex::decode(&bytes, suffix).unwrap();
+        assert_eq!(decoded, fi);
+        // Canonical: re-encoding what we just read reproduces the same bytes.
+        assert_eq!(decoded.encode().unwrap(), bytes);
+        // Functionally identical, not just structurally equal.
+        assert_eq!(
+            decoded.view().collect::<Vec<_>>(),
+            fi.view().collect::<Vec<_>>()
+        );
+        for key in [&a, &b, &c, &d] {
+            assert_eq!(decoded.position_of(key), fi.position_of(key));
+        }
+    }
+
+    /// What the column layout is for: a sheet's worth of rows costs bytes, not kilobytes.
+    #[test]
+    fn a_sheet_sized_index_encodes_compactly() {
+        let mut fi = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
+        // A single bulk run, as an import or a large paste produces.
+        let keys: Vec<_> = fi.create_keys(0, 10_000).collect();
+        assert_eq!(keys.len(), 10_000);
+        for (i, key) in keys.into_iter().enumerate() {
+            fi.active.insert(
+                i,
+                Entry {
+                    key,
+                    modified_at: 1_700_000_000_000,
+                    moved: FractionalKey::NULL,
+                },
+            );
+        }
+
+        let bytes = fi.encode().unwrap();
+        assert!(
+            bytes.len() < 64,
+            "10k rows should encode in a few dozen bytes, got {}",
+            bytes.len()
+        );
+        assert_eq!(FractionalIndex::decode(&bytes, fi.suffix).unwrap(), fi);
+        // bitcode adds only its own framing on top.
+        assert!(bitcode::serialize(&fi).unwrap().len() < 128);
     }
 }
