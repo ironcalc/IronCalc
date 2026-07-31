@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Programming with IronCalc</title>
+    <meta
+      name="description"
+      content="Landing page for developing and scripting IronCalc: Rust, Python, WebAssembly and Node.js documentation."
+    />
+    <link rel="icon" href="https://www.ironcalc.com/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary-main: #f2994a;
+        --primary-light: #efaa6d;
+        --primary-dark: #d68742;
+        --secondary-main: #2f80ed;
+        --dark: #272525;
+        --background-color: #fcfcfc;
+        --grey-300: #e0e0e0;
+        --grey-600: #757575;
+        --grey-900: #333333;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        background-color: var(--background-color);
+        color: var(--dark);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      /* Banner */
+      .banner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 10px 24px;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        color: #915930;
+        background: linear-gradient(
+          90deg,
+          rgba(242, 153, 74, 0.1),
+          rgba(242, 153, 74, 0.22),
+          rgba(242, 153, 74, 0.1)
+        );
+        border-bottom: 1px solid rgba(242, 153, 74, 0.35);
+      }
+
+      .banner svg {
+        flex-shrink: 0;
+      }
+
+      /* Header */
+      header {
+        border-bottom: 1px solid var(--grey-300);
+        background-color: #ffffff;
+      }
+
+      .header-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 64px;
+      }
+
+      .logo img {
+        height: 24px;
+        width: auto;
+        display: block;
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      nav a:hover {
+        color: var(--primary-dark);
+      }
+
+      nav .button {
+        padding: 8px 16px;
+      }
+
+      /* Buttons */
+      .button {
+        display: inline-block;
+        background-color: var(--primary-main);
+        color: #ffffff;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        transition: background-color 0.15s ease;
+      }
+
+      .button:hover {
+        background-color: var(--primary-dark);
+        color: #ffffff;
+      }
+
+      .button.secondary {
+        background-color: #ffffff;
+        color: var(--dark);
+        border: 1px solid var(--grey-300);
+      }
+
+      .button.secondary:hover {
+        border-color: var(--grey-600);
+        background-color: #ffffff;
+      }
+
+      /* Hero */
+      .hero {
+        text-align: center;
+        padding: 96px 0 64px;
+      }
+
+      .hero h1 {
+        font-size: 48px;
+        font-weight: 700;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+      }
+
+      .hero h1 .accent {
+        color: var(--primary-main);
+      }
+
+      .hero p {
+        margin: 20px auto 0;
+        max-width: 620px;
+        font-size: 18px;
+        color: var(--grey-600);
+      }
+
+      .hero .actions {
+        margin-top: 32px;
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      /* Cards */
+      main {
+        padding-bottom: 96px;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+      }
+
+      .resources {
+        margin-top: 72px;
+      }
+
+      .section-title {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin-bottom: 8px;
+      }
+
+      .section-subtitle {
+        font-size: 15px;
+        color: var(--grey-600);
+        margin-bottom: 24px;
+      }
+
+      .card {
+        background-color: #ffffff;
+        border: 1px solid var(--grey-300);
+        border-radius: 12px;
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+      }
+
+      .card:hover {
+        border-color: var(--primary-light);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.07);
+      }
+
+      .card h2 {
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .card p {
+        margin-top: 8px;
+        font-size: 14px;
+        color: var(--grey-600);
+        flex-grow: 1;
+      }
+
+      .card .link {
+        margin-top: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--primary-dark);
+      }
+
+      .card .link:hover {
+        color: var(--primary-main);
+      }
+
+      .card .tag {
+        display: inline-block;
+        align-self: flex-start;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--primary-dark);
+        background-color: rgba(242, 153, 74, 0.14);
+        border-radius: 6px;
+        padding: 2px 8px;
+        margin-bottom: 12px;
+      }
+
+      /* Footer */
+      footer {
+        border-top: 1px solid var(--grey-300);
+        background-color: #ffffff;
+        padding: 32px 0;
+        font-size: 14px;
+        color: var(--grey-600);
+      }
+
+      .footer-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .footer-inner nav {
+        gap: 16px;
+        font-weight: 500;
+      }
+
+      .footer-inner nav a:hover {
+        color: var(--primary-dark);
+      }
+
+      @media (max-width: 640px) {
+        .hero {
+          padding: 64px 0 48px;
+        }
+
+        .hero h1 {
+          font-size: 34px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="banner" role="status">
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+      <span><strong>Warning:</strong> this documentation page is work in progress.</span>
+    </div>
+    <header>
+      <div class="container header-inner">
+        <a class="logo" href="https://www.ironcalc.com" aria-label="IronCalc">
+          <img src="logo.svg" alt="IronCalc" />
+        </a>
+        <nav>
+          <a href="https://github.com/ironcalc/ironcalc">Source code</a>
+          <a class="button" href="https://app.ironcalc.com">Try now</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero container">
+        <h1>Programming with <span class="accent">IronCalc</span></h1>
+        <p>
+          IronCalc is an engine first. You can create, edit, evaluate and script spreadsheets programmatically. Pick your language below to find the API documentation for each of the bindings.
+        </p>
+      </section>
+
+      <section class="container">
+        <div class="cards">
+        <a class="card" href="rust/">
+          <span class="tag">Rust</span>
+          <h2>Rust documentation</h2>
+          <p>
+            The core engine. API documentation for the <code>ironcalc</code> and
+            <code>ironcalc_base</code> crates, also available on docs.rs.
+          </p>
+          <span class="link">Read the docs →</span>
+        </a>
+        <a class="card" href="python/">
+          <span class="tag">Python</span>
+          <h2>Python bindings</h2>
+          <p>
+            Create, edit and evaluate spreadsheets from Python. Install with
+            <code>pip install ironcalc</code>.
+          </p>
+          <span class="link">Read the docs →</span>
+        </a>
+        <a class="card" href="wasm/">
+          <span class="tag">WebAssembly</span>
+          <h2>Wasm bindings</h2>
+          <p>
+            Run IronCalc in the browser with the WebAssembly bindings and build
+            your own spreadsheet applications.
+          </p>
+          <span class="link">Read the docs →</span>
+        </a>
+        <a class="card" href="nodejs/">
+          <span class="tag">Node.js</span>
+          <h2>Node.js bindings</h2>
+          <p>
+            Use IronCalc from Node.js to automate and script spreadsheets on the
+            server.
+          </p>
+          <span class="link">Read the docs →</span>
+        </a>
+        </div>
+      </section>
+
+      <section class="container resources">
+        <h2 class="section-title">More resources</h2>
+        <p class="section-subtitle">
+          Not everything is code: explore the components or learn how to use the
+          application.
+        </p>
+        <div class="cards">
+        <a class="card" href="https://design.ironcalc.dev">
+          <span class="tag">Storybook</span>
+          <h2>Design system</h2>
+          <p>
+            Explore the IronCalc React components in the Storybook of the design
+            system.
+          </p>
+          <span class="link">Open Storybook →</span>
+        </a>
+        <a class="card" href="https://docs.ironcalc.com">
+          <span class="tag">Docs</span>
+          <h2>User documentation</h2>
+          <p>
+            Not looking to program? The user documentation covers the
+            application, functions and features.
+          </p>
+          <span class="link">Open the docs →</span>
+        </a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container footer-inner">
+        <span>© 2026 IronCalc. MIT or Apache-2.0 licensed.</span>
+        <nav>
+          <a href="https://www.ironcalc.com">ironcalc.com</a>
+          <a href="https://app.ironcalc.com">App</a>
+          <a href="https://github.com/ironcalc/ironcalc">GitHub</a>
+          <a href="https://discord.gg/zZYWfh3RHJ">Discord</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
