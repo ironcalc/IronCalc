@@ -88,3 +88,117 @@ fn scalar_context_unwraps_1x1_array_from_offset_for_dependents() {
     assert_eq!(model._get_text("C1"), "31".to_string());
     assert_eq!(model._get_text("D1"), "30".to_string());
 }
+
+// --- Cross-sheet implicit intersection (`@`) ---
+//
+// The `@` operator applied to a reference resolving to a SINGLE cell on ANOTHER
+// sheet must dereference that cell (Excel: `=@Sheet2!D2` returns Sheet2!D2). A
+// 1x1 range always dereferences, regardless of the consuming cell's sheet.
+
+#[test]
+fn at_operator_on_cross_sheet_single_cell_dereferences() {
+    let mut model = new_empty_model();
+    model.new_sheet(); // Sheet2 at index 1
+    model._set("Sheet2!D2", "=42");
+    model._set("A1", "=@Sheet2!D2");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"42");
+}
+
+#[test]
+fn at_operator_on_offset_to_other_sheet_dereferences() {
+    // OFFSET returns a reference; `@` in scalar context must dereference the
+    // resulting single cell even when it lives on another sheet.
+    let mut model = new_empty_model();
+    model.new_sheet(); // Sheet2 at index 1
+    model._set("Sheet2!C3", "=7");
+    // OFFSET(Sheet2!A1, 2, 2) -> Sheet2!C3
+    model._set("A1", "=@OFFSET(Sheet2!A1, 2, 2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"7");
+}
+
+#[test]
+fn at_operator_on_offset_indirect_cross_sheet_editpnl_shape() {
+    // The exact editpnl leaf shape: IFERROR(@OFFSET(INDIRECT("Sheet2!"&ref),r,c)/1, 0)
+    // with the OFFSET target a single cell on Sheet2. Must compute, not fall to 0.
+    let mut model = new_empty_model();
+    model.new_sheet(); // Sheet2
+    model._set("Sheet2!B1", "=100"); // OFFSET(Sheet2!A1, 0, 1) -> Sheet2!B1
+    model._set("A1", "A1"); // the INDIRECT anchor string component
+    model._set(
+        "B1",
+        "=IFERROR(@OFFSET(INDIRECT(\"Sheet2!\"&A1), 0, 1)/1, -999)",
+    );
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), *"100");
+}
+
+#[test]
+fn at_operator_on_same_sheet_single_cell_still_works() {
+    // Guard against a fix that breaks the same-sheet case.
+    let mut model = new_empty_model();
+    model._set("D2", "=42");
+    model._set("A1", "=@D2");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"42");
+}
+
+#[test]
+fn at_operator_row_aligned_intersection_across_sheets() {
+    // A column range on another sheet, row-aligned to the consuming cell, picks
+    // the cell on the range's own sheet at the consuming row (Excel:
+    // `=Sheet2!D1:D5` on C3 -> Sheet2!D3).
+    let mut model = new_empty_model();
+    model.new_sheet(); // Sheet2
+    model._set("Sheet2!D3", "=55");
+    model._set("C3", "=@Sheet2!D1:D5");
+    model.evaluate();
+
+    assert_eq!(model._get_text("C3"), *"55");
+}
+
+// --- Scalar @-child in REFERENCE context ---
+//
+// `fn_choose` (and other reference-context callers) evaluate the selected node
+// via `evaluate_node_with_reference`. When the importer auto-wraps a scalar-
+// signature CHOOSE arm (e.g. an `IF(...)` that returns a scalar) in `@`, that
+// `@`-node reaches `model.rs` `evaluate_node_with_reference`'s
+// `ImplicitIntersection` arm.
+
+#[test]
+fn choose_arm_at_wrapped_scalar_if_flows_through() {
+    // CHOOSE selects arm 1, an @-wrapped IF that returns a scalar. The scalar
+    // must flow through the reference-context intersection, not error to 0.
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    // Arm 1 = @IF(TRUE, 5, AVERAGE(A1:A2)) -> scalar 5.
+    model._set(
+        "C1",
+        "=IFERROR(CHOOSE(1, @IF(TRUE, 5, AVERAGE(A1:A2)), 99), -1)",
+    );
+    model.evaluate();
+
+    assert_eq!(model._get_text("C1"), "5".to_string());
+}
+
+#[test]
+fn choose_arm_at_wrapped_scalar_cellref_flows_through() {
+    // The editpnl shape: CHOOSE arm = @IF(cond, single-cell, AVERAGE(range)).
+    // When the IF picks the single cell, the @-scalar must dereference, not error.
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set(
+        "C1",
+        "=IFERROR(CHOOSE(1, @IF(TRUE, A1, AVERAGE(A1:A2)), 99), -777)",
+    );
+    model.evaluate();
+
+    assert_eq!(model._get_text("C1"), "10".to_string());
+}

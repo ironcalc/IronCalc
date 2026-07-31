@@ -44,27 +44,6 @@ fn implicit_intersection_operator() {
     assert_eq!(model._get_text("B1"), *"#N/IMPL!");
 }
 
-// The implicit-intersection operator `@` applied to a single cell on ANOTHER
-// sheet must return that cell's value, not #VALUE!. Excel treats `@Sheet2!B3`
-// (and `@`-decorated OFFSET/INDIRECT that resolve to one cross-sheet cell) as
-// the cell itself. Regression: `implicit_intersection` used to reject any range
-// whose sheet differed from the calling cell's before checking the single-cell
-// case, so these silently became #VALUE! (and, wrapped in IFERROR, 0).
-#[test]
-fn implicit_intersection_operator_cross_sheet_single_cell() {
-    let mut model = new_empty_model();
-    model.new_sheet(); // Sheet2
-    model._set("Sheet2!B3", "42");
-    // direct cross-sheet single-cell reference
-    model._set("Sheet1!A1", "=@Sheet2!B3");
-    // via OFFSET(INDIRECT(..)) resolving to the same single cross-sheet cell
-    model._set("Sheet1!A2", "=@OFFSET(INDIRECT(\"Sheet2!B3\"),0,0)");
-    model.evaluate();
-
-    assert_eq!(model._get_text("Sheet1!A1"), *"42");
-    assert_eq!(model._get_text("Sheet1!A2"), *"42");
-}
-
 #[test]
 fn non_reference() {
     let mut model = new_empty_model();

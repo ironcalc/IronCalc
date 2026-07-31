@@ -337,11 +337,13 @@ impl<'a> Model<'a> {
                 child,
             } => match self.evaluate_node_with_reference(child, cell) {
                 CalcResult::Range { left, right } => CalcResult::Range { left, right },
-                _ => CalcResult::new_error(
-                    Error::ERROR,
-                    cell,
-                    format!("Error with Implicit Intersection in cell {cell:?}"),
-                ),
+                // The implicit intersection of a scalar is the scalar itself. The
+                // importer wraps any unknown-shaped function argument (e.g. a CHOOSE
+                // arm that is an IF(...) returning a value) in an automatic `@`; when
+                // the child evaluates to a value rather than a range, that value must
+                // flow through instead of erroring (previously: #ERROR! "Error with
+                // Implicit Intersection", which IFERROR then masked to 0).
+                other => other,
             },
             _ => self.evaluate_node_in_context(node, cell),
         }
