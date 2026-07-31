@@ -88,10 +88,15 @@ test('named styles', (t) => {
 test('defined names', (t) => {
   const model = new UserModel("Workbook1");
   model.newDefinedName("myname", null, "Sheet1!$A$1");
+  model.newDefinedName("localname", 0, "Sheet1!$B$2");
   const names = model.getDefinedNameList();
-  t.is(names.length, 1);
+  t.is(names.length, 2);
   t.is(names[0].name, "myname");
   t.is(names[0].formula, "Sheet1!$A$1");
+  // a global name has no scope property (not even null)
+  t.false("scope" in names[0]);
+  t.is(names[1].name, "localname");
+  t.is(names[1].scope, 0);
 });
 
 test('conditional formatting', (t) => {
