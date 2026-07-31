@@ -71,6 +71,7 @@ pub(crate) fn js_to_color(env: &Env, value: Option<Unknown>) -> Result<Color> {
 #[derive(Serialize)]
 pub(crate) struct DefinedName {
   pub name: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub scope: Option<u32>,
   pub formula: String,
 }

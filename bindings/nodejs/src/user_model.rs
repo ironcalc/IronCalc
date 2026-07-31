@@ -875,7 +875,11 @@ impl UserModel {
 
   /// Returns the list of conditional formatting rules of the sheet
   #[napi(ts_return_type = "Array<ConditionalFormattingView>")]
-  pub fn get_conditional_formatting_list<'e>(&self, env: &'e Env, sheet: u32) -> Result<Unknown<'e>> {
+  pub fn get_conditional_formatting_list<'e>(
+    &self,
+    env: &'e Env,
+    sheet: u32,
+  ) -> Result<Unknown<'e>> {
     let list = self
       .model
       .get_conditional_formatting_list(sheet)
@@ -959,7 +963,8 @@ impl UserModel {
 
   // Defined names
 
-  /// Returns the list of defined names as [{name, scope, formula}]
+  /// Returns the list of defined names as [{name, scope, formula}].
+  /// `scope` is omitted for globally scoped names.
   #[napi(ts_return_type = "Array<DefinedName>")]
   pub fn get_defined_name_list<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
     let data: Vec<DefinedName> = self
@@ -1097,7 +1102,8 @@ impl UserModel {
     #[napi(ts_arg_type = "ClipboardData")] clipboard: Unknown,
     is_cut: bool,
   ) -> Result<()> {
-    let source_range: (i32, i32, i32, i32) = env.from_js_value(source_range).map_err(to_js_error)?;
+    let source_range: (i32, i32, i32, i32) =
+      env.from_js_value(source_range).map_err(to_js_error)?;
     let clipboard: ClipboardData = env.from_js_value(clipboard).map_err(to_js_error)?;
     self
       .model

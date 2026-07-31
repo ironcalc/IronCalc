@@ -624,7 +624,10 @@ impl Model {
       "veryHidden" => SheetState::VeryHidden,
       _ => return Err(to_js_error(format!("Invalid sheet state: '{state}'"))),
     };
-    self.model.set_sheet_state(sheet, state).map_err(to_js_error)
+    self
+      .model
+      .set_sheet_state(sheet, state)
+      .map_err(to_js_error)
   }
 
   /// Adds a new sheet with the given name
@@ -678,7 +681,8 @@ impl Model {
 
   // Defined names
 
-  /// Returns the list of defined names as [{name, scope, formula}]
+  /// Returns the list of defined names as [{name, scope, formula}].
+  /// `scope` is omitted for globally scoped names.
   #[napi(ts_return_type = "Array<DefinedName>")]
   pub fn get_defined_name_list<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
     let data: Vec<DefinedName> = self
