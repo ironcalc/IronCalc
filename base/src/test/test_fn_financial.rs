@@ -111,9 +111,10 @@ fn fn_mirr() {
     model._set("B2", "=MIRR(A2:A5, A8, A9)");
 
     model.evaluate();
+    // Exact f64 is rounded to 12 decimal places by number normalization.
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!B1"),
-        Ok(CellValue::Number(0.1260941303659051))
+        Ok(CellValue::Number(0.126094130366))
     );
     assert_eq!(model._get_text("B1"), "13%");
     assert_eq!(model._get_text("B2"), "-5%");
@@ -192,9 +193,10 @@ fn fn_sln() {
 
     model.evaluate();
 
+    // -1/3 rounded to 12 decimal places by number normalization.
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!B1"),
-        Ok(CellValue::Number(-1.0 / 3.0))
+        Ok(CellValue::Number(-0.333333333333))
     );
     assert_eq!(model._get_text("B1"), "-$0.33");
     assert_eq!(model._get_text("B2"), *"#ERROR!");
@@ -215,9 +217,10 @@ fn fn_syd() {
 
     model.evaluate();
 
+    // Exact f64 is rounded to 12 decimal places by number normalization.
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!B1"),
-        Ok(CellValue::Number(4.976190476190476))
+        Ok(CellValue::Number(4.97619047619))
     );
     assert_eq!(model._get_text("B1"), "$4.98");
     assert_eq!(model._get_text("B2"), *"#ERROR!");
