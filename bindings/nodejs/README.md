@@ -1,11 +1,25 @@
 # IronCalc nodejs bindings
 
+## Installation
 
-Example usage:
+This package is published to GitHub Packages. Add the following to your `.npmrc`:
+
+```
+@zolidar:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+Then install:
+
+```bash
+npm install @zolidar/ironcalc-nodejs
+```
+
+## Example usage
 
 ```javascript
 import { Model } from '@zolidar/ironcalc-nodejs';
- 
+
 const model = new Model("Workbook1", "en", "UTC", "en");
 
 model.setUserInput(0, 1, 1, "=1+1");

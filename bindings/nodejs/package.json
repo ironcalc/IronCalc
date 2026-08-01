@@ -58,5 +58,21 @@
   "description": "Zolidar fork of IronCalc Node.js bindings",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
+  },
+  "optionalDependencies": {
+    "@zolidar/ironcalc-nodejs-android-arm-eabi": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-android-arm64": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-darwin-arm64": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-darwin-universal": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-darwin-x64": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-linux-arm-gnueabihf": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-linux-arm-musleabihf": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-linux-arm64-gnu": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-linux-arm64-musl": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-linux-riscv64-gnu": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-linux-x64-gnu": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-linux-x64-musl": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-win32-arm64-msvc": "0.8.3-zolidar.1",
+    "@zolidar/ironcalc-nodejs-win32-x64-msvc": "0.8.3-zolidar.1"
   }
 }

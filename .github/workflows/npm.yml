@@ -7,7 +7,6 @@ env:
   RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish == 'true' }}
 permissions:
   contents: read
-  packages: write
 'on':
   push:
     tags: ["v*"]
@@ -464,6 +463,9 @@ jobs:
   publish-nodejs:
     name: Publish @zolidar/ironcalc-nodejs
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     defaults:
       run:
         working-directory: ./bindings/nodejs
@@ -525,7 +527,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           LOCAL="$(npm pkg get version | tr -d '"')"
-          REMOTE="$(npm view @zolidar/ironcalc-nodejs version --registry=https://npm.pkg.github.com 2>/dev/null || true)"
+          REMOTE="$(npm view "@zolidar/ironcalc-nodejs@${LOCAL}" version --registry=https://npm.pkg.github.com 2>/dev/null || true)"
           if [ "$RELEASE" != "true" ]; then
             echo "Not a release, skipping publish"
           elif [ -n "$REMOTE" ] && [ "$LOCAL" = "$REMOTE" ]; then
