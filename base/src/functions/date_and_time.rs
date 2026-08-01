@@ -58,6 +58,23 @@ fn days360_serial(raw: f64) -> i64 {
     ((raw * SECONDS_PER_DAY_F64).round() / SECONDS_PER_DAY_F64).floor() as i64
 }
 
+/// Whole seconds since midnight for the time-of-day portion of a serial.
+///
+/// Snaps to the nearest second only when already within a microsecond of one,
+/// so 12-decimal cell normalization cannot pull HOUR/MINUTE/SECOND just under
+/// a boundary, while intentional "slightly under" serials still truncate.
+fn time_of_day_seconds(serial: f64) -> f64 {
+    let secs = serial.rem_euclid(1.0) * SECONDS_PER_DAY_F64;
+    const EPS: f64 = 1e-6;
+    let nearest = secs.round();
+    let whole = if (secs - nearest).abs() < EPS {
+        nearest
+    } else {
+        secs.floor()
+    };
+    whole.rem_euclid(SECONDS_PER_DAY_F64)
+}
+
 // Days d1→d2 via the US (NASD) 30/360 convention, as used by the worksheet
 // DAYS360 function. Note this differs from the bond 30/360 (`days_30_360_us`):
 // DAYS360 only promotes the *start* date when it is the last day of February,
@@ -187,7 +204,6 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
-use crate::number_format::to_precision;
 use crate::{
     calc_result::CalcResult,
     constants::EXCEL_DATE_BASE,
@@ -1243,13 +1259,15 @@ impl<'a> Model<'a> {
     // Auto-generated TIME part helpers (HOUR / MINUTE / SECOND)
     // -----------------------------------------------------------------------
 
-    time_part_fn!(fn_hour, |v: f64| (v.rem_euclid(1.0) * 24.0).floor());
+    time_part_fn!(fn_hour, |v: f64| {
+        (time_of_day_seconds(v) / 3600.0).floor()
+    });
     time_part_fn!(fn_minute, |v: f64| {
-        let total_seconds = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64).floor();
+        let total_seconds = time_of_day_seconds(v);
         ((total_seconds / 60.0) as i64 % 60) as f64
     });
     time_part_fn!(fn_second, |v: f64| {
-        let total_seconds = to_precision(v.rem_euclid(1.0) * SECONDS_PER_DAY_F64, 15).floor();
+        let total_seconds = time_of_day_seconds(v);
         (total_seconds as i64 % 60) as f64
     });
 

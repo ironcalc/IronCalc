@@ -237,6 +237,18 @@ pub struct CellIndex {
 }
 
 impl<'a> Model<'a> {
+    /// Snap near-zero noise and round to 12 decimal places.
+    /// Applied both when storing a cell and when returning a value to in-pass
+    /// dependents so formulas like `TRUNC(G3*G6)` see the same G6 that
+    /// `getCellValue(G6)` would return after evaluation.
+    fn normalize_excel_number(value: f64) -> f64 {
+        if value.abs() < 1e-6 {
+            0.0
+        } else {
+            let factor = 1e12_f64;
+            (value * factor).round() / factor
+        }
+    }
     pub(crate) fn get_next_variable_id(&mut self) -> usize {
         let id = self.last_variable_id;
         self.last_variable_id += 1;
@@ -1120,7 +1132,7 @@ impl<'a> Model<'a> {
                         },
                     );
                 }
-                FormulaValue::Number(*value)
+                FormulaValue::Number(Self::normalize_excel_number(*value))
             }
             CalcResult::String(value) => FormulaValue::Text(value.clone()),
             CalcResult::Boolean(value) => FormulaValue::Boolean(*value),
@@ -1547,6 +1559,12 @@ impl<'a> Model<'a> {
                 self.cells.insert(key, CellState::Evaluated);
 
                 // return the result of the evaluation.
+                // Same normalization as set_cells_with_result so dependents in
+                // this evaluation pass observe stored cell precision.
+                let result = match result {
+                    CalcResult::Number(v) => CalcResult::Number(Self::normalize_excel_number(v)),
+                    other => other,
+                };
                 match result {
                     CalcResult::Array(a) => {
                         // The cell ended up holding an array. Coerce it to a scalar so

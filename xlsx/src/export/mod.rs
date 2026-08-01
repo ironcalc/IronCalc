@@ -13,6 +13,7 @@ mod workbook;
 mod workbook_xml_rels;
 mod worksheets;
 mod xml_constants;
+mod yml;
 
 use std::io::BufWriter;
 use std::{
@@ -27,6 +28,8 @@ use ironcalc_base::{get_milliseconds_since_epoch, Model};
 use self::xml_constants::XML_DECLARATION;
 
 use crate::error::XlsxError;
+
+pub use yml::{save_to_yml, YmlExportOptions};
 
 #[cfg(test)]
 mod test;

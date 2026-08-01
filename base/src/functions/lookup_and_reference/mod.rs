@@ -422,6 +422,15 @@ impl<'a> Model<'a> {
 
         match match_type {
             -1 => {
+                // Exact hit first. Approximate MATCH assumes a sorted range;
+                // mixed string/number ranges often are not. Binary search alone
+                // can miss an exact string and land on a nearby numeric bucket;
+                // Excel still returns the exact match when present.
+                for (l, value) in values.iter().enumerate() {
+                    if values_are_equal(value, &target) {
+                        return CalcResult::Number(l as f64 + 1.0);
+                    }
+                }
                 // We apply binary search leftmost for value in the vector
                 let mut l = 0;
                 let mut r = values.len();
@@ -469,9 +478,29 @@ impl<'a> Model<'a> {
                 }
             }
             _ => {
-                // l is the number of elements less than target in the vector
-                let l = binary_search_on_array(&target, &values);
-                if l == -2 {
+                // Exact hit first (same rationale as match_type -1).
+                for (l, value) in values.iter().enumerate() {
+                    if values_are_equal(value, &target) {
+                        return CalcResult::Number(l as f64 + 1.0);
+                    }
+                }
+                // Largest value <= target, skipping empties. Binary search over
+                // ranges like [0, 1, 2, empty] can treat empty as 0 and return
+                // the empty slot; Excel returns the last real threshold.
+                let mut best: i32 = -1;
+                for (l, value) in values.iter().enumerate() {
+                    if matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg) {
+                        continue;
+                    }
+                    let cmp = compare_values(value, &target);
+                    if cmp <= 0 {
+                        best = l as i32;
+                    } else if best >= 0 {
+                        // Ascending: past the match window.
+                        break;
+                    }
+                }
+                if best < 0 {
                     return CalcResult::Error {
                         error: Error::NA,
                         origin: cell,
@@ -479,7 +508,7 @@ impl<'a> Model<'a> {
                     };
                 }
 
-                CalcResult::Number(l as f64 + 1.0)
+                CalcResult::Number(best as f64 + 1.0)
             }
         }
     }

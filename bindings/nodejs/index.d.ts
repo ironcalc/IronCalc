@@ -441,6 +441,11 @@ export declare class Model {
   saveToXlsx(file: string): void
   /** Saves the workbook to a file in the internal binary ic format */
   saveToIcalc(file: string): void
+  /**
+   * YAML snapshot of cell formulas/values (+ optional named ranges) for PR review.
+   * Defaults: `includeEmptyCells=false`, `includeNamedRanges=true`. Overwrites `file`.
+   */
+  saveToYml(file: string, options?: SaveToYmlOptions | undefined | null): void
   /** Returns the workbook as bytes in the internal binary ic format */
   toBytes(): Uint8Array
   /** Evaluates the workbook */
@@ -809,3 +814,8 @@ export declare function getSupportedLocales(): Array<string>
 
 /** Quotes a sheet name if needed so it can be used in a formula reference */
 export declare function quoteName(name: string): string
+
+export interface SaveToYmlOptions {
+  includeEmptyCells?: boolean
+  includeNamedRanges?: boolean
+}
