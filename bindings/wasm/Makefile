@@ -11,7 +11,9 @@ all: deps
 	cp README.pkg.md pkg/README.md
 	pnpm exec tsc types.ts --target esnext --module esnext
 	$(PYTHON) fix_types.py
+	$(PYTHON) fix_package.py
 	rm -f types.js
+	node --test tests/test_package.mjs
 
 # Installs the pinned JS tooling (typescript, typedoc) from pnpm-lock.yaml
 deps:
