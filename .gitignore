@@ -1,5 +1,6 @@
 target/*
 **/node_modules/**
+**/package-lock.json
 docs/ironcalc.dev/dist/
 bindings/python/docs/_static/logo-light.svg
 bindings/python/docs/_static/logo-dark.svg
