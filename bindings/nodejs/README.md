@@ -4,7 +4,7 @@
 Example usage:
 
 ```javascript
-import { Model } from '@ironcalc/nodejs';
+import { Model } from '@zolidar/ironcalc-nodejs';
  
 const model = new Model("Workbook1", "en", "UTC", "en");
 

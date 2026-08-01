@@ -1,16 +1,16 @@
 {
-  "name": "@ironcalc/nodejs",
-  "version": "0.8.3",
+  "name": "@zolidar/ironcalc-nodejs",
+  "version": "0.8.3-zolidar.1",
   "main": "index.js",
   "types": "index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ironcalc/IronCalc.git",
+    "url": "git+https://github.com/zolidar/IronCalc.git",
     "directory": "bindings/nodejs"
   },
-  "homepage": "https://www.ironcalc.com/",
+  "homepage": "https://github.com/zolidar/IronCalc",
   "bugs": {
-    "url": "https://github.com/ironcalc/ironcalc/issues"
+    "url": "https://github.com/zolidar/IronCalc/issues"
   },
   "napi": {
     "binaryName": "nodejs",
@@ -54,5 +54,9 @@
     "test": "ava",
     "universal": "napi universalize",
     "version": "napi version"
+  },
+  "description": "Zolidar fork of IronCalc Node.js bindings",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

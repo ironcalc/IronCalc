@@ -7,14 +7,14 @@ env:
   RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish == 'true' }}
 permissions:
   contents: read
-  id-token: write
+  packages: write
 'on':
   push:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish to npm"
+        description: "Publish Node bindings to GitHub Packages"
         required: true
         type: boolean
 defaults:
@@ -462,7 +462,7 @@ jobs:
           path: bindings/nodejs/${{ env.APP_NAME }}.*.node
           if-no-files-found: error
   publish-nodejs:
-    name: Publish @ironcalc/nodejs
+    name: Publish @zolidar/ironcalc-nodejs
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -484,6 +484,8 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
+          registry-url: https://npm.pkg.github.com
+          scope: '@zolidar'
 
       - name: Enable pnpm (corepack)
         run: |
@@ -518,26 +520,25 @@ jobs:
         run: ls -R ./npm
         shell: bash
 
-      # OIDC trusted publishing needs npm >= 11.5.1
-      - name: Update npm
-        run: npm install -g npm@latest
-
       - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           LOCAL="$(npm pkg get version | tr -d '"')"
-          REMOTE="$(npm view @ironcalc/nodejs version || true)"
+          REMOTE="$(npm view @zolidar/ironcalc-nodejs version --registry=https://npm.pkg.github.com 2>/dev/null || true)"
           if [ "$RELEASE" != "true" ]; then
             echo "Not a release, skipping publish"
-          elif [ "$LOCAL" = "$REMOTE" ]; then
-            echo "@ironcalc/nodejs $LOCAL is already published, skipping"
+          elif [ -n "$REMOTE" ] && [ "$LOCAL" = "$REMOTE" ]; then
+            echo "@zolidar/ironcalc-nodejs $LOCAL is already published, skipping"
           else
-            npm publish --access public
-            echo "Published to npm"
+            npm publish
+            echo "Published @zolidar/ironcalc-nodejs@$LOCAL to GitHub Packages"
           fi
 
-  # --- WASM and Workbook Jobs ---
+  # --- WASM and Workbook Jobs (disabled on this fork; Node bindings only) ---
   build-test-wasm:
     name: Build and test @ironcalc/wasm
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -565,6 +566,7 @@ jobs:
 
   build-test-workbook:
     name: Build and test @ironcalc/workbook
+    if: false
     runs-on: ubuntu-latest
     needs:
       - build-test-wasm
@@ -591,6 +593,7 @@ jobs:
 
   publish-wasm:
     name: Publish @ironcalc/wasm
+    if: false
     runs-on: ubuntu-latest
     needs:
       - build-test-wasm
@@ -628,6 +631,7 @@ jobs:
 
   publish-workbook:
     name: Publish @ironcalc/workbook
+    if: false
     runs-on: ubuntu-latest
     needs:
       - build-test-workbook

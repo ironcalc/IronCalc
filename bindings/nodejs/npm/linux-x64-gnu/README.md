@@ -1,3 +1,3 @@
-# `@ironcalc/nodejs-linux-x64-gnu`
+# `@zolidar/ironcalc-nodejs-linux-x64-gnu`
 
-This is the **x86_64-unknown-linux-gnu** binary for `@ironcalc/nodejs`
+This is the **x86_64-unknown-linux-gnu** binary for `@zolidar/ironcalc-nodejs`

@@ -1,3 +1,3 @@
-# `@ironcalc/nodejs-linux-riscv64-gnu`
+# `@zolidar/ironcalc-nodejs-linux-riscv64-gnu`
 
-This is the **riscv64gc-unknown-linux-gnu** binary for `@ironcalc/nodejs`
+This is the **riscv64gc-unknown-linux-gnu** binary for `@zolidar/ironcalc-nodejs`

@@ -1,6 +1,6 @@
 {
-  "name": "@ironcalc/nodejs-darwin-x64",
-  "version": "0.8.3",
+  "name": "@zolidar/ironcalc-nodejs-darwin-x64",
+  "version": "0.8.3-zolidar.1",
   "os": [
     "darwin"
   ],
@@ -17,7 +17,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ironcalc/IronCalc.git",
+    "url": "git+https://github.com/zolidar/IronCalc.git",
     "directory": "bindings/nodejs/npm/darwin-x64"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

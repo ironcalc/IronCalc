@@ -1,6 +1,6 @@
 {
-  "name": "@ironcalc/nodejs-win32-arm64-msvc",
-  "version": "0.8.3",
+  "name": "@zolidar/ironcalc-nodejs-win32-arm64-msvc",
+  "version": "0.8.3-zolidar.1",
   "os": [
     "win32"
   ],
@@ -17,7 +17,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ironcalc/IronCalc.git",
+    "url": "git+https://github.com/zolidar/IronCalc.git",
     "directory": "bindings/nodejs/npm/win32-arm64-msvc"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }
