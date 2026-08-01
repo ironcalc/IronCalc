@@ -1290,7 +1290,7 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "wasm"
-version = "0.8.3"
+version = "0.8.4"
 dependencies = [
  "ironcalc_base",
  "serde",
