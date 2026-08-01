@@ -18,6 +18,7 @@ interface IronCalcProperties {
   rootContainer?: HTMLElement | null;
   /** When false, renders without the toolbar, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
+  redrawVersion?: number;
 }
 
 export interface IronCalcHandle {
@@ -25,7 +26,7 @@ export interface IronCalcHandle {
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
-  ({ themeVariables, model, rootContainer, canEdit = true }, ref) => {
+  ({ themeVariables, model, rootContainer, canEdit = true, redrawVersion }, ref) => {
     const root = rootContainer ?? document.body;
     useEffect(() => {
       if (root.classList.contains("ic-root")) {
@@ -59,6 +60,7 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
             model={model}
             workbookState={new WorkbookState()}
             canEdit={canEdit}
+            redrawVersion={redrawVersion}
           />
         </I18nextProvider>
       </div>

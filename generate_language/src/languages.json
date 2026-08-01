@@ -514,7 +514,8 @@
       "multinomial": "MULTINOMIAL",
       "seriessum": "SERIESSUM",
       "sumproduct": "SUMPRODUCT",
-      "percentof": "PERCENTOF"
+      "percentof": "PERCENTOF",
+      "finance": "FINANCE"
     }
   },
   "it": {
@@ -1032,7 +1033,8 @@
       "multinomial": "MULTINOMIALE",
       "seriessum": "SOMMA.SERIE",
       "sumproduct": "MATR.SOMMA.PRODOTTO",
-      "percentof": "PERCENTUALE.DI"
+      "percentof": "PERCENTUALE.DI",
+      "finance": "FINANCE"
     }
   },
   "fr": {
@@ -1550,7 +1552,8 @@
       "multinomial": "MULTINOMIALE",
       "seriessum": "SOMME.SERIE",
       "sumproduct": "SOMMEPROD",
-      "percentof": "POURCENTDE"
+      "percentof": "POURCENTDE",
+      "finance": "FINANCE"
     }
   },
   "de": {
@@ -2068,7 +2071,8 @@
       "multinomial": "MULTINOMIAL",
       "seriessum": "POTENZREIHE",
       "sumproduct": "SUMMENPRODUKT",
-      "percentof": "PROZENTVON"
+      "percentof": "PROZENTVON",
+      "finance": "FINANCE"
     }
   },
   "es": {
@@ -2586,7 +2590,8 @@
       "multinomial": "MULTINOMIAL",
       "seriessum": "SUMA.SERIE",
       "sumproduct": "SUMAPRODUCTO",
-      "percentof": "PORCENTAJEDE"
+      "percentof": "PORCENTAJEDE",
+      "finance": "FINANCE"
     }
   }
 }

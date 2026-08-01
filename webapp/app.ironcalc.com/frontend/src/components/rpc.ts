@@ -105,3 +105,33 @@ export async function shareModel(bytes: Uint8Array): Promise<string> {
   }
   return await response.text();
 }
+
+/** A task for fetching financial data */
+export interface FinanceFetchTask {
+  ticker: { Stock: string } | { Forex: string } | { Crypto: string };
+  attribute: string;
+  cell: { sheet: number; column: number; row: number };
+}
+
+/** Result of a finance fetch, matching Rust's `Result<f64, FinanceError>`. */
+export type FinanceFetchResult = { Ok: number } | { Err: unknown };
+
+/**
+ * Fetch financial data for pending FINANCE() tasks.
+ * Returns an array of results matching the server-side `Result<f64, FinanceError>`.
+ */
+export async function fetchFinanceData(
+  tasks: FinanceFetchTask[],
+): Promise<FinanceFetchResult[]> {
+  const response = await fetch("/api/finance/fetch", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(tasks),
+  });
+  if (!response.ok) {
+    throw new Error(`Finance fetch failed: ${response.status}`);
+  }
+  return await response.json();
+}

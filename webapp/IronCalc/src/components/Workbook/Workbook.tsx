@@ -54,8 +54,9 @@ const Workbook = (props: {
   workbookState: WorkbookState;
   /** When false, the toolbar is hidden, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
+  redrawVersion?: number;
 }) => {
-  const { model, workbookState, canEdit = true } = props;
+  const { model, workbookState, canEdit = true, redrawVersion } = props;
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const worksheetRef = useRef<{
@@ -66,6 +67,13 @@ const Workbook = (props: {
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
+
+  // When redrawVersion bumps, trigger a redraw so the canvas picks up the updated model state.
+  useEffect(() => {
+    if (redrawVersion !== undefined) {
+      setRedrawId((id) => id + 1);
+    }
+  }, [redrawVersion]);
 
   const [alertDialogMessage, setAlertDialogMessage] = useState<string | null>(
     null,

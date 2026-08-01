@@ -1,6 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{cell::CellValue, test::util::new_empty_model};
+use crate::{
+    cell::CellValue,
+    task::{FinanceFetchTask, Task},
+    test::util::new_empty_model,
+};
 
 #[test]
 fn test_currencies() {
@@ -369,6 +373,87 @@ fn test_financial_functions() {
     assert_eq!(model._get_text("A6"), *"-$1,030.16");
     // This is a positive number
     assert_eq!(model._get_text("A7"), *"$94.95");
+}
+
+#[test]
+fn test_finance_function() {
+    // FINANCE(ticker, attribute, asset_type)
+    //
+    // Uses the Elm-like side-effect architecture:
+    //   1. On cache miss → take_tasks() returns a Task, cell shows #N/A.
+    //   2. Caller completes the task → populates the cache.
+    //   3. Re-evaluate → cache hits → cell shows the actual value.
+    let mut model = new_empty_model();
+
+    // Fewer than 3 args → argument count error
+    model._set("A1", "=FINANCE()");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+
+    // Still fewer than 3
+    model._set("A2", "=FINANCE(\"AAPL\", \"price\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+
+    // 3 args but no cache → returns a Task, cell shows loading
+    model._set("A3", "=FINANCE(\"AAPL\", \"price\", \"stock\")");
+    model.evaluate();
+    let tasks = model.take_tasks();
+    assert_eq!(model._get_text("A3"), *"#N/A");
+    assert_eq!(tasks.len(), 1);
+
+    let finance_task = match &tasks[0] {
+        Task::FinanceFetch(task) => task,
+    };
+    assert_eq!(finance_task.ticker.symbol(), "AAPL");
+    assert_eq!(finance_task.attribute, "price");
+
+    // Complete the task → cache gets populated
+    model.complete_financial_task(finance_task.clone(), Ok(195.89));
+
+    // Re-evaluate → cache hit → cell shows the number
+    model.evaluate();
+    let tasks = model.take_tasks();
+    assert!(tasks.is_empty());
+    assert_eq!(model._get_text("A3"), "195.89");
+
+    // Second ticker — cache miss
+    model._set("A4", "=FINANCE(\"MSFT\", \"open\", \"stock\")");
+    model.evaluate();
+    let tasks = model.take_tasks();
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(model._get_text("A4"), *"#N/A");
+    let finance_task = match &tasks[0] {
+        Task::FinanceFetch(task) => task,
+    };
+
+    // Complete with an error result
+    use crate::finance::provider::FinanceError;
+    model.complete_financial_task(
+        finance_task.clone(),
+        Err(FinanceError::TickerNotFound("MSFT".into())),
+    );
+
+    // Re-evaluate → cache hit with error → cell shows #N/A with error message
+    model.evaluate();
+    let tasks = model.take_tasks();
+    assert!(tasks.is_empty());
+    assert_eq!(model._get_text("A4"), *"#N/A");
+
+    // Unknown asset type → #VALUE!
+    model._set("A5", "=FINANCE(\"AAPL\", \"price\", \"bonds\")");
+    model.evaluate();
+    let tasks = model.take_tasks();
+    assert!(tasks.is_empty());
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+
+    // Verify that completing the same task again is idempotent
+    // (just overwrites the cache entry)
+    model._set("A6", "=FINANCE(\"AAPL\", \"price\", \"stock\")");
+    model.evaluate();
+    let tasks = model.take_tasks();
+    assert!(tasks.is_empty()); // already cached
+    assert_eq!(model._get_text("A6"), "195.89");
 }
 
 #[test]

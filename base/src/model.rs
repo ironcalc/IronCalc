@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::vec::Vec;
 
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
+use crate::finance::provider::{FinanceError, Ticker};
+use crate::task::FinanceFetchTask;
 use crate::{
     calc_result::{CalcResult, Range},
     cell::CellValue,
@@ -34,7 +36,7 @@ use crate::{
     utils as common,
 };
 
-use crate::{cf_types::CfCellResult, tz::Tz};
+use crate::{cf_types::CfCellResult, task::Task, tz::Tz};
 
 #[cfg(any(test, feature = "mock_time"))]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -223,6 +225,13 @@ pub struct Model<'a> {
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
     /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
+    /// Pending side-effect tasks collected during the current evaluation.
+    /// Drained and returned by `take_tasks()`.
+    pub(crate) pending_tasks: Vec<Task>,
+    /// Cache for `FINANCE()` results, keyed by `(ticker, attribute)`.
+    /// Populated by `complete_task()`; read by `fn_finance`.
+    /// Works on all platforms including wasm.
+    pub(crate) finance_cache: HashMap<(Ticker, String), Result<f64, FinanceError>>,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -1719,6 +1728,8 @@ impl<'a> Model<'a> {
             spill_cells: Vec::new(),
             support: HashMap::new(),
             cf_cache: HashMap::new(),
+            pending_tasks: Vec::new(),
+            finance_cache: HashMap::new(),
         };
 
         model.parse_formulas();
@@ -3077,6 +3088,25 @@ impl<'a> Model<'a> {
             });
         }
         self.evaluate_conditional_formatting();
+    }
+
+    /// Drain and return any pending side-effect tasks
+    /// Call this after `evaluate()`
+    pub fn take_tasks(&mut self) -> Vec<crate::task::Task> {
+        std::mem::take(&mut self.pending_tasks)
+    }
+
+    /// Complete a pending finance fetch task by feeding its result into the cache.
+    ///
+    /// After this, the next call to `evaluate()` will find the cached value
+    /// and the cell will display the actual data instead of `#N/A`.
+    pub fn complete_financial_task(
+        &mut self,
+        task: FinanceFetchTask,
+        result: Result<f64, FinanceError>,
+    ) {
+        self.finance_cache
+            .insert((task.ticker.clone(), task.attribute.clone()), result);
     }
 
     /// Removes the content of every cell in the range but leaves the style.

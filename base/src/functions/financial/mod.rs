@@ -10,6 +10,7 @@ use crate::{
     },
     formatter::dates::from_excel_date,
     model::Model,
+    task::{FinanceFetchTask, Task},
 };
 
 mod accrint;
@@ -2372,5 +2373,56 @@ impl<'a> Model<'a> {
             return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
         }
         CalcResult::Number(((1.0 + rate * dim) / denom - 1.0) / dsm)
+    }
+
+    pub(crate) fn fn_finance(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if arg_count < 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let ticker_str = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(e) => return e,
+        };
+        let attribute = match self.get_string(&args[1], cell) {
+            Ok(s) => s,
+            Err(e) => return e,
+        };
+        let asset_type = match self.get_string(&args[2], cell) {
+            Ok(s) => s.to_lowercase(),
+            Err(e) => return e,
+        };
+
+        use crate::finance::provider::Ticker;
+        let ticker = match asset_type.as_str() {
+            "stock" => Ticker::Stock(ticker_str),
+            "forex" => Ticker::Forex(ticker_str),
+            "crypto" => Ticker::Crypto(ticker_str),
+            _ => {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("Unknown asset type: {asset_type}"),
+                );
+            }
+        };
+
+        if let Some(cached) = self.finance_cache.get(&(ticker.clone(), attribute.clone())) {
+            match cached {
+                Ok(value) => return CalcResult::Number(*value),
+                Err(err) => {
+                    return CalcResult::new_error(Error::NA, cell, format!("FINANCE: {err}"));
+                }
+            }
+        }
+
+        self.pending_tasks
+            .push(Task::FinanceFetch(FinanceFetchTask {
+                ticker,
+                attribute,
+                cell,
+            }));
+        CalcResult::new_error(Error::NA, cell, "Loading...".to_string())
     }
 }
