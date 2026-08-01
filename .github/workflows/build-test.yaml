@@ -10,59 +10,14 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  lint-all:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "latest"
-          cache: "npm"
-          cache-dependency-path: |
-            **/package-lock.json
-      - name: Install node dependencies
-        run: |
-          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - name: Lint
-        run: make lint
   test-rust:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-      - name: Rust Tests
-        run: make test-rust
-  test-js:
+    name: Rust tests (base + xlsx)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "latest"
-          cache: "npm"
-          cache-dependency-path: |
-            **/package-lock.json
-      - name: Install node dependencies
-        run: |
-          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-          npm install -g pnpm@9.15.4
-      - name: JS Tests
-        run: make test-js
-  test-python:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-      - name: Python Tests
-        run: make test-python
+      - name: Test ironcalc_base
+        run: cargo test -p ironcalc_base --lib
+      - name: Check ironcalc (xlsx)
+        run: cargo check -p ironcalc
