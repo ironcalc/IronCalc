@@ -21,6 +21,7 @@ zip = "0.6"
 roxmltree = "0.19"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_yaml = "0.9"
 thiserror = "1.0"
 # Uses `../base` when used locally, and uses
 # the inicated version from crates.io when published.

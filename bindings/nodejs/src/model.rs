@@ -6,7 +6,7 @@ use ironcalc::{
     types::{SheetState, Style, Theme},
     Model as BaseModel,
   },
-  export::{save_to_icalc, save_to_xlsx},
+  export::{save_to_icalc, save_to_xlsx, save_to_yml, YmlExportOptions},
   import::{load_from_icalc, load_from_xlsx},
 };
 
@@ -18,6 +18,12 @@ use crate::{area, js_to_color, leak_str, to_js_error, CellType, DefinedName, Fmt
 #[napi]
 pub struct Model {
   pub(crate) model: BaseModel<'static>,
+}
+
+#[napi(object)]
+pub struct SaveToYmlOptions {
+  pub include_empty_cells: Option<bool>,
+  pub include_named_ranges: Option<bool>,
 }
 
 #[napi]
@@ -83,6 +89,21 @@ impl Model {
   #[napi]
   pub fn save_to_icalc(&self, file: String) -> Result<()> {
     save_to_icalc(&self.model, &file).map_err(to_js_error)
+  }
+
+  /// YAML snapshot of cell formulas/values (+ optional named ranges) for PR review.
+  /// Defaults: `includeEmptyCells=false`, `includeNamedRanges=true`. Overwrites `file`.
+  #[napi]
+  pub fn save_to_yml(&self, file: String, options: Option<SaveToYmlOptions>) -> Result<()> {
+    let opts = options.unwrap_or(SaveToYmlOptions {
+      include_empty_cells: None,
+      include_named_ranges: None,
+    });
+    let export = YmlExportOptions {
+      include_empty_cells: opts.include_empty_cells.unwrap_or(false),
+      include_named_ranges: opts.include_named_ranges.unwrap_or(true),
+    };
+    save_to_yml(&self.model, &file, &export).map_err(to_js_error)
   }
 
   /// Returns the workbook as bytes in the internal binary ic format
