@@ -1,3 +1,3 @@
-# `@ironcalc/nodejs-linux-arm-musleabihf`
+# `@zolidar/ironcalc-nodejs-linux-arm-musleabihf`
 
-This is the **armv7-unknown-linux-musleabihf** binary for `@ironcalc/nodejs`
+This is the **armv7-unknown-linux-musleabihf** binary for `@zolidar/ironcalc-nodejs`

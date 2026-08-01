@@ -1,6 +1,6 @@
 {
-  "name": "@ironcalc/nodejs-linux-arm-musleabihf",
-  "version": "0.8.3",
+  "name": "@zolidar/ironcalc-nodejs-linux-arm-musleabihf",
+  "version": "0.8.3-zolidar.1",
   "os": [
     "linux"
   ],
@@ -17,7 +17,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ironcalc/IronCalc.git",
+    "url": "git+https://github.com/zolidar/IronCalc.git",
     "directory": "bindings/nodejs/npm/linux-arm-musleabihf"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

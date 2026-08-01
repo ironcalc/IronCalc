@@ -1,3 +1,3 @@
-# `@ironcalc/nodejs-darwin-arm64`
+# `@zolidar/ironcalc-nodejs-darwin-arm64`
 
-This is the **aarch64-apple-darwin** binary for `@ironcalc/nodejs`
+This is the **aarch64-apple-darwin** binary for `@zolidar/ironcalc-nodejs`

@@ -1,3 +1,3 @@
-# `@ironcalc/nodejs-win32-arm64-msvc`
+# `@zolidar/ironcalc-nodejs-win32-arm64-msvc`
 
-This is the **aarch64-pc-windows-msvc** binary for `@ironcalc/nodejs`
+This is the **aarch64-pc-windows-msvc** binary for `@zolidar/ironcalc-nodejs`

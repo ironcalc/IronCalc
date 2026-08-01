@@ -1,6 +1,6 @@
 {
-  "name": "@ironcalc/nodejs-darwin-universal",
-  "version": "0.8.3",
+  "name": "@zolidar/ironcalc-nodejs-darwin-universal",
+  "version": "0.8.3-zolidar.1",
   "os": [
     "darwin"
   ],
@@ -14,7 +14,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ironcalc/IronCalc.git",
+    "url": "git+https://github.com/zolidar/IronCalc.git",
     "directory": "bindings/nodejs/npm/darwin-universal"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }
