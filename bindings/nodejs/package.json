@@ -19,14 +19,11 @@
       "aarch64-apple-darwin",
       "aarch64-linux-android",
       "aarch64-unknown-linux-gnu",
-      "aarch64-unknown-linux-musl",
       "aarch64-pc-windows-msvc",
       "x86_64-apple-darwin",
       "x86_64-unknown-linux-gnu",
-      "x86_64-unknown-linux-musl",
       "x86_64-pc-windows-msvc",
       "armv7-unknown-linux-gnueabihf",
-      "armv7-unknown-linux-musleabihf",
       "armv7-linux-androideabi",
       "universal-apple-darwin",
       "riscv64gc-unknown-linux-gnu"
@@ -66,12 +63,9 @@
     "@zolidar/ironcalc-nodejs-darwin-universal": "0.8.3-zolidar.1",
     "@zolidar/ironcalc-nodejs-darwin-x64": "0.8.3-zolidar.1",
     "@zolidar/ironcalc-nodejs-linux-arm-gnueabihf": "0.8.3-zolidar.1",
-    "@zolidar/ironcalc-nodejs-linux-arm-musleabihf": "0.8.3-zolidar.1",
     "@zolidar/ironcalc-nodejs-linux-arm64-gnu": "0.8.3-zolidar.1",
-    "@zolidar/ironcalc-nodejs-linux-arm64-musl": "0.8.3-zolidar.1",
     "@zolidar/ironcalc-nodejs-linux-riscv64-gnu": "0.8.3-zolidar.1",
     "@zolidar/ironcalc-nodejs-linux-x64-gnu": "0.8.3-zolidar.1",
-    "@zolidar/ironcalc-nodejs-linux-x64-musl": "0.8.3-zolidar.1",
     "@zolidar/ironcalc-nodejs-win32-arm64-msvc": "0.8.3-zolidar.1",
     "@zolidar/ironcalc-nodejs-win32-x64-msvc": "0.8.3-zolidar.1"
   }

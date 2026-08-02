@@ -522,6 +522,40 @@ jobs:
         run: ls -R ./npm
         shell: bash
 
+      # napi prepublish warns and skips missing platforms; fail hard instead.
+      - name: Verify every published platform has a binary
+        run: |
+          set -euo pipefail
+          required=(
+            "android-arm-eabi:nodejs.android-arm-eabi.node"
+            "android-arm64:nodejs.android-arm64.node"
+            "darwin-arm64:nodejs.darwin-arm64.node"
+            "darwin-universal:nodejs.darwin-universal.node"
+            "darwin-x64:nodejs.darwin-x64.node"
+            "linux-arm-gnueabihf:nodejs.linux-arm-gnueabihf.node"
+            "linux-arm64-gnu:nodejs.linux-arm64-gnu.node"
+            "linux-riscv64-gnu:nodejs.linux-riscv64-gnu.node"
+            "linux-x64-gnu:nodejs.linux-x64-gnu.node"
+            "win32-arm64-msvc:nodejs.win32-arm64-msvc.node"
+            "win32-x64-msvc:nodejs.win32-x64-msvc.node"
+          )
+          missing=0
+          for entry in "${required[@]}"; do
+            dir="${entry%%:*}"
+            file="${entry##*:}"
+            path="npm/${dir}/${file}"
+            if [[ ! -f "$path" ]]; then
+              echo "MISSING: $path"
+              missing=1
+            else
+              echo "OK: $path ($(wc -c < "$path") bytes)"
+            fi
+          done
+          if [[ "$missing" -ne 0 ]]; then
+            echo "Refusing to publish: one or more platform binaries are missing."
+            exit 1
+          fi
+
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
