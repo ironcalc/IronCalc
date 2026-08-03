@@ -100,7 +100,9 @@ fn queue_undo_redo_multiple() {
 
     // Check everything is as expected
     assert_eq!(model2.get_frozen_columns_count(0), Ok(5));
-    assert_eq!(model2.get_frozen_rows_count(0), Ok(6));
+    // Frozen rows started at 6; the two `insert_rows(0, 3, 1)` above each land inside the frozen
+    // band (row 3 <= the boundary), so the band grows by two to 8 (Excel freeze-pane tracking).
+    assert_eq!(model2.get_frozen_rows_count(0), Ok(8));
     assert_eq!(model2.get_column_width(0, 7), Ok(300.0));
     // I inserted two rows
     assert_eq!(
