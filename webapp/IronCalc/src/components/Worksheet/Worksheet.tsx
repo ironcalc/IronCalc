@@ -818,6 +818,17 @@ const Worksheet = forwardRef(
             };
           })()}
           frozenRowsCount={model.getFrozenRowsCount(model.getSelectedSheet())}
+          hasHiddenRows={(() => {
+            const view = model.getSelectedView();
+            const rowStart = view.range[0];
+            const rowEnd = view.range[2];
+            for (let row = rowStart; row <= rowEnd; row++) {
+              if (model.getRowHeight(view.sheet, row) === 0) {
+                return true;
+              }
+            }
+            return false;
+          })()}
         />
         <Alert
           open={rowColErrorTitle !== null}
