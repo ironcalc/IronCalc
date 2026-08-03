@@ -102,8 +102,8 @@ h3 {
   font-weight: 500;
 }
 
-.font-w-600 {
-  font-weight: 600;
+.font-w-700 {
+  font-weight: 700;
 }
 
 .orange {
@@ -182,6 +182,10 @@ h3 {
 
 .a-items-flex-start {
   align-items: flex-start;
+}
+
+.a-items-center {
+  align-items: center;
 }
 
 .j-content-center {
