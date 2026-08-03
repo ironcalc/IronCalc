@@ -7,3 +7,14 @@ This folder contains used to deploy https://ironcalc.dev
 * https://ironcalc.dev/python the python bindings documentation
 * https://ironcalc.dev/wasm holds the wasm bindings (browser) documentation
 * https://ironcalc.dev/nodejs holds the nodejs documentation
+
+## Landing page sources
+
+Run `./build-docs.sh` to assemble everything into `dist/`.
+
+* `index.html`, `styles.css`: the landing page. The styles follow the same design
+  system as https://www.ironcalc.com
+* `fonts.css`, `fonts/`: self hosted Inter (body) and Mozilla Headline (headings)
+* `images/`: the IronCalc logos, icon and favicons, copied from the `assets/`
+  folder at the root of the repository, plus the logos of the languages and
+  tools shown in the cards, which belong to their respective owners
