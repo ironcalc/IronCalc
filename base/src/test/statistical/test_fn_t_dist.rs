@@ -157,4 +157,33 @@ fn test_fn_t_inv_2t_smoke() {
     assert_eq!(model._get_text("A5"), *"#ERROR!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
     assert_eq!(model._get_text("A8"), *"#NUM!");
+}   
+
+#[test]
+fn test_fn_t_dist_arguments() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=T.DIST()");
+    model._set("A2", "=T.DIST(8)");
+    model._set("A3", "=T.DIST(8, 3)");
+    model._set("A4", "=T.DIST(8, 3, TRUE)");
+    model._set("A5", "=T.DIST(8, 3, TRUE, 1)");
+
+    model._set("B1", "=T.INV()");
+    model._set("B2", "=T.INV(A4)");
+    model._set("B3", "=T.INV(A4, 3)");
+    model._set("B4", "=T.INV(A4, 3, 1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"0.997961711");
+    assert_eq!(model._get_text("A5"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B1"), *"#ERROR!");
+    assert_eq!(model._get_text("B2"), *"#ERROR!");
+    assert_eq!(model._get_text("B3"), *"8");
+    assert_eq!(model._get_text("B4"), *"#ERROR!");
 }
