@@ -19,7 +19,10 @@ mkdir -p "$DIST_DIR"
 
 # Landing page
 cp "$SCRIPT_DIR/index.html" "$DIST_DIR/index.html"
-cp "$ROOT_DIR/assets/logo/svg/orange+black.svg" "$DIST_DIR/logo.svg"
+cp "$SCRIPT_DIR/styles.css" "$DIST_DIR/styles.css"
+cp "$SCRIPT_DIR/fonts.css" "$DIST_DIR/fonts.css"
+cp -r "$SCRIPT_DIR/fonts" "$DIST_DIR/fonts"
+cp -r "$SCRIPT_DIR/images" "$DIST_DIR/images"
 
 # Rust documentation (https://ironcalc.dev/rust)
 echo "Building rust docs..."

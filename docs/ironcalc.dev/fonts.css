@@ -1,0 +1,73 @@
+/* Font paths are relative to the CSS file (site root). font-display: swap avoids invisible text. */
+
+/* inter-300 - latin */
+@font-face {
+  font-display: swap;
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 300;
+  src: url("fonts/inter-v18-latin-300.woff2") format("woff2");
+}
+
+/* inter-regular - latin */
+@font-face {
+  font-display: swap;
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/inter-v18-latin-regular.woff2") format("woff2");
+}
+
+/* inter-500 - latin */
+@font-face {
+  font-display: swap;
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  src: url("fonts/inter-v18-latin-500.woff2") format("woff2");
+}
+
+/* inter-700 - latin */
+@font-face {
+  font-display: swap;
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/inter-v18-latin-700.woff2") format("woff2");
+}
+
+/* Mozilla Headline - Light */
+@font-face {
+  font-display: swap;
+  font-family: "Mozilla Headline";
+  font-style: normal;
+  font-weight: 300;
+  src: url("fonts/MozillaHeadline-Light.ttf") format("truetype");
+}
+
+/* Mozilla Headline - Regular */
+@font-face {
+  font-display: swap;
+  font-family: "Mozilla Headline";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/MozillaHeadline-Regular.ttf") format("truetype");
+}
+
+/* Mozilla Headline - Medium */
+@font-face {
+  font-display: swap;
+  font-family: "Mozilla Headline";
+  font-style: normal;
+  font-weight: 500;
+  src: url("fonts/MozillaHeadline-Medium.ttf") format("truetype");
+}
+
+/* Mozilla Headline - SemiBold */
+@font-face {
+  font-display: swap;
+  font-family: "Mozilla Headline";
+  font-style: normal;
+  font-weight: 600;
+  src: url("fonts/MozillaHeadline-SemiBold.ttf") format("truetype");
+}
