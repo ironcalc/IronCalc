@@ -554,59 +554,47 @@ footer {
   cursor: pointer;
 }
 
-/* Responsive */
+/* Responsive: same breakpoints and values as https://www.ironcalc.com */
 
-@media (max-width: 900px) {
+@media only screen and (max-width: 1024px) {
+  .nav-container {
+    padding: 0 24px;
+  }
+
   .hero-text {
-    padding: 60px 40px;
+    padding: 60px 24px;
   }
 
   .px-4xl {
-    padding-left: 40px;
-    padding-right: 40px;
+    padding-left: 24px;
+    padding-right: 24px;
   }
 
-  h1 {
-    font-size: 34px;
+  .footer-main {
+    flex-wrap: wrap;
+    gap: 32px;
   }
 
-  .hero-text h2 {
-    font-size: 20px;
+  .footer-nav {
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+
+  #footer-legal .flex-h {
+    flex-wrap: wrap;
+    gap: 12px;
   }
 }
 
-@media (max-width: 640px) {
-  .nav-container,
-  .px-2xl,
-  .px-4xl {
-    padding-left: 20px;
-    padding-right: 20px;
+@media only screen and (max-width: 800px) {
+  /* for tablets */
+
+  .nav-container {
+    padding: 0 20px;
   }
 
-  .hero-text {
-    padding: 40px 20px;
-  }
-
-  .py-3xl {
-    padding-top: 40px;
-    padding-bottom: 40px;
-  }
-
-  .py-4xl {
-    padding-top: 48px;
-    padding-bottom: 48px;
-  }
-
-  h1 {
-    font-size: 28px;
-  }
-
-  .card {
-    padding: 24px;
-  }
-
-  /* No hamburger menu here: the section links drop out and the logo shrinks */
-  nav ul {
+  /* No hamburger menu here, so the section links simply drop out */
+  .nav-container ul {
     display: none;
   }
 
@@ -615,23 +603,94 @@ footer {
     width: auto;
   }
 
-  .logo img {
-    height: 20px;
+  .hero-text {
+    padding: 48px 20px;
   }
 
-  .banner {
-    text-align: left;
+  h1 {
+    font-size: clamp(36px, 9vw, 54px);
+    line-height: 110%;
+  }
+
+  .footer-nav .w-140 {
+    width: 100px;
+  }
+
+  footer .footer-logo-xl {
+    filter: drop-shadow(0 0 0.5px #e0e0e0);
+  }
+}
+
+@media only screen and (max-width: 580px) {
+  /* for mobile */
+
+  .px-2xl {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .nav-container {
+    padding: 0 16px;
+  }
+
+  /* Only the primary action stays in the bar */
+  .nav-container .button.secondary {
+    display: none;
+  }
+
+  .hero-text {
+    padding: 48px 16px;
+  }
+
+  h1 {
+    font-size: 9vw;
+    line-height: 110%;
+  }
+
+  h2.small {
+    font-size: 16px;
+  }
+
+  .hero-text h1 {
+    font-size: clamp(30px, 8vw, 46px);
+  }
+
+  .hero-text h2 {
+    font-size: clamp(12px, 5vw, 20px);
+  }
+
+  .card {
+    padding: 24px;
   }
 
   .footer-main {
     flex-direction: column;
     align-items: flex-start;
-    gap: 40px;
+    gap: 32px;
+  }
+
+  #footer-logo {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  #footer-logo .flex-v.gap-sm.w-140 {
+    margin-left: 0;
+  }
+
+  #footer-logo .flex-v.gap-xs > p {
+    margin-left: 34px;
   }
 
   .footer-nav {
-    flex-wrap: wrap;
-    gap: 24px 16px;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 100%;
+    gap: 24px;
+  }
+
+  .footer-nav .w-140 {
+    width: 100%;
   }
 
   #footer-legal .flex-h.j-content-space-between {
