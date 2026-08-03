@@ -157,7 +157,7 @@ fn test_fn_t_inv_2t_smoke() {
     assert_eq!(model._get_text("A5"), *"#ERROR!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
     assert_eq!(model._get_text("A8"), *"#NUM!");
-}   
+}
 
 #[test]
 fn test_fn_t_dist_arguments() {
