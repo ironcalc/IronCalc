@@ -440,7 +440,7 @@ const Worksheet = forwardRef(
               return;
             }
             const { sheet, row, column } = model.getSelectedView();
-            const text = model.getCellContent(sheet, row, column);
+            const text = model.getEditableCellContent(sheet, row, column);
             const editorWidth =
               model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
             const editorHeight =
