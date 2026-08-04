@@ -202,17 +202,14 @@ const ConditionalFormatting = ({
       }
       onUpdate();
     };
-    if (typeof document.startViewTransition !== "function") {
+    const pos = rules.findIndex((r) => r.id === rule.id);
+    const neighbor = lower ? rules[pos + 1] : rules[pos - 1];
+    if (!neighbor || !("startViewTransition" in document)) {
       applyReorder();
       return;
     }
     // Name only the two swapped rows for the transition.
-    const pos = rules.findIndex((r) => r.id === rule.id);
-    const neighbor = lower ? rules[pos + 1] : rules[pos - 1];
-    const names = new Set([rule.id]);
-    if (neighbor) {
-      names.add(neighbor.id);
-    }
+    const names = new Set([rule.id, neighbor.id]);
     // flushSync ensures the names are in the DOM before the transition snapshots it.
     flushSync(() => setTransitioningIds(names));
     const transition = document.startViewTransition(() =>
