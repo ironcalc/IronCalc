@@ -1,5 +1,5 @@
-import type { CellStyle, Model } from "@ironcalc/wasm";
-import { columnNameFromNumber } from "@ironcalc/wasm";
+import type { CellStyle, Link, Model } from "@ironcalc/wasm";
+import { columnNameFromNumber, columnNumberFromName } from "@ironcalc/wasm";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
@@ -41,9 +41,11 @@ export interface CanvasSettings {
     rowGuide: HTMLDivElement;
     columnHeaders: HTMLDivElement;
     editor: HTMLDivElement;
+    linkTooltip: HTMLDivElement;
   };
   onColumnWidthChanges: (sheet: number, column: number, width: number) => void;
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
+  onEditLink?: (row: number, column: number, link: Link) => void;
   refresh: () => void;
 }
 
@@ -66,6 +68,7 @@ interface TextProperties {
   underlined: boolean;
   strike: boolean;
   lines: [string, number, number, number][];
+  link: Link | null;
 }
 export default class WorksheetCanvas {
   sheetWidth: number;
@@ -106,10 +109,19 @@ export default class WorksheetCanvas {
 
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
 
+  onEditLink?: (row: number, column: number, link: Link) => void;
+
   refresh: () => void;
 
   cells: TextProperties[];
   spills: Map<string, number>;
+
+  linkTooltip: HTMLDivElement;
+  // links in the selected sheet keyed by "row-column"
+  private links: Map<string, Link>;
+  // the cell whose link tooltip is currently shown (null if hidden)
+  private linkTooltipCell: { row: number; column: number } | null;
+  private hideLinkTooltipTimeout: ReturnType<typeof setTimeout> | null;
 
   theme: Theme;
 
@@ -141,12 +153,19 @@ export default class WorksheetCanvas {
 
     this.onColumnWidthChanges = options.onColumnWidthChanges;
     this.onRowHeightChanges = options.onRowHeightChanges;
+    this.onEditLink = options.onEditLink;
     this.resetHeaders();
     this.cellOutlineHandle = attachOutlineHandle(this);
 
     // a cell marked as "spill" means its left border should be skipped
     this.spills = new Map<string, number>();
     this.cells = [];
+
+    this.links = new Map<string, Link>();
+    this.linkTooltip = options.elements.linkTooltip;
+    this.linkTooltipCell = null;
+    this.hideLinkTooltipTimeout = null;
+    this.attachLinkHandlers();
   }
 
   setScrollPosition(scrollPosition: { left: number; top: number }): void {
@@ -449,6 +468,12 @@ export default class WorksheetCanvas {
 
     this.cells = [];
 
+    this.links.clear();
+    for (const cellLink of this.model.getLinks(selectedSheet)) {
+      const { row, column, ...link } = cellLink;
+      this.links.set(`${row}-${column}`, link);
+    }
+
     const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
     const frozenRows = this.model.getFrozenRowsCount(selectedSheet);
 
@@ -583,6 +608,10 @@ export default class WorksheetCanvas {
 
     const { font, color: textColor, fontSize } = this.getFontStyle(style);
 
+    // The link is only used for the hover tooltip: it does not affect how the
+    // cell looks. The link styling (color, underline) is part of the cell style.
+    const link = this.links.get(`${row}-${column}`) || null;
+
     // Number = 1,
     // Text = 2,
     // LogicalValue = 4,
@@ -636,6 +665,7 @@ export default class WorksheetCanvas {
       underlined: style.font?.u || false,
       strike: style.font?.strike || false,
       lines: [] as [string, number, number, number][],
+      link,
     };
 
     lines.forEach((text, line) => {
@@ -1853,6 +1883,245 @@ export default class WorksheetCanvas {
     ctx.setLineDash([]);
   }
 
+  // Cell links
+
+  private attachLinkHandlers(): void {
+    // Listen on the sheet container rather than the canvas: the overlay divs
+    // (cell outline, area outline, ...) sit on top of the canvas and would
+    // otherwise swallow the pointer events.
+    const container = this.canvas.parentElement ?? this.canvas;
+    container.addEventListener("pointermove", (event) => {
+      if (this.linkTooltip.contains(event.target as Node)) {
+        this.cancelHideLinkTooltip();
+        return;
+      }
+      const rect = this.canvas.getBoundingClientRect();
+      const cell = this.getLinkCellAt(
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      );
+      if (cell?.link) {
+        this.canvas.style.cursor = "pointer";
+        this.cancelHideLinkTooltip();
+        if (
+          this.linkTooltipCell?.row !== cell.row ||
+          this.linkTooltipCell?.column !== cell.column
+        ) {
+          this.showLinkTooltip(cell);
+        }
+      } else {
+        this.canvas.style.cursor = "";
+        this.scheduleHideLinkTooltip();
+      }
+    });
+    container.addEventListener("pointerleave", () => {
+      this.canvas.style.cursor = "";
+      this.scheduleHideLinkTooltip();
+    });
+    // Keep the tooltip open while the pointer is over it and make sure
+    // interacting with it does not select cells underneath.
+    this.linkTooltip.addEventListener("pointerenter", () => {
+      this.cancelHideLinkTooltip();
+    });
+    this.linkTooltip.addEventListener("pointerleave", () => {
+      this.scheduleHideLinkTooltip();
+    });
+    this.linkTooltip.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
+  }
+
+  // Returns the visible cell with a link at canvas coordinates (x, y), if any
+  private getLinkCellAt(x: number, y: number): TextProperties | null {
+    for (const cell of this.cells) {
+      if (
+        cell.link &&
+        x >= cell.x &&
+        x <= cell.x + cell.width &&
+        y >= cell.y &&
+        y <= cell.y + cell.height
+      ) {
+        return cell;
+      }
+    }
+    return null;
+  }
+
+  private linkLabel(link: Link): string {
+    if (link.type === "Internal") {
+      return link.location;
+    }
+    const target = link.target;
+    try {
+      const url = new URL(target);
+      if (url.protocol === "http:" || url.protocol === "https:") {
+        return url.hostname.replace(/^www\./, "");
+      }
+      if (url.protocol === "mailto:") {
+        return url.pathname;
+      }
+    } catch {
+      // not a valid URL: fall through and show the raw target
+    }
+    return target;
+  }
+
+  private followLink(cell: TextProperties): void {
+    const link = cell.link;
+    if (!link) {
+      return;
+    }
+    if (link.type === "External") {
+      window.open(link.target, "_blank", "noopener,noreferrer");
+      return;
+    }
+    this.followInternalLink(link.location);
+  }
+
+  // `location` is a cell reference like "Sheet1!A30", "'My Sheet'!A30" or a defined name
+  private followInternalLink(location: string): void {
+    let sheetName: string;
+    let cellRef: string;
+    const separator = location.lastIndexOf("!");
+    if (separator !== -1) {
+      sheetName = location.slice(0, separator);
+      cellRef = location.slice(separator + 1);
+    } else {
+      // a defined name: resolve it to its formula (e.g. "Sheet1!$B$5")
+      const definedName = this.model
+        .getDefinedNameList()
+        .find((entry) => entry.name.toLowerCase() === location.toLowerCase());
+      if (!definedName) {
+        return;
+      }
+      const formula = definedName.formula;
+      const formulaSeparator = formula.lastIndexOf("!");
+      if (formulaSeparator === -1) {
+        return;
+      }
+      sheetName = formula.slice(0, formulaSeparator).replace(/^=/, "");
+      cellRef = formula.slice(formulaSeparator + 1);
+    }
+    sheetName = sheetName.replace(/^'(.*)'$/, "$1");
+    // accept a single cell or the top-left corner of a range
+    const match = cellRef
+      .replace(/\$/g, "")
+      .match(/^([A-Za-z]+)([0-9]+)(?::.*)?$/);
+    if (!match) {
+      return;
+    }
+    const sheetIndex = this.model
+      .getWorksheetsProperties()
+      .findIndex((sheet: { name: string }) => sheet.name === sheetName);
+    if (sheetIndex === -1) {
+      return;
+    }
+    let row: number;
+    let column: number;
+    try {
+      column = columnNumberFromName(match[1].toUpperCase());
+      row = Number.parseInt(match[2], 10);
+    } catch {
+      return;
+    }
+    if (row < 1 || row > LAST_ROW || column < 1 || column > LAST_COLUMN) {
+      return;
+    }
+    this.model.setSelectedSheet(sheetIndex);
+    this.model.setSelectedCell(row, column);
+    this.hideLinkTooltip();
+    this.refresh();
+    this.renderSheet();
+  }
+
+  private showLinkTooltip(cell: TextProperties): void {
+    const link = cell.link;
+    if (!link) {
+      return;
+    }
+    this.linkTooltipCell = { row: cell.row, column: cell.column };
+    const tooltip = this.linkTooltip;
+    tooltip.replaceChildren();
+
+    const linkIcon = document.createElement("span");
+    linkIcon.className = "ic-worksheet-link-tooltip-icon";
+    linkIcon.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+    tooltip.appendChild(linkIcon);
+
+    const label = document.createElement("button");
+    label.type = "button";
+    label.className = "ic-worksheet-link-tooltip-label";
+    label.textContent = this.linkLabel(link);
+    label.title = link.tooltip || "";
+    label.addEventListener("click", () => {
+      this.followLink(cell);
+    });
+    tooltip.appendChild(label);
+
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "ic-worksheet-link-tooltip-button";
+    copyButton.title = "Copy link";
+    copyButton.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+    copyButton.addEventListener("click", () => {
+      const text = link.type === "External" ? link.target : link.location;
+      navigator.clipboard?.writeText(text);
+    });
+    tooltip.appendChild(copyButton);
+
+    if (this.onEditLink) {
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "ic-worksheet-link-tooltip-button";
+      editButton.title = "Edit link";
+      editButton.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>';
+      editButton.addEventListener("click", () => {
+        this.hideLinkTooltip();
+        this.onEditLink?.(cell.row, cell.column, link);
+      });
+      tooltip.appendChild(editButton);
+    }
+
+    // Position the tooltip above the cell (or below if there is no room)
+    tooltip.style.visibility = "hidden";
+    tooltip.style.display = "flex";
+    const tooltipHeight = tooltip.offsetHeight || 26;
+    let top = cell.y - tooltipHeight - 4;
+    if (top < headerRowHeight) {
+      top = cell.y + cell.height + 4;
+    }
+    const left = Math.max(headerColumnWidth + 2, cell.x);
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+    tooltip.style.visibility = "visible";
+  }
+
+  hideLinkTooltip(): void {
+    this.cancelHideLinkTooltip();
+    this.linkTooltipCell = null;
+    this.linkTooltip.style.display = "none";
+  }
+
+  private scheduleHideLinkTooltip(): void {
+    if (this.linkTooltipCell === null || this.hideLinkTooltipTimeout !== null) {
+      return;
+    }
+    this.hideLinkTooltipTimeout = setTimeout(() => {
+      this.hideLinkTooltipTimeout = null;
+      this.hideLinkTooltip();
+    }, 300);
+  }
+
+  private cancelHideLinkTooltip(): void {
+    if (this.hideLinkTooltipTimeout !== null) {
+      clearTimeout(this.hideLinkTooltipTimeout);
+      this.hideLinkTooltipTimeout = null;
+    }
+  }
+
   private drawActiveRanges(topLeftCell: Cell, bottomRightCell: Cell): void {
     let activeRanges = this.workbookState.getActiveRanges();
     const ctx = this.ctx;
@@ -1936,6 +2205,8 @@ export default class WorksheetCanvas {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     this.removeHandles();
+    // The cell geometry may have changed (scroll, resize, edits)
+    this.hideLinkTooltip();
 
     const { topLeftCell, bottomRightCell } = this.getVisibleCells();
     this.computeCellsText();

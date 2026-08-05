@@ -68,6 +68,7 @@ const Worksheet = forwardRef(
     const columnResizeGuide = useRef<HTMLDivElement>(null);
     const rowResizeGuide = useRef<HTMLDivElement>(null);
     const columnHeaders = useRef<HTMLDivElement>(null);
+    const linkTooltip = useRef<HTMLDivElement>(null);
     const worksheetCanvas = useRef<WorksheetCanvas | null>(null);
 
     const [cellContextMenuOpen, setCellContextMenuOpen] = useState(false);
@@ -110,6 +111,7 @@ const Worksheet = forwardRef(
       const arrayStructure = cellArrayStructure.current;
       const extendTo = extendToOutline.current;
       const editor = editorElement.current;
+      const linkTooltipRef = linkTooltip.current;
 
       if (
         !canvasRef ||
@@ -123,6 +125,7 @@ const Worksheet = forwardRef(
         !scrollElement.current ||
         !editor ||
         !arrayStructure ||
+        !linkTooltipRef ||
         !canvasRef.closest(".ic-root")
       ) {
         return;
@@ -145,6 +148,7 @@ const Worksheet = forwardRef(
           areaOutline: area,
           extendToOutline: extendTo,
           editor: editor,
+          linkTooltip: linkTooltipRef,
         },
         onColumnWidthChanges(sheet, column, width) {
           if (width < 0) {
@@ -496,6 +500,7 @@ const Worksheet = forwardRef(
           />
           <div className="ic-worksheet-row-resize-guide" ref={rowResizeGuide} />
           <div className="ic-worksheet-column-headers" ref={columnHeaders} />
+          <div className="ic-worksheet-link-tooltip" ref={linkTooltip} />
         </div>
         <CellContextMenu
           open={cellContextMenuOpen}
