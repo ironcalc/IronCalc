@@ -1889,8 +1889,13 @@ export default class WorksheetCanvas {
     // Listen on the sheet container rather than the canvas: the overlay divs
     // (cell outline, area outline, ...) sit on top of the canvas and would
     // otherwise swallow the pointer events.
+    //
+    // NB: A new WorksheetCanvas is created on every React render over the same
+    // DOM elements, so the handlers are assigned (`onpointermove = ...`) rather
+    // than added with addEventListener: assigning replaces the handlers of the
+    // previous instance instead of accumulating stale ones.
     const container = this.canvas.parentElement ?? this.canvas;
-    container.addEventListener("pointermove", (event) => {
+    container.onpointermove = (event) => {
       if (this.linkTooltip.contains(event.target as Node)) {
         this.cancelHideLinkTooltip();
         return;
@@ -1913,22 +1918,22 @@ export default class WorksheetCanvas {
         this.canvas.style.cursor = "";
         this.scheduleHideLinkTooltip();
       }
-    });
-    container.addEventListener("pointerleave", () => {
+    };
+    container.onpointerleave = () => {
       this.canvas.style.cursor = "";
       this.scheduleHideLinkTooltip();
-    });
+    };
     // Keep the tooltip open while the pointer is over it and make sure
     // interacting with it does not select cells underneath.
-    this.linkTooltip.addEventListener("pointerenter", () => {
+    this.linkTooltip.onpointerenter = () => {
       this.cancelHideLinkTooltip();
-    });
-    this.linkTooltip.addEventListener("pointerleave", () => {
+    };
+    this.linkTooltip.onpointerleave = () => {
       this.scheduleHideLinkTooltip();
-    });
-    this.linkTooltip.addEventListener("pointerdown", (event) => {
+    };
+    this.linkTooltip.onpointerdown = (event) => {
       event.stopPropagation();
-    });
+    };
   }
 
   // Returns the visible cell with a link at canvas coordinates (x, y), if any
