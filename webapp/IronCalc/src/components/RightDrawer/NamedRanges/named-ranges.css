@@ -181,7 +181,7 @@
 
 .ic-named-ranges-edit-header-title {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--typography-font-size);
   font-weight: 500;
 }
 

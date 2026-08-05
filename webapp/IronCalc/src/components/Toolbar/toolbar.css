@@ -81,6 +81,7 @@
   align-items: center;
   justify-content: center;
   background-color: var(--palette-common-white);
+  color: var(--palette-common-black);
   border: none;
   cursor: pointer;
 }

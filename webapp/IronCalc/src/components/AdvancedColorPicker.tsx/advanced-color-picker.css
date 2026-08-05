@@ -59,7 +59,8 @@
 .ic-advanced-color-picker-hex-label {
   margin: auto 0;
   display: inline-flex;
-  font-size: 12px;
+  font-size: var(--typography-font-size);
+  color: var(--palette-grey-900);
   font-family: var(--typography-font-family);
 }
 
@@ -83,7 +84,7 @@
 
 .ic-advanced-color-picker-hash-label {
   margin: auto 0 auto 10px;
-  font-size: 12px;
+  font-size: var(--typography-font-size);
   color: var(--palette-grey-900);
   font-family: var(--typography-font-family);
 }
@@ -98,7 +99,7 @@
   padding-right: 10px;
   border-radius: 5px;
   font-family: var(--typography-font-family);
-  font-size: 12px;
+  font-size: var(--typography-font-size);
   text-transform: uppercase;
   text-align: right;
 }
@@ -108,7 +109,8 @@
   min-width: 28px;
   height: 28px;
   border-radius: 5px;
-  border: 1px solid;
+  border: 1px solid
+    color-mix(in srgb, var(--palette-common-black) 8%, transparent);
 }
 
 .ic-advanced-color-picker-swatch--white {
