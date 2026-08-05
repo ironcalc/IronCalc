@@ -2455,6 +2455,10 @@ impl<'a> Model<'a> {
                     }
                     None => {
                         self.set_cell_with_string(sheet, row, column, &value, new_style_index)?;
+                        // If the input looks like an URL or an email address a link is
+                        // attached to the cell, the same way other inputs change the
+                        // number format. Note that a quote prefix prevents this.
+                        self.auto_link_cell(sheet, row, column, &value)?;
                     }
                 }
             }

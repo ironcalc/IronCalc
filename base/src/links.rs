@@ -7,9 +7,50 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
-    types::Link,
+    types::{Color, Link},
     Model,
 };
+
+/// Theme color slot of the hyperlink color (see `Theme::get_color_by_index`)
+pub(crate) const THEME_COLOR_HYPERLINK: i32 = 10;
+
+/// Returns the link target if `value` should be automatically converted into a
+/// link when entered in a cell: an URL ("https://calc.com", "www.calc.com"), a
+/// mailto: URI or a plain email address ("daniel@calc.com" -> "mailto:daniel@calc.com").
+pub(crate) fn detect_link_target(value: &str) -> Option<String> {
+    let value = value.trim();
+    if value.chars().any(char::is_whitespace) {
+        return None;
+    }
+    let lower = value.to_ascii_lowercase();
+    for scheme in ["http://", "https://", "ftp://", "ftps://", "mailto:"] {
+        if let Some(rest) = lower.strip_prefix(scheme) {
+            if rest.is_empty() {
+                return None;
+            }
+            return Some(value.to_string());
+        }
+    }
+    if let Some(rest) = lower.strip_prefix("www.") {
+        // "www.example.com" but not "www." or "www.example"
+        if rest.contains('.') && !rest.starts_with('.') {
+            return Some(format!("https://{value}"));
+        }
+        return None;
+    }
+    // an email address: local@domain.tld
+    if let Some((local, domain)) = value.split_once('@') {
+        if !local.is_empty()
+            && !domain.contains('@')
+            && domain.contains('.')
+            && !domain.starts_with('.')
+            && !domain.ends_with('.')
+        {
+            return Some(format!("mailto:{value}"));
+        }
+    }
+    None
+}
 
 /// A link together with the cell (`row`, `column`) it is attached to.
 /// This is the shape the bindings expose to UIs, with the link fields flattened:
@@ -79,6 +120,46 @@ impl Model<'_> {
         Ok(&self.workbook.worksheet(sheet)?.links)
     }
 
+    /// Attaches an external link to the cell if `value` looks like an URL or an
+    /// email address. This is the auto-linking of typed or pasted URLs done by
+    /// [`Model::set_user_input`], the same way other inputs change the number
+    /// format of the cell.
+    ///
+    /// A cell that already has a link only gets its target updated; otherwise
+    /// the link style (underline and the theme hyperlink color) is applied too.
+    pub(crate) fn auto_link_cell(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+    ) -> Result<(), String> {
+        let Some(target) = detect_link_target(value) else {
+            return Ok(());
+        };
+        let is_new_link = !self
+            .workbook
+            .worksheet(sheet)?
+            .links
+            .contains_key(&(row, column));
+        self.set_cell_link(
+            sheet,
+            row,
+            column,
+            Link::External {
+                target,
+                tooltip: None,
+            },
+        )?;
+        if is_new_link {
+            let mut style = self.get_style_for_cell(sheet, row, column)?;
+            style.font.u = true;
+            style.font.color = Color::Theme(THEME_COLOR_HYPERLINK, 0.0);
+            self.set_cell_style(sheet, row, column, &style)?;
+        }
+        Ok(())
+    }
+
     /// Returns all the links in the worksheet as a list sorted by (row, column).
     pub fn get_links_list(&self, sheet: u32) -> Result<Vec<CellLinkView>, String> {
         let mut list: Vec<CellLinkView> = self
@@ -94,5 +175,67 @@ impl Model<'_> {
             .collect();
         list.sort_by_key(|l| (l.row, l.column));
         Ok(list)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::detect_link_target;
+
+    #[test]
+    fn detect_link_target_urls() {
+        assert_eq!(
+            detect_link_target("https://www.ironcalc.com/"),
+            Some("https://www.ironcalc.com/".to_string())
+        );
+        assert_eq!(
+            detect_link_target("http://example.com"),
+            Some("http://example.com".to_string())
+        );
+        assert_eq!(
+            detect_link_target("ftp://ftp.gnu.org/"),
+            Some("ftp://ftp.gnu.org/".to_string())
+        );
+        // case is kept, the scheme check is case-insensitive
+        assert_eq!(
+            detect_link_target("HTTPS://EXAMPLE.COM"),
+            Some("HTTPS://EXAMPLE.COM".to_string())
+        );
+        // scheme-less www gets https:// prepended
+        assert_eq!(
+            detect_link_target("www.example.com"),
+            Some("https://www.example.com".to_string())
+        );
+        // surrounding whitespace is ignored
+        assert_eq!(
+            detect_link_target("  www.example.com  "),
+            Some("https://www.example.com".to_string())
+        );
+    }
+
+    #[test]
+    fn detect_link_target_emails() {
+        assert_eq!(
+            detect_link_target("hello@ironcalc.com"),
+            Some("mailto:hello@ironcalc.com".to_string())
+        );
+        assert_eq!(
+            detect_link_target("mailto:hello@ironcalc.com"),
+            Some("mailto:hello@ironcalc.com".to_string())
+        );
+    }
+
+    #[test]
+    fn detect_link_target_rejects() {
+        assert_eq!(detect_link_target("Hello world"), None);
+        assert_eq!(detect_link_target("42"), None);
+        assert_eq!(detect_link_target("https://"), None);
+        assert_eq!(detect_link_target("www."), None);
+        assert_eq!(detect_link_target("www.example"), None);
+        assert_eq!(detect_link_target("not a link www.example.com"), None);
+        assert_eq!(detect_link_target("daniel@localhost"), None);
+        assert_eq!(detect_link_target("@example.com"), None);
+        assert_eq!(detect_link_target("a@b@c.com"), None);
+        assert_eq!(detect_link_target(""), None);
     }
 }

@@ -1,12 +1,9 @@
 use std::collections::HashMap;
 
-use crate::links::CellLinkView;
+use crate::links::{CellLinkView, THEME_COLOR_HYPERLINK};
 use crate::types::{Cell, Color, Link};
 
 use super::{common::UserModel, history::Diff};
-
-/// Theme color slot of the hyperlink color (see `Theme::get_color_by_index`)
-const THEME_COLOR_HYPERLINK: i32 = 10;
 
 impl UserModel<'_> {
     /// Returns the link attached to cell (`row`, `column`) or `None` if there isn't one.

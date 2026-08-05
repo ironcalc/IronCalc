@@ -204,8 +204,8 @@ test('cell links', (t) => {
 
 test('cell links raw model', (t) => {
   const model = new Model("Workbook1");
-  const external = { type: "External", target: "mailto:daniel@ironcalc.com", tooltip: null };
-  model.setCellLink(0, 1, 1, { type: "External", target: "mailto:daniel@ironcalc.com" });
+  const external = { type: "External", target: "mailto:hello@ironcalc.com", tooltip: null };
+  model.setCellLink(0, 1, 1, { type: "External", target: "mailto:hello@ironcalc.com" });
   t.deepEqual(model.getCellLink(0, 1, 1), external);
   t.deepEqual(model.getLinks(0), [{ row: 1, column: 1, ...external }]);
   model.deleteCellLink(0, 1, 1);
