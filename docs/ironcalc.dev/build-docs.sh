@@ -23,6 +23,12 @@ cp "$SCRIPT_DIR/styles.css" "$DIST_DIR/styles.css"
 cp "$SCRIPT_DIR/fonts.css" "$DIST_DIR/fonts.css"
 cp -r "$SCRIPT_DIR/fonts" "$DIST_DIR/fonts"
 cp -r "$SCRIPT_DIR/images" "$DIST_DIR/images"
+cp "$ROOT_DIR/assets/favicon.ico" "$DIST_DIR/images/favicon.ico"
+cp "$ROOT_DIR/assets/favicon-16x16.png" "$DIST_DIR/images/favicon-16x16.png"
+cp "$ROOT_DIR/assets/favicon-32x32.png" "$DIST_DIR/images/favicon-32x32.png"
+cp "$ROOT_DIR/assets/apple-touch-icon.png" "$DIST_DIR/images/apple-touch-icon.png"
+cp "$ROOT_DIR/assets/icon/ironcalc_icon.svg" "$DIST_DIR/images/icon.svg"
+cp "$ROOT_DIR/assets/logo/svg/orange+black.svg" "$DIST_DIR/images/logo.svg"
 
 # Rust documentation (https://ironcalc.dev/rust)
 echo "Building rust docs..."
