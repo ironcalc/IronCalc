@@ -179,6 +179,27 @@ pub struct WorksheetView {
     pub left_column: i32,
 }
 
+/// Represents a hyperlink in the worksheet, which can be either external or internal.
+/// The display text is not part of the link, it is the content of the cell the link is
+/// attached to. Links are just cell metadata.
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[serde(tag = "type")]
+pub enum Link {
+    /// A link to a resource outside the workbook: an URL, a mailto: URI or a file.
+    /// If the target points to a location inside another document it is written
+    /// as `target#location` (e.g. `file.xlsx#Sheet1!A1`).
+    External {
+        target: String,
+        tooltip: Option<String>,
+    },
+    /// A link to a location in this workbook: a cell reference like `Sheet1!A30`
+    /// or a defined name.
+    Internal {
+        location: String,
+        tooltip: Option<String>,
+    },
+}
+
 /// Internal representation of a worksheet Excel object
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Worksheet {
@@ -199,6 +220,8 @@ pub struct Worksheet {
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
     pub conditional_formatting: Vec<ConditionalFormatting>,
+    /// Hyperlinks in the worksheet, keyed by (row, column) of the cell they are attached to
+    pub links: HashMap<(i32, i32), Link>,
 }
 
 /// Internal representation of Excel's sheet_data

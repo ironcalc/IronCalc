@@ -53,6 +53,7 @@ mod constants;
 mod cut_paste;
 mod functions;
 mod implicit_intersection;
+pub mod links;
 mod model;
 mod styles;
 mod tz;

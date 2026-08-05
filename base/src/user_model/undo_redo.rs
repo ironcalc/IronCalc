@@ -622,6 +622,18 @@ impl<'a> UserModel<'a> {
                     }
                     needs_evaluation = true;
                 }
+                Diff::SetCellLink {
+                    sheet,
+                    row,
+                    column,
+                    old_value,
+                    new_value: _,
+                } => match old_value.as_ref() {
+                    Some(link) => self
+                        .model
+                        .set_cell_link(*sheet, *row, *column, link.clone())?,
+                    None => self.model.delete_cell_link(*sheet, *row, *column)?,
+                },
             }
         }
         if needs_evaluation {
@@ -1052,6 +1064,18 @@ impl<'a> UserModel<'a> {
                     }
                     needs_evaluation = true;
                 }
+                Diff::SetCellLink {
+                    sheet,
+                    row,
+                    column,
+                    old_value: _,
+                    new_value,
+                } => match new_value.as_ref() {
+                    Some(link) => self
+                        .model
+                        .set_cell_link(*sheet, *row, *column, link.clone())?,
+                    None => self.model.delete_cell_link(*sheet, *row, *column)?,
+                },
             }
         }
 
