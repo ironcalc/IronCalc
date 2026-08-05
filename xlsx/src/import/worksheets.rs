@@ -13,7 +13,7 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, Row, SheetData,
+        ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, Link, Row, SheetData,
         SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
@@ -552,9 +552,11 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     path: &str,
     tables: &mut HashMap<String, Table>,
     sheet_name: &str,
-) -> Result<Vec<Comment>, XlsxError> {
+) -> Result<(Vec<Comment>, HashMap<String, String>), XlsxError> {
     // ...xl/worksheets/sheet6.xml -> xl/worksheets/_rels/sheet6.xml.rels
     let mut comments = Vec::new();
+    // relationship id ("rId4") -> target of the hyperlink
+    let mut hyperlinks = HashMap::new();
     let v: Vec<&str> = path.split("/worksheets/").collect();
     let mut path = v[0].to_string();
     path.push_str("/worksheets/_rels/");
@@ -562,7 +564,7 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     path.push_str(".rels");
     let file = archive.by_name(&path);
     if file.is_err() {
-        return Ok(comments);
+        return Ok((comments, hyperlinks));
     }
     let mut text = String::new();
     file.unwrap().read_to_string(&mut text)?;
@@ -582,6 +584,10 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
             // Target="../comments1.xlsx"
             target.replace_range(..2, v[0]);
             comments = load_comments(archive, &target)?;
+        } else if t.ends_with("hyperlink") {
+            let id = get_attribute(&rel, "Id")?.to_string();
+            let target = get_attribute(&rel, "Target")?.to_string();
+            hyperlinks.insert(id, target);
         } else if t.ends_with("table") {
             let mut target = get_attribute(&rel, "Target")?.to_string();
 
@@ -597,7 +603,67 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
             tables.insert(table.name.clone(), table);
         }
     }
-    Ok(comments)
+    Ok((comments, hyperlinks))
+}
+
+/// Loads the `<hyperlinks>` element of a worksheet:
+/// ```xml
+/// <hyperlinks>
+///   <hyperlink ref="B2" r:id="rId1"/>
+///   <hyperlink ref="B4" r:id="rId3" tooltip="This is a tooltip"/>
+///   <hyperlink ref="B10" location="Sheet1!A30" display="Jump to A30 (this sheet)"/>
+/// </hyperlinks>
+/// ```
+/// External links have an `r:id` attribute pointing to a relationship in the sheet rels
+/// (`hyperlink_rels`), internal links have a `location` attribute instead.
+/// The `display` attribute is skipped: the displayed text is the content of the cell.
+fn load_hyperlinks(
+    ws: Node,
+    hyperlink_rels: &HashMap<String, String>,
+) -> Result<HashMap<(i32, i32), Link>, XlsxError> {
+    let mut links = HashMap::new();
+    let hyperlink_nodes = ws
+        .children()
+        .filter(|n| n.has_tag_name("hyperlinks"))
+        .flat_map(|n| n.children().filter(|n| n.has_tag_name("hyperlink")))
+        .collect::<Vec<Node>>();
+    for node in hyperlink_nodes {
+        let cell_ref = get_attribute(&node, "ref")?;
+        // Although it is normally a single cell, the ref can be a range like "B2:C3"
+        let (row_start, column_start, row_end, column_end) =
+            parse_range(cell_ref).map_err(XlsxError::Xml)?;
+        let tooltip = node.attribute("tooltip").map(str::to_string);
+        let rel_id = node.attribute((
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+            "id",
+        ));
+        let link = match rel_id {
+            Some(rel_id) => {
+                let target = match hyperlink_rels.get(rel_id) {
+                    Some(target) => target.clone(),
+                    // dangling relationship id, skip the hyperlink
+                    None => continue,
+                };
+                // An external link may also point to a location inside the target
+                // document. We keep it as a fragment of the target.
+                let target = match node.attribute("location") {
+                    Some(location) => format!("{target}#{location}"),
+                    None => target,
+                };
+                Link::External { target, tooltip }
+            }
+            None => {
+                let location = node.attribute("location").unwrap_or("").to_string();
+                Link::Internal { location, tooltip }
+            }
+        };
+        for row in row_start..=row_end {
+            for column in column_start..=column_end {
+                links.insert((row, column), link.clone());
+            }
+        }
+    }
+    Ok(links)
 }
 
 struct SheetView {
@@ -739,6 +805,8 @@ pub(super) struct SheetSettings {
     pub name: String,
     pub state: SheetState,
     pub comments: Vec<Comment>,
+    /// hyperlink relationships in the sheet rels: relationship id -> target
+    pub hyperlink_rels: HashMap<String, String>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1160,6 +1228,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let merge_cells = load_merge_cells(ws)?;
 
+    let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
+
     let conditional_formatting = load_conditional_formatting(ws, theme, dxfs)?;
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
@@ -1194,6 +1264,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             show_grid_lines: sheet_view.show_grid_lines,
             views,
             conditional_formatting,
+            links,
         },
         sheet_view.is_selected,
     ))
@@ -1208,8 +1279,8 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
 ) -> Result<(Vec<Worksheet>, u32), XlsxError> {
-    // load comments and tables
-    let mut comments = HashMap::new();
+    // load comments, tables and hyperlink relationships
+    let mut sheet_rels = HashMap::new();
     for sheet in &workbook.worksheets {
         let rel = &rels[&sheet.id];
         if rel.rel_type.ends_with("worksheet") {
@@ -1219,7 +1290,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
             } else {
                 format!("xl/{path}")
             };
-            comments.insert(
+            sheet_rels.insert(
                 &sheet.id,
                 load_sheet_rels(archive, &path, tables, &sheet.name)?,
             );
@@ -1246,14 +1317,15 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
             } else {
                 format!("xl/{path}")
             };
+            let (comments, hyperlink_rels) = sheet_rels
+                .get(rel_id)
+                .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
             let settings = SheetSettings {
                 name: sheet_name.to_string(),
                 id: sheet.sheet_id,
                 state: state.clone(),
-                comments: comments
-                    .get(rel_id)
-                    .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?
-                    .to_vec(),
+                comments: comments.to_vec(),
+                hyperlink_rels: hyperlink_rels.clone(),
             };
             let (s, is_selected) = load_sheet(
                 archive,

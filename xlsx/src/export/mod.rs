@@ -119,6 +119,21 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.write_all(workbook_xml_rels::get_workbook_xml_rels(workbook).as_bytes())?;
 
     zip.add_directory("xl/worksheets", options)?;
+    // sheet rels parts (one per sheet with external hyperlinks)
+    let mut has_worksheet_rels = false;
+    for (sheet_index, worksheet) in workbook.worksheets.iter().enumerate() {
+        if let Some(rels_xml) = worksheets::get_worksheet_xml_rels(worksheet) {
+            if !has_worksheet_rels {
+                zip.add_directory("xl/worksheets/_rels", options)?;
+                has_worksheet_rels = true;
+            }
+            zip.start_file(
+                format!("xl/worksheets/_rels/sheet{}.xml.rels", sheet_index + 1),
+                options,
+            )?;
+            zip.write_all(rels_xml.as_bytes())?;
+        }
+    }
     for (sheet_index, worksheet) in workbook.worksheets.iter().enumerate() {
         let id = sheet_index + 1;
         zip.start_file(format!("xl/worksheets/sheet{id}.xml"), options)?;
