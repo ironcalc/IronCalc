@@ -2090,13 +2090,16 @@ export default class WorksheetCanvas {
       tooltip.appendChild(editButton);
     }
 
-    // Position the tooltip above the cell (or below if there is no room)
+    // Position the tooltip above the cell (or below if there is no room),
+    // flush with the cell edge: any gap in between would make the pointer
+    // cross a neighboring cell on its way to the tooltip, hiding it (or
+    // showing the neighbor's tooltip) before it can be reached.
     tooltip.style.visibility = "hidden";
     tooltip.style.display = "flex";
     const tooltipHeight = tooltip.offsetHeight || 26;
-    let top = cell.y - tooltipHeight - 4;
+    let top = cell.y - tooltipHeight + 1;
     if (top < headerRowHeight) {
-      top = cell.y + cell.height + 4;
+      top = cell.y + cell.height - 1;
     }
     const left = Math.max(headerColumnWidth + 2, cell.x);
     tooltip.style.left = `${left}px`;
