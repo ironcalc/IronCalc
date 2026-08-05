@@ -186,8 +186,8 @@ test('cell links', (t) => {
   // tooltip is optional
   model.setCellLink(0, 5, 1, { type: "Internal", location: "Sheet1!A30", tooltip: "Jump!" });
   t.deepEqual(model.getLinks(0), [
-    { row: 2, column: 2, ...external },
-    { row: 5, column: 1, ...internal },
+    { row: 2, column: 2, dynamic: false, ...external },
+    { row: 5, column: 1, dynamic: false, ...internal },
   ]);
 
   model.undo();
@@ -207,7 +207,7 @@ test('cell links raw model', (t) => {
   const external = { type: "External", target: "mailto:hello@ironcalc.com", tooltip: null };
   model.setCellLink(0, 1, 1, { type: "External", target: "mailto:hello@ironcalc.com" });
   t.deepEqual(model.getCellLink(0, 1, 1), external);
-  t.deepEqual(model.getLinks(0), [{ row: 1, column: 1, ...external }]);
+  t.deepEqual(model.getLinks(0), [{ row: 1, column: 1, dynamic: false, ...external }]);
   model.deleteCellLink(0, 1, 1);
   t.is(model.getCellLink(0, 1, 1), null);
 });

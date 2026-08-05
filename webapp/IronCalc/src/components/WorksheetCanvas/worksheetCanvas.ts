@@ -1,4 +1,4 @@
-import type { CellStyle, Link, Model } from "@ironcalc/wasm";
+import type { CellLink, CellStyle, Link, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber, columnNumberFromName } from "@ironcalc/wasm";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
@@ -68,7 +68,7 @@ interface TextProperties {
   underlined: boolean;
   strike: boolean;
   lines: [string, number, number, number][];
-  link: Link | null;
+  link: CellLink | null;
 }
 export default class WorksheetCanvas {
   sheetWidth: number;
@@ -118,7 +118,7 @@ export default class WorksheetCanvas {
 
   linkTooltip: HTMLDivElement;
   // links in the selected sheet keyed by "row-column"
-  private links: Map<string, Link>;
+  private links: Map<string, CellLink>;
   // the cell whose link tooltip is currently shown (null if hidden)
   private linkTooltipCell: { row: number; column: number } | null;
   private hideLinkTooltipTimeout: ReturnType<typeof setTimeout> | null;
@@ -161,7 +161,7 @@ export default class WorksheetCanvas {
     this.spills = new Map<string, number>();
     this.cells = [];
 
-    this.links = new Map<string, Link>();
+    this.links = new Map<string, CellLink>();
     this.linkTooltip = options.elements.linkTooltip;
     this.linkTooltipCell = null;
     this.hideLinkTooltipTimeout = null;
@@ -470,8 +470,7 @@ export default class WorksheetCanvas {
 
     this.links.clear();
     for (const cellLink of this.model.getLinks(selectedSheet)) {
-      const { row, column, ...link } = cellLink;
-      this.links.set(`${row}-${column}`, link);
+      this.links.set(`${cellLink.row}-${cellLink.column}`, cellLink);
     }
 
     const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
@@ -2076,7 +2075,9 @@ export default class WorksheetCanvas {
     });
     tooltip.appendChild(copyButton);
 
-    if (this.onEditLink) {
+    // Dynamic links (created by formulas like HYPERLINK) cannot be edited:
+    // only the formula itself can change them.
+    if (this.onEditLink && !link.dynamic) {
       const editButton = document.createElement("button");
       editButton.type = "button";
       editButton.className = "ic-worksheet-link-tooltip-button";

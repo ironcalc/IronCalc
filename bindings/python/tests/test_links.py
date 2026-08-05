@@ -33,8 +33,8 @@ def test_get_links_sorted(um):
     um.set_cell_link(0, 2, 2, INTERNAL)
     links = um.get_links(0)
     assert links == [
-        {"row": 2, "column": 2, **INTERNAL},
-        {"row": 5, "column": 1, **EXTERNAL},
+        {"row": 2, "column": 2, "dynamic": False, **INTERNAL},
+        {"row": 5, "column": 1, "dynamic": False, **EXTERNAL},
     ]
 
 
@@ -81,6 +81,22 @@ def test_raw_model(rm):
     assert rm.get_cell_link(0, 2, 2) is None
     rm.set_cell_link(0, 2, 2, EXTERNAL)
     assert rm.get_cell_link(0, 2, 2) == EXTERNAL
-    assert rm.get_links(0) == [{"row": 2, "column": 2, **EXTERNAL}]
+    assert rm.get_links(0) == [{"row": 2, "column": 2, "dynamic": False, **EXTERNAL}]
     rm.delete_cell_link(0, 2, 2)
     assert rm.get_cell_link(0, 2, 2) is None
+
+
+def test_hyperlink_formula_links_are_dynamic(um):
+    um.set_user_input(0, 1, 1, '=HYPERLINK("https://www.ironcalc.com/", "IronCalc")')
+    assert um.get_links(0) == [
+        {
+            "row": 1,
+            "column": 1,
+            "dynamic": True,
+            "type": "External",
+            "target": "https://www.ironcalc.com/",
+            "tooltip": None,
+        }
+    ]
+    # dynamic links are not editable: get_cell_link only returns worksheet links
+    assert um.get_cell_link(0, 1, 1) is None

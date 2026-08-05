@@ -54,13 +54,16 @@ pub(crate) fn detect_link_target(value: &str) -> Option<String> {
 
 /// A link together with the cell (`row`, `column`) it is attached to.
 /// This is the shape the bindings expose to UIs, with the link fields flattened:
-/// `{"row": 2, "column": 2, "type": "External", "target": "...", "tooltip": null}`.
+/// `{"row": 2, "column": 2, "dynamic": false, "type": "External", "target": "..."}`.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct CellLinkView {
     /// Row of the cell the link is attached to
     pub row: i32,
     /// Column of the cell the link is attached to
     pub column: i32,
+    /// A dynamic link is created by a formula like HYPERLINK. It cannot be
+    /// edited or deleted: it lives as long as the formula produces it.
+    pub dynamic: bool,
     /// The link itself
     #[serde(flatten)]
     pub link: Link,
@@ -78,14 +81,17 @@ fn check_valid_cell(row: i32, column: i32) -> Result<(), String> {
 
 impl Model<'_> {
     /// Returns the link attached to cell (`row`, `column`) or `None` if there isn't one.
-    /// This is either a link in the worksheet or a dynamic one created by a
-    /// formula like HYPERLINK (a worksheet link takes precedence).
+    /// Only links in the worksheet are returned: they are the editable ones.
+    /// Dynamic links created by formulas like HYPERLINK are not included (they
+    /// cannot be edited, only the formula can), see [`Model::get_links_list`].
     pub fn get_cell_link(&self, sheet: u32, row: i32, column: i32) -> Result<Option<Link>, String> {
         check_valid_cell(row, column)?;
-        if let Some(link) = self.workbook.worksheet(sheet)?.links.get(&(row, column)) {
-            return Ok(Some(link.clone()));
-        }
-        Ok(self.links.get(&(sheet, row, column)).cloned())
+        Ok(self
+            .workbook
+            .worksheet(sheet)?
+            .links
+            .get(&(row, column))
+            .cloned())
     }
 
     /// Attaches `link` to cell (`row`, `column`), replacing any existing link.
@@ -162,7 +168,8 @@ impl Model<'_> {
 
     /// Returns all the links in the worksheet as a list sorted by (row, column):
     /// the links in the worksheet together with the dynamic ones created by
-    /// formulas like HYPERLINK (worksheet links take precedence).
+    /// formulas like HYPERLINK, marked with `dynamic: true` (worksheet links
+    /// take precedence).
     pub fn get_links_list(&self, sheet: u32) -> Result<Vec<CellLinkView>, String> {
         let worksheet_links = &self.workbook.worksheet(sheet)?.links;
         let mut list: Vec<CellLinkView> = worksheet_links
@@ -170,6 +177,7 @@ impl Model<'_> {
             .map(|(&(row, column), link)| CellLinkView {
                 row,
                 column,
+                dynamic: false,
                 link: link.clone(),
             })
             .collect();
@@ -178,6 +186,7 @@ impl Model<'_> {
                 list.push(CellLinkView {
                     row,
                     column,
+                    dynamic: true,
                     link: link.clone(),
                 });
             }

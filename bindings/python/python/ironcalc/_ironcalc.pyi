@@ -95,10 +95,15 @@ class LinkDict(TypedDict, total=False):
     tooltip: str | None
 
 class CellLinkDict(LinkDict, total=False):
-    """A link together with the (row, column) cell it is attached to."""
+    """A link together with the (row, column) cell it is attached to.
+
+    A dynamic link is created by a formula like HYPERLINK: it cannot be
+    edited or deleted, only the formula can change it.
+    """
 
     row: int
     column: int
+    dynamic: bool
 
 # Conditional formatting rules, i.e.:
 #   {"type": "CellIs", "operator": "GreaterThan", "formula": "5",
