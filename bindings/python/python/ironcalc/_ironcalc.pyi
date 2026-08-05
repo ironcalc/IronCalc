@@ -80,6 +80,26 @@ class SheetPropertiesDict(TypedDict, total=False):
     sheet_id: int
     color: Color
 
+class LinkDict(TypedDict, total=False):
+    """A cell hyperlink. The link is cell metadata: the text displayed in the
+    cell is the cell content, not part of the link.
+
+    External links ({"type": "External"}) have a "target" (an URL, a mailto:
+    URI or a file). Internal links ({"type": "Internal"}) have a "location":
+    a cell reference like "Sheet1!A30" or a defined name.
+    """
+
+    type: str  # "External" or "Internal"
+    target: str  # external links only
+    location: str  # internal links only
+    tooltip: str | None
+
+class CellLinkDict(LinkDict, total=False):
+    """A link together with the (row, column) cell it is attached to."""
+
+    row: int
+    column: int
+
 # Conditional formatting rules, i.e.:
 #   {"type": "CellIs", "operator": "GreaterThan", "formula": "5",
 #    "formula2": None, "format": {"fill": {"color": "#FFC7CE"}},
@@ -208,6 +228,14 @@ class Model:
     def rename_sheet(self, sheet: int, new_name: str) -> None: ...
     def get_sheet_dimensions(self, sheet: int) -> tuple[int, int, int, int]: ...
     def set_show_grid_lines(self, sheet: int, show_grid_lines: bool) -> None: ...
+
+    # Links
+    def get_cell_link(self, sheet: int, row: int, column: int) -> LinkDict | None: ...
+    def set_cell_link(
+        self, sheet: int, row: int, column: int, link: LinkDict
+    ) -> None: ...
+    def delete_cell_link(self, sheet: int, row: int, column: int) -> None: ...
+    def get_links(self, sheet: int) -> list[CellLinkDict]: ...
 
     # Defined names
     def get_defined_name_list(self) -> list[DefinedNameDict]: ...
@@ -346,6 +374,14 @@ class UserModel:
     def get_worksheets_properties(self) -> list[SheetPropertiesDict]: ...
     def set_show_grid_lines(self, sheet: int, show_grid_lines: bool) -> None: ...
     def get_show_grid_lines(self, sheet: int) -> bool: ...
+
+    # Links
+    def get_cell_link(self, sheet: int, row: int, column: int) -> LinkDict | None: ...
+    def set_cell_link(
+        self, sheet: int, row: int, column: int, link: LinkDict
+    ) -> None: ...
+    def delete_cell_link(self, sheet: int, row: int, column: int) -> None: ...
+    def get_links(self, sheet: int) -> list[CellLinkDict]: ...
 
     # Rows and columns
     def insert_rows(self, sheet: int, row: int, row_count: int) -> None: ...

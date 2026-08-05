@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 
 use xlsx::base::cf_types::CfRuleInput;
-use xlsx::base::types::{Style, StyleIncludes, Theme};
+use xlsx::base::types::{Link, Style, StyleIncludes, Theme};
 use xlsx::base::{BorderArea, ClipboardData, UserModel};
 use xlsx::export::{save_to_icalc, save_to_xlsx};
 use xlsx::import;
@@ -417,6 +417,55 @@ impl PyUserModel {
 
     pub fn get_show_grid_lines(&self, sheet: u32) -> PyResult<bool> {
         self.model.get_show_grid_lines(sheet).map_err(to_py_err)
+    }
+
+    // Links
+
+    /// Returns the link attached to the cell as a dict or None if there isn't one.
+    /// External links: {"type": "External", "target": "...", "tooltip": ...}
+    /// Internal links: {"type": "Internal", "location": "...", "tooltip": ...}
+    pub fn get_cell_link<'py>(
+        &self,
+        py: Python<'py>,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let link = self
+            .model
+            .get_cell_link(sheet, row, column)
+            .map_err(to_py_err)?;
+        to_python(py, &link)
+    }
+
+    /// Attaches a link to a cell, replacing the existing one if there was one.
+    /// The link is only metadata: the text displayed in the cell is the cell content.
+    pub fn set_cell_link(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        link: &Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        let link: Link = from_python(link)?;
+        self.model
+            .set_cell_link(sheet, row, column, link)
+            .map_err(to_py_err)
+    }
+
+    /// Removes the link attached to the cell. It is not an error if the cell has no link.
+    pub fn delete_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> PyResult<()> {
+        self.model
+            .delete_cell_link(sheet, row, column)
+            .map_err(to_py_err)
+    }
+
+    /// Returns all the links in the worksheet sorted by (row, column), each entry
+    /// a dict with the cell and the link fields flattened:
+    /// {"row": 2, "column": 2, "type": "External", "target": "...", "tooltip": None}
+    pub fn get_links<'py>(&self, py: Python<'py>, sheet: u32) -> PyResult<Bound<'py, PyAny>> {
+        let links = self.model.get_links_list(sheet).map_err(to_py_err)?;
+        to_python(py, &links)
     }
 
     // Rows and columns
