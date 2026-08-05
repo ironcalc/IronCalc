@@ -12,7 +12,7 @@ use ironcalc_base::{
         types::Area,
         utils::{column_to_number, number_to_column, quote_name as quote_name_ic},
     },
-    types::{CellType, Color, Style, StyleIncludes},
+    types::{CellType, Color, Link, Style, StyleIncludes},
     worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
@@ -698,6 +698,53 @@ impl Model {
     #[wasm_bindgen(js_name = "getShowGridLines")]
     pub fn get_show_grid_lines(&mut self, sheet: u32) -> Result<bool, JsError> {
         self.model.get_show_grid_lines(sheet).map_err(to_js_error)
+    }
+
+    /// Returns the link attached to the cell or undefined if there isn't one.
+    #[wasm_bindgen(js_name = "getCellLink", unchecked_return_type = "Link | undefined")]
+    pub fn get_cell_link(&self, sheet: u32, row: i32, column: i32) -> Result<JsValue, JsError> {
+        let link = self
+            .model
+            .get_cell_link(sheet, row, column)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&link).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Attaches a link to a cell, replacing the existing one if there was one.
+    /// The link is only metadata: the text displayed in the cell is the cell content.
+    #[wasm_bindgen(js_name = "setCellLink")]
+    pub fn set_cell_link(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        #[wasm_bindgen(unchecked_param_type = "Link")] link: JsValue,
+    ) -> Result<(), JsError> {
+        let link: Link =
+            serde_wasm_bindgen::from_value(link).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .set_cell_link(sheet, row, column, link)
+            .map_err(to_js_error)
+    }
+
+    /// Removes the link attached to the cell. It is not an error if the cell has no link.
+    #[wasm_bindgen(js_name = "deleteCellLink")]
+    pub fn delete_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), JsError> {
+        self.model
+            .delete_cell_link(sheet, row, column)
+            .map_err(to_js_error)
+    }
+
+    /// Returns all the links in the worksheet sorted by (row, column).
+    #[wasm_bindgen(js_name = "getLinks", unchecked_return_type = "CellLink[]")]
+    pub fn get_links(&self, sheet: u32) -> Result<JsValue, JsError> {
+        let links = self.model.get_links_list(sheet).map_err(to_js_error)?;
+        // The `CellLink` entries have the link fields flattened, which serde
+        // serializes through its map machinery; the json_compatible serializer
+        // produces plain JS objects for maps instead of `Map` instances.
+        links
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .map_err(|e| to_js_error(e.to_string()))
     }
 
     /// Sets the workbook theme.
