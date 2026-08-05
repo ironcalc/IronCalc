@@ -85,6 +85,7 @@ pub struct Functions {
     pub index: String,
     pub indirect: String,
     pub hlookup: String,
+    pub hyperlink: String,
     pub lookup: String,
     pub r#match: String,
     pub offset: String,

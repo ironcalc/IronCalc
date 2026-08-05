@@ -78,14 +78,14 @@ fn check_valid_cell(row: i32, column: i32) -> Result<(), String> {
 
 impl Model<'_> {
     /// Returns the link attached to cell (`row`, `column`) or `None` if there isn't one.
+    /// This is either a link in the worksheet or a dynamic one created by a
+    /// formula like HYPERLINK (a worksheet link takes precedence).
     pub fn get_cell_link(&self, sheet: u32, row: i32, column: i32) -> Result<Option<Link>, String> {
         check_valid_cell(row, column)?;
-        Ok(self
-            .workbook
-            .worksheet(sheet)?
-            .links
-            .get(&(row, column))
-            .cloned())
+        if let Some(link) = self.workbook.worksheet(sheet)?.links.get(&(row, column)) {
+            return Ok(Some(link.clone()));
+        }
+        Ok(self.links.get(&(sheet, row, column)).cloned())
     }
 
     /// Attaches `link` to cell (`row`, `column`), replacing any existing link.
@@ -160,12 +160,12 @@ impl Model<'_> {
         Ok(())
     }
 
-    /// Returns all the links in the worksheet as a list sorted by (row, column).
+    /// Returns all the links in the worksheet as a list sorted by (row, column):
+    /// the links in the worksheet together with the dynamic ones created by
+    /// formulas like HYPERLINK (worksheet links take precedence).
     pub fn get_links_list(&self, sheet: u32) -> Result<Vec<CellLinkView>, String> {
-        let mut list: Vec<CellLinkView> = self
-            .workbook
-            .worksheet(sheet)?
-            .links
+        let worksheet_links = &self.workbook.worksheet(sheet)?.links;
+        let mut list: Vec<CellLinkView> = worksheet_links
             .iter()
             .map(|(&(row, column), link)| CellLinkView {
                 row,
@@ -173,6 +173,15 @@ impl Model<'_> {
                 link: link.clone(),
             })
             .collect();
+        for (&(link_sheet, row, column), link) in &self.links {
+            if link_sheet == sheet && !worksheet_links.contains_key(&(row, column)) {
+                list.push(CellLinkView {
+                    row,
+                    column,
+                    link: link.clone(),
+                });
+            }
+        }
         list.sort_by_key(|l| (l.row, l.column));
         Ok(list)
     }

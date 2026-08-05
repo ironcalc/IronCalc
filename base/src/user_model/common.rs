@@ -449,6 +449,12 @@ impl<'a> UserModel<'a> {
         } else {
             old_value
         };
+        // Clearing the cell contents also removes its link: capture it for undo
+        let old_link = if value.is_empty() {
+            self.model.get_cell_link(sheet, row, column)?
+        } else {
+            None
+        };
         self.model
             .set_user_input(sheet, row, column, value.to_string())?;
 
@@ -461,6 +467,15 @@ impl<'a> UserModel<'a> {
             new_value: value.to_string(),
             old_value: Box::new(old_value),
         }];
+        if let Some(old_link) = old_link {
+            diff_list.push(Diff::SetCellLink {
+                sheet,
+                row,
+                column,
+                old_value: Box::new(Some(old_link)),
+                new_value: Box::new(None),
+            });
+        }
         let style = self.model.get_style_for_cell(sheet, row, column)?;
 
         let line_count = value.split('\n').count() as f64;
@@ -740,8 +755,10 @@ impl<'a> UserModel<'a> {
             old_value.push(data_row);
             old_style.push(style_row);
         }
+        // Clearing the cells also removes their links: capture them for undo
+        let link_diffs = self.range_link_diffs(range)?;
         self.model.range_clear_all(range)?;
-        let diff_list = vec![Diff::RangeClearAll {
+        let mut diff_list = vec![Diff::RangeClearAll {
             sheet,
             row: range.row,
             column: range.column,
@@ -750,6 +767,7 @@ impl<'a> UserModel<'a> {
             old_value,
             old_style,
         }];
+        diff_list.extend(link_diffs);
 
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
@@ -777,8 +795,10 @@ impl<'a> UserModel<'a> {
             }
             old_value.push(data_row);
         }
+        // Clearing the cells also removes their links: capture them for undo
+        let link_diffs = self.range_link_diffs(range)?;
         self.model.range_clear_contents(range)?;
-        let diff_list = vec![Diff::RangeClearContents {
+        let mut diff_list = vec![Diff::RangeClearContents {
             sheet,
             row: range.row,
             column: range.column,
@@ -786,9 +806,32 @@ impl<'a> UserModel<'a> {
             height: range.height,
             old_value,
         }];
+        diff_list.extend(link_diffs);
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
+    }
+
+    /// Returns the diffs that remove the links of the cells in `range`, so that
+    /// undoing a clear operation restores them.
+    fn range_link_diffs(&self, range: &Area) -> Result<Vec<Diff>, String> {
+        let mut diffs = Vec::new();
+        for (&(row, column), link) in &self.model.workbook.worksheet(range.sheet)?.links {
+            if row >= range.row
+                && row < range.row + range.height
+                && column >= range.column
+                && column < range.column + range.width
+            {
+                diffs.push(Diff::SetCellLink {
+                    sheet: range.sheet,
+                    row,
+                    column,
+                    old_value: Box::new(Some(link.clone())),
+                    new_value: Box::new(None),
+                });
+            }
+        }
+        Ok(diffs)
     }
 
     fn clear_column_formatting(
