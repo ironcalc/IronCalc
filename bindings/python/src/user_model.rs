@@ -439,17 +439,21 @@ impl PyUserModel {
     }
 
     /// Attaches a link to a cell, replacing the existing one if there was one.
-    /// The link is only metadata: the text displayed in the cell is the cell content.
+    /// If `label` is given it becomes the content of the cell (the displayed text).
+    /// A new link also applies the link style (underline + theme hyperlink color)
+    /// to the cell. The whole operation is a single undo step.
+    #[pyo3(signature = (sheet, row, column, link, label=None))]
     pub fn set_cell_link(
         &mut self,
         sheet: u32,
         row: i32,
         column: i32,
         link: &Bound<'_, PyAny>,
+        label: Option<&str>,
     ) -> PyResult<()> {
         let link: Link = from_python(link)?;
         self.model
-            .set_cell_link(sheet, row, column, link)
+            .set_cell_link(sheet, row, column, link, label)
             .map_err(to_py_err)
     }
 

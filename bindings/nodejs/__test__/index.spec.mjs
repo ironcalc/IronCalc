@@ -211,3 +211,27 @@ test('cell links raw model', (t) => {
   model.deleteCellLink(0, 1, 1);
   t.is(model.getCellLink(0, 1, 1), null);
 });
+
+test('cell link label and style are one undo step', (t) => {
+  const model = new UserModel("Workbook1");
+  model.setCellLink(0, 2, 2, { type: "External", target: "https://www.ironcalc.com/" }, "IronCalc");
+  t.is(model.getFormattedCellValue(0, 2, 2), "IronCalc");
+  t.true(model.getCellStyle(0, 2, 2).font.u);
+
+  // one undo reverts the link, the content and the style together
+  model.undo();
+  t.is(model.getCellLink(0, 2, 2), null);
+  t.is(model.getFormattedCellValue(0, 2, 2), "");
+  t.falsy(model.getCellStyle(0, 2, 2).font.u);
+  t.false(model.canUndo());
+
+  // one redo restores everything
+  model.redo();
+  t.is(model.getFormattedCellValue(0, 2, 2), "IronCalc");
+  t.true(model.getCellStyle(0, 2, 2).font.u);
+  t.deepEqual(model.getCellLink(0, 2, 2), {
+    type: "External",
+    target: "https://www.ironcalc.com/",
+    tooltip: null,
+  });
+});

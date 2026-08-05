@@ -530,8 +530,6 @@ const Workbook = (props: {
       return;
     }
     const { sheet, row, column } = linkDialogCell;
-    const isNewLink = model.getCellLink(sheet, row, column) === undefined;
-    model.setCellLink(sheet, row, column, link);
     // The cell content is the displayed text of the link. If the label is
     // empty, fall back to the link target/location.
     const text =
@@ -539,17 +537,9 @@ const Workbook = (props: {
       (link.type === "External"
         ? link.target.replace(/^mailto:/, "")
         : link.location);
-    if (text !== model.getFormattedCellValue(sheet, row, column)) {
-      model.setUserInput(sheet, row, column, text);
-    }
-    // Creating a link applies the link style to the cell. The style is
-    // ordinary cell formatting: it can be changed afterwards and deleting
-    // the link does not remove it.
-    if (isNewLink) {
-      const range = { sheet, row, column, width: 1, height: 1 };
-      model.updateRangeStyle(range, "font.u", "true");
-      model.updateRangeStyle(range, "font.color", currentTheme.hlink);
-    }
+    // Sets the link, the cell content and (for new links) the link style
+    // in a single undo step.
+    model.setCellLink(sheet, row, column, link, text);
     setRedrawId((id) => id + 1);
   };
 
