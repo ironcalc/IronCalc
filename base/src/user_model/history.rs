@@ -4,7 +4,7 @@ use bitcode::{Decode, Encode};
 
 use crate::{
     cf_types::CfRule,
-    types::{Cell, Col, Color, Row, SheetState, Style, StyleIncludes, Theme, Worksheet},
+    types::{Cell, Col, Color, Link, Row, SheetState, Style, StyleIncludes, Theme, Worksheet},
 };
 
 #[derive(Clone, Encode, Decode)]
@@ -282,6 +282,15 @@ pub(crate) enum Diff {
         old_priority: u32,
         new_range: String,
         new_rule: Box<CfRule>,
+    },
+    /// Sets (`new_value` is `Some`) or deletes (`new_value` is `None`) the link
+    /// attached to a cell. `old_value` is the link previously in the cell if any.
+    SetCellLink {
+        sheet: u32,
+        row: i32,
+        column: i32,
+        old_value: Box<Option<Link>>,
+        new_value: Box<Option<Link>>,
     },
     /// Swaps the priorities of the two CF rules at `index_a` and `index_b`.
     /// `priority_a`/`priority_b` are their priorities *before* the swap.
