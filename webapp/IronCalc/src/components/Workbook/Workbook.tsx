@@ -2,6 +2,7 @@ import type {
   BorderOptions,
   ClipboardCell,
   IronCalcTheme,
+  Link,
   Model,
   WorksheetProperties,
 } from "@ironcalc/wasm";
@@ -37,6 +38,7 @@ import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 import "./workbook.css";
+import { LinkDialog } from "../LinkDialog/LinkDialog";
 import { Alert } from "../Modal";
 
 function colorToParam(color: Color): string {
@@ -73,6 +75,12 @@ const Workbook = (props: {
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
   const [drawerType, setDrawerType] = useState<DrawerType>("namedRanges");
+  // The cell the link dialog operates on (null when the dialog is closed)
+  const [linkDialogCell, setLinkDialogCell] = useState<{
+    sheet: number;
+    row: number;
+    column: number;
+  } | null>(null);
 
   const openDrawer = useCallback((type: DrawerType) => {
     setDrawerType(type);
@@ -513,6 +521,47 @@ const Workbook = (props: {
   const style = getCellStyle();
   const currentTheme = model.getTheme();
 
+  const openLinkDialog = (sheet: number, row: number, column: number): void => {
+    setLinkDialogCell({ sheet, row, column });
+  };
+
+  const onSaveLink = (link: Link, label: string): void => {
+    if (!linkDialogCell) {
+      return;
+    }
+    const { sheet, row, column } = linkDialogCell;
+    const isNewLink = model.getCellLink(sheet, row, column) === undefined;
+    model.setCellLink(sheet, row, column, link);
+    // The cell content is the displayed text of the link. If the label is
+    // empty, fall back to the link target/location.
+    const text =
+      label.trim() ||
+      (link.type === "External"
+        ? link.target.replace(/^mailto:/, "")
+        : link.location);
+    if (text !== model.getFormattedCellValue(sheet, row, column)) {
+      model.setUserInput(sheet, row, column, text);
+    }
+    // Creating a link applies the link style to the cell. The style is
+    // ordinary cell formatting: it can be changed afterwards and deleting
+    // the link does not remove it.
+    if (isNewLink) {
+      const range = { sheet, row, column, width: 1, height: 1 };
+      model.updateRangeStyle(range, "font.u", "true");
+      model.updateRangeStyle(range, "font.color", currentTheme.hlink);
+    }
+    setRedrawId((id) => id + 1);
+  };
+
+  const onDeleteLink = (): void => {
+    if (!linkDialogCell) {
+      return;
+    }
+    const { sheet, row, column } = linkDialogCell;
+    model.deleteCellLink(sheet, row, column);
+    setRedrawId((id) => id + 1);
+  };
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: This div needs to be focusable to handle keyboard events for the workbook
     <div
@@ -840,6 +889,10 @@ const Workbook = (props: {
           }
           onOpenNamedStyles={() => openDrawer("namedStyles")}
           isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
+          onOpenLinkDialog={() => {
+            const { sheet, row, column } = model.getSelectedView();
+            openLinkDialog(sheet, row, column);
+          }}
           themes={themes}
           currentTheme={currentTheme}
           onThemePicked={handleThemePicked}
@@ -886,6 +939,13 @@ const Workbook = (props: {
             document.execCommand("copy");
           }}
           onPaste={handlePaste}
+          onEditLink={
+            canEdit
+              ? (row: number, column: number): void => {
+                  openLinkDialog(model.getSelectedSheet(), row, column);
+                }
+              : undefined
+          }
         />
 
         <SheetTabBar
@@ -1034,6 +1094,30 @@ const Workbook = (props: {
         title={t("error_dialog.error_deleting_cells")}
         message={alertDialogMessage}
       />
+      {linkDialogCell && (
+        <LinkDialog
+          open
+          onClose={() => setLinkDialogCell(null)}
+          sheetNames={worksheets.map((sheet) => sheet.name)}
+          selectedSheetName={
+            worksheets[linkDialogCell.sheet]?.name ?? worksheets[0]?.name ?? ""
+          }
+          initialLink={
+            model.getCellLink(
+              linkDialogCell.sheet,
+              linkDialogCell.row,
+              linkDialogCell.column,
+            ) ?? null
+          }
+          initialLabel={model.getFormattedCellValue(
+            linkDialogCell.sheet,
+            linkDialogCell.row,
+            linkDialogCell.column,
+          )}
+          onSave={onSaveLink}
+          onDelete={onDeleteLink}
+        />
+      )}
     </div>
   );
 };

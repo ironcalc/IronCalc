@@ -205,6 +205,24 @@
   "formula_bar": {
     "manage_named_ranges": "Gérer les plages nommées"
   },
+  "link_dialog": {
+    "cell_reference_placeholder": "Référence de cellule",
+    "close": "Fermer",
+    "delete": "Supprimer",
+    "document_tab": "Lien vers le document",
+    "email_placeholder": "Adresse e-mail",
+    "email_tab": "E-mail",
+    "external_tab": "Lien externe",
+    "invalid_email": "Veuillez saisir une adresse e-mail valide",
+    "invalid_reference": "Veuillez saisir une référence de cellule valide",
+    "invalid_url": "Veuillez saisir une URL valide",
+    "label_placeholder": "Libellé",
+    "save": "Enregistrer",
+    "title_add": "Ajouter un lien",
+    "title_edit": "Modifier le lien",
+    "tooltip_placeholder": "Info-bulle (facultatif)",
+    "url_placeholder": "URL"
+  },
   "name_manager_dialog": {
     "add_new_range": "Ajouter une nouvelle plage",
     "apply": "Appliquer les modifications",
@@ -352,6 +370,7 @@
     "text_color_label": "Texte"
   },
   "toolbar": {
+    "add_link": "Insérer un lien",
     "align_center": "Centrer",
     "align_left": "Aligner à gauche",
     "align_right": "Aligner à droite",

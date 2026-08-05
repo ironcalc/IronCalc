@@ -205,6 +205,24 @@
   "formula_bar": {
     "manage_named_ranges": "Gestisci intervalli denominati"
   },
+  "link_dialog": {
+    "cell_reference_placeholder": "Riferimento di cella",
+    "close": "Chiudi",
+    "delete": "Elimina",
+    "document_tab": "Collegamento al documento",
+    "email_placeholder": "Indirizzo e-mail",
+    "email_tab": "E-mail",
+    "external_tab": "Collegamento esterno",
+    "invalid_email": "Inserisci un indirizzo e-mail valido",
+    "invalid_reference": "Inserisci un riferimento di cella valido",
+    "invalid_url": "Inserisci un URL valido",
+    "label_placeholder": "Etichetta",
+    "save": "Salva",
+    "title_add": "Aggiungi collegamento",
+    "title_edit": "Modifica collegamento",
+    "tooltip_placeholder": "Suggerimento (facoltativo)",
+    "url_placeholder": "URL"
+  },
   "name_manager_dialog": {
     "add_new_range": "Aggiungi nuovo intervallo",
     "apply": "Applica modifiche",
@@ -352,6 +370,7 @@
     "text_color_label": "Testo"
   },
   "toolbar": {
+    "add_link": "Inserisci collegamento",
     "align_center": "Allinea al centro",
     "align_left": "Allinea a sinistra",
     "align_right": "Allinea a destra",

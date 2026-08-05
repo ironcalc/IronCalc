@@ -205,6 +205,24 @@
   "formula_bar": {
     "manage_named_ranges": "Benannte Bereiche verwalten"
   },
+  "link_dialog": {
+    "cell_reference_placeholder": "Zellbezug",
+    "close": "Schließen",
+    "delete": "Löschen",
+    "document_tab": "Dokumentlink",
+    "email_placeholder": "E-Mail-Adresse",
+    "email_tab": "E-Mail",
+    "external_tab": "Externer Link",
+    "invalid_email": "Bitte gib eine gültige E-Mail-Adresse ein",
+    "invalid_reference": "Bitte gib einen gültigen Zellbezug ein",
+    "invalid_url": "Bitte gib eine gültige URL ein",
+    "label_placeholder": "Beschriftung",
+    "save": "Speichern",
+    "title_add": "Link hinzufügen",
+    "title_edit": "Link bearbeiten",
+    "tooltip_placeholder": "Tooltip (optional)",
+    "url_placeholder": "URL"
+  },
   "name_manager_dialog": {
     "add_new_range": "Neuen Bereich hinzufügen",
     "apply": "Änderungen übernehmen",
@@ -352,6 +370,7 @@
     "text_color_label": "Text"
   },
   "toolbar": {
+    "add_link": "Link einfügen",
     "align_center": "Zentrieren",
     "align_left": "Links ausrichten",
     "align_right": "Rechts ausrichten",

@@ -51,6 +51,7 @@ const Worksheet = forwardRef(
       onCut: () => void;
       onCopy: () => void;
       onPaste: () => void;
+      onEditLink?: (row: number, column: number) => void;
     },
     ref,
   ) => {
@@ -171,6 +172,9 @@ const Worksheet = forwardRef(
           model.setColumnsWidth(sheet, columnStart, columnEnd, width);
           worksheetCanvas.current?.renderSheet();
         },
+        onEditLink: props.onEditLink
+          ? (row, column) => props.onEditLink?.(row, column)
+          : undefined,
         onRowHeightChanges(sheet, row, height) {
           if (height < 0) {
             return;

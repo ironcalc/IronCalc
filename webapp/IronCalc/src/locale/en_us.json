@@ -205,6 +205,24 @@
   "formula_bar": {
     "manage_named_ranges": "Manage Named Ranges"
   },
+  "link_dialog": {
+    "cell_reference_placeholder": "Cell reference",
+    "close": "Close",
+    "delete": "Delete",
+    "document_tab": "Document link",
+    "email_placeholder": "Email address",
+    "email_tab": "Email",
+    "external_tab": "External link",
+    "invalid_email": "Please enter a valid email address",
+    "invalid_reference": "Please enter a valid cell reference",
+    "invalid_url": "Please enter a valid URL",
+    "label_placeholder": "Label",
+    "save": "Save",
+    "title_add": "Add link",
+    "title_edit": "Edit link",
+    "tooltip_placeholder": "Tooltip (optional)",
+    "url_placeholder": "URL"
+  },
   "name_manager_dialog": {
     "add_new_range": "Add a new range",
     "apply": "Apply changes",
@@ -352,6 +370,7 @@
     "text_color_label": "Text"
   },
   "toolbar": {
+    "add_link": "Insert link",
     "align_center": "Align center",
     "align_left": "Align left",
     "align_right": "Align right",
