@@ -19,11 +19,11 @@ def test_add_update_delete(um):
 
 
 def test_tooltip_is_optional(um):
-    um.set_cell_link(0, 1, 1, {"type": "External", "target": "mailto:daniel@ironcalc.com"})
+    um.set_cell_link(0, 1, 1, {"type": "External", "target": "mailto:hello@ironcalc.com"})
     link = um.get_cell_link(0, 1, 1)
     assert link == {
         "type": "External",
-        "target": "mailto:daniel@ironcalc.com",
+        "target": "mailto:hello@ironcalc.com",
         "tooltip": None,
     }
 
