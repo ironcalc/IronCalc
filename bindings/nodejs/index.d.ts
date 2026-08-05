@@ -702,9 +702,11 @@ export declare class UserModel {
   getCellLink(sheet: number, row: number, column: number): Link | null
   /**
    * Attaches a link to a cell, replacing the existing one if there was one.
-   * The link is only metadata: the text displayed in the cell is the cell content.
+   * If `label` is given it becomes the content of the cell (the displayed text).
+   * A new link also applies the link style (underline + theme hyperlink color)
+   * to the cell. The whole operation is a single undo step.
    */
-  setCellLink(sheet: number, row: number, column: number, link: Link): void
+  setCellLink(sheet: number, row: number, column: number, link: Link, label?: string | undefined | null): void
   /** Removes the link attached to the cell. It is not an error if the cell has no link. */
   deleteCellLink(sheet: number, row: number, column: number): void
   /** Returns all the links in the worksheet sorted by (row, column). */

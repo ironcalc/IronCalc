@@ -518,7 +518,9 @@ impl UserModel {
   }
 
   /// Attaches a link to a cell, replacing the existing one if there was one.
-  /// The link is only metadata: the text displayed in the cell is the cell content.
+  /// If `label` is given it becomes the content of the cell (the displayed text).
+  /// A new link also applies the link style (underline + theme hyperlink color)
+  /// to the cell. The whole operation is a single undo step.
   #[napi]
   pub fn set_cell_link(
     &mut self,
@@ -527,11 +529,12 @@ impl UserModel {
     row: i32,
     column: i32,
     #[napi(ts_arg_type = "Link")] link: Unknown,
+    label: Option<String>,
   ) -> Result<()> {
     let link: Link = env.from_js_value(link).map_err(to_js_error)?;
     self
       .model
-      .set_cell_link(sheet, row, column, link)
+      .set_cell_link(sheet, row, column, link, label.as_deref())
       .map_err(to_js_error)
   }
 

@@ -46,6 +46,25 @@ def test_undo_redo(um):
     assert um.get_cell_link(0, 2, 2) == EXTERNAL
 
 
+def test_label_and_style_in_a_single_undo_step(um):
+    um.set_cell_link(0, 2, 2, EXTERNAL, "IronCalc")
+    # the label is the cell content and the link style is applied
+    assert um.get_formatted_cell_value(0, 2, 2) == "IronCalc"
+    style = um.get_cell_style(0, 2, 2)
+    assert style["font"].get("u", False) is True
+    # one undo reverts the link, the content and the style together
+    um.undo()
+    assert um.get_cell_link(0, 2, 2) is None
+    assert um.get_formatted_cell_value(0, 2, 2) == ""
+    assert um.get_cell_style(0, 2, 2)["font"].get("u", False) is False
+    assert not um.can_undo()
+    # one redo restores everything
+    um.redo()
+    assert um.get_cell_link(0, 2, 2) == EXTERNAL
+    assert um.get_formatted_cell_value(0, 2, 2) == "IronCalc"
+    assert um.get_cell_style(0, 2, 2)["font"].get("u", False) is True
+
+
 def test_invalid_references(um):
     with pytest.raises(ic.WorkbookError):
         um.set_cell_link(1, 1, 1, EXTERNAL)

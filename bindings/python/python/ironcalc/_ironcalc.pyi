@@ -378,7 +378,12 @@ class UserModel:
     # Links
     def get_cell_link(self, sheet: int, row: int, column: int) -> LinkDict | None: ...
     def set_cell_link(
-        self, sheet: int, row: int, column: int, link: LinkDict
+        self,
+        sheet: int,
+        row: int,
+        column: int,
+        link: LinkDict,
+        label: str | None = None,
     ) -> None: ...
     def delete_cell_link(self, sheet: int, row: int, column: int) -> None: ...
     def get_links(self, sheet: int) -> list[CellLinkDict]: ...

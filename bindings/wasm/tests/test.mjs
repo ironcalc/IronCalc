@@ -231,3 +231,23 @@ test('Cell links', () => {
     // invalid cell
     assert.throws(() => model.setCellLink(0, 0, 1, { type: "External", target: "https://x" }));
 });
+
+test('Cell link label and style are one undo step', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.setCellLink(0, 2, 2, { type: "External", target: "https://www.ironcalc.com/" }, "IronCalc");
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "IronCalc");
+    assert.strictEqual(model.getCellStyle(0, 2, 2).style.font.u, true);
+
+    // one undo reverts the link, the content and the style together
+    model.undo();
+    assert.strictEqual(model.getCellLink(0, 2, 2), undefined);
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "");
+    assert.ok(!model.getCellStyle(0, 2, 2).style.font.u);
+    assert.strictEqual(model.canUndo(), false);
+
+    // one redo restores everything
+    model.redo();
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "IronCalc");
+    assert.strictEqual(model.getCellStyle(0, 2, 2).style.font.u, true);
+    assert.strictEqual(model.getCellLink(0, 2, 2).target, "https://www.ironcalc.com/");
+});
