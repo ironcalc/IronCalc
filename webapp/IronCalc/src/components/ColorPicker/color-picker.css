@@ -156,6 +156,7 @@
   border: none;
   border-radius: 4px;
   background: none;
+  color: var(--palette-common-black);
   font: inherit;
 }
 

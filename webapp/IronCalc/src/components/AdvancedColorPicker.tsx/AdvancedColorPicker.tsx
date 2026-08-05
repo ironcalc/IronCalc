@@ -200,12 +200,7 @@ const AdvancedColorPicker = ({
               ]
                 .filter(Boolean)
                 .join(" ")}
-              style={{
-                backgroundColor: selectedColor,
-                borderColor: isWhiteSwatch
-                  ? "var(--palette-grey-300)"
-                  : selectedColor,
-              }}
+              style={{ backgroundColor: selectedColor }}
               aria-hidden="true"
             />
           </div>

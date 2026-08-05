@@ -3,9 +3,10 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #fff;
+  background: var(--palette-common-white);
+  color: var(--palette-sheet-default-text-color);
   font-family: var(--palette-sheet-default-cell-font-family);
-  font-size: 12px;
+  font-size: var(--typography-font-size);
 }
 
 .ic-editor-container--hidden {

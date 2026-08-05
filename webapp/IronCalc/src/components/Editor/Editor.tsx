@@ -72,7 +72,7 @@ const commonCSS: CSSProperties = {
   lineHeight: "22px",
 };
 
-const caretColor = "rgb(242, 153, 74)";
+const caretColor = "var(--palette-primary-main)";
 
 interface EditorOptions {
   originalText: string;
