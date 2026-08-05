@@ -5,7 +5,7 @@ use napi::{self, bindgen_prelude::Uint8Array, Env, Result, Unknown};
 use ironcalc::{
   base::{
     cf_types::CfRuleInput,
-    types::{Style, StyleIncludes, Theme},
+    types::{Link, Style, StyleIncludes, Theme},
     BorderArea, ClipboardData, UserModel as BaseModel,
   },
   export::{save_to_icalc, save_to_xlsx},
@@ -497,6 +497,58 @@ impl UserModel {
   #[napi]
   pub fn get_show_grid_lines(&self, sheet: u32) -> Result<bool> {
     self.model.get_show_grid_lines(sheet).map_err(to_js_error)
+  }
+
+  // Links
+
+  /// Returns the link attached to the cell or null if there isn't one.
+  #[napi(ts_return_type = "Link | null")]
+  pub fn get_cell_link<'e>(
+    &self,
+    env: &'e Env,
+    sheet: u32,
+    row: i32,
+    column: i32,
+  ) -> Result<Unknown<'e>> {
+    let link = self
+      .model
+      .get_cell_link(sheet, row, column)
+      .map_err(to_js_error)?;
+    env.to_js_value(&link).map_err(to_js_error)
+  }
+
+  /// Attaches a link to a cell, replacing the existing one if there was one.
+  /// The link is only metadata: the text displayed in the cell is the cell content.
+  #[napi]
+  pub fn set_cell_link(
+    &mut self,
+    env: Env,
+    sheet: u32,
+    row: i32,
+    column: i32,
+    #[napi(ts_arg_type = "Link")] link: Unknown,
+  ) -> Result<()> {
+    let link: Link = env.from_js_value(link).map_err(to_js_error)?;
+    self
+      .model
+      .set_cell_link(sheet, row, column, link)
+      .map_err(to_js_error)
+  }
+
+  /// Removes the link attached to the cell. It is not an error if the cell has no link.
+  #[napi]
+  pub fn delete_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> Result<()> {
+    self
+      .model
+      .delete_cell_link(sheet, row, column)
+      .map_err(to_js_error)
+  }
+
+  /// Returns all the links in the worksheet sorted by (row, column).
+  #[napi(ts_return_type = "Array<CellLink>")]
+  pub fn get_links<'e>(&self, env: &'e Env, sheet: u32) -> Result<Unknown<'e>> {
+    let links = self.model.get_links_list(sheet).map_err(to_js_error)?;
+    env.to_js_value(&links).map_err(to_js_error)
   }
 
   // Rows and columns

@@ -365,6 +365,20 @@ export interface DefinedName {
   formula: string;
 }
 
+/**
+ * A cell hyperlink. The link is cell metadata: the text displayed in the cell
+ * is the cell content, not part of the link.
+ * External links point to a resource outside the workbook (an URL, a mailto:
+ * URI or a file). Internal links point to a location in this workbook: a cell
+ * reference like "Sheet1!A30" or a defined name.
+ */
+export type Link =
+  | { type: "External"; target: string; tooltip?: string | null }
+  | { type: "Internal"; location: string; tooltip?: string | null };
+
+/** A link together with the cell (row, column) it is attached to. */
+export type CellLink = { row: number; column: number } & Link;
+
 export interface FmtSettings {
   currency: string;
   currency_format: string;
@@ -547,6 +561,17 @@ export declare class Model {
    */
   getSheetDimensions(sheet: number): [number, number, number, number]
   setShowGridLines(sheet: number, showGridLines: boolean): void
+  /** Returns the link attached to the cell or null if there isn't one. */
+  getCellLink(sheet: number, row: number, column: number): Link | null
+  /**
+   * Attaches a link to a cell, replacing the existing one if there was one.
+   * The link is only metadata: the text displayed in the cell is the cell content.
+   */
+  setCellLink(sheet: number, row: number, column: number, link: Link): void
+  /** Removes the link attached to the cell. It is not an error if the cell has no link. */
+  deleteCellLink(sheet: number, row: number, column: number): void
+  /** Returns all the links in the worksheet sorted by (row, column). */
+  getLinks(sheet: number): Array<CellLink>
   /**
    * Returns the list of defined names as [{name, scope, formula}].
    * `scope` is omitted for globally scoped names.
@@ -673,6 +698,17 @@ export declare class UserModel {
   getWorksheetsProperties(): Array<WorksheetProperties>
   setShowGridLines(sheet: number, showGridLines: boolean): void
   getShowGridLines(sheet: number): boolean
+  /** Returns the link attached to the cell or null if there isn't one. */
+  getCellLink(sheet: number, row: number, column: number): Link | null
+  /**
+   * Attaches a link to a cell, replacing the existing one if there was one.
+   * The link is only metadata: the text displayed in the cell is the cell content.
+   */
+  setCellLink(sheet: number, row: number, column: number, link: Link): void
+  /** Removes the link attached to the cell. It is not an error if the cell has no link. */
+  deleteCellLink(sheet: number, row: number, column: number): void
+  /** Returns all the links in the worksheet sorted by (row, column). */
+  getLinks(sheet: number): Array<CellLink>
   insertRows(sheet: number, row: number, rowCount: number): void
   insertColumns(sheet: number, column: number, columnCount: number): void
   deleteRows(sheet: number, row: number, rowCount: number): void

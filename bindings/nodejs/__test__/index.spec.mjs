@@ -172,3 +172,42 @@ test('utility functions', (t) => {
   t.true(getAllTimezones().includes("Europe/Berlin"));
   t.true(getSupportedLocales().includes("en"));
 });
+
+test('cell links', (t) => {
+  const model = new UserModel("Workbook1");
+  const external = { type: "External", target: "https://www.ironcalc.com/", tooltip: null };
+  const internal = { type: "Internal", location: "Sheet1!A30", tooltip: "Jump!" };
+
+  t.is(model.getCellLink(0, 2, 2), null);
+
+  model.setCellLink(0, 2, 2, external);
+  t.deepEqual(model.getCellLink(0, 2, 2), external);
+
+  // tooltip is optional
+  model.setCellLink(0, 5, 1, { type: "Internal", location: "Sheet1!A30", tooltip: "Jump!" });
+  t.deepEqual(model.getLinks(0), [
+    { row: 2, column: 2, ...external },
+    { row: 5, column: 1, ...internal },
+  ]);
+
+  model.undo();
+  model.undo();
+  t.is(model.getCellLink(0, 2, 2), null);
+  model.redo();
+  t.deepEqual(model.getCellLink(0, 2, 2), external);
+
+  model.deleteCellLink(0, 2, 2);
+  t.is(model.getCellLink(0, 2, 2), null);
+
+  t.throws(() => model.setCellLink(0, 0, 1, external));
+});
+
+test('cell links raw model', (t) => {
+  const model = new Model("Workbook1");
+  const external = { type: "External", target: "mailto:daniel@ironcalc.com", tooltip: null };
+  model.setCellLink(0, 1, 1, { type: "External", target: "mailto:daniel@ironcalc.com" });
+  t.deepEqual(model.getCellLink(0, 1, 1), external);
+  t.deepEqual(model.getLinks(0), [{ row: 1, column: 1, ...external }]);
+  model.deleteCellLink(0, 1, 1);
+  t.is(model.getCellLink(0, 1, 1), null);
+});
