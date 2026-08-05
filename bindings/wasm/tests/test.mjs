@@ -197,3 +197,37 @@ test("move columns", () => {
     assert.strictEqual(model.getCellContent(0, 6, 5), "=SUM(H3:H7)");
     assert.strictEqual(model.getCellContent(0, 7, 5), "=SUM(G3:G7)");
 });
+
+test('Cell links', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.strictEqual(model.getCellLink(0, 2, 2), undefined);
+
+    model.setCellLink(0, 2, 2, { type: "External", target: "https://www.ironcalc.com/" });
+    const link = model.getCellLink(0, 2, 2);
+    assert.strictEqual(link.type, "External");
+    assert.strictEqual(link.target, "https://www.ironcalc.com/");
+
+    model.setCellLink(0, 5, 1, { type: "Internal", location: "Sheet1!A30", tooltip: "Jump!" });
+    const links = model.getLinks(0);
+    assert.strictEqual(links.length, 2);
+    assert.strictEqual(links[0].row, 2);
+    assert.strictEqual(links[0].column, 2);
+    assert.strictEqual(links[0].target, "https://www.ironcalc.com/");
+    assert.strictEqual(links[1].row, 5);
+    assert.strictEqual(links[1].column, 1);
+    assert.strictEqual(links[1].location, "Sheet1!A30");
+    assert.strictEqual(links[1].tooltip, "Jump!");
+
+    // links are undoable
+    model.undo();
+    model.undo();
+    assert.strictEqual(model.getCellLink(0, 2, 2), undefined);
+    model.redo();
+    assert.strictEqual(model.getCellLink(0, 2, 2).target, "https://www.ironcalc.com/");
+
+    model.deleteCellLink(0, 2, 2);
+    assert.strictEqual(model.getCellLink(0, 2, 2), undefined);
+
+    // invalid cell
+    assert.throws(() => model.setCellLink(0, 0, 1, { type: "External", target: "https://x" }));
+});
