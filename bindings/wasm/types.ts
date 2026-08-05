@@ -518,8 +518,10 @@ export type Link =
   | { type: "External"; target: string; tooltip?: string | null }
   | { type: "Internal"; location: string; tooltip?: string | null };
 
-/** A link together with the cell (row, column) it is attached to. */
-export type CellLink = { row: number; column: number } & Link;
+/** A link together with the cell (row, column) it is attached to. A dynamic
+ * link is created by a formula like HYPERLINK: it cannot be edited or deleted,
+ * only the formula can change it. */
+export type CellLink = { row: number; column: number; dynamic: boolean } & Link;
 
 export interface FmtSettings {
   currency: string;
