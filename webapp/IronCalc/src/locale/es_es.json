@@ -205,6 +205,24 @@
   "formula_bar": {
     "manage_named_ranges": "Gestionar rangos con nombre"
   },
+  "link_dialog": {
+    "cell_reference_placeholder": "Referencia de celda",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "document_tab": "Enlace al documento",
+    "email_placeholder": "Dirección de correo",
+    "email_tab": "Correo",
+    "external_tab": "Enlace externo",
+    "invalid_email": "Introduce una dirección de correo válida",
+    "invalid_reference": "Introduce una referencia de celda válida",
+    "invalid_url": "Introduce una URL válida",
+    "label_placeholder": "Etiqueta",
+    "save": "Guardar",
+    "title_add": "Añadir enlace",
+    "title_edit": "Editar enlace",
+    "tooltip_placeholder": "Descripción emergente (opcional)",
+    "url_placeholder": "URL"
+  },
   "name_manager_dialog": {
     "add_new_range": "Añadir un nuevo rango",
     "apply": "Aplicar cambios",
@@ -352,6 +370,7 @@
     "text_color_label": "Texto"
   },
   "toolbar": {
+    "add_link": "Insertar enlace",
     "align_center": "Alinear al centro",
     "align_left": "Alinear a la izquierda",
     "align_right": "Alinear a la derecha",

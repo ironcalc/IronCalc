@@ -27,6 +27,7 @@ import {
   ImageDown,
   Italic,
   Layers,
+  Link2,
   Minus,
   PaintBucket,
   PaintRoller,
@@ -100,6 +101,7 @@ type ToolbarProperties = {
   isConditionalFormattingOpen: boolean;
   onOpenNamedStyles: () => void;
   isNamedStylesOpen: boolean;
+  onOpenLinkDialog: () => void;
   themes: IronCalcTheme[];
   currentTheme: IronCalcTheme;
   onThemePicked: (theme: IronCalcTheme) => void;
@@ -465,6 +467,14 @@ function Toolbar(properties: ToolbarProperties) {
               onClick={() => setBorderPickerOpen(true)}
               disabled={!canEdit}
               icon={<Grid2X2 />}
+            />
+          </Tooltip>
+          <Tooltip title={t("toolbar.add_link")}>
+            <IconButton
+              icon={<Link2 />}
+              aria-label={t("toolbar.add_link")}
+              onClick={properties.onOpenLinkDialog}
+              disabled={!canEdit}
             />
           </Tooltip>
           <Tooltip title={t("toolbar.conditional_formatting")}>
