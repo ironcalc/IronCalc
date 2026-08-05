@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::expressions::types::Area;
 use crate::test::util::new_empty_model;
 use crate::types::{Color, Link};
 use crate::UserModel;
@@ -178,6 +179,90 @@ fn undo_redo() {
     assert_eq!(model.get_cell_link(0, 2, 2), Ok(None));
     model.undo().unwrap();
     assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(updated)));
+}
+
+#[test]
+fn deleting_cell_contents_removes_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 2, 2, example_link(), Some("IronCalc"))
+        .unwrap();
+
+    // clearing the content with an empty input removes the link...
+    model.set_user_input(0, 2, 2, "").unwrap();
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(None));
+    // ...and undo restores both the content and the link
+    model.undo().unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 2),
+        Ok("IronCalc".to_string())
+    );
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(example_link())));
+
+    // deleting a range removes the links in it
+    let area = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 5,
+        height: 5,
+    };
+    model.range_clear_contents(&area).unwrap();
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(None));
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(example_link())));
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 2),
+        Ok("IronCalc".to_string())
+    );
+
+    // clear all (contents and formatting) removes the links too
+    model.range_clear_all(&area).unwrap();
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(None));
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(example_link())));
+}
+
+#[test]
+fn deleting_a_range_keeps_links_outside_of_it() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 2, 2, example_link(), Some("IronCalc"))
+        .unwrap();
+    model
+        .range_clear_contents(&Area {
+            sheet: 0,
+            row: 5,
+            column: 5,
+            width: 2,
+            height: 2,
+        })
+        .unwrap();
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(example_link())));
+}
+
+#[test]
+fn deleting_cell_contents_removes_the_link_on_peers() {
+    let mut model = UserModel::from_model(new_empty_model());
+    let mut peer = UserModel::from_model(new_empty_model());
+
+    model
+        .set_cell_link(0, 2, 2, example_link(), Some("IronCalc"))
+        .unwrap();
+    peer.apply_external_diffs(&model.flush_send_queue()).unwrap();
+    assert_eq!(peer.get_cell_link(0, 2, 2), Ok(Some(example_link())));
+
+    model
+        .range_clear_contents(&Area {
+            sheet: 0,
+            row: 2,
+            column: 2,
+            width: 1,
+            height: 1,
+        })
+        .unwrap();
+    peer.apply_external_diffs(&model.flush_send_queue()).unwrap();
+    assert_eq!(peer.get_cell_link(0, 2, 2), Ok(None));
 }
 
 #[test]

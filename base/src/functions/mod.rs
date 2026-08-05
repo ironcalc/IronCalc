@@ -166,6 +166,7 @@ pub enum Function {
     Filter,
     Hlookup,
     Hstack,
+    Hyperlink,
     Index,
     Indirect,
     Lookup,
@@ -715,6 +716,7 @@ impl_function_lookup! {
     filter    => Filter,
     hlookup   => Hlookup,
     hstack    => Hstack,
+    hyperlink => Hyperlink,
     index     => Index,
     indirect  => Indirect,
     lookup    => Lookup,
@@ -1242,6 +1244,7 @@ impl Function {
             Function::Filter => functions.filter.clone(),
             Function::Hlookup => functions.hlookup.clone(),
             Function::Hstack => functions.hstack.clone(),
+            Function::Hyperlink => functions.hyperlink.clone(),
             Function::Index => functions.index.clone(),
             Function::Indirect => functions.indirect.clone(),
             Function::Lookup => functions.lookup.clone(),
@@ -1608,7 +1611,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 494> {
+    pub fn into_iter() -> IntoIter<Function, 495> {
         [
             Function::And,
             Function::False,
@@ -1708,6 +1711,7 @@ impl Function {
             Function::Indirect,
             Function::Hlookup,
             Function::Hstack,
+            Function::Hyperlink,
             Function::Filter,
             Function::Lookup,
             Function::Match,
@@ -2366,6 +2370,7 @@ impl<'a> Model<'a> {
             Function::Indirect => self.fn_indirect(args, cell),
             Function::Hlookup => self.fn_hlookup(args, cell),
             Function::Hstack => self.fn_hstack(args, cell),
+            Function::Hyperlink => self.fn_hyperlink(args, cell),
             Function::Lookup => self.fn_lookup(args, cell),
             Function::Match => self.fn_match(args, cell),
             Function::Offset => self.fn_offset(args, cell),

@@ -223,6 +223,8 @@ pub struct Model<'a> {
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
     /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
+    /// Dynamic links: links created by formulas like HYPERLINK
+    pub(crate) links: HashMap<(u32, i32, i32), Link>,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -1719,6 +1721,7 @@ impl<'a> Model<'a> {
             spill_cells: Vec::new(),
             support: HashMap::new(),
             cf_cache: HashMap::new(),
+            links: HashMap::new(),
         };
 
         model.parse_formulas();
@@ -2374,9 +2377,11 @@ impl<'a> Model<'a> {
         // first we make sure we can write in the cell and clear the spills.
         self.prepare_cell_for_user_input(sheet, row, column)?;
         if value.is_empty() {
-            // If the value is empty we just clear the cell
+            // If the value is empty we just clear the cell.
+            // Deleting the contents of a cell also removes its link.
             let ws = self.workbook.worksheet_mut(sheet)?;
             ws.cell_clear_contents(row, column)?;
+            ws.links.remove(&(row, column));
             return Ok(());
         }
 
@@ -3041,6 +3046,8 @@ impl<'a> Model<'a> {
             retry = false;
             self.cells.clear();
             self.support.clear();
+            // dynamic links (HYPERLINK) are rebuilt on every evaluation
+            self.links.clear();
             self.clear_variable_stack();
             self.clear_lambdas();
 
@@ -3136,6 +3143,13 @@ impl<'a> Model<'a> {
                 }
             }
         }
+        // Deleting the contents of a cell also removes its link
+        ws.links.retain(|&(row, column), _| {
+            row < range.row
+                || row >= range.row + range.height
+                || column < range.column
+                || column >= range.column + range.width
+        });
         Ok(())
     }
 
@@ -3243,6 +3257,13 @@ impl<'a> Model<'a> {
             // we ignore errors here because the cell might have already been cleared as part of an array formula
             let _ = worksheet.cell_clear_contents(row, column);
         }
+        // Deleting the cells also removes their links
+        worksheet.links.retain(|&(row, column), _| {
+            row < area.row
+                || row >= area.row + area.height
+                || column < area.column
+                || column >= area.column + area.width
+        });
         Ok(())
     }
 

@@ -693,6 +693,50 @@ impl<'a> Model<'a> {
         }
     }
 
+    // HYPERLINK(link_location, [friendly_name])
+    // Attaches a link to the cell and returns friendly_name (or link_location
+    // if friendly_name is missing). A link_location starting with "#" is an
+    // internal link ("#Sheet1!A1"), anything else is external.
+    // The link itself is dynamic: it lives in `Model::links` and is rebuilt on
+    // every evaluation, it is not part of the workbook.
+    pub(crate) fn fn_hyperlink(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let location = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        let link = match location.strip_prefix('#') {
+            Some(internal) => crate::types::Link::Internal {
+                location: internal.to_string(),
+                tooltip: None,
+            },
+            None => crate::types::Link::External {
+                target: location.clone(),
+                tooltip: None,
+            },
+        };
+        self.links.insert((cell.sheet, cell.row, cell.column), link);
+
+        if args.len() == 2 {
+            // The friendly name is the value displayed in the cell. It can be
+            // a string, a number or a boolean.
+            let result = self.evaluate_node_in_context(&args[1], cell);
+            match result {
+                CalcResult::Range { .. } | CalcResult::Array(_) => {
+                    match self.cast_to_string(result, cell) {
+                        Ok(s) => CalcResult::String(s),
+                        Err(error) => error,
+                    }
+                }
+                other => other,
+            }
+        } else {
+            CalcResult::String(location)
+        }
+    }
+
     // ROW([reference])
     // If reference is not present returns the row of the present cell.
     // Otherwise returns the row number of reference
