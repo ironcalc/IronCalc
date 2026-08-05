@@ -147,6 +147,64 @@
   border-radius: 3px;
 }
 
+/* Link hover tooltip */
+.ic-worksheet-link-tooltip {
+  position: absolute;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: #333333;
+  color: #ffffff;
+  font-size: 12px;
+  font-family: var(--palette-sheet-default-cell-font-family);
+  white-space: nowrap;
+  box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.25);
+  z-index: 20;
+}
+
+.ic-worksheet-link-tooltip-icon {
+  display: flex;
+  align-items: center;
+  color: #b0b0b0;
+}
+
+.ic-worksheet-link-tooltip-label {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ic-worksheet-link-tooltip-label:hover {
+  text-decoration: underline;
+}
+
+.ic-worksheet-link-tooltip-button {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 2px;
+  margin: 0;
+  color: #b0b0b0;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.ic-worksheet-link-tooltip-button:hover {
+  color: #ffffff;
+  background-color: #4d4d4d;
+}
+
 /* Editor wrapper */
 .ic-worksheet-editor-wrapper {
   position: absolute;
