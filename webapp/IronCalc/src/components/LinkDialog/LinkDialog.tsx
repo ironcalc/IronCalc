@@ -57,6 +57,8 @@ export function LinkDialog({
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<LinkDialogTab>("external");
+  // the tab the edited link belongs to (null when adding a new link)
+  const [initialTab, setInitialTab] = useState<LinkDialogTab | null>(null);
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
@@ -82,8 +84,10 @@ export function LinkDialog({
     setCellRef("");
     if (!initialLink) {
       setTab("external");
+      setInitialTab(null);
     } else if (initialLink.type === "Internal") {
       setTab("document");
+      setInitialTab("document");
       const location = parseLocation(initialLink.location);
       if (location.sheetName) {
         setSheetName(location.sheetName);
@@ -91,12 +95,14 @@ export function LinkDialog({
       setCellRef(location.cellRef.replace(/\$/g, ""));
     } else if (initialLink.target.startsWith("mailto:")) {
       setTab("email");
+      setInitialTab("email");
       const mailto = parseMailto(initialLink.target);
       setEmail(mailto.address);
       setSubject(mailto.subject);
       setEmailExtraParams(mailto.otherParams);
     } else {
       setTab("external");
+      setInitialTab("external");
       setUrl(initialLink.target);
     }
   }, [open, initialLink, initialLabel, selectedSheetName]);
@@ -119,16 +125,27 @@ export function LinkDialog({
   const cellRefError =
     tab === "document" && cellRef.trim() !== "" && !cellRefValid;
 
-  let canSave = false;
+  // When editing a link, clearing its main field and saving removes the link.
+  // Only on the tab the link belongs to: an empty field in one of the other
+  // tabs just means nothing was entered there.
+  const mainFieldEmpty = {
+    external: url.trim() === "",
+    document: cellRef.trim() === "",
+    email: email.trim() === "",
+  }[tab];
+  const deleteOnSave =
+    initialTab !== null && tab === initialTab && mainFieldEmpty;
+
+  let canSave = deleteOnSave;
   switch (tab) {
     case "external":
-      canSave = normalizeUrl(url) !== null;
+      canSave ||= normalizeUrl(url) !== null;
       break;
     case "document":
-      canSave = cellRef.trim() !== "" && cellRefValid;
+      canSave ||= cellRef.trim() !== "" && cellRefValid;
       break;
     case "email":
-      canSave = email.trim() !== "" && isValidEmail(email);
+      canSave ||= email.trim() !== "" && isValidEmail(email);
       break;
   }
 
@@ -175,6 +192,11 @@ export function LinkDialog({
   };
 
   const handleSave = (): void => {
+    if (deleteOnSave) {
+      onDelete();
+      closeModal();
+      return;
+    }
     const link = buildLink();
     if (!link) {
       return;

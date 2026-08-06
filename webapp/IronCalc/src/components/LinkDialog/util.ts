@@ -1,4 +1,4 @@
-const ALLOWED_SCHEMES = [
+export const ALLOWED_SCHEMES = [
   "http:",
   "https:",
   "ftp:",

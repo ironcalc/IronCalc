@@ -1,6 +1,7 @@
 import type { CellLink, CellStyle, Link, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber, columnNumberFromName } from "@ironcalc/wasm";
 import { getColor } from "../Editor/util";
+import { ALLOWED_SCHEMES } from "../LinkDialog/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
 import {
@@ -1976,6 +1977,17 @@ export default class WorksheetCanvas {
       return;
     }
     if (link.type === "External") {
+      // Links can come from imported files or HYPERLINK formulas, so the
+      // scheme is not necessarily safe (e.g. "javascript:"): only open
+      // allowlisted schemes.
+      try {
+        if (!ALLOWED_SCHEMES.includes(new URL(link.target).protocol)) {
+          return;
+        }
+      } catch {
+        // not a valid absolute URL
+        return;
+      }
       window.open(link.target, "_blank", "noopener,noreferrer");
       return;
     }
@@ -2085,7 +2097,9 @@ export default class WorksheetCanvas {
       '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
     copyButton.addEventListener("click", () => {
       const text = link.type === "External" ? link.target : link.location;
-      navigator.clipboard?.writeText(text);
+      navigator.clipboard?.writeText(text).catch(() => {
+        // clipboard access denied or unavailable: nothing to do
+      });
     });
     tooltip.appendChild(copyButton);
 
