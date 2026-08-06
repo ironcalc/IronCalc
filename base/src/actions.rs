@@ -10,7 +10,21 @@ use crate::expressions::utils;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
-use crate::types::{ArrayKind, Cell};
+use crate::types::{ArrayKind, Cell, Link, Worksheet};
+
+/// Applies `map` to the (row, column) key of every link in the worksheet, so
+/// that links follow their cells when rows or columns are inserted, deleted or
+/// moved: `Some((row, column))` moves the link there, `None` removes it.
+fn displace_links<F>(worksheet: &mut Worksheet, map: F)
+where
+    F: Fn(i32, i32) -> Option<(i32, i32)>,
+{
+    let links = std::mem::take(&mut worksheet.links);
+    worksheet.links = links
+        .into_iter()
+        .filter_map(|((row, column), link)| map(row, column).map(|key| (key, link)))
+        .collect();
+}
 
 /// Returns the new row after displacement, or `None` if the row was deleted.
 fn displace_cf_row(row: i32, data: &DisplaceData, sheet: u32) -> Option<i32> {
@@ -541,6 +555,15 @@ impl<'a> Model<'a> {
             }
         }
 
+        // Links move with their cells
+        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+            if c >= column {
+                Some((r, c + column_count))
+            } else {
+                Some((r, c))
+            }
+        });
+
         // Update all formulas in the workbook
         let disp = DisplaceData::Column {
             sheet,
@@ -632,6 +655,17 @@ impl<'a> Model<'a> {
                 }
             }
         }
+        // Links move with their cells; the links of the deleted columns are removed
+        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+            if c < column_start {
+                Some((r, c))
+            } else if c <= column_end {
+                None
+            } else {
+                Some((r, c - column_count))
+            }
+        });
+
         // Update all formulas in the workbook
         let disp = DisplaceData::Column {
             sheet,
@@ -875,6 +909,15 @@ impl<'a> Model<'a> {
         }
         self.workbook.worksheets[sheet as usize].rows = new_rows;
 
+        // Links move with their cells
+        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+            if r >= row {
+                Some((r + row_count, c))
+            } else {
+                Some((r, c))
+            }
+        });
+
         // Update all formulas in the workbook
         let disp = DisplaceData::Row {
             sheet,
@@ -945,6 +988,18 @@ impl<'a> Model<'a> {
             }
         }
         self.workbook.worksheets[sheet as usize].rows = new_rows;
+
+        // Links move with their cells; the links of the deleted rows are removed
+        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+            if r < row {
+                Some((r, c))
+            } else if r < row + row_count {
+                None
+            } else {
+                Some((r - row_count, c))
+            }
+        });
+
         let disp = DisplaceData::Row {
             sheet,
             row,
@@ -959,6 +1014,30 @@ impl<'a> Model<'a> {
     // Caller must have validated and reset spills before calling this.
     fn move_column_unchecked(&mut self, sheet: u32, column: i32, delta: i32) -> Result<(), String> {
         let target_column = column + delta;
+
+        // Links move with their cells: take the moved column's links out and
+        // shift the links of the columns in between. The moved links are
+        // re-attached at the end, after the cells have been rebuilt (rebuilding
+        // goes through `set_user_input`, which could auto-link URL-like values).
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        let moved_links: Vec<(i32, Link)> = worksheet
+            .links
+            .iter()
+            .filter(|(&(_, c), _)| c == column)
+            .map(|(&(r, _), link)| (r, link.clone()))
+            .collect();
+        displace_links(worksheet, |r, c| {
+            if c == column {
+                None
+            } else if delta > 0 && c > column && c <= target_column {
+                Some((r, c - 1))
+            } else if delta < 0 && c >= target_column && c < column {
+                Some((r, c + 1))
+            } else {
+                Some((r, c))
+            }
+        });
+
         let original_refs = self
             .workbook
             .worksheet(sheet)?
@@ -1069,6 +1148,14 @@ impl<'a> Model<'a> {
         self.workbook
             .worksheet_mut(sheet)?
             .set_column_width_and_style(target_column, width, hidden, style)?;
+
+        // Re-attach the moved links, discarding any link the rebuild auto-created
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        worksheet.links.retain(|&(_, c), _| c != target_column);
+        for (r, link) in moved_links {
+            worksheet.links.insert((r, target_column), link);
+        }
+
         let disp = DisplaceData::ColumnMove {
             sheet,
             column,
@@ -1082,6 +1169,30 @@ impl<'a> Model<'a> {
     // Inner row move: no boundary/can check, no spill reset.
     fn move_row_unchecked(&mut self, sheet: u32, row: i32, delta: i32) -> Result<(), String> {
         let target_row = row + delta;
+
+        // Links move with their cells: take the moved row's links out and shift
+        // the links of the rows in between. The moved links are re-attached at
+        // the end, after the cells have been rebuilt (rebuilding goes through
+        // `set_user_input`, which could auto-link URL-like values).
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        let moved_links: Vec<(i32, Link)> = worksheet
+            .links
+            .iter()
+            .filter(|(&(r, _), _)| r == row)
+            .map(|(&(_, c), link)| (c, link.clone()))
+            .collect();
+        displace_links(worksheet, |r, c| {
+            if r == row {
+                None
+            } else if delta > 0 && r > row && r <= target_row {
+                Some((r - 1, c))
+            } else if delta < 0 && r >= target_row && r < row {
+                Some((r + 1, c))
+            } else {
+                Some((r, c))
+            }
+        });
+
         let original_cols = self.get_columns_for_row(sheet, row, false)?;
         let mut original_cells = Vec::new();
         for c in &original_cols {
@@ -1187,6 +1298,14 @@ impl<'a> Model<'a> {
             }
         }
         worksheet.rows = new_rows;
+
+        // Re-attach the moved links, discarding any link the rebuild auto-created
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        worksheet.links.retain(|&(r, _), _| r != target_row);
+        for (c, link) in moved_links {
+            worksheet.links.insert((target_row, c), link);
+        }
+
         let disp = DisplaceData::RowMove { sheet, row, delta };
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);

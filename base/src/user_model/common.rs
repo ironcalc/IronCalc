@@ -1155,14 +1155,25 @@ impl<'a> UserModel<'a> {
             });
         }
 
+        // The links of the deleted rows cannot be restored by re-inserting the
+        // rows: capture them for undo. Links below the deleted rows just shift
+        // with their cells, [`Model::delete_rows`] takes care of them.
+        let mut diff_list = self.range_link_diffs(&Area {
+            sheet,
+            row,
+            column: 1,
+            width: LAST_COLUMN,
+            height: row_count,
+        })?;
+
         self.model.delete_rows(sheet, row, row_count)?;
 
-        let diff_list = vec![Diff::DeleteRows {
+        diff_list.push(Diff::DeleteRows {
             sheet,
             row,
             count: row_count,
             old_data,
-        }];
+        });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
@@ -1220,14 +1231,26 @@ impl<'a> UserModel<'a> {
             });
         }
 
+        // The links of the deleted columns cannot be restored by re-inserting
+        // the columns: capture them for undo. Links to the right of the deleted
+        // columns just shift with their cells, [`Model::delete_columns`] takes
+        // care of them.
+        let mut diff_list = self.range_link_diffs(&Area {
+            sheet,
+            row: 1,
+            column,
+            width: column_count,
+            height: LAST_ROW,
+        })?;
+
         self.model.delete_columns(sheet, column, column_count)?;
 
-        let diff_list = vec![Diff::DeleteColumns {
+        diff_list.push(Diff::DeleteColumns {
             sheet,
             column,
             count: column_count,
             old_data,
-        }];
+        });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
