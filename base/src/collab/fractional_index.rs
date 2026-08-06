@@ -12,6 +12,35 @@ use crate::get_milliseconds_since_epoch;
 
 pub type Timestamp = i64;
 
+/// Session suffix reserved for [`virtual_key`]. No replica may use it — see
+/// [`CollaborativeWorkbook::new`](crate::collab::CollaborativeWorkbook::new).
+pub const VIRTUAL_SESSION: [u8; SESSION_SUFFIX_LEN] = [0; SESSION_SUFFIX_LEN];
+
+/// The key of the `ordinal`-th (1-based) row or column that nobody ever explicitly inserted.
+///
+/// It is session-free and deterministic, so two replicas materializing "row 5" independently mint the
+/// same key and their edits meet in the same cell. Positions are spaced two apart so that a key can
+/// always be minted between two consecutive virtual ones.
+pub fn virtual_key(ordinal: u32) -> FractionalKey {
+    let position = (2 * ordinal).to_be_bytes();
+    let mut buf = KeyBuf::from(&position[1..]);
+    buf.extend_from_slice(&VIRTUAL_SESSION);
+    FractionalKey::try_from_bytes(&buf).expect("virtual key is 7 bytes")
+}
+
+/// Inverse of [`virtual_key`]: `None` for anything a session actually minted.
+pub fn virtual_ordinal(key: &FractionalKey) -> Option<u32> {
+    let (position, session) = key.split();
+    if session != VIRTUAL_SESSION || position.len() != 3 {
+        return None;
+    }
+    let n = u32::from_be_bytes([0, position[0], position[1], position[2]]);
+    if n == 0 || n % 2 != 0 {
+        return None;
+    }
+    Some(n / 2)
+}
+
 /// A single element of a [FractionalIndex]: where it sits, and the key it answers to.
 ///
 /// The two are the same key until the element is moved. A move mints a fresh key for the new
@@ -66,6 +95,12 @@ pub struct FractionalIndex {
 
     /// Suffix this replica mints new keys with. Never serialized — see [Self::decode].
     pub suffix: [u8; Self::SESSION_HASH_SIZE],
+
+    /// Highest ordinal any [virtual_key] in this index has ever carried, cached rather than stored:
+    /// it is exactly `max(virtual_ordinal(k))` over `active ∪ moved`, and it is derivable only
+    /// because tombstones are permanent, so a key that was ever here is still in one of the two
+    /// spaces. Nothing serializes it — every constructor recomputes it.
+    watermark: u32,
 }
 
 impl FractionalIndex {
@@ -79,11 +114,39 @@ impl FractionalIndex {
         moved: Vec<Entry>,
         suffix: [u8; Self::SESSION_HASH_SIZE],
     ) -> Self {
+        let watermark = Self::max_virtual_ordinal(&active).max(Self::max_virtual_ordinal(&moved));
         FractionalIndex {
             active,
             moved,
             suffix,
+            watermark,
         }
+    }
+
+    fn max_virtual_ordinal(entries: &[Entry]) -> u32 {
+        entries
+            .iter()
+            .filter_map(|e| virtual_ordinal(&e.key))
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Highest [virtual_key] ordinal this index has ever handed out. Never decreases.
+    pub fn watermark(&self) -> u32 {
+        self.watermark
+    }
+
+    /// The [virtual_key]s that have to be inserted before position `through` (1-based) is
+    /// addressable, in order. Empty when the index already reaches that far.
+    ///
+    /// Ordinals continue past the watermark rather than filling gaps, so a virtual row that was
+    /// deleted is never named again — its tombstone would swallow the insert. Reads only: the caller
+    /// emits the keys as a patch and applies that.
+    pub fn plan_virtual(&self, through: usize) -> Vec<FractionalKey> {
+        let missing = through.saturating_sub(self.len());
+        (1..=missing as u32)
+            .map(|i| virtual_key(self.watermark + i))
+            .collect()
     }
 
     /// The identity of every element, in the order they sit in.
@@ -249,19 +312,53 @@ impl FractionalIndex {
         let key = FractionalKey::try_from_bytes(&buf).ok()?;
         // A fresh key is both the element's position and its identity, so it carries no origin.
         let modified_at = get_milliseconds_since_epoch();
-        Some(
-            &self
-                .active
-                .insert_mut(
-                    index,
-                    Entry {
-                        key,
-                        modified_at,
-                        moved: FractionalKey::NULL,
-                    },
-                )
-                .key,
-        )
+        self.active.insert(
+            index,
+            Entry {
+                key,
+                modified_at,
+                moved: FractionalKey::NULL,
+            },
+        );
+        Some(&self.active[index].key)
+    }
+
+    /// Insert an externally minted `key` at its sorted position.
+    ///
+    /// Returns `None` if the key was *ever* seen — active or parked — which is what makes the index a
+    /// 2P-set: a tombstone is final, so a delete always wins over a concurrent insert of the same key
+    /// and two peers minting the same key converge on one element.
+    ///
+    /// `modified_at` is stamped from the local wall clock. It is advisory (nothing here resolves
+    /// conflicts by it), so peers disagreeing on it is not divergence.
+    pub fn insert_key(&mut self, key: FractionalKey) -> Option<usize> {
+        // Before the ever-seen check: a rejected key was still handed out, and its ordinal must not
+        // be minted again.
+        if let Some(ordinal) = virtual_ordinal(&key) {
+            self.watermark = self.watermark.max(ordinal);
+        }
+        if self.active.binary_search_by_key(&&key, |e| &e.key).is_ok()
+            || self.moved.binary_search_by_key(&&key, |e| &e.key).is_ok()
+        {
+            return None;
+        }
+        let index = self.lower_bound(&key);
+        self.active.insert(
+            index,
+            Entry {
+                key,
+                modified_at: get_milliseconds_since_epoch(),
+                moved: FractionalKey::NULL,
+            },
+        );
+        Some(index)
+    }
+
+    /// Where `key` would sit among the active entries, whether or not it is one of them.
+    pub fn lower_bound(&self, key: &FractionalKey) -> usize {
+        match self.active.binary_search_by_key(&key, |e| &e.key) {
+            Ok(i) | Err(i) => i,
+        }
     }
 
     /// Returns an iterator yielding a run of `count` new [FractionalKey]s for the gap at `start`,
@@ -427,6 +524,11 @@ impl FractionalIndex {
                 }
             }
         }
+        // A merge brings in keys nobody here minted, so the watermark is re-derived from the two
+        // spaces it is defined over. It can only ever grow.
+        self.watermark = Self::max_virtual_ordinal(&self.active)
+            .max(Self::max_virtual_ordinal(&self.moved))
+            .max(self.watermark);
         changed
     }
 
@@ -495,11 +597,8 @@ impl FractionalIndex {
         if !input.is_empty() {
             return Err(CodecError::TrailingBytes(input.len()));
         }
-        Ok(FractionalIndex {
-            active,
-            moved,
-            suffix,
-        })
+        // Through `new`, so the watermark is re-derived rather than carried in the payload.
+        Ok(FractionalIndex::new(active, moved, suffix))
     }
 }
 
@@ -645,6 +744,17 @@ impl CreateKeys {
     fn new(index: &FractionalIndex, i: usize, count: usize) -> Self {
         let (lo, hi) = FractionalIndex::neighbours(&index.active, i)
             .expect("cannot mint fractional keys past the end of the index");
+        // A tombstone sitting in the gap raises its floor. The index is a 2P-set, so a key it has
+        // ever seen can never be inserted again — re-minting one would yield a key that silently
+        // does nothing, which is exactly what undoing a delete must not produce.
+        let lo = index.moved.iter().fold(lo, |floor, e| {
+            let position = e.key.position();
+            if position > floor && (hi.is_empty() || position < hi) {
+                position
+            } else {
+                floor
+            }
+        });
         // A gap without room for the run leaves `remaining` at zero, so the iterator ends where the
         // room does rather than minting keys that do not fit in it.
         let (next, stride, remaining) = match Self::plan(lo, hi, count) {
@@ -705,10 +815,10 @@ impl Iterator for CreateKeys {
 
 #[cfg(test)]
 mod test {
-    use super::{gap_capacity, CodecError, Entry, FractionalIndex, FractionalKey};
-    use std::alloc::System;
+    use super::{
+        gap_capacity, virtual_key, virtual_ordinal, Entry, FractionalIndex, FractionalKey,
+    };
     use std::collections::HashSet;
-    use std::time::SystemTime;
 
     /// The identity of every entry, in stored order. An identity is stable per element across a
     /// `move_to`, so this tracks element movement *within* a single [FractionalIndex].
@@ -942,5 +1052,103 @@ mod test {
         assert_eq!(FractionalIndex::decode(&bytes, fi.suffix).unwrap(), fi);
         // bitcode adds only its own framing on top.
         assert!(bitcode::serialize(&fi).unwrap().len() < 128);
+    }
+
+    #[test]
+    fn insert_key_places_sorted_and_never_resurrects() {
+        let mut fi = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
+        let (v1, v2, v3) = (virtual_key(1), virtual_key(2), virtual_key(3));
+
+        // Sorted placement, whatever order they arrive in.
+        assert_eq!(fi.insert_key(v3.clone()), Some(0));
+        assert_eq!(fi.insert_key(v1.clone()), Some(0));
+        assert_eq!(fi.insert_key(v2.clone()), Some(1));
+        assert_eq!(
+            fi.view().cloned().collect::<Vec<_>>(),
+            vec![v1, v2.clone(), v3]
+        );
+
+        // Idempotent: a key already active is not inserted twice.
+        assert_eq!(fi.insert_key(v2.clone()), None);
+        assert_eq!(fi.len(), 3);
+
+        // A tombstone is final: the key can never come back.
+        assert_eq!(fi.remove_key(&v2), Some(v2.clone()));
+        assert_eq!(fi.insert_key(v2.clone()), None);
+        assert_eq!(fi.len(), 2);
+    }
+
+    #[test]
+    fn virtual_keys_roundtrip_and_bracket_minted_ones() {
+        for n in [1u32, 2, 7, 1_000, 1_048_576] {
+            assert_eq!(virtual_ordinal(&virtual_key(n)), Some(n));
+        }
+        // Session-minted keys are not virtual.
+        let mut fi = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
+        fi.insert_key(virtual_key(1));
+        fi.insert_key(virtual_key(2));
+        let k = fi.create_keys(1, 1).next().unwrap();
+        assert_eq!(virtual_ordinal(&k), None);
+        // ...and they sort strictly inside the gap they were minted for.
+        assert!(virtual_key(1) < k && k < virtual_key(2));
+    }
+
+    /// The watermark is derived state, so it has to come back with the bytes rather than in them.
+    #[test]
+    fn watermark_survives_a_roundtrip_and_a_tombstone() {
+        let suffix = [b'a', 0, 0, 0];
+        let mut fi = FractionalIndex::new(vec![], vec![], suffix);
+        assert_eq!(fi.watermark(), 0);
+        for n in 1..=3 {
+            fi.insert_key(virtual_key(n));
+        }
+        assert_eq!(fi.watermark(), 3);
+
+        let decoded = FractionalIndex::decode(&fi.encode().unwrap(), suffix).unwrap();
+        assert_eq!(decoded.watermark(), 3);
+        assert_eq!(decoded, fi);
+
+        // Deleting a virtual row hands nothing back: its ordinal stays spent, so the next plan
+        // starts above it and cannot run into the tombstone.
+        fi.remove_key(&virtual_key(2));
+        assert_eq!(fi.watermark(), 3);
+        assert_eq!(fi.len(), 2);
+        assert_eq!(fi.plan_virtual(3), vec![virtual_key(4)]);
+        // The tombstone is still in `moved`, so the watermark is re-derivable from the two spaces.
+        assert_eq!(
+            FractionalIndex::decode(&fi.encode().unwrap(), suffix)
+                .unwrap()
+                .watermark(),
+            3
+        );
+    }
+
+    #[test]
+    fn plan_virtual_extends_only_as_far_as_needed() {
+        let mut fi = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
+        assert_eq!(
+            fi.plan_virtual(3),
+            (1..=3).map(virtual_key).collect::<Vec<_>>()
+        );
+        for key in fi.plan_virtual(3) {
+            fi.insert_key(key);
+        }
+        // Already long enough: nothing to mint.
+        assert!(fi.plan_virtual(3).is_empty());
+        assert!(fi.plan_virtual(0).is_empty());
+        // Partially filled: only the ordinals past the watermark.
+        assert_eq!(fi.plan_virtual(5), vec![virtual_key(4), virtual_key(5)]);
+    }
+
+    #[test]
+    fn lower_bound_finds_the_insertion_point() {
+        let mut fi = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
+        assert_eq!(fi.lower_bound(&virtual_key(1)), 0);
+        fi.insert_key(virtual_key(2));
+        fi.insert_key(virtual_key(4));
+        assert_eq!(fi.lower_bound(&virtual_key(1)), 0);
+        assert_eq!(fi.lower_bound(&virtual_key(2)), 0); // present: its own slot
+        assert_eq!(fi.lower_bound(&virtual_key(3)), 1);
+        assert_eq!(fi.lower_bound(&virtual_key(5)), 2); // past the tail
     }
 }
