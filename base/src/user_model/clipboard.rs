@@ -91,6 +91,17 @@ impl<'a> UserModel<'a> {
     }
 
     /// Paste text that we copied
+    ///
+    /// If this is a copy (not a cut) and the selected area is a whole multiple of the copied
+    /// rectangle and strictly larger than it, the copy is *repeated* to fill the whole selection,
+    /// like Excel does. Every repetition re-anchors its relative references to its own position
+    /// (copying `=B3+1` from `B4` into `B5:B10` gives `=B4+1`, `=B5+1`, … `=B9+1`), and the whole
+    /// fill is still a single undo step. Any other selection pastes the copy once at the
+    /// selection's top-left corner.
+    ///
+    /// A fill writes (and records an undo diff for) every cell of the selection, so a caller that
+    /// lets the user select a whole column or the whole sheet should bound the selection before
+    /// pasting into it.
     pub fn paste_from_clipboard(
         &mut self,
         source_sheet: u32,
@@ -103,95 +114,112 @@ impl<'a> UserModel<'a> {
         let (source_first_row, source_first_column, source_last_row, source_last_column) =
             source_range;
         let sheet = view.sheet;
-        let [selected_row, selected_column, _, _] = view.range;
+        let [selected_row, selected_column, selected_last_row, selected_last_column] = view.range;
         let mut max_row = selected_row;
         let mut max_column = selected_column;
+        let source_width = source_last_column - source_first_column + 1;
+        let source_height = source_last_row - source_first_row + 1;
+        // A cut is a move, so it is always pasted exactly once.
+        let (row_repeats, column_repeats) = if is_cut {
+            (1, 1)
+        } else {
+            fill_repeats(
+                source_height,
+                source_width,
+                selected_last_row - selected_row + 1,
+                selected_last_column - selected_column + 1,
+            )
+        };
         let area = &Area {
             sheet,
             row: source_first_row,
             column: source_first_column,
-            width: source_last_column - source_first_column + 1,
-            height: source_last_row - source_first_row + 1,
+            width: source_width,
+            height: source_height,
         };
         let target_area = &Area {
             sheet,
             row: selected_row,
             column: selected_column,
-            width: source_last_column - source_first_column + 1,
-            height: source_last_row - source_first_row + 1,
+            width: source_width * column_repeats,
+            height: source_height * row_repeats,
         };
 
         let mut seen_cells = HashSet::new();
         // Compute all changes
         let mut changes = Vec::new();
-        for (source_row, data_row) in clipboard {
-            let delta_row = source_row - source_first_row;
-            let target_row = selected_row + delta_row;
-            max_row = max_row.max(target_row);
-            for (source_column, value) in data_row {
-                let delta_column = source_column - source_first_column;
-                let target_column = selected_column + delta_column;
-                max_column = max_column.max(target_column);
+        for (row_offset, column_offset) in
+            fill_offsets(row_repeats, column_repeats, source_height, source_width)
+        {
+            for (source_row, data_row) in clipboard {
+                let delta_row = source_row - source_first_row;
+                let target_row = selected_row + delta_row + row_offset;
+                max_row = max_row.max(target_row);
+                for (source_column, value) in data_row {
+                    let delta_column = source_column - source_first_column;
+                    let target_column = selected_column + delta_column + column_offset;
+                    max_column = max_column.max(target_column);
 
-                if value.is_spill {
-                    // Spill cells carry no formula/value, but their style should still be copied.
+                    if value.is_spill {
+                        // Spill cells carry no formula/value, but their style should still be copied.
+                        let old_style =
+                            self.model
+                                .get_cell_style_or_none(sheet, target_row, target_column)?;
+                        changes.push((
+                            target_row,
+                            target_column,
+                            None,
+                            old_style,
+                            None,
+                            value.style.clone(),
+                        ));
+                        seen_cells.insert((target_row, target_column));
+                        continue;
+                    }
+
+                    // We are copying the value in
+                    // (source_row, source_column) to (target_row , target_column)
+                    // References in formulas are displaced
+
+                    // remain in the copied area
+                    let source = &CellReferenceIndex {
+                        sheet,
+                        column: *source_column,
+                        row: *source_row,
+                    };
+                    let target = &CellReferenceIndex {
+                        sheet,
+                        column: target_column,
+                        row: target_row,
+                    };
+                    let new_value = if is_cut {
+                        self.model
+                            .move_cell_value_to_area(&value.text, source, target, area)?
+                    } else {
+                        self.model
+                            .extend_copied_value(&value.text, source, target)?
+                    };
+
+                    let old_value = self
+                        .model
+                        .workbook
+                        .worksheet(sheet)?
+                        .cell(target_row, target_column)
+                        .cloned();
+
                     let old_style =
                         self.model
                             .get_cell_style_or_none(sheet, target_row, target_column)?;
                     changes.push((
                         target_row,
                         target_column,
-                        None,
-                        old_style,
-                        None,
+                        old_value.clone(),
+                        old_style.clone(),
+                        Some(new_value.clone()),
                         value.style.clone(),
                     ));
                     seen_cells.insert((target_row, target_column));
-                    continue;
                 }
-
-                // We are copying the value in
-                // (source_row, source_column) to (target_row , target_column)
-                // References in formulas are displaced
-
-                // remain in the copied area
-                let source = &CellReferenceIndex {
-                    sheet,
-                    column: *source_column,
-                    row: *source_row,
-                };
-                let target = &CellReferenceIndex {
-                    sheet,
-                    column: target_column,
-                    row: target_row,
-                };
-                let new_value = if is_cut {
-                    self.model
-                        .move_cell_value_to_area(&value.text, source, target, area)?
-                } else {
-                    self.model
-                        .extend_copied_value(&value.text, source, target)?
-                };
-
-                let old_value = self
-                    .model
-                    .workbook
-                    .worksheet(sheet)?
-                    .cell(target_row, target_column)
-                    .cloned();
-
-                let old_style =
-                    self.model
-                        .get_cell_style_or_none(sheet, target_row, target_column)?;
-                changes.push((
-                    target_row,
-                    target_column,
-                    old_value.clone(),
-                    old_style.clone(),
-                    Some(new_value.clone()),
-                    value.style.clone(),
-                ));
-                seen_cells.insert((target_row, target_column));
             }
         }
         // clear the whole area (this resets array formulas)
@@ -374,7 +402,9 @@ impl<'a> UserModel<'a> {
                 });
             }
         } else {
-            // Copy-paste: duplicate CF rules from the source area to the target.
+            // Copy-paste: duplicate CF rules from the source area to the target. A fill adds ONE
+            // entry per source rule, its sqref covering every repetition (`get_cf_rules_to_copy`
+            // merges them), so the added rules never scale with the number of filled cells.
             let cf_copies = self.model.get_cf_rules_to_copy(
                 source_sheet,
                 source_first_row,
@@ -383,18 +413,21 @@ impl<'a> UserModel<'a> {
                 source_last_column,
                 selected_row,
                 selected_column,
+                (row_repeats, column_repeats),
             );
+            // The next free priority, read once and then counted up — re-scanning the (growing)
+            // rule list per added rule would be quadratic.
+            let mut priority = self
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .conditional_formatting
+                .iter()
+                .map(|cf| cf.priority)
+                .max()
+                .map(|m| m + 1)
+                .unwrap_or(1);
             for (new_range, new_rule) in cf_copies {
-                let priority = self
-                    .model
-                    .workbook
-                    .worksheet(sheet)?
-                    .conditional_formatting
-                    .iter()
-                    .map(|cf| cf.priority)
-                    .max()
-                    .map(|m| m + 1)
-                    .unwrap_or(1);
                 self.model
                     .workbook
                     .worksheet_mut(sheet)?
@@ -410,6 +443,7 @@ impl<'a> UserModel<'a> {
                     rule: Box::new(new_rule),
                     priority,
                 });
+                priority += 1;
             }
         }
         self.push_diff_list(diff_list);
@@ -490,4 +524,44 @@ impl<'a> UserModel<'a> {
         self.evaluate_if_not_paused();
         Ok(())
     }
+}
+
+/// How many times a copied rectangle repeats down and to the right to fill the selected target
+/// rectangle, as `(row_repeats, column_repeats)`.
+///
+/// A copy fills the selection only when the selection is a whole multiple of it in *both* axes
+/// and strictly larger in at least one of them (Excel's rule). Every other selection — including
+/// a partial multiple like a 2-row copy into a 3-row selection — pastes the copy once.
+fn fill_repeats(
+    source_height: i32,
+    source_width: i32,
+    target_height: i32,
+    target_width: i32,
+) -> (i32, i32) {
+    if source_width < 1 || source_height < 1 || target_width < 1 || target_height < 1 {
+        return (1, 1);
+    }
+    let fills = target_width % source_width == 0
+        && target_height % source_height == 0
+        && (target_width > source_width || target_height > source_height);
+    if fills {
+        (target_height / source_height, target_width / source_width)
+    } else {
+        (1, 1)
+    }
+}
+
+/// The `(row_offset, column_offset)` of every repetition of a `source_height`×`source_width`
+/// rectangle in a fill of `row_repeats`×`column_repeats` repetitions, relative to the target's
+/// top-left corner. Always yields at least `(0, 0)` — the plain single paste.
+fn fill_offsets(
+    row_repeats: i32,
+    column_repeats: i32,
+    source_height: i32,
+    source_width: i32,
+) -> impl Iterator<Item = (i32, i32)> {
+    (0..row_repeats).flat_map(move |repeat_row| {
+        (0..column_repeats)
+            .map(move |repeat_column| (repeat_row * source_height, repeat_column * source_width))
+    })
 }
