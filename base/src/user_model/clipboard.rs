@@ -509,18 +509,17 @@ impl<'a> UserModel<'a> {
             }
         }
 
+        // Clearing the target area also removes its links: capture them for undo
+        let mut diff_list = self.range_link_diffs(&paste_area)?;
         self.model.range_clear_contents(&paste_area)?;
 
         // Second pass: write values and build diff list.
-        let mut diff_list = Vec::new();
         let mut row = area.row;
         let mut last_column = area.column;
         for row_data in &records {
             let mut column = area.column;
             for value in row_data {
                 let old_value = old_values.remove(&(row, column)).unwrap_or(None);
-                self.model
-                    .set_user_input(sheet, row, column, value.to_string())?;
                 diff_list.push(Diff::SetCellValue {
                     sheet,
                     row,
@@ -528,6 +527,14 @@ impl<'a> UserModel<'a> {
                     new_value: value.to_string(),
                     old_value: Box::new(old_value),
                 });
+                // pasted URLs are auto-linked: capture the link and style diffs too
+                self.set_user_input_with_link_diffs(
+                    sheet,
+                    row,
+                    column,
+                    value.to_string(),
+                    &mut diff_list,
+                )?;
                 column += 1;
             }
             last_column = last_column.max(column - 1);

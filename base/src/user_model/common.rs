@@ -449,17 +449,6 @@ impl<'a> UserModel<'a> {
         } else {
             old_value
         };
-        // Clearing the cell contents also removes its link: capture it for undo
-        let old_link = if value.is_empty() {
-            self.model.get_cell_link(sheet, row, column)?
-        } else {
-            None
-        };
-        self.model
-            .set_user_input(sheet, row, column, value.to_string())?;
-
-        self.evaluate_if_not_paused();
-
         let mut diff_list = vec![Diff::SetCellValue {
             sheet,
             row,
@@ -467,15 +456,10 @@ impl<'a> UserModel<'a> {
             new_value: value.to_string(),
             old_value: Box::new(old_value),
         }];
-        if let Some(old_link) = old_link {
-            diff_list.push(Diff::SetCellLink {
-                sheet,
-                row,
-                column,
-                old_value: Box::new(Some(old_link)),
-                new_value: Box::new(None),
-            });
-        }
+        self.set_user_input_with_link_diffs(sheet, row, column, value.to_string(), &mut diff_list)?;
+
+        self.evaluate_if_not_paused();
+
         let style = self.model.get_style_for_cell(sheet, row, column)?;
 
         let line_count = value.split('\n').count() as f64;
@@ -495,6 +479,47 @@ impl<'a> UserModel<'a> {
         }
 
         self.push_diff_list(diff_list);
+        Ok(())
+    }
+
+    /// Calls [`Model::set_user_input`] and appends to `diff_list` the diffs for the
+    /// side effects it has on the cell link: URL-like values are auto-linked (which
+    /// also applies the link style when the cell was not linked before) and an empty
+    /// input removes the link. The `SetCellValue` diff for the input itself is not
+    /// added here.
+    pub(super) fn set_user_input_with_link_diffs(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: String,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
+        let old_link = self.model.get_cell_link(sheet, row, column)?;
+        let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
+        self.model.set_user_input(sheet, row, column, value)?;
+        let new_link = self.model.get_cell_link(sheet, row, column)?;
+        if new_link == old_link {
+            return Ok(());
+        }
+        if old_link.is_none() {
+            // a newly auto-created link also applies the link style to the cell
+            let new_style = self.model.get_style_for_cell(sheet, row, column)?;
+            diff_list.push(Diff::SetCellStyle {
+                sheet,
+                row,
+                column,
+                old_value: Box::new(old_style),
+                new_value: Box::new(new_style),
+            });
+        }
+        diff_list.push(Diff::SetCellLink {
+            sheet,
+            row,
+            column,
+            old_value: Box::new(old_link),
+            new_value: Box::new(new_link),
+        });
         Ok(())
     }
 
