@@ -236,6 +236,142 @@ fn deleting_a_range_keeps_links_outside_of_it() {
 }
 
 #[test]
+fn copy_paste_copies_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 2, 2, example_link(), Some("IronCalc"))
+        .unwrap();
+
+    // copy B2, paste into D5
+    model.set_selected_cell(2, 2).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(5, 4).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, false)
+        .unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 5, 4),
+        Ok("IronCalc".to_string())
+    );
+    assert_eq!(model.get_cell_link(0, 5, 4), Ok(Some(example_link())));
+    // the source keeps its link on a copy
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(example_link())));
+
+    // undo removes the pasted link
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 5, 4), Ok(None));
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(example_link())));
+}
+
+#[test]
+fn cut_paste_moves_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 2, 2, example_link(), Some("IronCalc"))
+        .unwrap();
+
+    model.set_selected_cell(2, 2).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(5, 4).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, true)
+        .unwrap();
+
+    assert_eq!(model.get_cell_link(0, 5, 4), Ok(Some(example_link())));
+    // the source loses its link on a cut
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(None));
+
+    // undo restores both cells
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 5, 4), Ok(None));
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(example_link())));
+}
+
+#[test]
+fn pasting_over_a_linked_cell_replaces_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    // B2 has no link, D5 has one
+    model.set_user_input(0, 2, 2, "Hello").unwrap();
+    model
+        .set_cell_link(0, 5, 4, example_link(), Some("IronCalc"))
+        .unwrap();
+
+    // paste the linkless B2 over D5
+    model.set_selected_cell(2, 2).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(5, 4).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, false)
+        .unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 5, 4),
+        Ok("Hello".to_string())
+    );
+    assert_eq!(model.get_cell_link(0, 5, 4), Ok(None));
+
+    // undo restores the old link
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 5, 4), Ok(Some(example_link())));
+}
+
+#[test]
+fn autofill_copies_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 1, 1, example_link(), Some("IronCalc"))
+        .unwrap();
+
+    // pull A1 down to A4
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+    for row in 1..=4 {
+        assert_eq!(model.get_cell_link(0, row, 1), Ok(Some(example_link())));
+    }
+
+    // and A1:A4 to the right up to column C
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 4,
+            },
+            3,
+        )
+        .unwrap();
+    for row in 1..=4 {
+        for column in 1..=3 {
+            assert_eq!(
+                model.get_cell_link(0, row, column),
+                Ok(Some(example_link()))
+            );
+        }
+    }
+
+    // undo removes the filled links (last operation: the column fill)
+    model.undo().unwrap();
+    for row in 1..=4 {
+        assert_eq!(model.get_cell_link(0, row, 2), Ok(None));
+        assert_eq!(model.get_cell_link(0, row, 3), Ok(None));
+        assert_eq!(model.get_cell_link(0, row, 1), Ok(Some(example_link())));
+    }
+}
+
+#[test]
 fn deleting_cell_contents_removes_the_link_on_peers() {
     let mut model = UserModel::from_model(new_empty_model());
     let mut peer = UserModel::from_model(new_empty_model());

@@ -814,7 +814,7 @@ impl<'a> UserModel<'a> {
 
     /// Returns the diffs that remove the links of the cells in `range`, so that
     /// undoing a clear operation restores them.
-    fn range_link_diffs(&self, range: &Area) -> Result<Vec<Diff>, String> {
+    pub(super) fn range_link_diffs(&self, range: &Area) -> Result<Vec<Diff>, String> {
         let mut diffs = Vec::new();
         for (&(row, column), link) in &self.model.workbook.worksheet(range.sheet)?.links {
             if row >= range.row

@@ -214,6 +214,8 @@ impl<'a> UserModel<'a> {
                     old_value: Box::new(old_value),
                 });
 
+                self.fill_cell_link(sheet, source_row, column, row, column, &mut diff_list)?;
+
                 index = (index + sign) % source_area.height;
             }
         }
@@ -357,11 +359,44 @@ impl<'a> UserModel<'a> {
                     old_value: Box::new(old_value),
                 });
 
+                self.fill_cell_link(sheet, row, source_column, row, column, &mut diff_list)?;
+
                 index = (index + sign) % source_area.width;
             }
         }
         self.push_diff_list(diff_list);
         self.evaluate();
+        Ok(())
+    }
+
+    /// Makes the link of the fill target cell match the one of its source cell,
+    /// adding the corresponding diff. This runs after the value is set so that
+    /// it also overrides any link auto-created by an URL value.
+    fn fill_cell_link(
+        &mut self,
+        sheet: u32,
+        source_row: i32,
+        source_column: i32,
+        row: i32,
+        column: i32,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
+        let new_link = self.model.get_cell_link(sheet, source_row, source_column)?;
+        let old_link = self.model.get_cell_link(sheet, row, column)?;
+        if old_link == new_link {
+            return Ok(());
+        }
+        match &new_link {
+            Some(link) => self.model.set_cell_link(sheet, row, column, link.clone())?,
+            None => self.model.delete_cell_link(sheet, row, column)?,
+        }
+        diff_list.push(Diff::SetCellLink {
+            sheet,
+            row,
+            column,
+            old_value: Box::new(old_link),
+            new_value: Box::new(new_link),
+        });
         Ok(())
     }
 }
