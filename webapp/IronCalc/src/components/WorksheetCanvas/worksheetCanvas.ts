@@ -1191,16 +1191,16 @@ export default class WorksheetCanvas {
       }
       const selected = row >= rowStart && row <= rowEnd;
       context.fillStyle = this.theme.headerBorderColor;
-      context.fillRect(0, topLeftCornerY, headerColumnWidth, rowHeight);
+      context.fillRect(0.5, topLeftCornerY, headerColumnWidth - 1, rowHeight);
       context.fillStyle = selected
         ? isFullRowSelected
           ? this.theme.primaryMain
           : this.theme.headerSelectedBackground
         : this.theme.headerBackground;
       context.fillRect(
-        0,
+        0.5,
         topLeftCornerY + 0.5,
-        headerColumnWidth,
+        headerColumnWidth - 1,
         rowHeight - 1,
       );
       if (selected) {
