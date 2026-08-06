@@ -40,7 +40,10 @@ fn without_friendly_name_displays_the_location() {
 #[test]
 fn friendly_name_is_displayed() {
     let mut model = new_empty_model();
-    model._set("A1", "=HYPERLINK(\"https://www.ironcalc.com/\", \"IronCalc\")");
+    model._set(
+        "A1",
+        "=HYPERLINK(\"https://www.ironcalc.com/\", \"IronCalc\")",
+    );
     // the friendly name can be a number or come from a reference
     model._set("A2", "=HYPERLINK(\"https://www.ironcalc.com/\", 42)");
     model._set("A3", "=HYPERLINK(\"https://www.ironcalc.com/\", B3)");
@@ -92,7 +95,12 @@ fn a_hash_prefix_is_an_internal_link() {
 fn dynamic_links_are_rebuilt_on_every_evaluation() {
     let mut model = new_empty_model();
     model
-        .set_user_input(0, 1, 1, "=HYPERLINK(\"https://www.ironcalc.com/\")".to_string())
+        .set_user_input(
+            0,
+            1,
+            1,
+            "=HYPERLINK(\"https://www.ironcalc.com/\")".to_string(),
+        )
         .unwrap();
     model.evaluate();
     assert_eq!(

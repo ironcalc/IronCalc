@@ -29,9 +29,7 @@ fn add_update_delete() {
         location: "Sheet1!A30".to_string(),
         tooltip: Some("An internal link".to_string()),
     };
-    model
-        .set_cell_link(0, 2, 2, updated.clone(), None)
-        .unwrap();
+    model.set_cell_link(0, 2, 2, updated.clone(), None).unwrap();
     assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(updated)));
     assert_eq!(model.get_links(0).unwrap().len(), 1);
 
@@ -128,9 +126,7 @@ fn updating_a_link_keeps_content_and_style() {
         location: "Sheet1!A30".to_string(),
         tooltip: None,
     };
-    model
-        .set_cell_link(0, 2, 2, updated.clone(), None)
-        .unwrap();
+    model.set_cell_link(0, 2, 2, updated.clone(), None).unwrap();
     assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(updated.clone())));
     assert_eq!(
         model.get_formatted_cell_value(0, 2, 2),
@@ -160,9 +156,7 @@ fn undo_redo() {
         location: "Sheet1!A30".to_string(),
         tooltip: None,
     };
-    model
-        .set_cell_link(0, 2, 2, updated.clone(), None)
-        .unwrap();
+    model.set_cell_link(0, 2, 2, updated.clone(), None).unwrap();
 
     model.undo().unwrap();
     assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(example_link())));
@@ -249,7 +243,8 @@ fn deleting_cell_contents_removes_the_link_on_peers() {
     model
         .set_cell_link(0, 2, 2, example_link(), Some("IronCalc"))
         .unwrap();
-    peer.apply_external_diffs(&model.flush_send_queue()).unwrap();
+    peer.apply_external_diffs(&model.flush_send_queue())
+        .unwrap();
     assert_eq!(peer.get_cell_link(0, 2, 2), Ok(Some(example_link())));
 
     model
@@ -261,7 +256,8 @@ fn deleting_cell_contents_removes_the_link_on_peers() {
             height: 1,
         })
         .unwrap();
-    peer.apply_external_diffs(&model.flush_send_queue()).unwrap();
+    peer.apply_external_diffs(&model.flush_send_queue())
+        .unwrap();
     assert_eq!(peer.get_cell_link(0, 2, 2), Ok(None));
 }
 

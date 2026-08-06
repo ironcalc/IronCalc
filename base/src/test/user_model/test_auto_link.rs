@@ -43,9 +43,7 @@ fn typing_a_www_url_or_an_email_creates_a_link() {
         Ok(Some(external("https://www.example.com")))
     );
 
-    model
-        .set_user_input(0, 2, 1, "hello@ironcalc.com")
-        .unwrap();
+    model.set_user_input(0, 2, 1, "hello@ironcalc.com").unwrap();
     assert_eq!(
         model.get_cell_link(0, 2, 1),
         Ok(Some(external("mailto:hello@ironcalc.com")))
