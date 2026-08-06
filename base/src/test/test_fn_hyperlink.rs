@@ -161,7 +161,8 @@ fn errors() {
     model._set("A2", "=HYPERLINK(\"a\", \"b\", \"c\")");
     // an error in the location propagates and creates no link
     model._set("A3", "=HYPERLINK(1/0)");
-    // an error in the friendly name propagates but the link is created
+    // an error in the friendly name propagates and creates no link either:
+    // a cell displaying an error is not clickable
     model._set("A4", "=HYPERLINK(\"https://www.ironcalc.com/\", 1/0)");
     model.evaluate();
 
@@ -170,8 +171,26 @@ fn errors() {
     assert_eq!(model._get_text("A3"), "#DIV/0!");
     assert_eq!(dynamic_link(&model, 3, 1), None);
     assert_eq!(model._get_text("A4"), "#DIV/0!");
+    assert_eq!(dynamic_link(&model, 4, 1), None);
+}
+
+#[test]
+fn fixing_an_erroring_friendly_name_attaches_the_link() {
+    let mut model = new_empty_model();
+    model._set("A1", "=HYPERLINK(\"https://www.ironcalc.com/\", B1)");
+    model._set("B1", "=1/0");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#DIV/0!");
+    assert_eq!(dynamic_link(&model, 1, 1), None);
+
+    // once the friendly name stops erroring the link comes back
+    model
+        .set_user_input(0, 1, 2, "Click here".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "Click here");
     assert_eq!(
-        dynamic_link(&model, 4, 1),
+        dynamic_link(&model, 1, 1),
         Some(external("https://www.ironcalc.com/"))
     );
 }

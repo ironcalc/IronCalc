@@ -707,19 +707,8 @@ impl<'a> Model<'a> {
             Ok(s) => s,
             Err(error) => return error,
         };
-        let link = match location.strip_prefix('#') {
-            Some(internal) => crate::types::Link::Internal {
-                location: internal.to_string(),
-                tooltip: None,
-            },
-            None => crate::types::Link::External {
-                target: location.clone(),
-                tooltip: None,
-            },
-        };
-        self.links.insert((cell.sheet, cell.row, cell.column), link);
 
-        if args.len() == 2 {
+        let display = if args.len() == 2 {
             // The friendly name is the value displayed in the cell. It can be
             // a string, a number or a boolean.
             let result = self.evaluate_node_in_context(&args[1], cell);
@@ -733,8 +722,25 @@ impl<'a> Model<'a> {
                 other => other,
             }
         } else {
-            CalcResult::String(location)
+            CalcResult::String(location.clone())
+        };
+        // A cell displaying an error is not clickable: no link is attached
+        if matches!(display, CalcResult::Error { .. }) {
+            return display;
         }
+
+        let link = match location.strip_prefix('#') {
+            Some(internal) => crate::types::Link::Internal {
+                location: internal.to_string(),
+                tooltip: None,
+            },
+            None => crate::types::Link::External {
+                target: location,
+                tooltip: None,
+            },
+        };
+        self.links.insert((cell.sheet, cell.row, cell.column), link);
+        display
     }
 
     // ROW([reference])
