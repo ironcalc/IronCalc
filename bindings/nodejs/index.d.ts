@@ -348,6 +348,8 @@ export interface SelectedView {
 export interface ClipboardCell {
   text: string;
   style: CellStyle;
+  /** The link attached to the cell, if any */
+  link?: Link | null;
 }
 
 /** Rows keyed by row number, each mapping column number to a cell. */

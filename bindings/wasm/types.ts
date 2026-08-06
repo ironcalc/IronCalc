@@ -493,6 +493,8 @@ type ClipboardData = Map<number, Map <number, ClipboardCell>>;
 export interface ClipboardCell {
   text: string;
   style: CellStyle;
+  /** The link attached to the cell, when present */
+  link?: Link | null;
 }
 
 export interface Clipboard {
