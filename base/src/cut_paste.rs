@@ -60,6 +60,13 @@ fn cf_range_part_update_for_cut(part: &str, area: &Area, row_delta: i32, col_del
 
 /// Maps a single CF sqref range part to the target location, intersecting with the copied area.
 /// Returns `None` if the CF range part does not overlap the copy source.
+///
+/// `repeats` is `(row_repeats, column_repeats)` — how many times the copied rectangle is repeated
+/// down and to the right by a fill (`(1, 1)` for a plain paste). Repetitions whose mapped
+/// rectangles touch are emitted as **one** range, so the common "the rule covers the whole copied
+/// rectangle" case yields a single range spanning the filled block rather than one range per
+/// repetition.
+#[allow(clippy::too_many_arguments)]
 fn map_cf_range_part_to_target(
     part: &str,
     src_r1: i32,
@@ -68,6 +75,7 @@ fn map_cf_range_part_to_target(
     src_c2: i32,
     tgt_row: i32,
     tgt_col: i32,
+    repeats: (i32, i32),
 ) -> Option<String> {
     let upper = part.to_uppercase();
     let segs: Vec<&str> = upper.splitn(2, ':').collect();
@@ -93,23 +101,58 @@ fn map_cf_range_part_to_target(
         return None;
     }
 
-    // Map intersection to target coordinates
-    let new_r1 = tgt_row + (int_r1 - src_r1);
-    let new_c1 = tgt_col + (int_c1 - src_c1);
-    let new_r2 = tgt_row + (int_r2 - src_r1);
-    let new_c2 = tgt_col + (int_c2 - src_c1);
+    // Map the intersection to target coordinates, once per repetition of the copied rectangle.
+    // A repetition band collapses into a single span when the intersection covers the copied
+    // rectangle edge to edge along that axis (then consecutive repetitions are contiguous).
+    let (row_repeats, column_repeats) = repeats;
+    let source_height = src_r2 - src_r1 + 1;
+    let source_width = src_c2 - src_c1 + 1;
+    let spans = |offset1: i32, offset2: i32, source_size: i32, target_start: i32, count: i32| {
+        if offset1 == 0 && offset2 == source_size - 1 {
+            vec![(target_start, target_start + source_size * count - 1)]
+        } else {
+            (0..count)
+                .map(|repeat| {
+                    let base = target_start + repeat * source_size;
+                    (base + offset1, base + offset2)
+                })
+                .collect()
+        }
+    };
+    let row_spans = spans(
+        int_r1 - src_r1,
+        int_r2 - src_r1,
+        source_height,
+        tgt_row,
+        row_repeats,
+    );
+    let column_spans = spans(
+        int_c1 - src_c1,
+        int_c2 - src_c1,
+        source_width,
+        tgt_col,
+        column_repeats,
+    );
 
-    let c1 = utils::number_to_column(new_c1)?;
-    let c2 = utils::number_to_column(new_c2)?;
-    if new_r1 == new_r2 && new_c1 == new_c2 {
-        Some(format!("{c1}{new_r1}"))
-    } else {
-        Some(format!("{c1}{new_r1}:{c2}{new_r2}"))
+    let mut parts = Vec::with_capacity(row_spans.len() * column_spans.len());
+    for (new_r1, new_r2) in &row_spans {
+        for (new_c1, new_c2) in &column_spans {
+            let c1 = utils::number_to_column(*new_c1)?;
+            let c2 = utils::number_to_column(*new_c2)?;
+            if new_r1 == new_r2 && new_c1 == new_c2 {
+                parts.push(format!("{c1}{new_r1}"));
+            } else {
+                parts.push(format!("{c1}{new_r1}:{c2}{new_r2}"));
+            }
+        }
     }
+    Some(parts.join(" "))
 }
 
 /// Maps every part of a space-separated sqref string to the target location,
-/// dropping parts that fall entirely outside the copy source.
+/// dropping parts that fall entirely outside the copy source. `repeats` is the fill's
+/// `(row_repeats, column_repeats)` — see [`map_cf_range_part_to_target`].
+#[allow(clippy::too_many_arguments)]
 fn map_cf_sqref_to_target(
     sqref: &str,
     src_r1: i32,
@@ -118,11 +161,14 @@ fn map_cf_sqref_to_target(
     src_c2: i32,
     tgt_row: i32,
     tgt_col: i32,
+    repeats: (i32, i32),
 ) -> String {
     sqref
         .split_whitespace()
         .filter_map(|p| {
-            map_cf_range_part_to_target(p, src_r1, src_c1, src_r2, src_c2, tgt_row, tgt_col)
+            map_cf_range_part_to_target(
+                p, src_r1, src_c1, src_r2, src_c2, tgt_row, tgt_col, repeats,
+            )
         })
         .collect::<Vec<_>>()
         .join(" ")
@@ -457,6 +503,11 @@ impl<'a> Model<'a> {
     /// (`src_row1..src_row2`, `src_col1..src_col2`), computes the intersection
     /// and maps it to the target location starting at (`tgt_row`, `tgt_col`).
     ///
+    /// `repeats` is the fill's `(row_repeats, column_repeats)` — `(1, 1)` for a plain paste. A
+    /// rule that overlaps the copied rectangle is returned **once**, with a sqref covering every
+    /// repetition (merged into a single range wherever the repetitions are contiguous), so a fill
+    /// adds one CF entry per source rule rather than one per repetition.
+    ///
     /// Returns `(new_range_sqref, cf_rule)` for each overlapping CF entry.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn get_cf_rules_to_copy(
@@ -468,6 +519,7 @@ impl<'a> Model<'a> {
         src_col2: i32,
         tgt_row: i32,
         tgt_col: i32,
+        repeats: (i32, i32),
     ) -> Vec<(String, CfRule)> {
         let ws = match self.workbook.worksheets.get(source_sheet as usize) {
             Some(ws) => ws,
@@ -477,7 +529,7 @@ impl<'a> Model<'a> {
         let mut results = Vec::new();
         for cf in &ws.conditional_formatting {
             let new_range = map_cf_sqref_to_target(
-                &cf.range, src_row1, src_col1, src_row2, src_col2, tgt_row, tgt_col,
+                &cf.range, src_row1, src_col1, src_row2, src_col2, tgt_row, tgt_col, repeats,
             );
             if !new_range.is_empty() {
                 results.push((new_range, cf.cf_rule.clone()));
