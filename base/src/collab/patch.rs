@@ -23,10 +23,9 @@ use crate::cf_types::CfRule;
 use crate::collab::fractional_index::FractionalKey;
 use crate::collab::log::Timestamp;
 use crate::collab::model::{StableCellAddress, StableRange};
-use crate::collab::workbook::{CollaborativeComment, CollaborativeWorkbook};
 use crate::collab::DynError;
 use crate::expressions::token::Error;
-use crate::types::{ArrayKind, Color, SheetState, Style, Theme};
+use crate::types::{ArrayKind, Color, Comment, SheetState, Style, Theme};
 use crate::user_model::history::Diff;
 use serde::{Deserialize, Serialize};
 
@@ -299,7 +298,7 @@ pub struct SheetContent {
     pub cell_values: Vec<(StableCellAddress, CellInput)>,
     pub cell_styles: Vec<(StableCellAddress, Style)>,
     pub merge_cells: Vec<StableRange>,
-    pub comments: Vec<CollaborativeComment>,
+    pub comments: Vec<Comment>,
     /// Ordered by [`FractionalKey`], which is both each rule's identity and its priority.
     pub conditional_formatting: Vec<(FractionalKey, ConditionalFormatState)>,
 }
@@ -365,93 +364,4 @@ pub enum CellInput {
         range: StableRange,
         kind: ArrayKind,
     },
-}
-
-impl CollaborativeWorkbook {
-    /// Convert an undo/redo [`Diff`] into the collaborative patches that realise it. Returns a `Vec`
-    /// because some diffs fan out: a range clear becomes one patch per populated cell, a duplicated
-    /// sheet becomes an [`Patch::AddSheet`] carrying its content, a defined-name rename becomes a
-    /// delete plus a write, and a priority swap becomes a single
-    /// [`Patch::MoveConditionalFormats`].
-    ///
-    /// Takes `&mut self` to resolve `i32`/`u32` positions to stable keys via the collaborative
-    /// indices. `prev` values are read straight off the `Diff`.
-    fn diff_to_patch(&mut self, diff: Diff) -> Vec<Patch> {
-        match diff {
-            Diff::SetCellValue { .. } => todo!(),
-            Diff::SetArrayValue { .. } => todo!(),
-            Diff::RangeClearContents { .. } => todo!(),
-            Diff::RangeClearAll { .. } => todo!(),
-            Diff::CellClearFormatting { .. } => todo!(),
-            Diff::SetCellStyle { .. } => todo!(),
-            Diff::SetColumnWidth { .. } => todo!(),
-            Diff::SetColumnHidden { .. } => todo!(),
-            Diff::SetRowHeight { .. } => todo!(),
-            Diff::SetRowHidden { .. } => todo!(),
-            Diff::SetColumnStyle { .. } => todo!(),
-            Diff::SetRowStyle { .. } => todo!(),
-            Diff::DeleteColumnStyle { .. } => todo!(),
-            Diff::DeleteRowStyle { .. } => todo!(),
-            Diff::InsertRows { .. } => todo!(),
-            Diff::DeleteRows { .. } => todo!(),
-            Diff::InsertColumns { .. } => todo!(),
-            Diff::DeleteColumns { .. } => todo!(),
-            Diff::DeleteSheet { .. } => todo!(),
-            Diff::SetFrozenRowsCount { .. } => todo!(),
-            Diff::SetFrozenColumnsCount { .. } => todo!(),
-            Diff::NewSheet { .. } => todo!(),
-            Diff::DuplicateSheet { .. } => todo!(),
-            Diff::RenameSheet { .. } => todo!(),
-            Diff::SetSheetColor { .. } => todo!(),
-            Diff::SetSheetState { .. } => todo!(),
-            Diff::SetShowGridLines { .. } => todo!(),
-            Diff::SetTheme { .. } => todo!(),
-            Diff::CreateDefinedName { .. } => todo!(),
-            Diff::DeleteDefinedName { .. } => todo!(),
-            Diff::UpdateDefinedName { .. } => todo!(),
-            Diff::MoveColumns { .. } => todo!(),
-            Diff::MoveRows { .. } => todo!(),
-            Diff::SetLocale { .. } => todo!(),
-            Diff::SetTimezone { .. } => todo!(),
-            Diff::CreateNamedStyle { .. } => todo!(),
-            Diff::DeleteNamedStyle { .. } => todo!(),
-            Diff::UpdateNamedStyle { .. } => todo!(),
-            Diff::AddConditionalFormatting { .. } => todo!(),
-            Diff::DeleteConditionalFormatting { .. } => todo!(),
-            Diff::UpdateConditionalFormatting { .. } => todo!(),
-            Diff::SwapConditionalFormattingPriority { .. } => todo!(),
-        }
-    }
-
-    /// Apply a patch against this workbook's CRDT state. `timestamp` is derived from the enclosing
-    /// commit and is shared by every patch in it, so a register written twice by the same commit
-    /// resolves to the last write.
-    ///
-    /// Applying must be total: a patch addressing a row, sheet or rule that is no longer present is
-    /// a no-op, not an error.
-    fn apply_patch(&mut self, patch: Patch, timestamp: &Timestamp) -> Result<(), DynError> {
-        match patch {
-            Patch::SetCellValue { .. } => todo!(),
-            Patch::SetArrayValue { .. } => todo!(),
-            Patch::SetCellStyle { .. } => todo!(),
-            Patch::InsertRows { .. } => todo!(),
-            Patch::DeleteRows { .. } => todo!(),
-            Patch::MoveRows { .. } => todo!(),
-            Patch::SetRowProperty { .. } => todo!(),
-            Patch::InsertColumns { .. } => todo!(),
-            Patch::DeleteColumns { .. } => todo!(),
-            Patch::MoveColumns { .. } => todo!(),
-            Patch::SetColumnProperty { .. } => todo!(),
-            Patch::AddSheet { .. } => todo!(),
-            Patch::DeleteSheet { .. } => todo!(),
-            Patch::SetSheetProperty { .. } => todo!(),
-            Patch::SetWorkbookProperty { .. } => todo!(),
-            Patch::SetDefinedName { .. } => todo!(),
-            Patch::SetNamedStyle { .. } => todo!(),
-            Patch::AddConditionalFormat { .. } => todo!(),
-            Patch::DeleteConditionalFormat { .. } => todo!(),
-            Patch::MoveConditionalFormats { .. } => todo!(),
-            Patch::SetConditionalFormat { .. } => todo!(),
-        }
-    }
 }
