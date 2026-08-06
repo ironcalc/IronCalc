@@ -188,23 +188,24 @@ export function attachOutlineHandle(
     let lastUsedRow = rowEnd;
     let testColumn = columnStart - 1;
 
-    // The "test column" is the column to the left of the selected range,
-    // or the column to the right if the left one is unavailable or empty.
-    if (
-      testColumn < 1 ||
-      worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) === ""
-    ) {
-      testColumn = columnEnd + 1;
-      if (
-        testColumn > LAST_COLUMN ||
-        worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) ===
-          ""
-      ) {
-        return;
-      }
+    const leftHasData =
+      testColumn >= 1 &&
+      worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) !== "";
+
+    const rightColumn = columnEnd + 1;
+    const rightHasData =
+      rightColumn <= LAST_COLUMN &&
+      worksheet.model.getFormattedCellValue(sheet, rowStart, rightColumn) !==
+        "";
+
+    if (leftHasData) {
+      testColumn = columnStart - 1;
+    } else if (rightHasData) {
+      testColumn = rightColumn;
+    } else {
+      testColumn = columnStart;
     }
 
-    // Find the last used row in the "test column"
     for (let r = rowEnd + 1; r <= LAST_ROW; r += 1) {
       if (worksheet.model.getFormattedCellValue(sheet, r, testColumn) === "") {
         break;
@@ -212,7 +213,16 @@ export function attachOutlineHandle(
       lastUsedRow = r;
     }
 
-    for (let r = rowEnd + 1; r <= lastUsedRow; r += 1) {
+    const firstTargetRow = rowEnd + 1;
+    const firstTargetRowEmpty = Array.from(
+      { length: columnEnd - columnStart + 1 },
+      (_, i) => columnStart + i,
+    ).every(
+      (c) =>
+        worksheet.model.getFormattedCellValue(sheet, firstTargetRow, c) === "",
+    );
+
+    for (let r = firstTargetRow; r <= lastUsedRow; r += 1) {
       let isAnyCellNotEmpty = false;
       for (let c = columnStart; c <= columnEnd; c += 1) {
         if (worksheet.model.getFormattedCellValue(sheet, r, c) !== "") {
@@ -220,9 +230,17 @@ export function attachOutlineHandle(
           break;
         }
       }
-      if (isAnyCellNotEmpty) {
-        lastUsedRow = r - 1;
-        break;
+
+      if (firstTargetRowEmpty) {
+        if (isAnyCellNotEmpty) {
+          lastUsedRow = r - 1;
+          break;
+        }
+      } else {
+        if (!isAnyCellNotEmpty) {
+          lastUsedRow = r - 1;
+          break;
+        }
       }
     }
 
