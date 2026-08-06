@@ -2,7 +2,6 @@ import type { Preview } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../src/i18n";
-import type { PartialIronCalcThemeVariables } from "../src/theme";
 import {
   darkThemeVariables,
   defaultThemeVariables,
@@ -11,35 +10,9 @@ import {
 import "../src/theme/theme.css";
 import "../src/index.css";
 
-const crazyThemeVariables: PartialIronCalcThemeVariables = {
-  "--palette-common-black": "#2f1616",
-  "--palette-common-white": "#ecc9c9",
-
-  "--palette-primary-main": "#F2994A",
-  "--palette-primary-light": "#EFAA6D",
-  "--palette-primary-dark": "#D68742",
-  "--palette-primary-contrast-text": "#dccece",
-
-  "--palette-secondary-main": "#2F80ED",
-  "--palette-secondary-light": "#4E92EC",
-  "--palette-secondary-dark": "#2B6EC8",
-  "--palette-secondary-contrast-text": "#272525",
-
-  "--palette-error-main": "#EB5757",
-  "--palette-error-light": "#E77A7A",
-  "--palette-error-dark": "#CB4C4C",
-  "--palette-error-contrast-text": "#272525",
-
-  "--palette-warning-main": "#F2C94C",
-  "--palette-warning-light": "#EED384",
-  "--palette-warning-dark": "#D6B244",
-  "--palette-warning-contrast-text": "#e3e9cf",
-};
-
 const themes = {
   default: defaultThemeVariables,
   dark: darkThemeVariables,
-  crazy: crazyThemeVariables,
 };
 
 function PreviewProviders({
@@ -94,7 +67,6 @@ const preview: Preview = {
         items: [
           { value: "default", title: "Default" },
           { value: "dark", title: "Dark" },
-          { value: "crazy", title: "Crazy" },
         ],
       },
     },
