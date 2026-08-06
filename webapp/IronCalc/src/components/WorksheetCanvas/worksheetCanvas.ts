@@ -2059,6 +2059,18 @@ export default class WorksheetCanvas {
     this.model.setSelectedSheet(sheetIndex);
     this.model.setSelectedCell(row, column);
     this.model.setSelectedRange(row, column, rowEnd, columnEnd);
+    // If the target is out of view, scroll so that it becomes the top-left
+    // visible cell. `getVisibleCells` reads the view of the (now) selected
+    // sheet; the DOM scroller follows the model view on refresh.
+    const { topLeftCell, bottomRightCell } = this.getVisibleCells();
+    if (
+      row < topLeftCell.row ||
+      row > bottomRightCell.row ||
+      column < topLeftCell.column ||
+      column > bottomRightCell.column
+    ) {
+      this.model.setTopLeftVisibleCell(row, column);
+    }
     this.hideLinkTooltip();
     this.refresh();
     this.renderSheet();
