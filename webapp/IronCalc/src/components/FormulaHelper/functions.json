@@ -2808,6 +2808,28 @@
       "=HSTACK(A1:B10, D1:E10) joins two two-column ranges into a single four-column array."
     ]
   },
+  "hyperlink": {
+    "tier": 0,
+    "category": 7,
+    "tags": [],
+    "args": [
+      [
+        "link_location",
+        "text",
+        "Target of the link: an URL (\"https://...\"), an email address (\"mailto:...\") or, with a \"#\" prefix, a location in this workbook (\"#Sheet1!A10\")"
+      ],
+      [
+        "friendly_name*",
+        "any",
+        "Value displayed in the cell; if omitted, link_location is displayed"
+      ]
+    ],
+    "description": "Creates a clickable link in the cell and returns the text to display. The target can be a web page, an email address or, prefixed with \"#\", a cell in this workbook. The link lives as long as the formula produces it and cannot be edited from the cell.",
+    "examples": [
+      "=HYPERLINK(\"https://www.ironcalc.com/\", \"IronCalc\") shows \"IronCalc\" linking to the IronCalc site.",
+      "=HYPERLINK(\"#Sheet2!A10\", \"Jump\") shows \"Jump\" and selects A10 in Sheet2 when clicked."
+    ]
+  },
   "hypgeom.dist": {
     "tier": 0,
     "category": 9,
