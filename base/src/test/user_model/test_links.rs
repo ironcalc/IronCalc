@@ -432,3 +432,223 @@ fn diffs_are_sent_to_other_models() {
     let style = model2.get_cell_style(0, 2, 2).unwrap();
     assert!(style.font.u);
 }
+
+fn link_to(target: &str) -> Link {
+    Link::External {
+        target: target.to_string(),
+        tooltip: None,
+    }
+}
+
+#[test]
+fn inserting_rows_moves_links() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 5, 1, example_link(), Some("IronCalc"))
+        .unwrap();
+
+    model.insert_rows(0, 1, 2).unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 7, 1),
+        Ok("IronCalc".to_string())
+    );
+    assert_eq!(model.get_cell_link(0, 7, 1), Ok(Some(example_link())));
+    assert_eq!(model.get_cell_link(0, 5, 1), Ok(None));
+
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 5, 1), Ok(Some(example_link())));
+    assert_eq!(model.get_cell_link(0, 7, 1), Ok(None));
+}
+
+#[test]
+fn deleting_rows_moves_and_removes_links() {
+    let mut model = UserModel::from_model(new_empty_model());
+    // A2 is deleted with its rows, A5 shifts up to A2
+    model
+        .set_cell_link(0, 2, 1, link_to("https://a.com"), Some("a"))
+        .unwrap();
+    model
+        .set_cell_link(0, 5, 1, link_to("https://b.com"), Some("b"))
+        .unwrap();
+
+    model.delete_rows(0, 1, 3).unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1), Ok("b".to_string()));
+    assert_eq!(
+        model.get_cell_link(0, 2, 1),
+        Ok(Some(link_to("https://b.com")))
+    );
+    assert_eq!(model.get_links(0).unwrap().len(), 1);
+
+    // undo restores both the deleted link and the shifted one
+    model.undo().unwrap();
+    assert_eq!(
+        model.get_cell_link(0, 2, 1),
+        Ok(Some(link_to("https://a.com")))
+    );
+    assert_eq!(
+        model.get_cell_link(0, 5, 1),
+        Ok(Some(link_to("https://b.com")))
+    );
+    assert_eq!(model.get_links(0).unwrap().len(), 2);
+
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_cell_link(0, 2, 1),
+        Ok(Some(link_to("https://b.com")))
+    );
+    assert_eq!(model.get_links(0).unwrap().len(), 1);
+}
+
+#[test]
+fn inserting_and_deleting_columns_move_links() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 1, 3, example_link(), Some("IronCalc"))
+        .unwrap();
+
+    // insert a column before: C1 -> D1
+    model.insert_columns(0, 1, 1).unwrap();
+    assert_eq!(model.get_cell_link(0, 1, 4), Ok(Some(example_link())));
+    assert_eq!(model.get_cell_link(0, 1, 3), Ok(None));
+
+    // delete columns A:B: D1 -> B1
+    model.delete_columns(0, 1, 2).unwrap();
+    assert_eq!(model.get_cell_link(0, 1, 2), Ok(Some(example_link())));
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 2),
+        Ok("IronCalc".to_string())
+    );
+
+    // delete the linked column itself and undo
+    model.delete_columns(0, 2, 1).unwrap();
+    assert!(model.get_links(0).unwrap().is_empty());
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 1, 2), Ok(Some(example_link())));
+
+    // undo the previous operations too
+    model.undo().unwrap();
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 1, 3), Ok(Some(example_link())));
+    assert_eq!(model.get_links(0).unwrap().len(), 1);
+}
+
+#[test]
+fn moving_rows_moves_links() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 2, 1, example_link(), Some("IronCalc"))
+        .unwrap();
+    model.set_user_input(0, 3, 1, "below").unwrap();
+
+    // move row 2 down by 2: the link goes to row 4, row 3 shifts up to row 2
+    model.move_rows_action(0, 2, 1, 2).unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 1),
+        Ok("IronCalc".to_string())
+    );
+    assert_eq!(model.get_cell_link(0, 4, 1), Ok(Some(example_link())));
+    assert_eq!(model.get_cell_link(0, 2, 1), Ok(None));
+    assert_eq!(model.get_links(0).unwrap().len(), 1);
+
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 2, 1), Ok(Some(example_link())));
+    assert_eq!(model.get_cell_link(0, 4, 1), Ok(None));
+}
+
+#[test]
+fn moving_columns_moves_links() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 1, 2, example_link(), Some("IronCalc"))
+        .unwrap();
+
+    // move column B left by 1: the link goes to column A
+    model.move_columns_action(0, 2, 1, -1).unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 1),
+        Ok("IronCalc".to_string())
+    );
+    assert_eq!(model.get_cell_link(0, 1, 1), Ok(Some(example_link())));
+    assert_eq!(model.get_links(0).unwrap().len(), 1);
+
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 1, 2), Ok(Some(example_link())));
+    assert_eq!(model.get_cell_link(0, 1, 1), Ok(None));
+}
+
+#[test]
+fn moving_a_column_does_not_create_links() {
+    let mut model = UserModel::from_model(new_empty_model());
+    // an URL-looking value whose auto-created link was removed by the user
+    model.set_user_input(0, 1, 2, "www.example.com").unwrap();
+    model.delete_cell_link(0, 1, 2).unwrap();
+
+    // moving the column rebuilds the cell, which must not re-create the link
+    model.move_columns_action(0, 2, 1, 1).unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 3),
+        Ok("www.example.com".to_string())
+    );
+    assert!(model.get_links(0).unwrap().is_empty());
+}
+
+#[test]
+fn overlapping_cut_paste_moves_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 1, 1, example_link(), Some("a"))
+        .unwrap();
+    model.set_user_input(0, 2, 1, "b").unwrap();
+
+    // cut A1:A2, paste at A2 (target A2:A3 overlaps the source)
+    model.set_selected_range(1, 1, 2, 1).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(2, 1).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, true)
+        .unwrap();
+
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("".to_string()));
+    assert_eq!(model.get_cell_link(0, 1, 1), Ok(None));
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1), Ok("a".to_string()));
+    assert_eq!(model.get_cell_link(0, 2, 1), Ok(Some(example_link())));
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1), Ok("b".to_string()));
+    assert_eq!(model.get_cell_link(0, 3, 1), Ok(None));
+    assert_eq!(model.get_links(0).unwrap().len(), 1);
+
+    model.undo().unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("a".to_string()));
+    assert_eq!(model.get_cell_link(0, 1, 1), Ok(Some(example_link())));
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1), Ok("b".to_string()));
+    assert_eq!(model.get_cell_link(0, 2, 1), Ok(None));
+    assert_eq!(model.get_links(0).unwrap().len(), 1);
+}
+
+#[test]
+fn cross_sheet_cut_paste_moves_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model.new_sheet().unwrap();
+    model
+        .set_cell_link(0, 1, 1, example_link(), Some("IronCalc"))
+        .unwrap();
+
+    model.set_selected_sheet(0).unwrap();
+    model.set_selected_cell(1, 1).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_sheet(1).unwrap();
+    model.set_selected_cell(3, 3).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, true)
+        .unwrap();
+
+    assert_eq!(model.get_cell_link(0, 1, 1), Ok(None));
+    assert_eq!(model.get_cell_link(1, 3, 3), Ok(Some(example_link())));
+    assert_eq!(
+        model.get_formatted_cell_value(1, 3, 3),
+        Ok("IronCalc".to_string())
+    );
+
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 1, 1), Ok(Some(example_link())));
+    assert_eq!(model.get_cell_link(1, 3, 3), Ok(None));
+}
