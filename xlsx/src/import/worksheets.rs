@@ -606,6 +606,9 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     Ok((comments, hyperlinks))
 }
 
+/// Maximum number of cells a single `<hyperlink>` range is expanded to
+const MAX_HYPERLINK_RANGE_CELLS: i64 = 10_000;
+
 /// Loads the `<hyperlinks>` element of a worksheet:
 /// ```xml
 /// <hyperlinks>
@@ -653,10 +656,22 @@ fn load_hyperlinks(
                 Link::External { target, tooltip }
             }
             None => {
-                let location = node.attribute("location").unwrap_or("").to_string();
+                let location = match node.attribute("location") {
+                    Some(location) if !location.is_empty() => location.to_string(),
+                    // a hyperlink with neither r:id nor location is malformed, skip it
+                    _ => continue,
+                };
                 Link::Internal { location, tooltip }
             }
         };
+        // The range is expanded to one link per cell. A corrupt or malicious file
+        // could use an enormous range (up to the whole sheet); in that case only
+        // the top-left cell gets the link instead of exhausting memory.
+        let cell_count = (row_end - row_start + 1) as i64 * (column_end - column_start + 1) as i64;
+        if cell_count > MAX_HYPERLINK_RANGE_CELLS {
+            links.insert((row_start, column_start), link);
+            continue;
+        }
         for row in row_start..=row_end {
             for column in column_start..=column_end {
                 links.insert((row, column), link.clone());
@@ -1350,7 +1365,11 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
 
 #[cfg(test)]
 mod tests {
-    use crate::import::worksheets::parse_reference;
+    use std::collections::HashMap;
+
+    use ironcalc_base::types::Link;
+
+    use crate::import::worksheets::{load_hyperlinks, parse_reference};
 
     #[test]
     fn parse_reference_works() {
@@ -1358,5 +1377,44 @@ mod tests {
         assert!(cell_reference.is_ok());
         let cell_reference = cell_reference.unwrap();
         assert_eq!(cell_reference.sheet, "📈 Overview");
+    }
+
+    #[test]
+    fn load_hyperlinks_skips_malformed_and_caps_huge_ranges() {
+        let xml = r#"<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+            <hyperlinks>
+                <hyperlink ref="B2" location="Target!A1"/>
+                <hyperlink ref="B3"/>
+                <hyperlink ref="B4" location=""/>
+                <hyperlink ref="D1:E2" location="Target!A1"/>
+                <hyperlink ref="G1:XFD1048576" location="Target!A1"/>
+                <hyperlink ref="F1" r:id="rId9"/>
+            </hyperlinks>
+        </worksheet>"#;
+        let doc = roxmltree::Document::parse(xml).unwrap();
+        let ws = doc.root().first_child().unwrap();
+        // no relationships: the r:id hyperlink is dangling
+        let rels = HashMap::new();
+
+        let links = load_hyperlinks(ws, &rels).unwrap();
+
+        let internal = Link::Internal {
+            location: "Target!A1".to_string(),
+            tooltip: None,
+        };
+        // B2 plus the four cells of D1:E2 plus the top-left of the huge range.
+        // The hyperlinks with no location, an empty location or a dangling
+        // relationship are skipped.
+        assert_eq!(links.len(), 6);
+        assert_eq!(links.get(&(2, 2)), Some(&internal));
+        for (row, column) in [(1, 4), (1, 5), (2, 4), (2, 5)] {
+            assert_eq!(links.get(&(row, column)), Some(&internal));
+        }
+        // the huge range is not expanded: only its top-left cell gets the link
+        assert_eq!(links.get(&(1, 7)), Some(&internal));
+        assert_eq!(links.get(&(2, 7)), None);
+        assert_eq!(links.get(&(3, 2)), None);
+        assert_eq!(links.get(&(4, 2)), None);
+        assert_eq!(links.get(&(1, 6)), None);
     }
 }
