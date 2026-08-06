@@ -87,7 +87,9 @@ export function buildMailto(
   return `mailto:${address}?${params.join("&")}`;
 }
 
-export const CELL_REFERENCE_REGEX = /^\$?[A-Za-z]{1,3}\$?[0-9]{1,7}$/;
+/// A single cell ("B5") or a range of cells ("A1:B5"), with optional dollars
+export const CELL_REFERENCE_REGEX =
+  /^\$?[A-Za-z]{1,3}\$?[0-9]{1,7}(:\$?[A-Za-z]{1,3}\$?[0-9]{1,7})?$/;
 export const DEFINED_NAME_REGEX = /^[A-Za-z_][A-Za-z0-9_.]*$/;
 
 /// Splits an internal link location ("Sheet1!A30", "'My Sheet'!A30" or a
