@@ -10,63 +10,19 @@ import { ModalDialog } from "../Modal/ModalDialog";
 import { useModalFocus } from "../Modal/useModalFocus";
 import { useModalKeyDown } from "../Modal/useModalKeyDown";
 import { Select } from "../Select/Select";
+import {
+  buildMailto,
+  CELL_REFERENCE_REGEX,
+  DEFINED_NAME_REGEX,
+  isValidEmail,
+  normalizeUrl,
+  parseLocation,
+  parseMailto,
+} from "./util";
 import "../Modal/modal-dialog.css";
 import "./link-dialog.css";
 
 type LinkDialogTab = "external" | "document" | "email";
-
-const ALLOWED_SCHEMES = [
-  "http:",
-  "https:",
-  "ftp:",
-  "ftps:",
-  "file:",
-  "mailto:",
-];
-
-/// Returns the target URL for the link or null if `input` is not a valid URL.
-/// Scheme-less URLs like "www.example.com" get "https://" prepended.
-export function normalizeUrl(input: string): string | null {
-  const value = input.trim();
-  if (!value) {
-    return null;
-  }
-  try {
-    const url = new URL(value);
-    return ALLOWED_SCHEMES.includes(url.protocol) ? value : null;
-  } catch {
-    // not an absolute URL: accept domain-like values with an implicit https://
-    if (/^[\w-]+(\.[\w-]+)+([/?#]\S*)?$/.test(value)) {
-      return `https://${value}`;
-    }
-    return null;
-  }
-}
-
-function isValidEmail(input: string): boolean {
-  // allow "someone@example.com?subject=Hello" (the query is part of the mailto URI)
-  const address = input.split("?")[0];
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address);
-}
-
-const CELL_REFERENCE_REGEX = /^\$?[A-Za-z]{1,3}\$?[0-9]{1,7}$/;
-const DEFINED_NAME_REGEX = /^[A-Za-z_][A-Za-z0-9_.]*$/;
-
-/// Splits an internal link location ("Sheet1!A30", "'My Sheet'!A30" or a
-/// defined name) into its sheet name and cell reference parts.
-function parseLocation(location: string): {
-  sheetName: string;
-  cellRef: string;
-} {
-  const separator = location.lastIndexOf("!");
-  if (separator === -1) {
-    return { sheetName: "", cellRef: location };
-  }
-  return {
-    sheetName: location.slice(0, separator).replace(/^'(.*)'$/, "$1"),
-    cellRef: location.slice(separator + 1),
-  };
-}
 
 interface LinkDialogProperties {
   open: boolean;
@@ -103,6 +59,10 @@ export function LinkDialog({
   const [tab, setTab] = useState<LinkDialogTab>("external");
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  // mailto query parameters other than the subject (e.g. body): not shown in
+  // the dialog but preserved when the link is saved
+  const [emailExtraParams, setEmailExtraParams] = useState("");
   const [sheetName, setSheetName] = useState(selectedSheetName);
   const [cellRef, setCellRef] = useState("");
   const [tooltip, setTooltip] = useState("");
@@ -116,6 +76,8 @@ export function LinkDialog({
     setTooltip(initialLink?.tooltip || "");
     setUrl("");
     setEmail("");
+    setSubject("");
+    setEmailExtraParams("");
     setSheetName(selectedSheetName);
     setCellRef("");
     if (!initialLink) {
@@ -129,7 +91,10 @@ export function LinkDialog({
       setCellRef(location.cellRef.replace(/\$/g, ""));
     } else if (initialLink.target.startsWith("mailto:")) {
       setTab("email");
-      setEmail(initialLink.target.slice("mailto:".length));
+      const mailto = parseMailto(initialLink.target);
+      setEmail(mailto.address);
+      setSubject(mailto.subject);
+      setEmailExtraParams(mailto.otherParams);
     } else {
       setTab("external");
       setUrl(initialLink.target);
@@ -181,9 +146,16 @@ export function LinkDialog({
         if (!isValidEmail(email)) {
           return null;
         }
+        // the address input may itself carry mailto parameters
+        // ("a@b.com?subject=Hi"): the subject field wins over an inline one
+        const inline = parseMailto(email.trim());
+        const subjectValue = subject.trim() || inline.subject;
+        const otherParams = [inline.otherParams, emailExtraParams]
+          .filter(Boolean)
+          .join("&");
         return {
           type: "External",
-          target: `mailto:${email.trim()}`,
+          target: buildMailto(inline.address, subjectValue, otherParams),
           tooltip: linkTooltip,
         };
       }
@@ -306,15 +278,25 @@ export function LinkDialog({
           </>
         )}
         {tab === "email" && (
-          <Input
-            autoFocus
-            placeholder={t("link_dialog.email_placeholder")}
-            value={email}
-            error={emailError}
-            helperText={emailError ? t("link_dialog.invalid_email") : undefined}
-            onChange={(event) => setEmail(event.target.value)}
-            onKeyDown={stopEditorKeys}
-          />
+          <>
+            <Input
+              autoFocus
+              placeholder={t("link_dialog.email_placeholder")}
+              value={email}
+              error={emailError}
+              helperText={
+                emailError ? t("link_dialog.invalid_email") : undefined
+              }
+              onChange={(event) => setEmail(event.target.value)}
+              onKeyDown={stopEditorKeys}
+            />
+            <Input
+              placeholder={t("link_dialog.subject_placeholder")}
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              onKeyDown={stopEditorKeys}
+            />
+          </>
         )}
         <Input
           placeholder={t("link_dialog.tooltip_placeholder")}

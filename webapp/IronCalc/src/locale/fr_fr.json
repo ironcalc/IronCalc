@@ -218,6 +218,7 @@
     "invalid_url": "Veuillez saisir une URL valide",
     "label_placeholder": "Libellé",
     "save": "Enregistrer",
+    "subject_placeholder": "Objet (facultatif)",
     "title_add": "Ajouter un lien",
     "title_edit": "Modifier le lien",
     "tooltip_placeholder": "Info-bulle (facultatif)",
