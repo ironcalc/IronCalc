@@ -255,7 +255,12 @@ fn load_comments<R: Read + std::io::Seek>(
                 .map(|n| n.text().unwrap().to_string())
                 .collect::<Vec<String>>()
                 .join("");
-            let cell_ref = get_attribute(&comment, "ref")?.to_string();
+            let reference = get_attribute(&comment, "ref")?;
+            let cell_ref = parse_reference_a1(&reference.to_uppercase())
+                .map(|r| (r.row, r.column))
+                .ok_or_else(|| {
+                    XlsxError::Xml(format!("Invalid comment reference: '{reference}'"))
+                })?;
             // TODO: Read author_name from the list of authors
             let author_name = "".to_string();
             comments.push(Comment {
@@ -1424,9 +1429,11 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::io::{Cursor, Write};
 
     use ironcalc_base::types::Link;
 
+    use super::*;
     use crate::import::worksheets::{load_hyperlinks, parse_reference};
 
     #[test]
@@ -1474,5 +1481,59 @@ mod tests {
         assert_eq!(links.get(&(3, 2)), None);
         assert_eq!(links.get(&(4, 2)), None);
         assert_eq!(links.get(&(1, 6)), None);
+    }
+
+    #[test]
+    fn merge_cells_import_skips_invalid_refs() {
+        let parse = |xml: &str| {
+            let doc = roxmltree::Document::parse(xml).unwrap();
+            load_merge_cells(doc.root_element()).unwrap()
+        };
+        let cells = parse(
+            r#"<worksheet><mergeCells count="1"><mergeCell ref="K7:L10"/></mergeCells></worksheet>"#,
+        );
+        assert_eq!(
+            cells,
+            vec![MergedCell {
+                row: 7,
+                column: 11,
+                width: 2,
+                height: 4,
+            }]
+        );
+
+        // malformed, axis-shorthand and single-cell entries are skipped
+        let cells = parse(
+            r#"<worksheet><mergeCells count="4"><mergeCell ref="garbage"/><mergeCell ref="D:D"/><mergeCell ref="B2"/><mergeCell ref="A1:B1"/></mergeCells></worksheet>"#,
+        );
+        assert_eq!(
+            cells,
+            vec![MergedCell {
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            }]
+        );
+    }
+
+    #[test]
+    fn comments_import_rejects_invalid_ref() {
+        let archive_with = |comments_xml: &str| {
+            let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            writer
+                .start_file("xl/comments1.xml", zip::write::FileOptions::default())
+                .unwrap();
+            writer.write_all(comments_xml.as_bytes()).unwrap();
+            zip::read::ZipArchive::new(writer.finish().unwrap()).unwrap()
+        };
+
+        let valid = r#"<comments><commentList><comment ref="B3" authorId="0"><text><t>hi</t></text></comment></commentList></comments>"#;
+        let comments = load_comments(&mut archive_with(valid), "xl/comments1.xml").unwrap();
+        assert_eq!(comments[0].cell_ref, (3, 2));
+        assert_eq!(comments[0].text, "hi");
+
+        let invalid = r#"<comments><commentList><comment ref="garbage" authorId="0"><text><t>hi</t></text></comment></commentList></comments>"#;
+        assert!(load_comments(&mut archive_with(invalid), "xl/comments1.xml").is_err());
     }
 }

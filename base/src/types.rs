@@ -6,7 +6,16 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{cf_types::ConditionalFormatting, expressions::token::Error};
+use crate::{
+    cf_types::ConditionalFormatting,
+    constants::{LAST_COLUMN, LAST_ROW},
+    expressions::{
+        token::Error,
+        utils::{
+            column_to_number, is_valid_column, is_valid_row, number_to_column, parse_reference_a1,
+        },
+    },
+};
 
 fn default_as_false() -> bool {
     false
@@ -304,6 +313,142 @@ impl MergedCell {
     }
 }
 
+/// A cell position: (row, column), 1-based.
+pub type CellAddr = (i32, i32);
+
+/// A rectangular reference. An axis is a closed 1-based interval, or `None`
+/// meaning the whole axis (full-column `D:D`, full-row `5:7`).
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct RangeRef {
+    pub rows: Option<(i32, i32)>,
+    pub cols: Option<(i32, i32)>,
+}
+
+/// One side of an A1 reference: a column index, a row index, or both.
+fn parse_a1_part(s: &str) -> Option<(Option<i32>, Option<i32>)> {
+    let s = s.replace('$', "");
+    if let Some(r) = parse_reference_a1(&s) {
+        return Some((Some(r.column), Some(r.row)));
+    }
+    if is_valid_column(&s) {
+        return Some((Some(column_to_number(&s).ok()?), None));
+    }
+    let row = s.parse::<i32>().ok()?;
+    is_valid_row(row).then_some((None, Some(row)))
+}
+
+/// `None` when the interval spans the whole axis, so that a bounded storage ref
+/// and its formula shorthand parse to the same value.
+fn unbounded_if_full(span: (i32, i32), last: i32) -> Option<(i32, i32)> {
+    (span != (1, last)).then_some(span)
+}
+
+fn ordered(a: i32, b: i32) -> (i32, i32) {
+    if a <= b {
+        (a, b)
+    } else {
+        (b, a)
+    }
+}
+
+impl RangeRef {
+    pub fn cell(row: i32, column: i32) -> RangeRef {
+        RangeRef {
+            rows: Some((row, row)),
+            cols: Some((column, column)),
+        }
+    }
+
+    /// Parses `A1`, `A1:B2`, full-column `D:F` or full-row `5:7`.
+    /// Case-insensitive, `$` markers are ignored, out-of-bounds is rejected.
+    pub fn parse_a1(s: &str) -> Option<RangeRef> {
+        let s = s.to_uppercase();
+        let Some((left, right)) = s.split_once(':') else {
+            let (column, row) = parse_a1_part(&s)?;
+            return Some(RangeRef::cell(row?, column?));
+        };
+        match (parse_a1_part(left)?, parse_a1_part(right)?) {
+            // A full-span axis is the storage spelling of an unbounded one (`D1:D1048576` = `D:D`).
+            ((Some(c1), Some(r1)), (Some(c2), Some(r2))) => Some(RangeRef {
+                rows: unbounded_if_full(ordered(r1, r2), LAST_ROW),
+                cols: unbounded_if_full(ordered(c1, c2), LAST_COLUMN),
+            }),
+            ((Some(c1), None), (Some(c2), None)) => Some(RangeRef {
+                rows: None,
+                cols: Some(ordered(c1, c2)),
+            }),
+            ((None, Some(r1)), (None, Some(r2))) => Some(RangeRef {
+                rows: Some(ordered(r1, r2)),
+                cols: None,
+            }),
+            _ => None,
+        }
+    }
+
+    /// Canonical A1 rendering: uppercase, no `$`.
+    pub fn to_a1(&self) -> String {
+        match (self.rows, self.cols) {
+            (Some((r1, r2)), None) => format!("{r1}:{r2}"),
+            (None, Some((c1, c2))) => format!(
+                "{}:{}",
+                number_to_column(c1).unwrap_or_default(),
+                number_to_column(c2).unwrap_or_default()
+            ),
+            // Bounded on both axes; a fully unbounded ref renders as the whole grid.
+            _ => self.to_a1_bounded(),
+        }
+    }
+
+    /// A1 rendering for xlsx storage attributes (`ST_Ref`): both corners always
+    /// carry a column and a row, so unbounded axes are expanded to the whole grid.
+    pub fn to_a1_bounded(&self) -> String {
+        let (row1, column1, row2, column2) = self.resolve();
+        let c1 = number_to_column(column1).unwrap_or_default();
+        let c2 = number_to_column(column2).unwrap_or_default();
+        if row1 == row2 && c1 == c2 {
+            format!("{c1}{row1}")
+        } else {
+            format!("{c1}{row1}:{c2}{row2}")
+        }
+    }
+
+    /// Parses a whitespace-separated list of references, skipping invalid parts.
+    pub fn parse_sqref(s: &str) -> Vec<RangeRef> {
+        s.split_whitespace()
+            .filter_map(RangeRef::parse_a1)
+            .collect()
+    }
+
+    pub fn to_sqref(ranges: &[RangeRef]) -> String {
+        ranges
+            .iter()
+            .map(RangeRef::to_a1)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// [`RangeRef::to_a1_bounded`] over a list, for the xlsx `sqref` attribute.
+    pub fn to_sqref_bounded(ranges: &[RangeRef]) -> String {
+        ranges
+            .iter()
+            .map(RangeRef::to_a1_bounded)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// `(row1, column1, row2, column2)` with unbounded axes expanded to the whole grid.
+    pub fn resolve(&self) -> (i32, i32, i32, i32) {
+        let (row1, row2) = self.rows.unwrap_or((1, LAST_ROW));
+        let (column1, column2) = self.cols.unwrap_or((1, LAST_COLUMN));
+        (row1, column1, row2, column2)
+    }
+
+    pub fn contains(&self, row: i32, column: i32) -> bool {
+        let (row1, column1, row2, column2) = self.resolve();
+        (row1..=row2).contains(&row) && (column1..=column2).contains(&column)
+    }
+}
+
 /// Internal representation of a worksheet Excel object
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Worksheet {
@@ -467,12 +612,12 @@ impl Default for Cell {
     }
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Comment {
     pub text: String,
     pub author_name: String,
     pub author_id: Option<String>,
-    pub cell_ref: String,
+    pub cell_ref: CellAddr,
 }
 
 // ECMA-376-1:2016 section 18.5.1.2
@@ -1023,5 +1168,107 @@ mod test {
         assert!(!is_valid_hex_color("#ffffff "));
         assert!(!is_valid_hex_color("#fff")); // CSS shorthand
         assert!(!is_valid_hex_color("#ffffff00")); // with alpha channel
+    }
+
+    fn round_trip(s: &str) -> String {
+        RangeRef::parse_a1(s).unwrap().to_a1()
+    }
+
+    #[test]
+    fn test_range_ref_parse_a1() {
+        assert_eq!(round_trip("A1"), "A1");
+        assert_eq!(round_trip("A1:B2"), "A1:B2");
+        assert_eq!(round_trip("D:D"), "D:D");
+        assert_eq!(round_trip("D:F"), "D:F");
+        assert_eq!(round_trip("5:7"), "5:7");
+        // $ markers ignored, case-insensitive
+        assert_eq!(round_trip("$a$1:$b$2"), "A1:B2");
+        assert_eq!(round_trip("$d:$f"), "D:F");
+        // corners are normalized so that lo <= hi
+        assert_eq!(round_trip("B2:A1"), "A1:B2");
+        assert_eq!(round_trip("F:D"), "D:F");
+        assert_eq!(round_trip("7:5"), "5:7");
+        // a degenerate rect renders without a colon
+        assert_eq!(round_trip("A1:A1"), "A1");
+        // a full-span bounded axis (the storage form) normalizes to unbounded
+        assert_eq!(round_trip("D1:D1048576"), "D:D");
+        assert_eq!(round_trip("A5:XFD7"), "5:7");
+        assert_eq!(RangeRef::parse_a1("D1:D1048576"), RangeRef::parse_a1("D:D"));
+        // the whole grid has no compact form, so it round trips bijectively
+        assert_eq!(round_trip("A1:XFD1048576"), "A1:XFD1048576");
+        assert_eq!(
+            RangeRef::parse_a1("A1:XFD1048576"),
+            Some(RangeRef {
+                rows: None,
+                cols: None
+            })
+        );
+    }
+
+    #[test]
+    fn test_range_ref_to_a1_bounded() {
+        let bounded = |s: &str| RangeRef::parse_a1(s).unwrap().to_a1_bounded();
+        assert_eq!(bounded("D:D"), "D1:D1048576");
+        assert_eq!(bounded("5:7"), "A5:XFD7");
+        assert_eq!(bounded("A1:B2"), "A1:B2");
+        assert_eq!(bounded("C3"), "C3");
+    }
+
+    #[test]
+    fn test_range_ref_parse_a1_invalid() {
+        assert_eq!(RangeRef::parse_a1(""), None);
+        assert_eq!(RangeRef::parse_a1("not_a_range"), None);
+        assert_eq!(RangeRef::parse_a1("!!!!"), None);
+        assert_eq!(RangeRef::parse_a1("A1:"), None);
+        // a bare column or row is not a range
+        assert_eq!(RangeRef::parse_a1("D"), None);
+        assert_eq!(RangeRef::parse_a1("5"), None);
+        // mixed axis kinds
+        assert_eq!(RangeRef::parse_a1("A1:B"), None);
+        assert_eq!(RangeRef::parse_a1("D:5"), None);
+        // out of bounds
+        assert_eq!(RangeRef::parse_a1("A0"), None);
+        assert_eq!(RangeRef::parse_a1("XFE1"), None);
+        assert_eq!(RangeRef::parse_a1("A1048577"), None);
+        assert_eq!(RangeRef::parse_a1("0:3"), None);
+    }
+
+    #[test]
+    fn test_range_ref_sqref() {
+        let ranges = RangeRef::parse_sqref(" a1:b2   $D:$D  garbage 5:7 ");
+        assert_eq!(RangeRef::to_sqref(&ranges), "A1:B2 D:D 5:7");
+        assert!(RangeRef::parse_sqref("").is_empty());
+    }
+
+    #[test]
+    fn test_range_ref_resolve() {
+        assert_eq!(RangeRef::cell(3, 2).resolve(), (3, 2, 3, 2));
+        assert_eq!(
+            RangeRef::parse_a1("D:F").unwrap().resolve(),
+            (1, 4, LAST_ROW, 6)
+        );
+        assert_eq!(
+            RangeRef::parse_a1("5:7").unwrap().resolve(),
+            (5, 1, 7, LAST_COLUMN)
+        );
+    }
+
+    #[test]
+    fn test_range_ref_contains() {
+        let rect = RangeRef::parse_a1("B2:C3").unwrap();
+        assert!(rect.contains(2, 2));
+        assert!(rect.contains(3, 3));
+        assert!(!rect.contains(1, 2));
+        assert!(!rect.contains(2, 4));
+
+        let column = RangeRef::parse_a1("D:D").unwrap();
+        assert!(column.contains(1, 4));
+        assert!(column.contains(LAST_ROW, 4));
+        assert!(!column.contains(1, 5));
+
+        let row = RangeRef::parse_a1("5:7").unwrap();
+        assert!(row.contains(5, 1));
+        assert!(row.contains(7, LAST_COLUMN));
+        assert!(!row.contains(8, 1));
     }
 }

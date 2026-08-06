@@ -2,14 +2,14 @@
 #![allow(clippy::panic)]
 #![allow(clippy::expect_used)]
 
-use std::fs;
+use std::{fs, io::Read};
 
 use ironcalc_base::{
     cf_types::{
         icon_set_icons, CfRule, CfRuleInput, Cfvo, ColorScaleThreshold, Icon, IconThreshold,
         PeriodType, TextOperator, ValueOperator,
     },
-    types::{Color, Dxf, DxfFont, Fill},
+    types::{Color, Dxf, DxfFont, Fill, RangeRef},
     Model,
 };
 
@@ -605,10 +605,10 @@ fn test_cf_round_trip() {
 
     // Build a lookup: range → imported rules (there may be multiple per range).
     use std::collections::HashMap;
-    let mut by_range: HashMap<&str, Vec<&CfRule>> = HashMap::new();
+    let mut by_range: HashMap<String, Vec<&CfRule>> = HashMap::new();
     for cf in imp_cfs {
         by_range
-            .entry(cf.range.as_str())
+            .entry(RangeRef::to_sqref(&cf.ranges))
             .or_default()
             .push(&cf.cf_rule);
     }
@@ -1079,7 +1079,7 @@ fn test_cf_custom_icon_set_round_trip() {
 
     // The mixed-icon set (A1:A10) should come back as an IconSet with 3 thresholds.
     let has_mixed = imp_cfs.iter().any(|cf| {
-        cf.range == "A1:A10"
+        RangeRef::to_sqref(&cf.ranges) == "A1:A10"
             && matches!(&cf.cf_rule, CfRule::IconSet { thresholds, show_value: false } if thresholds.len() == 3)
     });
     assert!(
@@ -1089,18 +1089,107 @@ fn test_cf_custom_icon_set_round_trip() {
 
     // The Heart rating (B1:B10) should come back as an IconSet with 3 thresholds.
     let has_heart = imp_cfs.iter().any(|cf| {
-        cf.range == "B1:B10"
+        RangeRef::to_sqref(&cf.ranges) == "B1:B10"
             && matches!(&cf.cf_rule, CfRule::IconRating { thresholds, .. } if thresholds.len() == 3)
     });
     assert!(has_heart, "heart rating icon not found in imported model");
 
     // The ThumbsUp/Down set (C1:C10) will be missed.
     let has_thumbs = imp_cfs.iter().any(|cf| {
-        cf.range == "C1:C10"
+        RangeRef::to_sqref(&cf.ranges) == "C1:C10"
             && matches!(&cf.cf_rule, CfRule::IconSet { thresholds, .. } if thresholds.len() == 2)
     });
     assert!(
         !has_thumbs,
         "thumbs up/down icon set found in imported model (and not expected)"
     );
+}
+
+#[test]
+fn test_cf_full_axis_and_canonicalization_round_trip() {
+    let mut model = new_empty_model();
+    model.set_user_input(0, 1, 4, "8".to_string()).unwrap();
+    model.evaluate();
+
+    // Full-column and full-row refs survive the XML round trip; a `$`-qualified
+    // reversed range is stored and exported canonically.
+    model
+        .add_conditional_formatting(
+            0,
+            "D:D",
+            CfRuleInput::CellIs {
+                operator: ValueOperator::Equal,
+                formula: "8".to_string(),
+                formula2: None,
+                format: fill_dxf("#FF0000"),
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+    model
+        .add_conditional_formatting(
+            0,
+            "5:7",
+            CfRuleInput::CellIs {
+                operator: ValueOperator::GreaterThan,
+                formula: "1".to_string(),
+                formula2: None,
+                format: fill_dxf("#00FF00"),
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+    model
+        .add_conditional_formatting(
+            0,
+            "$b$2:$a$1",
+            CfRuleInput::CellIs {
+                operator: ValueOperator::LessThan,
+                formula: "1".to_string(),
+                formula2: None,
+                format: fill_dxf("#0000FF"),
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+
+    let temp_file_name = "temp_file_test_cf_full_axis.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    // Storage refs are always bounded on both axes (ECMA-376 ST_Ref).
+    let sheet_xml = read_sheet1_xml(temp_file_name);
+    assert!(sheet_xml.contains(r#"sqref="D1:D1048576""#));
+    assert!(sheet_xml.contains(r#"sqref="A5:XFD7""#));
+    assert!(sheet_xml.contains(r#"sqref="A1:B2""#));
+    assert!(!sheet_xml.contains(r#"sqref="D:D""#));
+
+    let imported = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    let ranges: Vec<String> = imported.workbook.worksheets[0]
+        .conditional_formatting
+        .iter()
+        .map(|cf| RangeRef::to_sqref(&cf.ranges))
+        .collect();
+    assert_eq!(ranges, vec!["D:D", "5:7", "A1:B2"]);
+
+    // Exporting the imported model yields the same storage refs.
+    let temp_file_name2 = "temp_file_test_cf_full_axis_2.xlsx";
+    save_to_xlsx(&imported, temp_file_name2).unwrap();
+    let sheet_xml2 = read_sheet1_xml(temp_file_name2);
+    assert!(sheet_xml2.contains(r#"sqref="D1:D1048576""#));
+    assert!(sheet_xml2.contains(r#"sqref="A5:XFD7""#));
+    assert!(sheet_xml2.contains(r#"sqref="A1:B2""#));
+
+    fs::remove_file(temp_file_name).unwrap();
+    fs::remove_file(temp_file_name2).unwrap();
+}
+
+fn read_sheet1_xml(path: &str) -> String {
+    let mut archive = zip::ZipArchive::new(fs::File::open(path).unwrap()).unwrap();
+    let mut xml = String::new();
+    archive
+        .by_name("xl/worksheets/sheet1.xml")
+        .unwrap()
+        .read_to_string(&mut xml)
+        .unwrap();
+    xml
 }

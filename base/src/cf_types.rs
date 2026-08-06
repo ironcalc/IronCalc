@@ -1,7 +1,7 @@
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use crate::types::{Color, Dxf, Style};
+use crate::types::{Color, Dxf, RangeRef, Style};
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub enum ValueOperator {
@@ -310,7 +310,7 @@ pub enum CfRuleInput {
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct ConditionalFormatting {
-    pub range: String,
+    pub ranges: Vec<RangeRef>,
     pub cf_rule: CfRule,
     pub priority: u32,
 }

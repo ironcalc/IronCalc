@@ -10,7 +10,7 @@ use roxmltree::Node;
 
 use crate::error::XlsxError;
 
-use ironcalc_base::types::{Color, Dxf, Theme};
+use ironcalc_base::types::{Color, Dxf, RangeRef, Theme};
 
 use super::styles::parse_dxf;
 use super::util::{get_attribute, get_color};
@@ -208,9 +208,9 @@ fn parse_x14_standalone_rules(
                     .filter(|n| n.has_tag_name("conditionalFormatting"))
                 {
                     // Range lives in <xm:sqref> (local name "sqref")
-                    let range = match cf.children().find(|n| n.has_tag_name("sqref")) {
+                    let ranges = match cf.children().find(|n| n.has_tag_name("sqref")) {
                         Some(n) => match n.text() {
-                            Some(t) => t.to_string(),
+                            Some(t) => RangeRef::parse_sqref(t),
                             None => continue,
                         },
                         None => continue,
@@ -233,7 +233,7 @@ fn parse_x14_standalone_rules(
                         };
 
                         result.push(ConditionalFormatting {
-                            range: range.clone(),
+                            ranges: ranges.clone(),
                             cf_rule,
                             priority,
                         });
@@ -428,7 +428,7 @@ pub(super) fn load_conditional_formatting(
         .children()
         .filter(|n| n.has_tag_name("conditionalFormatting"))
     {
-        let range = get_attribute(&cf, "sqref")?.to_string();
+        let ranges = RangeRef::parse_sqref(get_attribute(&cf, "sqref")?);
 
         for cf_rule in cf.children().filter(|n| n.has_tag_name("cfRule")) {
             let priority = cf_rule
@@ -715,7 +715,7 @@ pub(super) fn load_conditional_formatting(
             };
 
             result.push(ConditionalFormatting {
-                range: range.clone(),
+                ranges: ranges.clone(),
                 cf_rule: rule,
                 priority,
             });
@@ -792,7 +792,7 @@ mod tests {
 
         for cf in &rules {
             // Non-consecutive range is preserved verbatim.
-            assert_eq!(cf.range, "C9:F9 G8:G10 B12:B16");
+            assert_eq!(RangeRef::to_sqref(&cf.ranges), "C9:F9 G8:G10 B12:B16");
             match &cf.cf_rule {
                 CfRule::Formula {
                     formula, dxf_id, ..

@@ -1,6 +1,6 @@
 use crate::{
     cf_types::{CfRule, CfRuleInput, ConditionalFormattingView},
-    types::Dxf,
+    types::{Dxf, RangeRef},
 };
 
 use super::{common::UserModel, history::Diff};
@@ -70,7 +70,7 @@ impl<'a> UserModel<'a> {
         self.push_diff_list(vec![Diff::DeleteConditionalFormatting {
             sheet,
             index,
-            old_range: old.range,
+            old_range: RangeRef::to_sqref(&old.ranges),
             old_rule: Box::new(old.cf_rule),
             old_priority: old.priority,
         }]);
@@ -107,7 +107,7 @@ impl<'a> UserModel<'a> {
         self.push_diff_list(vec![Diff::UpdateConditionalFormatting {
             sheet,
             index,
-            old_range: old.range,
+            old_range: RangeRef::to_sqref(&old.ranges),
             old_rule: Box::new(old.cf_rule),
             old_priority: old.priority,
             new_range: new_range.to_string(),

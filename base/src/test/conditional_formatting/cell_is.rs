@@ -254,3 +254,47 @@ fn inverted_ranges() {
         "row 4 (8 cores) should not match NotEqual 8"
     );
 }
+
+#[test]
+fn test_full_column_range() {
+    let mut model = model_with_cores();
+    // Unbounded axis: evaluation clamps it to the used range instead of the whole grid.
+    model
+        .add_conditional_formatting(0, "A:A", cell_is(ValueOperator::Equal, "8", None))
+        .unwrap();
+    model.evaluate();
+
+    assert!(is_red(&model, 4), "row 4 (8 cores) should match Equal 8");
+    for row in [1, 2, 3, 5, 6, 7] {
+        assert!(!is_red(&model, row), "row {row} should not match Equal 8");
+    }
+}
+
+#[test]
+fn test_full_column_range_excel_form() {
+    let mut model = model_with_cores();
+    // Excel stores a whole-column rule bounded; it normalizes to the unbounded form.
+    model
+        .add_conditional_formatting(0, "A1:A1048576", cell_is(ValueOperator::Equal, "8", None))
+        .unwrap();
+    model.evaluate();
+
+    assert!(is_red(&model, 4), "row 4 (8 cores) should match Equal 8");
+    for row in [1, 2, 3, 5, 6, 7] {
+        assert!(!is_red(&model, row), "row {row} should not match Equal 8");
+    }
+}
+
+#[test]
+fn test_full_row_range() {
+    let mut model = model_with_cores();
+    model
+        .add_conditional_formatting(0, "4:4", cell_is(ValueOperator::Equal, "8", None))
+        .unwrap();
+    model.evaluate();
+
+    assert!(is_red(&model, 4), "row 4 (8 cores) should match Equal 8");
+    for row in [1, 2, 3, 5, 6, 7] {
+        assert!(!is_red(&model, row), "row {row} should not match Equal 8");
+    }
+}

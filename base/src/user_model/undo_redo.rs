@@ -4,7 +4,7 @@ use crate::{
     cf_types::ConditionalFormatting,
     constants::COLUMN_WIDTH_FACTOR,
     expressions::types::Area,
-    types::{ArrayKind, Cell, Style},
+    types::{ArrayKind, Cell, RangeRef, Style},
     UserModel,
 };
 
@@ -579,7 +579,7 @@ impl<'a> UserModel<'a> {
                         *sheet,
                         *index as usize,
                         ConditionalFormatting {
-                            range: old_range.clone(),
+                            ranges: RangeRef::parse_sqref(old_range),
                             cf_rule: *old_rule.clone(),
                             priority: *old_priority,
                         },
@@ -598,7 +598,7 @@ impl<'a> UserModel<'a> {
                     let i = *index as usize;
                     if i < ws.conditional_formatting.len() {
                         ws.conditional_formatting[i] = ConditionalFormatting {
-                            range: old_range.clone(),
+                            ranges: RangeRef::parse_sqref(old_range),
                             cf_rule: *old_rule.clone(),
                             priority: *old_priority,
                         };
@@ -1029,7 +1029,7 @@ impl<'a> UserModel<'a> {
                         *sheet,
                         len,
                         ConditionalFormatting {
-                            range: range.clone(),
+                            ranges: RangeRef::parse_sqref(range),
                             cf_rule: *rule.clone(),
                             priority: *priority,
                         },
@@ -1051,7 +1051,7 @@ impl<'a> UserModel<'a> {
                     let ws = self.model.workbook.worksheet_mut(*sheet)?;
                     let i = *index as usize;
                     if i < ws.conditional_formatting.len() {
-                        ws.conditional_formatting[i].range = new_range.clone();
+                        ws.conditional_formatting[i].ranges = RangeRef::parse_sqref(new_range);
                         ws.conditional_formatting[i].cf_rule = *new_rule.clone();
                     }
                     needs_evaluation = true;

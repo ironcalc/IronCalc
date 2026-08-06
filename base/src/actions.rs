@@ -6,11 +6,10 @@ use crate::expressions::parser::stringify::{
 };
 use crate::expressions::parser::Parser as ExprParser;
 use crate::expressions::types::CellReferenceRC;
-use crate::expressions::utils;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
-use crate::types::{ArrayKind, Cell, Link, MergedCell, Worksheet};
+use crate::types::{ArrayKind, Cell, Link, MergedCell, RangeRef, Worksheet};
 
 /// Applies `map` to the (row, column) key of every link in the worksheet, so
 /// that links follow their cells when rows or columns are inserted, deleted or
@@ -170,56 +169,26 @@ fn displace_cf_col(col: i32, data: &DisplaceData, sheet: u32) -> Option<i32> {
     }
 }
 
-/// Displaces a single A1-style sqref part (e.g. "A1" or "A1:B5").
-/// Returns the original string unchanged if any corner would become #REF!.
-fn displace_cf_sqref_part(part: &str, data: &DisplaceData, sheet: u32) -> String {
-    let upper = part.to_uppercase();
-    let segs: Vec<&str> = upper.splitn(2, ':').collect();
-    match segs.len() {
-        1 => {
-            if let Some(r) = utils::parse_reference_a1(segs[0]) {
-                if let (Some(nr), Some(nc)) = (
-                    displace_cf_row(r.row, data, sheet),
-                    displace_cf_col(r.column, data, sheet),
-                ) {
-                    if let Some(c) = utils::number_to_column(nc) {
-                        return format!("{c}{nr}");
-                    }
-                }
-            }
-            part.to_string()
-        }
-        2 => {
-            if let (Some(r1), Some(r2)) = (
-                utils::parse_reference_a1(segs[0]),
-                utils::parse_reference_a1(segs[1]),
-            ) {
-                if let (Some(nr1), Some(nc1), Some(nr2), Some(nc2)) = (
-                    displace_cf_row(r1.row, data, sheet),
-                    displace_cf_col(r1.column, data, sheet),
-                    displace_cf_row(r2.row, data, sheet),
-                    displace_cf_col(r2.column, data, sheet),
-                ) {
-                    if let (Some(c1), Some(c2)) =
-                        (utils::number_to_column(nc1), utils::number_to_column(nc2))
-                    {
-                        return format!("{c1}{nr1}:{c2}{nr2}");
-                    }
-                }
-            }
-            part.to_string()
-        }
-        _ => part.to_string(),
+/// Displaces one axis of a range. An unbounded axis passes through untouched.
+/// Returns `None` if either end would become #REF!.
+fn displace_cf_axis(
+    axis: Option<(i32, i32)>,
+    displace: impl Fn(i32) -> Option<i32>,
+) -> Option<Option<(i32, i32)>> {
+    match axis {
+        Some((lo, hi)) => Some(Some((displace(lo)?, displace(hi)?))),
+        None => Some(None),
     }
 }
 
-/// Displaces every part of a space-separated sqref string.
-fn displace_cf_sqref(sqref: &str, data: &DisplaceData, sheet: u32) -> String {
-    sqref
-        .split_whitespace()
-        .map(|p| displace_cf_sqref_part(p, data, sheet))
-        .collect::<Vec<_>>()
-        .join(" ")
+/// Displaces a range reference, leaving it unchanged if any corner would become #REF!.
+fn displace_cf_range(range: &RangeRef, data: &DisplaceData, sheet: u32) -> RangeRef {
+    let rows = displace_cf_axis(range.rows, |r| displace_cf_row(r, data, sheet));
+    let cols = displace_cf_axis(range.cols, |c| displace_cf_col(c, data, sheet));
+    match (rows, cols) {
+        (Some(rows), Some(cols)) => RangeRef { rows, cols },
+        _ => range.clone(),
+    }
 }
 
 // NOTE: There is a difference with Excel behaviour when deleting cells/rows/columns
@@ -404,23 +373,26 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
-    /// Updates the `range` field and formula fields of every CF rule on `sheet` according to `displace_data`.
+    /// Updates the `ranges` field and formula fields of every CF rule on `sheet` according to `displace_data`.
     fn displace_cf_ranges(&mut self, sheet: u32, displace_data: &DisplaceData) {
         let count = match self.workbook.worksheets.get(sheet as usize) {
             Some(ws) => ws.conditional_formatting.len(),
             None => return,
         };
 
-        // Phase 1: collect (index, new_range, old_rule, anchor) without holding a borrow on self.
+        // Phase 1: collect (index, new_ranges, old_rule, anchor) without holding a borrow on self.
         let sheet_name = self.workbook.worksheets[sheet as usize].get_name();
-        let mut phase1: Vec<(usize, String, CfRule, i32, i32)> = Vec::with_capacity(count);
+        let mut phase1: Vec<(usize, Vec<RangeRef>, CfRule, i32, i32)> = Vec::with_capacity(count);
         for idx in 0..count {
             let cf = &self.workbook.worksheets[sheet as usize].conditional_formatting[idx];
-            let old_range = cf.range.clone();
-            let new_range = displace_cf_sqref(&old_range, displace_data, sheet);
+            let new_ranges = cf
+                .ranges
+                .iter()
+                .map(|r| displace_cf_range(r, displace_data, sheet))
+                .collect();
             let rule = cf.cf_rule.clone();
-            if let Some((anchor_row, anchor_col)) = cf_sqref_anchor(&old_range) {
-                phase1.push((idx, new_range, rule, anchor_row, anchor_col));
+            if let Some((anchor_row, anchor_col)) = cf_sqref_anchor(&cf.ranges) {
+                phase1.push((idx, new_ranges, rule, anchor_row, anchor_col));
             }
         }
 
@@ -431,7 +403,7 @@ impl<'a> Model<'a> {
         let language = self.language;
         self.parser.set_locale(get_default_locale());
         self.parser.set_language(get_default_language());
-        for (idx, new_range, rule, anchor_row, anchor_col) in phase1 {
+        for (idx, new_ranges, rule, anchor_row, anchor_col) in phase1 {
             let context = CellReferenceRC {
                 sheet: sheet_name.clone(),
                 row: anchor_row,
@@ -439,7 +411,8 @@ impl<'a> Model<'a> {
             };
             let new_rule =
                 displace_cf_rule_formulas(&mut self.parser, rule, &context, displace_data);
-            self.workbook.worksheets[sheet as usize].conditional_formatting[idx].range = new_range;
+            self.workbook.worksheets[sheet as usize].conditional_formatting[idx].ranges =
+                new_ranges;
             self.workbook.worksheets[sheet as usize].conditional_formatting[idx].cf_rule = new_rule;
         }
         self.parser.set_locale(locale);

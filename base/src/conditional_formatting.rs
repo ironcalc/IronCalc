@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::expressions::utils::parse_reference_a1;
 use crate::formatter::dates::{date_to_serial_number, from_excel_date};
 use crate::{
     calc_result::CalcResult,
@@ -11,7 +10,7 @@ use crate::{
         PeriodType, TextOperator, ValueOperator,
     },
     expressions::types::{CellReferenceIndex, CellReferenceRC},
-    types::{Color, Dxf},
+    types::{Color, Dxf, RangeRef},
     Model,
 };
 
@@ -20,33 +19,6 @@ use chrono::{Datelike, Duration, Months, NaiveDate};
 // ---------------------------------------------------------------------------
 // Free helper functions for CF evaluation
 // ---------------------------------------------------------------------------
-
-/// Parses a space-separated sqref like "A1:C3 E5" into a list of (row1,col1,row2,col2) tuples.
-fn parse_sqref(sqref: &str) -> Vec<(i32, i32, i32, i32)> {
-    sqref
-        .split_whitespace()
-        .filter_map(parse_range_part)
-        .collect()
-}
-
-fn parse_range_part(s: &str) -> Option<(i32, i32, i32, i32)> {
-    let upper = s.to_uppercase();
-    let parts: Vec<&str> = upper.splitn(2, ':').collect();
-    match parts.len() {
-        1 => {
-            let r = parse_reference_a1(parts[0])?;
-            Some((r.row, r.column, r.row, r.column))
-        }
-        2 => {
-            let r1 = parse_reference_a1(parts[0])?;
-            let r2 = parse_reference_a1(parts[1])?;
-            let (row_min, row_max) = (r1.row.min(r2.row), r1.row.max(r2.row));
-            let (col_min, col_max) = (r1.column.min(r2.column), r1.column.max(r2.column));
-            Some((row_min, col_min, row_max, col_max))
-        }
-        _ => None,
-    }
-}
 
 /// Interpolates a color along the color scale for a given value.
 fn interpolate_color(v: f64, thresholds: &[f64], colors: &[String]) -> String {
@@ -139,6 +111,7 @@ impl<'a> Model<'a> {
         self.cf_cache.clear();
         let sheet_count = self.workbook.worksheets.len();
         for sheet_idx in 0..sheet_count {
+            let dim = self.workbook.worksheets[sheet_idx].dimension();
             let mut cfs = self.workbook.worksheets[sheet_idx]
                 .conditional_formatting
                 .clone();
@@ -146,7 +119,22 @@ impl<'a> Model<'a> {
             // the first writer into cf_cache wins.
             cfs.sort_by_key(|cf| cf.priority);
             for cf in cfs {
-                let ranges = parse_sqref(&cf.range);
+                // An unbounded axis resolves to the whole grid; evaluation is dense per
+                // cell, so clamp it to the sheet's used range.
+                let ranges: Vec<(i32, i32, i32, i32)> = cf
+                    .ranges
+                    .iter()
+                    .map(|r| {
+                        let (r1, c1, mut r2, mut c2) = r.resolve();
+                        if r.rows.is_none() {
+                            r2 = r2.min(dim.max_row);
+                        }
+                        if r.cols.is_none() {
+                            c2 = c2.min(dim.max_column);
+                        }
+                        (r1, c1, r2, c2)
+                    })
+                    .collect();
                 if ranges.is_empty() {
                     continue;
                 }
@@ -1548,7 +1536,7 @@ impl<'a> Model<'a> {
             self.cf_rule_to_display(&mut cf.cf_rule, sheet);
             result.push(ConditionalFormattingView {
                 index,
-                range: cf.range,
+                range: RangeRef::to_sqref(&cf.ranges),
                 cf_rule: cf.cf_rule,
                 priority: cf.priority,
             });
@@ -1596,7 +1584,8 @@ impl<'a> Model<'a> {
         range: &str,
         rule: CfRuleInput,
     ) -> Result<u32, String> {
-        if parse_sqref(range).is_empty() {
+        let ranges = RangeRef::parse_sqref(range);
+        if ranges.is_empty() {
             return Err(format!("Invalid conditional formatting range: '{range}'"));
         }
         // Formulas are stored internally in English regardless of the user's
@@ -1614,7 +1603,7 @@ impl<'a> Model<'a> {
             .map(|m| m + 1)
             .unwrap_or(1);
         ws.conditional_formatting.push(ConditionalFormatting {
-            range: range.to_string(),
+            ranges,
             cf_rule: final_rule,
             priority,
         });
@@ -1645,7 +1634,8 @@ impl<'a> Model<'a> {
         new_range: &str,
         new_rule: CfRuleInput,
     ) -> Result<ConditionalFormatting, String> {
-        if parse_sqref(new_range).is_empty() {
+        let new_ranges = RangeRef::parse_sqref(new_range);
+        if new_ranges.is_empty() {
             return Err(format!(
                 "Invalid conditional formatting range: '{new_range}'"
             ));
@@ -1663,7 +1653,7 @@ impl<'a> Model<'a> {
             ));
         }
         let old = ws.conditional_formatting[index].clone();
-        ws.conditional_formatting[index].range = new_range.to_string();
+        ws.conditional_formatting[index].ranges = new_ranges;
         ws.conditional_formatting[index].cf_rule = final_rule;
         Ok(old)
     }

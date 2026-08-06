@@ -8,6 +8,7 @@ use crate::{
     language::get_default_language,
     locale::get_default_locale,
     model::Model,
+    types::RangeRef,
     utils as common,
 };
 
@@ -137,13 +138,10 @@ fn cf_sqref_update_for_cut(sqref: &str, area: &Area, row_delta: i32, col_delta: 
         .join(" ")
 }
 
-/// Returns the (row, column) of the top-left cell in a sqref string.
-pub(crate) fn cf_sqref_anchor(sqref: &str) -> Option<(i32, i32)> {
-    let part = sqref.split_whitespace().next()?;
-    let upper = part.to_uppercase();
-    let first = upper.split(':').next()?;
-    let r = utils::parse_reference_a1(first)?;
-    Some((r.row, r.column))
+/// Returns the (row, column) of the top-left cell of the first range.
+pub(crate) fn cf_sqref_anchor(ranges: &[RangeRef]) -> Option<(i32, i32)> {
+    let (row, column, _, _) = ranges.first()?.resolve();
+    Some((row, column))
 }
 
 // ---------------------------------------------------------------------------
@@ -345,19 +343,20 @@ impl<'a> Model<'a> {
             .get_name();
 
         // Phase 1 – collect CF data (immutable reads)
-        let cf_entries: Vec<(String, CfRule)> = self.workbook.worksheets[sheet as usize]
+        let cf_entries: Vec<(Vec<RangeRef>, CfRule)> = self.workbook.worksheets[sheet as usize]
             .conditional_formatting
             .iter()
-            .map(|cf| (cf.range.clone(), cf.cf_rule.clone()))
+            .map(|cf| (cf.ranges.clone(), cf.cf_rule.clone()))
             .collect();
 
         // Phase 2 – compute updates (may need &mut self.parser)
         let mut updates = Vec::new();
-        for (cf_idx, (old_range, old_rule)) in cf_entries.into_iter().enumerate() {
+        for (cf_idx, (old_ranges, old_rule)) in cf_entries.into_iter().enumerate() {
+            let old_range = RangeRef::to_sqref(&old_ranges);
             let new_range = cf_sqref_update_for_cut(&old_range, area, row_delta, column_delta);
 
             // Use the top-left cell of the CF range as the formula parse anchor.
-            let anchor = cf_sqref_anchor(&old_range);
+            let anchor = cf_sqref_anchor(&old_ranges);
             let new_rule = if let Some((anchor_row, anchor_col)) = anchor {
                 self.cf_rule_move_formulas(
                     old_rule.clone(),
@@ -477,7 +476,13 @@ impl<'a> Model<'a> {
         let mut results = Vec::new();
         for cf in &ws.conditional_formatting {
             let new_range = map_cf_sqref_to_target(
-                &cf.range, src_row1, src_col1, src_row2, src_col2, tgt_row, tgt_col,
+                &RangeRef::to_sqref(&cf.ranges),
+                src_row1,
+                src_col1,
+                src_row2,
+                src_col2,
+                tgt_row,
+                tgt_col,
             );
             if !new_range.is_empty() {
                 results.push((new_range, cf.cf_rule.clone()));

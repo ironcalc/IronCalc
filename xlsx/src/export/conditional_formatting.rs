@@ -3,7 +3,7 @@ use ironcalc_base::cf_types::{
     icon_set_icons, CfRule, Cfvo, ConditionalFormatting, Icon, IconThreshold, PeriodType,
     TextOperator, ValueOperator,
 };
-use ironcalc_base::types::Color;
+use ironcalc_base::types::{Color, RangeRef};
 
 fn cfvo_xml(cfvo: &Cfvo) -> String {
     match cfvo {
@@ -241,8 +241,7 @@ fn build_cf_rule_xml(
     x14_parts: &mut Vec<String>,
     databar_guid_idx: &mut usize,
 ) -> Option<String> {
-    // remove $ from range for XML output
-    let range = &cf.range.replace('$', "");
+    let range = &RangeRef::to_sqref_bounded(&cf.ranges);
     let rule = match &cf.cf_rule {
         CfRule::CellIs {
             operator,

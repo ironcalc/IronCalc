@@ -1220,3 +1220,65 @@ fn test_undo_redo_lower_priority() {
     model.redo().unwrap();
     assert_eq!(priorities(&model), vec![2, 1]);
 }
+
+// ---------------------------------------------------------------------------
+// Range canonicalization
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_range_canonicalization() {
+    let mut model = new_empty_user_model();
+    // $ markers, lowercase and reversed corners are normalized on entry.
+    model
+        .add_conditional_formatting(0, "$a$1:$b$5", color_scale())
+        .unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A1:B5");
+
+    model
+        .update_conditional_formatting(0, 0, "b10:a6", data_bar())
+        .unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A6:B10");
+}
+
+#[test]
+fn test_range_canonicalization_survives_undo_redo() {
+    // Undo data carries ranges as rendered strings; the round trip must not lose them.
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "$a$1:$b$5", color_scale())
+        .unwrap();
+    model
+        .update_conditional_formatting(0, 0, "b10:a6", color_scale())
+        .unwrap();
+    model.undo().unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A1:B5");
+    model.redo().unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A6:B10");
+}
+
+#[test]
+fn test_full_axis_ranges_accepted() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "D:D", color_scale())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "5:7", data_bar())
+        .unwrap();
+    // the bounded storage form Excel writes normalizes to the compact one
+    model
+        .add_conditional_formatting(0, "E1:E1048576", color_scale())
+        .unwrap();
+    let mut ranges: Vec<String> = model
+        .get_conditional_formatting_list(0)
+        .unwrap()
+        .into_iter()
+        .map(|v| v.range)
+        .collect();
+    ranges.sort();
+    assert_eq!(ranges, vec!["5:7", "D:D", "E:E"]);
+}
