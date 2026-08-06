@@ -2007,13 +2007,16 @@ export default class WorksheetCanvas {
       cellRef = formula.slice(formulaSeparator + 1);
     }
     sheetName = sheetName.replace(/^'(.*)'$/, "$1");
-    // accept a single cell or the top-left corner of a range
-    const match = cellRef
-      .replace(/\$/g, "")
-      .match(/^([A-Za-z]+)([0-9]+)(?::.*)?$/);
-    if (!match) {
+    // a single cell ("A30") or a range of cells ("A1:B5")
+    const parts = cellRef.replace(/\$/g, "").split(":");
+    const firstCell = parts[0].match(/^([A-Za-z]+)([0-9]+)$/);
+    if (!firstCell) {
       return;
     }
+    // if the second part of the range cannot be parsed, select the first cell
+    const lastCell =
+      (parts.length === 2 && parts[1].match(/^([A-Za-z]+)([0-9]+)$/)) ||
+      firstCell;
     const sheetIndex = this.model
       .getWorksheetsProperties()
       .findIndex((sheet: { name: string }) => sheet.name === sheetName);
@@ -2022,17 +2025,28 @@ export default class WorksheetCanvas {
     }
     let row: number;
     let column: number;
+    let rowEnd: number;
+    let columnEnd: number;
     try {
-      column = columnNumberFromName(match[1].toUpperCase());
-      row = Number.parseInt(match[2], 10);
+      column = columnNumberFromName(firstCell[1].toUpperCase());
+      row = Number.parseInt(firstCell[2], 10);
+      columnEnd = columnNumberFromName(lastCell[1].toUpperCase());
+      rowEnd = Number.parseInt(lastCell[2], 10);
     } catch {
       return;
     }
-    if (row < 1 || row > LAST_ROW || column < 1 || column > LAST_COLUMN) {
+    // normalize so that (row, column) is the top-left corner
+    [row, rowEnd] = [Math.min(row, rowEnd), Math.max(row, rowEnd)];
+    [column, columnEnd] = [
+      Math.min(column, columnEnd),
+      Math.max(column, columnEnd),
+    ];
+    if (row < 1 || rowEnd > LAST_ROW || column < 1 || columnEnd > LAST_COLUMN) {
       return;
     }
     this.model.setSelectedSheet(sheetIndex);
     this.model.setSelectedCell(row, column);
+    this.model.setSelectedRange(row, column, rowEnd, columnEnd);
     this.hideLinkTooltip();
     this.refresh();
     this.renderSheet();

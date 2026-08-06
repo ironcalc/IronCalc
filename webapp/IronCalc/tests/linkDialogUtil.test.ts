@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   buildMailto,
+  CELL_REFERENCE_REGEX,
   isValidEmail,
   normalizeUrl,
   parseMailto,
@@ -105,5 +106,22 @@ describe("isValidEmail", () => {
     expect(isValidEmail("daniel")).toBe(false);
     expect(isValidEmail("daniel@localhost")).toBe(false);
     expect(isValidEmail("a b@c.com")).toBe(false);
+  });
+});
+
+describe("CELL_REFERENCE_REGEX", () => {
+  test("accepts single cells and ranges", () => {
+    expect(CELL_REFERENCE_REGEX.test("B5")).toBe(true);
+    expect(CELL_REFERENCE_REGEX.test("$B$5")).toBe(true);
+    expect(CELL_REFERENCE_REGEX.test("A1:B5")).toBe(true);
+    expect(CELL_REFERENCE_REGEX.test("$A$1:$B$5")).toBe(true);
+  });
+
+  test("rejects malformed references", () => {
+    expect(CELL_REFERENCE_REGEX.test("A1:")).toBe(false);
+    expect(CELL_REFERENCE_REGEX.test(":B5")).toBe(false);
+    expect(CELL_REFERENCE_REGEX.test("A1:B5:C6")).toBe(false);
+    expect(CELL_REFERENCE_REGEX.test("A")).toBe(false);
+    expect(CELL_REFERENCE_REGEX.test("11")).toBe(false);
   });
 });
