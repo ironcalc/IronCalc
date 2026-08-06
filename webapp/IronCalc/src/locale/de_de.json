@@ -206,6 +206,7 @@
     "manage_named_ranges": "Benannte Bereiche verwalten"
   },
   "link_dialog": {
+    "body_placeholder": "Nachricht (optional)",
     "cell_reference_placeholder": "Zellbezug",
     "close": "Schließen",
     "delete": "Löschen",

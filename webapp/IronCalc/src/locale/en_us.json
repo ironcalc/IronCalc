@@ -206,6 +206,7 @@
     "manage_named_ranges": "Manage Named Ranges"
   },
   "link_dialog": {
+    "body_placeholder": "Body (optional)",
     "cell_reference_placeholder": "Cell reference",
     "close": "Close",
     "delete": "Delete",

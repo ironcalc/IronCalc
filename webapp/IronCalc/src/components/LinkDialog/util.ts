@@ -32,13 +32,23 @@ export function isValidEmail(input: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address);
 }
 
+function decodeMailtoParam(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    // malformed percent-encoding: show it as-is
+    return value;
+  }
+}
+
 /// Splits a mailto URI (with or without the "mailto:" scheme) into the address,
-/// the percent-decoded subject and any other query parameters (kept verbatim),
-/// e.g. "mailto:daniel@ironcalc.com?subject=hola%20que%20tal&body=x" gives
-/// { address: "daniel@ironcalc.com", subject: "hola que tal", otherParams: "body=x" }.
+/// the percent-decoded subject and body, and any other query parameters (kept
+/// verbatim), e.g. "mailto:daniel@ironcalc.com?subject=hola%20que%20tal&cc=x" gives
+/// { address: "daniel@ironcalc.com", subject: "hola que tal", body: "", otherParams: "cc=x" }.
 export function parseMailto(target: string): {
   address: string;
   subject: string;
+  body: string;
   otherParams: string;
 } {
   const rest = target.startsWith("mailto:")
@@ -46,37 +56,38 @@ export function parseMailto(target: string): {
     : target;
   const queryStart = rest.indexOf("?");
   if (queryStart === -1) {
-    return { address: rest, subject: "", otherParams: "" };
+    return { address: rest, subject: "", body: "", otherParams: "" };
   }
   const address = rest.slice(0, queryStart);
   let subject = "";
+  let body = "";
   const others: string[] = [];
   for (const param of rest.slice(queryStart + 1).split("&")) {
     if (param.toLowerCase().startsWith("subject=")) {
-      const value = param.slice("subject=".length);
-      try {
-        subject = decodeURIComponent(value);
-      } catch {
-        // malformed percent-encoding: show it as-is
-        subject = value;
-      }
+      subject = decodeMailtoParam(param.slice("subject=".length));
+    } else if (param.toLowerCase().startsWith("body=")) {
+      body = decodeMailtoParam(param.slice("body=".length));
     } else if (param) {
       others.push(param);
     }
   }
-  return { address, subject, otherParams: others.join("&") };
+  return { address, subject, body, otherParams: others.join("&") };
 }
 
-/// Builds a mailto URI from an address, a subject (percent-encoded here) and
-/// other query parameters (already encoded, kept verbatim).
+/// Builds a mailto URI from an address, a subject and a body (percent-encoded
+/// here) and other query parameters (already encoded, kept verbatim).
 export function buildMailto(
   address: string,
   subject: string,
+  body: string,
   otherParams: string,
 ): string {
   const params: string[] = [];
   if (subject) {
     params.push(`subject=${encodeURIComponent(subject)}`);
+  }
+  if (body) {
+    params.push(`body=${encodeURIComponent(body)}`);
   }
   if (otherParams) {
     params.push(otherParams);

@@ -35,6 +35,18 @@ describe("parseMailto", () => {
     ).toEqual({
       address: "daniel@ironcalc.com",
       subject: "hola que tal",
+      body: "",
+      otherParams: "",
+    });
+  });
+
+  test("splits the percent-decoded body too", () => {
+    expect(
+      parseMailto("mailto:a@b.com?subject=Test&body=Hello%20there"),
+    ).toEqual({
+      address: "a@b.com",
+      subject: "Test",
+      body: "Hello there",
       otherParams: "",
     });
   });
@@ -43,14 +55,16 @@ describe("parseMailto", () => {
     expect(parseMailto("daniel@ironcalc.com?subject=Hi")).toEqual({
       address: "daniel@ironcalc.com",
       subject: "Hi",
+      body: "",
       otherParams: "",
     });
   });
 
-  test("plain address has no subject", () => {
+  test("plain address has no subject or body", () => {
     expect(parseMailto("mailto:daniel@ironcalc.com")).toEqual({
       address: "daniel@ironcalc.com",
       subject: "",
+      body: "",
       otherParams: "",
     });
   });
@@ -61,38 +75,50 @@ describe("parseMailto", () => {
     ).toEqual({
       address: "a@b.com",
       subject: "Test",
-      otherParams: "body=Hello%20there&cc=c@d.com",
+      body: "Hello there",
+      otherParams: "cc=c@d.com",
     });
   });
 
   test("malformed percent-encoding is kept as-is", () => {
     expect(parseMailto("mailto:a@b.com?subject=100%").subject).toBe("100%");
+    expect(parseMailto("mailto:a@b.com?body=100%").body).toBe("100%");
   });
 });
 
 describe("buildMailto", () => {
-  test("percent-encodes the subject", () => {
-    expect(buildMailto("daniel@ironcalc.com", "hola que tal", "")).toBe(
+  test("percent-encodes the subject and the body", () => {
+    expect(buildMailto("daniel@ironcalc.com", "hola que tal", "", "")).toBe(
       "mailto:daniel@ironcalc.com?subject=hola%20que%20tal",
     );
-  });
-
-  test("no subject and no parameters gives a plain address", () => {
-    expect(buildMailto("daniel@ironcalc.com", "", "")).toBe(
-      "mailto:daniel@ironcalc.com",
-    );
-  });
-
-  test("appends other parameters after the subject", () => {
-    expect(buildMailto("a@b.com", "Test", "body=Hello%20there")).toBe(
+    expect(buildMailto("a@b.com", "Test", "Hello there", "")).toBe(
       "mailto:a@b.com?subject=Test&body=Hello%20there",
     );
   });
 
+  test("body without a subject", () => {
+    expect(buildMailto("a@b.com", "", "Hello there", "")).toBe(
+      "mailto:a@b.com?body=Hello%20there",
+    );
+  });
+
+  test("no subject, body or parameters gives a plain address", () => {
+    expect(buildMailto("daniel@ironcalc.com", "", "", "")).toBe(
+      "mailto:daniel@ironcalc.com",
+    );
+  });
+
+  test("appends other parameters after the subject and the body", () => {
+    expect(buildMailto("a@b.com", "Test", "Hello", "cc=c@d.com")).toBe(
+      "mailto:a@b.com?subject=Test&body=Hello&cc=c@d.com",
+    );
+  });
+
   test("round-trips with parseMailto", () => {
-    const target = "mailto:daniel@ironcalc.com?subject=hola%20que%20tal";
-    const { address, subject, otherParams } = parseMailto(target);
-    expect(buildMailto(address, subject, otherParams)).toBe(target);
+    const target =
+      "mailto:daniel@ironcalc.com?subject=hola%20que%20tal&body=Hello%20there";
+    const { address, subject, body, otherParams } = parseMailto(target);
+    expect(buildMailto(address, subject, body, otherParams)).toBe(target);
   });
 });
 
