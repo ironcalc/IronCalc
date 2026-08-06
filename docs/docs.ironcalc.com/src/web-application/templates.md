@@ -25,13 +25,12 @@ Creating a workbook from a template does not affect the original template; you g
 
 **Category:** Lifestyle
 
-Plan and visualize the full year ahead. By default the calendar uses the **current year**, but you can change the year cell at the top and the whole grid recalculates. **Conditional formatting** checks today's date and highlights it automatically, so you always know where you are at a glance.
+Plan and visualize the full year ahead. By default the calendar uses the **current year**, but you can change the year cell at the top and the whole grid recalculates. It puts several IronCalc features to work:
 
-### Mortgage Calculator
-
-**Category:** Finance
-
-Estimate payments, interest, and overall cost. The first sheet, **Settings**, is the calculator itself: enter the **home price**, **down payment**, **interest rate**, **loan term**, and **start date**, and it gives you the **loan amount**, **number of payments**, **total monthly payment**, **total amount paid**, **total interest paid**, payments made so far, the remaining balance, and the **payoff date**. The **Amortization Schedule sheet** then lists the month-by-month breakdown of every payment, with the principal/interest split and running balance for each one.
+- **Conditional formatting**: highlights today's date automatically.
+- **`LAMBDA`**: builds the weekday headers and the array of days behind every month grid.
+- **Themes**: switch the theme to restyle the whole calendar at once.
+- **Internationalization**: change the display language and the day and month names follow.
 
 ### Crossword
 
@@ -43,19 +42,19 @@ Fill in the grid and solve the clues. Type one letter per white square and **con
 
 **Category:** Lifestyle
 
-Track trip costs and stay on budget. Use the **Expenses Log sheet** to add your trip expenses, together with **City**, **Type**, **Date**, and **Amount**. The **Overview sheet** then gives you an expenses breakdown by category, cost per day and total, the **top 3 highest expenses**, the **top 3 days with most expenses**, and the list of **cities visited**.
+Track trip costs and stay on budget. Use the **Expenses Log sheet** to add your trip expenses, together with **City**, **Type**, **Date**, and **Amount**. The **Overview sheet** then gives you an expenses breakdown by category, cost per day and total, the **top 3 highest expenses**, the **top 3 days with most expenses**, and the list of **cities visited**, built with **dynamic arrays** (`UNIQUE` over a `FILTER`) so it expands on its own as you log new cities.
 
 ### Invoice
 
 **Category:** Finance
 
-Create client invoices. Use the **Invoice sheet** to add the list of items to include, and the **Settings sheet** to set the inputs common to every invoice: your **company details** (name, address, email, website, VAT ID), **bank details** (account holder, IBAN, BIC/SWIFT, bank name), **payment terms** (working days and VAT/tax rate), and an **invoice footer note**.
+Create client invoices. Use the **Invoice sheet** to add the list of items to include, and the **Settings sheet** to set the inputs common to every invoice: your **company details** (name, address, email, website, VAT ID), **bank details** (account holder, IBAN, BIC/SWIFT, bank name), **payment terms** (working days and VAT/tax rate), and an **invoice footer note**. Those inputs are exposed as **named ranges**, so the formulas in the Invoice sheet read them by name instead of by cell reference and are easier to follow.
 
 ### Gantt Project Tracker
 
 **Category:** Project Management
 
-Plan tasks and timelines on a Gantt chart. The **Settings sheet** holds the project-wide inputs: **Project Name**, **Project Start**, **Days to show**, **Today**, and up to **4 owners**. In the **Tasks sheet**, add one row per task with **Phase**, **Task Name**, **Owner**, **Start Date**, **Days**, **% Done**, and **Notes**. The **End Date** is calculated for you. The **Plan sheet** then pulls everything from these two sheets to draw the chart.
+Plan tasks and timelines on a Gantt chart. The **Settings sheet** holds the project-wide inputs: **Project Name**, **Project Start**, **Days to show**, **Today**, and up to **4 owners**. In the **Tasks sheet**, add one row per task with **Phase**, **Task Name**, **Owner**, **Start Date**, **Days**, **% Done**, and **Notes**. The **End Date** is calculated for you. The **Plan sheet** then pulls everything from these two sheets to draw the chart, entirely with **conditional formatting**: a mix of classic formula-based rules and **data bar** rules.
 
 ::: warning
 Phase names are tied to **conditional formatting rules**. If you rename or add a phase, you'll need to update the matching rule for it to be colored correctly.
@@ -65,32 +64,22 @@ Phase names are tied to **conditional formatting rules**. If you rename or add a
 
 **Category:** Project Management
 
-Log and review hours worked each week. Each day gets its own row, with columns for **Project**, **Task / Description**, **Hours**, and **Notes**; you can pick the **first day** of the range to log. The **Overview sheet** totals hours by project and summarizes the hours logged across the whole time range.
+Log and review hours worked each week. Each day gets its own row, with columns for **Project**, **Task / Description**, **Hours**, and **Notes**; you can pick the **first day** of the range to log, and **conditional formatting** colors weekend days differently so they stand out. The **Overview sheet** totals hours by project and summarizes the hours logged across the whole time range; the list of projects it groups by is built with **dynamic arrays** (`UNIQUE` over a `FILTER`), so it fills itself in from whatever you type in the Timesheet sheet. You can also switch the **theme** to restyle the whole timesheet at once.
 
-### EU Salary Calculator
-
-**Category:** Finance
-
-Estimate net salary after taxes in **Germany 🇩🇪, France 🇫🇷, Spain 🇪🇸, Italy 🇮🇹, the Netherlands 🇳🇱, Belgium 🇧🇪, Austria 🇦🇹, and Poland 🇵🇱**. Enter the **country**, the **annual gross salary**, and whether **Church Tax** applies (Germany only), and the sheet breaks the result down into five sections: gross salary, employee social security contributions, income tax, net salary, and employer cost, including the effective tax rate and the total cost to the employer.
-
-::: info
-Results are **orientative only**, meant for quick comparisons rather than exact payroll figures.
-:::
-
-### Absence Schedule
-
-**Category:** Project Management
-
-Track team vacations and time off for up to **five employees**, configured in the **Settings sheet**. Besides vacation, you can log **sick leave**, **personal time off**, and up to **2 custom categories** of your own. The sheet covers a single month, but you can adapt it to any month or **duplicate the sheet** to cover the full year. An overview on the right side totals the number of days logged per category.
 
 ### Wordle
 
 **Category:** Games
 
-Guess the hidden five-letter word. Letters in the **right position** are marked in **green**; letters that are in the word but in the **wrong position** are marked in **yellow**. The word **changes every day**.
+Guess the hidden five-letter word. **Conditional formatting** recolors the grid as you type: letters in the **right position** are marked in **green**, and letters that are in the word but in the **wrong position** are marked in **yellow**. The word **changes every day** and is picked from the long list on the `Words` sheet, using `TODAY` inside an `INDEX` over a `FILTER` so everyone gets the same word on the same date. You can edit that list or add words of your own; `REGEXTEST` validates each entry and only accepts five-letter words.
 
 ### Event Calendar
 
 **Category:** Lifestyle
 
-Organize and follow upcoming events. Add events to the list and they will be **highlighted in the calendars** above.
+Organize and follow upcoming events. Add events to the list and they will be **highlighted in the calendars** above. Like the Yearly Calendar, it builds on several IronCalc features:
+
+- **Conditional formatting**: marks today's date and every day that has an event on it.
+- **`LAMBDA`** and **`LET`**: generate the weekday headers and the day grid of each month.
+- **Themes**: switch the theme to restyle every calendar at once.
+- **Internationalization**: change the display language and the day and month names follow.
