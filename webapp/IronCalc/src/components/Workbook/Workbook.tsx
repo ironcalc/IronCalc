@@ -531,11 +531,12 @@ const Workbook = (props: {
     }
     const { sheet, row, column } = linkDialogCell;
     // The cell content is the displayed text of the link. If the label is
-    // empty, fall back to the link target/location.
+    // empty, fall back to the link target/location (for emails, just the
+    // address without the mailto parameters).
     const text =
       label.trim() ||
       (link.type === "External"
-        ? link.target.replace(/^mailto:/, "")
+        ? link.target.replace(/^mailto:/, "").split("?")[0]
         : link.location);
     // Sets the link, the cell content and (for new links) the link style
     // in a single undo step.

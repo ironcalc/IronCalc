@@ -218,6 +218,7 @@
     "invalid_url": "Inserisci un URL valido",
     "label_placeholder": "Etichetta",
     "save": "Salva",
+    "subject_placeholder": "Oggetto (facoltativo)",
     "title_add": "Aggiungi collegamento",
     "title_edit": "Modifica collegamento",
     "tooltip_placeholder": "Suggerimento (facoltativo)",

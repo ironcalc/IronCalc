@@ -218,6 +218,7 @@
     "invalid_url": "Bitte gib eine gültige URL ein",
     "label_placeholder": "Beschriftung",
     "save": "Speichern",
+    "subject_placeholder": "Betreff (optional)",
     "title_add": "Link hinzufügen",
     "title_edit": "Link bearbeiten",
     "tooltip_placeholder": "Tooltip (optional)",

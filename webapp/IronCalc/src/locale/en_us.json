@@ -218,6 +218,7 @@
     "invalid_url": "Please enter a valid URL",
     "label_placeholder": "Label",
     "save": "Save",
+    "subject_placeholder": "Subject (optional)",
     "title_add": "Add link",
     "title_edit": "Edit link",
     "tooltip_placeholder": "Tooltip (optional)",
