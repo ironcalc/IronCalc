@@ -206,6 +206,7 @@
     "manage_named_ranges": "Gestionar rangos con nombre"
   },
   "link_dialog": {
+    "body_placeholder": "Mensaje (opcional)",
     "cell_reference_placeholder": "Referencia de celda",
     "close": "Cerrar",
     "delete": "Eliminar",

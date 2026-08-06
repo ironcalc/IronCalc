@@ -62,8 +62,9 @@ export function LinkDialog({
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
-  // mailto query parameters other than the subject (e.g. body): not shown in
-  // the dialog but preserved when the link is saved
+  const [body, setBody] = useState("");
+  // mailto query parameters other than the subject and the body (e.g. cc):
+  // not shown in the dialog but preserved when the link is saved
   const [emailExtraParams, setEmailExtraParams] = useState("");
   const [sheetName, setSheetName] = useState(selectedSheetName);
   const [cellRef, setCellRef] = useState("");
@@ -79,6 +80,7 @@ export function LinkDialog({
     setUrl("");
     setEmail("");
     setSubject("");
+    setBody("");
     setEmailExtraParams("");
     setSheetName(selectedSheetName);
     setCellRef("");
@@ -99,6 +101,7 @@ export function LinkDialog({
       const mailto = parseMailto(initialLink.target);
       setEmail(mailto.address);
       setSubject(mailto.subject);
+      setBody(mailto.body);
       setEmailExtraParams(mailto.otherParams);
     } else {
       setTab("external");
@@ -164,15 +167,21 @@ export function LinkDialog({
           return null;
         }
         // the address input may itself carry mailto parameters
-        // ("a@b.com?subject=Hi"): the subject field wins over an inline one
+        // ("a@b.com?subject=Hi"): the subject/body fields win over inline ones
         const inline = parseMailto(email.trim());
         const subjectValue = subject.trim() || inline.subject;
+        const bodyValue = body.trim() || inline.body;
         const otherParams = [inline.otherParams, emailExtraParams]
           .filter(Boolean)
           .join("&");
         return {
           type: "External",
-          target: buildMailto(inline.address, subjectValue, otherParams),
+          target: buildMailto(
+            inline.address,
+            subjectValue,
+            bodyValue,
+            otherParams,
+          ),
           tooltip: linkTooltip,
         };
       }
@@ -316,6 +325,12 @@ export function LinkDialog({
               placeholder={t("link_dialog.subject_placeholder")}
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
+              onKeyDown={stopEditorKeys}
+            />
+            <Input
+              placeholder={t("link_dialog.body_placeholder")}
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
               onKeyDown={stopEditorKeys}
             />
           </>

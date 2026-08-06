@@ -206,6 +206,7 @@
     "manage_named_ranges": "Gestisci intervalli denominati"
   },
   "link_dialog": {
+    "body_placeholder": "Messaggio (facoltativo)",
     "cell_reference_placeholder": "Riferimento di cella",
     "close": "Chiudi",
     "delete": "Elimina",
