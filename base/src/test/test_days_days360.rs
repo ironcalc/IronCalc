@@ -7,14 +7,19 @@ fn test_days_days360_arguments() {
     model._set("A1", "=DAYS()");
     model._set("A2", "=DAYS(DATE(2026,8,6))");
     model._set("A3", "=DAYS(DATE(2026,8,8), DATE(2026,8,6))");
-    model._set("A4", "=DAYS(DATE(2026,8,8), DATE(2026,8,6), DATE(2026,8,4))");
+    model._set(
+        "A4",
+        "=DAYS(DATE(2026,8,8), DATE(2026,8,6), DATE(2026,8,4))",
+    );
 
     model._set("B1", "=DAYS360()");
     model._set("B2", "=DAYS360(DATE(2026,8,6))");
     model._set("B3", "=DAYS360(DATE(2026,8,8), DATE(2026,8,6))");
     model._set("B4", "=DAYS360(DATE(2026,8,8), DATE(2026,8,6), TRUE)");
-    model._set("B5", "=DAYS360(DATE(2026,8,8), DATE(2026,8,6), TRUE, FALSE)");
-
+    model._set(
+        "B5",
+        "=DAYS360(DATE(2026,8,8), DATE(2026,8,6), TRUE, FALSE)",
+    );
 
     model.evaluate();
 
