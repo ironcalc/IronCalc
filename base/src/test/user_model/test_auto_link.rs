@@ -138,6 +138,155 @@ fn pasting_urls_creates_links() {
 }
 
 #[test]
+fn undo_removes_the_auto_created_link_and_style() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_user_input(0, 1, 1, "https://www.ironcalc.com/")
+        .unwrap();
+
+    model.undo().unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("".to_string()));
+    assert_eq!(model.get_cell_link(0, 1, 1), Ok(None));
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert!(!style.font.u);
+    assert_eq!(style.font.color, Color::None);
+
+    // redo brings the link and the style back
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_cell_link(0, 1, 1),
+        Ok(Some(external("https://www.ironcalc.com/")))
+    );
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert!(style.font.u);
+    assert_eq!(style.font.color, Color::Theme(10, 0.0));
+}
+
+#[test]
+fn undo_of_an_url_typed_over_content_restores_everything() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model.set_user_input(0, 1, 1, "hello").unwrap();
+
+    model.set_user_input(0, 1, 1, "www.example.com").unwrap();
+    model.undo().unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 1),
+        Ok("hello".to_string())
+    );
+    assert_eq!(model.get_cell_link(0, 1, 1), Ok(None));
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert!(!style.font.u);
+    assert_eq!(style.font.color, Color::None);
+}
+
+#[test]
+fn undo_of_an_url_typed_over_a_linked_cell_restores_the_target() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(0, 1, 1, external("https://www.ironcalc.com/"), None)
+        .unwrap();
+
+    // typing an URL over a linked cell replaces the target...
+    model.set_user_input(0, 1, 1, "www.example.com").unwrap();
+    assert_eq!(
+        model.get_cell_link(0, 1, 1),
+        Ok(Some(external("https://www.example.com")))
+    );
+    // ...and undo restores the previous one
+    model.undo().unwrap();
+    assert_eq!(
+        model.get_cell_link(0, 1, 1),
+        Ok(Some(external("https://www.ironcalc.com/")))
+    );
+}
+
+#[test]
+fn undo_of_pasted_urls_removes_the_links() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .paste_csv_string(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 1,
+            },
+            "https://www.ironcalc.com/\tHello",
+        )
+        .unwrap();
+    assert_eq!(model.get_links(0).unwrap().len(), 1);
+
+    model.undo().unwrap();
+    assert!(model.get_links(0).unwrap().is_empty());
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert!(!style.font.u);
+}
+
+#[test]
+fn undo_of_a_paste_over_a_linked_cell_restores_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_cell_link(
+            0,
+            1,
+            1,
+            external("https://www.ironcalc.com/"),
+            Some("IronCalc"),
+        )
+        .unwrap();
+
+    // pasting plain text over the linked cell removes the link
+    model
+        .paste_csv_string(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 1,
+            },
+            "Hello",
+        )
+        .unwrap();
+    assert_eq!(model.get_cell_link(0, 1, 1), Ok(None));
+
+    model.undo().unwrap();
+    assert_eq!(
+        model.get_cell_link(0, 1, 1),
+        Ok(Some(external("https://www.ironcalc.com/")))
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 1),
+        Ok("IronCalc".to_string())
+    );
+}
+
+#[test]
+fn undo_of_an_auto_link_is_sent_to_peers() {
+    let mut model = UserModel::from_model(new_empty_model());
+    let mut peer = UserModel::from_model(new_empty_model());
+
+    model
+        .set_user_input(0, 1, 1, "https://www.ironcalc.com/")
+        .unwrap();
+    peer.apply_external_diffs(&model.flush_send_queue())
+        .unwrap();
+    assert_eq!(
+        peer.get_cell_link(0, 1, 1),
+        Ok(Some(external("https://www.ironcalc.com/")))
+    );
+
+    model.undo().unwrap();
+    peer.apply_external_diffs(&model.flush_send_queue())
+        .unwrap();
+    assert_eq!(peer.get_cell_link(0, 1, 1), Ok(None));
+    let style = peer.get_cell_style(0, 1, 1).unwrap();
+    assert!(!style.font.u);
+}
+
+#[test]
 fn auto_links_are_sent_to_other_models() {
     let mut model = UserModel::from_model(new_empty_model());
     model
