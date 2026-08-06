@@ -64,7 +64,7 @@ Phase names are tied to **conditional formatting rules**. If you rename or add a
 
 **Category:** Project Management
 
-Log and review hours worked each week. Each day gets its own row, with columns for **Project**, **Task / Description**, **Hours**, and **Notes**; you can pick the **first day** of the range to log, and **conditional formatting** colors weekend days differently so they stand out. The **Overview sheet** totals hours by project and summarizes the hours logged across the whole time range; the list of projects it groups by is built with **dynamic arrays** (`UNIQUE` over a `FILTER`), so it fills itself in from whatever you type in the Timesheet sheet. You can also switch the **theme** to restyle the whole timesheet at once.
+Log and review hours worked each week. Each day gets its own row, with columns for **Project**, **Task / Description**, **Hours**, and **Notes**; you can pick the **first day** of the range to log, and **conditional formatting** colors weekend days differently so they stand out. The **Overview sheet** totals hours by project and summarizes the hours logged across the whole time range; the list of projects it groups by is built with **dynamic arrays** (`UNIQUE` over a `FILTER`), so it fills itself in from whatever you type in the **Timesheet sheet**. You can also switch the **theme** to restyle the whole timesheet at once.
 
 
 ### Wordle
@@ -82,4 +82,4 @@ Organize and follow upcoming events. Add events to the list and they will be **h
 - **Conditional formatting**: marks today's date and every day that has an event on it.
 - **`LAMBDA`** and **`LET`**: generate the weekday headers and the day grid of each month.
 - **Themes**: switch the theme to restyle every calendar at once.
-- **Internationalization**: change the display language and the day and month names follow.
+ - **Internationalization**: change the display language and the day and month names update automatically.
