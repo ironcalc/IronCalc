@@ -880,7 +880,7 @@ export default class WorksheetCanvas {
       );
       const borderLeftStyle = "thin";
       const leftStyle = leftExtended.style;
-      let borderLeftColor = null;
+      let borderLeftColor = this.theme.backgroundColor;
       if (style.fill.color) {
         borderLeftColor = this.model.resolveColor(style.fill.color);
       } else if (leftStyle.fill.color) {
