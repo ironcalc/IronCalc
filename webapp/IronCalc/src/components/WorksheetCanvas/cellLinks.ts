@@ -88,6 +88,31 @@ export class CellLinks {
       canvas.style.cursor = "";
       this.options.onLinkHover?.(null);
     };
+    // Ctrl+click (Cmd+click on Mac) on a link cell follows the link. Only the
+    // primary button: on Mac Ctrl+click is a right click (context menu).
+    container.onpointerdown = (event) => {
+      if (event.button !== 0 || !(event.ctrlKey || event.metaKey)) {
+        return;
+      }
+      const target = event.target as Element;
+      if (target.closest?.(".ic-worksheet-link-tooltip")) {
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      const cell = this.getLinkCellAt(
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      );
+      if (!cell) {
+        return;
+      }
+      // The cell selection handler is a React listener on an ancestor:
+      // stopping propagation here keeps the click from also selecting the cell.
+      event.stopPropagation();
+      event.preventDefault();
+      this.options.onHideTooltip?.();
+      this.followLink(cell.link);
+    };
   }
 
   // Returns the visible cell with a link at canvas coordinates (x, y), if any
