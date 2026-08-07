@@ -47,6 +47,7 @@ export interface CanvasSettings {
   onColumnWidthChanges: (sheet: number, column: number, width: number) => void;
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
   onEditLink?: (row: number, column: number, link: Link) => void;
+  onDeleteLink?: (row: number, column: number) => void;
   refresh: () => void;
 }
 
@@ -112,6 +113,8 @@ export default class WorksheetCanvas {
 
   onEditLink?: (row: number, column: number, link: Link) => void;
 
+  onDeleteLink?: (row: number, column: number) => void;
+
   refresh: () => void;
 
   cells: TextProperties[];
@@ -155,6 +158,7 @@ export default class WorksheetCanvas {
     this.onColumnWidthChanges = options.onColumnWidthChanges;
     this.onRowHeightChanges = options.onRowHeightChanges;
     this.onEditLink = options.onEditLink;
+    this.onDeleteLink = options.onDeleteLink;
     this.resetHeaders();
     this.cellOutlineHandle = attachOutlineHandle(this);
 
@@ -2129,6 +2133,20 @@ export default class WorksheetCanvas {
         this.onEditLink?.(cell.row, cell.column, link);
       });
       tooltip.appendChild(editButton);
+    }
+
+    if (this.onDeleteLink && !link.dynamic) {
+      const breakButton = document.createElement("button");
+      breakButton.type = "button";
+      breakButton.className = "ic-worksheet-link-tooltip-button";
+      breakButton.title = "Break link";
+      breakButton.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7"/><path d="M15 7h2a5 5 0 0 1 4 8"/><line x1="8" x2="12" y1="12" y2="12"/><line x1="2" x2="22" y1="2" y2="22"/></svg>';
+      breakButton.addEventListener("click", () => {
+        this.hideLinkTooltip();
+        this.onDeleteLink?.(cell.row, cell.column);
+      });
+      tooltip.appendChild(breakButton);
     }
 
     // Position the tooltip above the cell (or below if there is no room),
