@@ -1970,6 +1970,9 @@ export default class WorksheetCanvas {
     const frozenOffset = frozenSeparatorWidth / 2;
     // If there are frozen rows draw a separator
     if (frozenRows) {
+      // Grid line of the last frozen row, no cell below it draws it
+      context.fillStyle = this.theme.gridSeparatorColor;
+      context.fillRect(0, y - 1, this.width, 1);
       context.beginPath();
       context.lineWidth = frozenSeparatorWidth;
       context.strokeStyle = this.theme.gridSeparatorColor;
@@ -1982,6 +1985,9 @@ export default class WorksheetCanvas {
 
     // If there are frozen columns draw a separator
     if (frozenColumns) {
+      // Grid line of the last frozen column, no cell to its right draws it
+      context.fillStyle = this.theme.gridSeparatorColor;
+      context.fillRect(x - 1, 0, 1, this.height);
       context.beginPath();
       context.lineWidth = frozenSeparatorWidth;
       context.strokeStyle = this.theme.gridSeparatorColor;
