@@ -5,3 +5,6 @@ export const ROW_HEIGH_SCALE = 1;
 export const COLUMN_WIDTH_SCALE = 1;
 
 export const cellPadding = 4;
+
+export const headerRowHeight = 28;
+export const headerColumnWidth = 30;

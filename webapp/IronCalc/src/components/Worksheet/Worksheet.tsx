@@ -12,14 +12,13 @@ import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
 import {
   COLUMN_WIDTH_SCALE,
+  headerColumnWidth,
+  headerRowHeight,
   LAST_COLUMN,
   LAST_ROW,
   ROW_HEIGH_SCALE,
 } from "../WorksheetCanvas/constants";
-import WorksheetCanvas, {
-  headerColumnWidth,
-  headerRowHeight,
-} from "../WorksheetCanvas/worksheetCanvas";
+import WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 import CellContextMenu from "./ContextMenus/Cell";
 import ColumnHeaderContextMenu from "./ContextMenus/ColumnHeader";
