@@ -251,3 +251,28 @@ test('Cell link label and style are one undo step', () => {
     assert.strictEqual(model.getCellStyle(0, 2, 2).style.font.u, true);
     assert.strictEqual(model.getCellLink(0, 2, 2).target, "https://www.ironcalc.com/");
 });
+
+test('Merged cells', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.setUserInput(0, 2, 2, "5");
+    model.setUserInput(0, 3, 3, "hello");
+
+    // merge B2:C3
+    model.mergeCells({ sheet: 0, row: 2, column: 2, width: 2, height: 2 });
+    assert.deepEqual(model.getMergedCells(0), [{ row: 2, column: 2, width: 2, height: 2 }]);
+    // the anchor keeps its content, the covered cell is cleared
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "5");
+    assert.strictEqual(model.getFormattedCellValue(0, 3, 3), "");
+    // covered cells cannot be edited
+    assert.throws(() => model.setUserInput(0, 3, 3, "42"));
+
+    model.undo();
+    assert.deepEqual(model.getMergedCells(0), []);
+    assert.strictEqual(model.getFormattedCellValue(0, 3, 3), "hello");
+
+    model.redo();
+    model.unmergeCells({ sheet: 0, row: 1, column: 1, width: 10, height: 10 });
+    assert.deepEqual(model.getMergedCells(0), []);
+    model.setUserInput(0, 3, 3, "42");
+    assert.strictEqual(model.getFormattedCellValue(0, 3, 3), "42");
+});

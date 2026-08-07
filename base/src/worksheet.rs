@@ -355,6 +355,28 @@ impl Worksheet {
         self.update_cell(row, column, cell)
     }
 
+    /// Returns the merged cell containing (row, column), if any
+    pub fn merged_cell_containing(&self, row: i32, column: i32) -> Option<&MergedCell> {
+        self.merged_cells.iter().find(|m| m.contains(row, column))
+    }
+
+    /// Returns true if (row, column) is inside a merged range but is not its anchor
+    pub fn is_covered_cell(&self, row: i32, column: i32) -> bool {
+        match self.merged_cell_containing(row, column) {
+            Some(m) => m.row != row || m.column != column,
+            None => false,
+        }
+    }
+
+    /// Returns the anchor of the merged cell containing (row, column),
+    /// or (row, column) itself if the cell is not merged
+    pub fn merge_anchor(&self, row: i32, column: i32) -> (i32, i32) {
+        match self.merged_cell_containing(row, column) {
+            Some(m) => (m.row, m.column),
+            None => (row, column),
+        }
+    }
+
     pub fn set_frozen_rows(&mut self, frozen_rows: i32) -> Result<(), String> {
         if frozen_rows < 0 {
             return Err("Frozen rows cannot be negative".to_string());
@@ -843,17 +865,34 @@ impl Worksheet {
             return Err("Row or column is outside valid range.".to_string());
         }
 
-        let start_cell = (row, column);
+        // A merged cell behaves as a single cell: stepping out of it starts at
+        // its far edge in the direction of travel.
+        let start_cell = match self.merged_cell_containing(row, column) {
+            Some(m) => match direction {
+                NavigationDirection::Left => (row, m.column),
+                NavigationDirection::Right => (row, m.last_column()),
+                NavigationDirection::Up => (m.row, column),
+                NavigationDirection::Down => (m.last_row(), column),
+            },
+            None => (row, column),
+        };
         let neighbour_cell = if let Some(cell) = step_in_direction(start_cell, direction) {
             cell
         } else {
             return Ok((start_cell.0, start_cell.1));
         };
 
-        if self.is_empty_cell(start_cell.0, start_cell.1)? {
+        // The content of a merged cell lives at the anchor: every cell of the
+        // range is as empty as the anchor is.
+        let is_empty_merge_aware = |row: i32, column: i32| -> Result<bool, String> {
+            let (anchor_row, anchor_column) = self.merge_anchor(row, column);
+            self.is_empty_cell(anchor_row, anchor_column)
+        };
+
+        if is_empty_merge_aware(start_cell.0, start_cell.1)? {
             // Find first non-empty cell or move to the end.
             let found_cells = walk_in_direction(start_cell, direction, |(row, column)| {
-                Ok(!self.is_empty_cell(row, column)?)
+                Ok(!is_empty_merge_aware(row, column)?)
             })?;
             Ok(match found_cells.found_cell {
                 Some(cell) => cell,
@@ -862,9 +901,9 @@ impl Worksheet {
         } else {
             // Neighbour cell is empty     => find FIRST that is NOT empty
             // Neighbour cell is not empty => find LAST  that is NOT empty in sequence
-            if self.is_empty_cell(neighbour_cell.0, neighbour_cell.1)? {
+            if is_empty_merge_aware(neighbour_cell.0, neighbour_cell.1)? {
                 let found_cells = walk_in_direction(start_cell, direction, |(row, column)| {
-                    Ok(!self.is_empty_cell(row, column)?)
+                    Ok(!is_empty_merge_aware(row, column)?)
                 })?;
                 Ok(match found_cells.found_cell {
                     Some(cell) => cell,
@@ -872,7 +911,7 @@ impl Worksheet {
                 })
             } else {
                 let found_cells = walk_in_direction(start_cell, direction, |(row, column)| {
-                    self.is_empty_cell(row, column)
+                    is_empty_merge_aware(row, column)
                 })?;
                 Ok(found_cells.previous_cell)
             }

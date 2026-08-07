@@ -6,6 +6,15 @@ export interface Area {
   height: number;
 }
 
+// A rectangular range displayed as a single cell, anchored at its top-left
+// corner. `width` is the number of columns and `height` the number of rows.
+export interface MergedCell {
+  row: number;
+  column: number;
+  width: number;
+  height: number;
+}
+
 export enum BorderType {
   All = "All",
   Inner = "Inner",

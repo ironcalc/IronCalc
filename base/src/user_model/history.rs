@@ -4,7 +4,9 @@ use bitcode::{Decode, Encode};
 
 use crate::{
     cf_types::CfRule,
-    types::{Cell, Col, Color, Link, Row, SheetState, Style, StyleIncludes, Theme, Worksheet},
+    types::{
+        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
+    },
 };
 
 #[derive(Clone, Encode, Decode)]
@@ -300,6 +302,18 @@ pub(crate) enum Diff {
         index_b: u32,
         priority_a: u32,
         priority_b: u32,
+    },
+    /// Sets the full list of merged cells of a sheet: apply installs
+    /// `new_value`, undo installs `old_value`. Structural actions (insert,
+    /// delete or move of rows and columns) displace merged ranges on their own
+    /// when they are replayed, but their undo cannot always reconstruct the
+    /// original ranges; those actions push this diff with
+    /// `old_value == new_value` (a no-op on apply) so that undo restores the
+    /// exact previous list.
+    SetMergedCells {
+        sheet: u32,
+        old_value: Vec<MergedCell>,
+        new_value: Vec<MergedCell>,
     },
     // FIXME: we are missing SetViewDiffs
 }

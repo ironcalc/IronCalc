@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Fx } from "../../icons";
 import { Button } from "../Button/Button";
 import Editor from "../Editor/Editor";
+import { getEditorSize } from "../util";
 import type { WorkbookState } from "../workbookState";
 import FormulaBarMenu from "./FormulaBarMenu";
 import "./formula-bar.css";
@@ -74,8 +75,12 @@ function FormulaBar(properties: FormulaBarProps) {
               return;
             }
             const [sheet, row, column] = model.getSelectedCell();
-            const editorWidth = model.getColumnWidth(sheet, column);
-            const editorHeight = model.getRowHeight(sheet, row);
+            const { width: editorWidth, height: editorHeight } = getEditorSize(
+              model,
+              sheet,
+              row,
+              column,
+            );
             workbookState.setEditingCell({
               sheet,
               row,

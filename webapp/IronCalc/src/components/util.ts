@@ -1,10 +1,113 @@
 import {
   columnNameFromNumber,
+  type MergedCell,
+  type Model,
   quoteName,
   type SelectedView,
 } from "@ironcalc/wasm";
 import type { Area, Cell } from "./types";
 import { LAST_COLUMN, LAST_ROW } from "./WorksheetCanvas/constants";
+
+/**
+ * Returns the merged cell containing (row, column), or undefined if the cell
+ * is not part of any merge.
+ */
+export function mergedCellContaining(
+  mergedCells: MergedCell[],
+  row: number,
+  column: number,
+): MergedCell | undefined {
+  return mergedCells.find(
+    (m) =>
+      row >= m.row &&
+      row < m.row + m.height &&
+      column >= m.column &&
+      column < m.column + m.width,
+  );
+}
+
+/**
+ * Grows the range until it fully contains every merged cell it touches
+ * (growing to swallow one merge can graze another, hence the fixpoint loop).
+ * The orientation of the range is preserved. Mirrors the engine's
+ * grow_range_over_merged_cells.
+ */
+export function growRangeOverMergedCells(
+  mergedCells: MergedCell[],
+  range: Area,
+): Area {
+  let minRow = Math.min(range.rowStart, range.rowEnd);
+  let maxRow = Math.max(range.rowStart, range.rowEnd);
+  let minColumn = Math.min(range.columnStart, range.columnEnd);
+  let maxColumn = Math.max(range.columnStart, range.columnEnd);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const m of mergedCells) {
+      const lastRow = m.row + m.height - 1;
+      const lastColumn = m.column + m.width - 1;
+      const intersects =
+        m.row <= maxRow &&
+        lastRow >= minRow &&
+        m.column <= maxColumn &&
+        lastColumn >= minColumn;
+      if (intersects) {
+        if (m.row < minRow) {
+          minRow = m.row;
+          changed = true;
+        }
+        if (lastRow > maxRow) {
+          maxRow = lastRow;
+          changed = true;
+        }
+        if (m.column < minColumn) {
+          minColumn = m.column;
+          changed = true;
+        }
+        if (lastColumn > maxColumn) {
+          maxColumn = lastColumn;
+          changed = true;
+        }
+      }
+    }
+  }
+  const rowsAscending = range.rowStart <= range.rowEnd;
+  const columnsAscending = range.columnStart <= range.columnEnd;
+  return {
+    rowStart: rowsAscending ? minRow : maxRow,
+    rowEnd: rowsAscending ? maxRow : minRow,
+    columnStart: columnsAscending ? minColumn : maxColumn,
+    columnEnd: columnsAscending ? maxColumn : minColumn,
+  };
+}
+
+/**
+ * Returns the size of the cell editor for a cell: the size of the cell itself,
+ * or of the whole merged range if the cell is merged.
+ */
+export function getEditorSize(
+  model: Model,
+  sheet: number,
+  row: number,
+  column: number,
+): { width: number; height: number } {
+  const merge = mergedCellContaining(model.getMergedCells(sheet), row, column);
+  if (!merge) {
+    return {
+      width: model.getColumnWidth(sheet, column),
+      height: model.getRowHeight(sheet, row),
+    };
+  }
+  let width = 0;
+  for (let c = merge.column; c < merge.column + merge.width; c += 1) {
+    width += model.getColumnWidth(sheet, c);
+  }
+  let height = 0;
+  for (let r = merge.row; r < merge.row + merge.height; r += 1) {
+    height += model.getRowHeight(sheet, r);
+  }
+  return { width, height };
+}
 
 /**
  *  Returns true if the keypress should start editing

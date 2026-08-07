@@ -945,12 +945,25 @@ impl<'a> Model<'a> {
                     }
                     // Check that the full spill area (based on actual result dimensions) is clear.
                     // The stored range may be (1,1) on first evaluation, so we must re-check here.
-                    let sheet_data = &self.workbook.worksheets[sheet as usize].sheet_data;
+                    let target_worksheet = &self.workbook.worksheets[sheet as usize];
+                    let sheet_data = &target_worksheet.sheet_data;
                     for r in row..row + array_height {
                         let row_data = sheet_data.get(&r);
                         for c in column..column + array_width {
                             if r == row && c == column {
                                 continue;
+                            }
+                            // Merged cells always block spilling, like in Excel.
+                            if target_worksheet.merged_cell_containing(r, c).is_some() {
+                                return self.set_cells_with_result(
+                                    cell_reference,
+                                    cell,
+                                    &CalcResult::new_error(
+                                        Error::SPILL,
+                                        cell_reference,
+                                        "Cannot spill array result".to_string(),
+                                    ),
+                                );
                             }
                             // A cell blocks spilling only if it is occupied by something
                             // other than an empty cell or a spill cell that already belongs
@@ -2261,12 +2274,15 @@ impl<'a> Model<'a> {
     // - Part of a dynamic array formula => we delete the formula and we clear the spill
     // - Anchor of a dynamic array formula
     //     => we clear the spill and we set an unevaluated dynamic formula.
-    fn prepare_cell_for_user_input(
+    pub(crate) fn prepare_cell_for_user_input(
         &mut self,
         sheet: u32,
         row: i32,
         column: i32,
     ) -> Result<(), String> {
+        if self.workbook.worksheet(sheet)?.is_covered_cell(row, column) {
+            return Err("Cannot edit a cell that is part of a merged cell".to_string());
+        }
         match self.get_cell_structure(sheet, row, column)? {
             CellStructure::SingleCell => {
                 // noop
@@ -2479,6 +2495,15 @@ impl<'a> Model<'a> {
         height: i32,
         value: &str,
     ) -> Result<(), String> {
+        if self
+            .workbook
+            .worksheet(sheet)?
+            .merged_cells
+            .iter()
+            .any(|m| m.intersects(row, column, width, height))
+        {
+            return Err("Cannot set an array formula over merged cells".to_string());
+        }
         self.prepare_cell_for_user_input(sheet, row, column)?;
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column)?;

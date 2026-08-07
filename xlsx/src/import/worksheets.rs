@@ -13,8 +13,8 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, Link, Row, SheetData,
-        SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
+        ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, Link, MergedCell,
+        Row, SheetData, SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
 use roxmltree::Node;
@@ -165,23 +165,48 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
     Ok(cols)
 }
 
-fn load_merge_cells(ws: Node) -> Result<Vec<String>, XlsxError> {
+fn load_merge_cells(ws: Node) -> Result<Vec<MergedCell>, XlsxError> {
     // 18.3.1.55 Merge Cells
     // <mergeCells count="1">
     //    <mergeCell ref="K7:L10"/>
     // </mergeCells>
-    let mut merge_cells = Vec::new();
+    // Malformed, single-cell and overlapping entries are skipped: the engine
+    // invariants are that merged ranges span more than one cell and never
+    // intersect each other.
+    let mut merged_cells: Vec<MergedCell> = Vec::new();
     let merge_cells_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("mergeCells"))
         .collect::<Vec<Node>>();
     if merge_cells_nodes.len() == 1 {
-        for merge_cell in merge_cells_nodes[0].children() {
-            let reference = get_attribute(&merge_cell, "ref")?.to_string();
-            merge_cells.push(reference);
+        for merge_cell in merge_cells_nodes[0]
+            .children()
+            .filter(|n| n.has_tag_name("mergeCell"))
+        {
+            let reference = get_attribute(&merge_cell, "ref")?;
+            let Ok((row, column, last_row, last_column)) = parse_range(reference) else {
+                continue;
+            };
+            let width = last_column - column + 1;
+            let height = last_row - row + 1;
+            if width < 1 || height < 1 || width * height == 1 {
+                continue;
+            }
+            if merged_cells
+                .iter()
+                .any(|m| m.intersects(row, column, width, height))
+            {
+                continue;
+            }
+            merged_cells.push(MergedCell {
+                row,
+                column,
+                width,
+                height,
+            });
         }
     }
-    Ok(merge_cells)
+    Ok(merged_cells)
 }
 
 fn load_sheet_color(ws: Node, theme: &Theme) -> Result<Color, XlsxError> {
@@ -1241,7 +1266,25 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         }
     }
 
-    let merge_cells = load_merge_cells(ws)?;
+    let merged_cells = load_merge_cells(ws)?;
+
+    // Covered cells of a merged range must not hold content (an engine
+    // invariant); Excel leaves them empty but third-party producers sometimes
+    // leave values behind, so we clear them here (keeping their styles).
+    for merged_cell in &merged_cells {
+        for row in merged_cell.row..=merged_cell.last_row() {
+            for column in merged_cell.column..=merged_cell.last_column() {
+                if row == merged_cell.row && column == merged_cell.column {
+                    continue;
+                }
+                if let Some(cell) = sheet_data.get_mut(&row).and_then(|r| r.get_mut(&column)) {
+                    *cell = Cell::EmptyCell {
+                        s: cell.get_style(),
+                    };
+                }
+            }
+        }
+    }
 
     let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
 
@@ -1272,7 +1315,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             sheet_id,
             state: state.to_owned(),
             color,
-            merge_cells,
+            merged_cells,
             comments: settings.comments,
             frozen_rows: sheet_view.frozen_rows,
             frozen_columns: sheet_view.frozen_columns,

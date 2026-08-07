@@ -1,4 +1,4 @@
-import type { CellLink, CellStyle, Model } from "@ironcalc/wasm";
+import type { CellLink, CellStyle, MergedCell, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
@@ -69,7 +69,13 @@ interface TextProperties {
   strike: boolean;
   lines: [string, number, number, number][];
   link: CellLink | null;
+  // The pane the cell was laid out in; nothing is painted outside of it
+  clip: PaneRect;
 }
+
+// Canvas rectangle (x, y, width, height) of one of the four panes
+type PaneRect = [number, number, number, number];
+
 export default class WorksheetCanvas {
   sheetWidth: number;
 
@@ -114,6 +120,21 @@ export default class WorksheetCanvas {
   cells: TextProperties[];
   spills: Map<string, number>;
 
+  // Merged cells of the selected sheet, and a lookup from every cell of a
+  // merged range ("row-column") to its merge. Rebuilt on every renderSheet.
+  private mergedCells: MergedCell[];
+  private mergeMap: Map<string, MergedCell>;
+  // Merged ranges are painted once per pane per render even though every
+  // visible cell of the range is a paint site (so they render when the anchor
+  // is scrolled out of view). Keyed by "pane-anchorRow-anchorColumn".
+  private renderedMergedStyles: Set<string>;
+  private renderedMergedTexts: Set<string>;
+  // The pane (frozen corner, frozen rows, frozen columns, main) whose cells
+  // are being laid out or painted. A cell never draws outside its pane: a
+  // merged range reaching into another pane is clipped to this one.
+  private paneIndex: number;
+  private paneClip: PaneRect;
+
   private cellLinks: CellLinks;
 
   theme: Theme;
@@ -152,6 +173,13 @@ export default class WorksheetCanvas {
     // a cell marked as "spill" means its left border should be skipped
     this.spills = new Map<string, number>();
     this.cells = [];
+
+    this.mergedCells = [];
+    this.mergeMap = new Map();
+    this.renderedMergedStyles = new Set();
+    this.renderedMergedTexts = new Set();
+    this.paneIndex = 0;
+    this.paneClip = [0, 0, 0, 0];
 
     this.cellLinks = new CellLinks(this, {
       onLinkHover: options.onLinkHover,
@@ -256,6 +284,43 @@ export default class WorksheetCanvas {
   }
 
   // Get the visible cells (aside from the frozen rows and columns)
+  // The four panes in paint order: frozen corner (top-left), frozen rows
+  // (top-right), frozen columns (bottom-left) and the scrolling sheet
+  // (bottom-right). Separators are left out of every pane.
+  private getPanes(): PaneRect[] {
+    const frozenColumnsWidth = this.getFrozenColumnsWidth();
+    const frozenRowsHeight = this.getFrozenRowsHeight();
+    const x0 = headerColumnWidth;
+    const y0 = headerRowHeight;
+    const frozenX = x0 + frozenColumnsWidth;
+    const frozenY = y0 + frozenRowsHeight;
+    // getFrozen*() include the separator when there are frozen rows/columns
+    const cornerWidth = Math.max(0, frozenColumnsWidth - frozenSeparatorWidth);
+    const cornerHeight = Math.max(0, frozenRowsHeight - frozenSeparatorWidth);
+    return [
+      [x0, y0, cornerWidth, cornerHeight],
+      [frozenX, y0, this.width - frozenX, cornerHeight],
+      [x0, frozenY, cornerWidth, this.height - frozenY],
+      [frozenX, frozenY, this.width - frozenX, this.height - frozenY],
+    ];
+  }
+
+  private setPane(index: number, panes: PaneRect[]): void {
+    this.paneIndex = index;
+    this.paneClip = panes[index];
+  }
+
+  // Selects the pane and restricts canvas drawing to it until the matching
+  // context.restore()
+  private clipToPane(index: number, panes: PaneRect[]): void {
+    this.setPane(index, panes);
+    const [x, y, width, height] = this.paneClip;
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.rect(x, y, width, height);
+    this.ctx.clip();
+  }
+
   getVisibleCells(): {
     topLeftCell: Cell;
     bottomRightCell: Cell;
@@ -459,6 +524,68 @@ export default class WorksheetCanvas {
     }
   }
 
+  // Rebuilds the merged-cell lookup for the selected sheet
+  private updateMergedCells(): void {
+    this.renderedMergedStyles = new Set();
+    this.renderedMergedTexts = new Set();
+    const selectedSheet = this.model.getSelectedSheet();
+    this.mergedCells = this.model.getMergedCells(selectedSheet);
+    this.mergeMap = new Map();
+    for (const merge of this.mergedCells) {
+      for (let row = merge.row; row < merge.row + merge.height; row += 1) {
+        for (
+          let column = merge.column;
+          column < merge.column + merge.width;
+          column += 1
+        ) {
+          this.mergeMap.set(`${row}-${column}`, merge);
+        }
+      }
+    }
+  }
+
+  // Returns the canvas rectangle (x, y, width, height) of a merged range
+  private getMergedRect(merge: MergedCell): [number, number, number, number] {
+    const selectedSheet = this.model.getSelectedSheet();
+    const [x, y] = this.getCoordinatesByCell(merge.row, merge.column);
+    let width = 0;
+    for (
+      let column = merge.column;
+      column < merge.column + merge.width;
+      column += 1
+    ) {
+      width += this.getColumnWidth(selectedSheet, column);
+    }
+    let height = 0;
+    for (let row = merge.row; row < merge.row + merge.height; row += 1) {
+      height += this.getRowHeight(selectedSheet, row);
+    }
+    return [x, y, width, height];
+  }
+
+  // Same rectangle, but positioned relative to the cell (row, column) of the
+  // range being painted at (x, y) so it lines up exactly with the grid drawn
+  // by the render loop of the current pane
+  private getMergedRectFrom(
+    merge: MergedCell,
+    row: number,
+    column: number,
+    x: number,
+    y: number,
+  ): [number, number, number, number] {
+    const selectedSheet = this.model.getSelectedSheet();
+    const [, , width, height] = this.getMergedRect(merge);
+    let mergeX = x;
+    for (let c = merge.column; c < column; c += 1) {
+      mergeX -= this.getColumnWidth(selectedSheet, c);
+    }
+    let mergeY = y;
+    for (let r = merge.row; r < row; r += 1) {
+      mergeY -= this.getRowHeight(selectedSheet, r);
+    }
+    return [mergeX, mergeY, width, height];
+  }
+
   // Goes through all the visible cells and computes their text properties
   private computeCellsText(): void {
     const { topLeftCell, bottomRightCell } = this.getVisibleCells();
@@ -470,8 +597,10 @@ export default class WorksheetCanvas {
 
     const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
     const frozenRows = this.model.getFrozenRowsCount(selectedSheet);
+    const panes = this.getPanes();
 
     // Top-left-pane
+    this.setPane(0, panes);
     let x = headerColumnWidth + 0.5;
     let y = headerRowHeight + 0.5;
     for (let row = 1; row <= frozenRows; row += 1) {
@@ -513,6 +642,7 @@ export default class WorksheetCanvas {
     const frozenX = x;
     const frozenY = y;
     // Top-right pane
+    this.setPane(1, panes);
     y = headerRowHeight + 0.5;
     for (let row = 1; row <= frozenRows; row += 1) {
       x = frozenX;
@@ -531,6 +661,7 @@ export default class WorksheetCanvas {
     }
 
     // Bottom-left pane
+    this.setPane(2, panes);
     y = frozenY;
     for (let { row } = topLeftCell; row <= bottomRightCell.row; row += 1) {
       x = headerColumnWidth;
@@ -553,6 +684,7 @@ export default class WorksheetCanvas {
     }
 
     // Bottom-right pane
+    this.setPane(3, panes);
     y = frozenY;
     for (let { row } = topLeftCell; row <= bottomRightCell.row; row += 1) {
       x = frozenX;
@@ -572,7 +704,10 @@ export default class WorksheetCanvas {
     }
   }
 
-  // Compute the text properties for a cell
+  // Compute the text properties for a cell. Every cell of a merged range is a
+  // paint site for the whole range (drawn once, from the anchor, over the full
+  // merged rectangle), so the range still renders when its anchor is scrolled
+  // out of view.
   private computeCellText(
     row: number,
     column: number,
@@ -580,6 +715,43 @@ export default class WorksheetCanvas {
     y: number,
     width: number,
     height: number,
+  ) {
+    const merge = this.mergeMap.get(`${row}-${column}`);
+    if (merge) {
+      const key = `${this.paneIndex}-${merge.row}-${merge.column}`;
+      if (this.renderedMergedTexts.has(key)) {
+        return;
+      }
+      this.renderedMergedTexts.add(key);
+      const [mergeX, mergeY, mergeWidth, mergeHeight] = this.getMergedRectFrom(
+        merge,
+        row,
+        column,
+        x,
+        y,
+      );
+      this.computeCellTextImpl(
+        merge.row,
+        merge.column,
+        mergeX,
+        mergeY,
+        mergeWidth,
+        mergeHeight,
+        true,
+      );
+      return;
+    }
+    this.computeCellTextImpl(row, column, x, y, width, height, false);
+  }
+
+  private computeCellTextImpl(
+    row: number,
+    column: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    isMergedCell: boolean,
   ) {
     if (width <= 0 || height <= 0) {
       return;
@@ -660,6 +832,7 @@ export default class WorksheetCanvas {
       strike: style.font?.strike || false,
       lines: [] as [string, number, number, number][],
       link,
+      clip: this.paneClip,
     };
 
     lines.forEach((text, line) => {
@@ -696,9 +869,12 @@ export default class WorksheetCanvas {
       maxWidth = Math.max(maxWidth, textX + textWidth / 2 - x);
     });
     // we need to see if the text spills to the right of the cell
+    // (the text of a merged cell never overflows the merged rectangle, and
+    // text never overflows into a merged range)
     let leftColumnX = x;
     let rightColumnX = x + width;
     if (
+      !isMergedCell &&
       maxX > rightColumnX &&
       column < LAST_COLUMN &&
       (this.model.getFormattedCellValue(selectedSheet, row, column + 1) ===
@@ -713,6 +889,7 @@ export default class WorksheetCanvas {
       const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
       while (
         rightColumnX < maxX &&
+        !this.mergeMap.has(`${row}-${spillColumn}`) &&
         (this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
           "" ||
           this.getColumnWidth(selectedSheet, spillColumn) === 0) &&
@@ -729,6 +906,7 @@ export default class WorksheetCanvas {
     // Same thing in the other direction, to the left of the cell
     const frozenColumnsCount = this.model.getFrozenColumnsCount(selectedSheet);
     if (
+      !isMergedCell &&
       minX < leftColumnX &&
       column > 1 &&
       (this.model.getFormattedCellValue(selectedSheet, row, column - 1) ===
@@ -742,6 +920,7 @@ export default class WorksheetCanvas {
       // 3. There is the end of frozen columns
       while (
         leftColumnX > minX &&
+        !this.mergeMap.has(`${row}-${spillColumn}`) &&
         (this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
           "" ||
           this.getColumnWidth(selectedSheet, spillColumn) === 0) &&
@@ -774,6 +953,10 @@ export default class WorksheetCanvas {
   }
 
   /// Renders the cell style: background color, CF overlays, and borders (but not text).
+  /// A merged range is painted once, from its anchor, over the whole merged
+  /// rectangle: interior gridlines and borders are thereby suppressed, while
+  /// the perimeter still renders (the right and bottom edges are drawn by the
+  /// neighbouring cells, which consult the styles of the covered edge cells).
   private renderCellStyle(
     row: number,
     column: number,
@@ -781,6 +964,50 @@ export default class WorksheetCanvas {
     y: number,
     width: number,
     height: number,
+  ): void {
+    const merge = this.mergeMap.get(`${row}-${column}`);
+    if (merge) {
+      const key = `${this.paneIndex}-${merge.row}-${merge.column}`;
+      if (this.renderedMergedStyles.has(key)) {
+        // The merged rectangle was painted when its first cell was reached,
+        // before the cells to the left of the lower rows. Their background
+        // fill overlaps the left edge, so it is redrawn once the loop reaches
+        // each cell of the left column (its left neighbour is painted by then).
+        if (column === merge.column) {
+          this.renderLeftBorder(row, column, x, y, height);
+        }
+        return;
+      }
+      this.renderedMergedStyles.add(key);
+      const [mergeX, mergeY, mergeWidth, mergeHeight] = this.getMergedRectFrom(
+        merge,
+        row,
+        column,
+        x,
+        y,
+      );
+      this.renderCellStyleImpl(
+        merge.row,
+        merge.column,
+        mergeX,
+        mergeY,
+        mergeWidth,
+        mergeHeight,
+        merge,
+      );
+      return;
+    }
+    this.renderCellStyleImpl(row, column, x, y, width, height);
+  }
+
+  private renderCellStyleImpl(
+    row: number,
+    column: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    merge?: MergedCell,
   ): void {
     if (width <= 0 || height <= 0) {
       return;
@@ -793,9 +1020,6 @@ export default class WorksheetCanvas {
     if (style.fill.color) {
       backgroundColor = this.model.resolveColor(style.fill.color);
     }
-    const cellGridColor = this.model.getShowGridLines(selectedSheet)
-      ? this.theme.gridColor
-      : backgroundColor;
     const context = this.ctx;
     context.fillStyle = backgroundColor;
     context.fillRect(x + 0.5, y + 0.5, width - 1, height - 1);
@@ -819,42 +1043,67 @@ export default class WorksheetCanvas {
       );
     }
 
-    // Let's do the border
-    // Algorithm:
-    //  * we use the border if present
-    //  * otherwise we use the border of the adjacent cell
-    //  * otherwise we use the color of the background
-    //  * otherwise we use the background color of the adjacent cell
-    //  * if everything else fails we use the default grid color
-    // We only set the left and top borders (right and bottom are set later)
-
     // Borders — we only draw left and top; the adjacent cell draws right/bottom.
+    // Borders are stored per cell (like Excel does), so the left edge of a
+    // merged range is drawn one segment per row and the top edge one segment
+    // per column, each consulting its own perimeter cell and neighbour.
+    if (!merge) {
+      this.renderLeftBorder(row, column, x, y, height);
+      this.renderTopBorder(row, column, x, y, width);
+      return;
+    }
+    let segmentY = y;
+    for (let r = merge.row; r < merge.row + merge.height; r += 1) {
+      const rowHeight = this.getRowHeight(selectedSheet, r);
+      this.renderLeftBorder(r, merge.column, x, segmentY, rowHeight);
+      segmentY += rowHeight;
+    }
+    let segmentX = x;
+    for (let c = merge.column; c < merge.column + merge.width; c += 1) {
+      const columnWidth = this.getColumnWidth(selectedSheet, c);
+      this.renderTopBorder(merge.row, c, segmentX, y, columnWidth);
+      segmentX += columnWidth;
+    }
+  }
+
+  // Draws the left border of cell (row, column) from (x, y) to (x, y + height)
+  // Algorithm:
+  //  * we use the border if present
+  //  * otherwise we use the border of the adjacent cell
+  //  * otherwise we use the color of the background
+  //  * otherwise we use the background color of the adjacent cell
+  //  * if everything else fails we use the default grid color
+  private renderLeftBorder(
+    row: number,
+    column: number,
+    x: number,
+    y: number,
+    height: number,
+  ): void {
+    const selectedSheet = this.model.getSelectedSheet();
+    const style = this.model.getCellStyle(selectedSheet, row, column).style;
+    const leftStyle = this.model.getCellStyle(
+      selectedSheet,
+      row,
+      column - 1,
+    ).style;
+    const context = this.ctx;
     const border = style.border;
 
     // Skip the left border for spill cells.
     if (this.spills.get(`${row}-${column}`) !== 1) {
-      let borderLeftColor = cellGridColor;
+      let borderLeftColor = this.getCellGridColor(selectedSheet, style);
       let borderLeftStyle = "thin";
       if (border.left) {
         borderLeftColor = this.model.resolveColor(border.left.color);
         borderLeftStyle = border.left.style;
-      } else {
-        const leftExtended = this.model.getCellStyle(
-          selectedSheet,
-          row,
-          column - 1,
-        );
-        const leftStyle = leftExtended.style;
-        if (leftStyle.border.right) {
-          borderLeftColor = this.model.resolveColor(
-            leftStyle.border.right.color,
-          );
-          borderLeftStyle = leftStyle.border.right.style;
-        } else if (style.fill.color) {
-          borderLeftColor = this.model.resolveColor(style.fill.color);
-        } else if (leftStyle.fill.color) {
-          borderLeftColor = this.model.resolveColor(leftStyle.fill.color);
-        }
+      } else if (leftStyle.border.right) {
+        borderLeftColor = this.model.resolveColor(leftStyle.border.right.color);
+        borderLeftStyle = leftStyle.border.right.style;
+      } else if (style.fill.color) {
+        borderLeftColor = this.model.resolveColor(style.fill.color);
+      } else if (leftStyle.fill.color) {
+        borderLeftColor = this.model.resolveColor(leftStyle.fill.color);
       }
 
       // The left border of the first column is shared with the header separator
@@ -878,7 +1127,6 @@ export default class WorksheetCanvas {
         row,
         column - 1,
       );
-      const borderLeftStyle = "thin";
       const leftStyle = leftExtended.style;
       let borderLeftColor = this.theme.backgroundColor;
       if (style.fill.color) {
@@ -887,44 +1135,46 @@ export default class WorksheetCanvas {
         borderLeftColor = this.model.resolveColor(leftStyle.fill.color);
       }
       if (borderLeftColor) {
-        drawBorder(
-          context,
-          borderLeftStyle,
-          borderLeftColor,
-          x,
-          y,
-          x,
-          y + height,
-          true,
-        );
+        drawBorder(context, "thin", borderLeftColor, x, y, x, y + height, true);
       }
     }
+  }
 
-    let borderTopColor = cellGridColor;
+  // Draws the top border of cell (row, column) from (x, y) to (x + width, y)
+  // Same algorithm as renderLeftBorder
+  private renderTopBorder(
+    row: number,
+    column: number,
+    x: number,
+    y: number,
+    width: number,
+  ): void {
+    const selectedSheet = this.model.getSelectedSheet();
+    const style = this.model.getCellStyle(selectedSheet, row, column).style;
+    const topStyle = this.model.getCellStyle(
+      selectedSheet,
+      row - 1,
+      column,
+    ).style;
+    const border = style.border;
+
+    let borderTopColor = this.getCellGridColor(selectedSheet, style);
     let borderTopStyle = "thin";
     if (border.top) {
       borderTopColor = this.model.resolveColor(border.top.color);
       borderTopStyle = border.top.style;
-    } else {
-      const topExtended = this.model.getCellStyle(
-        selectedSheet,
-        row - 1,
-        column,
-      );
-      const topStyle = topExtended.style;
-      if (topStyle.border.bottom) {
-        borderTopColor = this.model.resolveColor(topStyle.border.bottom.color);
-        borderTopStyle = topStyle.border.bottom.style;
-      } else if (style.fill.color) {
-        borderTopColor = this.model.resolveColor(style.fill.color);
-      } else if (topStyle.fill.color) {
-        borderTopColor = this.model.resolveColor(topStyle.fill.color);
-      }
+    } else if (topStyle.border.bottom) {
+      borderTopColor = this.model.resolveColor(topStyle.border.bottom.color);
+      borderTopStyle = topStyle.border.bottom.style;
+    } else if (style.fill.color) {
+      borderTopColor = this.model.resolveColor(style.fill.color);
+    } else if (topStyle.fill.color) {
+      borderTopColor = this.model.resolveColor(topStyle.fill.color);
     }
     // The top border of the first row is shared with the header separator
     if (y > headerRowHeight + 0.51 || border.top) {
       drawBorder(
-        context,
+        this.ctx,
         borderTopStyle,
         borderTopColor,
         x,
@@ -934,6 +1184,17 @@ export default class WorksheetCanvas {
         false,
       );
     }
+  }
+
+  // Grid line color for a cell: the theme grid color, or the cell background
+  // when grid lines are hidden
+  private getCellGridColor(sheet: number, style: CellStyle): string {
+    if (this.model.getShowGridLines(sheet)) {
+      return this.theme.gridColor;
+    }
+    return style.fill.color
+      ? this.model.resolveColor(style.fill.color)
+      : this.theme.backgroundColor;
   }
 
   /// Renders the text in the cell.
@@ -949,15 +1210,19 @@ export default class WorksheetCanvas {
       fontSize,
       textColor,
       lines,
+      clip,
     } = textProperties;
     const context = this.ctx;
 
     context.font = font;
     context.fillStyle = textColor;
-    // Create a rectangular clipping region
+    // Clip to the cell (or spill) rectangle, and to the pane it belongs to
     context.save();
     context.beginPath();
     context.rect(x, y, width, height);
+    context.clip();
+    context.beginPath();
+    context.rect(clip[0], clip[1], clip[2], clip[3]);
     context.clip();
 
     lines.forEach((line, _) => {
@@ -1676,9 +1941,60 @@ export default class WorksheetCanvas {
     editor.style.height = `${height - 1}px`;
   }
 
+  // Draws the array structure
+  private drawArrayStructure(): void {
+    const { cellArrayStructure } = this;
+    // By default there is no "array structure"
+    cellArrayStructure.style.visibility = "hidden";
+
+    const [selectedSheet, selectedRow, selectedColumn] =
+      this.model.getSelectedCell();
+
+    // we draw the array structure if needed only if the selected cell is part of an array
+    const arrayStructure = this.model.getCellArrayStructure(
+      selectedSheet,
+      selectedRow,
+      selectedColumn,
+    );
+    let array = null;
+    if (arrayStructure === "SingleCell") {
+      // nothing to see here
+      return;
+    } else if ("DynamicAnchor" in arrayStructure) {
+      const [arrayWidth, arrayHeight] = arrayStructure.DynamicAnchor;
+      array = [selectedRow, selectedColumn, arrayWidth, arrayHeight];
+    } else if ("DynamicChild" in arrayStructure) {
+      array = arrayStructure.DynamicChild;
+    } else if ("ArrayAnchor" in arrayStructure) {
+      const [arrayWidth, arrayHeight] = arrayStructure.ArrayAnchor;
+      array = [selectedRow, selectedColumn, arrayWidth, arrayHeight];
+    } else if ("ArrayChild" in arrayStructure) {
+      array = arrayStructure.ArrayChild;
+    } else {
+      return;
+    }
+
+    const [arrayX, arrayY] = this.getCoordinatesByCell(array[0], array[1]);
+    const [arrayX1, arrayY1] = this.getCoordinatesByCell(
+      array[0] + array[3],
+      array[1] + array[2],
+    );
+
+    Object.assign(cellArrayStructure.style, {
+      visibility: "visible",
+      left: `${arrayX}px`,
+      top: `${arrayY}px`,
+      width: `${arrayX1 - arrayX}px`,
+      height: `${arrayY1 - arrayY}px`,
+    });
+  }
+
+  // Draws:
+  // * cell outline marking the selected cell
+  // * the area outline marking the selected area (if any)
+  // * the handle (the small circle/square that allows you to extend and autofill)
   private drawCellOutline(): void {
-    const { cellArrayStructure, cellOutline, areaOutline, cellOutlineHandle } =
-      this;
+    const { cellOutline, areaOutline, cellOutlineHandle } = this;
     if (this.workbookState.getEditingCell()) {
       cellOutline.style.visibility = "hidden";
       cellOutlineHandle.style.visibility = "hidden";
@@ -1690,8 +2006,6 @@ export default class WorksheetCanvas {
     }
 
     areaOutline.style.visibility = "visible";
-    // By default there is no "array structure"
-    cellArrayStructure.style.visibility = "hidden";
 
     const [selectedSheet, selectedRow, selectedColumn] =
       this.model.getSelectedCell();
@@ -1701,16 +2015,44 @@ export default class WorksheetCanvas {
     const [x, y] = this.getCoordinatesByCell(selectedRow, selectedColumn);
 
     const padding = -1;
-    const width =
-      this.getColumnWidth(selectedSheet, selectedColumn) + 2 * padding;
-    const height = this.getRowHeight(selectedSheet, selectedRow) + 2 * padding;
+    // A selected merged cell outlines the whole merged rectangle
+    const selectedMerge = this.mergeMap.get(`${selectedRow}-${selectedColumn}`);
+    let width: number;
+    let height: number;
+    // Last row and column covered by the outline
+    let lastRow = selectedRow;
+    let lastColumn = selectedColumn;
+    if (selectedMerge) {
+      const [, , mergeWidth, mergeHeight] = this.getMergedRect(selectedMerge);
+      width = mergeWidth + 2 * padding;
+      height = mergeHeight + 2 * padding;
+      lastRow = selectedMerge.row + selectedMerge.height - 1;
+      lastColumn = selectedMerge.column + selectedMerge.width - 1;
+    } else {
+      width = this.getColumnWidth(selectedSheet, selectedColumn) + 2 * padding;
+      height = this.getRowHeight(selectedSheet, selectedRow) + 2 * padding;
+    }
 
+    // Hidden when scrolled entirely out of view (under the frozen panes)
     if (
-      (selectedRow < topLeftCell.row && selectedRow > frozenRows) ||
-      (selectedColumn < topLeftCell.column && selectedColumn > frozenColumns)
+      (lastRow < topLeftCell.row && lastRow > frozenRows) ||
+      (lastColumn < topLeftCell.column && lastColumn > frozenColumns)
     ) {
       cellOutline.style.visibility = "hidden";
     }
+    // A merged cell partially scrolled under the frozen panes is clipped
+    const outlineClipRows =
+      selectedRow < topLeftCell.row && selectedRow > frozenRows;
+    const outlineClipColumns =
+      selectedColumn < topLeftCell.column && selectedColumn > frozenColumns;
+    cellOutline.style.clip = this.getClipCSS(
+      x - padding - 2,
+      y - padding - 2,
+      width + 1,
+      height + 1,
+      outlineClipRows,
+      outlineClipColumns,
+    );
 
     // Position the cell outline and clip it
     cellOutline.style.left = `${x - padding - 2}px`;
@@ -1738,50 +2080,33 @@ export default class WorksheetCanvas {
     if (columnStart > columnEnd) {
       [columnStart, columnEnd] = [columnEnd, columnStart];
     }
-    // we draw the array structure if needed only if the selected cell is part of an array
-    const arrayStructure = this.model.getCellArrayStructure(
-      selectedSheet,
-      selectedRow,
-      selectedColumn,
-    );
-    let array = null;
-    if (arrayStructure === "SingleCell") {
-      // nothing to see here
-    } else if ("DynamicAnchor" in arrayStructure) {
-      cellArrayStructure.style.visibility = "visible";
-      const [arrayWidth, arrayHeight] = arrayStructure.DynamicAnchor;
-      array = [selectedRow, selectedColumn, arrayWidth, arrayHeight];
-    } else if ("DynamicChild" in arrayStructure) {
-      cellArrayStructure.style.visibility = "visible";
-      array = arrayStructure.DynamicChild;
-    } else if ("ArrayAnchor" in arrayStructure) {
-      cellArrayStructure.style.visibility = "visible";
-      const [arrayWidth, arrayHeight] = arrayStructure.ArrayAnchor;
-      array = [selectedRow, selectedColumn, arrayWidth, arrayHeight];
-    } else if ("ArrayChild" in arrayStructure) {
-      cellArrayStructure.style.visibility = "visible";
-      array = arrayStructure.ArrayChild;
-    }
-    if (array !== null) {
-      const [arrayX, arrayY] = this.getCoordinatesByCell(array[0], array[1]);
-      const [arrayX1, arrayY1] = this.getCoordinatesByCell(
-        array[0] + array[3],
-        array[1] + array[2],
-      );
-      cellArrayStructure.style.left = `${arrayX}px`;
-      cellArrayStructure.style.top = `${arrayY}px`;
-      cellArrayStructure.style.width = `${arrayX1 - arrayX}px`;
-      cellArrayStructure.style.height = `${arrayY1 - arrayY}px`;
-    }
 
     let handleX: number;
     let handleY: number;
+    // A selection of exactly one merged cell behaves like a single cell:
+    // the cell outline (sized to the merged rectangle above) is enough.
+    const isSingleMergedCell =
+      selectedMerge !== undefined &&
+      rowStart === selectedMerge.row &&
+      columnStart === selectedMerge.column &&
+      rowEnd === selectedMerge.row + selectedMerge.height - 1 &&
+      columnEnd === selectedMerge.column + selectedMerge.width - 1;
     // Position the selected area outline
-    if (columnStart === columnEnd && rowStart === rowEnd) {
+    if (
+      (columnStart === columnEnd && rowStart === rowEnd) ||
+      isSingleMergedCell
+    ) {
       areaOutline.style.visibility = "hidden";
       [handleX, handleY] = this.getCoordinatesByCell(rowStart, columnStart);
-      handleX += this.getColumnWidth(selectedSheet, columnStart);
-      handleY += this.getRowHeight(selectedSheet, rowStart);
+      handleX += width - 2 * padding;
+      handleY += height - 2 * padding;
+      // hide the handle if its corner is scrolled under the frozen panes
+      if (
+        (lastRow > frozenRows && lastRow < topLeftCell.row - 1) ||
+        (lastColumn > frozenColumns && lastColumn < topLeftCell.column - 1)
+      ) {
+        cellOutlineHandle.style.visibility = "hidden";
+      }
     } else {
       const [areaX, areaY] = this.getCoordinatesByCell(rowStart, columnStart);
       const [areaWidth, areaHeight] = this.getAreaDimensions(
@@ -1947,8 +2272,7 @@ export default class WorksheetCanvas {
   }
 
   renderSheet(): void {
-    const context = this.ctx;
-    const { canvas } = this;
+    const { canvas, ctx: context } = this;
     const selectedSheet = this.model.getSelectedSheet();
     context.lineWidth = 1;
     context.textAlign = "center";
@@ -1959,7 +2283,11 @@ export default class WorksheetCanvas {
 
     this.removeHandles();
 
+    this.updateMergedCells();
+
     const { topLeftCell, bottomRightCell } = this.getVisibleCells();
+
+    // Pass 1
     this.computeCellsText();
     // The cell geometry may have changed (scroll, resize, edits): a link
     // tooltip anchored to a cell that moved or lost its link must go.
@@ -1967,6 +2295,7 @@ export default class WorksheetCanvas {
 
     const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
     const frozenRows = this.model.getFrozenRowsCount(selectedSheet);
+    const panes = this.getPanes();
 
     let x = headerColumnWidth + 0.5;
     let y = headerRowHeight + 0.5;
@@ -1975,6 +2304,7 @@ export default class WorksheetCanvas {
     this.drawHeaderSeparators(x, y);
 
     // Draw frozen rows and columns (top-left-pane)
+    this.clipToPane(0, panes);
     for (let row = 1; row <= frozenRows; row += 1) {
       const rowHeight = this.getRowHeight(selectedSheet, row);
       x = headerColumnWidth + 0.5;
@@ -1985,6 +2315,7 @@ export default class WorksheetCanvas {
       }
       y += rowHeight;
     }
+    context.restore();
     if (frozenRows === 0 && frozenColumns !== 0) {
       x = headerColumnWidth + 0.5;
       for (let column = 1; column <= frozenColumns; column += 1) {
@@ -2026,6 +2357,7 @@ export default class WorksheetCanvas {
     const frozenX = x;
     const frozenY = y;
     // Draw frozen rows (top-right pane)
+    this.clipToPane(1, panes);
     y = headerRowHeight + 0.5;
     for (let row = 1; row <= frozenRows; row += 1) {
       x = frozenX;
@@ -2041,8 +2373,10 @@ export default class WorksheetCanvas {
       }
       y += rowHeight;
     }
+    context.restore();
 
     // Draw frozen columns (bottom-left pane)
+    this.clipToPane(2, panes);
     y = frozenY;
     for (let { row } = topLeftCell; row <= bottomRightCell.row; row += 1) {
       x = headerColumnWidth;
@@ -2056,8 +2390,10 @@ export default class WorksheetCanvas {
       }
       y += rowHeight;
     }
+    context.restore();
 
     // Render all remaining cells (bottom-right pane)
+    this.clipToPane(3, panes);
     y = frozenY;
     for (let { row } = topLeftCell; row <= bottomRightCell.row; row += 1) {
       x = frozenX;
@@ -2075,6 +2411,7 @@ export default class WorksheetCanvas {
       }
       y += rowHeight;
     }
+    context.restore();
 
     // Render all cell texts
     for (const cell of this.cells) {
@@ -2103,6 +2440,7 @@ export default class WorksheetCanvas {
 
     // Overlays drawn on top of everything else
     this.drawCellOutline();
+    this.drawArrayStructure();
     this.drawCellEditor();
     this.drawExtendToArea();
     this.drawActiveRanges(topLeftCell, bottomRightCell);

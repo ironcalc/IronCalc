@@ -35,6 +35,85 @@ impl<'a> UserModel<'a> {
         self.model.get_column_width(sheet, column).map(f64::round)
     }
 
+    // Returns the anchor of the merged cell containing (row, column), or the
+    // cell itself if it is not merged.
+    fn merge_anchor(&self, sheet: u32, row: i32, column: i32) -> Result<(i32, i32), String> {
+        Ok(self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .merge_anchor(row, column))
+    }
+
+    // Returns the selection range of a single selected cell: the whole merged
+    // range when the cell is merged, the cell itself otherwise.
+    fn single_cell_range(&self, sheet: u32, row: i32, column: i32) -> Result<[i32; 4], String> {
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        Ok(match worksheet.merged_cell_containing(row, column) {
+            Some(m) => [m.row, m.column, m.last_row(), m.last_column()],
+            None => [row, column, row, column],
+        })
+    }
+
+    // Grows the range until it fully contains every merged cell it touches
+    // (growing to swallow one merge can graze another, hence the fixpoint
+    // loop). The orientation of the range is preserved: the start corner stays
+    // on the same side it was.
+    fn grow_range_over_merged_cells(
+        &self,
+        sheet: u32,
+        range: [i32; 4],
+    ) -> Result<[i32; 4], String> {
+        let [start_row, start_column, end_row, end_column] = range;
+        let mut min_row = start_row.min(end_row);
+        let mut max_row = start_row.max(end_row);
+        let mut min_column = start_column.min(end_column);
+        let mut max_column = start_column.max(end_column);
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        loop {
+            let mut changed = false;
+            for m in &worksheet.merged_cells {
+                if m.intersects(
+                    min_row,
+                    min_column,
+                    max_column - min_column + 1,
+                    max_row - min_row + 1,
+                ) {
+                    if m.row < min_row {
+                        min_row = m.row;
+                        changed = true;
+                    }
+                    if m.last_row() > max_row {
+                        max_row = m.last_row();
+                        changed = true;
+                    }
+                    if m.column < min_column {
+                        min_column = m.column;
+                        changed = true;
+                    }
+                    if m.last_column() > max_column {
+                        max_column = m.last_column();
+                        changed = true;
+                    }
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        let (new_start_row, new_end_row) = if start_row <= end_row {
+            (min_row, max_row)
+        } else {
+            (max_row, min_row)
+        };
+        let (new_start_column, new_end_column) = if start_column <= end_column {
+            (min_column, max_column)
+        } else {
+            (max_column, min_column)
+        };
+        Ok([new_start_row, new_start_column, new_end_row, new_end_column])
+    }
+
     /// Returns the selected sheet index
     pub fn get_selected_sheet(&self) -> u32 {
         if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
@@ -117,11 +196,15 @@ impl<'a> UserModel<'a> {
         if self.model.workbook.worksheet(sheet).is_err() {
             return Err(format!("Invalid worksheet index {sheet}"));
         }
+        // A covered cell can never be selected: snap to the anchor and select
+        // the whole merged range.
+        let (row, column) = self.merge_anchor(sheet, row, column)?;
+        let range = self.single_cell_range(sheet, row, column)?;
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
                 view.row = row;
                 view.column = column;
-                view.range = [row, column, row, column];
+                view.range = range;
             }
         }
         Ok(())
@@ -157,38 +240,46 @@ impl<'a> UserModel<'a> {
         if self.model.workbook.worksheet(sheet).is_err() {
             return Err(format!("Invalid worksheet index {sheet}"));
         }
+        let (selected_row, selected_column) = {
+            let worksheet = self.model.workbook.worksheet(sheet)?;
+            match worksheet.views.get(&self.model.view_id) {
+                Some(view) => (view.row, view.column),
+                None => return Ok(()),
+            }
+        };
+        if start_row == 1 && end_row == LAST_ROW {
+            // full row selected. The cell must be at the top or the bottom of the range
+            if selected_column != start_column && selected_column != end_column {
+                return Err(format!(
+                    "The selected cell is not the column edge. Column '{selected_column}' and column range '({start_column}, {end_column})'"
+                ));
+            }
+        } else if start_column == 1 && end_column == LAST_COLUMN {
+            // full column selected. The cell must be at the left or the right of the range
+            if selected_row != start_row && selected_row != end_row {
+                return Err(format!(
+                    "The selected cell is not in the row edge. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
+                ));
+            }
+        } else {
+            // The selected cell must be on one of the corners of the selected range:
+            if selected_row != start_row && selected_row != end_row {
+                return Err(format!(
+                "The selected cell is not in one of the corners. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
+            ));
+            }
+            if selected_column != start_column && selected_column != end_column {
+                return Err(format!(
+                "The selected cell is not in one of the corners. Column '{selected_column}' and column range '({start_column}, {end_column})'"
+            ));
+            }
+        }
+        // A selection can never cover part of a merged cell
+        let range = self
+            .grow_range_over_merged_cells(sheet, [start_row, start_column, end_row, end_column])?;
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
-                let selected_row = view.row;
-                let selected_column = view.column;
-                if start_row == 1 && end_row == LAST_ROW {
-                    // full row selected. The cell must be at the top or the bottom of the range
-                    if selected_column != start_column && selected_column != end_column {
-                        return Err(format!(
-                            "The selected cell is not the column edge. Column '{selected_column}' and column range '({start_column}, {end_column})'"
-                        ));
-                    }
-                } else if start_column == 1 && end_column == LAST_COLUMN {
-                    // full column selected. The cell must be at the left or the right of the range
-                    if selected_row != start_row && selected_row != end_row {
-                        return Err(format!(
-                            "The selected cell is not in the row edge. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
-                        ));
-                    }
-                } else {
-                    // The selected cell must be on one of the corners of the selected range:
-                    if selected_row != start_row && selected_row != end_row {
-                        return Err(format!(
-                        "The selected cell is not in one of the corners. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
-                    ));
-                    }
-                    if selected_column != start_column && selected_column != end_column {
-                        return Err(format!(
-                        "The selected cell is not in one of the corners. Column '{selected_column}' and column range '({start_column}, {end_column})'"
-                    ));
-                    }
-                }
-                view.range = [start_row, start_column, end_row, end_column];
+                view.range = range;
             }
         }
         Ok(())
@@ -431,7 +522,12 @@ impl<'a> UserModel<'a> {
             Some(s) => s,
             None => return Err("View not found".to_string()),
         };
-        let mut new_column = view.column + 1;
+        // Leaving a merged cell starts past its last column
+        let row = view.row;
+        let mut new_column = match worksheet.merged_cell_containing(row, view.column) {
+            Some(m) => m.last_column() + 1,
+            None => view.column + 1,
+        };
         while new_column <= LAST_COLUMN
             && self
                 .model
@@ -451,10 +547,14 @@ impl<'a> UserModel<'a> {
             width += self.ui_column_width(sheet, column)?;
             column += 1;
         }
+        // Landing inside a merged cell selects its anchor
+        let (new_row, new_column) = self.merge_anchor(sheet, row, new_column)?;
+        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
+                view.row = new_row;
                 view.column = new_column;
-                view.range = [view.row, new_column, view.row, new_column];
+                view.range = new_range;
                 if width > window_width as f64 {
                     view.left_column += 1;
                 }
@@ -478,7 +578,12 @@ impl<'a> UserModel<'a> {
             Some(s) => s,
             None => return Err("View not found".to_string()),
         };
-        let mut new_column = view.column - 1;
+        // Leaving a merged cell starts before its first column
+        let row = view.row;
+        let mut new_column = match worksheet.merged_cell_containing(row, view.column) {
+            Some(m) => m.column - 1,
+            None => view.column - 1,
+        };
         while new_column >= 1
             && self
                 .model
@@ -491,11 +596,15 @@ impl<'a> UserModel<'a> {
         if !is_valid_column_number(new_column) {
             return Ok(());
         }
+        // Landing inside a merged cell selects its anchor
+        let (new_row, new_column) = self.merge_anchor(sheet, row, new_column)?;
+        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
         // if the column is not fully visible we 'scroll' right until it is
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
+                view.row = new_row;
                 view.column = new_column;
-                view.range = [view.row, new_column, view.row, new_column];
+                view.range = new_range;
                 if new_column < view.left_column {
                     view.left_column = new_column;
                 }
@@ -519,7 +628,12 @@ impl<'a> UserModel<'a> {
             Some(s) => s,
             None => return Err("View not found".to_string()),
         };
-        let mut new_row = view.row - 1;
+        // Leaving a merged cell starts above its first row
+        let column = view.column;
+        let mut new_row = match worksheet.merged_cell_containing(view.row, column) {
+            Some(m) => m.row - 1,
+            None => view.row - 1,
+        };
         while new_row >= 1
             && self
                 .model
@@ -532,11 +646,15 @@ impl<'a> UserModel<'a> {
         if !is_valid_row(new_row) {
             return Ok(());
         }
+        // Landing inside a merged cell selects its anchor
+        let (new_row, new_column) = self.merge_anchor(sheet, new_row, column)?;
+        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
         // if the column is not fully visible we 'scroll' right until it is
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
                 view.row = new_row;
-                view.range = [new_row, view.column, new_row, view.column];
+                view.column = new_column;
+                view.range = new_range;
                 if new_row < view.top_row {
                     view.top_row = new_row;
                 }
@@ -561,7 +679,12 @@ impl<'a> UserModel<'a> {
             Some(s) => s,
             None => return Err("View not found".to_string()),
         };
-        let mut new_row = view.row + 1;
+        // Leaving a merged cell starts below its last row
+        let column = view.column;
+        let mut new_row = match worksheet.merged_cell_containing(view.row, column) {
+            Some(m) => m.last_row() + 1,
+            None => view.row + 1,
+        };
         while new_row <= LAST_ROW
             && self
                 .model
@@ -581,10 +704,14 @@ impl<'a> UserModel<'a> {
             height += self.ui_row_height(sheet, row)?;
             row += 1;
         }
+        // Landing inside a merged cell selects its anchor
+        let (new_row, new_column) = self.merge_anchor(sheet, new_row, column)?;
+        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
                 view.row = new_row;
-                view.range = [new_row, view.column, new_row, view.column];
+                view.column = new_column;
+                view.range = new_range;
                 if height > window_height as f64 {
                     view.top_row += 1;
                 }
@@ -666,11 +793,15 @@ impl<'a> UserModel<'a> {
             return Ok(());
         }
         let row_delta = view.row - view.top_row;
+        // Landing inside a merged cell selects its anchor
+        let (new_row, new_column) = self.merge_anchor(sheet, last_row + row_delta, view.column)?;
+        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
                 view.top_row = last_row;
-                view.row = view.top_row + row_delta;
-                view.range = [view.row, view.column, view.row, view.column];
+                view.row = new_row;
+                view.column = new_column;
+                view.range = new_range;
             }
         }
         Ok(())
@@ -701,11 +832,15 @@ impl<'a> UserModel<'a> {
         }
 
         let row_delta = view.row - view.top_row;
+        // Landing inside a merged cell selects its anchor
+        let (new_row, new_column) = self.merge_anchor(sheet, first_row + row_delta, view.column)?;
+        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
                 view.top_row = first_row;
-                view.row = view.top_row + row_delta;
-                view.range = [view.row, view.column, view.row, view.column];
+                view.row = new_row;
+                view.column = new_column;
+                view.range = new_range;
             }
         }
         Ok(())
@@ -773,9 +908,14 @@ impl<'a> UserModel<'a> {
             new_top_row = target_row;
         }
 
+        // A selection can never cover part of a merged cell
+        let range = self.grow_range_over_merged_cells(
+            sheet,
+            [row_start, column_start, target_row, target_column],
+        )?;
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.range = [row_start, column_start, target_row, target_column];
+                view.range = range;
                 if new_top_row != top_row {
                     view.top_row = new_top_row;
                 }
@@ -865,11 +1005,14 @@ impl<'a> UserModel<'a> {
             }
         }
 
+        // Landing inside a merged cell selects its anchor
+        let (new_row, new_column) = self.merge_anchor(sheet, new_row, new_column)?;
+        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
                 view.row = new_row;
                 view.column = new_column;
-                view.range = [new_row, new_column, new_row, new_column];
+                view.range = new_range;
 
                 view.top_row = top_row;
                 view.left_column = left_column;

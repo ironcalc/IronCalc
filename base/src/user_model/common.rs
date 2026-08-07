@@ -15,7 +15,7 @@ use crate::{
     model::{FmtSettings, Model},
     types::{
         Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
-        SheetProperties, SheetState, Style, Theme, VerticalAlignment,
+        MergedCell, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
     },
 };
 
@@ -1072,13 +1072,15 @@ impl<'a> UserModel<'a> {
     ///
     /// See also [`Model::insert_rows`].
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         self.model.insert_rows(sheet, row, row_count)?;
 
-        let diff_list = vec![Diff::InsertRows {
+        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.push(Diff::InsertRows {
             sheet,
             row,
             count: row_count,
-        }];
+        });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
@@ -1102,13 +1104,15 @@ impl<'a> UserModel<'a> {
         column: i32,
         column_count: i32,
     ) -> Result<(), String> {
+        let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         self.model.insert_columns(sheet, column, column_count)?;
 
-        let diff_list = vec![Diff::InsertColumns {
+        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.push(Diff::InsertColumns {
             sheet,
             column,
             count: column_count,
-        }];
+        });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
@@ -1158,7 +1162,7 @@ impl<'a> UserModel<'a> {
         // The links of the deleted rows cannot be restored by re-inserting the
         // rows: capture them for undo. Links below the deleted rows just shift
         // with their cells, [`Model::delete_rows`] takes care of them.
-        let mut diff_list = self.range_link_diffs(&Area {
+        let link_diffs = self.range_link_diffs(&Area {
             sheet,
             row,
             column: 1,
@@ -1166,8 +1170,11 @@ impl<'a> UserModel<'a> {
             height: row_count,
         })?;
 
+        let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         self.model.delete_rows(sheet, row, row_count)?;
 
+        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.extend(link_diffs);
         diff_list.push(Diff::DeleteRows {
             sheet,
             row,
@@ -1235,7 +1242,7 @@ impl<'a> UserModel<'a> {
         // the columns: capture them for undo. Links to the right of the deleted
         // columns just shift with their cells, [`Model::delete_columns`] takes
         // care of them.
-        let mut diff_list = self.range_link_diffs(&Area {
+        let link_diffs = self.range_link_diffs(&Area {
             sheet,
             row: 1,
             column,
@@ -1243,8 +1250,11 @@ impl<'a> UserModel<'a> {
             height: LAST_ROW,
         })?;
 
+        let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         self.model.delete_columns(sheet, column, column_count)?;
 
+        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.extend(link_diffs);
         diff_list.push(Diff::DeleteColumns {
             sheet,
             column,
@@ -1284,15 +1294,18 @@ impl<'a> UserModel<'a> {
             }
         }
 
+        let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         self.model
             .move_columns_action(sheet, column, column_count, new_delta)?;
 
-        self.push_diff_list(vec![Diff::MoveColumns {
+        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.push(Diff::MoveColumns {
             sheet,
             column,
             column_count,
             delta: new_delta,
-        }]);
+        });
+        self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -1324,15 +1337,18 @@ impl<'a> UserModel<'a> {
             }
         }
 
+        let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         self.model
             .move_rows_action(sheet, row, row_count, new_delta)?;
 
-        self.push_diff_list(vec![Diff::MoveRows {
+        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.push(Diff::MoveRows {
             sheet,
             row,
             row_count,
             delta: new_delta,
-        }]);
+        });
+        self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2288,6 +2304,32 @@ impl<'a> UserModel<'a> {
     }
 
     // **** Private methods ****** //
+
+    /// Returns a snapshot diff of the merged cells of the sheet when the
+    /// current list differs from `old_merged_cells`, and nothing otherwise.
+    ///
+    /// Structural actions (insert, delete or move of rows and columns) displace
+    /// merged ranges on their own when they are (re)played, but their undo
+    /// cannot always reconstruct the original ranges (a fully deleted merge is
+    /// gone, deleting rows above a merge and re-inserting them displaces it).
+    /// The snapshot has `old_value == new_value` — a no-op when applied — and
+    /// must go *before* the structural diff in the list, so that on undo
+    /// (replayed in reverse) it runs last and restores the exact original list.
+    pub(super) fn merged_cells_snapshot_diffs(
+        &self,
+        sheet: u32,
+        old_merged_cells: Vec<MergedCell>,
+    ) -> Result<Vec<Diff>, String> {
+        if self.model.get_merged_cells(sheet)? != old_merged_cells.as_slice() {
+            Ok(vec![Diff::SetMergedCells {
+                sheet,
+                old_value: old_merged_cells.clone(),
+                new_value: old_merged_cells,
+            }])
+        } else {
+            Ok(vec![])
+        }
+    }
 
     pub(crate) fn push_diff_list(&mut self, diff_list: DiffList) {
         self.send_queue.push(QueueDiffs {

@@ -556,8 +556,14 @@ pub(crate) fn get_worksheet_xml(
     }
     let sheet_data = sheet_data_str.join("");
 
-    for merge_cell_ref in &worksheet.merge_cells {
-        merged_cells_str.push(format!("<mergeCell ref=\"{merge_cell_ref}\"/>"))
+    for merged_cell in &worksheet.merged_cells {
+        let first_column = number_to_column(merged_cell.column).unwrap_or("A".to_string());
+        let last_column = number_to_column(merged_cell.last_column()).unwrap_or("A".to_string());
+        merged_cells_str.push(format!(
+            "<mergeCell ref=\"{first_column}{}:{last_column}{}\"/>",
+            merged_cell.row,
+            merged_cell.last_row()
+        ))
     }
     let merged_cells_count = merged_cells_str.len();
 
