@@ -3,7 +3,7 @@
 
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::{load_from_xlsx, load_from_xlsx_bytes};
-use ironcalc_base::types::{Color, HorizontalAlignment, Link, VerticalAlignment};
+use ironcalc_base::types::{Color, HorizontalAlignment, Link, MergedCell, VerticalAlignment};
 use ironcalc_base::{Model, UserModel, ROW_HEIGHT_FACTOR};
 use std::fs;
 use std::io::Read;
@@ -337,35 +337,53 @@ fn test_defined_names_casing() {
 #[test]
 fn test_exporting_merged_cells() {
     let temp_file_name = "temp_file_test_export_merged_cells.xlsx";
-    let expected_merge_cell_ref = {
+    let expected_merged_cells = {
         // loading the xlsx file containing merged cells
         let example_file_name = "tests/example.xlsx";
         let mut model = load_from_xlsx(example_file_name, "en", "UTC", "en").unwrap();
-        let expected_merge_cell_ref = model
+        let expected_merged_cells = model
             .workbook
             .worksheets
             .first()
             .unwrap()
-            .merge_cells
+            .merged_cells
             .clone();
+        // example.xlsx has K7:L10 and H18:J20 merged in the first sheet
+        assert_eq!(
+            expected_merged_cells,
+            vec![
+                MergedCell {
+                    row: 7,
+                    column: 11,
+                    width: 2,
+                    height: 4
+                },
+                MergedCell {
+                    row: 18,
+                    column: 8,
+                    width: 3,
+                    height: 3
+                },
+            ]
+        );
         // exporting and saving it in another xlsx
         model.evaluate();
         save_to_xlsx(&model, temp_file_name).unwrap();
-        expected_merge_cell_ref
+        expected_merged_cells
     };
     {
         let mut temp_model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
         {
             // loading the previous file back and verifying whether
             // merged cells got exported properly or not
-            let got_merge_cell_ref = &temp_model
+            let got_merged_cells = &temp_model
                 .workbook
                 .worksheets
                 .first()
                 .unwrap()
-                .merge_cells
+                .merged_cells
                 .clone();
-            assert_eq!(expected_merge_cell_ref, *got_merge_cell_ref);
+            assert_eq!(expected_merged_cells, *got_merged_cells);
             fs::remove_file(temp_file_name).unwrap();
         }
         {
@@ -377,19 +395,19 @@ fn test_exporting_merged_cells() {
                 .worksheets
                 .get_mut(0)
                 .unwrap()
-                .merge_cells
+                .merged_cells
                 .clear();
 
             save_to_xlsx(&temp_model, temp_file_name).unwrap();
             let temp_model2 = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
-            let got_merge_cell_ref_cnt = &temp_model2
+            let got_merged_cells_count = &temp_model2
                 .workbook
                 .worksheets
                 .first()
                 .unwrap()
-                .merge_cells
+                .merged_cells
                 .len();
-            assert!(*got_merge_cell_ref_cnt == 0);
+            assert!(*got_merged_cells_count == 0);
         }
     }
 

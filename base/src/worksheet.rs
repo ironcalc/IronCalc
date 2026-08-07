@@ -355,6 +355,28 @@ impl Worksheet {
         self.update_cell(row, column, cell)
     }
 
+    /// Returns the merged cell containing (row, column), if any
+    pub fn merged_cell_containing(&self, row: i32, column: i32) -> Option<&MergedCell> {
+        self.merged_cells.iter().find(|m| m.contains(row, column))
+    }
+
+    /// Returns true if (row, column) is inside a merged range but is not its anchor
+    pub fn is_covered_cell(&self, row: i32, column: i32) -> bool {
+        match self.merged_cell_containing(row, column) {
+            Some(m) => m.row != row || m.column != column,
+            None => false,
+        }
+    }
+
+    /// Returns the anchor of the merged cell containing (row, column),
+    /// or (row, column) itself if the cell is not merged
+    pub fn merge_anchor(&self, row: i32, column: i32) -> (i32, i32) {
+        match self.merged_cell_containing(row, column) {
+            Some(m) => (m.row, m.column),
+            None => (row, column),
+        }
+    }
+
     pub fn set_frozen_rows(&mut self, frozen_rows: i32) -> Result<(), String> {
         if frozen_rows < 0 {
             return Err("Frozen rows cannot be negative".to_string());

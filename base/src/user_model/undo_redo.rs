@@ -438,7 +438,7 @@ impl<'a> UserModel<'a> {
                     worksheet.frozen_rows = old_data.frozen_rows;
                     worksheet.state = old_data.state.clone();
                     worksheet.color = old_data.color.clone();
-                    worksheet.merge_cells = old_data.merge_cells.clone();
+                    worksheet.merged_cells = old_data.merged_cells.clone();
                     worksheet.shared_formulas = old_data.shared_formulas.clone();
                     self.model.reset_parsed_structures();
 
