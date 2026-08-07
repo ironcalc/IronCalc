@@ -937,6 +937,14 @@ const Workbook = (props: {
                 }
               : undefined
           }
+          onDeleteLink={
+            canEdit
+              ? (row: number, column: number): void => {
+                  model.deleteCellLink(model.getSelectedSheet(), row, column);
+                  setRedrawId((id) => id + 1);
+                }
+              : undefined
+          }
         />
 
         <SheetTabBar

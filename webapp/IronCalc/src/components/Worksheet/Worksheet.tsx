@@ -52,6 +52,7 @@ const Worksheet = forwardRef(
       onCopy: () => void;
       onPaste: () => void;
       onEditLink?: (row: number, column: number) => void;
+      onDeleteLink?: (row: number, column: number) => void;
     },
     ref,
   ) => {
@@ -174,6 +175,9 @@ const Worksheet = forwardRef(
         },
         onEditLink: props.onEditLink
           ? (row, column) => props.onEditLink?.(row, column)
+          : undefined,
+        onDeleteLink: props.onDeleteLink
+          ? (row, column) => props.onDeleteLink?.(row, column)
           : undefined,
         onRowHeightChanges(sheet, row, height) {
           if (height < 0) {
