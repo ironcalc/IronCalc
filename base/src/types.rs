@@ -180,10 +180,10 @@ pub struct WorkbookView {
 
 /// An internal representation of an IronCalc Workbook
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct Workbook {
+pub struct Workbook<A: Position = Ordinal> {
     pub shared_strings: Vec<String>,
     pub defined_names: Vec<DefinedName>,
-    pub worksheets: Vec<Worksheet>,
+    pub worksheets: Vec<Worksheet<A>>,
     pub styles: Styles,
     pub name: String,
     pub settings: WorkbookSettings,
@@ -313,15 +313,50 @@ impl MergedCell {
     }
 }
 
+mod sealed {
+    pub trait Sealed {}
+}
+
+/// The addressing scheme of the workbook data model: how rows and columns are named.
+pub trait Position: sealed::Sealed + Sized {
+    /// Row/column identifier. Bounds are the union of what the containers' derives need.
+    type Key: Clone
+        + Ord
+        + Hash
+        + std::fmt::Debug
+        + Encode
+        + bitcode::DecodeOwned
+        + Serialize
+        + serde::de::DeserializeOwned;
+    /// Per-sheet ordering context; `()` for [`Ordinal`].
+    type SheetIndex: Clone + Default;
+}
+
+/// Positional addressing: rows and columns are 1-based indices.
+///
+/// A unit marker deriving everything, so that the `#[derive]`s on the generic
+/// containers (which emit `A: Trait` bounds) are satisfiable.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode, Serialize, Deserialize,
+)]
+pub struct Ordinal;
+
+impl sealed::Sealed for Ordinal {}
+
+impl Position for Ordinal {
+    type Key = i32;
+    type SheetIndex = ();
+}
+
 /// A cell position: (row, column), 1-based.
-pub type CellAddr = (i32, i32);
+pub type CellAddr<A = Ordinal> = (<A as Position>::Key, <A as Position>::Key);
 
 /// A rectangular reference. An axis is a closed 1-based interval, or `None`
 /// meaning the whole axis (full-column `D:D`, full-row `5:7`).
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
-pub struct RangeRef {
-    pub rows: Option<(i32, i32)>,
-    pub cols: Option<(i32, i32)>,
+pub struct RangeRef<A: Position = Ordinal> {
+    pub rows: Option<(A::Key, A::Key)>,
+    pub cols: Option<(A::Key, A::Key)>,
 }
 
 /// One side of an A1 reference: a column index, a row index, or both.
@@ -451,37 +486,38 @@ impl RangeRef {
 
 /// Internal representation of a worksheet Excel object
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct Worksheet {
+pub struct Worksheet<A: Position = Ordinal> {
     pub dimension: String,
     pub cols: Vec<Col>,
-    pub rows: Vec<Row>,
+    pub rows: Vec<Row<A>>,
     pub name: String,
-    pub sheet_data: SheetData,
+    pub sheet_data: SheetData<A>,
     pub shared_formulas: Vec<String>,
     pub sheet_id: u32,
     pub state: SheetState,
     pub color: Color,
     pub merged_cells: Vec<MergedCell>,
-    pub comments: Vec<Comment>,
+    pub comments: Vec<Comment<A>>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
     pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
-    pub conditional_formatting: Vec<ConditionalFormatting>,
+    pub conditional_formatting: Vec<ConditionalFormatting<A>>,
     /// Hyperlinks in the worksheet, keyed by (row, column) of the cell they are attached to
-    pub links: HashMap<(i32, i32), Link>,
+    pub links: HashMap<CellAddr<A>, Link>,
 }
 
 /// Internal representation of Excel's sheet_data
 /// It is row first and because of this all of our API's should be row first
-pub type SheetData = HashMap<i32, HashMap<i32, Cell>>;
+pub type SheetData<A = Ordinal> =
+    HashMap<<A as Position>::Key, HashMap<<A as Position>::Key, Cell>>;
 
 // ECMA-376-1:2016 section 18.3.1.73
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct Row {
+pub struct Row<A: Position = Ordinal> {
     /// Row index
-    pub r: i32,
+    pub r: A::Key,
     pub height: f64,
     pub custom_format: bool,
     pub custom_height: bool,
@@ -613,11 +649,11 @@ impl Default for Cell {
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct Comment {
+pub struct Comment<A: Position = Ordinal> {
     pub text: String,
     pub author_name: String,
     pub author_id: Option<String>,
-    pub cell_ref: CellAddr,
+    pub cell_ref: CellAddr<A>,
 }
 
 // ECMA-376-1:2016 section 18.5.1.2
@@ -1168,6 +1204,18 @@ mod test {
         assert!(!is_valid_hex_color("#ffffff "));
         assert!(!is_valid_hex_color("#fff")); // CSS shorthand
         assert!(!is_valid_hex_color("#ffffff00")); // with alpha channel
+    }
+
+    /// The bare names are the `Ordinal` instantiation; purely a compile-time check.
+    #[test]
+    fn types_default_to_ordinal() {
+        fn assert_default(w: Workbook<Ordinal>) -> Workbook {
+            w
+        }
+        fn assert_range_default(r: RangeRef<Ordinal>) -> RangeRef {
+            r
+        }
+        let _ = (assert_default, assert_range_default);
     }
 
     fn round_trip(s: &str) -> String {

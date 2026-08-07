@@ -899,7 +899,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     // holds the row heights
     let mut rows = Vec::new();
-    let mut sheet_data = SheetData::new();
+    let mut sheet_data: SheetData = HashMap::new();
     let sheet_data_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("sheetData"))
