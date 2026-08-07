@@ -27,6 +27,7 @@ import {
 } from "../../icons";
 import { IconButton } from "../Button/IconButton";
 import ColorPicker from "../ColorPicker/ColorPicker";
+import { themeColor } from "../ColorPicker/util";
 import "./border-picker.css";
 import LineStylePicker from "./LineStylePicker";
 
@@ -42,9 +43,6 @@ type Position = {
   top: number;
   left: number;
 };
-
-// --palette-common-black
-const DEFAULT_BORDER_COLOR = "#272525";
 
 const BORDER_BUTTONS = [
   {
@@ -123,7 +121,10 @@ export default function BorderPicker({
 
   const [position, setPosition] = useState<Position | null>(null);
   const [borderSelected, setBorderSelected] = useState<BorderType | null>(null);
-  const [borderColor, setBorderColor] = useState<Color>(DEFAULT_BORDER_COLOR);
+  const [defaultColor, setDefaultColor] = useState(() =>
+    themeColor("--palette-common-black", anchorEl.current),
+  );
+  const [borderColor, setBorderColor] = useState<Color>(defaultColor);
   const [borderStyle, setBorderStyle] = useState(BorderStyle.Thin);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [stylePickerOpen, setStylePickerOpen] = useState(false);
@@ -187,14 +188,16 @@ export default function BorderPicker({
 
   useEffect(() => {
     if (open) {
+      const color = themeColor("--palette-common-black", anchorEl.current);
+      setDefaultColor(color);
+      setBorderColor(color);
       return;
     }
     setBorderSelected(null);
-    setBorderColor(DEFAULT_BORDER_COLOR);
     setBorderStyle(BorderStyle.Thin);
     setColorPickerOpen(false);
     setStylePickerOpen(false);
-  }, [open]);
+  }, [open, anchorEl]);
 
   useEffect(() => {
     if (!open) {
@@ -314,7 +317,7 @@ export default function BorderPicker({
           </button>
           <ColorPicker
             color={borderColor}
-            defaultColor={DEFAULT_BORDER_COLOR}
+            defaultColor={defaultColor}
             title={t("color_picker.default")}
             onChange={(color) => {
               setBorderColor(color);

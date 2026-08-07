@@ -36,7 +36,7 @@ import { STYLE_OPTIONS as LINE_STYLE_OPTIONS } from "../../BorderPicker/LineStyl
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
-import { resolveColorToHex } from "../../ColorPicker/util";
+import { resolveColorToHex, themeColor } from "../../ColorPicker/util";
 import { NumberFormats } from "../../FormatMenu/formatUtil";
 import { Input } from "../../Input/Input";
 import { Menu } from "../../Menu/Menu";
@@ -151,9 +151,6 @@ function initFormatStyle(model: Model, style: CellStyle): FormatStyle {
 
 const CUSTOM_VALUE = "__custom__";
 
-// --palette-common-black, same default as the toolbar's BorderPicker
-const DEFAULT_BORDER_COLOR = "#272525";
-
 const EditNamedStyle = ({
   model,
   name: initialName,
@@ -243,13 +240,14 @@ const EditNamedStyle = ({
       style.border.left;
     return (firstSide?.style as BorderStyle) || BorderStyle.Thin;
   });
+  const [defaultColor] = useState(() => themeColor("--palette-common-black"));
   const [borderColor, setBorderColor] = useState<Color>(() => {
     const firstSide =
       style.border.top ??
       style.border.right ??
       style.border.bottom ??
       style.border.left;
-    return firstSide?.color ?? DEFAULT_BORDER_COLOR;
+    return firstSide?.color ?? defaultColor;
   });
   const [fontColorOpen, setFontColorOpen] = useState(false);
   const [fillColorOpen, setFillColorOpen] = useState(false);
@@ -537,7 +535,7 @@ const EditNamedStyle = ({
                         resolveColorToHex(
                           formatStyle.fontColor,
                           currentTheme,
-                        ) || "#000000",
+                        ) || defaultColor,
                     }}
                     onClick={() => setFontColorOpen(true)}
                     aria-label={t("toolbar.font_color")}
@@ -545,7 +543,7 @@ const EditNamedStyle = ({
                 </div>
                 <ColorPicker
                   color={formatStyle.fontColor}
-                  defaultColor="#000000"
+                  defaultColor={defaultColor}
                   title={t("color_picker.default")}
                   onChange={(color) => {
                     setFormatStyle((current) => ({
@@ -812,7 +810,7 @@ const EditNamedStyle = ({
                       style={{
                         backgroundColor:
                           resolveColorToHex(borderColor, currentTheme) ||
-                          DEFAULT_BORDER_COLOR,
+                          defaultColor,
                       }}
                       onClick={() => setBorderColorOpen(true)}
                       aria-label={t("toolbar.borders.color")}
@@ -820,7 +818,7 @@ const EditNamedStyle = ({
                   </div>
                   <ColorPicker
                     color={borderColor}
-                    defaultColor={DEFAULT_BORDER_COLOR}
+                    defaultColor={defaultColor}
                     title={t("color_picker.default")}
                     onChange={(color) => {
                       setBorderColor(color);
