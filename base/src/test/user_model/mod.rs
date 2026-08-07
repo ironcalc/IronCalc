@@ -30,6 +30,7 @@ mod test_on_area_selection;
 mod test_on_expand_selected_range;
 mod test_on_paste_styles;
 mod test_paste_csv;
+mod test_paste_fill;
 mod test_recursive;
 mod test_rename_sheet;
 mod test_row_column;
