@@ -3,6 +3,21 @@ import {
   hexWithTintToRgb,
   type IronCalcTheme,
 } from "@ironcalc/wasm";
+import { defaultThemeVariables } from "../../theme";
+import type { IronCalcThemeVariables } from "../../theme/themeVariables";
+
+// Styles are stored in the workbook, so theme defaults have to be resolved to a hex
+export function themeColor(
+  name: keyof IronCalcThemeVariables,
+  anchor?: Element | null,
+): string {
+  const root =
+    anchor?.closest(".ic-root") ?? document.querySelector(".ic-root");
+  const color = root
+    ? getComputedStyle(root).getPropertyValue(name).trim()
+    : "";
+  return color || defaultThemeVariables[name];
+}
 
 export function themeBaseColors(theme: IronCalcTheme): string[] {
   return [
