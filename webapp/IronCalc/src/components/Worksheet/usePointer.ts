@@ -3,12 +3,13 @@ import { type PointerEvent, type RefObject, useCallback, useRef } from "react";
 import { isInReferenceMode } from "../Editor/util";
 import type { Cell } from "../types";
 import { rangeToStr } from "../util";
-import { LAST_COLUMN, LAST_ROW } from "../WorksheetCanvas/constants";
-import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import {
   headerColumnWidth,
   headerRowHeight,
-} from "../WorksheetCanvas/worksheetCanvas";
+  LAST_COLUMN,
+  LAST_ROW,
+} from "../WorksheetCanvas/constants";
+import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 
 interface PointerSettings {
