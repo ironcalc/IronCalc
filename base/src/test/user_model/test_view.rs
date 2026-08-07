@@ -207,3 +207,24 @@ fn errors_no_views() {
     model.set_selected_cell(5, 6).unwrap();
     assert_eq!(model.get_selected_cell(), (0, 1, 1));
 }
+
+#[test]
+fn scroll_offsets_sum_rounded_sizes() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    // The UI renders every row and column at a whole number of pixels
+    // (rounding each size), so the scroll offsets must be the sum of the
+    // individually rounded sizes — not the rounded sum of the raw sizes.
+    // These sizes are chosen so the two disagree:
+    //   heights: round(20.4) + round(15.4) = 35, but round(20.4 + 15.4) = 36
+    //   widths: round(80.6) + round(90.6) = 172, but round(80.6 + 90.6) = 171
+    model.set_rows_height(0, 1, 1, 20.4).unwrap();
+    model.set_rows_height(0, 2, 2, 15.4).unwrap();
+    model.set_columns_width(0, 1, 1, 80.6).unwrap();
+    model.set_columns_width(0, 2, 2, 90.6).unwrap();
+
+    model.set_top_left_visible_cell(3, 3).unwrap();
+
+    assert_eq!(model.get_scroll_y(), Ok(35.0));
+    assert_eq!(model.get_scroll_x(), Ok(172.0));
+}

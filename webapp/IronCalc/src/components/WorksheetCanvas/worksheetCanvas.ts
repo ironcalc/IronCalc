@@ -13,13 +13,11 @@ import {
   renderRating,
 } from "./cfRenderer";
 import {
-  COLUMN_WIDTH_SCALE,
   cellPadding,
   headerColumnWidth,
   headerRowHeight,
   LAST_COLUMN,
   LAST_ROW,
-  ROW_HEIGH_SCALE,
 } from "./constants";
 import { attachOutlineHandle } from "./outlineHandle";
 import {
@@ -1635,13 +1633,11 @@ export default class WorksheetCanvas {
   }
 
   private getColumnWidth(sheet: number, column: number): number {
-    return Math.round(
-      this.model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE,
-    );
+    return Math.round(this.model.getColumnWidth(sheet, column));
   }
 
   private getRowHeight(sheet: number, row: number): number {
-    return Math.round(this.model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE);
+    return Math.round(this.model.getRowHeight(sheet, row));
   }
 
   private drawCellEditor(): void {
