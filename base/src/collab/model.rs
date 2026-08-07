@@ -7,41 +7,152 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::language::Language;
 use crate::locale::Locale;
 use crate::model::{CellOrRange, CellState, ParsedDefinedName};
-use crate::types::Workbook;
+use crate::types::{sealed::Sealed, CellAddr, Col, Position, RangeRef, Workbook};
 use crate::tz::Tz;
+use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Stable addressing: rows and columns are named by the [`FractionalKey`] they were minted with, and
+/// where they currently sit lives in the sheet's [`SheetIndexes`] rather than in the name.
+///
+/// The derives mirror [`Ordinal`](crate::types::Ordinal)'s: they are what the `#[derive]`s on the
+/// generic containers, which emit `A: Trait` bounds, ask of the marker.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode, Serialize, Deserialize,
+)]
+pub struct Stable;
+
+impl Sealed for Stable {}
+
+impl Position for Stable {
+    type Key = FractionalKey;
+    type SheetIndex = SheetIndexes;
+    type MergedCell = StableRange;
+
+    fn row_ordinal(idx: &SheetIndexes, key: &FractionalKey) -> Option<i32> {
+        idx.rows.position_of(key).map(|p| p as i32 + 1)
+    }
+
+    fn col_ordinal(idx: &SheetIndexes, key: &FractionalKey) -> Option<i32> {
+        idx.cols.position_of(key).map(|p| p as i32 + 1)
+    }
+
+    fn row_at(idx: &SheetIndexes, ordinal: i32) -> Option<FractionalKey> {
+        if ordinal < 1 {
+            return None;
+        }
+        idx.rows.key(ordinal as usize - 1).cloned()
+    }
+
+    fn col_at(idx: &SheetIndexes, ordinal: i32) -> Option<FractionalKey> {
+        if ordinal < 1 {
+            return None;
+        }
+        idx.cols.key(ordinal as usize - 1).cloned()
+    }
+}
+
+/// The two orderings a sheet's keys resolve against.
+#[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
+pub struct SheetIndexes {
+    pub rows: FractionalIndex,
+    pub cols: FractionalIndex,
+}
 
 /// A description of a continuous range of cells, described using stable identifiers, which can be
 /// used to keep track of cell position under various concurrent operations (ex. adding/removing
 /// rows or columns).
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct StableRange {
-    pub row_hi: FractionalKey,
-    pub col_hi: FractionalKey,
-    pub row_lo: FractionalKey,
-    pub col_lo: FractionalKey,
-}
+pub type StableRange = RangeRef<Stable>;
 
 /// A cell position, described using stable identifiers, which can be used to keep track of cell
 /// position under various concurrent operations (ex. adding/removing rows or columns).
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct StableCellAddress {
-    pub row: FractionalKey,
-    pub col: FractionalKey,
+pub type StableCellAddress = CellAddr<Stable>;
+
+/// Where one axis of a [`StableRange`] currently sits, as a 1-based closed interval.
+///
+/// A corner that still resolves keeps its identity. One that does not — deleted, or never in this
+/// index — clamps to where it would now sit: the `lo` corner takes the element that took its place,
+/// the `hi` corner the one just before it. A [`FractionalKey::NULL`] corner is not a position at
+/// all but an open end. `None` means clamping collapsed the span.
+fn resolve_axis(
+    index: &FractionalIndex,
+    span: &Option<(FractionalKey, FractionalKey)>,
+) -> Option<(i32, i32)> {
+    // Open on both ends is the whole axis, exactly as `None` is.
+    let span = span
+        .as_ref()
+        .filter(|(lo, hi)| !lo.is_empty() || !hi.is_empty());
+    let Some((lo, hi)) = span else {
+        return Some((1, index.len() as i32));
+    };
+    // An open end takes the axis' extreme, and has to do so before the clamping path below: NULL
+    // sorts under every real key, so `lower_bound` would put an open *upper* bracket at 0.
+    let lo_ord = if lo.is_empty() {
+        Some(1)
+    } else {
+        index.position_of(lo).map(|p| p as i32 + 1)
+    };
+    let hi_ord = if hi.is_empty() {
+        Some(index.len() as i32)
+    } else {
+        index.position_of(hi).map(|p| p as i32 + 1)
+    };
+    match (lo_ord, hi_ord) {
+        // Concurrent moves can invert the corners; the rectangle they bound is still the same one.
+        (Some(lo), Some(hi)) => Some((lo.min(hi), lo.max(hi))),
+        (lo_ord, hi_ord) => {
+            let lo = lo_ord.unwrap_or_else(|| index.lower_bound(lo) as i32 + 1);
+            let hi = hi_ord.unwrap_or_else(|| index.lower_bound(hi) as i32);
+            (lo <= hi).then_some((lo, hi))
+        }
+    }
 }
 
-impl StableCellAddress {
-    pub fn new(row: FractionalKey, col: FractionalKey) -> Self {
-        StableCellAddress { row, col }
+impl StableRange {
+    /// The 1-based ordinal rectangle `(row1, column1, row2, column2)` this currently denotes, or
+    /// `None` if it collapsed. An unbounded axis spans whatever the index holds right now.
+    pub fn resolve(&self, idx: &SheetIndexes) -> Option<(i32, i32, i32, i32)> {
+        let (row1, row2) = resolve_axis(&idx.rows, &self.rows)?;
+        let (column1, column2) = resolve_axis(&idx.cols, &self.cols)?;
+        Some((row1, column1, row2, column2))
+    }
+
+    pub fn contains(&self, idx: &SheetIndexes, row: &FractionalKey, col: &FractionalKey) -> bool {
+        let Some((row1, column1, row2, column2)) = self.resolve(idx) else {
+            return false;
+        };
+        match (Stable::row_ordinal(idx, row), Stable::col_ordinal(idx, col)) {
+            (Some(r), Some(c)) => (row1..=row2).contains(&r) && (column1..=column2).contains(&c),
+            _ => false,
+        }
+    }
+}
+
+/// A column-property span under stable addressing is a *region*, not a fixed set of columns: it
+/// covers whatever currently sits between its two corner keys, exactly as [`StableRange`]'s column
+/// axis does. Consequences:
+///
+/// - A column moved out of the region loses the span's properties, and one moved in gains them.
+///   That is not Excel's behaviour, but Excel has no concurrent semantics to be faithful to.
+/// - A single-column span `(k, k)` follows its column wherever it moves.
+/// - A [`FractionalKey::NULL`] corner is an open end, so `(NULL, NULL)` is the storable whole-axis
+///   span — the register `set_style` over the whole sheet writes to.
+/// - Sequential (local) edits shatter wide spans eagerly, exactly as the ordinal code does today:
+///   the wide record is removed and narrower ones written in the same commit.
+/// - Only concurrency can produce overlapping spans; those resolve per position by register write
+///   timestamp — LWW, newest covering span wins. That machinery is phase-5 work.
+impl Col<Stable> {
+    /// The 1-based ordinal interval this span currently covers, or `None` if it collapsed.
+    /// Same corner resolution and clamping as [`StableRange`]: see [`resolve_axis`].
+    pub fn resolve(&self, idx: &SheetIndexes) -> Option<(i32, i32)> {
+        resolve_axis(&idx.cols, &Some((self.min.clone(), self.max.clone())))
     }
 }
 
 pub struct ColabModel<'a> {
-    rows: FractionalIndex,
-    cols: FractionalIndex,
     /// A Rust internal representation of an Excel workbook
-    pub workbook: Workbook,
+    pub workbook: Workbook<Stable>,
     /// A list of parsed formulas
     pub parsed_formulas: Vec<Vec<(Node, StaticResult)>>,
     /// A list of parsed defined names
@@ -75,4 +186,222 @@ pub struct ColabModel<'a> {
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
     /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::types::{Cell, Color, Comment, Row, SheetState, Worksheet};
+
+    /// Explicit session suffixes: the default is all zeroes, which is the suffix reserved for
+    /// [`virtual_key`](crate::collab::fractional_index::virtual_key).
+    fn new_indexes() -> SheetIndexes {
+        SheetIndexes {
+            rows: FractionalIndex::new(vec![], vec![], [b'r', 0, 0, 0]),
+            cols: FractionalIndex::new(vec![], vec![], [b'c', 0, 0, 0]),
+        }
+    }
+
+    fn mint(index: &mut FractionalIndex, count: usize) -> Vec<FractionalKey> {
+        (0..count)
+            .map(|i| index.create_key(i).expect("index has room").clone())
+            .collect()
+    }
+
+    #[test]
+    fn stable_worksheet_round_trip() {
+        let mut index = new_indexes();
+        let rows = mint(&mut index.rows, 5);
+        let cols = mint(&mut index.cols, 3);
+
+        let mut sheet_data = crate::types::SheetData::<Stable>::default();
+        for (r, row_key) in rows.iter().enumerate() {
+            for (c, col_key) in cols.iter().enumerate() {
+                sheet_data.entry(row_key.clone()).or_default().insert(
+                    col_key.clone(),
+                    Cell::NumberCell {
+                        v: (10 * r + c) as f64,
+                        s: 0,
+                    },
+                );
+            }
+        }
+
+        let mut ws = Worksheet::<Stable> {
+            dimension: "A1:C5".to_string(),
+            cols: vec![Col::<Stable> {
+                min: cols[1].clone(),
+                max: cols[1].clone(),
+                width: 42.0,
+                custom_width: true,
+                hidden: false,
+                style: Some(0),
+            }],
+            rows: vec![Row::<Stable> {
+                r: rows[2].clone(),
+                height: 21.0,
+                custom_format: false,
+                custom_height: true,
+                s: 0,
+                hidden: false,
+            }],
+            name: "Stable".to_string(),
+            sheet_data,
+            shared_formulas: vec![],
+            sheet_id: 1,
+            state: SheetState::Visible,
+            color: Color::None,
+            merged_cells: vec![StableRange {
+                rows: Some((rows[0].clone(), rows[1].clone())),
+                cols: Some((cols[0].clone(), cols[1].clone())),
+            }],
+            comments: vec![Comment::<Stable> {
+                text: "note".to_string(),
+                author_name: "me".to_string(),
+                author_id: None,
+                cell_ref: (rows[3].clone(), cols[2].clone()),
+            }],
+            frozen_rows: 0,
+            frozen_columns: 0,
+            views: HashMap::new(),
+            show_grid_lines: true,
+            conditional_formatting: vec![],
+            links: HashMap::new(),
+            index,
+        };
+
+        // 1. Resolution is a round trip on both axes, and answers nothing for a key it never saw.
+        for (i, key) in rows.iter().enumerate() {
+            let ordinal = i as i32 + 1;
+            assert_eq!(Stable::row_ordinal(&ws.index, key), Some(ordinal));
+            assert_eq!(Stable::row_at(&ws.index, ordinal).as_ref(), Some(key));
+        }
+        for (i, key) in cols.iter().enumerate() {
+            let ordinal = i as i32 + 1;
+            assert_eq!(Stable::col_ordinal(&ws.index, key), Some(ordinal));
+            assert_eq!(Stable::col_at(&ws.index, ordinal).as_ref(), Some(key));
+        }
+        let stranger = FractionalKey::from([0xffu8, 0, 0, 0, 0].as_slice());
+        assert_eq!(Stable::row_ordinal(&ws.index, &stranger), None);
+        assert_eq!(Stable::col_ordinal(&ws.index, &stranger), None);
+        assert_eq!(Stable::row_at(&ws.index, 0), None);
+        assert_eq!(Stable::row_at(&ws.index, 6), None);
+
+        // 2. An ordinal read is a resolution followed by a lookup by identity.
+        let cell_at = |ws: &Worksheet<Stable>, row: i32, col: i32| {
+            let r = Stable::row_at(&ws.index, row)?;
+            let c = Stable::col_at(&ws.index, col)?;
+            ws.sheet_data.get(&r)?.get(&c).cloned()
+        };
+        assert_eq!(cell_at(&ws, 2, 3), Some(Cell::NumberCell { v: 12.0, s: 0 }));
+
+        // 3. A move renames positions, never identities: the cells stay exactly where they were
+        //    filed and only the ordinals they answer to change.
+        let before = ws.sheet_data.clone();
+        ws.index.rows.move_to(0..1, 5); // first row to the end
+        assert_eq!(ws.sheet_data, before);
+        assert_eq!(Stable::row_ordinal(&ws.index, &rows[0]), Some(5));
+        assert_eq!(Stable::row_ordinal(&ws.index, &rows[1]), Some(1));
+        assert_eq!(cell_at(&ws, 5, 3), Some(Cell::NumberCell { v: 2.0, s: 0 }));
+        assert_eq!(cell_at(&ws, 1, 3), Some(Cell::NumberCell { v: 12.0, s: 0 }));
+
+        // 4. A removal takes the key out of the ordering and shifts everything after it up.
+        ws.index.rows.remove_key(&rows[1]);
+        assert_eq!(Stable::row_ordinal(&ws.index, &rows[1]), None);
+        assert_eq!(Stable::row_ordinal(&ws.index, &rows[2]), Some(1));
+        assert_eq!(Stable::row_ordinal(&ws.index, &rows[0]), Some(4));
+
+        // 5. The whole sheet survives bitcode, ordering context included.
+        let decoded: Worksheet<Stable> = bitcode::decode(&bitcode::encode(&ws)).unwrap();
+        assert_eq!(decoded, ws);
+        assert_eq!(Stable::row_ordinal(&decoded.index, &rows[2]), Some(1));
+        assert_eq!(Stable::col_at(&decoded.index, 3).as_ref(), Some(&cols[2]));
+        assert_eq!(
+            cell_at(&decoded, 1, 3),
+            Some(Cell::NumberCell { v: 22.0, s: 0 })
+        );
+    }
+
+    #[test]
+    fn stable_range_resolve_and_clamp() {
+        let mut index = new_indexes();
+        let rows = mint(&mut index.rows, 6);
+        let cols = mint(&mut index.cols, 4);
+
+        let rect = StableRange {
+            rows: Some((rows[1].clone(), rows[4].clone())),
+            cols: Some((cols[0].clone(), cols[2].clone())),
+        };
+        assert_eq!(rect.resolve(&index), Some((2, 1, 5, 3)));
+        assert!(rect.contains(&index, &rows[2], &cols[1]));
+        assert!(!rect.contains(&index, &rows[0], &cols[1])); // above the rectangle
+
+        // An unbounded axis is whatever the index holds right now, so it grows with the index.
+        let full_rows = StableRange {
+            rows: None,
+            cols: Some((cols[0].clone(), cols[2].clone())),
+        };
+        assert_eq!(full_rows.resolve(&index), Some((1, 1, 6, 3)));
+        index.rows.create_key(6);
+        assert_eq!(full_rows.resolve(&index), Some((1, 1, 7, 3)));
+        assert_eq!(rect.resolve(&index), Some((2, 1, 5, 3)));
+
+        // Concurrent moves can drag the lo corner past the hi one; the resolved rectangle stays
+        // ordered, because two corners that still resolve bound the same rectangle either way.
+        index.rows.move_to(1..2, 5);
+        assert_eq!(rect.resolve(&index), Some((4, 1, 5, 3)));
+        index.rows.move_to(4..5, 1);
+        assert_eq!(rect.resolve(&index), Some((2, 1, 5, 3)));
+
+        // Deleting the hi corner clamps it to the element just before where it used to sit.
+        index.rows.remove_key(&rows[4]);
+        assert_eq!(rect.resolve(&index), Some((2, 1, 4, 3)));
+
+        // Deleting everything the rectangle covered collapses it.
+        for key in [&rows[1], &rows[2], &rows[3]] {
+            index.rows.remove_key(key);
+        }
+        assert_eq!(rect.resolve(&index), None);
+        assert!(!rect.contains(&index, &rows[0], &cols[0]));
+    }
+
+    #[test]
+    fn stable_col_span_semantics() {
+        let mut index = new_indexes();
+        let cols = mint(&mut index.cols, 6);
+        let span = |min: &FractionalKey, max: &FractionalKey| Col::<Stable> {
+            min: min.clone(),
+            max: max.clone(),
+            width: 20.0,
+            custom_width: true,
+            hidden: false,
+            style: None,
+        };
+        let wide = span(&cols[0], &cols[3]);
+        assert_eq!(wide.resolve(&index), Some((1, 4)));
+
+        // A span is a region between its corners; the degenerate `(k, k)` follows its column.
+        let single = span(&cols[4], &cols[4]);
+        assert_eq!(single.resolve(&index), Some((5, 5)));
+        index.cols.move_to(4..5, 6);
+        assert_eq!(single.resolve(&index), Some((6, 6)));
+        assert_eq!(wide.resolve(&index), Some((1, 4)));
+
+        // `(NULL, NULL)` is the whole axis — the whole-sheet styling register — and tracks it as it
+        // grows.
+        let all = span(&FractionalKey::NULL, &FractionalKey::NULL);
+        assert_eq!(all.resolve(&index), Some((1, 6)));
+        index.cols.create_key(6).expect("index has room");
+        assert_eq!(all.resolve(&index), Some((1, 7)));
+
+        // A half-open span runs from its one real corner to the end of the axis, and keeps
+        // tracking that end as columns are appended past it.
+        let tail = span(&cols[2], &FractionalKey::NULL);
+        let head = span(&FractionalKey::NULL, &cols[2]);
+        assert_eq!(tail.resolve(&index), Some((3, 7)));
+        assert_eq!(head.resolve(&index), Some((1, 3)));
+        index.cols.create_key(7).expect("index has room");
+        assert_eq!(tail.resolve(&index), Some((3, 8)));
+        assert_eq!(head.resolve(&index), Some((1, 3)));
+    }
 }
