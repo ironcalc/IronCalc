@@ -225,6 +225,11 @@
     "tooltip_placeholder": "Info-bulle (facultatif)",
     "url_placeholder": "URL"
   },
+  "link_tooltip": {
+    "break": "Supprimer le lien",
+    "copy": "Copier le lien",
+    "edit": "Modifier le lien"
+  },
   "name_manager_dialog": {
     "add_new_range": "Ajouter une nouvelle plage",
     "apply": "Appliquer les modifications",

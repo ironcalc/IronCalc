@@ -48,7 +48,14 @@ export interface CanvasSettings {
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
   onEditLink?: (row: number, column: number, link: Link) => void;
   onDeleteLink?: (row: number, column: number) => void;
+  linkTooltipTexts: LinkTooltipTexts;
   refresh: () => void;
+}
+
+export interface LinkTooltipTexts {
+  copyLink: string;
+  editLink: string;
+  breakLink: string;
 }
 
 export const headerRowHeight = 28;
@@ -115,6 +122,8 @@ export default class WorksheetCanvas {
 
   onDeleteLink?: (row: number, column: number) => void;
 
+  private linkTooltipTexts: LinkTooltipTexts;
+
   refresh: () => void;
 
   cells: TextProperties[];
@@ -159,6 +168,7 @@ export default class WorksheetCanvas {
     this.onRowHeightChanges = options.onRowHeightChanges;
     this.onEditLink = options.onEditLink;
     this.onDeleteLink = options.onDeleteLink;
+    this.linkTooltipTexts = options.linkTooltipTexts;
     this.resetHeaders();
     this.cellOutlineHandle = attachOutlineHandle(this);
 
@@ -2108,7 +2118,7 @@ export default class WorksheetCanvas {
     const copyButton = document.createElement("button");
     copyButton.type = "button";
     copyButton.className = "ic-worksheet-link-tooltip-button";
-    copyButton.title = "Copy link";
+    copyButton.title = this.linkTooltipTexts.copyLink;
     copyButton.innerHTML =
       '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
     copyButton.addEventListener("click", () => {
@@ -2125,7 +2135,7 @@ export default class WorksheetCanvas {
       const editButton = document.createElement("button");
       editButton.type = "button";
       editButton.className = "ic-worksheet-link-tooltip-button";
-      editButton.title = "Edit link";
+      editButton.title = this.linkTooltipTexts.editLink;
       editButton.innerHTML =
         '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>';
       editButton.addEventListener("click", () => {
@@ -2139,7 +2149,7 @@ export default class WorksheetCanvas {
       const breakButton = document.createElement("button");
       breakButton.type = "button";
       breakButton.className = "ic-worksheet-link-tooltip-button";
-      breakButton.title = "Break link";
+      breakButton.title = this.linkTooltipTexts.breakLink;
       breakButton.innerHTML =
         '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7"/><path d="M15 7h2a5 5 0 0 1 4 8"/><line x1="8" x2="12" y1="12" y2="12"/><line x1="2" x2="22" y1="2" y2="22"/></svg>';
       breakButton.addEventListener("click", () => {

@@ -179,6 +179,11 @@ const Worksheet = forwardRef(
         onDeleteLink: props.onDeleteLink
           ? (row, column) => props.onDeleteLink?.(row, column)
           : undefined,
+        linkTooltipTexts: {
+          copyLink: t("link_tooltip.copy"),
+          editLink: t("link_tooltip.edit"),
+          breakLink: t("link_tooltip.break"),
+        },
         onRowHeightChanges(sheet, row, height) {
           if (height < 0) {
             return;
