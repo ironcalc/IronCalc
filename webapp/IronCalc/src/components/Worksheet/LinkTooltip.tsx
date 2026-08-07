@@ -42,10 +42,13 @@ const LinkTooltip = (props: {
   const [height, setHeight] = useState<number | null>(null);
 
   // The tooltip is kept invisible on its first paint so it can be measured
-  // and positioned above (or below) the cell before it is shown.
+  // and positioned above (or below) the cell before it is shown. The height
+  // depends on the content (a second line when the link has a tooltip text),
+  // so measure after every render; the state only changes when the height does.
   useLayoutEffect(() => {
-    setHeight(rootElement.current?.offsetHeight || 26);
-  }, []);
+    const measured = rootElement.current?.offsetHeight || 26;
+    setHeight((previous) => (previous === measured ? previous : measured));
+  });
 
   const link = cell.link;
 
@@ -69,61 +72,65 @@ const LinkTooltip = (props: {
       // Interacting with the tooltip must not select the cells underneath
       onPointerDown={(event) => event.stopPropagation()}
     >
-      <span className="ic-worksheet-link-tooltip-icon">
-        <Link size={12} />
-      </span>
-      <button
-        type="button"
-        className="ic-worksheet-link-tooltip-label"
-        title={link.tooltip || ""}
-        onClick={() => {
-          onHide();
-          onFollow(link);
-        }}
-      >
-        {linkLabel(link)}
-      </button>
-      <button
-        type="button"
-        className="ic-worksheet-link-tooltip-button"
-        title={t("link_tooltip.copy")}
-        onClick={() => {
-          const text = link.type === "External" ? link.target : link.location;
-          navigator.clipboard?.writeText(text).catch(() => {
-            // clipboard access denied or unavailable: nothing to do
-          });
-        }}
-      >
-        <Copy size={12} />
-      </button>
-      {/* Dynamic links (created by formulas like HYPERLINK) cannot be edited
+      <div className="ic-worksheet-link-tooltip-row">
+        <span className="ic-worksheet-link-tooltip-icon">
+          <Link size={12} />
+        </span>
+        <button
+          type="button"
+          className="ic-worksheet-link-tooltip-label"
+          onClick={() => {
+            onHide();
+            onFollow(link);
+          }}
+        >
+          {linkLabel(link)}
+        </button>
+        <button
+          type="button"
+          className="ic-worksheet-link-tooltip-button"
+          title={t("link_tooltip.copy")}
+          onClick={() => {
+            const text = link.type === "External" ? link.target : link.location;
+            navigator.clipboard?.writeText(text).catch(() => {
+              // clipboard access denied or unavailable: nothing to do
+            });
+          }}
+        >
+          <Copy size={12} />
+        </button>
+        {/* Dynamic links (created by formulas like HYPERLINK) cannot be edited
           or deleted: only the formula itself can change them. */}
-      {onEdit && !link.dynamic && (
-        <button
-          type="button"
-          className="ic-worksheet-link-tooltip-button"
-          title={t("link_tooltip.edit")}
-          onClick={() => {
-            onHide();
-            onEdit(cell.row, cell.column);
-          }}
-        >
-          <PencilLine size={12} />
-        </button>
-      )}
-      {onDelete && !link.dynamic && (
-        <button
-          type="button"
-          className="ic-worksheet-link-tooltip-button"
-          title={t("link_tooltip.break")}
-          onClick={() => {
-            onHide();
-            onDelete(cell.row, cell.column);
-          }}
-        >
-          <Link2Off size={12} />
-        </button>
-      )}
+        {onEdit && !link.dynamic && (
+          <button
+            type="button"
+            className="ic-worksheet-link-tooltip-button"
+            title={t("link_tooltip.edit")}
+            onClick={() => {
+              onHide();
+              onEdit(cell.row, cell.column);
+            }}
+          >
+            <PencilLine size={12} />
+          </button>
+        )}
+        {onDelete && !link.dynamic && (
+          <button
+            type="button"
+            className="ic-worksheet-link-tooltip-button"
+            title={t("link_tooltip.break")}
+            onClick={() => {
+              onHide();
+              onDelete(cell.row, cell.column);
+            }}
+          >
+            <Link2Off size={12} />
+          </button>
+        )}
+      </div>
+      {link.tooltip ? (
+        <div className="ic-worksheet-link-tooltip-text">{link.tooltip}</div>
+      ) : null}
     </div>
   );
 };
