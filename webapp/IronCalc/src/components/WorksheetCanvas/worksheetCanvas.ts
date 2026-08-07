@@ -1,9 +1,9 @@
-import type { CellLink, CellStyle, Link, Model } from "@ironcalc/wasm";
+import type { CellLink, CellStyle, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
-import { CellLinks, type LinkTooltipTexts } from "./cellLinks";
+import { CellLinks, type LinkHoverCell } from "./cellLinks";
 import {
   drawBorder,
   drawBorderLine,
@@ -44,13 +44,12 @@ export interface CanvasSettings {
     rowGuide: HTMLDivElement;
     columnHeaders: HTMLDivElement;
     editor: HTMLDivElement;
-    linkTooltip: HTMLDivElement;
   };
   onColumnWidthChanges: (sheet: number, column: number, width: number) => void;
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
-  onEditLink?: (row: number, column: number, link: Link) => void;
-  onDeleteLink?: (row: number, column: number) => void;
-  linkTooltipTexts: LinkTooltipTexts;
+  onLinkHover?: (cell: LinkHoverCell | null) => void;
+  onHideLinkTooltip?: () => void;
+  linkTooltipCell: LinkHoverCell | null;
   refresh: () => void;
 }
 
@@ -157,11 +156,16 @@ export default class WorksheetCanvas {
     this.cells = [];
 
     this.cellLinks = new CellLinks(this, {
-      tooltip: options.elements.linkTooltip,
-      onEditLink: options.onEditLink,
-      onDeleteLink: options.onDeleteLink,
-      texts: options.linkTooltipTexts,
+      onLinkHover: options.onLinkHover,
+      onHideTooltip: options.onHideLinkTooltip,
+      tooltipCell: options.linkTooltipCell,
     });
+  }
+
+  // Follows a cell link: opens external targets in a new tab, navigates to
+  // internal references
+  followLink(link: CellLink): void {
+    this.cellLinks.followLink(link);
   }
 
   setScrollPosition(scrollPosition: { left: number; top: number }): void {
@@ -1958,11 +1962,12 @@ export default class WorksheetCanvas {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     this.removeHandles();
-    // The cell geometry may have changed (scroll, resize, edits)
-    this.cellLinks.hideTooltip();
 
     const { topLeftCell, bottomRightCell } = this.getVisibleCells();
     this.computeCellsText();
+    // The cell geometry may have changed (scroll, resize, edits): a link
+    // tooltip anchored to a cell that moved or lost its link must go.
+    this.cellLinks.validateTooltip();
 
     const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
     const frozenRows = this.model.getFrozenRowsCount(selectedSheet);

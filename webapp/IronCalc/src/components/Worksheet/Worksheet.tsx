@@ -10,6 +10,7 @@ import {
 import { useTranslation } from "react-i18next";
 import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
+import type { LinkHoverCell } from "../WorksheetCanvas/cellLinks";
 import {
   COLUMN_WIDTH_SCALE,
   headerColumnWidth,
@@ -23,6 +24,7 @@ import type { WorkbookState } from "../workbookState";
 import CellContextMenu from "./ContextMenus/Cell";
 import ColumnHeaderContextMenu from "./ContextMenus/ColumnHeader";
 import RowHeaderContextMenu from "./ContextMenus/RowHeader";
+import LinkTooltip from "./LinkTooltip";
 import usePointer from "./usePointer";
 import "./worksheet.css";
 import { Alert, Prompt } from "../Modal";
@@ -69,7 +71,6 @@ const Worksheet = forwardRef(
     const columnResizeGuide = useRef<HTMLDivElement>(null);
     const rowResizeGuide = useRef<HTMLDivElement>(null);
     const columnHeaders = useRef<HTMLDivElement>(null);
-    const linkTooltip = useRef<HTMLDivElement>(null);
     const worksheetCanvas = useRef<WorksheetCanvas | null>(null);
 
     const [cellContextMenuOpen, setCellContextMenuOpen] = useState(false);
@@ -90,6 +91,35 @@ const Worksheet = forwardRef(
     const [rowHeightDefault, setRowHeightDefault] = useState("");
 
     const ignoreScrollEventRef = useRef(false);
+
+    // The cell whose link tooltip is shown (null if hidden). The canvas does
+    // the hover hit-testing and reports it through onLinkHover; the tooltip
+    // itself is the LinkTooltip component. Hiding is delayed so the pointer
+    // can travel from the cell into the tooltip without dismissing it.
+    const [linkTooltipCell, setLinkTooltipCell] =
+      useState<LinkHoverCell | null>(null);
+    const linkTooltipHideTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+      null,
+    );
+    const cancelHideLinkTooltip = (): void => {
+      if (linkTooltipHideTimeout.current !== null) {
+        clearTimeout(linkTooltipHideTimeout.current);
+        linkTooltipHideTimeout.current = null;
+      }
+    };
+    const hideLinkTooltip = (): void => {
+      cancelHideLinkTooltip();
+      setLinkTooltipCell(null);
+    };
+    const scheduleHideLinkTooltip = (): void => {
+      if (linkTooltipHideTimeout.current !== null) {
+        return;
+      }
+      linkTooltipHideTimeout.current = setTimeout(() => {
+        linkTooltipHideTimeout.current = null;
+        setLinkTooltipCell(null);
+      }, 300);
+    };
 
     const { model, workbookState, refresh, canEdit, onCut, onCopy, onPaste } =
       props;
@@ -112,7 +142,6 @@ const Worksheet = forwardRef(
       const arrayStructure = cellArrayStructure.current;
       const extendTo = extendToOutline.current;
       const editor = editorElement.current;
-      const linkTooltipRef = linkTooltip.current;
 
       if (
         !canvasRef ||
@@ -126,7 +155,6 @@ const Worksheet = forwardRef(
         !scrollElement.current ||
         !editor ||
         !arrayStructure ||
-        !linkTooltipRef ||
         !canvasRef.closest(".ic-root")
       ) {
         return;
@@ -149,7 +177,6 @@ const Worksheet = forwardRef(
           areaOutline: area,
           extendToOutline: extendTo,
           editor: editor,
-          linkTooltip: linkTooltipRef,
         },
         onColumnWidthChanges(sheet, column, width) {
           if (width < 0) {
@@ -172,17 +199,23 @@ const Worksheet = forwardRef(
           model.setColumnsWidth(sheet, columnStart, columnEnd, width);
           worksheetCanvas.current?.renderSheet();
         },
-        onEditLink: props.onEditLink
-          ? (row, column) => props.onEditLink?.(row, column)
-          : undefined,
-        onDeleteLink: props.onDeleteLink
-          ? (row, column) => props.onDeleteLink?.(row, column)
-          : undefined,
-        linkTooltipTexts: {
-          copyLink: t("link_tooltip.copy"),
-          editLink: t("link_tooltip.edit"),
-          breakLink: t("link_tooltip.break"),
+        onLinkHover: (cell) => {
+          if (cell) {
+            cancelHideLinkTooltip();
+            // keep the state (and the tooltip) when still on the same cell
+            setLinkTooltipCell((previous) =>
+              previous &&
+              previous.row === cell.row &&
+              previous.column === cell.column
+                ? previous
+                : cell,
+            );
+          } else if (linkTooltipCell !== null) {
+            scheduleHideLinkTooltip();
+          }
         },
+        onHideLinkTooltip: hideLinkTooltip,
+        linkTooltipCell,
         onRowHeightChanges(sheet, row, height) {
           if (height < 0) {
             return;
@@ -512,7 +545,19 @@ const Worksheet = forwardRef(
           />
           <div className="ic-worksheet-row-resize-guide" ref={rowResizeGuide} />
           <div className="ic-worksheet-column-headers" ref={columnHeaders} />
-          <div className="ic-worksheet-link-tooltip" ref={linkTooltip} />
+          {linkTooltipCell ? (
+            <LinkTooltip
+              cell={linkTooltipCell}
+              onFollow={(link) => {
+                worksheetCanvas.current?.followLink(link);
+              }}
+              onEdit={props.onEditLink}
+              onDelete={props.onDeleteLink}
+              onHide={hideLinkTooltip}
+              onPointerEnter={cancelHideLinkTooltip}
+              onPointerLeave={scheduleHideLinkTooltip}
+            />
+          ) : null}
         </div>
         <CellContextMenu
           open={cellContextMenuOpen}
