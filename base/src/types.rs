@@ -200,6 +200,51 @@ pub enum Link {
     },
 }
 
+/// A rectangular range of cells that is displayed as a single cell.
+/// The anchor (top-left) cell holds the content and is the only cell of the
+/// range users can edit; every other cell of the range is "covered" and must
+/// stay empty of content, although it can hold styles.
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Copy)]
+pub struct MergedCell {
+    /// Row of the anchor (top-left) cell
+    pub row: i32,
+    /// Column of the anchor (top-left) cell
+    pub column: i32,
+    /// Number of columns of the merged range (>= 1)
+    pub width: i32,
+    /// Number of rows of the merged range (>= 1)
+    pub height: i32,
+}
+
+impl MergedCell {
+    /// Last (bottom) row of the merged range
+    pub fn last_row(&self) -> i32 {
+        self.row + self.height - 1
+    }
+
+    /// Last (rightmost) column of the merged range
+    pub fn last_column(&self) -> i32 {
+        self.column + self.width - 1
+    }
+
+    /// Returns true if (row, column) is inside the merged range
+    pub fn contains(&self, row: i32, column: i32) -> bool {
+        row >= self.row
+            && row <= self.last_row()
+            && column >= self.column
+            && column <= self.last_column()
+    }
+
+    /// Returns true if the merged range intersects the rectangle of `width` columns
+    /// and `height` rows anchored at (row, column)
+    pub fn intersects(&self, row: i32, column: i32, width: i32, height: i32) -> bool {
+        row <= self.last_row()
+            && row + height > self.row
+            && column <= self.last_column()
+            && column + width > self.column
+    }
+}
+
 /// Internal representation of a worksheet Excel object
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Worksheet {
@@ -212,7 +257,7 @@ pub struct Worksheet {
     pub sheet_id: u32,
     pub state: SheetState,
     pub color: Color,
-    pub merge_cells: Vec<String>,
+    pub merged_cells: Vec<MergedCell>,
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,

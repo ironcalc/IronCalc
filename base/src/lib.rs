@@ -54,6 +54,7 @@ mod cut_paste;
 mod functions;
 mod implicit_intersection;
 pub mod links;
+mod merged_cells;
 mod model;
 mod styles;
 mod tz;
@@ -69,6 +70,7 @@ mod test;
 pub mod mock_time;
 
 pub use locale::get_supported_locales;
+pub use merged_cells::MergeStructure;
 pub use model::get_milliseconds_since_epoch;
 pub use model::FmtSettings;
 pub use model::Model;

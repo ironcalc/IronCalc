@@ -38,6 +38,7 @@ import {
   RemoveFormatting,
   Strikethrough,
   SwatchBook,
+  TableCellsMerge,
   Type,
   Underline,
   Undo2,
@@ -92,6 +93,11 @@ type ToolbarProperties = {
   horizontalAlign: HorizontalAlignment;
   verticalAlign: VerticalAlignment;
   wrapText: boolean;
+  // true when the selection intersects at least one merged cell
+  mergedCells: boolean;
+  // true when the selection can be merged or unmerged
+  canMergeCells: boolean;
+  onToggleMergeCells: () => void;
   canEdit: boolean;
   numFmt: string;
   showGridLines: boolean;
@@ -590,6 +596,15 @@ function Toolbar(properties: ToolbarProperties) {
               pressed={properties.wrapText}
               onClick={() => properties.onToggleWrapText(!properties.wrapText)}
               disabled={!canEdit}
+            />
+          </Tooltip>
+          <Tooltip title={t("toolbar.merge_cells")}>
+            <IconButton
+              icon={<TableCellsMerge />}
+              aria-label={t("toolbar.merge_cells")}
+              pressed={properties.mergedCells}
+              onClick={() => properties.onToggleMergeCells()}
+              disabled={!canEdit || !properties.canMergeCells}
             />
           </Tooltip>
         </div>

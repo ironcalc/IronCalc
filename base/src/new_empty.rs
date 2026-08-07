@@ -61,7 +61,7 @@ impl<'a> Model<'a> {
             rows: vec![],
             comments: vec![],
             dimension: "A1".to_string(),
-            merge_cells: vec![],
+            merged_cells: vec![],
             name: name.to_string(),
             shared_formulas: vec![],
             sheet_data: Default::default(),

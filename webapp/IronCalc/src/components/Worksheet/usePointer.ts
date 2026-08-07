@@ -2,7 +2,11 @@ import type { Model } from "@ironcalc/wasm";
 import { type PointerEvent, type RefObject, useCallback, useRef } from "react";
 import { isInReferenceMode } from "../Editor/util";
 import type { Cell } from "../types";
-import { rangeToStr } from "../util";
+import {
+  growRangeOverMergedCells,
+  mergedCellContaining,
+  rangeToStr,
+} from "../util";
 import {
   headerColumnWidth,
   headerRowHeight,
@@ -151,9 +155,17 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         if (!editingCell?.referencedRange) {
           return;
         }
+        const { anchorRow, anchorColumn } = editingCell.referencedRange;
         const range = editingCell.referencedRange.range;
+        range.rowStart = anchorRow;
+        range.columnStart = anchorColumn;
         range.rowEnd = cell.row;
         range.columnEnd = cell.column;
+        // A reference can never cover part of a merged cell
+        Object.assign(
+          range,
+          growRangeOverMergedCells(model.getMergedCells(range.sheet), range),
+        );
 
         const sheetNames = model.getWorksheetsProperties().map((s) => s.name);
 
@@ -305,12 +317,21 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           // If we can insert a range we do that
           const text = editingCell.text;
           if (isInReferenceMode(model, text, editingCell.cursorEnd)) {
+            const sheet = model.getSelectedSheet();
+            // Clicking inside a merged cell references its anchor
+            const merge = mergedCellContaining(
+              model.getMergedCells(sheet),
+              cell.row,
+              cell.column,
+            );
+            const row = merge ? merge.row : cell.row;
+            const column = merge ? merge.column : cell.column;
             const range = {
-              sheet: model.getSelectedSheet(),
-              rowStart: cell.row,
-              rowEnd: cell.row,
-              columnStart: cell.column,
-              columnEnd: cell.column,
+              sheet,
+              rowStart: row,
+              rowEnd: row,
+              columnStart: column,
+              columnEnd: column,
             };
             const sheetNames = model
               .getWorksheetsProperties()

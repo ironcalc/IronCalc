@@ -127,6 +127,25 @@ impl<'a> UserModel<'a> {
             height: source_last_row - source_first_row + 1,
         };
 
+        // Pasting over merged cells is not supported
+        if self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .merged_cells
+            .iter()
+            .any(|m| {
+                m.intersects(
+                    target_area.row,
+                    target_area.column,
+                    target_area.width,
+                    target_area.height,
+                )
+            })
+        {
+            return Err("Cannot paste over merged cells".to_string());
+        }
+
         let mut seen_cells = HashSet::new();
         // Compute all changes
         let mut changes = Vec::new();
@@ -257,6 +276,24 @@ impl<'a> UserModel<'a> {
             }
         }
         if is_cut {
+            // A cut removes the merged cells of the source area (moving a
+            // merged range keeps only its content, not the merge itself)
+            let old_merged_cells = self.model.get_merged_cells(source_sheet)?.to_vec();
+            self.model.unmerge_cells(&Area {
+                sheet: source_sheet,
+                row: source_first_row,
+                column: source_first_column,
+                width: source_last_column - source_first_column + 1,
+                height: source_last_row - source_first_row + 1,
+            })?;
+            let new_merged_cells = self.model.get_merged_cells(source_sheet)?.to_vec();
+            if old_merged_cells != new_merged_cells {
+                diff_list.push(Diff::SetMergedCells {
+                    sheet: source_sheet,
+                    old_value: old_merged_cells,
+                    new_value: new_merged_cells,
+                });
+            }
             for row in source_first_row..=source_last_row {
                 for column in source_first_column..=source_last_column {
                     if (source_sheet == sheet) && seen_cells.contains(&(row, column)) {
@@ -497,6 +534,25 @@ impl<'a> UserModel<'a> {
             width: max_width,
             height: records.len() as i32,
         };
+
+        // Pasting over merged cells is not supported
+        if self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .merged_cells
+            .iter()
+            .any(|m| {
+                m.intersects(
+                    paste_area.row,
+                    paste_area.column,
+                    paste_area.width,
+                    paste_area.height,
+                )
+            })
+        {
+            return Err("Cannot paste over merged cells".to_string());
+        }
 
         // Capture old values BEFORE clearing so undo can restore them correctly.
         let mut old_values: HashMap<(i32, i32), Option<Cell>> = HashMap::new();

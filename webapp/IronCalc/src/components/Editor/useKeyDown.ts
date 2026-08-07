@@ -1,6 +1,10 @@
 import type { Model } from "@ironcalc/wasm";
 import { type KeyboardEvent, type RefObject, useCallback } from "react";
-import { rangeToStr } from "../util";
+import {
+  growRangeOverMergedCells,
+  mergedCellContaining,
+  rangeToStr,
+} from "../util";
 import { LAST_COLUMN, LAST_ROW } from "../WorksheetCanvas/constants";
 import type { SheetRange, WorkbookState } from "../workbookState";
 import { isInReferenceMode } from "./util";
@@ -145,6 +149,7 @@ export const useKeyDown = (
               .getWorksheetsProperties()
               .map((s) => s.name);
             const range = cell.referencedRange.range;
+            const mergedCells = model.getMergedCells(range.sheet);
             let { anchorRow, anchorColumn } = cell.referencedRange;
             if (shiftKey) {
               const activeColumn =
@@ -157,6 +162,11 @@ export const useKeyDown = (
               }
               range.columnStart = Math.min(anchorColumn, newActiveColumn);
               range.columnEnd = Math.max(anchorColumn, newActiveColumn);
+              // A reference can never cover part of a merged cell
+              Object.assign(
+                range,
+                growRangeOverMergedCells(mergedCells, range),
+              );
             } else {
               const activeRow =
                 anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
@@ -164,15 +174,30 @@ export const useKeyDown = (
                 anchorColumn === range.columnStart
                   ? range.columnEnd
                   : range.columnStart;
-              const column = activeColumn + 1;
+              // Leaving a merged cell starts past its last column
+              const leaving = mergedCellContaining(
+                mergedCells,
+                activeRow,
+                activeColumn,
+              );
+              let column = leaving
+                ? leaving.column + leaving.width
+                : activeColumn + 1;
+              let row = activeRow;
               if (column > LAST_COLUMN) {
                 return;
               }
+              // Landing inside a merged cell selects its anchor
+              const landing = mergedCellContaining(mergedCells, row, column);
+              if (landing) {
+                row = landing.row;
+                column = landing.column;
+              }
               range.columnStart = column;
               range.columnEnd = column;
-              range.rowStart = activeRow;
-              range.rowEnd = activeRow;
-              anchorRow = activeRow;
+              range.rowStart = row;
+              range.rowEnd = row;
+              anchorRow = row;
               anchorColumn = column;
             }
             cell.referencedRange = {
@@ -191,15 +216,33 @@ export const useKeyDown = (
             const sheetNames = model
               .getWorksheetsProperties()
               .map((s) => s.name);
+            const mergedCells = model.getMergedCells(cell.sheet);
+            // Leaving a merged cell starts past its last column
+            const leaving = mergedCellContaining(
+              mergedCells,
+              cell.row,
+              cell.column,
+            );
+            const column = leaving
+              ? leaving.column + leaving.width
+              : cell.column + 1;
             const range = {
               sheet: cell.sheet,
               rowStart: cell.row,
               rowEnd: cell.row,
-              columnStart: cell.column + 1,
-              columnEnd: cell.column + 1,
+              columnStart: column,
+              columnEnd: column,
             };
             if (!isValidRange(range)) {
               return;
+            }
+            // Landing inside a merged cell selects its anchor
+            const landing = mergedCellContaining(mergedCells, cell.row, column);
+            if (landing) {
+              range.rowStart = landing.row;
+              range.rowEnd = landing.row;
+              range.columnStart = landing.column;
+              range.columnEnd = landing.column;
             }
             cell.referencedRange = {
               range,
@@ -241,6 +284,7 @@ export const useKeyDown = (
               .getWorksheetsProperties()
               .map((s) => s.name);
             const range = cell.referencedRange.range;
+            const mergedCells = model.getMergedCells(range.sheet);
             let { anchorRow, anchorColumn } = cell.referencedRange;
             if (shiftKey) {
               const activeColumn =
@@ -253,6 +297,11 @@ export const useKeyDown = (
               }
               range.columnStart = Math.min(anchorColumn, newActiveColumn);
               range.columnEnd = Math.max(anchorColumn, newActiveColumn);
+              // A reference can never cover part of a merged cell
+              Object.assign(
+                range,
+                growRangeOverMergedCells(mergedCells, range),
+              );
             } else {
               const activeRow =
                 anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
@@ -260,15 +309,28 @@ export const useKeyDown = (
                 anchorColumn === range.columnStart
                   ? range.columnEnd
                   : range.columnStart;
-              const column = activeColumn - 1;
+              // Leaving a merged cell starts before its first column
+              const leaving = mergedCellContaining(
+                mergedCells,
+                activeRow,
+                activeColumn,
+              );
+              let column = leaving ? leaving.column - 1 : activeColumn - 1;
+              let row = activeRow;
               if (column < 1) {
                 return;
               }
+              // Landing inside a merged cell selects its anchor
+              const landing = mergedCellContaining(mergedCells, row, column);
+              if (landing) {
+                row = landing.row;
+                column = landing.column;
+              }
               range.columnStart = column;
               range.columnEnd = column;
-              range.rowStart = activeRow;
-              range.rowEnd = activeRow;
-              anchorRow = activeRow;
+              range.rowStart = row;
+              range.rowEnd = row;
+              anchorRow = row;
               anchorColumn = column;
             }
             cell.referencedRange = {
@@ -287,15 +349,31 @@ export const useKeyDown = (
             const sheetNames = model
               .getWorksheetsProperties()
               .map((s) => s.name);
+            const mergedCells = model.getMergedCells(cell.sheet);
+            // Leaving a merged cell starts before its first column
+            const leaving = mergedCellContaining(
+              mergedCells,
+              cell.row,
+              cell.column,
+            );
+            const column = leaving ? leaving.column - 1 : cell.column - 1;
             const range = {
               sheet: cell.sheet,
               rowStart: cell.row,
               rowEnd: cell.row,
-              columnStart: cell.column - 1,
-              columnEnd: cell.column - 1,
+              columnStart: column,
+              columnEnd: column,
             };
             if (!isValidRange(range)) {
               return;
+            }
+            // Landing inside a merged cell selects its anchor
+            const landing = mergedCellContaining(mergedCells, cell.row, column);
+            if (landing) {
+              range.rowStart = landing.row;
+              range.rowEnd = landing.row;
+              range.columnStart = landing.column;
+              range.columnEnd = landing.column;
             }
             cell.referencedRange = {
               range,
@@ -337,6 +415,7 @@ export const useKeyDown = (
               .getWorksheetsProperties()
               .map((s) => s.name);
             const range = cell.referencedRange.range;
+            const mergedCells = model.getMergedCells(range.sheet);
             let { anchorRow, anchorColumn } = cell.referencedRange;
             if (shiftKey) {
               const activeRow =
@@ -347,6 +426,11 @@ export const useKeyDown = (
               }
               range.rowStart = Math.min(anchorRow, newActiveRow);
               range.rowEnd = Math.max(anchorRow, newActiveRow);
+              // A reference can never cover part of a merged cell
+              Object.assign(
+                range,
+                growRangeOverMergedCells(mergedCells, range),
+              );
             } else {
               const activeRow =
                 anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
@@ -354,16 +438,29 @@ export const useKeyDown = (
                 anchorColumn === range.columnStart
                   ? range.columnEnd
                   : range.columnStart;
-              const row = activeRow - 1;
+              // Leaving a merged cell starts above its first row
+              const leaving = mergedCellContaining(
+                mergedCells,
+                activeRow,
+                activeColumn,
+              );
+              let row = leaving ? leaving.row - 1 : activeRow - 1;
+              let column = activeColumn;
               if (row < 1) {
                 return;
               }
-              range.columnStart = activeColumn;
-              range.columnEnd = activeColumn;
+              // Landing inside a merged cell selects its anchor
+              const landing = mergedCellContaining(mergedCells, row, column);
+              if (landing) {
+                row = landing.row;
+                column = landing.column;
+              }
+              range.columnStart = column;
+              range.columnEnd = column;
               range.rowStart = row;
               range.rowEnd = row;
               anchorRow = row;
-              anchorColumn = activeColumn;
+              anchorColumn = column;
             }
             cell.referencedRange = {
               range,
@@ -381,15 +478,31 @@ export const useKeyDown = (
             const sheetNames = model
               .getWorksheetsProperties()
               .map((s) => s.name);
+            const mergedCells = model.getMergedCells(cell.sheet);
+            // Leaving a merged cell starts above its first row
+            const leaving = mergedCellContaining(
+              mergedCells,
+              cell.row,
+              cell.column,
+            );
+            const row = leaving ? leaving.row - 1 : cell.row - 1;
             const range = {
               sheet: cell.sheet,
-              rowStart: cell.row - 1,
-              rowEnd: cell.row - 1,
+              rowStart: row,
+              rowEnd: row,
               columnStart: cell.column,
               columnEnd: cell.column,
             };
             if (!isValidRange(range)) {
               return;
+            }
+            // Landing inside a merged cell selects its anchor
+            const landing = mergedCellContaining(mergedCells, row, cell.column);
+            if (landing) {
+              range.rowStart = landing.row;
+              range.rowEnd = landing.row;
+              range.columnStart = landing.column;
+              range.columnEnd = landing.column;
             }
             cell.referencedRange = {
               range,
@@ -431,6 +544,7 @@ export const useKeyDown = (
               .getWorksheetsProperties()
               .map((s) => s.name);
             const range = cell.referencedRange.range;
+            const mergedCells = model.getMergedCells(range.sheet);
             let { anchorRow, anchorColumn } = cell.referencedRange;
             if (shiftKey) {
               const activeRow =
@@ -441,6 +555,11 @@ export const useKeyDown = (
               }
               range.rowStart = Math.min(anchorRow, newActiveRow);
               range.rowEnd = Math.max(anchorRow, newActiveRow);
+              // A reference can never cover part of a merged cell
+              Object.assign(
+                range,
+                growRangeOverMergedCells(mergedCells, range),
+              );
             } else {
               const activeRow =
                 anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
@@ -448,16 +567,29 @@ export const useKeyDown = (
                 anchorColumn === range.columnStart
                   ? range.columnEnd
                   : range.columnStart;
-              const row = activeRow + 1;
+              // Leaving a merged cell starts below its last row
+              const leaving = mergedCellContaining(
+                mergedCells,
+                activeRow,
+                activeColumn,
+              );
+              let row = leaving ? leaving.row + leaving.height : activeRow + 1;
+              let column = activeColumn;
               if (row > LAST_ROW) {
                 return;
               }
-              range.columnStart = activeColumn;
-              range.columnEnd = activeColumn;
+              // Landing inside a merged cell selects its anchor
+              const landing = mergedCellContaining(mergedCells, row, column);
+              if (landing) {
+                row = landing.row;
+                column = landing.column;
+              }
+              range.columnStart = column;
+              range.columnEnd = column;
               range.rowStart = row;
               range.rowEnd = row;
               anchorRow = row;
-              anchorColumn = activeColumn;
+              anchorColumn = column;
             }
             cell.referencedRange = {
               range,
@@ -475,15 +607,31 @@ export const useKeyDown = (
             const sheetNames = model
               .getWorksheetsProperties()
               .map((s) => s.name);
+            const mergedCells = model.getMergedCells(cell.sheet);
+            // Leaving a merged cell starts below its last row
+            const leaving = mergedCellContaining(
+              mergedCells,
+              cell.row,
+              cell.column,
+            );
+            const row = leaving ? leaving.row + leaving.height : cell.row + 1;
             const range = {
               sheet: cell.sheet,
-              rowStart: cell.row + 1,
-              rowEnd: cell.row + 1,
+              rowStart: row,
+              rowEnd: row,
               columnStart: cell.column,
               columnEnd: cell.column,
             };
             if (!isValidRange(range)) {
               return;
+            }
+            // Landing inside a merged cell selects its anchor
+            const landing = mergedCellContaining(mergedCells, row, cell.column);
+            if (landing) {
+              range.rowStart = landing.row;
+              range.rowEnd = landing.row;
+              range.columnStart = landing.column;
+              range.columnEnd = landing.column;
             }
             cell.referencedRange = {
               range,
