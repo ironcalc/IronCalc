@@ -1,4 +1,4 @@
-import type { CellLink, CellStyle, Model } from "@ironcalc/wasm";
+import type { CellLink, CellStyle, MergedCell, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
@@ -114,6 +114,16 @@ export default class WorksheetCanvas {
   cells: TextProperties[];
   spills: Map<string, number>;
 
+  // Merged cells of the selected sheet, and a lookup from every cell of a
+  // merged range ("row-column") to its merge. Rebuilt on every renderSheet.
+  private mergedCells: MergedCell[];
+  private mergeMap: Map<string, MergedCell>;
+  // Merged ranges are painted once per render even though every visible cell
+  // of the range is a paint site (so they render when the anchor is scrolled
+  // out of view). Keyed by "anchorRow-anchorColumn".
+  private renderedMergedStyles: Set<string>;
+  private renderedMergedTexts: Set<string>;
+
   private cellLinks: CellLinks;
 
   theme: Theme;
@@ -152,6 +162,11 @@ export default class WorksheetCanvas {
     // a cell marked as "spill" means its left border should be skipped
     this.spills = new Map<string, number>();
     this.cells = [];
+
+    this.mergedCells = [];
+    this.mergeMap = new Map();
+    this.renderedMergedStyles = new Set();
+    this.renderedMergedTexts = new Set();
 
     this.cellLinks = new CellLinks(this, {
       onLinkHover: options.onLinkHover,
@@ -459,6 +474,43 @@ export default class WorksheetCanvas {
     }
   }
 
+  // Rebuilds the merged-cell lookup for the selected sheet
+  private updateMergedCells(): void {
+    const selectedSheet = this.model.getSelectedSheet();
+    this.mergedCells = this.model.getMergedCells(selectedSheet);
+    this.mergeMap = new Map();
+    for (const merge of this.mergedCells) {
+      for (let row = merge.row; row < merge.row + merge.height; row += 1) {
+        for (
+          let column = merge.column;
+          column < merge.column + merge.width;
+          column += 1
+        ) {
+          this.mergeMap.set(`${row}-${column}`, merge);
+        }
+      }
+    }
+  }
+
+  // Returns the canvas rectangle (x, y, width, height) of a merged range
+  private getMergedRect(merge: MergedCell): [number, number, number, number] {
+    const selectedSheet = this.model.getSelectedSheet();
+    const [x, y] = this.getCoordinatesByCell(merge.row, merge.column);
+    let width = 0;
+    for (
+      let column = merge.column;
+      column < merge.column + merge.width;
+      column += 1
+    ) {
+      width += this.getColumnWidth(selectedSheet, column);
+    }
+    let height = 0;
+    for (let row = merge.row; row < merge.row + merge.height; row += 1) {
+      height += this.getRowHeight(selectedSheet, row);
+    }
+    return [x, y, width, height];
+  }
+
   // Goes through all the visible cells and computes their text properties
   private computeCellsText(): void {
     const { topLeftCell, bottomRightCell } = this.getVisibleCells();
@@ -572,7 +624,10 @@ export default class WorksheetCanvas {
     }
   }
 
-  // Compute the text properties for a cell
+  // Compute the text properties for a cell. Every cell of a merged range is a
+  // paint site for the whole range (drawn once, from the anchor, over the full
+  // merged rectangle), so the range still renders when its anchor is scrolled
+  // out of view.
   private computeCellText(
     row: number,
     column: number,
@@ -580,6 +635,38 @@ export default class WorksheetCanvas {
     y: number,
     width: number,
     height: number,
+  ) {
+    const merge = this.mergeMap.get(`${row}-${column}`);
+    if (merge) {
+      const key = `${merge.row}-${merge.column}`;
+      if (this.renderedMergedTexts.has(key)) {
+        return;
+      }
+      this.renderedMergedTexts.add(key);
+      const [mergeX, mergeY, mergeWidth, mergeHeight] =
+        this.getMergedRect(merge);
+      this.computeCellTextImpl(
+        merge.row,
+        merge.column,
+        mergeX,
+        mergeY,
+        mergeWidth,
+        mergeHeight,
+        true,
+      );
+      return;
+    }
+    this.computeCellTextImpl(row, column, x, y, width, height, false);
+  }
+
+  private computeCellTextImpl(
+    row: number,
+    column: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    isMergedCell: boolean,
   ) {
     if (width <= 0 || height <= 0) {
       return;
@@ -696,9 +783,12 @@ export default class WorksheetCanvas {
       maxWidth = Math.max(maxWidth, textX + textWidth / 2 - x);
     });
     // we need to see if the text spills to the right of the cell
+    // (the text of a merged cell never overflows the merged rectangle, and
+    // text never overflows into a merged range)
     let leftColumnX = x;
     let rightColumnX = x + width;
     if (
+      !isMergedCell &&
       maxX > rightColumnX &&
       column < LAST_COLUMN &&
       (this.model.getFormattedCellValue(selectedSheet, row, column + 1) ===
@@ -713,6 +803,7 @@ export default class WorksheetCanvas {
       const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
       while (
         rightColumnX < maxX &&
+        !this.mergeMap.has(`${row}-${spillColumn}`) &&
         (this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
           "" ||
           this.getColumnWidth(selectedSheet, spillColumn) === 0) &&
@@ -729,6 +820,7 @@ export default class WorksheetCanvas {
     // Same thing in the other direction, to the left of the cell
     const frozenColumnsCount = this.model.getFrozenColumnsCount(selectedSheet);
     if (
+      !isMergedCell &&
       minX < leftColumnX &&
       column > 1 &&
       (this.model.getFormattedCellValue(selectedSheet, row, column - 1) ===
@@ -742,6 +834,7 @@ export default class WorksheetCanvas {
       // 3. There is the end of frozen columns
       while (
         leftColumnX > minX &&
+        !this.mergeMap.has(`${row}-${spillColumn}`) &&
         (this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
           "" ||
           this.getColumnWidth(selectedSheet, spillColumn) === 0) &&
@@ -774,7 +867,41 @@ export default class WorksheetCanvas {
   }
 
   /// Renders the cell style: background color, CF overlays, and borders (but not text).
+  /// A merged range is painted once, from its anchor, over the whole merged
+  /// rectangle: interior gridlines and borders are thereby suppressed, while
+  /// the perimeter still renders (the right and bottom edges are drawn by the
+  /// neighbouring cells, which consult the styles of the covered edge cells).
   private renderCellStyle(
+    row: number,
+    column: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): void {
+    const merge = this.mergeMap.get(`${row}-${column}`);
+    if (merge) {
+      const key = `${merge.row}-${merge.column}`;
+      if (this.renderedMergedStyles.has(key)) {
+        return;
+      }
+      this.renderedMergedStyles.add(key);
+      const [mergeX, mergeY, mergeWidth, mergeHeight] =
+        this.getMergedRect(merge);
+      this.renderCellStyleImpl(
+        merge.row,
+        merge.column,
+        mergeX,
+        mergeY,
+        mergeWidth,
+        mergeHeight,
+      );
+      return;
+    }
+    this.renderCellStyleImpl(row, column, x, y, width, height);
+  }
+
+  private renderCellStyleImpl(
     row: number,
     column: number,
     x: number,
@@ -1701,9 +1828,18 @@ export default class WorksheetCanvas {
     const [x, y] = this.getCoordinatesByCell(selectedRow, selectedColumn);
 
     const padding = -1;
-    const width =
-      this.getColumnWidth(selectedSheet, selectedColumn) + 2 * padding;
-    const height = this.getRowHeight(selectedSheet, selectedRow) + 2 * padding;
+    // A selected merged cell outlines the whole merged rectangle
+    const selectedMerge = this.mergeMap.get(`${selectedRow}-${selectedColumn}`);
+    let width: number;
+    let height: number;
+    if (selectedMerge) {
+      const [, , mergeWidth, mergeHeight] = this.getMergedRect(selectedMerge);
+      width = mergeWidth + 2 * padding;
+      height = mergeHeight + 2 * padding;
+    } else {
+      width = this.getColumnWidth(selectedSheet, selectedColumn) + 2 * padding;
+      height = this.getRowHeight(selectedSheet, selectedRow) + 2 * padding;
+    }
 
     if (
       (selectedRow < topLeftCell.row && selectedRow > frozenRows) ||
@@ -1776,12 +1912,23 @@ export default class WorksheetCanvas {
 
     let handleX: number;
     let handleY: number;
+    // A selection of exactly one merged cell behaves like a single cell:
+    // the cell outline (sized to the merged rectangle above) is enough.
+    const isSingleMergedCell =
+      selectedMerge !== undefined &&
+      rowStart === selectedMerge.row &&
+      columnStart === selectedMerge.column &&
+      rowEnd === selectedMerge.row + selectedMerge.height - 1 &&
+      columnEnd === selectedMerge.column + selectedMerge.width - 1;
     // Position the selected area outline
-    if (columnStart === columnEnd && rowStart === rowEnd) {
+    if (
+      (columnStart === columnEnd && rowStart === rowEnd) ||
+      isSingleMergedCell
+    ) {
       areaOutline.style.visibility = "hidden";
       [handleX, handleY] = this.getCoordinatesByCell(rowStart, columnStart);
-      handleX += this.getColumnWidth(selectedSheet, columnStart);
-      handleY += this.getRowHeight(selectedSheet, rowStart);
+      handleX += width - 2 * padding;
+      handleY += height - 2 * padding;
     } else {
       const [areaX, areaY] = this.getCoordinatesByCell(rowStart, columnStart);
       const [areaWidth, areaHeight] = this.getAreaDimensions(
@@ -1958,6 +2105,10 @@ export default class WorksheetCanvas {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     this.removeHandles();
+
+    this.updateMergedCells();
+    this.renderedMergedStyles = new Set();
+    this.renderedMergedTexts = new Set();
 
     const { topLeftCell, bottomRightCell } = this.getVisibleCells();
     this.computeCellsText();

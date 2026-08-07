@@ -84,7 +84,7 @@ impl<'a> Model<'a> {
                 }
             }
         }
-        // Clear the content of the covered cells. Going through
+        // Clear the content and links of the covered cells. Going through
         // prepare_cell_for_user_input keeps dynamic array formulas consistent:
         // a covered spill anchor loses its spill and an outside anchor spilling
         // into the range is reset, so it re-evaluates (to #SPILL!) afterwards.
@@ -98,6 +98,7 @@ impl<'a> Model<'a> {
                 if worksheet.cell(r, c).is_some() {
                     worksheet.cell_clear_contents(r, c)?;
                 }
+                worksheet.links.remove(&(r, c));
             }
         }
         self.workbook

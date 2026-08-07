@@ -1,10 +1,47 @@
 import {
   columnNameFromNumber,
+  type Model,
   quoteName,
   type SelectedView,
 } from "@ironcalc/wasm";
 import type { Area, Cell } from "./types";
 import { LAST_COLUMN, LAST_ROW } from "./WorksheetCanvas/constants";
+
+/**
+ * Returns the size of the cell editor for a cell: the size of the cell itself,
+ * or of the whole merged range if the cell is merged.
+ */
+export function getEditorSize(
+  model: Model,
+  sheet: number,
+  row: number,
+  column: number,
+): { width: number; height: number } {
+  const merge = model
+    .getMergedCells(sheet)
+    .find(
+      (m) =>
+        row >= m.row &&
+        row < m.row + m.height &&
+        column >= m.column &&
+        column < m.column + m.width,
+    );
+  if (!merge) {
+    return {
+      width: model.getColumnWidth(sheet, column),
+      height: model.getRowHeight(sheet, row),
+    };
+  }
+  let width = 0;
+  for (let c = merge.column; c < merge.column + merge.width; c += 1) {
+    width += model.getColumnWidth(sheet, c);
+  }
+  let height = 0;
+  for (let r = merge.row; r < merge.row + merge.height; r += 1) {
+    height += model.getRowHeight(sheet, r);
+  }
+  return { width, height };
+}
 
 /**
  *  Returns true if the keypress should start editing

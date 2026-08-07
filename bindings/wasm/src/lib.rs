@@ -575,6 +575,32 @@ impl Model {
             .map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "mergeCells")]
+    pub fn merge_cells(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Area")] range: JsValue,
+    ) -> Result<(), JsError> {
+        let range: Area =
+            serde_wasm_bindgen::from_value(range).map_err(|e| to_js_error(e.to_string()))?;
+        self.model.merge_cells(&range).map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "unmergeCells")]
+    pub fn unmerge_cells(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Area")] range: JsValue,
+    ) -> Result<(), JsError> {
+        let range: Area =
+            serde_wasm_bindgen::from_value(range).map_err(|e| to_js_error(e.to_string()))?;
+        self.model.unmerge_cells(&range).map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "getMergedCells", unchecked_return_type = "MergedCell[]")]
+    pub fn get_merged_cells(&self, sheet: u32) -> Result<JsValue, JsError> {
+        let merged_cells = self.model.get_merged_cells(sheet).map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&merged_cells).map_err(|e| to_js_error(e.to_string()))
+    }
+
     #[wasm_bindgen(js_name = "getCellStyle", unchecked_return_type = "ExtendedCellStyle")]
     pub fn get_cell_style(
         &mut self,

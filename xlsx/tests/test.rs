@@ -414,6 +414,39 @@ fn test_exporting_merged_cells() {
     fs::remove_file(temp_file_name).unwrap();
 }
 
+// bad_merge_cells.xlsx has a pretty-printed (whitespace-indented) mergeCells
+// section with the entries B2:C3 (valid), C3:D4 (overlaps the previous one),
+// A10:A10 (single cell), FOO (garbage) and E5:F6 (valid). The anchor B2 holds
+// the number 42 and the covered cell C2 the number 43. Import must keep only
+// the two valid ranges, keep the anchor content and clear the content left in
+// covered cells.
+#[test]
+fn test_import_sanitizes_merged_cells() {
+    let model = load_from_xlsx("tests/bad_merge_cells.xlsx", "en", "UTC", "en").unwrap();
+    let merged_cells = &model.workbook.worksheets.first().unwrap().merged_cells;
+    assert_eq!(
+        merged_cells,
+        &vec![
+            MergedCell {
+                row: 2,
+                column: 2,
+                width: 2,
+                height: 2
+            },
+            MergedCell {
+                row: 5,
+                column: 5,
+                width: 2,
+                height: 2
+            },
+        ]
+    );
+    // the anchor keeps its content
+    assert_eq!(model.is_empty_cell(0, 2, 2), Ok(false));
+    // the covered cell is cleared
+    assert_eq!(model.is_empty_cell(0, 2, 3), Ok(true));
+}
+
 #[test]
 fn test_user_model() {
     let temp_file_name = "temp_file_test_user_model.xlsx";

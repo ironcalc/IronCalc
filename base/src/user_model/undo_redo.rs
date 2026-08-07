@@ -634,6 +634,15 @@ impl<'a> UserModel<'a> {
                         .set_cell_link(*sheet, *row, *column, link.clone())?,
                     None => self.model.delete_cell_link(*sheet, *row, *column)?,
                 },
+                Diff::SetMergedCells {
+                    sheet,
+                    old_value,
+                    new_value: _,
+                } => {
+                    // Merged cells block spilling, so a change can affect results
+                    needs_evaluation = true;
+                    self.model.workbook.worksheet_mut(*sheet)?.merged_cells = old_value.clone();
+                }
             }
         }
         if needs_evaluation {
@@ -1076,6 +1085,15 @@ impl<'a> UserModel<'a> {
                         .set_cell_link(*sheet, *row, *column, link.clone())?,
                     None => self.model.delete_cell_link(*sheet, *row, *column)?,
                 },
+                Diff::SetMergedCells {
+                    sheet,
+                    old_value: _,
+                    new_value,
+                } => {
+                    // Merged cells block spilling, so a change can affect results
+                    needs_evaluation = true;
+                    self.model.workbook.worksheet_mut(*sheet)?.merged_cells = new_value.clone();
+                }
             }
         }
 

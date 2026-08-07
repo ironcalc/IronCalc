@@ -10,6 +10,7 @@ import {
 import { useTranslation } from "react-i18next";
 import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
+import { getEditorSize } from "../util";
 import type { LinkHoverCell } from "../WorksheetCanvas/cellLinks";
 import {
   headerColumnWidth,
@@ -509,8 +510,12 @@ const Worksheet = forwardRef(
             }
             const { sheet, row, column } = model.getSelectedView();
             const text = model.getCellContent(sheet, row, column);
-            const editorWidth = model.getColumnWidth(sheet, column);
-            const editorHeight = model.getRowHeight(sheet, row);
+            const { width: editorWidth, height: editorHeight } = getEditorSize(
+              model,
+              sheet,
+              row,
+              column,
+            );
             workbookState.setEditingCell({
               sheet,
               row,

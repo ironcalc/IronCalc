@@ -121,6 +121,20 @@ impl<'a> UserModel<'a> {
             return Err(format!("Invalid row: '{to_row}'"));
         }
 
+        // Auto-filling over merged cells is not supported
+        let first_row = row1.min(to_row);
+        let fill_height = last_row.max(to_row) - first_row + 1;
+        if self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .merged_cells
+            .iter()
+            .any(|m| m.intersects(first_row, column1, width, fill_height))
+        {
+            return Err("Cannot auto-fill over merged cells".to_string());
+        }
+
         // anchor_row is the first row that repeats in each case.
         let anchor_row;
         let sign;
@@ -261,6 +275,20 @@ impl<'a> UserModel<'a> {
 
         if !is_valid_column_number(to_column) {
             return Err(format!("Invalid column: '{to_column}'"));
+        }
+
+        // Auto-filling over merged cells is not supported
+        let first_column = column1.min(to_column);
+        let fill_width = last_column.max(to_column) - first_column + 1;
+        if self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .merged_cells
+            .iter()
+            .any(|m| m.intersects(row1, first_column, fill_width, height))
+        {
+            return Err("Cannot auto-fill over merged cells".to_string());
         }
 
         // anchor_column is the first column that repeats in each case.

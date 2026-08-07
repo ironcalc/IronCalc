@@ -309,3 +309,166 @@ fn duplicate_sheet_copies_merges() {
     assert_eq!(model.get_merged_cells(0).unwrap().len(), 1);
     assert!(model.get_merged_cells(new_sheet).unwrap().is_empty());
 }
+
+// ── Structural operations ────────────────────────────────────────────────────
+
+fn merged(row: i32, column: i32, width: i32, height: i32) -> MergedCell {
+    MergedCell {
+        row,
+        column,
+        width,
+        height,
+    }
+}
+
+#[test]
+fn insert_rows_displaces_merges() {
+    // merge B2:C4 in every case
+    let cases = [
+        // (insert at row, expected merge after)
+        (1, merged(3, 2, 2, 3)), // above: shifts down
+        (2, merged(3, 2, 2, 3)), // at the anchor row: shifts down
+        (3, merged(2, 2, 2, 4)), // strictly inside: grows
+        (4, merged(2, 2, 2, 4)), // at the last row: grows
+        (5, merged(2, 2, 2, 3)), // below: untouched
+    ];
+    for (insert_at, expected) in cases {
+        let mut model = new_empty_model();
+        model._set("B2", "5");
+        model.merge_cells(&area(0, 2, 2, 2, 3)).unwrap();
+        model.insert_rows(0, insert_at, 1).unwrap();
+        assert_eq!(
+            model.get_merged_cells(0).unwrap(),
+            &[expected],
+            "inserting a row at {insert_at}"
+        );
+    }
+}
+
+#[test]
+fn delete_rows_displaces_merges() {
+    // merge B2:C4 in every case
+    let cases = [
+        // (first deleted row, count, expected merges after)
+        (1, 1, vec![merged(1, 2, 2, 3)]), // above: shifts up
+        (1, 2, vec![merged(1, 2, 2, 2)]), // overlaps the top: shrinks + shifts
+        (3, 1, vec![merged(2, 2, 2, 2)]), // strictly inside: shrinks
+        (4, 2, vec![merged(2, 2, 2, 2)]), // overlaps the bottom: shrinks
+        (2, 3, vec![]),                   // exactly the merge: removed
+        (1, 5, vec![]),                   // superset: removed
+        (5, 1, vec![merged(2, 2, 2, 3)]), // below: untouched
+    ];
+    for (delete_at, count, expected) in cases {
+        let mut model = new_empty_model();
+        model._set("B2", "5");
+        model.merge_cells(&area(0, 2, 2, 2, 3)).unwrap();
+        model.delete_rows(0, delete_at, count).unwrap();
+        assert_eq!(
+            model.get_merged_cells(0).unwrap(),
+            &expected,
+            "deleting {count} row(s) at {delete_at}"
+        );
+    }
+}
+
+#[test]
+fn insert_and_delete_columns_displace_merges() {
+    // merge B2:D3 (columns 2-4)
+    let mut model = new_empty_model();
+    model._set("B2", "5");
+    model.merge_cells(&area(0, 2, 2, 3, 2)).unwrap();
+
+    // insert a column inside: grows
+    model.insert_columns(0, 3, 1).unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 2, 4, 2)]);
+    // insert a column before: shifts right
+    model.insert_columns(0, 1, 1).unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 3, 4, 2)]);
+    // delete a column overlapping the left edge: shrinks + shifts
+    model.delete_columns(0, 2, 2).unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 2, 3, 2)]);
+    // delete all its columns: removed
+    model.delete_columns(0, 2, 3).unwrap();
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+}
+
+#[test]
+fn merge_shrunk_to_single_cell_is_removed() {
+    let mut model = new_empty_model();
+    // vertical merge B2:B3
+    model.merge_cells(&area(0, 2, 2, 1, 2)).unwrap();
+    model.delete_rows(0, 3, 1).unwrap();
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+
+    // horizontal merge B2:C2
+    model.merge_cells(&area(0, 2, 2, 2, 1)).unwrap();
+    model.delete_columns(0, 3, 1).unwrap();
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+}
+
+#[test]
+fn insert_rows_clamps_merges_at_the_bottom() {
+    let mut model = new_empty_model();
+    let last_row = crate::constants::LAST_ROW;
+    // vertical merge in the last two rows of column B
+    model.merge_cells(&area(0, last_row - 1, 2, 1, 2)).unwrap();
+    // the merge is pushed against the edge and collapses to a single cell
+    model.insert_rows(0, 1, 1).unwrap();
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+}
+
+#[test]
+fn move_columns_with_merges() {
+    let mut model = new_empty_model();
+    model._set("B2", "5");
+    // merge B2:C3 (columns 2-3)
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+
+    // moving only column C would split the merge
+    assert_eq!(
+        model.move_columns_action(0, 3, 1, 2),
+        Err("Cannot move columns because that would split a merged cell".to_string())
+    );
+
+    // moving both columns two to the right carries the merge along
+    model.move_columns_action(0, 2, 2, 2).unwrap();
+    model.evaluate();
+    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 4, 2, 2)]);
+    assert_eq!(model._get_text("D2"), "5");
+    assert_eq!(model._get_text("B2"), "");
+}
+
+#[test]
+fn move_columns_displaced_zone_shifts_merge() {
+    let mut model = new_empty_model();
+    model._set("D2", "7");
+    // merge D2:E3 (columns 4-5)
+    model.merge_cells(&area(0, 2, 4, 2, 2)).unwrap();
+
+    // move column B (2) to column F (delta 4): the displaced zone is C..F,
+    // the merge is fully inside it and shifts one to the left
+    model.move_columns_action(0, 2, 1, 4).unwrap();
+    model.evaluate();
+    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 3, 2, 2)]);
+    assert_eq!(model._get_text("C2"), "7");
+}
+
+#[test]
+fn move_rows_with_merges() {
+    let mut model = new_empty_model();
+    model._set("B2", "5");
+    // merge B2:C3 (rows 2-3)
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+
+    // moving only row 3 would split the merge
+    assert_eq!(
+        model.move_rows_action(0, 3, 1, 2),
+        Err("Cannot move rows because that would split a merged cell".to_string())
+    );
+
+    // moving both rows down carries the merge along
+    model.move_rows_action(0, 2, 2, 2).unwrap();
+    model.evaluate();
+    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(4, 2, 2, 2)]);
+    assert_eq!(model._get_text("B4"), "5");
+}

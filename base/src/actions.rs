@@ -10,7 +10,7 @@ use crate::expressions::utils;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
-use crate::types::{ArrayKind, Cell, Link, Worksheet};
+use crate::types::{ArrayKind, Cell, Link, MergedCell, Worksheet};
 
 /// Applies `map` to the (row, column) key of every link in the worksheet, so
 /// that links follow their cells when rows or columns are inserted, deleted or
@@ -24,6 +24,76 @@ where
         .into_iter()
         .filter_map(|((row, column), link)| map(row, column).map(|key| (key, link)))
         .collect();
+}
+
+/// Applies `map` to the corners (first row, first column, last row, last column)
+/// of every merged cell of the worksheet, so that merged ranges follow their
+/// cells when rows or columns are inserted, deleted or moved. `None` removes
+/// the merged cell; ranges reduced to a single cell are removed as well.
+fn displace_merged_cells<F>(worksheet: &mut Worksheet, map: F)
+where
+    F: Fn(i32, i32, i32, i32) -> Option<(i32, i32, i32, i32)>,
+{
+    let merged_cells = std::mem::take(&mut worksheet.merged_cells);
+    worksheet.merged_cells = merged_cells
+        .into_iter()
+        .filter_map(|m| {
+            map(m.row, m.column, m.last_row(), m.last_column()).map(
+                |(first_row, first_column, last_row, last_column)| MergedCell {
+                    row: first_row,
+                    column: first_column,
+                    width: last_column - first_column + 1,
+                    height: last_row - first_row + 1,
+                },
+            )
+        })
+        .filter(|m| m.width >= 1 && m.height >= 1 && m.width * m.height > 1)
+        .collect();
+}
+
+// Interval arithmetic for a move action: the moved group [group_start, group_end]
+// jumps by `delta` while the displaced zone shifts in the opposite direction.
+// Returns whether the interval [start, end] survives the move without being
+// split: it must be fully inside the moved group, fully inside the displaced
+// zone or fully outside both.
+fn interval_survives_move(
+    start: i32,
+    end: i32,
+    group_start: i32,
+    group_end: i32,
+    delta: i32,
+) -> bool {
+    let (displace_start, displace_end) = if delta > 0 {
+        (group_end + 1, group_end + delta)
+    } else {
+        (group_start + delta, group_start - 1)
+    };
+    let inside = |a: i32, b: i32| start >= a && end <= b;
+    let outside = |a: i32, b: i32| end < a || start > b;
+    (inside(group_start, group_end) || outside(group_start, group_end))
+        && (inside(displace_start, displace_end) || outside(displace_start, displace_end))
+}
+
+// Returns the new position of the interval [start, end] after moving the group
+// [group_start, group_end] by `delta` (`count` is the size of the group).
+// Assumes `interval_survives_move` holds.
+fn displace_interval_for_move(
+    start: i32,
+    end: i32,
+    group_start: i32,
+    group_end: i32,
+    delta: i32,
+    count: i32,
+) -> (i32, i32) {
+    if start >= group_start && end <= group_end {
+        (start + delta, end + delta)
+    } else if delta > 0 && start > group_end && end <= group_end + delta {
+        (start - count, end - count)
+    } else if delta < 0 && start >= group_start + delta && end < group_start {
+        (start + count, end + count)
+    } else {
+        (start, end)
+    }
 }
 
 /// Returns the new row after displacement, or `None` if the row was deleted.
@@ -541,6 +611,9 @@ impl<'a> Model<'a> {
             );
         }
         self.reset_dynamic_array_spills(sheet)?;
+        // Merged ranges are remapped at the end; take them out so the cell moves
+        // (which go through `set_user_input`) do not trip the covered-cell guard.
+        let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
         let worksheet = self.workbook.worksheet(sheet)?;
         let all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
         for row in all_rows {
@@ -563,6 +636,28 @@ impl<'a> Model<'a> {
                 Some((r, c))
             }
         });
+
+        // Merged ranges shift right or grow when columns are inserted inside them
+        self.workbook.worksheet_mut(sheet)?.merged_cells = merged_cells;
+        displace_merged_cells(
+            self.workbook.worksheet_mut(sheet)?,
+            |first_row, first_column, last_row, last_column| {
+                let first = if first_column >= column {
+                    first_column + column_count
+                } else {
+                    first_column
+                };
+                let last = if last_column >= column {
+                    last_column + column_count
+                } else {
+                    last_column
+                };
+                if first > LAST_COLUMN {
+                    return None;
+                }
+                Some((first_row, first, last_row, last.min(LAST_COLUMN)))
+            },
+        );
 
         // Update all formulas in the workbook
         let disp = DisplaceData::Column {
@@ -632,6 +727,9 @@ impl<'a> Model<'a> {
         }
 
         self.reset_dynamic_array_spills(sheet)?;
+        // Merged ranges are remapped at the end; take them out so the cell moves
+        // (which go through `set_user_input`) do not trip the covered-cell guard.
+        let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
         // first column being deleted
         let column_start = column;
         // last column being deleted
@@ -665,6 +763,32 @@ impl<'a> Model<'a> {
                 Some((r, c - column_count))
             }
         });
+
+        // Merged ranges shrink or shift left; fully deleted ones are removed
+        self.workbook.worksheet_mut(sheet)?.merged_cells = merged_cells;
+        displace_merged_cells(
+            self.workbook.worksheet_mut(sheet)?,
+            |first_row, first_column, last_row, last_column| {
+                let first = if first_column < column_start {
+                    first_column
+                } else if first_column <= column_end {
+                    column_start
+                } else {
+                    first_column - column_count
+                };
+                let last = if last_column < column_start {
+                    last_column
+                } else if last_column <= column_end {
+                    column_start - 1
+                } else {
+                    last_column - column_count
+                };
+                if last < first {
+                    return None;
+                }
+                Some((first_row, first, last_row, last))
+            },
+        );
 
         // Update all formulas in the workbook
         let disp = DisplaceData::Column {
@@ -876,6 +1000,9 @@ impl<'a> Model<'a> {
         }
 
         self.reset_dynamic_array_spills(sheet)?;
+        // Merged ranges are remapped at the end; take them out so the cell moves
+        // (which go through `set_user_input`) do not trip the covered-cell guard.
+        let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
         let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
@@ -918,6 +1045,28 @@ impl<'a> Model<'a> {
             }
         });
 
+        // Merged ranges shift down or grow when rows are inserted inside them
+        self.workbook.worksheet_mut(sheet)?.merged_cells = merged_cells;
+        displace_merged_cells(
+            self.workbook.worksheet_mut(sheet)?,
+            |first_row, first_column, last_row, last_column| {
+                let first = if first_row >= row {
+                    first_row + row_count
+                } else {
+                    first_row
+                };
+                let last = if last_row >= row {
+                    last_row + row_count
+                } else {
+                    last_row
+                };
+                if first > LAST_ROW {
+                    return None;
+                }
+                Some((first, first_column, last.min(LAST_ROW), last_column))
+            },
+        );
+
         // Update all formulas in the workbook
         let disp = DisplaceData::Row {
             sheet,
@@ -952,6 +1101,9 @@ impl<'a> Model<'a> {
         }
 
         self.reset_dynamic_array_spills(sheet)?;
+        // Merged ranges are remapped at the end; take them out so the cell moves
+        // (which go through `set_user_input`) do not trip the covered-cell guard.
+        let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
         let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
@@ -999,6 +1151,32 @@ impl<'a> Model<'a> {
                 Some((r - row_count, c))
             }
         });
+
+        // Merged ranges shrink or shift up; fully deleted ones are removed
+        self.workbook.worksheet_mut(sheet)?.merged_cells = merged_cells;
+        displace_merged_cells(
+            self.workbook.worksheet_mut(sheet)?,
+            |first_row, first_column, last_row, last_column| {
+                let first = if first_row < row {
+                    first_row
+                } else if first_row < row + row_count {
+                    row
+                } else {
+                    first_row - row_count
+                };
+                let last = if last_row < row {
+                    last_row
+                } else if last_row < row + row_count {
+                    row - 1
+                } else {
+                    last_row - row_count
+                };
+                if last < first {
+                    return None;
+                }
+                Some((first, first_column, last, last_column))
+            },
+        );
 
         let disp = DisplaceData::Row {
             sheet,
@@ -1505,7 +1683,22 @@ impl<'a> Model<'a> {
                 "Cannot move columns because that would split an array formula".to_string(),
             );
         }
+        let group_end = column + column_count - 1;
+        if self
+            .workbook
+            .worksheet(sheet)?
+            .merged_cells
+            .iter()
+            .any(|m| !interval_survives_move(m.column, m.last_column(), column, group_end, delta))
+        {
+            return Err("Cannot move columns because that would split a merged cell".to_string());
+        }
         self.reset_dynamic_array_spills(sheet)?;
+
+        // Merged ranges are remapped wholesale at the end; take them out so the
+        // per-column rebuild (which goes through `set_user_input`) does not trip
+        // over the covered-cell guard.
+        let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
 
         // Move columns in the correct order
         if delta > 0 {
@@ -1517,6 +1710,23 @@ impl<'a> Model<'a> {
                 self.move_column_unchecked(sheet, col, delta)?;
             }
         }
+
+        self.workbook.worksheet_mut(sheet)?.merged_cells = merged_cells
+            .into_iter()
+            .map(|mut m| {
+                let (first, last) = displace_interval_for_move(
+                    m.column,
+                    m.last_column(),
+                    column,
+                    group_end,
+                    delta,
+                    column_count,
+                );
+                m.column = first;
+                m.width = last - first + 1;
+                m
+            })
+            .collect();
 
         Ok(())
     }
@@ -1548,7 +1758,22 @@ impl<'a> Model<'a> {
         if !self.can_move_rows_action(sheet, row, row_count, delta)? {
             return Err("Cannot move rows because that would split an array formula".to_string());
         }
+        let group_end = row + row_count - 1;
+        if self
+            .workbook
+            .worksheet(sheet)?
+            .merged_cells
+            .iter()
+            .any(|m| !interval_survives_move(m.row, m.last_row(), row, group_end, delta))
+        {
+            return Err("Cannot move rows because that would split a merged cell".to_string());
+        }
         self.reset_dynamic_array_spills(sheet)?;
+
+        // Merged ranges are remapped wholesale at the end; take them out so the
+        // per-row rebuild (which goes through `set_user_input`) does not trip
+        // over the covered-cell guard.
+        let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
 
         // Move rows in the correct order
         if delta > 0 {
@@ -1560,6 +1785,24 @@ impl<'a> Model<'a> {
                 self.move_row_unchecked(sheet, r, delta)?;
             }
         }
+
+        self.workbook.worksheet_mut(sheet)?.merged_cells = merged_cells
+            .into_iter()
+            .map(|mut m| {
+                let (first, last) = displace_interval_for_move(
+                    m.row,
+                    m.last_row(),
+                    row,
+                    group_end,
+                    delta,
+                    row_count,
+                );
+                m.row = first;
+                m.height = last - first + 1;
+                m
+            })
+            .collect();
+
         Ok(())
     }
 }

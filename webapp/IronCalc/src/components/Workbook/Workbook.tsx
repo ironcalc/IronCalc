@@ -23,6 +23,7 @@ import SheetTabBar from "../SheetTabBar";
 import Toolbar from "../Toolbar/Toolbar";
 import {
   getCellAddress,
+  getEditorSize,
   getFullRangeToString,
   type NavigationKey,
 } from "../util";
@@ -174,6 +175,59 @@ const Workbook = (props: {
     updateRangeStyle("alignment.wrap_text", `${value}`);
   };
 
+  // The selected area, normalized (row/column is the top-left corner)
+  const getSelectedArea = () => {
+    const {
+      sheet,
+      range: [rowStart, columnStart, rowEnd, columnEnd],
+    } = model.getSelectedView();
+    return {
+      sheet,
+      row: Math.min(rowStart, rowEnd),
+      column: Math.min(columnStart, columnEnd),
+      width: Math.abs(columnEnd - columnStart) + 1,
+      height: Math.abs(rowEnd - rowStart) + 1,
+    };
+  };
+
+  const selectionIntersectsMergedCells = () => {
+    const area = getSelectedArea();
+    return model
+      .getMergedCells(area.sheet)
+      .some(
+        (m) =>
+          m.row <= area.row + area.height - 1 &&
+          m.row + m.height - 1 >= area.row &&
+          m.column <= area.column + area.width - 1 &&
+          m.column + m.width - 1 >= area.column,
+      );
+  };
+
+  // The button merges a selection of more than one cell and unmerges a
+  // selection that intersects merged cells. Full-row and full-column
+  // selections cannot be merged.
+  const onToggleMergeCells = () => {
+    const area = getSelectedArea();
+    try {
+      if (selectionIntersectsMergedCells()) {
+        model.unmergeCells(area);
+      } else {
+        model.mergeCells(area);
+      }
+    } catch (e) {
+      // merging over an array formula is not possible
+    }
+    setRedrawId((id) => id + 1);
+  };
+
+  const canMergeCells = () => {
+    const area = getSelectedArea();
+    if (area.width >= LAST_COLUMN || area.height >= LAST_ROW) {
+      return false;
+    }
+    return area.width * area.height > 1 || selectionIntersectsMergedCells();
+  };
+
   const onTextColorPicked = (color: Color) => {
     updateRangeStyle("font.color", colorToParam(color));
   };
@@ -314,8 +368,12 @@ const Workbook = (props: {
     },
     onEditKeyPressStart: (initText: string): void => {
       const { sheet, row, column } = model.getSelectedView();
-      const editorWidth = model.getColumnWidth(sheet, column);
-      const editorHeight = model.getRowHeight(sheet, row);
+      const { width: editorWidth, height: editorHeight } = getEditorSize(
+        model,
+        sheet,
+        row,
+        column,
+      );
       workbookState.setEditingCell({
         sheet,
         row,
@@ -336,8 +394,12 @@ const Workbook = (props: {
       // User presses F2, we start editing at the edn of the text
       const { sheet, row, column } = model.getSelectedView();
       const text = model.getCellContent(sheet, row, column);
-      const editorWidth = model.getColumnWidth(sheet, column);
-      const editorHeight = model.getRowHeight(sheet, row);
+      const { width: editorWidth, height: editorHeight } = getEditorSize(
+        model,
+        sheet,
+        row,
+        column,
+      );
       workbookState.setEditingCell({
         sheet,
         row,
@@ -856,6 +918,9 @@ const Workbook = (props: {
             style.alignment?.vertical ? style.alignment.vertical : "bottom"
           }
           wrapText={style.alignment?.wrap_text || false}
+          mergedCells={selectionIntersectsMergedCells()}
+          canMergeCells={canMergeCells()}
+          onToggleMergeCells={onToggleMergeCells}
           canEdit={true}
           numFmt={style.num_fmt}
           showGridLines={model.getShowGridLines(model.getSelectedSheet())}
