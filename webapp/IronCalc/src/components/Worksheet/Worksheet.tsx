@@ -91,6 +91,9 @@ const Worksheet = forwardRef(
     const [rowHeightDefault, setRowHeightDefault] = useState("");
 
     const ignoreScrollEventRef = useRef(false);
+    // The model's scroll position as of the last time it was synced with the
+    // DOM scroller, in either direction (see the render effect and onScroll)
+    const lastModelScroll = useRef<{ x: number; y: number } | null>(null);
 
     // The cell whose link tooltip is shown (null if hidden). The canvas does
     // the hover hit-testing and reports it through onLinkHover; the tooltip
@@ -241,22 +244,29 @@ const Worksheet = forwardRef(
         spacerElement.current.style.height = `${sheetHeight}px`;
         spacerElement.current.style.width = `${sheetWidth}px`;
       }
-      const left = scrollElement.current.scrollLeft;
-      const top = scrollElement.current.scrollTop;
-      if (scrollX !== left) {
-        ignoreScrollEventRef.current = true;
+      // Push the model's scroll position into the DOM scroller only when the
+      // model changed since the last sync (keyboard navigation, following a
+      // link, switching sheets, ...). During free scrolling the model is
+      // snapped to whole-cell boundaries while the DOM scroller sits mid-cell,
+      // so the two rarely match exactly: re-syncing on every render would jump
+      // the sheet whenever an unrelated state change re-renders (e.g. the link
+      // tooltip on pointer moves).
+      const synced = lastModelScroll.current;
+      if (!synced || synced.x !== scrollX || synced.y !== scrollY) {
+        const previousLeft = scrollElement.current.scrollLeft;
+        const previousTop = scrollElement.current.scrollTop;
         scrollElement.current.scrollLeft = scrollX;
-        setTimeout(() => {
-          ignoreScrollEventRef.current = false;
-        }, 0);
-      }
-
-      if (scrollY !== top) {
-        ignoreScrollEventRef.current = true;
         scrollElement.current.scrollTop = scrollY;
-        setTimeout(() => {
-          ignoreScrollEventRef.current = false;
-        }, 0);
+        if (
+          scrollElement.current.scrollLeft !== previousLeft ||
+          scrollElement.current.scrollTop !== previousTop
+        ) {
+          // the write fires a single (asynchronous) scroll event, consumed in
+          // onScroll; when the browser quantizes the value back to the current
+          // position no event fires, so the flag must stay clear
+          ignoreScrollEventRef.current = true;
+        }
+        lastModelScroll.current = { x: scrollX, y: scrollY };
       }
 
       canvas.renderSheet();
@@ -340,7 +350,11 @@ const Worksheet = forwardRef(
         return;
       }
       if (ignoreScrollEventRef.current) {
-        // Programmatic scroll ignored
+        // Consume the one scroll event fired by the programmatic sync in the
+        // render effect. (Clearing the flag on a timeout instead would lose
+        // the race against the asynchronous event and process the sync as a
+        // user scroll.)
+        ignoreScrollEventRef.current = false;
         return;
       }
       const left = scrollElement.current.scrollLeft;
@@ -348,6 +362,13 @@ const Worksheet = forwardRef(
 
       worksheetCanvas.current.setScrollPosition({ left, top });
       worksheetCanvas.current.renderSheet();
+      // The model snapped to a whole-cell boundary while the DOM scroller sits
+      // wherever the user left it: record the model position so the next
+      // render does not "correct" the DOM scroller back to the boundary.
+      lastModelScroll.current = {
+        x: model.getScrollX(),
+        y: model.getScrollY(),
+      };
     };
 
     return (
