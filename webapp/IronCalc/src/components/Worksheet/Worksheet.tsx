@@ -12,12 +12,10 @@ import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
 import type { LinkHoverCell } from "../WorksheetCanvas/cellLinks";
 import {
-  COLUMN_WIDTH_SCALE,
   headerColumnWidth,
   headerRowHeight,
   LAST_COLUMN,
   LAST_ROW,
-  ROW_HEIGH_SCALE,
 } from "../WorksheetCanvas/constants";
 import WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
@@ -511,10 +509,8 @@ const Worksheet = forwardRef(
             }
             const { sheet, row, column } = model.getSelectedView();
             const text = model.getCellContent(sheet, row, column);
-            const editorWidth =
-              model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
-            const editorHeight =
-              model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
+            const editorWidth = model.getColumnWidth(sheet, column);
+            const editorHeight = model.getRowHeight(sheet, row);
             workbookState.setEditingCell({
               sheet,
               row,

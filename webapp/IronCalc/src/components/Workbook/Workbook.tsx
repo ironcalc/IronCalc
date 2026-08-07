@@ -27,12 +27,7 @@ import {
   type NavigationKey,
 } from "../util";
 import Worksheet from "../Worksheet/Worksheet";
-import {
-  COLUMN_WIDTH_SCALE,
-  LAST_COLUMN,
-  LAST_ROW,
-  ROW_HEIGH_SCALE,
-} from "../WorksheetCanvas/constants";
+import { LAST_COLUMN, LAST_ROW } from "../WorksheetCanvas/constants";
 import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
@@ -319,9 +314,8 @@ const Workbook = (props: {
     },
     onEditKeyPressStart: (initText: string): void => {
       const { sheet, row, column } = model.getSelectedView();
-      const editorWidth =
-        model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
-      const editorHeight = model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
+      const editorWidth = model.getColumnWidth(sheet, column);
+      const editorHeight = model.getRowHeight(sheet, row);
       workbookState.setEditingCell({
         sheet,
         row,
@@ -342,9 +336,8 @@ const Workbook = (props: {
       // User presses F2, we start editing at the edn of the text
       const { sheet, row, column } = model.getSelectedView();
       const text = model.getCellContent(sheet, row, column);
-      const editorWidth =
-        model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
-      const editorHeight = model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
+      const editorWidth = model.getColumnWidth(sheet, column);
+      const editorHeight = model.getRowHeight(sheet, row);
       workbookState.setEditingCell({
         sheet,
         row,

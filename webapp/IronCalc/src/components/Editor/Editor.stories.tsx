@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useState } from "react";
 import { init, Model } from "../../index";
-import {
-  COLUMN_WIDTH_SCALE,
-  ROW_HEIGH_SCALE,
-} from "../WorksheetCanvas/constants";
 import { WorkbookState } from "../workbookState";
 import Editor from "./Editor";
 
@@ -62,9 +58,8 @@ function EditorHarness() {
         style={{ position: "relative", width: "100%", height: "100%" }}
         onPointerDown={(event) => {
           const [sheet, row, column] = model.getSelectedCell();
-          const editorWidth =
-            model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
-          const editorHeight = model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
+          const editorWidth = model.getColumnWidth(sheet, column);
+          const editorHeight = model.getRowHeight(sheet, row);
           workbookState.setEditingCell({
             sheet,
             row,
