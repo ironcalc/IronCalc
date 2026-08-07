@@ -9,6 +9,15 @@
 //! to two different registers, so neither loses. Collapsing a property sub-enum into a single
 //! register would silently change that.
 //!
+//! Column spans are the one register address that is not a single object. A sequential edit shatters
+//! any wide span it partly overlaps eagerly — the wide register is removed and the narrower ones
+//! written in the same commit — so locally spans never overlap. Only concurrency can make them, and
+//! overlapping spans are then resolved per position by register write timestamp: LWW, newest
+//! covering span wins. The resolution machinery is phase-5 work. Open-ended spans are spelled two
+//! ways on purpose: `Option` axes in the generic [`RangeRef`](crate::types::RangeRef) world, where
+//! [`Ordinal`](crate::types::Ordinal) has no sentinel to spare, and [`FractionalKey::NULL`]
+//! brackets in this FractionalKey-native patch and storage layer.
+//!
 //! Patches must be **index-free**: they may not carry values whose meaning depends on a replica's
 //! local tables. Style indices into `Styles.cell_xfs`, shared-string indices and shared-formula
 //! indices are all assigned by local insertion order, so two replicas can mint the same index for
@@ -109,9 +118,15 @@ pub enum Patch {
         keys: Vec<FractionalKey>,
         dest: FractionalKey,
     },
-    SetColumnProperty {
+    /// A property write over a column *span*, addressed by its corner keys — see
+    /// [`Col`](crate::types::Col) for what a span covers. A [`FractionalKey::NULL`] corner is an
+    /// open end: `(NULL, k)` and `(k, NULL)` are half-open, and `(NULL, NULL)` is every column,
+    /// including ones no replica has materialized yet — the register whole-sheet styling writes to,
+    /// which ordinal code spells as a `(1, LAST_COLUMN)` record and stable-land cannot, having no
+    /// "last" key.
+    SetColumnSpan {
         sheet: SheetId,
-        col: FractionalKey,
+        span: (FractionalKey, FractionalKey),
         property: ColProperty,
 
         /// Same discriminant as `property`, holding the value it replaced.
@@ -291,8 +306,9 @@ pub struct SheetContent {
     pub frozen_columns: i32,
     /// Ordered by [`FractionalKey`].
     pub rows: Vec<(FractionalKey, RowState)>,
-    /// Ordered by [`FractionalKey`].
-    pub columns: Vec<(FractionalKey, ColState)>,
+    /// Column spans, addressed by corner keys; a [`FractionalKey::NULL`] corner is an open end, so
+    /// `(NULL, NULL)` is the whole-sheet span.
+    pub columns: Vec<((FractionalKey, FractionalKey), ColState)>,
     /// Cell contents and cell styles are kept apart because most cells carry no style of their own,
     /// and they are separate registers in any case.
     pub cell_values: Vec<(StableCellAddress, CellInput)>,

@@ -25,6 +25,7 @@ mod test_fn_choose;
 mod test_fn_concatenate;
 mod test_fn_count;
 mod test_fn_datevalue_datedif;
+mod test_stable_projection;
 mod test_fn_day;
 mod test_fn_depreciation;
 mod test_fn_encodeurl;

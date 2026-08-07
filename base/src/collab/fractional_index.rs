@@ -1,7 +1,10 @@
+use bitcode::__private::{Buffer, Decoder, Encoder, View};
+use bitcode::{Decode, Encode};
 use serde::de::{SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::Bound;
 use std::fmt;
+use std::num::NonZeroUsize;
 use std::ops::RangeBounds;
 
 use crate::collab::codec::{decode_entries, encode_entries, CodecError, FORMAT_VERSION};
@@ -84,7 +87,7 @@ impl Entry {
 
 /// A collection of [FractionalKey]s that enables producing them in a way that matches their desired
 /// order.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct FractionalIndex {
     /// Fractional keys, sorted by the position each currently occupies ([Entry::key]).
     /// This space contains un-moved elements, or destinations of moved elements.
@@ -102,6 +105,16 @@ pub struct FractionalIndex {
     /// spaces. Nothing serializes it — every constructor recomputes it.
     watermark: u32,
 }
+
+/// Equality is over document state (`active`, `moved`). `suffix` is replica identity —
+/// deliberately never serialized — and `watermark` is derived from the two spaces, so two
+/// replicas holding the same document compare equal whatever session they mint with.
+impl PartialEq for FractionalIndex {
+    fn eq(&self, other: &Self) -> bool {
+        self.active == other.active && self.moved == other.moved
+    }
+}
+impl Eq for FractionalIndex {}
 
 impl FractionalIndex {
     const SESSION_HASH_SIZE: usize = SESSION_SUFFIX_LEN;
@@ -655,6 +668,60 @@ impl<'de> Visitor<'de> for FractionalIndexVisitor {
     }
 }
 
+/// bitcode coders delegating to [FractionalIndex::encode]/[FractionalIndex::decode], the same
+/// columnar payload the serde impls carry — written by hand for the same reason as
+/// [`FractionalKeyEncoder`](crate::collab::fractional_key::FractionalKeyEncoder), and coming back
+/// with a zeroed session suffix for the same reason too.
+#[derive(Default)]
+pub struct FractionalIndexEncoder(<[u8] as Encode>::Encoder);
+
+impl Buffer for FractionalIndexEncoder {
+    fn collect_into(&mut self, out: &mut Vec<u8>) {
+        self.0.collect_into(out);
+    }
+
+    fn reserve(&mut self, additional: NonZeroUsize) {
+        self.0.reserve(additional);
+    }
+}
+
+impl Encoder<FractionalIndex> for FractionalIndexEncoder {
+    #[inline]
+    fn encode(&mut self, t: &FractionalIndex) {
+        let bytes = t.encode().expect("fractional index cannot be encoded");
+        Encoder::<[u8]>::encode(&mut self.0, &bytes);
+    }
+}
+
+impl Encode for FractionalIndex {
+    type Encoder = FractionalIndexEncoder;
+}
+
+#[derive(Default)]
+pub struct FractionalIndexDecoder<'a>(<Vec<u8> as Decode<'a>>::Decoder);
+
+impl<'a> View<'a> for FractionalIndexDecoder<'a> {
+    fn populate(&mut self, input: &mut &'a [u8], length: usize) -> bitcode::__private::Result<()> {
+        self.0.populate(input, length)
+    }
+}
+
+impl<'a> Decoder<'a, FractionalIndex> for FractionalIndexDecoder<'a> {
+    /// # Panics
+    ///
+    /// On a malformed payload: bitcode wants all validation in [`View::populate`], which cannot see
+    /// the entry tables. Untrusted input should come in through `serde`, which reports the error.
+    #[inline]
+    fn decode(&mut self) -> FractionalIndex {
+        let bytes: Vec<u8> = self.0.decode();
+        FractionalIndex::decode(&bytes, Default::default()).expect("malformed bitcode payload")
+    }
+}
+
+impl<'a> Decode<'a> for FractionalIndex {
+    type Decoder = FractionalIndexDecoder<'a>;
+}
+
 enum InsertStrategy {
     Middle,
 }
@@ -1023,6 +1090,24 @@ mod test {
         for key in [&a, &b, &c, &d] {
             assert_eq!(decoded.position_of(key), fi.position_of(key));
         }
+    }
+
+    /// The bitcode derive path, which is how an index reaches storage inside a `Worksheet`. The
+    /// session suffix is not in the payload, so a decoded index comes back with a zeroed one.
+    #[test]
+    fn bitcode_derive_roundtrips() {
+        let mut fi = FractionalIndex::new(vec![], vec![], [b'z', 1, 2, 3]);
+        let a = fi.create_key(0).unwrap().clone();
+        fi.create_key(1);
+        fi.move_to(0..1, 2);
+
+        let decoded: FractionalIndex = bitcode::decode(&bitcode::encode(&fi)).unwrap();
+        assert_eq!(decoded.suffix, [0; 4]);
+        assert_eq!(
+            decoded.view().collect::<Vec<_>>(),
+            fi.view().collect::<Vec<_>>()
+        );
+        assert_eq!(decoded.position_of(&a), fi.position_of(&a));
     }
 
     /// What the column layout is for: a sheet's worth of rows costs bytes, not kilobytes.

@@ -969,6 +969,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             views,
             conditional_formatting,
             links,
+            index: Default::default(),
         },
         sheet_view.is_selected,
     ))
