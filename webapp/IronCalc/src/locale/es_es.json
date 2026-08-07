@@ -225,6 +225,11 @@
     "tooltip_placeholder": "Descripción emergente (opcional)",
     "url_placeholder": "URL"
   },
+  "link_tooltip": {
+    "break": "Quitar enlace",
+    "copy": "Copiar enlace",
+    "edit": "Editar enlace"
+  },
   "name_manager_dialog": {
     "add_new_range": "Añadir un nuevo rango",
     "apply": "Aplicar cambios",

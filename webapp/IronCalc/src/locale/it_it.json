@@ -225,6 +225,11 @@
     "tooltip_placeholder": "Suggerimento (facoltativo)",
     "url_placeholder": "URL"
   },
+  "link_tooltip": {
+    "break": "Rimuovi collegamento",
+    "copy": "Copia collegamento",
+    "edit": "Modifica collegamento"
+  },
   "name_manager_dialog": {
     "add_new_range": "Aggiungi nuovo intervallo",
     "apply": "Applica modifiche",

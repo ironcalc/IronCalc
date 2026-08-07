@@ -225,6 +225,11 @@
     "tooltip_placeholder": "Tooltip (optional)",
     "url_placeholder": "URL"
   },
+  "link_tooltip": {
+    "break": "Link entfernen",
+    "copy": "Link kopieren",
+    "edit": "Link bearbeiten"
+  },
   "name_manager_dialog": {
     "add_new_range": "Neuen Bereich hinzufügen",
     "apply": "Änderungen übernehmen",
