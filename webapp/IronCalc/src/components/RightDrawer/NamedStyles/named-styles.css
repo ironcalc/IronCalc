@@ -193,6 +193,7 @@
   line-height: 1;
   font-family: var(--typography-font-family);
   font-weight: 400;
+  color: var(--palette-common-black);
 }
 
 .ic-named-styles-manage-item-name {
