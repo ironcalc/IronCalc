@@ -13,7 +13,9 @@
 //! - commits arrive in **causal order**: every parent is applied before its children,
 //! - commits are **append-only and immutable**; a delivered commit is never retracted or rewritten
 //!   (an undo is a new commit carrying the inverse patches),
-//! - [`Commit::lamport`] is consistent with the parent DAG on every replica.
+//! - [`Commit::hlc`] is the stamp its author minted for it (the HLC send rule), and every replica
+//!   folds it back into its own clock on apply (the receive rule), so a commit's stamp always sorts
+//!   above those of its ancestors.
 //!
 //! In return [`Consumer::apply`] is:
 //!
@@ -23,6 +25,7 @@
 //! - **total**: a well-formed commit is never rejected. A patch addressing a deleted row is a no-op,
 //!   not an error; `Error` is reserved for genuine corruption.
 
+use crate::collab::hlc::Hlc;
 use crate::collab::patch::Patch;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -44,20 +47,21 @@ pub type CommitId = SmallVec<[u8; 8]>;
 
 /// Arbitrates between writes to the same register.
 ///
-/// `lamport` is the causal height of the originating commit, so a causally later write always has a
-/// strictly greater value than its ancestors and wins. Equal heights mean the writes are concurrent,
-/// and `session` breaks the tie deterministically — arbitrarily, but identically on every replica.
+/// `hlc` is the stamp the originating commit was minted with, so a causally later write always has a
+/// strictly greater one than its ancestors and wins. Concurrent writes can land on equal stamps, and
+/// `session` breaks the tie deterministically — arbitrarily, but identically on every replica. The
+/// [`Hlc`] carries no node component, so it is the only tiebreak there is.
 ///
-/// Field order is significant: the derived [`Ord`] compares `lamport` first.
+/// Field order is significant: the derived [`Ord`] compares `hlc` first.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub struct Timestamp {
-    pub lamport: u64,
+    pub hlc: Hlc,
     pub session: SessionId,
 }
 
 impl Timestamp {
-    pub fn new(lamport: u64, session: SessionId) -> Self {
-        Timestamp { lamport, session }
+    pub fn new(hlc: Hlc, session: SessionId) -> Self {
+        Timestamp { hlc, session }
     }
 }
 
@@ -98,8 +102,8 @@ pub struct Commit<'a> {
     pub session: &'a SessionId,
     /// Commits this one causally depends on. Empty for a root commit.
     pub parents: &'a [CommitId],
-    /// Causal height: `0` for a root, otherwise `max(parents.lamport) + 1`.
-    pub lamport: u64,
+    /// The stamp its author minted for it, above every stamp that author had seen.
+    pub hlc: Hlc,
     /// Patches to apply, in order.
     pub patches: &'a [Patch],
 }
@@ -107,7 +111,7 @@ pub struct Commit<'a> {
 impl Commit<'_> {
     /// The [`Timestamp`] every register written by this commit is tagged with.
     pub fn timestamp(&self) -> Timestamp {
-        Timestamp::new(self.lamport, self.session.clone())
+        Timestamp::new(self.hlc, *self.session)
     }
 }
 
@@ -140,8 +144,8 @@ pub trait Resettable: Consumer {
 mod tests {
     use super::*;
 
-    fn ts(lamport: u64, session: SessionId) -> Timestamp {
-        Timestamp::new(lamport, session)
+    fn ts(hlc: u64, session: SessionId) -> Timestamp {
+        Timestamp::new(Hlc::new(hlc), session)
     }
 
     #[test]

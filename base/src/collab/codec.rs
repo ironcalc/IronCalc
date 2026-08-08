@@ -2,8 +2,8 @@
 //! [`FractionalIndex`](crate::collab::fractional_index::FractionalIndex).
 //!
 //! An index holds one [`Entry`] per row, column, sheet and conditional-formatting rule, and the
-//! whole thing is serialized on every snapshot. Entry by entry, each one is two keys and a
-//! timestamp, and a general-purpose coder can only compress what it happens to see side by side —
+//! whole thing is serialized on every snapshot. Entry by entry, each one is two keys and an
+//! [`Hlc`], and a general-purpose coder can only compress what it happens to see side by side —
 //! fields of unrelated shape.
 //!
 //! Written *column by column*, the same data is almost entirely redundant, and the redundancy is a
@@ -64,7 +64,7 @@
 //! sessions        := session:[u8; SESSION_SUFFIX_LEN] ++ run:uvarint
 //!
 //! modified_at     := slot 0: value:ivarint, absolute
-//!                    slot i: delta:ivarint
+//!                    slot i: delta:ivarint, over the raw `Hlc` payloads
 //!                      delta == 0 -> run:uvarint, entries reusing modified_at[i-1]
 //!                      delta != 0 -> modified_at[i] = modified_at[i-1] + delta
 //! ```
@@ -81,6 +81,11 @@
 //! * Slot 0 of `modified_at` is unconditionally absolute and has no marker semantics. Real clock
 //!   values are never `0`, but that is an invariant of the producer, and this decoder reads a peer's
 //!   bytes; exempting the one slot that has nothing to repeat removes the reliance for free.
+//! * A decoded column is folded into the local clock ([`Hlc::sync`]): a stamp read off a snapshot or
+//!   a peer is a stamp this replica has seen, and the ones it mints next have to sort above it. An
+//!   [`Hlc`] payload is a `u64`, but the column carries it as an `i64` — free until the year 4.4
+//!   million, and it keeps a corrupt payload from decoding into a far-future stamp that the clock
+//!   would then be stuck with.
 //!
 //! # Reading untrusted bytes
 //!
@@ -90,8 +95,9 @@
 //! byte for byte. That is a much sharper check than value equality: it fails when a compression rule
 //! silently stops firing.
 
-use crate::collab::fractional_index::{Entry, Timestamp};
+use crate::collab::fractional_index::Entry;
 use crate::collab::fractional_key::{FractionalKey, KeyBuf, MAX_KEY_LEN, SESSION_SUFFIX_LEN};
+use crate::collab::hlc::Hlc;
 use crate::collab::varint::{
     read_ivarint, read_uvarint, uvarint_len, write_ivarint, write_uvarint, VarintError,
 };
@@ -117,7 +123,7 @@ const RUN_MARKER: u64 = MARKER;
 const NULL_MARKER: u64 = MARKER;
 
 /// A `0` delta in the `modified_at` column: the next `run` entries reuse the previous timestamp.
-const REPEAT_MARKER: Timestamp = MARKER as Timestamp;
+const REPEAT_MARKER: i64 = MARKER as i64;
 
 /// Why a payload could not be encoded or decoded.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,7 +141,7 @@ pub enum CodecError {
     PositionTooLong { len: u64 },
     /// A run stepped a position past the width it has to fit in.
     PositionOverflow,
-    /// A timestamp delta did not fit in an `i64`.
+    /// An [`Hlc`] payload, or the delta between two of them, did not fit in an `i64`.
     TimestampOverflow,
     /// A run or repeat marker opened a column, with no previous value to continue from.
     RunWithoutPredecessor,
@@ -167,7 +173,12 @@ impl fmt::Display for CodecError {
             CodecError::PositionOverflow => {
                 write!(f, "run stepped a position past the width it must fit in")
             }
-            CodecError::TimestampOverflow => write!(f, "timestamp delta does not fit in an i64"),
+            CodecError::TimestampOverflow => {
+                write!(
+                    f,
+                    "timestamp, or a delta between two, does not fit in an i64"
+                )
+            }
             CodecError::RunWithoutPredecessor => {
                 write!(
                     f,
@@ -375,10 +386,19 @@ fn literal_cost(position_len: usize, run: u64) -> usize {
 // `modified_at`: one absolute value, then deltas
 // ---------------------------------------------------------------------------------------------
 
+/// Signed distance between two stamps, as the column carries it.
+fn stamp_delta(previous: Hlc, next: Hlc) -> Result<i64, CodecError> {
+    i64::try_from(next.get() as i128 - previous.get() as i128)
+        .map_err(|_| CodecError::TimestampOverflow)
+}
+
 fn write_modified_at_column(out: &mut Vec<u8>, entries: &[Entry]) -> Result<(), CodecError> {
     // Slot 0 is absolute and carries no marker semantics: there is nothing to repeat and nothing to
     // be a delta from, so a `0` here is simply a timestamp of zero.
-    write_ivarint(out, entries[0].modified_at);
+    write_ivarint(
+        out,
+        i64::try_from(entries[0].modified_at.get()).map_err(|_| CodecError::TimestampOverflow)?,
+    );
     let mut i = 1;
     while i < entries.len() {
         let previous = entries[i - 1].modified_at;
@@ -390,21 +410,19 @@ fn write_modified_at_column(out: &mut Vec<u8>, entries: &[Entry]) -> Result<(), 
             write_ivarint(out, REPEAT_MARKER);
             write_uvarint(out, (i - start) as u64);
         } else {
-            let delta = entries[i]
-                .modified_at
-                .checked_sub(previous)
-                .ok_or(CodecError::TimestampOverflow)?;
-            write_ivarint(out, delta);
+            write_ivarint(out, stamp_delta(previous, entries[i].modified_at)?);
             i += 1;
         }
     }
     Ok(())
 }
 
-fn read_modified_at_column(input: &mut &[u8], count: usize) -> Result<Vec<Timestamp>, CodecError> {
+fn read_modified_at_column(input: &mut &[u8], count: usize) -> Result<Vec<Hlc>, CodecError> {
     debug_assert!(count > 0);
     let mut out = Vec::with_capacity(count.min(input.len()).max(1));
-    out.push(read_ivarint(input)?);
+    let absolute =
+        u64::try_from(read_ivarint(input)?).map_err(|_| CodecError::TimestampOverflow)?;
+    out.push(Hlc::new(absolute));
     while out.len() < count {
         let delta = read_ivarint(input)?;
         let previous = *out.last().expect("slot 0 is pushed above");
@@ -412,12 +430,15 @@ fn read_modified_at_column(input: &mut &[u8], count: usize) -> Result<Vec<Timest
             let run = read_run_length(input, count - out.len())?;
             out.extend(std::iter::repeat_n(previous, run));
         } else {
-            out.push(
-                previous
-                    .checked_add(delta)
-                    .ok_or(CodecError::TimestampOverflow)?,
-            );
+            let next = u64::try_from(previous.get() as i128 + delta as i128)
+                .map_err(|_| CodecError::TimestampOverflow)?;
+            out.push(Hlc::new(next));
         }
+    }
+    // Receive rule: the stamps of a loaded index are stamps this replica has now seen. Syncing the
+    // maximum is the same as syncing every one of them.
+    if let Some(max) = out.iter().max() {
+        Hlc::sync(*max);
     }
     Ok(out)
 }
@@ -663,7 +684,7 @@ mod test {
         FractionalKey::from(bytes.as_slice())
     }
 
-    fn entry(position: &[u8], session: u8, modified_at: Timestamp) -> Entry {
+    fn entry(position: &[u8], session: u8, modified_at: Hlc) -> Entry {
         Entry {
             key: key(position, session),
             modified_at,
@@ -692,7 +713,7 @@ mod test {
     }
 
     /// The entries of a fresh index holding a bulk-generated run — the shape this format exists for.
-    fn bulk_run(count: usize, modified_at: Timestamp) -> Vec<Entry> {
+    fn bulk_run(count: usize, modified_at: Hlc) -> Vec<Entry> {
         let index = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
         index
             .create_keys(0, count)
@@ -712,18 +733,18 @@ mod test {
 
     #[test]
     fn roundtrips_a_single_entry() {
-        roundtrip(&[entry(&[0x01], 7, 1_700_000_000_000)]);
+        roundtrip(&[entry(&[0x01], 7, Hlc::new(1_700_000_000_000))]);
         // An empty position is representable, which is what the biased literal length buys.
-        roundtrip(&[entry(&[], 7, 1)]);
+        roundtrip(&[entry(&[], 7, Hlc::new(1))]);
         // As is the widest position a key can hold.
-        roundtrip(&[entry(&[0x5a; MAX_POSITION_LEN], 7, -1)]);
+        roundtrip(&[entry(&[0x5a; MAX_POSITION_LEN], 7, Hlc::new(2))]);
     }
 
     /// The headline case: a thousand keys from one `create_keys` call, one session, one timestamp,
     /// nothing moved. This is the test that fails if the run marker stops matching `CreateKeys`.
     #[test]
     fn collapses_a_bulk_generated_run() {
-        let entries = bulk_run(1000, 1_700_000_000_000);
+        let entries = bulk_run(1000, Hlc::new(1_700_000_000_000));
         assert_eq!(entries.len(), 1000);
         let encoded = roundtrip(&entries);
         assert!(
@@ -745,7 +766,11 @@ mod test {
                     // A three-byte position walked as a big-endian counter, exactly as `CreateKeys`
                     // walks one.
                     let v = 0x40_0000 + i * stride;
-                    entry(&[(v >> 16) as u8, (v >> 8) as u8, v as u8], 3, 500)
+                    entry(
+                        &[(v >> 16) as u8, (v >> 8) as u8, v as u8],
+                        3,
+                        Hlc::new(500),
+                    )
                 })
                 .collect();
             let encoded = roundtrip(&entries);
@@ -762,10 +787,10 @@ mod test {
     #[test]
     fn roundtrips_repeated_positions_across_sessions() {
         let entries = vec![
-            entry(&[0x10], 1, 100),
-            entry(&[0x10], 2, 100),
-            entry(&[0x10], 3, 100),
-            entry(&[0x20], 1, 100),
+            entry(&[0x10], 1, Hlc::new(100)),
+            entry(&[0x10], 2, Hlc::new(100)),
+            entry(&[0x10], 3, Hlc::new(100)),
+            entry(&[0x20], 1, Hlc::new(100)),
         ];
         roundtrip(&entries);
     }
@@ -779,10 +804,14 @@ mod test {
             // Twelve bytes: four of shared head, then a stepping tail.
             let mut position = vec![0x01, 0x02, 0x03, 0x04];
             position.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, i * 3]);
-            entries.push(entry(&position, 1, 1000));
+            entries.push(entry(&position, 1, Hlc::new(1000)));
         }
         // A differing head breaks the run rather than corrupting it.
-        entries.push(entry(&[0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 1, 1000));
+        entries.push(entry(
+            &[0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            1,
+            Hlc::new(1000),
+        ));
         roundtrip(&entries);
     }
 
@@ -790,18 +819,18 @@ mod test {
     #[test]
     fn roundtrips_positions_of_mixed_width() {
         let entries = vec![
-            entry(&[0x01], 1, 10),
-            entry(&[0x01, 0x00, 0x01], 1, 10),
-            entry(&[0x01, 0x00, 0x02], 1, 10),
-            entry(&[0x02], 1, 10),
-            entry(&[0x03, 0x04], 1, 10),
+            entry(&[0x01], 1, Hlc::new(10)),
+            entry(&[0x01, 0x00, 0x01], 1, Hlc::new(10)),
+            entry(&[0x01, 0x00, 0x02], 1, Hlc::new(10)),
+            entry(&[0x02], 1, Hlc::new(10)),
+            entry(&[0x03, 0x04], 1, Hlc::new(10)),
         ];
         roundtrip(&entries);
     }
 
     #[test]
     fn roundtrips_every_shape_of_moved_column() {
-        let mut base = bulk_run(16, 900);
+        let mut base = bulk_run(16, Hlc::new(900));
         // Nothing moved: one NULL run, and no `moved` session column at all.
         roundtrip(&base);
 
@@ -830,11 +859,11 @@ mod test {
     #[test]
     fn roundtrips_every_shape_of_timestamp_column() {
         let positions: Vec<Vec<u8>> = (0..12u8).map(|i| vec![0x30, i]).collect();
-        let build = |stamps: &[Timestamp]| -> Vec<Entry> {
+        let build = |stamps: &[u64]| -> Vec<Entry> {
             stamps
                 .iter()
                 .zip(&positions)
-                .map(|(&t, p)| entry(p, 1, t))
+                .map(|(&t, p)| entry(p, 1, Hlc::new(t)))
                 .collect()
         };
 
@@ -843,31 +872,22 @@ mod test {
         roundtrip(&build(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]));
         roundtrip(&build(&[12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]));
         roundtrip(&build(&[5, 5, 5, 9, 9, 1, 1, 1, 1, 400, 400, 2]));
-        // Zero and negative values are ordinary timestamps: only slot 0 is exempt from the marker,
-        // and it is exempt unconditionally.
-        roundtrip(&build(&[0, 0, 0, -1, -1, 5, 0, 0, 7, -900, -900, -900]));
+        // Zero is an ordinary timestamp: only slot 0 is exempt from the marker, and it is exempt
+        // unconditionally.
+        roundtrip(&build(&[0, 0, 0, 1, 1, 5, 0, 0, 7, 900, 900, 900]));
         // Far apart in both directions, so the deltas are wide.
-        roundtrip(&build(&[
-            i64::MIN / 2,
-            i64::MAX / 2,
-            0,
-            i64::MIN / 2,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-        ]));
+        const WIDE: u64 = 1 << 55;
+        roundtrip(&build(&[WIDE, 0, WIDE, 0, 1, 2, 3, 4, 5, 6, 7, 8]));
     }
 
-    /// A timestamp column whose delta cannot be expressed. Unreachable from a clock, but the type is
-    /// an `i64` and the error is the honest answer.
+    /// A timestamp column whose delta cannot be expressed. Unreachable from a clock, but the deltas
+    /// are `i64` and the error is the honest answer.
     #[test]
     fn rejects_timestamp_deltas_that_do_not_fit() {
-        let entries = vec![entry(&[0x01], 1, i64::MIN), entry(&[0x02], 1, i64::MAX)];
+        let entries = vec![
+            entry(&[0x01], 1, Hlc::new(0)),
+            entry(&[0x02], 1, Hlc::new(u64::MAX)),
+        ];
         let mut out = Vec::new();
         assert_eq!(
             encode_entries(&entries, &mut out),
@@ -883,7 +903,7 @@ mod test {
 
         let entries = vec![Entry {
             key: short.clone(),
-            modified_at: 1,
+            modified_at: Hlc::new(1),
             moved: FractionalKey::NULL,
         }];
         assert_eq!(
@@ -894,7 +914,7 @@ mod test {
         // A null `key` is just as impossible: `moved` is the only field that may be null.
         let entries = vec![Entry {
             key: FractionalKey::NULL,
-            modified_at: 1,
+            modified_at: Hlc::new(1),
             moved: FractionalKey::NULL,
         }];
         assert_eq!(
@@ -904,7 +924,7 @@ mod test {
 
         let entries = vec![Entry {
             key: key(&[0x01], 1),
-            modified_at: 1,
+            modified_at: Hlc::new(1),
             moved: short,
         }];
         assert_eq!(
@@ -917,15 +937,15 @@ mod test {
     fn appends_rather_than_overwriting() {
         // `encode_entries` is called twice against one buffer to hold both spaces of an index.
         let mut out = vec![0xde, 0xad];
-        encode_entries(&[entry(&[0x01], 1, 5)], &mut out).unwrap();
-        encode_entries(&[entry(&[0x02], 1, 6)], &mut out).unwrap();
+        encode_entries(&[entry(&[0x01], 1, Hlc::new(5))], &mut out).unwrap();
+        encode_entries(&[entry(&[0x02], 1, Hlc::new(6))], &mut out).unwrap();
 
         let mut cursor = &out[2..];
         let first = decode_entries(&mut cursor).unwrap();
         let second = decode_entries(&mut cursor).unwrap();
         assert!(cursor.is_empty());
-        assert_eq!(first, vec![entry(&[0x01], 1, 5)]);
-        assert_eq!(second, vec![entry(&[0x02], 1, 6)]);
+        assert_eq!(first, vec![entry(&[0x01], 1, Hlc::new(5))]);
+        assert_eq!(second, vec![entry(&[0x02], 1, Hlc::new(6))]);
     }
 
     // -----------------------------------------------------------------------------------------
@@ -936,9 +956,11 @@ mod test {
     /// that looks like success.
     #[test]
     fn rejects_truncation_at_every_offset() {
-        let mut entries = bulk_run(8, 1_700_000_000_000);
+        // Small stamps deliberately: a corrupted payload is decoded below, and whatever it decodes
+        // to is folded into the process clock. Nothing here should be able to reach the far future.
+        let mut entries = bulk_run(8, Hlc::new(50));
         entries[3].moved = key(&[0x99], 4);
-        entries[5].modified_at += 17;
+        entries[5].modified_at = Hlc::new(entries[5].modified_at.get() + 17);
         let encoded = roundtrip(&entries);
 
         for len in 0..encoded.len() {
@@ -952,20 +974,28 @@ mod test {
     }
 
     /// Every single-bit corruption of a valid payload. A flip may well produce a different valid
-    /// index — the claim is only that it never panics.
+    /// index — the claims are that it never panics, and that the stamps it decodes to, which the
+    /// decoder folds into the process clock, never name the far future.
     #[test]
     fn survives_every_single_bit_flip() {
-        let mut entries = bulk_run(6, 1_700_000_000_000);
+        // Small stamps, for the reason given in `rejects_truncation_at_every_offset`.
+        let mut entries = bulk_run(6, Hlc::new(50));
         entries[2].moved = key(&[0x99], 4);
-        entries[4].modified_at -= 3;
+        entries[4].modified_at = Hlc::new(entries[4].modified_at.get() - 3);
         let encoded = roundtrip(&entries);
+        let ceiling = Hlc::now();
 
         for i in 0..encoded.len() {
             for bit in 0..8 {
                 let mut corrupted = encoded.clone();
                 corrupted[i] ^= 1 << bit;
                 let mut cursor = corrupted.as_slice();
-                let _ = decode_entries(&mut cursor);
+                if let Ok(decoded) = decode_entries(&mut cursor) {
+                    assert!(
+                        decoded.iter().all(|e| e.modified_at < ceiling),
+                        "byte {i} bit {bit} decoded into a stamp the clock would be stuck with"
+                    );
+                }
             }
         }
     }
@@ -1168,7 +1198,9 @@ mod test {
         // Single-byte positions stepping by one: a literal is two bytes, a run marker three, so
         // short isolated runs must fall back to literals.
         for count in 1..6usize {
-            let entries: Vec<Entry> = (0..count).map(|i| entry(&[0x10 + i as u8], 1, 1)).collect();
+            let entries: Vec<Entry> = (0..count)
+                .map(|i| entry(&[0x10 + i as u8], 1, Hlc::new(1)))
+                .collect();
             let encoded = roundtrip(&entries);
             let mut naive = Vec::new();
             write_uvarint(&mut naive, count as u64);
