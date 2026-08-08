@@ -11,9 +11,7 @@ use crate::collab::codec::{decode_entries, encode_entries, CodecError, FORMAT_VE
 pub use crate::collab::fractional_key::{
     FractionalKey, KeyBuf, INLINE_CAP, MAX_KEY_LEN, SESSION_SUFFIX_LEN,
 };
-use crate::get_milliseconds_since_epoch;
-
-pub type Timestamp = i64;
+use crate::collab::hlc::Hlc;
 
 /// Session suffix reserved for [`virtual_key`]. No replica may use it — see
 /// [`CollaborativeWorkbook::new`](crate::collab::CollaborativeWorkbook::new).
@@ -52,8 +50,8 @@ pub fn virtual_ordinal(key: &FractionalKey) -> Option<u32> {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
     pub key: FractionalKey,
-    /// UNIX timestamp when the entry was modified.
-    pub modified_at: Timestamp,
+    /// Hybrid logical clock stamp of the last modification.
+    pub modified_at: Hlc,
     /// If this [Entry] was generates as a move destination, this field will hold the source key
     /// that was moved. Otherwise, it will be [FractionalKey::NULL].
     ///
@@ -212,7 +210,7 @@ impl FractionalIndex {
         // if start < dest, we need to shift by the number of drained entries
         let mut dest = if start < dest { dest - len } else { dest };
 
-        let modified_at = get_milliseconds_since_epoch();
+        let modified_at = Hlc::now();
         let mut key_gen = self.create_keys(dest, len);
         for mut entry in to_move {
             let dest_key = key_gen
@@ -258,7 +256,7 @@ impl FractionalIndex {
 
     pub fn remove_key(&mut self, key: &FractionalKey) -> Option<FractionalKey> {
         // found in index space: move to moved space
-        if let Some(source) = self.tombstone(key, Some(get_milliseconds_since_epoch())) {
+        if let Some(source) = self.tombstone(key, Some(Hlc::now())) {
             return if source.is_empty() {
                 // the key was never moved, so it is the element's own identity
                 Some(key.clone())
@@ -271,7 +269,7 @@ impl FractionalIndex {
         // not in index space, but possibly in moved space?
         match self.moved.binary_search_by_key(&key, |e| &e.key) {
             Ok(i) => {
-                let removed_at = get_milliseconds_since_epoch();
+                let removed_at = Hlc::now();
                 let e = &mut self.moved[i];
                 e.modified_at = removed_at;
                 let moved = std::mem::replace(&mut e.moved, FractionalKey::NULL);
@@ -324,7 +322,7 @@ impl FractionalIndex {
         buf.extend_from_slice(self.suffix.as_ref());
         let key = FractionalKey::try_from_bytes(&buf).ok()?;
         // A fresh key is both the element's position and its identity, so it carries no origin.
-        let modified_at = get_milliseconds_since_epoch();
+        let modified_at = Hlc::now();
         self.active.insert(
             index,
             Entry {
@@ -342,7 +340,7 @@ impl FractionalIndex {
     /// 2P-set: a tombstone is final, so a delete always wins over a concurrent insert of the same key
     /// and two peers minting the same key converge on one element.
     ///
-    /// `modified_at` is stamped from the local wall clock. It is advisory (nothing here resolves
+    /// `modified_at` is stamped from the local clock. It is advisory (nothing here resolves
     /// conflicts by it), so peers disagreeing on it is not divergence.
     pub fn insert_key(&mut self, key: FractionalKey) -> Option<usize> {
         // Before the ever-seen check: a rejected key was still handed out, and its ordinal must not
@@ -360,7 +358,7 @@ impl FractionalIndex {
             index,
             Entry {
                 key,
-                modified_at: get_milliseconds_since_epoch(),
+                modified_at: Hlc::now(),
                 moved: FractionalKey::NULL,
             },
         );
@@ -553,10 +551,10 @@ impl FractionalIndex {
     /// record in `moved` space that still points here and has to be dealt with in turn, where `None`
     /// means there was nothing to drop in the first place.
     ///
-    /// `at` is what the parked record gets stamped with. A local edit passes the wall clock; a merge
+    /// `at` is what the parked record gets stamped with. A local edit passes a fresh [`Hlc`]; a merge
     /// passes `None` to keep the timestamp the entry already carried, since a merge that read the
     /// clock would land on different state on every peer.
-    fn tombstone(&mut self, key: &FractionalKey, at: Option<Timestamp>) -> Option<FractionalKey> {
+    fn tombstone(&mut self, key: &FractionalKey, at: Option<Hlc>) -> Option<FractionalKey> {
         let Ok(i) = self.active.binary_search_by_key(&key, |e| &e.key) else {
             return None;
         };
@@ -883,7 +881,7 @@ impl Iterator for CreateKeys {
 #[cfg(test)]
 mod test {
     use super::{
-        gap_capacity, virtual_key, virtual_ordinal, Entry, FractionalIndex, FractionalKey,
+        gap_capacity, virtual_key, virtual_ordinal, Entry, FractionalIndex, FractionalKey, Hlc,
     };
     use std::collections::HashSet;
 
@@ -1122,7 +1120,7 @@ mod test {
                 i,
                 Entry {
                     key,
-                    modified_at: 1_700_000_000_000,
+                    modified_at: Hlc::new(1_700_000_000_000 << 16),
                     moved: FractionalKey::NULL,
                 },
             );
