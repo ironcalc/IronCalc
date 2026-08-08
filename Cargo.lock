@@ -1094,7 +1094,6 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 name = "wasm"
 version = "0.8.4"
 dependencies = [
- "ironcalc",
  "ironcalc_base",
  "serde",
  "serde-wasm-bindgen",
@@ -1271,6 +1270,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
+]
+
+[[package]]
+name = "xlsx-wasm"
+version = "0.8.4"
+dependencies = [
+ "ironcalc",
+ "wasm-bindgen",
 ]
 
 [[package]]

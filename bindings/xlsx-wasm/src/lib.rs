@@ -4,7 +4,7 @@ use ironcalc::{
 use std::io::{BufWriter, Cursor, Write};
 use wasm_bindgen::prelude::{wasm_bindgen, JsError};
 
-fn to_js_error(error: String) -> JsError {
+fn to_js_error(error: impl ToString) -> JsError {
     JsError::new(&error.to_string())
 }
 
@@ -16,10 +16,9 @@ pub fn from_xlsx_bytes(
     timezone: &str,
     language_id: &str,
 ) -> Result<Vec<u8>, JsError> {
-    let workbook = load_from_xlsx_bytes(bytes, name, locale, timezone)
-        .map_err(|e| to_js_error(e.to_string()))?;
-    let base_model = BaseWorkbookModel::from_workbook(workbook, language_id)
-        .map_err(|e| to_js_error(e.to_string()))?;
+    let workbook = load_from_xlsx_bytes(bytes, name, locale, timezone).map_err(to_js_error)?;
+    let base_model =
+        BaseWorkbookModel::from_workbook(workbook, language_id).map_err(to_js_error)?;
     Ok(base_model.to_bytes())
 }
 
@@ -27,14 +26,7 @@ pub fn from_xlsx_bytes(
 pub fn to_xlsx_bytes(bytes: &[u8], language_id: &str) -> Result<Vec<u8>, JsError> {
     let workbook = BaseWorkbookModel::from_bytes(bytes, language_id).map_err(to_js_error)?;
     let mut writer = BufWriter::new(Cursor::new(Vec::new()));
-    save_xlsx_to_writer(&workbook, &mut writer).map_err(|e| to_js_error(e.to_string()))?;
-    writer.flush().map_err(|e| to_js_error(e.to_string()))?;
-    Ok(writer
-        .into_inner()
-        .map_err(|e| to_js_error(e.to_string()))?
-        .into_inner())
-}
-
-fn main() {
-    // This is required for cargo to compile this as a binary
+    save_xlsx_to_writer(&workbook, &mut writer).map_err(to_js_error)?;
+    writer.flush().map_err(to_js_error)?;
+    Ok(writer.into_inner().map_err(to_js_error)?.into_inner())
 }
