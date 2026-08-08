@@ -1,90 +1,106 @@
-#![deny(clippy::all)]
-
-use napi::{self, bindgen_prelude::*, Result, Unknown};
-use serde::Serialize;
+use napi::{self, bindgen_prelude::*, Env, Result, Unknown};
 
 use ironcalc::{
   base::{
-    types::{CellType, Style},
+    cell::CellValue,
+    types::{Link, SheetState, Style, Theme},
     Model as BaseModel,
   },
-  error::XlsxError,
   export::{save_to_icalc, save_to_xlsx},
   import::{load_from_icalc, load_from_xlsx},
 };
 
-#[derive(Serialize)]
-struct DefinedName {
-  name: String,
-  scope: Option<u32>,
-  formula: String,
-}
+use crate::{area, js_to_color, leak_str, to_js_error, CellType, DefinedName, FmtSettings};
 
-fn to_js_error(error: String) -> Error {
-  Error::new(Status::Unknown, error)
-}
-
-fn to_node_error(error: XlsxError) -> Error {
-  Error::new(Status::Unknown, error.to_string())
-}
-
-fn leak_str(s: &str) -> &'static str {
-  Box::leak(s.to_owned().into_boxed_str())
-}
-
+/// A workbook model implementing the "raw" low level API. Nothing is
+/// evaluated automatically: you need to call `evaluate` yourself. There is no
+/// undo/redo history and no diffs are produced.
 #[napi]
 pub struct Model {
-  model: BaseModel<'static>,
+  pub(crate) model: BaseModel<'static>,
 }
 
 #[napi]
 impl Model {
+  /// Creates an empty workbook. `locale`, `timezone` and `languageId` default
+  /// to "en", "UTC" and "en".
   #[napi(constructor)]
-  pub fn new(name: String, locale: String, timezone: String, language_id: String) -> Result<Self> {
+  pub fn new(
+    name: String,
+    locale: Option<String>,
+    timezone: Option<String>,
+    language_id: Option<String>,
+  ) -> Result<Self> {
     let name = leak_str(&name);
-    let locale = leak_str(&locale);
-    let timezone = leak_str(&timezone);
-    let language_id = leak_str(&language_id);
+    let locale = leak_str(&locale.unwrap_or_else(|| "en".to_string()));
+    let timezone = leak_str(&timezone.unwrap_or_else(|| "UTC".to_string()));
+    let language_id = leak_str(&language_id.unwrap_or_else(|| "en".to_string()));
     let model = BaseModel::new_empty(name, locale, timezone, language_id).map_err(to_js_error)?;
     Ok(Self { model })
   }
 
+  /// Creates a model from an xlsx file
   #[napi(factory)]
   pub fn from_xlsx(
     file_path: String,
-    locale: String,
-    tz: String,
-    language_id: String,
+    locale: Option<String>,
+    timezone: Option<String>,
+    language_id: Option<String>,
   ) -> Result<Model> {
-    let language_id = leak_str(&language_id);
-    let model = load_from_xlsx(&file_path, &locale, &tz, language_id)
-      .map_err(|error| Error::new(Status::Unknown, error.to_string()))?;
+    let locale = locale.unwrap_or_else(|| "en".to_string());
+    let timezone = timezone.unwrap_or_else(|| "UTC".to_string());
+    let language_id = leak_str(&language_id.unwrap_or_else(|| "en".to_string()));
+    let model = load_from_xlsx(&file_path, &locale, &timezone, language_id).map_err(to_js_error)?;
     Ok(Self { model })
   }
 
+  /// Creates a model from an icalc file
   #[napi(factory)]
-  pub fn from_icalc(file_name: String, language_id: String) -> Result<Model> {
-    let language_id = leak_str(&language_id);
-    let model = load_from_icalc(&file_name, language_id)
-      .map_err(|error| Error::new(Status::Unknown, error.to_string()))?;
+  pub fn from_icalc(file_name: String, language_id: Option<String>) -> Result<Model> {
+    let language_id = leak_str(&language_id.unwrap_or_else(|| "en".to_string()));
+    let model = load_from_icalc(&file_name, language_id).map_err(to_js_error)?;
     Ok(Self { model })
   }
 
+  /// Creates a model from bytes in the internal binary ic format.
+  /// This is the same format produced by `saveToIcalc` and `toBytes`.
+  #[napi(factory)]
+  pub fn from_bytes(bytes: &[u8], language_id: Option<String>) -> Result<Model> {
+    let language_id = leak_str(&language_id.unwrap_or_else(|| "en".to_string()));
+    let model = BaseModel::from_bytes(bytes, language_id).map_err(to_js_error)?;
+    Ok(Self { model })
+  }
+
+  // Persistence
+
+  /// Saves the workbook to an xlsx file
   #[napi]
   pub fn save_to_xlsx(&self, file: String) -> Result<()> {
-    save_to_xlsx(&self.model, &file).map_err(to_node_error)
+    save_to_xlsx(&self.model, &file).map_err(to_js_error)
   }
 
+  /// Saves the workbook to a file in the internal binary ic format
   #[napi]
   pub fn save_to_icalc(&self, file: String) -> Result<()> {
-    save_to_icalc(&self.model, &file).map_err(to_node_error)
+    save_to_icalc(&self.model, &file).map_err(to_js_error)
   }
 
+  /// Returns the workbook as bytes in the internal binary ic format
+  #[napi]
+  pub fn to_bytes(&self) -> Uint8Array {
+    Uint8Array::new(self.model.to_bytes())
+  }
+
+  /// Evaluates the workbook
   #[napi]
   pub fn evaluate(&mut self) {
     self.model.evaluate();
   }
 
+  // Set values
+
+  /// Sets an input in a cell, parsing it as a user would type it:
+  /// "3.5" is a number, "Hello" a string, "=A1*2" a formula
   #[napi]
   pub fn set_user_input(&mut self, sheet: u32, row: i32, column: i32, value: String) -> Result<()> {
     self
@@ -93,14 +109,128 @@ impl Model {
       .map_err(to_js_error)
   }
 
+  /// Sets an array (spill) formula in the range
+  #[napi]
+  pub fn set_user_array_formula(
+    &mut self,
+    sheet: u32,
+    row: i32,
+    column: i32,
+    width: i32,
+    height: i32,
+    formula: String,
+  ) -> Result<()> {
+    self
+      .model
+      .set_user_array_formula(sheet, row, column, width, height, &formula)
+      .map_err(to_js_error)
+  }
+
+  /// Sets a string value in a cell without input parsing
+  #[napi]
+  pub fn update_cell_with_text(
+    &mut self,
+    sheet: u32,
+    row: i32,
+    column: i32,
+    value: String,
+  ) -> Result<()> {
+    self
+      .model
+      .update_cell_with_text(sheet, row, column, &value)
+      .map_err(to_js_error)
+  }
+
+  /// Sets a number in a cell without input parsing
+  #[napi]
+  pub fn update_cell_with_number(
+    &mut self,
+    sheet: u32,
+    row: i32,
+    column: i32,
+    value: f64,
+  ) -> Result<()> {
+    self
+      .model
+      .update_cell_with_number(sheet, row, column, value)
+      .map_err(to_js_error)
+  }
+
+  /// Sets a boolean in a cell without input parsing
+  #[napi]
+  pub fn update_cell_with_bool(
+    &mut self,
+    sheet: u32,
+    row: i32,
+    column: i32,
+    value: bool,
+  ) -> Result<()> {
+    self
+      .model
+      .update_cell_with_bool(sheet, row, column, value)
+      .map_err(to_js_error)
+  }
+
+  /// Sets a formula (i.e. "=A1*2") in a cell
+  #[napi]
+  pub fn update_cell_with_formula(
+    &mut self,
+    sheet: u32,
+    row: i32,
+    column: i32,
+    formula: String,
+  ) -> Result<()> {
+    self
+      .model
+      .update_cell_with_formula(sheet, row, column, formula)
+      .map_err(to_js_error)
+  }
+
+  /// Clears the contents of a single cell, keeping the formatting
   #[napi]
   pub fn clear_cell_contents(&mut self, sheet: u32, row: i32, column: i32) -> Result<()> {
     self
       .model
-      .cell_clear_contents(sheet, row, column)
+      .range_clear_contents(&area(sheet, row, column, row, column))
       .map_err(to_js_error)
   }
 
+  /// Clears the contents of all cells in the range, keeping the formatting
+  #[napi]
+  pub fn range_clear_contents(
+    &mut self,
+    sheet: u32,
+    start_row: i32,
+    start_column: i32,
+    end_row: i32,
+    end_column: i32,
+  ) -> Result<()> {
+    self
+      .model
+      .range_clear_contents(&area(sheet, start_row, start_column, end_row, end_column))
+      .map_err(to_js_error)
+  }
+
+  /// Clears contents and formatting of all cells in the range
+  #[napi]
+  pub fn range_clear_all(
+    &mut self,
+    sheet: u32,
+    start_row: i32,
+    start_column: i32,
+    end_row: i32,
+    end_column: i32,
+  ) -> Result<()> {
+    self
+      .model
+      .range_clear_all(&area(sheet, start_row, start_column, end_row, end_column))
+      .map_err(to_js_error)
+  }
+
+  // Get values
+
+  /// Returns the content of a cell as the user would see it in the editor:
+  /// the formula if there is one or the raw value otherwise
   #[napi]
   pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String> {
     self
@@ -109,24 +239,66 @@ impl Model {
       .map_err(to_js_error)
   }
 
-  #[napi(js_name = "getCellType")]
-  pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> Result<i32> {
-    Ok(
-      match self
-        .model
-        .get_cell_type(sheet, row, column)
-        .map_err(to_js_error)?
-      {
-        CellType::Number => 1,
-        CellType::Text => 2,
-        CellType::LogicalValue => 4,
-        CellType::ErrorValue => 16,
-        CellType::Array => 64,
-        CellType::CompoundData => 128,
-      },
-    )
+  /// Returns the formula of a cell, if any
+  #[napi]
+  pub fn get_cell_formula(&self, sheet: u32, row: i32, column: i32) -> Result<Option<String>> {
+    self
+      .model
+      .get_cell_formula(sheet, row, column)
+      .map_err(to_js_error)
   }
 
+  /// Returns the value of a cell as a native JS value
+  /// (null, string, number or boolean)
+  #[napi]
+  pub fn get_cell_value(
+    &self,
+    sheet: u32,
+    row: i32,
+    column: i32,
+  ) -> Result<Option<Either3<f64, String, bool>>> {
+    let value = self
+      .model
+      .get_cell_value_by_index(sheet, row, column)
+      .map_err(to_js_error)?;
+    Ok(match value {
+      CellValue::None => None,
+      CellValue::String(s) => Some(Either3::B(s)),
+      CellValue::Number(f) => Some(Either3::A(f)),
+      CellValue::Boolean(b) => Some(Either3::C(b)),
+    })
+  }
+
+  /// Returns the value of a cell referenced like "Sheet1!C4" as a native JS
+  /// value (null, string, number or boolean)
+  #[napi]
+  pub fn get_cell_value_by_ref(
+    &self,
+    cell_ref: String,
+  ) -> Result<Option<Either3<f64, String, bool>>> {
+    let value = self
+      .model
+      .get_cell_value_by_ref(&cell_ref)
+      .map_err(to_js_error)?;
+    Ok(match value {
+      CellValue::None => None,
+      CellValue::String(s) => Some(Either3::B(s)),
+      CellValue::Number(f) => Some(Either3::A(f)),
+      CellValue::Boolean(b) => Some(Either3::C(b)),
+    })
+  }
+
+  /// Returns the type of the content of a cell
+  #[napi]
+  pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> Result<CellType> {
+    self
+      .model
+      .get_cell_type(sheet, row, column)
+      .map(|cell_type| cell_type.into())
+      .map_err(to_js_error)
+  }
+
+  /// Returns the formatted value of a cell (i.e. "$ 5.75")
   #[napi]
   pub fn get_formatted_cell_value(&self, sheet: u32, row: i32, column: i32) -> Result<String> {
     self
@@ -135,6 +307,36 @@ impl Model {
       .map_err(to_js_error)
   }
 
+  /// Returns true if the cell is empty
+  #[napi]
+  pub fn is_empty_cell(&self, sheet: u32, row: i32, column: i32) -> Result<bool> {
+    self
+      .model
+      .is_empty_cell(sheet, row, column)
+      .map_err(to_js_error)
+  }
+
+  /// Returns all non-empty cells as a list of [sheet, row, column] tuples
+  #[napi(ts_return_type = "Array<[number, number, number]>")]
+  pub fn get_all_cells<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
+    let cells: Vec<(u32, i32, i32)> = self
+      .model
+      .get_all_cells()
+      .into_iter()
+      .map(|c| (c.index, c.row, c.column))
+      .collect();
+    env.to_js_value(&cells).map_err(to_js_error)
+  }
+
+  /// Returns a markdown-like representation of the sheet, useful for debugging
+  #[napi]
+  pub fn get_sheet_markup(&self, sheet: u32) -> Result<String> {
+    self.model.get_sheet_markup(sheet).map_err(to_js_error)
+  }
+
+  // Styles
+
+  /// Sets the style of a cell from a style object
   #[napi]
   pub fn set_cell_style(
     &mut self,
@@ -142,34 +344,112 @@ impl Model {
     sheet: u32,
     row: i32,
     column: i32,
-    style: Unknown,
+    #[napi(ts_arg_type = "CellStyle")] style: Unknown,
   ) -> Result<()> {
-    let style: Style = env
-      .from_js_value(style)
-      .map_err(|e| to_js_error(e.to_string()))?;
+    let style: Style = env.from_js_value(style).map_err(to_js_error)?;
     self
       .model
       .set_cell_style(sheet, row, column, &style)
       .map_err(to_js_error)
   }
 
-  #[napi(js_name = "getCellStyle")]
-  pub fn get_cell_style(
-    &'_ self,
-    env: Env,
+  /// Returns the style of a cell
+  #[napi(ts_return_type = "CellStyle")]
+  pub fn get_cell_style<'e>(
+    &self,
+    env: &'e Env,
     sheet: u32,
     row: i32,
     column: i32,
-  ) -> Result<Unknown<'_>> {
+  ) -> Result<Unknown<'e>> {
     let style = self
       .model
       .get_style_for_cell(sheet, row, column)
       .map_err(to_js_error)?;
-
-    env
-      .to_js_value(&style)
-      .map_err(|e| to_js_error(e.to_string()))
+    env.to_js_value(&style).map_err(to_js_error)
   }
+
+  /// Sets the default style for a whole column
+  #[napi]
+  pub fn set_column_style(
+    &mut self,
+    env: Env,
+    sheet: u32,
+    column: i32,
+    #[napi(ts_arg_type = "CellStyle")] style: Unknown,
+  ) -> Result<()> {
+    let style: Style = env.from_js_value(style).map_err(to_js_error)?;
+    self
+      .model
+      .set_column_style(sheet, column, &style)
+      .map_err(to_js_error)
+  }
+
+  /// Returns the default style of a column, if any
+  #[napi(ts_return_type = "CellStyle | null")]
+  pub fn get_column_style<'e>(
+    &self,
+    env: &'e Env,
+    sheet: u32,
+    column: i32,
+  ) -> Result<Option<Unknown<'e>>> {
+    let style = self
+      .model
+      .get_column_style(sheet, column)
+      .map_err(to_js_error)?;
+    match style {
+      Some(style) => Ok(Some(env.to_js_value(&style).map_err(to_js_error)?)),
+      None => Ok(None),
+    }
+  }
+
+  /// Deletes the default style of a column
+  #[napi]
+  pub fn delete_column_style(&mut self, sheet: u32, column: i32) -> Result<()> {
+    self
+      .model
+      .delete_column_style(sheet, column)
+      .map_err(to_js_error)
+  }
+
+  /// Sets the default style for a whole row
+  #[napi]
+  pub fn set_row_style(
+    &mut self,
+    env: Env,
+    sheet: u32,
+    row: i32,
+    #[napi(ts_arg_type = "CellStyle")] style: Unknown,
+  ) -> Result<()> {
+    let style: Style = env.from_js_value(style).map_err(to_js_error)?;
+    self
+      .model
+      .set_row_style(sheet, row, &style)
+      .map_err(to_js_error)
+  }
+
+  /// Returns the default style of a row, if any
+  #[napi(ts_return_type = "CellStyle | null")]
+  pub fn get_row_style<'e>(
+    &self,
+    env: &'e Env,
+    sheet: u32,
+    row: i32,
+  ) -> Result<Option<Unknown<'e>>> {
+    let style = self.model.get_row_style(sheet, row).map_err(to_js_error)?;
+    match style {
+      Some(style) => Ok(Some(env.to_js_value(&style).map_err(to_js_error)?)),
+      None => Ok(None),
+    }
+  }
+
+  /// Deletes the default style of a row
+  #[napi]
+  pub fn delete_row_style(&mut self, sheet: u32, row: i32) -> Result<()> {
+    self.model.delete_row_style(sheet, row).map_err(to_js_error)
+  }
+
+  // Rows and columns
 
   #[napi]
   pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<()> {
@@ -203,6 +483,24 @@ impl Model {
       .map_err(to_js_error)
   }
 
+  /// Moves a column by `delta` positions
+  #[napi]
+  pub fn move_column(&mut self, sheet: u32, column: i32, delta: i32) -> Result<()> {
+    self
+      .model
+      .move_columns_action(sheet, column, 1, delta)
+      .map_err(to_js_error)
+  }
+
+  /// Moves a row by `delta` positions
+  #[napi]
+  pub fn move_row(&mut self, sheet: u32, row: i32, delta: i32) -> Result<()> {
+    self
+      .model
+      .move_rows_action(sheet, row, 1, delta)
+      .map_err(to_js_error)
+  }
+
   #[napi]
   pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64> {
     self
@@ -233,6 +531,37 @@ impl Model {
   }
 
   #[napi]
+  pub fn set_column_hidden(&mut self, sheet: u32, column: i32, hidden: bool) -> Result<()> {
+    self
+      .model
+      .set_column_hidden(sheet, column, hidden)
+      .map_err(to_js_error)
+  }
+
+  #[napi]
+  pub fn set_row_hidden(&mut self, sheet: u32, row: i32, hidden: bool) -> Result<()> {
+    self
+      .model
+      .set_row_hidden(sheet, row, hidden)
+      .map_err(to_js_error)
+  }
+
+  #[napi]
+  pub fn is_column_hidden(&self, sheet: u32, column: i32) -> Result<bool> {
+    self
+      .model
+      .is_column_hidden(sheet, column)
+      .map_err(to_js_error)
+  }
+
+  #[napi]
+  pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool> {
+    self.model.is_row_hidden(sheet, row).map_err(to_js_error)
+  }
+
+  // Frozen rows/columns
+
+  #[napi]
   pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32> {
     self
       .model
@@ -261,29 +590,53 @@ impl Model {
       .map_err(to_js_error)
   }
 
-  // I don't _think_ serializing to Unknown can't fail
-  // FIXME: Remove this clippy directive
-  #[napi(js_name = "getWorksheetsProperties")]
-  #[allow(clippy::unwrap_used)]
-  pub fn get_worksheets_properties(&'_ self, env: Env) -> Unknown<'_> {
+  // Sheets
+
+  /// Returns the list of sheets with their properties (name, state, color, ...)
+  #[napi(ts_return_type = "Array<WorksheetProperties>")]
+  pub fn get_worksheets_properties<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
     env
       .to_js_value(&self.model.get_worksheets_properties())
-      .unwrap()
+      .map_err(to_js_error)
   }
 
+  /// Sets the sheet tab color. Accepts null, "#RRGGBB" or [theme, tint]
   #[napi]
-  pub fn set_sheet_color(&mut self, sheet: u32, color: String) -> Result<()> {
+  pub fn set_sheet_color(
+    &mut self,
+    env: Env,
+    sheet: u32,
+    #[napi(ts_arg_type = "Color | null")] color: Option<Unknown>,
+  ) -> Result<()> {
+    let color = js_to_color(&env, color)?;
     self
       .model
       .set_sheet_color(sheet, &color)
       .map_err(to_js_error)
   }
 
+  /// Sets the sheet visibility state: "visible", "hidden" or "veryHidden"
+  #[napi]
+  pub fn set_sheet_state(&mut self, sheet: u32, state: String) -> Result<()> {
+    let state = match state.as_str() {
+      "visible" => SheetState::Visible,
+      "hidden" => SheetState::Hidden,
+      "veryHidden" => SheetState::VeryHidden,
+      _ => return Err(to_js_error(format!("Invalid sheet state: '{state}'"))),
+    };
+    self
+      .model
+      .set_sheet_state(sheet, state)
+      .map_err(to_js_error)
+  }
+
+  /// Adds a new sheet with the given name
   #[napi]
   pub fn add_sheet(&mut self, sheet_name: String) -> Result<()> {
     self.model.add_sheet(&sheet_name).map_err(to_js_error)
   }
 
+  /// Adds a new sheet with an automatically generated name
   #[napi]
   pub fn new_sheet(&mut self) {
     self.model.new_sheet();
@@ -302,25 +655,103 @@ impl Model {
       .map_err(to_js_error)
   }
 
-  #[napi(js_name = "getDefinedNameList")]
-  pub fn get_defined_name_list(&'_ self, env: Env) -> Result<Unknown<'_>> {
-    let data: Vec<DefinedName> = self
-      .model
-      .workbook
-      .get_defined_names_with_scope()
-      .iter()
-      .map(|s| DefinedName {
-        name: s.0.to_owned(),
-        scope: s.1,
-        formula: s.2.to_owned(),
-      })
-      .collect();
+  /// Returns the bounds of all non-empty cells as
+  /// [minRow, maxRow, minColumn, maxColumn]. For an empty sheet returns [1, 1, 1, 1].
+  #[napi(ts_return_type = "[number, number, number, number]")]
+  pub fn get_sheet_dimensions<'e>(&self, env: &'e Env, sheet: u32) -> Result<Unknown<'e>> {
+    let worksheet = self.model.workbook.worksheet(sheet).map_err(to_js_error)?;
+    let dimension = worksheet.dimension();
     env
-      .to_js_value(&data)
-      .map_err(|e| to_js_error(e.to_string()))
+      .to_js_value(&(
+        dimension.min_row,
+        dimension.max_row,
+        dimension.min_column,
+        dimension.max_column,
+      ))
+      .map_err(to_js_error)
   }
 
-  #[napi(js_name = "newDefinedName")]
+  #[napi]
+  pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<()> {
+    self
+      .model
+      .set_show_grid_lines(sheet, show_grid_lines)
+      .map_err(to_js_error)
+  }
+
+  // Links
+
+  /// Returns the link attached to the cell or null if there isn't one.
+  #[napi(ts_return_type = "Link | null")]
+  pub fn get_cell_link<'e>(
+    &self,
+    env: &'e Env,
+    sheet: u32,
+    row: i32,
+    column: i32,
+  ) -> Result<Unknown<'e>> {
+    let link = self
+      .model
+      .get_cell_link(sheet, row, column)
+      .map_err(to_js_error)?;
+    env.to_js_value(&link).map_err(to_js_error)
+  }
+
+  /// Attaches a link to a cell, replacing the existing one if there was one.
+  /// The link is only metadata: the text displayed in the cell is the cell content.
+  #[napi]
+  pub fn set_cell_link(
+    &mut self,
+    env: Env,
+    sheet: u32,
+    row: i32,
+    column: i32,
+    #[napi(ts_arg_type = "Link")] link: Unknown,
+  ) -> Result<()> {
+    let link: Link = env.from_js_value(link).map_err(to_js_error)?;
+    self
+      .model
+      .set_cell_link(sheet, row, column, link)
+      .map_err(to_js_error)
+  }
+
+  /// Removes the link attached to the cell. It is not an error if the cell has no link.
+  #[napi]
+  pub fn delete_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> Result<()> {
+    self
+      .model
+      .delete_cell_link(sheet, row, column)
+      .map_err(to_js_error)
+  }
+
+  /// Returns all the links in the worksheet sorted by (row, column).
+  #[napi(ts_return_type = "Array<CellLink>")]
+  pub fn get_links<'e>(&self, env: &'e Env, sheet: u32) -> Result<Unknown<'e>> {
+    let links = self.model.get_links_list(sheet).map_err(to_js_error)?;
+    env.to_js_value(&links).map_err(to_js_error)
+  }
+
+  // Defined names
+
+  /// Returns the list of defined names as [{name, scope, formula}].
+  /// `scope` is omitted for globally scoped names.
+  #[napi(ts_return_type = "Array<DefinedName>")]
+  pub fn get_defined_name_list<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
+    let data: Vec<DefinedName> = self
+      .model
+      .get_defined_name_list()
+      .into_iter()
+      .map(|(name, scope, formula)| DefinedName {
+        name,
+        scope,
+        formula,
+      })
+      .collect();
+    env.to_js_value(&data).map_err(to_js_error)
+  }
+
+  /// Creates a new defined name. `scope` is a sheet index or null for global scope.
+  #[napi]
   pub fn new_defined_name(
     &mut self,
     name: String,
@@ -330,10 +761,10 @@ impl Model {
     self
       .model
       .new_defined_name(&name, scope, &formula)
-      .map_err(|e| to_js_error(e.to_string()))
+      .map_err(to_js_error)
   }
 
-  #[napi(js_name = "updateDefinedName")]
+  #[napi]
   pub fn update_defined_name(
     &mut self,
     name: String,
@@ -345,30 +776,73 @@ impl Model {
     self
       .model
       .update_defined_name(&name, scope, &new_name, new_scope, &new_formula)
-      .map_err(|e| to_js_error(e.to_string()))
+      .map_err(to_js_error)
   }
 
-  #[napi(js_name = "deleteDefinedName")]
-  pub fn delete_definedname(&mut self, name: String, scope: Option<u32>) -> Result<()> {
+  #[napi]
+  pub fn delete_defined_name(&mut self, name: String, scope: Option<u32>) -> Result<()> {
     self
       .model
       .delete_defined_name(&name, scope)
-      .map_err(|e| to_js_error(e.to_string()))
-  }
-
-  #[napi(js_name = "moveColumn")]
-  pub fn move_column(&mut self, sheet: u32, column: i32, delta: i32) -> Result<()> {
-    self
-      .model
-      .move_column_action(sheet, column, delta)
       .map_err(to_js_error)
   }
 
-  #[napi(js_name = "moveRow")]
-  pub fn move_row(&mut self, sheet: u32, row: i32, delta: i32) -> Result<()> {
-    self
-      .model
-      .move_row_action(sheet, row, delta)
+  // Workbook properties
+
+  /// Returns the workbook theme
+  #[napi(ts_return_type = "IronCalcTheme")]
+  pub fn get_theme<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
+    env
+      .to_js_value(&self.model.get_theme())
       .map_err(to_js_error)
+  }
+
+  /// Sets the workbook theme
+  #[napi]
+  pub fn set_theme(
+    &mut self,
+    env: Env,
+    #[napi(ts_arg_type = "IronCalcTheme")] theme: Unknown,
+  ) -> Result<()> {
+    let theme: Theme = env.from_js_value(theme).map_err(to_js_error)?;
+    self.model.set_theme(theme);
+    Ok(())
+  }
+
+  #[napi]
+  pub fn get_timezone(&self) -> String {
+    self.model.get_timezone()
+  }
+
+  #[napi]
+  pub fn set_timezone(&mut self, timezone: String) -> Result<()> {
+    self.model.set_timezone(&timezone).map_err(to_js_error)
+  }
+
+  #[napi]
+  pub fn get_locale(&self) -> String {
+    self.model.get_locale()
+  }
+
+  #[napi]
+  pub fn set_locale(&mut self, locale: String) -> Result<()> {
+    self.model.set_locale(&locale).map_err(to_js_error)
+  }
+
+  #[napi]
+  pub fn get_language(&self) -> String {
+    self.model.get_language()
+  }
+
+  #[napi]
+  pub fn set_language(&mut self, language: String) -> Result<()> {
+    self.model.set_language(&language).map_err(to_js_error)
+  }
+
+  /// Returns locale dependent formatting settings (currency, date formats, ...)
+  #[napi(ts_return_type = "FmtSettings")]
+  pub fn get_fmt_settings<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
+    let settings: FmtSettings = self.model.get_fmt_settings().into();
+    env.to_js_value(&settings).map_err(to_js_error)
   }
 }

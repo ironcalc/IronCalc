@@ -6,8 +6,6 @@ Whether you are a seasoned developer or a rookie, welcome to IronCalc!
 
 Before starting any work it is best if you get in touch to make sure your work is relevant.
 
-Please be patient, I am only one and this is a side project.
-
 ---
 
 ## 🛠 Changes to the main repo

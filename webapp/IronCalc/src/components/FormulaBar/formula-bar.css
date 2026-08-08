@@ -1,0 +1,101 @@
+/* Root container */
+.ic-formula-bar-root {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: var(--formula-bar-height);
+  flex-shrink: 0;
+  background: var(--palette-common-white);
+  border-top: 1px solid var(--palette-grey-300);
+}
+
+.ic-formula-bar-button {
+  display: inline-flex;
+  align-items: center;
+  width: 15px;
+  min-width: 0;
+  padding: 0;
+  color: inherit;
+  font-weight: inherit;
+  margin-right: 8px;
+}
+
+.ic-formula-bar-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ic-formula-bar-divider {
+  background-color: var(--palette-grey-300);
+  min-width: 1px;
+  height: 16px;
+  margin: 0px 16px 0px 8px;
+}
+
+.ic-formula-bar-formula-container {
+  display: flex;
+  width: 100%;
+  height: 22px;
+  line-height: 22px;
+  font-weight: normal;
+  margin-left: 0;
+}
+
+.ic-formula-bar-address {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
+  margin-left: 8px;
+  border-radius: 4px;
+
+  font-size: 12px;
+  font-weight: 600;
+  font-style: normal;
+
+  color: var(--palette-common-black);
+  cursor: pointer;
+
+  background-color: transparent;
+}
+
+/* active state */
+.ic-formula-bar-address--active {
+  /* FIXME: used to be theme.palette.action.selected */
+  /* rgba(0, 0, 0, 0.08) see: https://mui.com/material-ui/customization/default-theme/*/
+  background-color: var(--palette-grey-200);
+}
+
+/* hover */
+.ic-formula-bar-address:hover {
+  background-color: var(--palette-grey-100);
+}
+
+/* hover + active stays active */
+.ic-formula-bar-address--active:hover {
+  /* FIXME: used to be theme.palette.action.selected */
+  /* rgba(0, 0, 0, 0.08) see: https://mui.com/material-ui/customization/default-theme/*/
+  background-color: var(--palette-grey-200);
+}
+
+.ic-formula-bar-editor-wrapper {
+  position: relative;
+  width: 100%;
+
+  padding: 0;
+  border-width: 0;
+  outline: none;
+
+  resize: none;
+  overflow: hidden;
+
+  white-space: pre-wrap;
+  vertical-align: bottom;
+  text-align: left;
+
+  font-family: monospace;
+}
+
+.ic-formula-bar-editor-wrapper span {
+  min-width: 1px;
+}

@@ -15,13 +15,15 @@
 
 import type { CellStyle } from "@ironcalc/wasm";
 
-export interface CutRange {
+export interface SheetRange {
   sheet: number;
   rowStart: number;
   rowEnd: number;
   columnStart: number;
   columnEnd: number;
 }
+
+export type CutRange = SheetRange;
 
 export enum AreaType {
   rowsDown = 0,
@@ -49,14 +51,10 @@ export interface ActiveRange {
 }
 
 export interface ReferencedRange {
-  range: {
-    sheet: number;
-    rowStart: number;
-    rowEnd: number;
-    columnStart: number;
-    columnEnd: number;
-  };
+  range: SheetRange;
   str: string;
+  anchorRow: number;
+  anchorColumn: number;
 }
 
 type Focus = "cell" | "formula-bar";
@@ -171,7 +169,18 @@ export class WorkbookState {
   getEditingText(): string {
     const cell = this.cell;
     if (cell) {
-      return cell.text + (cell.referencedRange?.str || "");
+      const str = cell.referencedRange?.str || "";
+      if (str === "") {
+        return cell.text;
+      } else {
+        // insert str at the cursor position
+        const cursorPos = cell.cursorStart;
+        return (
+          cell.text.substring(0, cursorPos) +
+          str +
+          cell.text.substring(cursorPos)
+        );
+      }
     }
     return "";
   }

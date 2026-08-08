@@ -1,68 +1,59 @@
-import type { MenuItemProps } from "@mui/material";
-import { Button, Input, Menu, MenuItem, styled } from "@mui/material";
-import {
-  ChevronDown,
-  EyeOff,
-  PaintBucket,
-  TextCursorInput,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 import ColorPicker from "../ColorPicker/ColorPicker";
 import { isInReferenceMode } from "../Editor/util";
+import { Menu } from "../Menu/Menu";
 import type { WorkbookState } from "../workbookState";
-import SheetDeleteDialog from "./SheetDeleteDialog";
+import SheetDeleteModal from "./SheetDeleteModal";
+import { SheetTabMenu } from "./SheetTabMenu";
+import "./sheet-tab.css";
+import type { Color, IronCalcTheme, Model } from "@ironcalc/wasm";
 
 interface SheetTabProps {
   name: string;
   color: string;
   selected: boolean;
   onSelected: () => void;
-  onColorChanged: (hex: string) => void;
+  canEdit: boolean;
+  onColorChanged: (color: Color) => void;
   onRenamed: (name: string) => void;
   canDelete: boolean;
   onDeleted: () => void;
+  onDuplicateSheet: () => void;
   onHideSheet: () => void;
   workbookState: WorkbookState;
+  currentTheme: IronCalcTheme;
+  onMoveSheet: (fromIndex: number, toIndex: number) => void;
+  model: Model;
 }
 
 function SheetTab(props: SheetTabProps) {
-  const { name, color, selected, workbookState, onSelected } = props;
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const colorButton = useRef<HTMLDivElement>(null);
-  const open = Boolean(anchorEl);
+  const {
+    name,
+    color,
+    selected,
+    workbookState,
+    onSelected,
+    currentTheme,
+    model,
+    onMoveSheet,
+  } = props;
   const { t } = useTranslation();
-  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-  const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onSelected();
-    setAnchorEl(event.currentTarget);
-  };
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchorPosition, setMenuAnchorPosition] = useState({ x: 0, y: 0 });
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-  const handleOpenDeleteDialog = () => {
-    setDeleteDialogOpen(true);
-  };
-
-  const handleCloseDeleteDialog = () => {
-    setDeleteDialogOpen(false);
-  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingName, setEditingName] = useState(name);
+  const [inputWidth, setInputWidth] = useState<number>(0);
+
+  const tabRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
-  const [inputWidth, setInputWidth] = useState<number>(0);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -77,7 +68,6 @@ function SheetTab(props: SheetTabProps) {
     }
   }, [name, isEditing]);
 
-  // We want to change the layout only when editingName changes, but the layout is controlled by the hidden measure element (measureRef).
   // biome-ignore lint/correctness/useExhaustiveDependencies: false
   useLayoutEffect(() => {
     if (isEditing && measureRef.current) {
@@ -86,7 +76,50 @@ function SheetTab(props: SheetTabProps) {
     }
   }, [editingName, isEditing]);
 
+  function getMenuAnchorPosition() {
+    const rect = tabRef.current?.getBoundingClientRect();
+    if (!rect) {
+      return { x: 0, y: 0 };
+    }
+    return { x: rect.right - 24, y: rect.top };
+  }
+
+  const handleOpenMenu = (event: React.MouseEvent) => {
+    if (!props.canEdit) {
+      return;
+    }
+    event.stopPropagation();
+    event.preventDefault();
+    if (menuOpen) {
+      setMenuOpen(false);
+      requestAnimationFrame(() => menuButtonRef.current?.focus());
+    } else {
+      onSelected();
+      setMenuAnchorPosition(getMenuAnchorPosition());
+      setMenuOpen(true);
+    }
+  };
+
+  const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!props.canEdit) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    onSelected();
+    setMenuAnchorPosition(getMenuAnchorPosition());
+    setMenuOpen(true);
+  };
+
+  const handleCloseMenu = () => {
+    setMenuOpen(false);
+    requestAnimationFrame(() => menuButtonRef.current?.focus());
+  };
+
   const handleStartEditing = () => {
+    if (!props.canEdit) {
+      return;
+    }
     setEditingName(name);
     setInputWidth(Math.max(name.length * 7 + 8, 6));
     setIsEditing(true);
@@ -106,41 +139,52 @@ function SheetTab(props: SheetTabProps) {
     setEditingName(name);
     setIsEditing(false);
   };
+
   return (
     <>
-      <TabWrapper
-        $color={color}
-        $selected={selected}
-        onClick={(event: React.MouseEvent) => {
+      <div
+        className={`ic-sheet-tab${selected ? " ic-sheet-tab--selected" : ""}`}
+        style={{ borderBottomColor: color }}
+        role="tab"
+        tabIndex={selected ? 0 : -1}
+        aria-selected={selected}
+        onClick={(event) => {
           if (!isEditing) {
             onSelected();
           }
           event.stopPropagation();
           event.preventDefault();
         }}
-        onDoubleClick={(event: React.MouseEvent) => {
+        onKeyDown={(_) => {
+          // not handling enter/space to open menu or start editing here,
+        }}
+        onDoubleClick={(event) => {
           event.stopPropagation();
           event.preventDefault();
           handleStartEditing();
         }}
         onContextMenu={handleContextMenu}
-        onPointerDown={(event: React.PointerEvent) => {
+        onPointerDown={(event) => {
           const cell = workbookState.getEditingCell();
-          if (cell && isInReferenceMode(cell.text, cell.cursorStart)) {
+          if (cell && isInReferenceMode(model, cell.text, cell.cursorStart)) {
             event.stopPropagation();
             event.preventDefault();
           }
         }}
-        ref={colorButton}
+        ref={tabRef}
       >
         {isEditing ? (
           <>
-            <HiddenMeasure ref={measureRef}>{editingName || " "}</HiddenMeasure>
-            <StyledInput
-              inputRef={inputRef}
+            <span className="ic-sheet-tab-hidden-measure" ref={measureRef}>
+              {editingName || " "}
+            </span>
+            <input
+              ref={inputRef}
               value={editingName}
               onChange={(e) => setEditingName(e.target.value)}
               style={{ width: `${inputWidth}px` }}
+              className="ic-sheet-tab-input"
+              aria-label={t("sheet_tab.rename")}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -157,249 +201,94 @@ function SheetTab(props: SheetTabProps) {
               onClick={(e) => e.stopPropagation()}
               spellCheck={false}
             />
-            <StyledButton disableRipple disabled $active={false}>
+            {/** biome-ignore lint/a11y/noAriaHiddenOnFocusable: FIXME */}
+            <button
+              className="ic-sheet-tab-menu-button"
+              disabled
+              type="button"
+              aria-hidden="true"
+            >
               <ChevronDown />
-            </StyledButton>
+            </button>
           </>
         ) : (
           <>
-            <Name>{name}</Name>
-            <StyledButton onClick={handleOpen} disableRipple $active={open}>
-              <ChevronDown />
-            </StyledButton>
+            <div className="ic-sheet-tab-name">{name}</div>
+            {props.canEdit && (
+              <button
+                ref={menuButtonRef}
+                className={`ic-sheet-tab-menu-button${menuOpen ? " ic-sheet-tab-menu-button--active" : ""}`}
+                onClick={handleOpenMenu}
+                type="button"
+                aria-label={t("sheet_tab.open_menu")}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+              >
+                <ChevronDown />
+              </button>
+            )}
           </>
         )}
-      </TabWrapper>
-      <StyledMenu
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "left",
-        }}
-        transformOrigin={{
-          vertical: "bottom",
-          horizontal: 6,
-        }}
+      </div>
+
+      <Menu
+        open={menuOpen}
+        onClose={handleCloseMenu}
+        anchorPosition={menuAnchorPosition}
       >
-        <StyledMenuItem
-          onClick={() => {
-            handleStartEditing();
-            handleClose();
+        <SheetTabMenu
+          canDelete={props.canDelete}
+          onStartEditing={handleStartEditing}
+          onOpenColorPicker={() => setColorPickerOpen(true)}
+          onDuplicateSheet={props.onDuplicateSheet}
+          onHideSheet={props.onHideSheet}
+          onDeleteSheet={() => setDeleteDialogOpen(true)}
+          onMoveLeft={() => {
+            const selectedIndex = model.getSelectedSheet();
+            if (selectedIndex > 0) {
+              onMoveSheet(selectedIndex, selectedIndex - 1);
+            }
+            handleCloseMenu();
           }}
-        >
-          <TextCursorInput />
-          {t("sheet_tab.rename")}
-        </StyledMenuItem>
-        <StyledMenuItem
-          onClick={() => {
-            setColorPickerOpen(true);
-            handleClose();
+          onMoveRight={() => {
+            const selectedIndex = model.getSelectedSheet();
+            const sheetCount = model.getWorksheetsProperties().length;
+            if (selectedIndex < sheetCount - 1) {
+              onMoveSheet(selectedIndex, selectedIndex + 1);
+            }
+            handleCloseMenu();
           }}
-        >
-          <PaintBucket />
-          {t("sheet_tab.change_color")}
-        </StyledMenuItem>
-        <StyledMenuItem
-          disabled={!props.canDelete}
-          onClick={() => {
-            props.onHideSheet();
-            handleClose();
-          }}
-        >
-          <EyeOff />
-          {t("sheet_tab.hide_sheet")}
-        </StyledMenuItem>
-        <MenuDivider />
-        <DeleteButton
-          disabled={!props.canDelete}
-          onClick={() => {
-            handleOpenDeleteDialog();
-            handleClose();
-          }}
-        >
-          <Trash2 />
-          {t("sheet_tab.delete")}
-        </DeleteButton>
-      </StyledMenu>
+        />
+      </Menu>
+
       <ColorPicker
         color={color}
         defaultColor="#FFFFFF"
         title={t("color_picker.no_fill")}
-        onChange={(color): void => {
-          props.onColorChanged(color);
+        onChange={(nextColor): void => {
+          props.onColorChanged(nextColor);
           setColorPickerOpen(false);
         }}
         onClose={() => {
           setColorPickerOpen(false);
         }}
-        anchorEl={colorButton}
+        anchorEl={tabRef}
         open={colorPickerOpen}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+        placement="top"
+        theme={currentTheme}
       />
-      <SheetDeleteDialog
+
+      <SheetDeleteModal
         open={deleteDialogOpen}
-        onClose={handleCloseDeleteDialog}
+        onClose={() => setDeleteDialogOpen(false)}
         onDelete={() => {
           props.onDeleted();
-          handleCloseDeleteDialog();
+          setDeleteDialogOpen(false);
         }}
         sheetName={name}
       />
     </>
   );
 }
-
-const StyledMenu = styled(Menu)`
-  & .MuiPaper-root {
-    border-radius: 8px;
-    padding: 4px 0px;
-    margin-left: -4px;
-  }
-  & .MuiList-root {
-    padding: 0;
-  }
-`;
-
-const StyledMenuItem = styled(MenuItem)<MenuItemProps>(() => ({
-  display: "flex",
-  justifyContent: "flex-start",
-  alignItems: "center",
-  gap: "8px",
-  fontSize: "12px",
-  width: "calc(100% - 8px)",
-  margin: "0px 4px",
-  borderRadius: "4px",
-  padding: "8px",
-  height: "32px",
-  "&:disabled": {
-    color: "#BDBDBD",
-  },
-  "& svg": {
-    width: "16px",
-    height: "16px",
-    color: `${theme.palette.grey[600]}`,
-  },
-}));
-
-const TabWrapper = styled("div")<{ $color: string; $selected: boolean }>`
-  display: flex;
-  margin-right: 12px;
-  border-bottom: 3px solid ${(props) => props.$color};
-  line-height: 37px;
-  padding: 0px 4px 0px 6px;
-  align-items: center;
-  cursor: pointer;
-  min-width: 40px;
-  font-weight: ${(props) => (props.$selected ? 600 : 400)};
-  background-color: ${(props) =>
-    props.$selected ? `${theme.palette.grey[50]}` : "transparent"};
-  &:hover {
-    background-color: ${theme.palette.grey[50]}80;
-  }
-`;
-
-const StyledButton = styled(Button, {
-  shouldForwardProp: (prop) => prop !== "$active",
-})<{ $active: boolean }>`
-  width: 16px;
-  height: 16px;
-  min-width: 0px;
-  padding: 0px;
-  color: inherit;
-  font-weight: inherit;
-  border-radius: 4px;
-  flex-shrink: 0;
-  background-color: ${(props) =>
-    props.$active ? `${theme.palette.grey[300]}` : "transparent"};
-  &:hover {
-    background-color: ${theme.palette.grey[200]};
-  }
-  &:active {
-    background-color: ${theme.palette.grey[300]};
-  }
-  &:disabled {
-    pointer-events: none;
-  }
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const Name = styled("div")`
-  font-size: 12px;
-  margin-right: 5px;
-  text-wrap: nowrap;
-  user-select: none;
-  width: 100%;
-  text-align: center;
-`;
-
-const HiddenMeasure = styled("span")`
-  position: absolute;
-  visibility: hidden;
-  white-space: pre;
-  font-size: 12px;
-  font-family: Inter;
-  font-weight: inherit;
-  padding: 0;
-  margin: 0;
-  height: 100%;
-  overflow: hidden;
-  pointer-events: none;
-`;
-
-const StyledInput = styled(Input)`
-  font-size: 12px;
-  font-family: Inter;
-  font-weight: inherit;
-  min-width: 6px;
-  margin-right: 2px;
-  min-height: 100%;
-  flex-grow: 1;
-  & .MuiInputBase-input {
-    font-family: Inter;
-    background-color: ${theme.palette.common.white};
-    font-weight: inherit;
-    padding: 6px 0px;
-    border: 1px solid ${theme.palette.primary.main};
-    border-radius: 4px;
-    color: ${theme.palette.common.black};
-    text-align: center;
-    will-change: width;
-    &:focus {
-      border-color: ${theme.palette.primary.main};
-    }
-  }
-
-  &::before,
-  &::after {
-    display: none;
-  }
-`;
-
-const MenuDivider = styled("div")`
-  width: 100%;
-  margin: auto;
-  margin-top: 4px;
-  margin-bottom: 4px;
-  border-top: 1px solid ${theme.palette.grey[200]};
-`;
-
-const DeleteButton = styled(StyledMenuItem)`
-  color: ${theme.palette.error.main};
-  svg {
-    color: ${theme.palette.error.main};
-  }
-  &:hover {
-    background-color: ${theme.palette.error.main}1A;
-  }
-  &:active {
-    background-color: ${theme.palette.error.main}1A;
-  }
-`;
 
 export default SheetTab;

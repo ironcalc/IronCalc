@@ -1,14 +1,13 @@
 [package]
 name = "wasm"
-version = "0.7.1"
+version = "0.8.4"
 authors = ["Nicolas Hatcher <nicolas@theuniverse.today>"]
 description = "IronCalc Web bindings"
 license = "MIT/Apache-2.0"
-repository = "https://github.com/ironcalc/ironcalc"
+repository = "https://github.com/ironcalc/IronCalc"
 edition = "2021"
 
 [lib]
-name = "ironcalc_wasm"
 crate-type = ["cdylib"]
 
 [[bin]]
@@ -19,11 +18,11 @@ path = "src/xlsx.rs"
 # Uses `../ironcalc/base` when used locally, and uses
 # the indicated version from crates.io when published.
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
-ironcalc = { path = "../../xlsx", version = "0.7" }
-ironcalc_base = { path = "../../base", version = "0.7", features = ["use_regex_lite"] }
+ironcalc = { path = "../../xlsx", version = "0.8" }
+ironcalc_base = { path = "../../base", version = "0.8" }
 serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = "0.2.100"
-serde-wasm-bindgen = "0.6"
+serde-wasm-bindgen = "0.4"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.38"

@@ -1,8 +1,9 @@
 use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
-use crate::expressions::parser::static_analysis::add_implicit_intersection;
+use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
 use crate::expressions::token::{OpSum, OpUnary};
+use crate::functions::Function;
 use crate::language::{get_language, Language};
 use crate::locale::{get_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
@@ -53,6 +54,21 @@ pub fn to_rc_format(node: &Node) -> String {
     stringify(node, None, &DisplaceData::None, false, locale, language)
 }
 
+pub fn to_english_string(node: &Node, context: &CellReferenceRC) -> String {
+    #[allow(clippy::expect_used)]
+    let locale = get_locale("en").expect("");
+    #[allow(clippy::expect_used)]
+    let language = get_language("en").expect("");
+    stringify(
+        node,
+        Some(context),
+        &DisplaceData::None,
+        false,
+        locale,
+        language,
+    )
+}
+
 /// This is the mode used to display the formula in the UI
 pub fn to_localized_string(
     node: &Node,
@@ -77,8 +93,15 @@ pub fn to_excel_string(node: &Node, context: &CellReferenceRC) -> String {
     let locale = get_locale("en").expect("");
     #[allow(clippy::expect_used)]
     let language = get_language("en").expect("");
+    // The internal representation stores every implicit intersection as `@`,
+    // without the `automatic` flag. Drop the operators that Excel would re-insert
+    // automatically on import; the rest are kept as `_xlfn.SINGLE` while
+    // stringifying. See `remove_redundant_implicit_intersection`.
+    let mut node = node.clone();
+    remove_redundant_implicit_intersection(&mut node, true);
+    prefix_bound_variables(&mut node, &mut Vec::new());
     stringify(
-        node,
+        &node,
         Some(context),
         &DisplaceData::None,
         true,
@@ -87,15 +110,103 @@ pub fn to_excel_string(node: &Node, context: &CellReferenceRC) -> String {
     )
 }
 
+/// Excel stores LAMBDA parameters and LET variables with an `_xlpm.` prefix,
+/// both at the declaration and at every use site:
+/// `LET(x,1,x*2)` is written as `_xlfn.LET(_xlpm.x,1,_xlpm.x*2)`.
+/// Internally IronCalc keeps the bare names, so before exporting we walk the
+/// tree tracking which names are bound by an enclosing LAMBDA/LET and rename
+/// those occurrences. Unbound names (e.g. a defined name that only resolves at
+/// evaluation time) are left alone. Matching is case-sensitive, mirroring
+/// evaluation (see `assign_variable_ids`).
+fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
+    match node {
+        Node::NamedVariableKind { name, .. } => {
+            if bound.iter().any(|n| n == name) {
+                *name = format!("_xlpm.{name}");
+            }
+        }
+        // A bound lambda used as a function: `LET(f,LAMBDA(a,a*a),f(2))`
+        Node::NamedFunctionKind { name, args, .. } => {
+            if bound.iter().any(|n| n == name) {
+                *name = format!("_xlpm.{name}");
+            }
+            for arg in args {
+                prefix_bound_variables(arg, bound);
+            }
+        }
+        Node::LambdaDefKind { parameters, body } => {
+            let depth = bound.len();
+            for parameter in parameters.iter() {
+                bound.push(parameter.name.clone());
+            }
+            prefix_bound_variables(body, bound);
+            bound.truncate(depth);
+        }
+        Node::FunctionKind {
+            kind: Function::Let,
+            args,
+        } if args.len() >= 3 && args.len() % 2 == 1 => {
+            // LET(name1, value1, [name2, value2, ...], body): each name is in
+            // scope from its own value expression onwards.
+            let depth = bound.len();
+            let pair_count = (args.len() - 1) / 2;
+            for i in 0..pair_count {
+                if let Node::NamedVariableKind { name, .. } = &mut args[2 * i] {
+                    bound.push(name.clone());
+                    *name = format!("_xlpm.{name}");
+                }
+                prefix_bound_variables(&mut args[2 * i + 1], bound);
+            }
+            prefix_bound_variables(&mut args[2 * pair_count], bound);
+            bound.truncate(depth);
+        }
+        Node::FunctionKind { args, .. } => {
+            for arg in args {
+                prefix_bound_variables(arg, bound);
+            }
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            prefix_bound_variables(lambda, bound);
+            for arg in args {
+                prefix_bound_variables(arg, bound);
+            }
+        }
+        Node::OpRangeKind { left, right }
+        | Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right }
+        | Node::CompareKind { left, right, .. } => {
+            prefix_bound_variables(left, bound);
+            prefix_bound_variables(right, bound);
+        }
+        Node::UnaryKind { right, .. } => prefix_bound_variables(right, bound),
+        Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
+            prefix_bound_variables(child, bound)
+        }
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ReferenceKind { .. }
+        | Node::RangeKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
+        | Node::ArrayKind(_)
+        | Node::DefinedNameKind(_)
+        | Node::TableNameKind(_)
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::EmptyArgKind => {}
+    }
+}
+
 pub fn to_string_displaced(
     node: &Node,
     context: &CellReferenceRC,
     displace_data: &DisplaceData,
+    locale: &Locale,
+    language: &Language,
 ) -> String {
-    #[allow(clippy::expect_used)]
-    let locale = get_locale("en").expect("");
-    #[allow(clippy::expect_used)]
-    let language = get_language("en").expect("");
     stringify(node, Some(context), displace_data, false, locale, language)
 }
 
@@ -598,14 +709,29 @@ fn stringify(
             )
         ),
         OpSumKind { kind, left, right } => {
-            let left_str = stringify(
-                left,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language,
-            );
+            // CompareKind has lower precedence than +/-, so wrap it to preserve semantics
+            let left_str = if matches!(**left, CompareKind { .. }) {
+                format!(
+                    "({})",
+                    stringify(
+                        left,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
+                )
+            } else {
+                stringify(
+                    left,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                )
+            };
             // if kind is minus then we need parentheses in the right side if they are OpSumKind or CompareKind
             let right_str = if (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }))
                 | matches!(**right, CompareKind { .. })
@@ -690,7 +816,7 @@ fn stringify(
                 | WrongReferenceKind { .. }
                 | DefinedNameKind(_)
                 | TableNameKind(_)
-                | WrongVariableKind(_)
+                | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     left,
                     context,
@@ -704,13 +830,16 @@ fn stringify(
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
                 | FunctionKind { .. }
-                | InvalidFunctionKind { .. }
+                | NamedFunctionKind { .. }
+                | LambdaDefKind { .. }
+                | LambdaCallKind { .. }
                 | ArrayKind(_)
                 | ErrorKind(_)
                 | ParseErrorKind { .. }
                 | OpSumKind { .. }
                 | CompareKind { .. }
                 | ImplicitIntersection { .. }
+                | SpillRangeOperator { .. }
                 | EmptyArgKind => format!(
                     "({})",
                     stringify(
@@ -732,7 +861,7 @@ fn stringify(
                 | WrongReferenceKind { .. }
                 | DefinedNameKind(_)
                 | TableNameKind(_)
-                | WrongVariableKind(_)
+                | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     right,
                     context,
@@ -746,7 +875,9 @@ fn stringify(
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
                 | FunctionKind { .. }
-                | InvalidFunctionKind { .. }
+                | NamedFunctionKind { .. }
+                | LambdaDefKind { .. }
+                | LambdaCallKind { .. }
                 | ArrayKind(_)
                 | UnaryKind { .. }
                 | ErrorKind(_)
@@ -754,6 +885,7 @@ fn stringify(
                 | OpSumKind { .. }
                 | CompareKind { .. }
                 | ImplicitIntersection { .. }
+                | SpillRangeOperator { .. }
                 | EmptyArgKind => format!(
                     "({})",
                     stringify(
@@ -768,7 +900,7 @@ fn stringify(
             };
             format!("{x}^{y}")
         }
-        InvalidFunctionKind { name, args } => format_function(
+        NamedFunctionKind { name, args, id: _ } => format_function(
             &name.to_lowercase(),
             args,
             context,
@@ -825,7 +957,7 @@ fn stringify(
         }
         TableNameKind(value) => value.to_string(),
         DefinedNameKind((name, ..)) => name.to_string(),
-        WrongVariableKind(name) => name.to_string(),
+        NamedVariableKind { name, id: _ } => name.to_string(),
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
                 let needs_parentheses = match **right {
@@ -840,12 +972,15 @@ fn stringify(
                     | OpConcatenateKind { .. }
                     | OpProductKind { .. }
                     | FunctionKind { .. }
-                    | InvalidFunctionKind { .. }
+                    | NamedFunctionKind { .. }
+                    | LambdaDefKind { .. }
+                    | LambdaCallKind { .. }
                     | ArrayKind(_)
                     | DefinedNameKind(_)
                     | TableNameKind(_)
-                    | WrongVariableKind(_)
+                    | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
+                    | SpillRangeOperator { .. }
                     | CompareKind { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
@@ -894,32 +1029,105 @@ fn stringify(
             }
         },
         ErrorKind(kind) => format!("{kind}"),
-        ParseErrorKind {
-            formula,
-            position: _,
-            message: _,
-        } => formula.to_string(),
+        ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
-        ImplicitIntersection {
-            automatic: _,
-            child,
-        } => {
+        SpillRangeOperator { child } => {
             if export_to_excel {
-                // We need to check wether the II can be automatic or not
-                let mut new_node = child.as_ref().clone();
-
-                add_implicit_intersection(&mut new_node, true);
-                if matches!(&new_node, Node::ImplicitIntersection { .. }) {
-                    return stringify(
+                return format!(
+                    "_xlfn.ANCHORARRAY({})",
+                    stringify(
                         child,
                         context,
                         displace_data,
                         export_to_excel,
                         locale,
-                        language,
-                    );
-                }
-
+                        language
+                    )
+                );
+            };
+            format!(
+                "{}#",
+                stringify(
+                    child,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language
+                )
+            )
+        }
+        LambdaDefKind { parameters, body } => {
+            let lambda_name = if export_to_excel {
+                "_xlfn.LAMBDA"
+            } else {
+                "LAMBDA"
+            };
+            let arg_sep = if locale.numbers.symbols.decimal == "." {
+                ","
+            } else {
+                ";"
+            };
+            let mut parts: Vec<String> = parameters
+                .iter()
+                .map(|p| {
+                    if export_to_excel {
+                        if p.is_optional {
+                            format!("_xlop.{}", p.name)
+                        } else {
+                            format!("_xlpm.{}", p.name)
+                        }
+                    } else if p.is_optional {
+                        format!("[{}]", p.name)
+                    } else {
+                        p.name.clone()
+                    }
+                })
+                .collect();
+            parts.push(stringify(
+                body,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            ));
+            format!("{}({})", lambda_name, parts.join(arg_sep))
+        }
+        LambdaCallKind { lambda, args } => {
+            let arg_sep = if locale.numbers.symbols.decimal == "." {
+                ","
+            } else {
+                ";"
+            };
+            // When the callee is a plain named variable (unknown identifier used as a function),
+            // use lowercase to distinguish from real function calls in R1C1 format and
+            // to match the display behaviour of InvalidFunctionKind.
+            let lambda_str = match lambda.as_ref() {
+                Node::NamedVariableKind { name, id: _ } => name.to_lowercase(),
+                other => stringify(
+                    other,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                ),
+            };
+            let call_args: Vec<String> = args
+                .iter()
+                .map(|a| stringify(a, context, displace_data, export_to_excel, locale, language))
+                .collect();
+            format!("{}({})", lambda_str, call_args.join(arg_sep))
+        }
+        ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            if export_to_excel {
+                // Redundant operators have already been stripped by
+                // `remove_redundant_implicit_intersection`; whatever remains is
+                // meaningful and must be exported explicitly.
                 return format!(
                     "_xlfn.SINGLE({})",
                     stringify(
@@ -1015,7 +1223,11 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
                 rename_sheet_in_node(arg, sheet_index, new_name);
             }
         }
-        Node::InvalidFunctionKind { name: _, args } => {
+        Node::NamedFunctionKind {
+            name: _,
+            args,
+            id: _,
+        } => {
             for arg in args {
                 rename_sheet_in_node(arg, sheet_index, new_name);
             }
@@ -1037,6 +1249,9 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
+        Node::SpillRangeOperator { child } => {
+            rename_sheet_in_node(child, sheet_index, new_name);
+        }
 
         // Do nothing
         Node::BooleanKind(_) => {}
@@ -1047,8 +1262,20 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ArrayKind(_) => {}
         Node::DefinedNameKind(_) => {}
         Node::TableNameKind(_) => {}
-        Node::WrongVariableKind(_) => {}
+        Node::NamedVariableKind { .. } => {}
         Node::EmptyArgKind => {}
+        Node::LambdaDefKind {
+            parameters: _,
+            body,
+        } => {
+            rename_sheet_in_node(body, sheet_index, new_name);
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            rename_sheet_in_node(lambda, sheet_index, new_name);
+            for arg in args {
+                rename_sheet_in_node(arg, sheet_index, new_name);
+            }
+        }
     }
 }
 
@@ -1099,7 +1326,11 @@ pub(crate) fn rename_defined_name_in_node(
                 rename_defined_name_in_node(arg, name, scope, new_name);
             }
         }
-        Node::InvalidFunctionKind { name: _, args } => {
+        Node::NamedFunctionKind {
+            name: _,
+            args,
+            id: _,
+        } => {
             for arg in args {
                 rename_defined_name_in_node(arg, name, scope, new_name);
             }
@@ -1121,7 +1352,9 @@ pub(crate) fn rename_defined_name_in_node(
         } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
-
+        Node::SpillRangeOperator { child } => {
+            rename_defined_name_in_node(child, name, scope, new_name);
+        }
         // Do nothing
         Node::BooleanKind(_) => {}
         Node::NumberKind(_) => {}
@@ -1135,6 +1368,18 @@ pub(crate) fn rename_defined_name_in_node(
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
         Node::TableNameKind(_) => {}
-        Node::WrongVariableKind(_) => {}
+        Node::NamedVariableKind { .. } => {}
+        Node::LambdaDefKind {
+            parameters: _,
+            body,
+        } => {
+            rename_defined_name_in_node(body, name, scope, new_name);
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            rename_defined_name_in_node(lambda, name, scope, new_name);
+            for arg in args {
+                rename_defined_name_in_node(arg, name, scope, new_name);
+            }
+        }
     }
 }

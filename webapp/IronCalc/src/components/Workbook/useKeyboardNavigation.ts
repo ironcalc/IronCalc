@@ -34,6 +34,8 @@ interface Options {
   onEscape: () => void;
   onSelectColumn: () => void;
   onSelectRow: () => void;
+  /** When false, editing/mutation keys are ignored (navigation still works). */
+  canEdit: boolean;
   root: RefObject<HTMLDivElement | null>;
 }
 
@@ -91,31 +93,41 @@ const useKeyboardNavigation = (
         // Ctrl+...
         switch (lowerKey) {
           case "z": {
-            options.onUndo();
+            if (options.canEdit) {
+              options.onUndo();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;
           }
           case "y": {
-            options.onRedo();
+            if (options.canEdit) {
+              options.onRedo();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;
           }
           case "b": {
-            options.onBold();
+            if (options.canEdit) {
+              options.onBold();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;
           }
           case "i": {
-            options.onItalic();
+            if (options.canEdit) {
+              options.onItalic();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;
           }
           case "u": {
-            options.onUnderline();
+            if (options.canEdit) {
+              options.onUnderline();
+            }
             event.stopPropagation();
             event.preventDefault();
             break;
@@ -204,7 +216,7 @@ const useKeyboardNavigation = (
         return;
       }
 
-      if (isEditingKey(key) || key === "Backspace") {
+      if (options.canEdit && (isEditingKey(key) || key === "Backspace")) {
         const initText = key === "Backspace" ? "" : key;
         options.onEditKeyPressStart(initText);
         event.stopPropagation();
@@ -215,7 +227,7 @@ const useKeyboardNavigation = (
         // Other combinations with Shift are not handled
         return;
       }
-      if (key === "F2") {
+      if (key === "F2" && options.canEdit) {
         options.onCellEditStart();
         event.stopPropagation();
         event.preventDefault();
@@ -250,7 +262,9 @@ const useKeyboardNavigation = (
           break;
         }
         case "Delete": {
-          options.onCellsDeleted();
+          if (options.canEdit) {
+            options.onCellsDeleted();
+          }
           break;
         }
         case "PageDown": {

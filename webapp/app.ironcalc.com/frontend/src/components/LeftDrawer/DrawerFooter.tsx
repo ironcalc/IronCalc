@@ -1,73 +1,69 @@
-import styled from "@emotion/styled";
-import { BookOpen } from "lucide-react";
+import { Button, Confirm } from "@ironcalc/workbook";
+import { BookOpen, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-function DrawerFooter() {
+interface DrawerFooterProps {
+  checkedCount: number;
+  onDeleteChecked: () => void;
+  onCancelChecked: () => void;
+}
+
+function DrawerFooter({
+  checkedCount,
+  onDeleteChecked,
+  onCancelChecked,
+}: DrawerFooterProps) {
   const { t } = useTranslation();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  if (checkedCount > 0) {
+    return (
+      <>
+        <div className="app-ic-drawer-footer app-ic-drawer-footer--selection">
+          <Button
+            variant="destructive"
+            startIcon={<Trash2 />}
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            {t("left_drawer.delete_workbooks", { count: checkedCount })}
+          </Button>
+          <Button variant="secondary" onClick={onCancelChecked}>
+            {t("left_drawer.cancel")}
+          </Button>
+        </div>
+        <Confirm
+          open={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          onConfirm={() => {
+            setIsDeleteDialogOpen(false);
+            onDeleteChecked();
+          }}
+          title={t("file_bar.file_menu.delete_workbook.title")}
+          message={t("left_drawer.bulk_delete_message", {
+            count: checkedCount,
+          })}
+          confirmLabel={t("file_bar.file_menu.delete_workbook.confirm_button")}
+          cancelLabel={t("file_bar.file_menu.delete_workbook.cancel_button")}
+          variant="destructive"
+        />
+      </>
+    );
+  }
+
   return (
-    <StyledDrawerFooter>
-      <FooterLink
+    <div className="app-ic-drawer-footer">
+      <a
+        className="app-ic-drawer-footer-link"
         href="https://docs.ironcalc.com/"
         target="_blank"
         rel="noopener noreferrer"
       >
-        <OpenBookIcon>
-          <BookOpen />
-        </OpenBookIcon>
-        <FooterLinkText>{t("left_drawer.documentation")}</FooterLinkText>
-      </FooterLink>
-    </StyledDrawerFooter>
+        <BookOpen />
+        {t("left_drawer.documentation")}
+      </a>
+    </div>
   );
 }
-
-const StyledDrawerFooter = styled("div")`
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  justify-content: space-between;
-  max-height: 50px;
-  height: 60px;
-  border-top: 1px solid #e0e0e0;
-  box-sizing: border-box;
-`;
-
-const FooterLink = styled("a")`
-  display: flex;
-  gap: 8px;
-  justify-content: flex-start;
-  font-size: 14px;
-  width: 100%;
-  min-width: 172px;
-  border-radius: 8px;
-  padding: 8px 4px 8px 8px;
-  transition: gap 0.5s;
-  background-color: transparent;
-  color: #000;
-  text-decoration: none;
-  align-items: center;
-
-  &:hover {
-    background-color: #e0e0e0 !important;
-  }
-`;
-
-const OpenBookIcon = styled("div")`
-  height: 16px;
-  width: 16px;
-  svg {
-    height: 16px;
-    width: 16px;
-    stroke: #9e9e9e;
-  }
-`;
-
-const FooterLinkText = styled("div")`
-  color: #000;
-  font-size: 12px;
-  width: 100%;
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
 
 export default DrawerFooter;

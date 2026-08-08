@@ -1,6 +1,7 @@
 use crate::constants::{self, LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::{is_valid_column_number, is_valid_row};
+use crate::model::CellStructure;
 use crate::{expressions::token::Error, types::*};
 
 use std::collections::HashMap;
@@ -71,7 +72,6 @@ impl Worksheet {
         Ok(())
     }
 
-    // TODO [MVP]: Pass the cell style from the model
     // See: get_style_for_cell
     fn get_row_column_style(&self, row_index: i32, column_index: i32) -> i32 {
         let rows = &self.rows;
@@ -111,6 +111,7 @@ impl Worksheet {
             width: constants::DEFAULT_COLUMN_WIDTH,
             custom_width: false,
             style: Some(style_index),
+            hidden: false,
         }];
         Ok(())
     }
@@ -119,7 +120,8 @@ impl Worksheet {
         let width = self
             .get_column_width(column)
             .unwrap_or(constants::DEFAULT_COLUMN_WIDTH);
-        self.set_column_width_and_style(column, width, Some(style_index))
+        let hidden = self.is_column_hidden(column)?;
+        self.set_column_width_and_style(column, width, hidden, Some(style_index))
     }
 
     pub fn set_row_style(&mut self, row: i32, style_index: i32) -> Result<(), String> {
@@ -193,6 +195,7 @@ impl Worksheet {
                 width,
                 custom_width,
                 style: cols[index].style,
+                hidden: cols[index].hidden,
             };
             let col = Col {
                 min: column,
@@ -200,6 +203,7 @@ impl Worksheet {
                 width,
                 custom_width,
                 style: None,
+                hidden: false,
             };
             let post = Col {
                 min: column + 1,
@@ -207,6 +211,7 @@ impl Worksheet {
                 width,
                 custom_width,
                 style: cols[index].style,
+                hidden: cols[index].hidden,
             };
             cols.remove(index);
             if column != max {
@@ -249,6 +254,44 @@ impl Worksheet {
         style: i32,
     ) -> Result<(), String> {
         let cell = Cell::new_formula(index, style);
+        self.update_cell(row, column, cell)
+    }
+
+    pub fn set_cell_with_dynamic_formula(
+        &mut self,
+        row: i32,
+        column: i32,
+        index: i32,
+        style: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), String> {
+        let cell = Cell::ArrayFormula {
+            f: index,
+            s: style,
+            r: (width, height),
+            kind: ArrayKind::Dynamic,
+            v: FormulaValue::Unevaluated,
+        };
+        self.update_cell(row, column, cell)
+    }
+
+    pub fn set_cell_with_array_formula(
+        &mut self,
+        row: i32,
+        column: i32,
+        index: i32,
+        style: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), String> {
+        let cell = Cell::ArrayFormula {
+            f: index,
+            s: style,
+            r: (width, height),
+            kind: ArrayKind::Cse,
+            v: FormulaValue::Unevaluated,
+        };
         self.update_cell(row, column, cell)
     }
 
@@ -334,6 +377,30 @@ impl Worksheet {
         Ok(())
     }
 
+    /// Changes the hidden status of a row.
+    pub fn set_row_hidden(&mut self, row: i32, hidden: bool) -> Result<(), String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+
+        let rows = &mut self.rows;
+        for r in rows.iter_mut() {
+            if r.r == row {
+                r.hidden = hidden;
+                return Ok(());
+            }
+        }
+        rows.push(Row {
+            height: constants::DEFAULT_ROW_HEIGHT / constants::ROW_HEIGHT_FACTOR,
+            r: row,
+            custom_format: false,
+            custom_height: false,
+            s: 0,
+            hidden,
+        });
+        Ok(())
+    }
+
     /// Changes the height of a row.
     ///   * If the row does not a have a style we add it.
     ///   * If it has we modify the height and make sure it is applied.
@@ -346,7 +413,7 @@ impl Worksheet {
         if height < 0.0 {
             return Err(format!("Can not set a negative height: {height}"));
         }
-
+        let hidden = self.is_row_hidden(row)?;
         let rows = &mut self.rows;
         for r in rows.iter_mut() {
             if r.r == row {
@@ -361,7 +428,7 @@ impl Worksheet {
             custom_format: false,
             custom_height: true,
             s: 0,
-            hidden: false,
+            hidden,
         });
         Ok(())
     }
@@ -373,13 +440,23 @@ impl Worksheet {
     /// Fails if column index is outside allowed range or width is negative.
     pub fn set_column_width(&mut self, column: i32, width: f64) -> Result<(), String> {
         let style = self.get_column_style(column)?;
-        self.set_column_width_and_style(column, width, style)
+        let hidden = self.is_column_hidden(column)?;
+        self.set_column_width_and_style(column, width, hidden, style)
+    }
+
+    pub fn set_column_hidden(&mut self, column: i32, hidden: bool) -> Result<(), String> {
+        let width = self
+            .get_actual_column_width(column)
+            .unwrap_or(constants::DEFAULT_COLUMN_WIDTH);
+        let style = self.get_column_style(column)?;
+        self.set_column_width_and_style(column, width, hidden, style)
     }
 
     pub(crate) fn set_column_width_and_style(
         &mut self,
         column: i32,
         width: f64,
+        hidden: bool,
         style: Option<i32>,
     ) -> Result<(), String> {
         if !is_valid_column_number(column) {
@@ -395,6 +472,7 @@ impl Worksheet {
             width: width / constants::COLUMN_WIDTH_FACTOR,
             custom_width: width != constants::DEFAULT_COLUMN_WIDTH,
             style,
+            hidden,
         };
         let mut index = 0;
         let mut split = false;
@@ -406,6 +484,7 @@ impl Worksheet {
                     c.style = style;
                     c.width = width / constants::COLUMN_WIDTH_FACTOR;
                     c.custom_width = width != constants::DEFAULT_COLUMN_WIDTH;
+                    c.hidden = hidden;
                     return Ok(());
                 }
                 split = true;
@@ -426,6 +505,7 @@ impl Worksheet {
                 width: cols[index].width,
                 custom_width: cols[index].custom_width,
                 style: cols[index].style,
+                hidden: cols[index].hidden,
             };
             let post = Col {
                 min: column + 1,
@@ -433,6 +513,7 @@ impl Worksheet {
                 width: cols[index].width,
                 custom_width: cols[index].custom_width,
                 style: cols[index].style,
+                hidden: cols[index].hidden,
             };
             col.style = cols[index].style;
             cols.remove(index);
@@ -460,6 +541,9 @@ impl Worksheet {
             let min = col.min;
             let max = col.max;
             if column >= min && column <= max {
+                if col.hidden {
+                    return Ok(0.0);
+                }
                 if col.custom_width {
                     return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
                 }
@@ -467,6 +551,57 @@ impl Worksheet {
             }
         }
         Ok(constants::DEFAULT_COLUMN_WIDTH)
+    }
+
+    /// Return the actual width of a column in pixels, ignoring hidden status
+    pub fn get_actual_column_width(&self, column: i32) -> Result<f64, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+
+        let cols = &self.cols;
+        for col in cols {
+            let min = col.min;
+            let max = col.max;
+            if column >= min && column <= max {
+                if col.custom_width {
+                    return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
+                }
+                break;
+            }
+        }
+        Ok(constants::DEFAULT_COLUMN_WIDTH)
+    }
+
+    /// Returns true if the column is hidden
+    pub fn is_column_hidden(&self, column: i32) -> Result<bool, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+
+        let cols = &self.cols;
+        for col in cols {
+            let min = col.min;
+            let max = col.max;
+            if column >= min && column <= max {
+                return Ok(col.hidden);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Returns if a row is hidden
+    pub fn is_row_hidden(&self, row: i32) -> Result<bool, String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        let rows = &self.rows;
+        for r in rows {
+            if r.r == row {
+                return Ok(r.hidden);
+            }
+        }
+        Ok(false)
     }
 
     /// Returns the column style index if present
@@ -487,7 +622,10 @@ impl Worksheet {
     }
 
     // Returns non empty cells in a column
-    pub fn column_cell_references(&self, column: i32) -> Result<Vec<CellReferenceIndex>, String> {
+    pub(crate) fn column_cell_references(
+        &self,
+        column: i32,
+    ) -> Result<Vec<CellReferenceIndex>, String> {
         let mut column_cell_references: Vec<CellReferenceIndex> = Vec::new();
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
@@ -505,6 +643,16 @@ impl Worksheet {
         Ok(column_cell_references)
     }
 
+    pub(crate) fn remove_cell(&mut self, row: i32, column: i32) -> Result<(), String> {
+        if let Some(row_data) = self.sheet_data.get_mut(&row) {
+            row_data.remove(&column);
+            if row_data.is_empty() {
+                self.sheet_data.remove(&row);
+            }
+        }
+        Ok(())
+    }
+
     /// Returns the height of a row in pixels
     pub fn row_height(&self, row: i32) -> Result<f64, String> {
         if !is_valid_row(row) {
@@ -514,46 +662,13 @@ impl Worksheet {
         let rows = &self.rows;
         for r in rows {
             if r.r == row {
+                if r.hidden {
+                    return Ok(0.0);
+                }
                 return Ok(r.height * constants::ROW_HEIGHT_FACTOR);
             }
         }
         Ok(constants::DEFAULT_ROW_HEIGHT)
-    }
-
-    /// Returns non empty cells in a row
-    pub fn row_cell_references(&self, row: i32) -> Result<Vec<CellReferenceIndex>, String> {
-        let mut row_cell_references: Vec<CellReferenceIndex> = Vec::new();
-        if !is_valid_row(row) {
-            return Err(format!("Row number '{row}' is not valid."));
-        }
-
-        for (row_index, columns) in self.sheet_data.iter() {
-            if *row_index == row {
-                for column in columns.keys() {
-                    row_cell_references.push(CellReferenceIndex {
-                        sheet: self.sheet_id,
-                        row,
-                        column: *column,
-                    })
-                }
-            }
-        }
-        Ok(row_cell_references)
-    }
-
-    /// Returns non empty cells
-    pub fn cell_references(&self) -> Result<Vec<CellReferenceIndex>, String> {
-        let mut cell_references: Vec<CellReferenceIndex> = Vec::new();
-        for (row, columns) in self.sheet_data.iter() {
-            for column in columns.keys() {
-                cell_references.push(CellReferenceIndex {
-                    sheet: self.sheet_id,
-                    row: *row,
-                    column: *column,
-                })
-            }
-        }
-        Ok(cell_references)
     }
 
     /// Calculates dimension of the sheet. This function isn't cheap to calculate.
@@ -631,6 +746,83 @@ impl Worksheet {
         };
 
         Ok(is_empty)
+    }
+
+    // Returns:
+    // - If it is an anchor for a dynamic array => full range
+    // - If it is an anchor for an array formula => full range
+    // - If it is a single cell with a formula => SingleCell
+    // - If it is a single cell without formula => Error
+    // - If it is a spill cell => Error
+    // - Any other case => Error
+    pub(crate) fn get_cell_spill(&self, row: i32, column: i32) -> Result<(i32, i32), String> {
+        if !is_valid_column_number(column) || !is_valid_row(row) {
+            return Err("Row or column is outside valid range.".to_string());
+        }
+
+        let cell = match self.cell(row, column) {
+            Some(c) => c,
+            None => return Err("Cell does not exist.".to_string()),
+        };
+        match cell {
+            Cell::ArrayFormula { r, .. } => Ok((r.0, r.1)),
+            Cell::CellFormula { .. } => Ok((1, 1)),
+            _ => Err("Cell does not contain a formula.".to_string()),
+        }
+    }
+
+    /// Returns true if cell is part of an array formula. This includes both anchor and spill cells.
+    pub(crate) fn get_cell_structure(
+        &self,
+        row: i32,
+        column: i32,
+    ) -> Result<CellStructure, String> {
+        if !is_valid_column_number(column) || !is_valid_row(row) {
+            return Err("Row or column is outside valid range.".to_string());
+        }
+
+        let cell = match self.cell(row, column) {
+            Some(c) => c,
+            None => return Ok(CellStructure::SingleCell),
+        };
+        match cell {
+            Cell::ArrayFormula {
+                r,
+                kind: ArrayKind::Cse,
+                ..
+            } => Ok(CellStructure::ArrayFormula { range: *r }),
+            Cell::ArrayFormula {
+                r,
+                kind: ArrayKind::Dynamic,
+                ..
+            } => Ok(CellStructure::DynamicFormula { range: *r }),
+            Cell::SpillCell { a, .. } => {
+                let anchor_cell = match self.cell(a.0, a.1) {
+                    Some(c) => c,
+                    None => return Err("Invalid spill reference".to_string()),
+                };
+                match anchor_cell {
+                    Cell::ArrayFormula {
+                        r,
+                        kind: ArrayKind::Cse,
+                        ..
+                    } => Ok(CellStructure::SpillArray {
+                        anchor: (a.0, a.1),
+                        range: *r,
+                    }),
+                    Cell::ArrayFormula {
+                        r,
+                        kind: ArrayKind::Dynamic,
+                        ..
+                    } => Ok(CellStructure::SpillDynamic {
+                        anchor: (a.0, a.1),
+                        range: *r,
+                    }),
+                    _ => Err("Spill cell does not reference an array formula".to_string()),
+                }
+            }
+            _ => Ok(CellStructure::SingleCell),
+        }
     }
 
     /// It provides convenient method for user navigation in the spreadsheet by jumping to edges.

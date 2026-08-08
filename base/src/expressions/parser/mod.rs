@@ -13,10 +13,11 @@ factor  => prod (opProd prod)*
 prod    => power ('^' power)*
 power   => (unaryOp)* range '%'*
 range   => implicit (':' primary)?
-implicit=> '@' primary | primary
+implicit=> '@' primary | primary '#' | primary
 primary => '(' expr ')'
         => number
         => function '(' f_args ')'
+        => LAMBDA '(' f_args ')' '(' f_args ')'
         => name
         => string
         => '{' a_args '}'
@@ -49,6 +50,7 @@ use super::utils::number_to_column;
 
 use token::OpCompare;
 
+mod lambda;
 pub mod move_formula;
 pub mod static_analysis;
 pub mod stringify;
@@ -104,6 +106,38 @@ pub enum ArrayNode {
     Number(f64),
     String(String),
     Error(token::Error),
+    /// An empty (blank) cell from a range reference.
+    Empty,
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct NamedVariable {
+    pub(crate) name: String,
+    pub(crate) id: Option<u32>,
+    pub(crate) is_optional: bool,
+}
+
+#[derive(PartialEq, Clone, Debug, serde::Serialize)]
+pub enum ExpectedTokens {
+    // We know the next token could be a range
+    Range,
+    // We know the next token could be a function that starts with the given name
+    FunctionName(String),
+    // We know the next token could be an argument to a function (name, arg index)
+    Argument(String, u32),
+    Other,
+}
+
+/// What the grammar accepts at a cursor position, plus the span the UI should
+/// replace when it inserts a completion. Returned by [`Parser::parse_at_cursor`].
+#[derive(PartialEq, Clone, Debug, serde::Serialize)]
+pub struct CompletionContext {
+    /// What the grammar accepts at the cursor.
+    pub expecting: Vec<ExpectedTokens>,
+    /// The span `[replace_from, cursor)` the UI should replace — e.g. the `F`
+    /// in `A1+F`. Equals the cursor when there is nothing to replace (right
+    /// after `SUM(`).
+    pub replace_from: usize,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -175,16 +209,33 @@ pub enum Node {
         kind: Function,
         args: Vec<Node>,
     },
-    InvalidFunctionKind {
+    // LAMBDA(a,b, SQRT(a*a+b*b))
+    LambdaDefKind {
+        parameters: Vec<NamedVariable>,
+        body: Box<Node>,
+    },
+    // LAMBDA(a,b, SQRT(a*a+b*b))(3,4)
+    LambdaCallKind {
+        lambda: Box<Node>,
+        args: Vec<Node>,
+    },
+    NamedFunctionKind {
+        id: Option<u32>,
         name: String,
         args: Vec<Node>,
     },
     ArrayKind(Vec<Vec<ArrayNode>>),
     DefinedNameKind(DefinedNameS),
     TableNameKind(String),
-    WrongVariableKind(String),
+    NamedVariableKind {
+        name: String,
+        id: Option<u32>,
+    },
     ImplicitIntersection {
         automatic: bool,
+        child: Box<Node>,
+    },
+    SpillRangeOperator {
         child: Box<Node>,
     },
     CompareKind {
@@ -201,6 +252,8 @@ pub enum Node {
         formula: String,
         message: String,
         position: usize,
+        // What tokens were expected at this position.
+        expecting: Vec<ExpectedTokens>,
     },
     EmptyArgKind,
 }
@@ -214,6 +267,15 @@ pub struct Parser<'a> {
     tables: HashMap<String, Table>,
     locale: &'a Locale,
     language: &'a Language,
+    /// Completion hint for the position currently being parsed. The deepest
+    /// frame that hits EOF stamps this onto its error. See `parse_at_cursor`.
+    expecting_here: Vec<ExpectedTokens>,
+    /// Set while parsing when an identifier turns out to be the last token in
+    /// the input (its `peek` is EOF): the user is mid-typing a name there.
+    /// Holds `(prefix, start_offset)`. Read by `parse_at_cursor` to offer
+    /// function/name completion even when the surrounding parse succeeds (`SU`,
+    /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
+    trailing_name: Option<(String, usize)>,
 }
 
 pub fn new_parser_english<'a>(
@@ -248,6 +310,8 @@ impl<'a> Parser<'a> {
             tables,
             locale,
             language,
+            expecting_here: vec![ExpectedTokens::Other],
+            trailing_name: None,
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -276,7 +340,55 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
         self.lexer.set_formula(formula);
         self.context = context.clone();
+        // At the top level a formula may start with an expression or a range.
+        self.expecting_here = vec![ExpectedTokens::Range, ExpectedTokens::Other];
+        self.trailing_name = None;
         self.parse_expr()
+    }
+
+    /// Parses `formula` up to `cursor` (a char offset) and reports what the
+    /// grammar would accept at that position, so callers can offer completions.
+    pub fn parse_at_cursor(
+        &mut self,
+        formula: &str,
+        cursor: usize,
+        context: &CellReferenceRC,
+    ) -> CompletionContext {
+        let head: String = formula.chars().take(cursor).collect();
+
+        let node = self.parse(&head, context);
+
+        // If the cursor sits on an identifier the user is mid-typing, the parser
+        // recorded it as `trailing_name` while consuming it in a name position
+        // (see `parse_primary`). That takes priority over the parse outcome: it
+        // wins both when the surrounding parse *succeeds* (`SU`, `A1+F`) — where
+        // there is no error to carry an `expecting` — and when it *fails* for an
+        // unrelated reason (`IF(VLOOK`, where the EOF frame would otherwise
+        // report the "argument of IF" hint).
+        if let Some((prefix, start)) = self.trailing_name.take() {
+            return CompletionContext {
+                expecting: vec![ExpectedTokens::FunctionName(prefix)],
+                replace_from: start,
+            };
+        }
+
+        match node {
+            // (a) The prefix is incomplete: the EOF frame stamped `expecting`.
+            Node::ParseErrorKind {
+                expecting,
+                position,
+                ..
+            } => CompletionContext {
+                expecting,
+                replace_from: position,
+            },
+            // (b) The prefix parsed cleanly and there is no trailing bare name,
+            // so there is nothing grammar-specific to offer.
+            _ => CompletionContext {
+                expecting: vec![ExpectedTokens::Other],
+                replace_from: cursor,
+            },
+        }
     }
 
     // Returns the token used to separate arguments in functions and arrays
@@ -503,7 +615,18 @@ impl<'a> Parser<'a> {
                 child: Box::new(t),
             };
         }
-        self.parse_primary()
+        let primary = self.parse_primary();
+        if let Node::ParseErrorKind { .. } = primary {
+            return primary;
+        }
+        let next_token = self.lexer.peek_token();
+        if next_token == TokenType::Spill {
+            self.lexer.advance_token();
+            return Node::SpillRangeOperator {
+                child: Box::new(primary),
+            };
+        }
+        primary
     }
 
     fn parse_array_row(&mut self) -> Result<Vec<ArrayNode>, Node> {
@@ -525,6 +648,7 @@ impl<'a> Parser<'a> {
                 } else {
                     return Err(Node::ParseErrorKind {
                         formula: self.lexer.get_formula(),
+                        expecting: vec![ExpectedTokens::Other],
                         message: "Invalid value in array".to_string(),
                         position: self.lexer.get_position() as usize,
                     });
@@ -534,6 +658,7 @@ impl<'a> Parser<'a> {
             _ => {
                 return Err(Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Other],
                     message: "Invalid value in array".to_string(),
                     position: self.lexer.get_position() as usize,
                 });
@@ -557,6 +682,7 @@ impl<'a> Parser<'a> {
                     } else {
                         return Err(Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
                             message: "Invalid value in array".to_string(),
                             position: self.lexer.get_position() as usize,
                         });
@@ -566,6 +692,7 @@ impl<'a> Parser<'a> {
                 _ => {
                     return Err(Node::ParseErrorKind {
                         formula: self.lexer.get_formula(),
+                        expecting: vec![ExpectedTokens::Other],
                         message: "Invalid value in array".to_string(),
                         position: self.lexer.get_position() as usize,
                     });
@@ -589,6 +716,7 @@ impl<'a> Parser<'a> {
                 if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
                     return Node::ParseErrorKind {
                         formula: self.lexer.get_formula(),
+                        expecting: vec![ExpectedTokens::Other],
                         position: err.position,
                         message: err.message,
                     };
@@ -620,6 +748,7 @@ impl<'a> Parser<'a> {
                     if row.len() != length {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
                             position: self.lexer.get_position() as usize,
                             message: "All rows in an array should be the same length".to_string(),
                         };
@@ -630,6 +759,7 @@ impl<'a> Parser<'a> {
                 if let Err(err) = self.lexer.expect(TokenType::RightBrace) {
                     return Node::ParseErrorKind {
                         formula: self.lexer.get_formula(),
+                        expecting: vec![ExpectedTokens::Other],
                         position: err.position,
                         message: err.message,
                     };
@@ -747,25 +877,62 @@ impl<'a> Parser<'a> {
             }
             TokenType::Ident(name) => {
                 let next_token = self.lexer.peek_token();
+                // If this identifier is the last token before the cursor (its
+                // peek is EOF), the user is mid-typing a name here. Record it so
+                // `parse_at_cursor` can offer function/name completion. We are in
+                // a name/operand position by construction, so this never fires
+                // for an identifier glued to a completed operand: the `m` in
+                // `1m` is leftover input, never reached as a primary.
+                if next_token == TokenType::EOF {
+                    let end = self.lexer.get_position() as usize;
+                    let start = end.saturating_sub(name.chars().count());
+                    self.trailing_name = Some((name.clone(), start));
+                }
                 if next_token == TokenType::LeftParenthesis {
-                    // It's a function call "SUM(.."
                     self.lexer.advance_token();
-                    let args = match self.parse_function_args() {
+                    // It's a function call "SUM(.."
+                    // _xlfn.LAMBDA(_xlpm.a,_xlpm.b, SQRT(_xlpm.a*_xlpm.a+_xlpm.b*_xlpm.b))(3,4)
+                    if &name == "_xlfn.LAMBDA" || &name.to_uppercase() == "LAMBDA" {
+                        return self.parse_lambda();
+                    }
+                    // The user-facing name, without the xlsx import prefixes.
+                    let display_name = name
+                        .trim_start_matches("_xlfn._xlws.")
+                        .trim_start_matches("_xlfn.")
+                        .trim_start_matches("_xlpm.")
+                        .to_string();
+                    let args = match self.parse_function_args(&display_name) {
                         Ok(s) => s,
                         Err(e) => return e,
                     };
                     if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
+                        // `SUM(A1` parses a complete argument and then fails to
+                        // find the `)`. If we ran out of input we are still
+                        // inside the call, sitting right after a complete
+                        // argument: report the (correct) argument index so the
+                        // signature tooltip works, but NOT `Range` — a fresh
+                        // reference cannot begin after a complete operand. (A
+                        // separator or `)` is what is expected here.)
+                        let at_eof = err.position >= self.lexer.get_formula().chars().count();
+                        let expecting = if at_eof {
+                            let index = (args.len() as u32).max(1);
+                            vec![ExpectedTokens::Argument(display_name.clone(), index)]
+                        } else {
+                            vec![ExpectedTokens::Other]
+                        };
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
+                            expecting,
                             position: err.position,
                             message: err.message,
                         };
                     }
-                    // We should do this *only* importing functions from xlsx
+                    // We should do this *only* importing functions from xlsx: Implicit Intersection
                     if &name == "_xlfn.SINGLE" {
                         if args.len() != 1 {
                             return Node::ParseErrorKind {
                                 formula: self.lexer.get_formula(),
+                                expecting: vec![ExpectedTokens::Other],
                                 position: self.lexer.get_position() as usize,
                                 message: "Implicit Intersection requires just one argument"
                                     .to_string(),
@@ -776,7 +943,32 @@ impl<'a> Parser<'a> {
                             child: Box::new(args[0].clone()),
                         };
                     }
+                    // We should do this *only* importing functions from xlsx: Spill Range Operator
+                    if &name == "_xlfn.ANCHORARRAY" {
+                        if args.len() != 1 {
+                            return Node::ParseErrorKind {
+                                formula: self.lexer.get_formula(),
+                                expecting: vec![ExpectedTokens::Other],
+                                position: self.lexer.get_position() as usize,
+                                message: "ANCHORARRAY requires one argument".to_string(),
+                            };
+                        }
+                        return Node::SpillRangeOperator {
+                            child: Box::new(args[0].clone()),
+                        };
+                    }
                     // We should do this *only* importing functions from xlsx
+                    if let Some(function_kind) = self
+                        .language
+                        .functions
+                        .lookup(name.trim_start_matches("_xlfn._xlws."))
+                    {
+                        return Node::FunctionKind {
+                            kind: function_kind,
+                            args,
+                        };
+                    }
+
                     if let Some(function_kind) = self
                         .language
                         .functions
@@ -787,7 +979,11 @@ impl<'a> Parser<'a> {
                             args,
                         };
                     }
-                    return Node::InvalidFunctionKind { name, args };
+                    return Node::NamedFunctionKind {
+                        name: name.trim_start_matches("_xlpm.").to_string(),
+                        args,
+                        id: None,
+                    };
                 }
                 let context = &self.context;
 
@@ -796,6 +992,7 @@ impl<'a> Parser<'a> {
                     None => {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
                             position: 0,
                             message: format!("sheet not found: {}", context.sheet),
                         };
@@ -812,17 +1009,22 @@ impl<'a> Parser<'a> {
                         return Node::TableNameKind(name);
                     }
                 }
-                Node::WrongVariableKind(name)
+                // xlpm: Excel Lambda Parameter
+                let name = name.trim_start_matches("_xlpm.").to_string();
+                Node::NamedVariableKind { name, id: None }
             }
             TokenType::Error(kind) => Node::ErrorKind(kind),
             TokenType::Illegal(error) => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
                 position: error.position,
                 message: error.message,
             },
             TokenType::EOF => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
-                position: 0,
+                // The deepest frame to reach EOF knows what it was expecting.
+                expecting: self.expecting_here.clone(),
+                position: self.lexer.get_position() as usize,
                 message: "Unexpected end of input.".to_string(),
             },
             TokenType::Boolean(value) => {
@@ -832,13 +1034,15 @@ impl<'a> Parser<'a> {
                     self.lexer.advance_token();
                     // We parse all the arguments, although technically this is moot
                     // But is has the upside of transforming `=TRUE( 4 )` into `=TRUE(4)`
-                    let args = match self.parse_function_args() {
+                    let fn_name = if value { "TRUE" } else { "FALSE" };
+                    let args = match self.parse_function_args(fn_name) {
                         Ok(s) => s,
                         Err(e) => return e,
                     };
                     if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
                             position: err.position,
                             message: err.message,
                         };
@@ -861,6 +1065,7 @@ impl<'a> Parser<'a> {
                 // A primary Node cannot start with an operator
                 Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Other],
                     position: 0,
                     message: "Unexpected token: 'COMPARE'".to_string(),
                 }
@@ -869,6 +1074,7 @@ impl<'a> Parser<'a> {
                 // A primary Node cannot start with an operator
                 Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Other],
                     position: 0,
                     message: "Unexpected token: 'SUM'".to_string(),
                 }
@@ -877,6 +1083,7 @@ impl<'a> Parser<'a> {
                 // A primary Node cannot start with an operator
                 Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Other],
                     position: 0,
                     message: "Unexpected token: 'PRODUCT'".to_string(),
                 }
@@ -885,6 +1092,7 @@ impl<'a> Parser<'a> {
                 // A primary Node cannot start with an operator
                 Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Other],
                     position: 0,
                     message: "Unexpected token: 'POWER'".to_string(),
                 }
@@ -893,6 +1101,7 @@ impl<'a> Parser<'a> {
                 // A primary Node cannot start with an operator
                 Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Other],
                     position: 0,
                     message: "Unexpected token: '@'".to_string(),
                 }
@@ -906,13 +1115,16 @@ impl<'a> Parser<'a> {
             | TokenType::Comma
             | TokenType::Bang
             | TokenType::And
+            | TokenType::Spill
             | TokenType::Percent => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
                 position: 0,
                 message: format!("Unexpected token: '{next_token:?}'"),
             },
             TokenType::LeftBracket => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
                 position: 0,
                 message: "Unexpected token: '['".to_string(),
             },
@@ -930,6 +1142,7 @@ impl<'a> Parser<'a> {
                     None => {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
                             position: 0,
                             message: format!("sheet not found: {}", context.sheet),
                         };
@@ -948,6 +1161,7 @@ impl<'a> Parser<'a> {
                         );
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
                             position: 0,
                             message,
                         };
@@ -958,6 +1172,7 @@ impl<'a> Parser<'a> {
                     None => {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
                             position: 0,
                             message: format!("table sheet not found: {}", table.sheet_name),
                         };
@@ -1028,6 +1243,7 @@ impl<'a> Parser<'a> {
                             None => {
                                 return Node::ParseErrorKind {
                                     formula: self.lexer.get_formula(),
+                                    expecting: vec![ExpectedTokens::Other],
                                     position: self.lexer.get_position() as usize,
                                     message: format!("Expecting column: {s} in table {table_name}"),
                                 };
@@ -1062,6 +1278,7 @@ impl<'a> Parser<'a> {
                             None => {
                                 return Node::ParseErrorKind {
                                     formula: self.lexer.get_formula(),
+                                    expecting: vec![ExpectedTokens::Other],
                                     position: self.lexer.get_position() as usize,
                                     message: format!(
                                         "Expecting column: {left} in table {table_name}"
@@ -1075,6 +1292,7 @@ impl<'a> Parser<'a> {
                             None => {
                                 return Node::ParseErrorKind {
                                     formula: self.lexer.get_formula(),
+                                    expecting: vec![ExpectedTokens::Other],
                                     position: self.lexer.get_position() as usize,
                                     message: format!(
                                         "Expecting column: {right} in table {table_name}"
@@ -1100,13 +1318,15 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_function_args(&mut self) -> Result<Vec<Node>, Node> {
+    fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
         let arg_separator_token = &self.get_argument_separator_token();
         let mut args: Vec<Node> = Vec::new();
         let mut next_token = self.lexer.peek_token();
         if next_token == TokenType::RightParenthesis {
             return Ok(args);
         }
+        // The cursor is currently in the first argument of `fn_name`.
+        self.set_argument_hint(fn_name, 1);
         if &self.lexer.peek_token() == arg_separator_token {
             args.push(Node::EmptyArgKind);
         } else {
@@ -1117,8 +1337,11 @@ impl<'a> Parser<'a> {
             args.push(t);
         }
         next_token = self.lexer.peek_token();
+        let mut arg_index = 1;
         while &next_token == arg_separator_token {
             self.lexer.advance_token();
+            arg_index += 1;
+            self.set_argument_hint(fn_name, arg_index);
             if &self.lexer.peek_token() == arg_separator_token {
                 args.push(Node::EmptyArgKind);
                 next_token = arg_separator_token.clone();
@@ -1135,5 +1358,17 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(args)
+    }
+
+    /// Records that the position currently being parsed *starts* argument
+    /// `index` (1-based) of `fn_name`: a fresh operand goes here, so a `Range`
+    /// is a valid completion. Reported if an EOF lands on this empty slot (e.g.
+    /// `SUM(` or `SUM(A1,`). Once the argument is complete the unclosed-call
+    /// path in `parse_primary` reports the argument context without `Range`.
+    fn set_argument_hint(&mut self, fn_name: &str, index: u32) {
+        self.expecting_here = vec![
+            ExpectedTokens::Argument(fn_name.to_string(), index),
+            ExpectedTokens::Range,
+        ];
     }
 }

@@ -1,0 +1,43 @@
+.app-ic-workbook-title {
+  padding: 6px 4px;
+  font-size: calc(var(--typography-font-size) + 2px);
+  font-weight: 600;
+  font-family: var(--typography-font-family);
+}
+
+.app-ic-workbook-title-input {
+  text-align: center;
+  height: 20px;
+  line-height: 20px;
+  border-radius: 6px;
+  padding: inherit;
+  border: none;
+  outline: none;
+  white-space: nowrap;
+  font-weight: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  background: transparent;
+}
+
+.app-ic-workbook-title-input:hover {
+  background-color: var(--palette-grey-100);
+}
+
+.app-ic-workbook-title-input:focus {
+  outline: 1px solid var(--palette-grey-500);
+}
+
+.app-ic-workbook-title-mirror {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  white-space: pre-wrap;
+  text-wrap: nowrap;
+  visibility: hidden;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: inherit;
+  border: inherit;
+}

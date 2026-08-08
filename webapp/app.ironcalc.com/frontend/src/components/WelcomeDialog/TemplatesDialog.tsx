@@ -1,84 +1,104 @@
-import { Dialog, styled } from "@mui/material";
+import { IconButton } from "@ironcalc/workbook";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import TemplatesList, {
-  Cross,
-  DialogContent,
-  DialogFooter,
-  DialogFooterButton,
-} from "./TemplatesList";
+import TemplatesList from "./TemplatesList";
+import { TEMPLATE_CATEGORIES } from "./templates";
+import { useDialogFocus } from "./useDialogFocus";
+import { useDialogKeyDown } from "./useDialogKeyDown";
+import "./templates-dialog.css";
+import "./welcome-dialog.css";
 
-function TemplatesDialog(properties: {
+interface TemplatesDialogProperties {
+  open: boolean;
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
-}) {
-  const { t } = useTranslation();
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-
-  const handleClose = () => {
-    properties.onClose();
-  };
-
-  const handleTemplateSelect = (templateId: string) => {
-    setSelectedTemplate(templateId);
-  };
-
-  return (
-    <DialogWrapper open={true} onClose={() => {}}>
-      <DialogTemplateHeader>
-        <span style={{ flexGrow: 2, marginLeft: 12 }}>
-          {t("welcome_dialog.templates.choose_template")}
-        </span>
-        <Cross
-          style={{ marginRight: 12 }}
-          onClick={handleClose}
-          title={t("welcome_dialog.close_dialog")}
-          tabIndex={0}
-          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
-        >
-          <X />
-        </Cross>
-      </DialogTemplateHeader>
-      <DialogContent>
-        <TemplatesList
-          selectedTemplate={selectedTemplate}
-          handleTemplateSelect={handleTemplateSelect}
-        />
-      </DialogContent>
-      <DialogFooter>
-        <DialogFooterButton
-          onClick={() => properties.onSelectTemplate(selectedTemplate)}
-        >
-          {t("welcome_dialog.create_workbook")}
-        </DialogFooterButton>
-      </DialogFooter>
-    </DialogWrapper>
-  );
 }
 
-export const DialogWrapper = styled(Dialog)`
-  font-family: Inter;
-  .MuiDialog-paper {
-    width: 440px;
-    border-radius: 8px;
-    margin: 16px;
-    border: 1px solid #e0e0e0;
-    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  .MuiBackdrop-root {
-    background-color: rgba(0, 0, 0, 0.4);
-  }
-`;
+function TemplatesDialog({
+  open,
+  onClose,
+  onSelectTemplate,
+}: TemplatesDialogProperties) {
+  const { t } = useTranslation();
+  const titleId = useId();
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [gridScrolled, setGridScrolled] = useState(false);
+  const dialogRef = useDialogFocus(open);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const lastTemplateRef = useRef<HTMLButtonElement>(null);
 
-const DialogTemplateHeader = styled("div")`
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #e0e0e0;
-  height: 44px;
-  font-size: 14px;
-  font-weight: 500;
-  font-family: Inter;
-`;
+  const handleClose = () => {
+    onClose();
+  };
+
+  const { onKeyDown } = useDialogKeyDown({
+    focusableElements: [closeButtonRef, lastTemplateRef],
+    onClose: handleClose,
+  });
+
+  if (!open) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="app-ic-wd-backdrop" onClick={handleClose} role="none">
+      <div
+        ref={dialogRef}
+        className="app-ic-wd-paper app-ic-wd-paper--templates"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
+        <div className="app-ic-wd-template-header">
+          <span id={titleId} className="app-ic-wd-template-header-title">
+            {t("welcome_dialog.templates.choose_template")}
+          </span>
+          <IconButton
+            ref={closeButtonRef}
+            icon={<X />}
+            aria-label={t("welcome_dialog.close_dialog")}
+            onClick={handleClose}
+          />
+        </div>
+        <div
+          className={`app-ic-wd-filters${gridScrolled ? " app-ic-wd-filters--scrolled" : ""}`}
+        >
+          <button
+            type="button"
+            className={`app-ic-wd-filter-pill${selectedCategory === "all" ? " app-ic-wd-filter-pill--active" : ""}`}
+            onClick={() => setSelectedCategory("all")}
+          >
+            {t("welcome_dialog.templates.category_all")}
+          </button>
+          {TEMPLATE_CATEGORIES.map(({ id, labelKey }) => (
+            <button
+              key={id}
+              type="button"
+              className={`app-ic-wd-filter-pill${selectedCategory === id ? " app-ic-wd-filter-pill--active" : ""}`}
+              onClick={() => setSelectedCategory(id)}
+            >
+              {t(labelKey)}
+            </button>
+          ))}
+        </div>
+        <div className="app-ic-wd-content">
+          <TemplatesList
+            selectedTemplate=""
+            handleTemplateSelect={onSelectTemplate}
+            categoryFilter={selectedCategory}
+            onScroll={(e) => setGridScrolled(e.currentTarget.scrollTop > 0)}
+            lastItemRef={lastTemplateRef}
+          />
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 export default TemplatesDialog;

@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::number_format::format_number;
+use crate::test::util::new_empty_model;
+use crate::UserModel;
 
 #[test]
 fn test_simple_format() {
@@ -18,7 +20,28 @@ fn test_maximum_zeros() {
 }
 
 #[test]
-#[ignore = "not yet implemented"]
+fn test_leading_comma_text() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, ",10").unwrap(); // A1
+    model.set_user_input(0, 2, 1, ",100").unwrap(); // A2
+    model.set_user_input(0, 3, 1, ",1000").unwrap(); // A3
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 1),
+        Ok(",10".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 1),
+        Ok(",100".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 3, 1),
+        Ok(",1000".to_string())
+    );
+}
+
+#[test]
 fn test_wrong_locale() {
     let formatted = format_number(2.3, "General", "ens");
     assert_eq!(formatted.text, "#ERROR!".to_string());

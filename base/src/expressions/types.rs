@@ -34,7 +34,7 @@ pub struct CellReferenceRC {
     pub row: i32,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy, Hash)]
 pub struct CellReferenceIndex {
     pub sheet: u32,
     pub column: i32,

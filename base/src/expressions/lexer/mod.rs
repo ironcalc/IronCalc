@@ -10,7 +10,7 @@
 //!    This is for user formulas. References are like `D4`, `D$4` or `F5:T10`
 //! 2. R1C1, internal or runtime mode
 //!    A reference like R1C1 refers to $A$1 and R3C4 to $D$4
-//!    R[2]C[5] refers to a cell two rows below and five columns to the right
+//!    `R[2]C[5]` refers to a cell two rows below and five columns to the right
 //!    It uses the 'en' locale and language.
 //!    This is used internally at runtime.
 //!
@@ -70,6 +70,28 @@ pub struct LexerError {
 }
 
 pub(super) type Result<T> = std::result::Result<T, LexerError>;
+
+/// Decides whether `name` should be accepted as an identifier in R1C1 mode, once
+/// the reference-parsing paths have already failed.
+///
+/// This uses the A1 identifier rules (`is_valid_a1_identifier`) rather than
+/// `is_valid_identifier`, so the single-character names "R"/"C" are accepted: they
+/// are valid LAMBDA parameters and LET variables. This matters on reload, because
+/// formulas are stored internally in R1C1 format, so a formula like
+/// `=BYROW(A1:C1, LAMBDA(c, MAX(c)))` is re-parsed in R1C1 mode and must not reject
+/// the `c` parameter.
+///
+/// The one exception is a bare "R"/"C" immediately followed by '[': that is a
+/// malformed R1C1 reference (e.g. `R[`), not an identifier, so it is rejected.
+/// Genuine R1C1 references (`R[n]C[n]`, `RnCn`) are consumed before this fallback.
+fn is_valid_r1c1_identifier(name: &str, next_char: Option<char>) -> bool {
+    if !utils::is_valid_a1_identifier(name) {
+        return false;
+    }
+    // `is_valid_identifier` differs from `is_valid_a1_identifier` only for "R"/"C".
+    // For those, only reject when they start a (malformed) reference, i.e. `R[`.
+    utils::is_valid_identifier(name) || next_char != Some('[')
+}
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum LexerMode {
@@ -251,7 +273,10 @@ impl<'a> Lexer<'a> {
                         }
                     }
                     '#' => self.consume_error(),
-                    '"' => TokenType::String(self.consume_string()),
+                    '"' => match self.consume_string() {
+                        Ok(s) => TokenType::String(s),
+                        Err(error) => TokenType::Illegal(error),
+                    },
                     '\'' => self.consume_quoted_sheet_reference(),
                     '0'..='9' => {
                         let position = self.position - 1;
@@ -376,7 +401,7 @@ impl<'a> Lexer<'a> {
                                             return TokenType::Illegal(error);
                                         }
                                     }
-                                } else if utils::is_valid_identifier(&name) {
+                                } else if utils::is_valid_a1_identifier(&name) {
                                     if peek_char == Some('[') {
                                         if let Ok(r) = self.consume_structured_reference(&name) {
                                             return r;
@@ -401,7 +426,7 @@ impl<'a> Lexer<'a> {
                                     Ok(ParsedRange { left, right }) => {
                                         if pos > self.position {
                                             self.position = pos;
-                                            if utils::is_valid_identifier(&name) {
+                                            if is_valid_r1c1_identifier(&name, self.peek_char()) {
                                                 return TokenType::Ident(name);
                                             } else {
                                                 self.position = self.len;
@@ -444,7 +469,7 @@ impl<'a> Lexer<'a> {
                                         }
                                         self.position = pos;
 
-                                        if utils::is_valid_identifier(&name) {
+                                        if is_valid_r1c1_identifier(&name, self.peek_char()) {
                                             return TokenType::Ident(name);
                                         } else {
                                             return TokenType::Illegal(self.set_error(
@@ -487,14 +512,14 @@ impl<'a> Lexer<'a> {
         let position = self.position;
         if position >= self.len {
             return Err(self.set_error(
-                &format!("Error, expected {} found EOF", &ch_expected),
+                &format!("Error, expected {} found EOF", ch_expected),
                 self.position,
             ));
         } else {
             let ch = self.chars[position];
             if ch_expected != ch {
                 return Err(self.set_error(
-                    &format!("Error, expected {} found {}", &ch_expected, &ch),
+                    &format!("Error, expected {} found {}", ch_expected, ch),
                     self.position,
                 ));
             }
@@ -612,10 +637,11 @@ impl<'a> Lexer<'a> {
         chars
     }
 
-    fn consume_string(&mut self) -> String {
+    fn consume_string(&mut self) -> Result<String> {
         let mut position = self.position;
         let len = self.len;
         let mut chars = "".to_string();
+        let mut terminated = false;
         while position < len {
             let x = self.chars[position];
             position += 1;
@@ -626,11 +652,16 @@ impl<'a> Lexer<'a> {
                 chars.push(self.chars[position]);
                 position += 1;
             } else {
+                terminated = true;
                 break;
             }
         }
         self.position = position;
-        chars
+
+        if !terminated {
+            return Err(self.set_error("Expected closing '\"' but found end of input", position));
+        }
+        Ok(chars)
     }
 
     // Consumes a quoted string from input
@@ -715,7 +746,8 @@ impl<'a> Lexer<'a> {
             self.position += errors.circ.chars().count() - 1;
             return TokenType::Error(Error::CIRC);
         }
-        TokenType::Illegal(self.set_error("Invalid error.", self.position))
+        // If it is not an error it _might_ be a spill operator.
+        TokenType::Spill
     }
 
     fn consume_whitespace(&mut self) {

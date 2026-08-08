@@ -12,13 +12,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && bash -lc '\
          export NVM_DIR="$HOME/.nvm" && \
          source "$NVM_DIR/nvm.sh" && \
-         nvm install 22 && nvm alias default 22 && \
+         nvm install 24 && nvm alias default 24 && \
          nroot="$NVM_DIR/versions/node/$(nvm version default)/bin" && \
          ln -sf "$nroot/node" /usr/local/bin/node && \
          ln -sf "$nroot/npm"  /usr/local/bin/npm  && \
-         ln -sf "$nroot/npx"  /usr/local/bin/npx \
+         ln -sf "$nroot/npx"  /usr/local/bin/npx  && \
+         npm install -g pnpm@9.15.4 && \
+         ln -sf "$nroot/pnpm" /usr/local/bin/pnpm \
        ' \
-    && npm install typescript \
     && rm -rf /var/lib/apt/lists/*
 
 # build the server
@@ -67,6 +68,7 @@ RUN bash -lc 'set -euo pipefail; \
 
 # ---------- server runtime ----------
 FROM debian:bookworm-slim AS server-runtime
+LABEL org.opencontainers.image.source=https://github.com/ironcalc/IronCalc
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -82,6 +84,7 @@ CMD ["./ironcalc_server"]
 
 # ---------- caddy runtime (serves frontend + reverse-proxy /api) ----------
 FROM caddy:latest AS caddy-runtime
+LABEL org.opencontainers.image.source=https://github.com/ironcalc/IronCalc
 
 WORKDIR /srv
 

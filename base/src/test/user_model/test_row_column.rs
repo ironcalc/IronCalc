@@ -170,7 +170,7 @@ fn row_heigh_increases_automatically() {
     model
         .set_user_input(0, 1, 1, "My home in Canada had horses\nAnd monkeys!")
         .unwrap();
-    assert_eq!(model.get_row_height(0, 1), Ok(40.5));
+    assert_eq!(model.get_row_height(0, 1), Ok(38.0));
 }
 
 #[test]
@@ -210,4 +210,108 @@ fn insert_column_evaluates() {
     model.delete_columns(0, 1, 1).unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 10, 1).unwrap(), "84");
     assert_eq!(model.get_cell_content(0, 10, 1).unwrap(), "=A1*2");
+}
+
+// Regression test: deleting a row that contains a spill cell and then undoing
+// the deletion must restore the original spill without leaving a stray SpillCell
+// that blocks re-evaluation of the formula anchor.
+//
+// Steps:
+//   1. =SEQUENCE(6) in A1 — spills down A1:A6 (values 1..6)
+//   2. Delete row 3 (A3 is a SpillCell)
+//      → formula re-evaluates, A1:A6 still shows 1..6
+//   3. Undo the deletion
+//      → A1 must still show 1 (not #SPILL!)
+//      → A1:A6 must display 1..6
+#[test]
+fn delete_row_with_spill_cell_undo_clears_stale_spill() {
+    let mut model = new_empty_user_model();
+
+    // Step 1: =SEQUENCE(6) in A1 — spills A1:A6
+    model.set_user_input(0, 1, 1, "=SEQUENCE(6)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "3");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 1).unwrap(), "4");
+    assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "5");
+    assert_eq!(model.get_formatted_cell_value(0, 6, 1).unwrap(), "6");
+
+    // Step 2: delete row 3 (A3 is a SpillCell of the SEQUENCE)
+    model.delete_rows(0, 3, 1).unwrap();
+    // After deletion + re-evaluation the formula still spills 6 values into A1:A6
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 6, 1).unwrap(), "6");
+
+    // Step 3: undo — row 3 is re-inserted
+    model.undo().unwrap();
+
+    // A1 must not show #SPILL! — the restored SpillCell from old_data must not
+    // block re-evaluation of SEQUENCE(6).
+    assert_ne!(
+        model.get_formatted_cell_value(0, 1, 1).unwrap(),
+        "#SPILL!",
+        "A1 must not be #SPILL! after undoing the row deletion"
+    );
+    // Full spill must be intact
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "3");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 1).unwrap(), "4");
+    assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "5");
+    assert_eq!(model.get_formatted_cell_value(0, 6, 1).unwrap(), "6");
+    // Row 7 and beyond must be empty
+    assert_eq!(model.get_formatted_cell_value(0, 7, 1).unwrap(), "");
+}
+
+// Regression test: deleting a column that contains a spill cell and then undoing
+// the deletion must restore the original spill without leaving a stray SpillCell
+// that blocks re-evaluation of the formula anchor.
+//
+// Steps:
+//   1. =SEQUENCE(1,6) in A1 — spills right A1:F1 (values 1..6)
+//   2. Delete column C (col 3, which holds a SpillCell)
+//      → formula re-evaluates, A1:F1 still shows 1..6
+//   3. Undo the deletion
+//      → A1 must still show 1 (not #SPILL!)
+//      → A1:F1 must display 1..6
+#[test]
+fn delete_column_with_spill_cell_undo_clears_stale_spill() {
+    let mut model = new_empty_user_model();
+
+    // Step 1: =SEQUENCE(1,6) in A1 — spills A1:F1
+    model.set_user_input(0, 1, 1, "=SEQUENCE(1,6)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "3");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 4).unwrap(), "4");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 5).unwrap(), "5");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 6).unwrap(), "6");
+
+    // Step 2: delete column C (col 3, a SpillCell of the SEQUENCE)
+    model.delete_columns(0, 3, 1).unwrap();
+    // After deletion + re-evaluation the formula still spills 6 values into A1:F1
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 6).unwrap(), "6");
+
+    // Step 3: undo — column C is re-inserted
+    model.undo().unwrap();
+
+    // A1 must not show #SPILL! — the restored SpillCell from old_data must not
+    // block re-evaluation of SEQUENCE(1,6).
+    assert_ne!(
+        model.get_formatted_cell_value(0, 1, 1).unwrap(),
+        "#SPILL!",
+        "A1 must not be #SPILL! after undoing the column deletion"
+    );
+    // Full spill must be intact
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "3");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 4).unwrap(), "4");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 5).unwrap(), "5");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 6).unwrap(), "6");
+    // Column G and beyond must be empty
+    assert_eq!(model.get_formatted_cell_value(0, 1, 7).unwrap(), "");
 }

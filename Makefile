@@ -5,10 +5,18 @@ lint:
 	cd bindings/wasm/ && cargo clippy --target wasm32-unknown-unknown -- -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings
 	cd webapp/IronCalc/ && npm install && npm run check
 	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run check
+	cd docs/docs.ironcalc.com/ && npm install && npm run build
 
 .PHONY: format
 format:
 	cargo fmt
+
+.PHONY: test-language-bin
+test-language-bin:
+	cd generate_language && cargo build -q && cargo run -q
+	diff generate_language/language.bin base/src/language/language.bin
+	rm generate_language/language.bin
+	@echo "language.bin is up to date"
 
 .PHONY: test-rust
 test-rust:
@@ -17,22 +25,21 @@ test-rust:
 
 .PHONY: test-js
 test-js:
-	# Regretabbly we need to build the wasm twice, once for the nodejs tests
+	# Regrettably we need to build the wasm twice, once for the nodejs tests
 	# and a second one for the vitest.
-	cd bindings/wasm/ && \
-	  wasm-pack build --target nodejs --out-name ironcalc && \
-	  cargo build --release --target wasm32-unknown-unknown --bin xlsx_wasm && \
-	  wasm-bindgen --target nodejs --typescript --out-dir pkg --out-name xlsx ../../target/wasm32-unknown-unknown/release/xlsx_wasm.wasm && \
-	  node tests/test.mjs && \
-	  make
+	cd bindings/wasm/ && make tests && make
 	cd webapp/IronCalc/ && npm install && npm run test
+
+.PHONY: test-nodejs
+test-nodejs:
+	cd bindings/nodejs/ && pnpm install && pnpm run build && pnpm run test
 
 .PHONY: test-python
 test-python:
 	cd bindings/python && ./run_tests.sh && ./run_examples.sh
 
 .PHONY: tests
-tests: lint test-rust test-js test-python
+tests: lint test-rust test-js test-python test-nodejs test-language-bin
 
 .PHONY: remove-artifacts
 remove-artifacts:
@@ -58,4 +65,4 @@ coverage:
 
 .PHONY: docs
 docs:
-	cargo doc --no-deps
+	cargo doc --no-deps -p ironcalc -p ironcalc_base

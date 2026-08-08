@@ -18,7 +18,7 @@ fn two_columns() {
         height: LAST_ROW,
     };
     model
-        .update_range_style(&column_c_range, "fill.bg_color", "#333444")
+        .update_range_style(&column_c_range, "fill.color", "#333444")
         .unwrap();
     model.set_user_input(0, 5, 3, "2").unwrap();
 
@@ -32,7 +32,7 @@ fn two_columns() {
     };
 
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#333444")
+        .update_range_style(&column_g_range, "fill.color", "#333444")
         .unwrap();
     model.set_user_input(0, 5, 6, "42").unwrap();
     // Set formula in G5: =F5*C5

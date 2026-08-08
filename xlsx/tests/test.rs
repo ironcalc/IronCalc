@@ -1,17 +1,14 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::panic)]
 
-use std::io::Read;
-use std::{env, fs, io};
-use uuid::Uuid;
-
-use ironcalc::compare::{test_file, test_load_and_saving};
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::{
     load_from_icalc, load_from_icalc_bytes, load_from_xlsx, load_from_xlsx_bytes,
 };
-use ironcalc_base::types::{HorizontalAlignment, VerticalAlignment};
-use ironcalc_base::{Model, UserModel};
+use ironcalc_base::types::{Color, HorizontalAlignment, Link, VerticalAlignment};
+use ironcalc_base::{Model, UserModel, ROW_HEIGHT_FACTOR};
+use std::fs;
+use std::io::Read;
 
 // This is a functional test.
 // We check that the output of example.xlsx is what we expect.
@@ -48,10 +45,6 @@ fn test_example() {
     assert_eq!(ws[0].views[&0].row, 13);
     assert_eq!(ws[0].views[&0].column, 5);
     assert_eq!(ws[0].views[&0].range, [13, 5, 20, 14]);
-
-    let model2 = load_from_icalc("tests/example.ic", "en").unwrap();
-    let _ = bitcode::encode(&model2.workbook);
-    assert_eq!(workbook, model2.workbook);
 }
 
 #[test]
@@ -211,11 +204,15 @@ fn test_model_has_correct_styles(model: &Model) {
     let style_g1 = model.get_style_for_cell(0, 1, 7).unwrap();
     assert!(style_g1.font.u);
 
+    // Taken from the xlsx
+    let ht_row3 = 68.0;
     let height_row_3 = model.workbook.worksheet(0).unwrap().row_height(3).unwrap();
-    assert_eq!(height_row_3, 136.0);
+    assert_eq!(height_row_3, ht_row3 * ROW_HEIGHT_FACTOR);
 
+    // Taken from the xlsx
+    let ht_row_5 = 31.0;
     let height_row_5 = model.workbook.worksheet(0).unwrap().row_height(5).unwrap();
-    assert_eq!(height_row_5, 62.0);
+    assert_eq!(height_row_5, ht_row_5 * ROW_HEIGHT_FACTOR);
 
     // Second sheet has alignment
     // Horizontal
@@ -346,118 +343,6 @@ fn test_defined_names_casing() {
     }
 }
 
-#[test]
-fn test_xlsx() {
-    let mut entries = fs::read_dir("tests/calc_tests/")
-        .unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()
-        .unwrap();
-    entries.sort();
-    let temp_folder = env::temp_dir();
-    let path = format!("{}", Uuid::new_v4());
-    let dir = temp_folder.join(path);
-    fs::create_dir(&dir).unwrap();
-    let mut is_error = false;
-    for file_path in entries {
-        let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
-        let file_path_str = file_path.to_str().unwrap();
-        println!("Testing file: {file_path_str}");
-        if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
-            if let Err(message) = test_file(file_path_str) {
-                println!("Error with file: '{file_path_str}'");
-                println!("{message}");
-                is_error = true;
-            }
-            let t = test_load_and_saving(file_path_str, &dir);
-            if t.is_err() {
-                println!("Error while load and saving file: {file_path_str}");
-                is_error = true;
-            }
-        } else {
-            println!("skipping");
-        }
-    }
-    fs::remove_dir_all(&dir).unwrap();
-    assert!(
-        !is_error,
-        "Models were evaluated inconsistently with XLSX data."
-    );
-}
-
-#[test]
-fn test_statistical_xlsx() {
-    let mut entries = fs::read_dir("tests/statistical/")
-        .unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()
-        .unwrap();
-    entries.sort();
-    let temp_folder = env::temp_dir();
-    let path = format!("{}", Uuid::new_v4());
-    let dir = temp_folder.join(path);
-    fs::create_dir(&dir).unwrap();
-    let mut is_error = false;
-    for file_path in entries {
-        let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
-        let file_path_str = file_path.to_str().unwrap();
-        println!("Testing file: {file_path_str}");
-        if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
-            if let Err(message) = test_file(file_path_str) {
-                println!("Error with file: '{file_path_str}'");
-                println!("{message}");
-                is_error = true;
-            }
-            let t = test_load_and_saving(file_path_str, &dir);
-            if t.is_err() {
-                println!("Error while load and saving file: {file_path_str}");
-                is_error = true;
-            }
-        } else {
-            println!("skipping");
-        }
-    }
-    fs::remove_dir_all(&dir).unwrap();
-    assert!(
-        !is_error,
-        "Models were evaluated inconsistently with XLSX data."
-    );
-}
-
-#[test]
-fn no_export() {
-    let mut entries = fs::read_dir("tests/calc_test_no_export/")
-        .unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()
-        .unwrap();
-    entries.sort();
-    let temp_folder = env::temp_dir();
-    let path = format!("{}", Uuid::new_v4());
-    let dir = temp_folder.join(path);
-    fs::create_dir(&dir).unwrap();
-    let mut is_error = false;
-    for file_path in entries {
-        let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
-        let file_path_str = file_path.to_str().unwrap();
-        println!("Testing file: {file_path_str}");
-        if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
-            if let Err(message) = test_file(file_path_str) {
-                println!("Error with file: '{file_path_str}'");
-                println!("{message}");
-                is_error = true;
-            }
-        } else {
-            println!("skipping");
-        }
-    }
-    fs::remove_dir_all(&dir).unwrap();
-    assert!(
-        !is_error,
-        "Models were evaluated inconsistently with XLSX data."
-    );
-}
-
 // This test verifies whether exporting the merged cells functionality is happening properly or not.
 // It first loads the Excel having the merged cell and exports it to another xlsx and verifies whether merged
 // cell node is same in both of the xlsx file or not.
@@ -524,91 +409,6 @@ fn test_exporting_merged_cells() {
 }
 
 #[test]
-fn test_templates_xlsx() {
-    let mut entries = fs::read_dir("tests/templates/")
-        .unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()
-        .unwrap();
-    entries.sort();
-    let temp_folder = env::temp_dir();
-    let path = format!("{}", Uuid::new_v4());
-    let dir = temp_folder.join(path);
-    fs::create_dir(&dir).unwrap();
-    let mut is_error = false;
-    for file_path in entries {
-        let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
-        let file_path_str = file_path.to_str().unwrap();
-        println!("Testing file: {file_path_str}");
-        if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
-            if let Err(message) = test_file(file_path_str) {
-                println!("Error with file: '{file_path_str}'");
-                println!("{message}");
-                is_error = true;
-            }
-            let t = test_load_and_saving(file_path_str, &dir);
-            if t.is_err() {
-                println!("Error while load and saving file: {file_path_str}");
-                is_error = true;
-            }
-        } else {
-            println!("skipping");
-        }
-    }
-    fs::remove_dir_all(&dir).unwrap();
-    assert!(
-        !is_error,
-        "Models were evaluated inconsistently with XLSX data."
-    );
-}
-
-#[test]
-fn test_documentation_xlsx() {
-    let mut entries = fs::read_dir("tests/docs/")
-        .unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()
-        .unwrap();
-    entries.sort();
-    // We can't test volatiles
-    let mut skip = vec!["DATE.xlsx", "DAY.xlsx", "MONTH.xlsx", "YEAR.xlsx"];
-    // Numerically unstable
-    skip.push("TAN.xlsx");
-    let skip: Vec<String> = skip.iter().map(|s| format!("tests/docs/{s}")).collect();
-    println!("{skip:?}");
-    // dumb counter to make sure we are actually testing the files
-    assert!(entries.len() > 7);
-    let temp_folder = env::temp_dir();
-    let path = format!("{}", Uuid::new_v4());
-    let dir = temp_folder.join(path);
-    fs::create_dir(&dir).unwrap();
-    let mut is_error = false;
-    for file_path in entries {
-        let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
-        let file_path_str = file_path.to_str().unwrap();
-        if skip.contains(&file_path_str.to_string()) {
-            println!("Skipping file: {file_path_str}");
-            continue;
-        }
-        println!("Testing file: {file_path_str}");
-        if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
-            if let Err(message) = test_file(file_path_str) {
-                println!("{message}");
-                is_error = true;
-            }
-            assert!(test_load_and_saving(file_path_str, &dir).is_ok());
-        } else {
-            println!("skipping");
-        }
-    }
-    fs::remove_dir_all(&dir).unwrap();
-    assert!(
-        !is_error,
-        "Models were evaluated inconsistently with XLSX data."
-    )
-}
-
-#[test]
 fn test_user_model() {
     let temp_file_name = "temp_file_test_user_model.xlsx";
     let mut model = UserModel::new_empty("my_model", "en", "UTC", "en").unwrap();
@@ -650,4 +450,158 @@ fn test_pyopenxl_example() {
 
     let b1 = model.get_formatted_cell_value(0, 1, 2).unwrap();
     assert_eq!(b1, "It is what it is");
+}
+
+fn assert_eq_ignoring_metadata_and_name(
+    workbook1: ironcalc_base::types::Workbook,
+    workbook2: ironcalc_base::types::Workbook,
+) {
+    let mut w2 = workbook2.clone();
+    w2.metadata = workbook1.metadata.clone();
+    w2.name = workbook1.name.clone();
+    assert_eq!(workbook1, w2);
+}
+
+#[test]
+fn test_dynamic_arrays() {
+    let model = load_from_xlsx("tests/dynamic_arrays.xlsx", "en", "UTC", "en").unwrap();
+    let temp_file_name = "temp_file_test_dynamic_arrays.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model2 = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    assert_eq_ignoring_metadata_and_name(model.workbook, model2.workbook);
+}
+
+#[test]
+// This tests the `xl/worksheets/_rels/sheet*` are parsed correctly
+// libreoffice sometimes exports .xlsx file with whitespace in the <Relationships> element
+fn test_relationship_whitespace_example() {
+    let mut model =
+        load_from_xlsx("tests/libreoffice_888_example.xlsx", "en", "UTC", "en").unwrap();
+    model.evaluate();
+}
+
+#[test]
+fn test_missing_r_on_row() {
+    let mut model = load_from_xlsx("tests/missing_r_on_row.xlsx", "en", "UTC", "en").unwrap();
+    model.evaluate();
+}
+
+fn external_link(target: &str) -> Link {
+    Link::External {
+        target: target.to_string(),
+        tooltip: None,
+    }
+}
+
+fn internal_link(location: &str) -> Link {
+    Link::Internal {
+        location: location.to_string(),
+        tooltip: None,
+    }
+}
+
+// link_test.xlsx has two sheets, "Sheet1" and "Target". Sheet1 has 13 hyperlinks in
+// column B: external links of every flavour (https, ftp, mailto, file) in B2:B9 and
+// B29, and internal links (cell references and a defined name) in B10:B12 and B33.
+#[test]
+fn test_hyperlinks_import() {
+    let model = load_from_xlsx("tests/link_test.xlsx", "en", "UTC", "en").unwrap();
+    let links = &model.workbook.worksheets[0].links;
+
+    assert_eq!(links.len(), 13);
+    assert_eq!(
+        links.get(&(2, 2)),
+        Some(&external_link("http://www.ironcalc.com/"))
+    );
+    assert_eq!(
+        links.get(&(3, 2)),
+        Some(&external_link("https://www.microsoft.com/"))
+    );
+    // B4 has a tooltip (called ScreenTip in Excel)
+    assert_eq!(
+        links.get(&(4, 2)),
+        Some(&Link::External {
+            target: "https://support.microsoft.com/".to_string(),
+            tooltip: Some("This is a ScreenTip / tooltip".to_string()),
+        })
+    );
+    assert_eq!(
+        links.get(&(5, 2)),
+        Some(&external_link("ftp://ftp.gnu.org/"))
+    );
+    assert_eq!(
+        links.get(&(6, 2)),
+        Some(&external_link("mailto:someone@example.com"))
+    );
+    // the &amp; in the rels part is XML-decoded, the percent-encoding is kept
+    assert_eq!(
+        links.get(&(7, 2)),
+        Some(&external_link(
+            "mailto:someone@example.com?subject=Test%20Subject&body=Hello%20there"
+        ))
+    );
+    assert_eq!(
+        links.get(&(8, 2)),
+        Some(&external_link("file:///C:/Temp/test.xlsx"))
+    );
+    assert_eq!(
+        links.get(&(9, 2)),
+        Some(&external_link("file:///share/report.xlsx"))
+    );
+    assert_eq!(links.get(&(10, 2)), Some(&internal_link("Sheet1!A30")));
+    assert_eq!(links.get(&(11, 2)), Some(&internal_link("Target!A1")));
+    assert_eq!(links.get(&(12, 2)), Some(&internal_link("NamedTarget")));
+    assert_eq!(
+        links.get(&(29, 2)),
+        Some(&external_link(
+            "mailto:daniel@ironcalc.com?subject=hola%20que%20tal"
+        ))
+    );
+    // B33 is an internal link with a tooltip
+    assert_eq!(
+        links.get(&(33, 2)),
+        Some(&Link::Internal {
+            location: "Target!A1".to_string(),
+            tooltip: Some("Pronto sucedera".to_string()),
+        })
+    );
+
+    // The second sheet has no links
+    assert!(model.workbook.worksheets[1].links.is_empty());
+}
+
+#[test]
+fn test_hyperlinks_export_roundtrip() {
+    let mut model = load_from_xlsx("tests/link_test.xlsx", "en", "UTC", "en").unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_link_test.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model2 = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+
+    assert_eq!(
+        model.workbook.worksheets[0].links,
+        model2.workbook.worksheets[0].links
+    );
+    assert_eq!(
+        model.workbook.worksheets[1].links,
+        model2.workbook.worksheets[1].links
+    );
+}
+
+#[test]
+// This tests theme color resolution against the workbook's `xl/theme/theme1.xml`
+// rather than the hardcoded Office 2013 palette. custom_theme_colors.xlsx ships
+// a custom theme where accent6 = #C9211E; B15 uses <fgColor theme="9"/>, which
+// must resolve to that red.
+fn test_workbook_theme_colors() {
+    let model = load_from_xlsx("tests/custom_theme_colors.xlsx", "en", "UTC", "en").unwrap();
+    let style_b15 = model.get_style_for_cell(0, 15, 2).unwrap();
+    // Theme index 9 = accent6 in OOXML; the custom theme sets accent6 = #C9211E
+    assert_eq!(style_b15.fill.color, Color::Theme(9, 0.0));
+    assert_eq!(
+        style_b15.fill.color.to_rgb(&model.workbook.theme),
+        "#C9211E".to_string()
+    );
 }

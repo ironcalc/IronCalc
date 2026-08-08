@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "dev": "vitepress dev src",
+    "build": "vitepress build src",
+    "preview": "vitepress preview src"
+  },
+  "devDependencies": {
+    "markdown-it-mathjax3": "^4",
+    "vitepress": "^v2.0.0-alpha.17",
+    "vue": "^3.5.34"
+  }
+}

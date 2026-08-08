@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Programming with IronCalc</title>
+    <meta
+      name="description"
+      content="Landing page for developing and scripting IronCalc: Rust, Python, WebAssembly and Node.js documentation."
+    />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="fonts.css" />
+
+    <!-- Favicon -->
+    <link rel="icon" href="images/favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" href="images/favicon-16x16.png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+  </head>
+  <body id="body">
+    <nav id="navbar">
+      <div class="nav-container b-both">
+        <div class="logo w-200">
+          <a href="https://www.ironcalc.com" id="logo-link" aria-label="IronCalc home">
+            <img src="images/logo.svg" alt="IronCalc logo" />
+          </a>
+        </div>
+        <div class="flex-h gap-sm w-200 j-content-flex-end">
+          <a
+            href="https://github.com/ironcalc/ironcalc"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="button secondary"
+            >Source code</a
+          >
+          <a
+            href="https://app.ironcalc.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="button"
+            >Try now</a
+          >
+        </div>
+      </div>
+    </nav>
+
+    <header>
+      <div class="hero">
+        <div class="hero-text b-both">
+          <h1 class="ff-mozilla font-w-500">
+            Programming <br />with <span class="orange">IronCalc</span>
+          </h1>
+          <h2 class="text-pretty">
+            IronCalc is an engine first. Create, edit, evaluate and script
+            spreadsheets programmatically.
+          </h2>
+        </div>
+      </div>
+    </header>
+
+    <div class="h-divider"></div>
+
+    <main>
+      <section id="bindings">
+        <div class="w-1020 b-both">
+          <div class="flex-v py-4xl px-4xl">
+            <div class="section-head">
+              <h2 class="ff-mozilla font-w-500">API documentation</h2>
+              <p class="grey-700 text-pretty">
+                Pick your language to find the API documentation for each of the
+                bindings.
+              </p>
+            </div>
+            <div class="cards">
+              <a class="card" href="rust/">
+                <img class="card-logo" src="images/rust_logo.svg" alt="Rust" />
+                <h2 class="small font-w-700">Rust documentation</h2>
+                <p>
+                  The core engine. API documentation for the
+                  <code>ironcalc</code> and <code>ironcalc_base</code> crates,
+                  also available on docs.rs.
+                </p>
+                <span class="link">Read the docs</span>
+              </a>
+              <a class="card" href="python/">
+                <img class="card-logo" src="images/python_logo.svg" alt="Python" />
+                <h2 class="small font-w-700">Python bindings</h2>
+                <p>
+                  Create, edit and evaluate spreadsheets from Python. Install
+                  with <code>pip install ironcalc</code>.
+                </p>
+                <span class="link">Read the docs</span>
+              </a>
+              <a class="card" href="wasm/">
+                <img class="card-logo" src="images/wasm_logo.svg" alt="WebAssembly" />
+                <h2 class="small font-w-700">Wasm bindings</h2>
+                <p>
+                  Run IronCalc in the browser with the WebAssembly bindings and
+                  build your own spreadsheet applications.
+                </p>
+                <span class="link">Read the docs</span>
+              </a>
+              <a class="card" href="nodejs/">
+                <img class="card-logo" src="images/nodejs_logo.svg" alt="Node.js" />
+                <h2 class="small font-w-700">Node.js bindings</h2>
+                <p>
+                  Use IronCalc from Node.js to automate and script spreadsheets
+                  on the server.
+                </p>
+                <span class="link">Read the docs</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="h-divider"></div>
+
+      <section id="resources">
+        <div class="w-1020 b-both">
+          <div class="flex-v py-4xl px-4xl">
+            <div class="section-head">
+              <h2 class="ff-mozilla font-w-500">More resources</h2>
+              <p class="grey-700 text-pretty">
+                Not everything is code: explore the components or learn how to
+                use the application.
+              </p>
+            </div>
+            <div class="cards">
+              <a class="card" href="https://design.ironcalc.dev">
+                <img class="card-logo" src="images/storybook_logo.svg" alt="Storybook" />
+                <h2 class="small font-w-700">Design system</h2>
+                <p>
+                  Explore the IronCalc React components in the Storybook of the
+                  design system.
+                </p>
+                <span class="link">Open Storybook</span>
+              </a>
+              <a class="card" href="https://docs.ironcalc.com">
+                <img class="card-logo" src="images/icon.svg" alt="IronCalc" />
+                <h2 class="small font-w-700">User documentation</h2>
+                <p>
+                  Not looking to program? The user documentation covers the
+                  application, functions and features.
+                </p>
+                <span class="link">Open the docs</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="h-divider"></div>
+
+    <footer>
+      <div class="w-1020 b-both">
+        <div class="flex-h j-content-space-between a-items-flex-start gap-sm py-3xl px-2xl footer-main">
+          <div class="flex-v gap-2xl" id="footer-logo">
+            <div class="flex-v gap-xs">
+              <a href="https://www.ironcalc.com" aria-label="IronCalc home"
+                ><img src="images/logo.svg" class="w-140px" alt="IronCalc logo"
+              /></a>
+              <p class="grey-700 p-16 ml-34">Open source<br />spreadsheet engine</p>
+            </div>
+
+            <div class="flex-v gap-sm w-140 nowrap a-items-flex-start ml-34">
+              <div class="flex-h j-content-center a-items-center gap-sm">
+                <div class="flex-h a-items-center j-content-center radius-xl footer-badge-box">
+                  <img src="images/eu-stars.svg" class="img-60pc" alt="EU flag" />
+                </div>
+                <p>Horizon Europe programme</p>
+              </div>
+              <div class="flex-h gap-sm">
+                <div class="flex-h a-items-center j-content-center radius-xl footer-badge-box-grey">
+                  <img src="images/nlnet-icon.svg" class="img-60pc" alt="NLnet Foundation icon" />
+                </div>
+                <p>the NLnet foundation</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer-nav">
+            <div class="flex-v gap-sm w-140">
+              <p class="font-w-700">Bindings</p>
+              <a href="rust/">Rust</a>
+              <a href="python/">Python</a>
+              <a href="wasm/">WebAssembly</a>
+              <a href="nodejs/">Node.js</a>
+            </div>
+            <div class="flex-v gap-sm w-140">
+              <p class="font-w-700">Product</p>
+              <a href="https://app.ironcalc.com">App</a>
+              <a
+                href="https://github.com/ironcalc/ironcalc"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Source code</a
+              >
+              <a href="https://www.ironcalc.com/roadmap.html">Roadmap</a>
+            </div>
+            <div class="flex-v gap-sm w-140">
+              <p class="font-w-700">Resources</p>
+              <a href="https://docs.ironcalc.com/">Docs</a>
+              <a href="https://blog.ironcalc.com/">Blog</a>
+              <a href="https://design.ironcalc.dev/">Design system</a>
+              <a
+                href="https://discord.gg/zZYWfh3RHJ"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Discord</a
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-1020 b-both">
+        <img
+          class="footer-logo-xl block-w-full"
+          src="images/ironcalc-logo-xl.svg"
+          alt=""
+          aria-hidden="true"
+        />
+      </div>
+
+      <div class="h-divider"></div>
+
+      <div class="w-1020 b-both" id="footer-legal">
+        <div class="flex-h j-content-space-between gap-sm py-base px-2xl a-items-center">
+          <div class="flex-h gap-md flex-wrap">
+            <p>© 2026 IronCalc GmbH</p>
+            <a href="https://www.ironcalc.com/legal/privacy.html">Privacy</a>
+            <a href="https://www.ironcalc.com/legal/impressum.html">Impressum</a>
+          </div>
+          <div class="flex-h gap-md a-items-center">
+            <a
+              class="opacity-50"
+              href="https://github.com/ironcalc/ironcalc"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="IronCalc on GitHub"
+              ><img src="images/github-logo.svg" class="w-20px" alt="" aria-hidden="true"
+            /></a>
+            <a
+              class="opacity-50"
+              href="https://discord.gg/zZYWfh3RHJ"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="IronCalc on Discord"
+              ><img src="images/discord-logo.svg" class="w-20px" alt="" aria-hidden="true"
+            /></a>
+            <a
+              class="opacity-50"
+              href="https://bsky.app/profile/ironcalc.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="IronCalc on Bluesky"
+              ><img src="images/bluesky-logo.svg" class="w-20px" alt="" aria-hidden="true"
+            /></a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,28 +1,12 @@
 {
-  "name": "@ironcalc/wasm",
-  "version": "0.3.2",
-  "description": "IronCalc WebAssembly bindings (core engine + optional XLSX helpers)",
-  "private": false,
-  "main": "./pkg/ironcalc.js",
-  "types": "./pkg/ironcalc.d.ts",
-  "exports": {
-    ".": {
-      "require": "./pkg/ironcalc.js",
-      "import": "./pkg/ironcalc.js",
-      "types": "./pkg/ironcalc.d.ts"
-    },
-    "./xlsx": {
-      "require": "./pkg/xlsx.js",
-      "import": "./pkg/xlsx.js",
-      "types": "./pkg/xlsx.d.ts"
-    }
+  "name": "ironcalc-wasm-dev",
+  "private": true,
+  "description": "Dev tooling for the IronCalc wasm bindings (the published package is generated into pkg/ by wasm-pack)",
+  "scripts": {
+    "docs": "typedoc"
   },
-  "files": [
-    "pkg"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ironcalc/ironcalc"
-  },
-  "license": "MIT OR Apache-2.0"
-} 
+  "devDependencies": {
+    "typedoc": "0.28.20",
+    "typescript": "^6.0.3"
+  }
+}

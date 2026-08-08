@@ -57,7 +57,7 @@ export function getShortLocaleCode(longCode: string): string {
 }
 
 // en-US => en, en-GB => en, es-ES => es, fr-FR => fr, de-DE => de, it-IT => it
-function getLanguageFromLocale(locale: string): string {
+export function getLanguageFromLocale(locale: string): string {
   return locale.split("-")[0];
 }
 
@@ -169,16 +169,22 @@ export function createNewModel(): Model {
 }
 
 export function loadSelectedModelFromStorage(): Model | null {
-  const uuid = localStorage.getItem("selected");
-  if (uuid) {
-    // We try to load the selected model
-    const modelBytesString = localStorage.getItem(uuid);
-    const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
-    if (modelBytesString) {
-      return Model.from_bytes(base64ToBytes(modelBytesString), language);
+  try {
+    const uuid = localStorage.getItem("selected");
+    if (uuid) {
+      // We try to load the selected model
+      const modelBytesString = localStorage.getItem(uuid);
+      const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
+      if (modelBytesString) {
+        return Model.from_bytes(base64ToBytes(modelBytesString), language);
+      }
     }
+    return null;
+  } catch (e) {
+    localStorage.clear();
+    console.warn("Failed to load selected model from storage", e);
+    return null;
   }
-  return null;
 }
 
 // check if storage is empty
@@ -253,7 +259,12 @@ export function deleteSelectedModel(): Model | null {
   if (uuids.length === 0) {
     return createNewModel();
   }
-  return selectModelFromStorage(uuids[0]);
+  const newestUuid = uuids.reduce((newest, current) => {
+    const newestTime = metadata[newest]?.createdAt || 0;
+    const currentTime = metadata[current]?.createdAt || 0;
+    return currentTime > newestTime ? current : newest;
+  });
+  return selectModelFromStorage(newestUuid);
 }
 
 export function deleteModelByUuid(uuid: string): Model | null {

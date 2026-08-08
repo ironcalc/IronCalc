@@ -1,0 +1,13 @@
+.ic-format-menu-root {
+  position: relative;
+}
+
+.ic-format-menu-anchor {
+  display: inline-flex;
+  width: fit-content;
+  flex: 0 0 auto;
+}
+
+.ic-format-menu-anchor[aria-expanded="true"] .ic-button--ghost {
+  background-color: var(--palette-grey-200);
+}

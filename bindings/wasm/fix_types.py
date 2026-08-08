@@ -9,19 +9,25 @@ def fix_types(text: str):
         header_types = "{}\n\n{}".format(header, types_str)
     
     text = text.replace(header, header_types)
+    inside_init_output = False
     for line in text.splitlines():
-        line = line.lstrip()
-        # Skip internal methods
-        if line.startswith("readonly model_"):
+        stripped = line.lstrip()
+        # Skip the entire InitOutput interface — it contains raw WASM function
+        # pointer signatures whose JsValue params/returns legitimately use `any`.
+        if stripped.startswith("export interface InitOutput {"):
+            inside_init_output = True
+        if inside_init_output:
+            if stripped == "}":
+                inside_init_output = False
             continue
-        if line.find("any") != -1:
+        if stripped.find("any") != -1:
             print("There are 'unfixed' public types. Please check.")
             exit(1)
 
     return text
 
 if __name__ == "__main__":
-    dts_files = ["pkg/ironcalc.d.ts", "pkg/xlsx.d.ts"]
+    dts_files = ["pkg/wasm.d.ts", "pkg/xlsx.d.ts"]
     for types_file in dts_files:
         with open(types_file) as f:
             text = f.read()
@@ -29,7 +35,7 @@ if __name__ == "__main__":
         with open(types_file, "wb") as f:
             f.write(bytes(text, "utf8"))
 
-    js_files = ["pkg/ironcalc.js", "pkg/xlsx.js"]
+    js_files = ["pkg/wasm.js", "pkg/xlsx.js"]
     with open("types.js") as f:
         text_js = f.read()
 

@@ -1,6 +1,6 @@
 [project]
 name = "ironcalc"
-version = "0.7.1"
+version = "0.8.3"
 description = "Create, edit and evaluate Excel spreadsheets"
 requires-python = ">=3.10"
 keywords = [
@@ -34,3 +34,5 @@ build-backend = "maturin"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
+python-source = "python"
+module-name = "ironcalc._ironcalc"

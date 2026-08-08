@@ -7,7 +7,6 @@ import BorderLeftIcon from "./border-left.svg?react";
 import BorderNoneIcon from "./border-none.svg?react";
 import BorderOuterIcon from "./border-outer.svg?react";
 import BorderRightIcon from "./border-right.svg?react";
-import BorderStyleIcon from "./border-style.svg?react";
 import BorderTopIcon from "./border-top.svg?react";
 import DeleteColumnIcon from "./delete-column.svg?react";
 import DeleteRowIcon from "./delete-row.svg?react";
@@ -27,13 +26,13 @@ export {
   BorderCenterVIcon,
   BorderInnerIcon,
   BorderLeftIcon,
+  BorderNoneIcon,
   BorderOuterIcon,
   BorderRightIcon,
   BorderTopIcon,
-  BorderNoneIcon,
-  BorderStyleIcon,
   DeleteColumnIcon,
   DeleteRowIcon,
+  Fx,
   InsertColumnLeftIcon,
   InsertColumnRightIcon,
   InsertRowAboveIcon,
@@ -41,5 +40,4 @@ export {
   IronCalcIcon,
   IronCalcIconWhite,
   IronCalcLogo,
-  Fx,
 };

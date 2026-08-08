@@ -4,7 +4,10 @@ use crate::test::util::new_empty_model;
 fn test_days360_month_end_us() {
     let mut model = new_empty_model();
 
-    // 31 Jan 2021 -> 28 Feb 2021 (non-leap)
+    // 31 Jan 2021 -> 28 Feb 2021 (non-leap). Excel's DAYS360 only adjusts the
+    // end date when its day-of-month is 31, so 28 Feb is left untouched: the
+    // start 31 -> 30 gives 30*(2-1) + (28-30) = 28. (Excel does NOT promote a
+    // last-day-of-February end date to 30, despite the Microsoft docs.)
     model._set("A1", "=DAYS360(DATE(2021,1,31),DATE(2021,2,28))");
 
     // 31 Jan 2020 -> 28 Feb 2020 (leap year – not last day of Feb)
@@ -18,7 +21,7 @@ fn test_days360_month_end_us() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"30");
+    assert_eq!(model._get_text("A1"), *"28");
     assert_eq!(model._get_text("A2"), *"28");
     assert_eq!(model._get_text("A3"), *"33");
     assert_eq!(model._get_text("A4"), *"30");

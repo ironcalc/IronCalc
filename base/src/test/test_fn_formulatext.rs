@@ -81,3 +81,33 @@ fn test_locale() {
     assert_eq!(model._get_formula("A1"), *"=SOMME(1,123;2)");
     assert_eq!(model._get_text("B1"), *"=SUM(1,123;2)");
 }
+
+#[test]
+fn test_sign_prefixed() {
+    let mut model = new_empty_model();
+
+    model._set("A2", "-B1-B2");
+    assert_eq!(model._get_formula("A2"), *"=-B1-B2");
+
+    model._set("A4", "-4-2");
+    assert_eq!(model._get_formula("A4"), *"=-4-2");
+
+    model._set("A5", "-42");
+    assert_eq!(model._get_formula("A5"), *"");
+
+    model._set("A6", "+42");
+    assert_eq!(model._get_formula("A6"), *"");
+
+    model._set("A7", "-B");
+    assert_eq!(model._get_formula("A7"), *"=-B");
+
+    model._set("A9", "-B1");
+    assert_eq!(model._get_formula("A9"), *"=-B1");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A4"), *"-6");
+    assert_eq!(model._get_text("A5"), *"-42");
+    assert_eq!(model._get_text("A6"), *"42");
+    assert_eq!(model._get_text("A7"), *"#NAME?");
+}

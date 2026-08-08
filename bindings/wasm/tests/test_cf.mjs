@@ -1,0 +1,301 @@
+import test from 'node:test';
+import assert from 'node:assert';
+import { Model } from '../pkg/wasm.js';
+
+const COLOR_SCALE = {
+    type: 'ColorScale',
+    thresholds: [
+        { cfvo: 'Min', color: '#FF0000' },
+        { cfvo: 'Max', color: '#00FF00' },
+    ],
+};
+const DATA_BAR = {
+    type: 'DataBar',
+    min: 'Min',
+    max: 'Max',
+    positive_color: '#0000FF',
+    negative_color: '#FF0000',
+    is_gradient: true,
+    show_value: true,
+};
+
+test('CF: empty list initially', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.deepEqual(model.getConditionalFormattingList(0), []);
+});
+
+test('CF: add and retrieve', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    const list = model.getConditionalFormattingList(0);
+    assert.strictEqual(list.length, 1);
+    assert.strictEqual(list[0].range, 'A1:A5');
+    assert.deepEqual(list[0].cf_rule, COLOR_SCALE);
+    assert.strictEqual(typeof list[0].priority, 'number');
+});
+
+test('CF: add two rules, list sorted by priority descending', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);
+    const list = model.getConditionalFormattingList(0);
+    assert.strictEqual(list.length, 2);
+    // The list is sorted by priority descending (highest priority first), so the
+    // last-added rule (B1:B5) comes first.
+    assert.ok(list[0].priority > list[1].priority);
+    assert.strictEqual(list[0].range, 'B1:B5');
+    assert.strictEqual(list[1].range, 'A1:A5');
+    // Each entry carries its storage index (insertion order), which is the
+    // reverse of the priority-sorted display order here.
+    assert.strictEqual(list[0].index, 1);
+    assert.strictEqual(list[1].index, 0);
+});
+
+test('CF: delete removes rule', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    model.deleteConditionalFormatting(0, 0);
+    assert.deepEqual(model.getConditionalFormattingList(0), []);
+});
+
+test('CF: update changes range and rule', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    model.updateConditionalFormatting(0, 0, 'C1:C10', DATA_BAR);
+    const list = model.getConditionalFormattingList(0);
+    assert.strictEqual(list[0].range, 'C1:C10');
+    assert.deepEqual(list[0].cf_rule, DATA_BAR);
+});
+
+test('CF: undo add removes rule', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    model.undo();
+    assert.deepEqual(model.getConditionalFormattingList(0), []);
+});
+
+test('CF: redo add restores rule', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    model.undo();
+    model.redo();
+    const list = model.getConditionalFormattingList(0);
+    assert.strictEqual(list.length, 1);
+    assert.strictEqual(list[0].range, 'A1:A5');
+});
+
+test('CF: invalid sheet throws', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.throws(() => model.addConditionalFormatting(99, 'A1:A5', COLOR_SCALE));
+});
+
+test('CF: invalid range throws', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.throws(() => model.addConditionalFormatting(0, 'not_a_range', COLOR_SCALE));
+});
+
+test('CF: color scale applies fill to cells', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    for (let i = 1; i <= 5; i++) model.setUserInput(0, i, 1, String(i));
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    // A1 is the minimum value → gets the min color
+    const extended = model.getCellStyle(0, 1, 1);
+    assert.strictEqual(extended.style.fill.color, '#FF0000');
+});
+
+test('CF: data bar sets fill proportion on cells', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    for (let i = 1; i <= 5; i++) model.setUserInput(0, i, 1, String(i));
+    model.addConditionalFormatting(0, 'A1:A5', DATA_BAR);
+    const a1 = model.getCellStyle(0, 1, 1);
+    const a5 = model.getCellStyle(0, 5, 1);
+    assert.strictEqual(a1.data_bar.value, 0);
+    assert.strictEqual(a5.data_bar.value, 1);
+});
+
+test('CF: CellIs GreaterThan applies fill color', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    for (let i = 1; i <= 5; i++) model.setUserInput(0, i, 1, String(i));
+    const rule = {
+        type: 'CellIs',
+        operator: 'GreaterThan',
+        formula: '3',
+        formula2: null,
+        format: { fill: { color: '#FF0000' } },
+        stop_if_true: false,
+    };
+    model.addConditionalFormatting(0, 'A1:A5', rule);
+    // A4=4 > 3 → red fill
+    assert.strictEqual(model.getCellStyle(0, 4, 1).style.fill.color, '#FF0000');
+    // A1=1, not > 3 → no CF fill
+    const a1Fill = model.getCellStyle(0, 1, 1).style.fill.color;
+    assert.ok(a1Fill === undefined || a1Fill === null || a1Fill === '');
+});
+
+test('CF: CellIs Between applies fill to cells in range', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    for (let i = 1; i <= 5; i++) model.setUserInput(0, i, 1, String(i));
+    const rule = {
+        type: 'CellIs',
+        operator: 'Between',
+        formula: '2',
+        formula2: '4',
+        format: { fill: { color: '#FF0000' } },
+        stop_if_true: false,
+    };
+    model.addConditionalFormatting(0, 'A1:A5', rule);
+    // A2=2, A3=3, A4=4 are between 2 and 4 → red fill
+    assert.strictEqual(model.getCellStyle(0, 2, 1).style.fill.color, '#FF0000');
+    assert.strictEqual(model.getCellStyle(0, 3, 1).style.fill.color, '#FF0000');
+    assert.strictEqual(model.getCellStyle(0, 4, 1).style.fill.color, '#FF0000');
+    // A1=1, A5=5 are outside the range → no fill
+    const a1Fill = model.getCellStyle(0, 1, 1).style.fill.color;
+    const a5Fill = model.getCellStyle(0, 5, 1).style.fill.color;
+    assert.ok(a1Fill === undefined || a1Fill === null || a1Fill === '');
+    assert.ok(a5Fill === undefined || a5Fill === null || a5Fill === '');
+});
+
+test('CF: CellIs Equal applies fill only to matching cell', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    for (let i = 1; i <= 3; i++) model.setUserInput(0, i, 1, String(i));
+    const rule = {
+        type: 'CellIs',
+        operator: 'Equal',
+        formula: '2',
+        formula2: null,
+        format: { fill: { color: '#0000FF' } },
+        stop_if_true: false,
+    };
+    model.addConditionalFormatting(0, 'A1:A3', rule);
+    // A2=2 matches → blue fill
+    assert.strictEqual(model.getCellStyle(0, 2, 1).style.fill.color, '#0000FF');
+    // A1=1, A3=3 don't match → no fill
+    const a1Fill = model.getCellStyle(0, 1, 1).style.fill.color;
+    const a3Fill = model.getCellStyle(0, 3, 1).style.fill.color;
+    assert.ok(a1Fill === undefined || a1Fill === null || a1Fill === '');
+    assert.ok(a3Fill === undefined || a3Fill === null || a3Fill === '');
+});
+
+test('CF: Text Contains applies fill to matching cells', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.setUserInput(0, 1, 1, 'hello world');
+    model.setUserInput(0, 2, 1, 'goodbye');
+    model.setUserInput(0, 3, 1, 'hello');
+    const rule = {
+        type: 'Text',
+        operator: 'Contains',
+        value: 'hello',
+        format: { fill: { color: '#00FF00' } },
+        stop_if_true: false,
+    };
+    model.addConditionalFormatting(0, 'A1:A3', rule);
+    // A1 and A3 contain "hello" → green fill
+    assert.strictEqual(model.getCellStyle(0, 1, 1).style.fill.color, '#00FF00');
+    assert.strictEqual(model.getCellStyle(0, 3, 1).style.fill.color, '#00FF00');
+    // A2 does not contain "hello" → no fill
+    const a2Fill = model.getCellStyle(0, 2, 1).style.fill.color;
+    assert.ok(a2Fill === undefined || a2Fill === null || a2Fill === '');
+});
+
+test('CF: getDxfForConditionalFormatting returns format', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    const rule = {
+        type: 'DuplicateValues',
+        format: { fill: { color: '#AABBCC' } },
+        stop_if_true: false,
+    };
+    model.addConditionalFormatting(0, 'A1:A5', rule);
+    const dxf = model.getDxfForConditionalFormatting(0, 0);
+    assert.ok(dxf != null, 'dxf should be present');
+    assert.strictEqual(dxf.fill.color, '#AABBCC');
+});
+
+test('CF: getDxfForConditionalFormatting returns undefined for ColorScale', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    const dxf = model.getDxfForConditionalFormatting(0, 0);
+    assert.strictEqual(dxf, undefined);
+});
+
+// Returns the priority for each storage index, in insertion order.
+function prioritiesByIndex(model, sheet) {
+    const list = model.getConditionalFormattingList(sheet);
+    const out = [];
+    for (const view of list) {
+        out[view.index] = view.priority;
+    }
+    return out;
+}
+
+test('CF: raise priority swaps with the next-higher-priority rule', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE); // index 0, priority 1
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);    // index 1, priority 2
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+
+    // Raise the first rule (storage index 0): its priority swaps with index 1's.
+    model.raiseConditionalFormattingPriority(0, 0);
+    assert.deepEqual(prioritiesByIndex(model, 0), [2, 1]);
+});
+
+test('CF: lower priority swaps with the next-lower-priority rule', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE); // index 0, priority 1
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);    // index 1, priority 2
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+
+    // Lower the second rule (storage index 1): its priority swaps with index 0's.
+    model.lowerConditionalFormattingPriority(0, 1);
+    assert.deepEqual(prioritiesByIndex(model, 0), [2, 1]);
+});
+
+test('CF: raising the top-priority rule is a no-op', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);
+    // Index 1 already has the highest priority.
+    model.raiseConditionalFormattingPriority(0, 1);
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+});
+
+test('CF: undo/redo a raise priority', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+
+    model.raiseConditionalFormattingPriority(0, 0);
+    assert.deepEqual(prioritiesByIndex(model, 0), [2, 1]);
+
+    model.undo();
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+
+    model.redo();
+    assert.deepEqual(prioritiesByIndex(model, 0), [2, 1]);
+});
+
+test('CF: list index resolves the right dxf after a priority swap', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    const redRule = {
+        type: 'DuplicateValues',
+        format: { fill: { color: '#FF0000' } },
+        stop_if_true: false,
+    };
+    const blueRule = {
+        type: 'DuplicateValues',
+        format: { fill: { color: '#0000FF' } },
+        stop_if_true: false,
+    };
+    model.addConditionalFormatting(0, 'A1:A5', redRule); // index 0 → red
+    model.addConditionalFormatting(0, 'B1:B5', blueRule); // index 1 → blue
+
+    // Swap priorities so storage order and priority order disagree.
+    model.raiseConditionalFormattingPriority(0, 0);
+
+    // Each entry's index must resolve to its own rule's format.
+    const expected = { 'A1:A5': '#FF0000', 'B1:B5': '#0000FF' };
+    for (const view of model.getConditionalFormattingList(0)) {
+        const dxf = model.getDxfForConditionalFormatting(0, view.index);
+        assert.strictEqual(dxf.fill.color, expected[view.range]);
+    }
+});

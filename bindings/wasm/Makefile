@@ -25,8 +25,8 @@ endif
 
 TEMP_DIR := pkg_xlsx
 
-all:
-	wasm-pack build --target web --scope ironcalc --out-dir pkg --out-name ironcalc --release
+all: deps
+	wasm-pack build --target web --scope ironcalc --release
 
 	# Build XLSX helper separately (cargo + wasm-bindgen)
 	cargo build --release --target wasm32-unknown-unknown --bin xlsx_wasm
@@ -38,20 +38,26 @@ all:
 	mv $(TEMP_DIR)/xlsx.d.ts pkg/xlsx.d.ts
 
 	cp README.pkg.md pkg/README.md
-	npx tsc types.ts --target esnext --module esnext
+	pnpm exec tsc types.ts --target esnext --module esnext
 	$(PYTHON) fix_types.py
+	$(PYTHON) fix_package.py
 	rm -f types.js
 	rm -rf $(TEMP_DIR)
+	node --test tests/test_package.mjs
+
+# Installs the pinned JS tooling (typescript, typedoc) from pnpm-lock.yaml
+deps:
+	pnpm install --frozen-lockfile
 
 tests:
-	wasm-pack build --target nodejs --out-dir pkg --out-name ironcalc
+	wasm-pack build --target nodejs
 	cargo build --release --target wasm32-unknown-unknown --bin xlsx_wasm
 	wasm-bindgen --target nodejs --typescript --out-dir $(TEMP_DIR) --out-name xlsx ../../target/wasm32-unknown-unknown/release/xlsx_wasm.wasm
 	mv $(TEMP_DIR)/xlsx_bg.wasm pkg/xlsx_bg.wasm || true
 	mv $(TEMP_DIR)/xlsx.js pkg/xlsx.js || true
 	mv $(TEMP_DIR)/xlsx.d.ts pkg/xlsx.d.ts || true
 	rm -rf $(TEMP_DIR)
-	node tests/test.mjs
+	node tests/test.mjs && node tests/test_cf.mjs
 
 lint:
 	cargo check
@@ -63,4 +69,4 @@ clean:
 	rm -rf pkg
 	rm -f types.js
 
-.PHONY: all lint clean tests
+.PHONY: all deps lint clean tests

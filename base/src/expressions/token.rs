@@ -241,6 +241,7 @@ pub enum TokenType {
     Percent,            // %
     And,                // &
     At,                 // @
+    Spill,              // #
     Backslash,          // \
     Reference {
         sheet: Option<String>,

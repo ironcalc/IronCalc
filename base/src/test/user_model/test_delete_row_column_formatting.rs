@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::{
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW},
@@ -38,17 +39,17 @@ fn delete_column_formatting() {
 
     // Set the style of the whole column
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_g_range, "fill.color", "#555666")
         .unwrap();
 
     // Set G123 background to red
     model
-        .update_range_style(&cell_g123, "fill.bg_color", "#FF5533")
+        .update_range_style(&cell_g123, "fill.color", "#FF5533")
         .unwrap();
 
     // Set the style of the whole row
     model
-        .update_range_style(&row_3_range, "fill.bg_color", "#333444")
+        .update_range_style(&row_3_range, "fill.color", "#333444")
         .unwrap();
 
     // Delete the column formatting
@@ -56,49 +57,49 @@ fn delete_column_formatting() {
 
     // Check the style of G123 is now what it was before
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     // Check the style of the whole row is still there
     let style = model.get_cell_style(0, 3, 1).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_owned()));
 
     // Check the style of the whole column is now gone
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     let style = model.get_cell_style(0, 40, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     model.undo().unwrap();
 
     // Check the style of G123 is now what it was before
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#FF5533".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#FF5533".to_owned()));
 
     // Check G3 is the row style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_owned()));
 
     // Check G40 is the column style
     let style = model.get_cell_style(0, 40, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#555666".to_owned()));
 
     model.redo().unwrap();
 
     // Check the style of G123 is now what it was before
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     // Check the style of the whole row is still there
     let style = model.get_cell_style(0, 3, 1).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_owned()));
 
     // Check the style of the whole column is now gone
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     let style = model.get_cell_style(0, 40, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, Color::None);
 }
 
 #[test]
@@ -118,7 +119,7 @@ fn column_width() {
 
     // Set the style of the whole column
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_g_range, "fill.color", "#555666")
         .unwrap();
 
     // Delete the column formatting
@@ -174,25 +175,25 @@ fn column_row_style_undo() {
 
     // Set the style of the whole column
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_g_range, "fill.color", "#555666")
         .unwrap();
 
     model
-        .update_range_style(&row_123_range, "fill.bg_color", "#111222")
+        .update_range_style(&row_123_range, "fill.color", "#111222")
         .unwrap();
 
     model.range_clear_formatting(&delete_range).unwrap();
 
     // check G123 is empty
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     // uno clear formatting
     model.undo().unwrap();
 
     // G123 has the row style
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#111222".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#111222".to_owned()));
 
     // undo twice
     model.undo().unwrap();
@@ -200,7 +201,7 @@ fn column_row_style_undo() {
 
     // check G123 is empty
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, Color::None);
 }
 
 #[test]
@@ -224,7 +225,7 @@ fn column_row_row_height_undo() {
     };
 
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_g_range, "fill.color", "#555666")
         .unwrap();
 
     model
@@ -232,12 +233,113 @@ fn column_row_row_height_undo() {
         .unwrap();
 
     model
-        .update_range_style(&row_3_range, "fill.bg_color", "#111222")
+        .update_range_style(&row_3_range, "fill.color", "#111222")
         .unwrap();
 
     model.undo().unwrap();
 
     // check G3 has the column style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#555666".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#555666".to_string()));
+}
+
+// Regression test: deleting a row removes SpillCell style information.
+// reset_dynamic_array_spills() removes SpillCells entirely (with ws.remove_cell)
+// before the row-shift moves other styled cells into their old positions.
+// After evaluate() re-creates the SpillCells they use existing_style from sheet_data,
+// but the positions are now empty so they get the default style instead of the
+// background colour that was set on the region containing the spill area.
+#[test]
+fn delete_row_preserves_spill_cell_style() {
+    let mut model = new_empty_user_model();
+
+    // Step 1: =SEQUENCE(3) in D5 — spills to D5 (anchor), D6, D7
+    model.set_user_input(0, 5, 4, "=SEQUENCE(3)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 6, 4).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 7, 4).unwrap(), "3");
+
+    // Step 2: apply green background to C4:E9 (includes the spill cells D6 and D7)
+    let range = Area {
+        sheet: 0,
+        row: 4,
+        column: 3,
+        width: 3,  // C, D, E
+        height: 6, // rows 4–9
+    };
+    model
+        .update_range_style(&range, "fill.color", "#00FF00")
+        .unwrap();
+
+    // Verify D6 and D7 carry the green style before deletion
+    assert_eq!(
+        model.get_cell_style(0, 6, 4).unwrap().fill.color,
+        Color::Rgb("#00FF00".to_owned())
+    );
+    assert_eq!(
+        model.get_cell_style(0, 7, 4).unwrap().fill.color,
+        Color::Rgb("#00FF00".to_owned())
+    );
+
+    // Step 3: delete row 1 — everything shifts up by one
+    // Old D6 → new D5, old D7 → new D6
+    model.delete_rows(0, 1, 1).unwrap();
+
+    // The spill cells (now at D5 and D6) must still carry the green background
+    assert_eq!(
+        model.get_cell_style(0, 5, 4).unwrap().fill.color,
+        Color::Rgb("#00FF00".to_owned()),
+        "D5 (ex-D6 spill cell) should retain green background after row deletion"
+    );
+    assert_eq!(
+        model.get_cell_style(0, 6, 4).unwrap().fill.color,
+        Color::Rgb("#00FF00".to_owned()),
+        "D6 (ex-D7 spill cell) should retain green background after row deletion"
+    );
+}
+
+// Regression test: undoing a row-6 deletion loses the green style on D6 (a SpillCell).
+// After undo the row is restored, but D6 ends up with the default style instead of the
+// background colour that was set before the deletion.
+#[test]
+fn undo_delete_row_preserves_spill_cell_style() {
+    let mut model = new_empty_user_model();
+
+    // =SEQUENCE(3) in D5 spills to D5 (anchor), D6, D7
+    model.set_user_input(0, 5, 4, "=SEQUENCE(3)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 6, 4).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 7, 4).unwrap(), "3");
+
+    // Apply green background to C4:E9 (covers D5, D6, D7)
+    let range = Area {
+        sheet: 0,
+        row: 4,
+        column: 3,
+        width: 3,  // C, D, E
+        height: 6, // rows 4–9
+    };
+    model
+        .update_range_style(&range, "fill.color", "#00FF00")
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_style(0, 6, 4).unwrap().fill.color,
+        Color::Rgb("#00FF00".to_owned())
+    );
+
+    // Delete row 6 (the first spill cell of the array)
+    model.delete_rows(0, 6, 1).unwrap();
+
+    // Undo the deletion — D6 must recover the green background
+    model.undo().unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 6, 4).unwrap(),
+        "2",
+        "D6 should show the spilled value 2 after undo"
+    );
+    assert_eq!(
+        model.get_cell_style(0, 6, 4).unwrap().fill.color,
+        Color::Rgb("#00FF00".to_owned()),
+        "D6 (spill cell) should retain green background after undo of row deletion"
+    );
 }

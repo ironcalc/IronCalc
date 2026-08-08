@@ -1,6 +1,6 @@
 {
   "name": "@ironcalc/nodejs-linux-arm64-gnu",
-  "version": "0.7.1",
+  "version": "0.8.3",
   "os": [
     "linux"
   ],
@@ -17,5 +17,10 @@
   },
   "libc": [
     "glibc"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ironcalc/IronCalc.git",
+    "directory": "bindings/nodejs/npm/linux-arm64-gnu"
+  }
 }

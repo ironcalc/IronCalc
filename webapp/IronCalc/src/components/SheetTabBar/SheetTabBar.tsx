@@ -1,17 +1,16 @@
-import type { Model } from "@ironcalc/wasm";
-import { styled, Tooltip } from "@mui/material";
-import { Menu, Plus } from "lucide-react";
-import { useState } from "react";
+import type { Color, Model } from "@ironcalc/wasm";
+import { Menu as MenuIcon, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { IronCalcLogo } from "../../icons";
-import { theme } from "../../theme";
-import { NAVIGATION_HEIGHT } from "../constants";
+import { Button } from "../Button/Button";
+import { IconButton } from "../Button/IconButton";
+import { Menu } from "../Menu/Menu";
 import { getLocaleDisplayName } from "../RightDrawer/RegionalSettings/RegionalSettings";
-import { StyledButton } from "../Toolbar/Toolbar";
+import { Tooltip } from "../Tooltip/Tooltip";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
 import SheetTab from "./SheetTab";
 import type { SheetOptions } from "./types";
+import "./sheet-tab-bar.css";
 
 export interface SheetTabBarProps {
   sheets: SheetOptions[];
@@ -19,27 +18,22 @@ export interface SheetTabBarProps {
   workbookState: WorkbookState;
   onSheetSelected: (index: number) => void;
   onAddBlankSheet: () => void;
-  onSheetColorChanged: (hex: string) => void;
+  onSheetColorChanged: (color: Color) => void;
   onSheetRenamed: (name: string) => void;
   onSheetDeleted: () => void;
+  onSheetDuplicated: () => void;
   onHideSheet: () => void;
+  onMoveSheet: (fromIndex: number, toIndex: number) => void;
   model: Model;
   onOpenRegionalSettings: () => void;
+  /** When false, sheet add/rename/delete and regional settings affordances are hidden. */
+  canEdit: boolean;
 }
 
 function SheetTabBar(props: SheetTabBarProps) {
   const { t } = useTranslation();
   const { workbookState, onSheetSelected, sheets, selectedIndex } = props;
-  const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
-  const open = Boolean(anchorEl);
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const nonHidenSheets = sheets
+  const nonHiddenSheets = sheets
     .map((s, index) => {
       return {
         state: s.state,
@@ -52,180 +46,97 @@ function SheetTabBar(props: SheetTabBarProps) {
     .filter((s) => s.state === "visible");
 
   return (
-    <Container>
-      <LeftButtonsContainer>
-        <Tooltip title={t("navigation.add_sheet")}>
-          <StyledButton $pressed={false} onClick={props.onAddBlankSheet}>
-            <Plus />
-          </StyledButton>
-        </Tooltip>
+    <div className="ic-sheet-tab-bar-container">
+      <div className="ic-sheet-tab-bar-left-buttons-container">
+        {props.canEdit && (
+          <Tooltip title={t("navigation.add_sheet")}>
+            <IconButton
+              aria-label={t("navigation.add_sheet")}
+              icon={<Plus />}
+              onClick={props.onAddBlankSheet}
+            />
+          </Tooltip>
+        )}
         <Tooltip title={t("navigation.sheet_list")}>
-          <StyledButton onClick={handleClick} $pressed={false}>
-            <Menu />
-          </StyledButton>
+          <Menu
+            trigger={
+              <IconButton
+                aria-label={t("navigation.sheet_list")}
+                icon={<MenuIcon />}
+              />
+            }
+          >
+            <SheetListMenu
+              sheetOptionsList={sheets}
+              onSheetSelected={onSheetSelected}
+              selectedIndex={selectedIndex}
+            />
+          </Menu>
         </Tooltip>
-      </LeftButtonsContainer>
-      <VerticalDivider />
-      <Sheets>
-        <SheetInner>
-          {nonHidenSheets.map((tab) => (
+      </div>
+      <div className="ic-sheet-tab-bar-vertical-divider" />
+      <div className="ic-sheet-tab-bar-sheets">
+        <div className="ic-sheet-tab-bar-sheet-inner">
+          {nonHiddenSheets.map((tab) => (
             <SheetTab
               key={tab.sheetId}
+              canEdit={props.canEdit}
               name={tab.name}
               color={tab.color}
               selected={tab.index === selectedIndex}
               onSelected={() => onSheetSelected(tab.index)}
-              onColorChanged={(hex: string): void => {
-                props.onSheetColorChanged(hex);
+              onColorChanged={(color) => {
+                props.onSheetColorChanged(color);
               }}
               onRenamed={(name: string): void => {
                 props.onSheetRenamed(name);
               }}
-              canDelete={nonHidenSheets.length > 1}
+              canDelete={nonHiddenSheets.length > 1}
               onDeleted={(): void => {
                 props.onSheetDeleted();
               }}
+              onDuplicateSheet={(): void => {
+                props.onSheetDuplicated();
+              }}
               onHideSheet={props.onHideSheet}
               workbookState={workbookState}
+              model={props.model}
+              currentTheme={props.model.getTheme()}
+              onMoveSheet={props.onMoveSheet}
             />
           ))}
-        </SheetInner>
-      </Sheets>
-      <RightContainer>
-        <Tooltip title={t("regional_settings.open_regional_settings")}>
-          <RegionalSettingsButton
-            $pressed={false}
-            onClick={() => {
-              props.onOpenRegionalSettings();
-            }}
-          >
-            {getLocaleDisplayName(props.model.getLocale())}
-            <TextDivider />
-            {t(
-              `regional_settings.language.display_language.${props.model.getLanguage()}`,
-            )}
-          </RegionalSettingsButton>
-        </Tooltip>
-        <LogoLink
-          onClick={() => window.open("https://www.ironcalc.com", "_blank")}
-        >
-          <IronCalcLogo />
-        </LogoLink>
-      </RightContainer>
-      <SheetListMenu
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        sheetOptionsList={sheets}
-        onSheetSelected={(index) => {
-          onSheetSelected(index);
-          handleClose();
-        }}
-        selectedIndex={selectedIndex}
-      />
-    </Container>
+        </div>
+      </div>
+      {props.canEdit && (
+        <div className="ic-sheet-tab-bar-right-container">
+          <Tooltip title={t("regional_settings.open_regional_settings")}>
+            <Button
+              className="ic-sheet-tab-bar-regional-settings-button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                props.onOpenRegionalSettings();
+              }}
+            >
+              {getLocaleDisplayName(props.model.getLocale())}
+              <div className="ic-sheet-tab-bar-text-divider" />
+              {t(
+                `regional_settings.language.display_language.${props.model.getLanguage()}`,
+              )}
+            </Button>
+          </Tooltip>
+          <Tooltip title={t("regional_settings.open_regional_settings")}>
+            <IconButton
+              className="ic-sheet-tab-bar-regional-settings-icon-button"
+              aria-label={t("regional_settings.open_regional_settings")}
+              icon={<Settings />}
+              onClick={props.onOpenRegionalSettings}
+            />
+          </Tooltip>
+        </div>
+      )}
+    </div>
   );
 }
-
-// Note I have to specify the font-family in every component that can be considered stand-alone
-const Container = styled("div")`
-  display: flex;
-  flex-direction: row;
-  position: absolute;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  display: flex;
-  height: ${NAVIGATION_HEIGHT}px;
-  align-items: center;
-  padding: 0px;
-  font-family: Inter;
-  overflow: hidden;
-  background-color: ${theme.palette.common.white};
-  border-top: 1px solid ${theme.palette.grey["300"]};
-`;
-
-const Sheets = styled("div")`
-  flex-grow: 2;
-  overflow: hidden;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-left: 12px;
-  display: flex;
-  flex-direction: row;
-  height: 100%;
-`;
-
-const SheetInner = styled("div")`
-  display: flex;
-`;
-
-const LeftButtonsContainer = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  height: 100%;
-  gap: 4px;
-  padding: 0px 12px;
-  @media (max-width: 769px) {
-    padding: 0px 8px;
-  }
-`;
-
-const VerticalDivider = styled("div")`
-  height: 100%;
-  width: 0px;
-  @media (max-width: 769px) {
-    border-right: 1px solid ${theme.palette.grey["200"]};
-  }
-`;
-
-const RightContainer = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  color: ${theme.palette.primary.main};
-  height: 100%;
-  padding: 0px 8px;
-  gap: 4px;
-  flex-shrink: 0;
-  width: auto;
-  @media (max-width: 769px) {
-    display: none;
-  }
-`;
-
-const RegionalSettingsButton = styled(StyledButton)`
-  min-width: fit-content;
-  padding: 4px 8px;
-  color: ${theme.palette.grey["600"]};
-  text-wrap: nowrap;
-  gap: 8px;
-`;
-
-const TextDivider = styled("div")`
-  width: 1px;
-  height: 60%;
-  background-color: ${theme.palette.grey["300"]};
-`;
-
-const LogoLink = styled("div")`
-  display: flex;
-  align-items: center;
-  padding: 0px 4px;
-  border-radius: 4px;
-  max-height: 24px;
-  min-height: 24px;
-  cursor: pointer;
-  svg {
-    height: 14px;
-    width: auto;
-  }
-  &:hover {
-    background-color: ${theme.palette.grey["100"]};
-    transition: "all 0.2s";
-    outline: 1px solid ${theme.palette.grey["200"]};
-  }
-`;
 
 export default SheetTabBar;

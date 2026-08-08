@@ -9,13 +9,13 @@
 //!
 //! ```toml
 //! [dependencies]
-//! ironcalc = { git = "https://github.com/ironcalc/IronCalc", tag = "v0.5.0" }
+//! ironcalc = { git = "https://github.com/ironcalc/IronCalc", tag = "v0.8.3" }
 //! ```
 //!
 //! A simple example with some numbers, a new sheet and a formula:
 //!
 //!
-//! ```rust
+//! ```rust,no_run
 #![doc = include_str!("../examples/hello_calc.rs")]
 //! ```
 //!
@@ -28,13 +28,13 @@
 //!
 //! Adding colors, to cells, full columns or full rows is easy
 //!
-//! ```rust
+//! ```rust,no_run
 #![doc = include_str!("../examples/hello_styles.rs")]
 //! ```
 //!
 //! ### Changing column width and row heigh
 //!
-//! ```rust
+//! ```rust,no_run
 #![doc = include_str!("../examples/widths_and_heights.rs")]
 //! ```
 
@@ -47,4 +47,8 @@ pub mod compare;
 pub mod error;
 pub mod export;
 pub mod import;
+pub mod util;
 pub use ironcalc_base as base;
+
+#[cfg(feature = "mock_time")]
+pub mod mock_time;

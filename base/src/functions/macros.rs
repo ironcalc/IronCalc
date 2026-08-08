@@ -83,6 +83,15 @@ macro_rules! single_number_fn {
                                 e @ ArrayNode::Error(_) => {
                                     data_row.push(e);
                                 }
+                                // Empty cell: treat as 0.0
+                                ArrayNode::Empty => match $op(0.0) {
+                                    Ok(x) => data_row.push(ArrayNode::Number(x)),
+                                    Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
+                                    Err(Error::VALUE) => {
+                                        data_row.push(ArrayNode::Error(Error::VALUE))
+                                    }
+                                    Err(e) => data_row.push(ArrayNode::Error(e)),
+                                },
                             }
                         }
                         array.push(data_row);

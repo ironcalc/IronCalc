@@ -344,9 +344,26 @@ impl Lexer {
                                 Token::ILLEGAL
                             }
                         } else if c == '$' {
-                            // currency
+                            // currency: [$<symbol>] or [$<symbol>-<locale>]
+                            // IronCalc ignores the currency/locale modifiers for now
+                            // They are of two types:
+                            //  * BCP-47 locale tag (like [$€-fr-FR])
+                            //  * hex LCID (old format)
+                            //      Like [$$-409] (=1033 for en-US) or
+                            //           [$$-40C] (=1036 for fr-FR)
                             self.read_next_char();
                             if let Some(currency) = self.read_next_char() {
+                                // ignore the locale part for now, just check if it ends with ']'
+                                if Some('-') == self.peek_char() {
+                                    self.read_next_char();
+
+                                    while let Some(c) = self.peek_char() {
+                                        if c == ']' {
+                                            break;
+                                        }
+                                        self.read_next_char();
+                                    }
+                                }
                                 if self.read_next_char() == Some(']') {
                                     return Token::Currency(currency);
                                 }

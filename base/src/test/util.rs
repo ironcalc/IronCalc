@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::expressions::types::CellReferenceIndex;
+use crate::expressions::types::{Area, CellReferenceIndex};
 use crate::model::Model;
 use crate::types::Cell;
 
@@ -51,5 +51,32 @@ impl<'a> Model<'a> {
         worksheet
             .cell(cell_reference.row, cell_reference.column)
             .unwrap()
+    }
+
+    pub fn _cell_clear_contents(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<(), String> {
+        let area = Area {
+            sheet,
+            row,
+            column,
+            width: 1,
+            height: 1,
+        };
+        self.range_clear_contents(&area)
+    }
+
+    pub fn _cell_clear_all(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        let area = Area {
+            sheet,
+            row,
+            column,
+            width: 1,
+            height: 1,
+        };
+        self.range_clear_all(&area)
     }
 }

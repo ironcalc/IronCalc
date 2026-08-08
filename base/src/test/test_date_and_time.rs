@@ -598,3 +598,29 @@ fn test_isoweeknum_function() {
     assert_eq!(model._get_text("A6"), *"#ERROR!");
     assert_eq!(model._get_text("A7"), *"#NUM!");
 }
+
+// Regression: DATE must apply Excel's size-1 broadcasting when its array
+// arguments have different shapes. A 2×1 year combined with a 1×2 month should
+// produce a 2×2 result (the singleton row/column repeats), not #N/A holes.
+#[test]
+fn test_date_size_one_broadcast() {
+    let mut model = new_empty_model();
+    // 2×1 years, 1×2 months, scalar day -> 2×2 grid.
+    model._set("A1", "=DATE({2020;2021}, {1,2}, 1)");
+    // Reference scalars for each (year, month) combination.
+    model._set("E1", "=DATE(2020,1,1)");
+    model._set("F1", "=DATE(2020,2,1)");
+    model._set("E2", "=DATE(2021,1,1)");
+    model._set("F2", "=DATE(2021,2,1)");
+    model.evaluate();
+
+    let v = |m: &crate::model::Model, r: &str| m.get_cell_value_by_ref(r).unwrap();
+    // The spilled grid must equal the element-wise scalar results.
+    assert_eq!(v(&model, "Sheet1!A1"), v(&model, "Sheet1!E1"));
+    assert_eq!(v(&model, "Sheet1!B1"), v(&model, "Sheet1!F1"));
+    assert_eq!(v(&model, "Sheet1!A2"), v(&model, "Sheet1!E2"));
+    assert_eq!(v(&model, "Sheet1!B2"), v(&model, "Sheet1!F2"));
+    // And none of them is an error.
+    assert!(matches!(v(&model, "Sheet1!B1"), CellValue::Number(_)));
+    assert!(matches!(v(&model, "Sheet1!A2"), CellValue::Number(_)));
+}

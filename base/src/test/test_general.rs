@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::constants::DEFAULT_ROW_HEIGHT;
 
@@ -333,25 +334,27 @@ fn test_style_fmt_id() {
 #[test]
 fn test_set_sheet_color() {
     let mut model = new_empty_model();
-    assert_eq!(model.workbook.worksheet(0).unwrap().color, None);
-    assert!(model.set_sheet_color(0, "#FFFAAA").is_ok());
+    assert_eq!(model.workbook.worksheet(0).unwrap().color, Color::None);
+    assert!(model
+        .set_sheet_color(0, &Color::from_rgb("#FFFAAA").unwrap())
+        .is_ok());
 
     // Test new tab color is properly set
     assert_eq!(
         model.workbook.worksheet(0).unwrap().color,
-        Some("#FFFAAA".to_string())
+        Color::Rgb("#FFFAAA".to_string())
     );
 
     // Test we can remove it
-    assert!(model.set_sheet_color(0, "").is_ok());
-    assert_eq!(model.workbook.worksheet(0).unwrap().color, None);
+    assert!(model.set_sheet_color(0, &Color::None).is_ok());
+    assert_eq!(model.workbook.worksheet(0).unwrap().color, Color::None);
 }
 
 #[test]
 fn test_set_sheet_color_invalid_sheet() {
     let mut model = new_empty_model();
     assert_eq!(
-        model.set_sheet_color(10, "#FFFAAA"),
+        model.set_sheet_color(10, &Color::Rgb("#FFFAAA".to_string())),
         Err("Invalid sheet index".to_string())
     );
 }
@@ -360,29 +363,12 @@ fn test_set_sheet_color_invalid_sheet() {
 fn test_set_sheet_color_invalid() {
     let mut model = new_empty_model();
     // Boundaries
-    assert!(model.set_sheet_color(0, "#FFFFFF").is_ok());
-    assert!(model.set_sheet_color(0, "#000000").is_ok());
-
-    assert_eq!(
-        model.set_sheet_color(0, "#FFF"),
-        Err("Invalid color: #FFF".to_string())
-    );
-    assert_eq!(
-        model.set_sheet_color(0, "-#FFF"),
-        Err("Invalid color: -#FFF".to_string())
-    );
-    assert_eq!(
-        model.set_sheet_color(0, "#-FFF"),
-        Err("Invalid color: #-FFF".to_string())
-    );
-    assert_eq!(
-        model.set_sheet_color(0, "2FFFFFF"),
-        Err("Invalid color: 2FFFFFF".to_string())
-    );
-    assert_eq!(
-        model.set_sheet_color(0, "#FFFFFF1"),
-        Err("Invalid color: #FFFFFF1".to_string())
-    );
+    assert!(model
+        .set_sheet_color(0, &Color::Rgb("#FFFFFF".to_string()))
+        .is_ok());
+    assert!(model
+        .set_sheet_color(0, &Color::Rgb("#000000".to_string()))
+        .is_ok());
 }
 
 #[test]
@@ -504,6 +490,38 @@ fn test_xlfn() {
         model.get_cell_formula(0, 3, 1).unwrap(),
         Some("=CONCAT(3,4)".to_string())
     );
+}
+
+// Empty cell compared to Boolean should treat the empty cell as FALSE (0).
+// Before the fix, both (EmptyCell, Boolean(_)) and (Boolean(_), EmptyCell)
+// fell through to the catch-all `(_, _) => 1`, which returned "greater-than"
+// in both directions — violating antisymmetry and producing wrong comparisons.
+#[test]
+fn test_compare_empty_cell_and_boolean() {
+    let mut model = new_empty_model();
+    // A1 is intentionally left empty.
+
+    // empty == FALSE  → TRUE  (empty coerces to FALSE)
+    model._set("B1", "=A1=FALSE");
+    // empty == TRUE   → FALSE
+    model._set("B2", "=A1=TRUE");
+    // empty < TRUE    → TRUE  (FALSE < TRUE)
+    model._set("B3", "=A1<TRUE");
+    // empty > FALSE   → FALSE (FALSE is not greater than FALSE)
+    model._set("B4", "=A1>FALSE");
+    // FALSE > empty   → FALSE (symmetric: empty == FALSE)
+    model._set("B5", "=FALSE>A1");
+    // TRUE > empty    → TRUE  (TRUE > FALSE)
+    model._set("B6", "=TRUE>A1");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), "TRUE");
+    assert_eq!(model._get_text("B2"), "FALSE");
+    assert_eq!(model._get_text("B3"), "TRUE");
+    assert_eq!(model._get_text("B4"), "FALSE");
+    assert_eq!(model._get_text("B5"), "FALSE");
+    assert_eq!(model._get_text("B6"), "TRUE");
 }
 
 #[test]

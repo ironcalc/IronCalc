@@ -1,0 +1,28 @@
+#root {
+  position: absolute;
+  inset: 0px;
+  margin: 0px;
+  border: none;
+}
+html,
+body {
+  overscroll-behavior: none;
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  src: url("https://embed.ironcalc.com/fonts/inter-v13-latin-regular.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  src: url("https://embed.ironcalc.com/fonts/inter-v13-latin-600.woff2")
+    format("woff2");
+}

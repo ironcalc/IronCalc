@@ -1,12 +1,16 @@
-name: nodejs
+name: Publish npm packages
 env:
   DEBUG: napi:*
   APP_NAME: nodejs
   MACOSX_DEPLOYMENT_TARGET: '10.13'
+  # true when triggered by a version tag or manually dispatched with publish=true
+  RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish == 'true' }}
 permissions:
-  contents: write
+  contents: read
   id-token: write
 'on':
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       publish:
@@ -17,7 +21,9 @@ defaults:
   run:
     working-directory: ./bindings/nodejs
 jobs:
-  build:
+  # --- NodeJS Native Bindings Jobs ---
+  build-nodejs:
+    name: build nodejs - ${{ matrix.settings.target }}
     strategy:
       fail-fast: false
       matrix:
@@ -33,6 +39,7 @@ jobs:
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
             build: |
               set -e &&
+              git config --global --add safe.directory /build &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               corepack enable &&
@@ -66,6 +73,7 @@ jobs:
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
             build: |
               set -e &&
+              git config --global --add safe.directory /build &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               rustup target add aarch64-unknown-linux-gnu &&
@@ -137,18 +145,19 @@ jobs:
               sudo apt-get update
               sudo apt-get install gcc-riscv64-linux-gnu -y
             build: pnpm run build --target riscv64gc-unknown-linux-gnu
-    name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     defaults:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-tags: ${{ github.ref_type != 'tag' }}
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         if: ${{ !matrix.settings.docker }}
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
       - name: Enable pnpm (corepack)
@@ -163,7 +172,7 @@ jobs:
           toolchain: 1.90.0
           targets: ${{ matrix.settings.target }}
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -195,7 +204,7 @@ jobs:
         if: ${{ !matrix.settings.docker }}
         shell: bash
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bindings-${{ matrix.settings.target }}
           path: bindings/nodejs/${{ env.APP_NAME }}.*.node
@@ -203,7 +212,7 @@ jobs:
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
     needs:
-      - build
+      - build-nodejs
     strategy:
       fail-fast: false
       matrix:
@@ -213,15 +222,15 @@ jobs:
           - host: windows-latest
             target: x86_64-pc-windows-msvc
         node:
-          - '20'
+          - '24'
     runs-on: ${{ matrix.settings.host }}
     defaults:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -234,7 +243,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-${{ matrix.settings.target }}
           path: bindings/nodejs/
@@ -246,20 +255,20 @@ jobs:
   test-linux-x64-gnu-binding:
     name: Test bindings on Linux-x64-gnu - node@${{ matrix.node }}
     needs:
-      - build
+      - build-nodejs
     strategy:
       fail-fast: false
       matrix:
         node:
-          - '20'
+          - '24'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -271,7 +280,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-x86_64-unknown-linux-gnu
           path: bindings/nodejs/
@@ -283,20 +292,20 @@ jobs:
   # test-linux-x64-musl-binding:
   #   name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
   #   needs:
-  #     - build
+  #     - build-nodejs
   #   strategy:
   #     fail-fast: false
   #     matrix:
   #       node:
-  #         - '20'
+  #         - '24'
   #   runs-on: ubuntu-latest
   #   defaults:
   #     run:
   #       working-directory: ./bindings/nodejs
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v7
   #     - name: Setup node
-  #       uses: actions/setup-node@v4
+  #       uses: actions/setup-node@v7
   #       with:
   #         node-version: ${{ matrix.node }}
   #         cache: npm
@@ -310,7 +319,7 @@ jobs:
   #         pnpm config set supportedArchitectures.libc musl
   #         pnpm install --frozen-lockfile
   #     - name: Download artifacts
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: bindings-x86_64-unknown-linux-musl
   #         path: bindings/nodejs/
@@ -322,20 +331,20 @@ jobs:
   test-linux-aarch64-gnu-binding:
     name: Test bindings on aarch64-unknown-linux-gnu - node@${{ matrix.node }}
     needs:
-      - build
+      - build-nodejs
     strategy:
       fail-fast: false
       matrix:
         node:
-          - '20'
+          - '24'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-aarch64-unknown-linux-gnu
           path: bindings/nodejs/
@@ -352,7 +361,7 @@ jobs:
           pnpm config set supportedArchitectures.libc glibc
           pnpm install --frozen-lockfile
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
       - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -370,15 +379,15 @@ jobs:
   # test-linux-aarch64-musl-binding:
   #   name: Test bindings on aarch64-unknown-linux-musl - node@${{ matrix.node }}
   #   needs:
-  #     - build
+  #     - build-nodejs
   #   runs-on: ubuntu-latest
   #   defaults:
   #     run:
   #       working-directory: ./bindings/nodejs
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v7
   #     - name: Download artifacts
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: bindings-aarch64-unknown-linux-musl
   #         path: bindings/nodejs/
@@ -391,7 +400,7 @@ jobs:
   #         pnpm config set supportedArchitectures.libc musl
   #         pnpm install --frozen-lockfile
   #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v3
+  #       uses: docker/setup-qemu-action@v4
   #       with:
   #         platforms: arm64
   #     - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -408,17 +417,17 @@ jobs:
   universal-macOS:
     name: Build universal macOS binary
     needs:
-      - build
+      - build-nodejs
     runs-on: macos-latest
     defaults:
       run:
         working-directory: ./bindings/nodejs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
       - name: Enable pnpm (corepack)
@@ -428,12 +437,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download macOS x64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-x86_64-apple-darwin
           path: bindings/nodejs/artifacts
       - name: Download macOS arm64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-aarch64-apple-darwin
           path: bindings/nodejs/artifacts
@@ -447,13 +456,13 @@ jobs:
       - name: Combine binaries
         run: pnpm run universal
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bindings-universal-apple-darwin
           path: bindings/nodejs/${{ env.APP_NAME }}.*.node
           if-no-files-found: error
-  publish:
-    name: Publish
+  publish-nodejs:
+    name: Publish @ironcalc/nodejs
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -467,12 +476,12 @@ jobs:
       - universal-macOS
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
 
@@ -485,8 +494,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download all artifacts (flatten)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
+          pattern: bindings-*
           path: ./bindings/nodejs
           merge-multiple: true
 
@@ -508,16 +518,159 @@ jobs:
         run: ls -R ./npm
         shell: bash
 
+      # OIDC trusted publishing needs npm >= 11.5.1
+      - name: Update npm
+        run: npm install -g npm@latest
+
       - name: Publish
         run: |
-          echo "${{ github.event.inputs.publish }}"
-          if [ "${{ github.event.inputs.publish }}" = "true" ]; then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+          LOCAL="$(npm pkg get version | tr -d '"')"
+          REMOTE="$(npm view @ironcalc/nodejs version || true)"
+          if [ "$RELEASE" != "true" ]; then
+            echo "Not a release, skipping publish"
+          elif [ "$LOCAL" = "$REMOTE" ]; then
+            echo "@ironcalc/nodejs $LOCAL is already published, skipping"
+          else
             npm publish --access public
             echo "Published to npm"
-          else
-            echo "Not a release, skipping publish"
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # --- WASM and Workbook Jobs ---
+  build-test-wasm:
+    name: Build and test @ironcalc/wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-tags: ${{ github.ref_type != 'tag' }}
+      - name: Setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install wasm build tooling
+        run: |
+          npm install -g wasm-pack pnpm@9.15.4
+      - name: Test wasm package (nodejs target)
+        working-directory: bindings/wasm
+        run: make tests
+      - name: Build wasm package (web target)
+        working-directory: bindings/wasm
+        run: make
+      - name: Upload wasm pkg artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: wasm-pkg
+          path: bindings/wasm/pkg
+          if-no-files-found: error
+
+  build-test-workbook:
+    name: Build and test @ironcalc/workbook
+    runs-on: ubuntu-latest
+    needs:
+      - build-test-wasm
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Download wasm pkg artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: wasm-pkg
+          path: bindings/wasm/pkg
+      - name: Install workbook dependencies
+        working-directory: webapp/IronCalc
+        run: npm install
+      - name: Build workbook package
+        working-directory: webapp/IronCalc
+        run: npm run build
+      - name: Test workbook package
+        working-directory: webapp/IronCalc
+        run: npm run test
+
+  publish-wasm:
+    name: Publish @ironcalc/wasm
+    runs-on: ubuntu-latest
+    needs:
+      - build-test-wasm
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Download wasm pkg artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: wasm-pkg
+          path: bindings/wasm/pkg
+      - name: Read local version
+        id: wasm_version
+        working-directory: .
+        run: echo "version=$(jq -r .version bindings/wasm/pkg/package.json)" >> "$GITHUB_OUTPUT"
+      - name: Check published version
+        id: wasm_check
+        run: |
+          REMOTE_VERSION="$(npm view @ironcalc/wasm version || true)"
+          if [ "$REMOTE_VERSION" = "${{ steps.wasm_version.outputs.version }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      # OIDC trusted publishing needs npm >= 11.5.1
+      - name: Update npm
+        run: npm install -g npm@latest
+      - name: Publish
+        if: ${{ steps.wasm_check.outputs.skip != 'true' && env.RELEASE == 'true' }}
+        working-directory: bindings/wasm/pkg
+        run: npm publish --access public
+
+  publish-workbook:
+    name: Publish @ironcalc/workbook
+    runs-on: ubuntu-latest
+    needs:
+      - build-test-workbook
+      - publish-wasm
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Download wasm pkg artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: wasm-pkg
+          path: bindings/wasm/pkg
+      - name: Install workbook dependencies
+        working-directory: webapp/IronCalc
+        run: npm install
+      - name: Build workbook package
+        working-directory: webapp/IronCalc
+        run: npm run build
+      - name: Align wasm dependency version
+        working-directory: webapp/IronCalc
+        run: |
+          WASM_VERSION="$(jq -r .version ../../bindings/wasm/pkg/package.json)"
+          npm pkg set "dependencies.@ironcalc/wasm=^${WASM_VERSION}"
+      - name: Read local version
+        id: workbook_version
+        working-directory: webapp/IronCalc
+        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+      - name: Check published version
+        id: workbook_check
+        run: |
+          REMOTE_VERSION="$(npm view @ironcalc/workbook version || true)"
+          if [ "$REMOTE_VERSION" = "${{ steps.workbook_version.outputs.version }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      # OIDC trusted publishing needs npm >= 11.5.1
+      - name: Update npm
+        run: npm install -g npm@latest
+      - name: Publish
+        if: ${{ steps.workbook_check.outputs.skip != 'true' && env.RELEASE == 'true' }}
+        working-directory: webapp/IronCalc
+        run: npm publish --access public
