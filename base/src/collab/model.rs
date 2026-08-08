@@ -1,17 +1,26 @@
 use crate::calc_result::CalcResult;
 use crate::cf_types::CfCellResult;
-use crate::collab::fractional_index::{FractionalIndex, FractionalKey};
+use crate::collab::fractional_index::{FractionalIndex, FractionalKey, SESSION_SUFFIX_LEN};
+use crate::collab::log::{SessionId, Timestamp};
+use crate::collab::patch::{CfPropKind, ColPropKind, RowPropKind, SheetPropKind, WorkbookPropKind};
 use crate::expressions::parser::static_analysis::StaticResult;
 use crate::expressions::parser::{NamedVariable, Node, Parser};
 use crate::expressions::types::CellReferenceIndex;
-use crate::language::Language;
-use crate::locale::Locale;
+use crate::language::{get_default_language, Language};
+use crate::locale::{get_default_locale, Locale};
 use crate::model::{CellOrRange, CellState, ParsedDefinedName};
-use crate::types::{sealed::Sealed, CellAddr, Col, Position, RangeRef, Workbook};
+use crate::new_empty::{APPLICATION, APP_VERSION, IRONCALC_USER};
+use crate::types::{
+    sealed::Sealed, CellAddr, Col, Metadata, Position, RangeRef, Workbook, WorkbookSettings,
+};
 use crate::tz::Tz;
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// What a replica assumes until a peer writes the workbook's locale and timezone registers.
+const DEFAULT_LOCALE: &str = "en";
+const DEFAULT_TIMEZONE: &str = "UTC";
 
 /// Stable addressing: rows and columns are named by the [`FractionalKey`] they were minted with, and
 /// where they currently sit lives in the sheet's [`SheetIndexes`] rather than in the name.
@@ -29,6 +38,7 @@ impl Position for Stable {
     type Key = FractionalKey;
     type SheetIndex = SheetIndexes;
     type MergedCell = StableRange;
+    type WorkbookMeta = WorkbookMeta;
 
     fn row_ordinal(idx: &SheetIndexes, key: &FractionalKey) -> Option<i32> {
         idx.rows.position_of(key).map(|p| p as i32 + 1)
@@ -53,11 +63,45 @@ impl Position for Stable {
     }
 }
 
-/// The two orderings a sheet's keys resolve against.
+/// The two orderings a sheet's keys resolve against, plus the sheet's write registers.
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct SheetIndexes {
     pub rows: FractionalIndex,
     pub cols: FractionalIndex,
+    pub registers: SheetRegisters,
+}
+
+/// The last-write guard of every register a sheet owns: only the [`Timestamp`] that last won each,
+/// never the value — values stay unwrapped in the worksheet's ordinary fields, as under ordinal
+/// addressing.
+///
+/// An entry outlives its subject: deleting a row keeps its cells' guards, so a concurrent write to
+/// one of them loses to the delete instead of resurrecting the row.
+#[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
+pub struct SheetRegisters {
+    pub cell_values: HashMap<StableCellAddress, Timestamp>,
+    pub cell_styles: HashMap<StableCellAddress, Timestamp>,
+    pub arrays: HashMap<StableCellAddress, Timestamp>,
+    pub rows: HashMap<(FractionalKey, RowPropKind), Timestamp>,
+    pub col_spans: HashMap<((FractionalKey, FractionalKey), ColPropKind), Timestamp>,
+    pub props: HashMap<SheetPropKind, Timestamp>,
+    pub merges: HashMap<StableRange, Timestamp>,
+    pub comments: HashMap<StableCellAddress, Timestamp>,
+    pub cf: HashMap<(FractionalKey, CfPropKind), Timestamp>,
+    /// CF rule identity ↔ storage order; kept sorted, position = priority.
+    pub cf_order: Vec<FractionalKey>,
+}
+
+/// Workbook-wide registers: those outliving the sheet they talk about, and those no sheet owns.
+#[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
+pub struct WorkbookMeta {
+    /// AddSheet/DeleteSheet LWW; entries survive deletion (resurrection guard).
+    pub sheet_existence: HashMap<u32, Timestamp>,
+    /// Tab-order register; the position key is CRDT-only state, so value sits with its guard.
+    pub sheet_positions: HashMap<u32, (FractionalKey, Timestamp)>,
+    pub props: HashMap<WorkbookPropKind, Timestamp>,
+    pub defined_names: HashMap<(Option<u32>, String), Timestamp>,
+    pub named_styles: HashMap<String, Timestamp>,
 }
 
 /// A description of a continuous range of cells, described using stable identifiers, which can be
@@ -153,6 +197,8 @@ impl Col<Stable> {
 pub struct ColabModel<'a> {
     /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook<Stable>,
+    /// This replica's identity: the suffix of every [`FractionalKey`] it mints.
+    pub(crate) session: SessionId,
     /// A list of parsed formulas
     pub parsed_formulas: Vec<Vec<(Node, StaticResult)>>,
     /// A list of parsed defined names
@@ -188,6 +234,83 @@ pub struct ColabModel<'a> {
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
 }
 
+impl ColabModel<'static> {
+    /// An empty replica: a workbook with **no sheets at all**, since every sheet arrives as a
+    /// [`Patch::AddSheet`](crate::collab::patch::Patch::AddSheet) like any other write.
+    ///
+    /// `session` is this replica's identity and the suffix of every [`FractionalKey`] it mints, so
+    /// it must be non-zero: the all-zero suffix is
+    /// [`virtual_key`](crate::collab::fractional_index::virtual_key)'s.
+    pub fn new(session: SessionId) -> Self {
+        debug_assert!(session != 0, "session 0 is reserved for virtual keys");
+        let locale = get_default_locale();
+        let language = get_default_language();
+        let workbook = Workbook {
+            shared_strings: vec![],
+            defined_names: vec![],
+            worksheets: vec![],
+            styles: Default::default(),
+            name: String::new(),
+            settings: WorkbookSettings {
+                tz: DEFAULT_TIMEZONE.to_string(),
+                locale: DEFAULT_LOCALE.to_string(),
+            },
+            // Not a replicated register: blank rather than clock-stamped, so two replicas of the
+            // same log stay byte-for-byte equal.
+            metadata: Metadata {
+                application: APPLICATION.to_string(),
+                app_version: APP_VERSION.to_string(),
+                creator: IRONCALC_USER.to_string(),
+                last_modified_by: IRONCALC_USER.to_string(),
+                created: String::new(),
+                last_modified: String::new(),
+            },
+            tables: HashMap::new(),
+            // Viewports are local UI state and never travel in a snapshot.
+            views: HashMap::new(),
+            theme: Default::default(),
+            meta: Default::default(),
+        };
+        ColabModel {
+            workbook,
+            session,
+            parsed_formulas: Vec::new(),
+            parsed_defined_names: HashMap::new(),
+            shared_strings: HashMap::new(),
+            parser: Parser::new(vec![], vec![], HashMap::new(), locale, language),
+            cells: HashMap::new(),
+            locale,
+            language,
+            tz: Tz::parse(DEFAULT_TIMEZONE).expect("UTC is a valid timezone"),
+            view_id: 0,
+            variable_stack: HashMap::new(),
+            last_variable_id: 0,
+            lambdas: HashMap::new(),
+            last_lambda_id: 0,
+            spill_cells: Vec::new(),
+            support: HashMap::new(),
+            cf_cache: HashMap::new(),
+        }
+    }
+}
+
+impl ColabModel<'_> {
+    /// The suffix this replica mints [`FractionalKey`]s with.
+    pub(crate) fn suffix(&self) -> [u8; SESSION_SUFFIX_LEN] {
+        self.session.to_be_bytes()
+    }
+
+    /// Ordering context for a brand new sheet, minting with this replica's session.
+    pub(crate) fn new_indexes(&self) -> SheetIndexes {
+        let suffix = self.suffix();
+        SheetIndexes {
+            rows: FractionalIndex::new(vec![], vec![], suffix),
+            cols: FractionalIndex::new(vec![], vec![], suffix),
+            registers: Default::default(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -199,6 +322,7 @@ mod test {
         SheetIndexes {
             rows: FractionalIndex::new(vec![], vec![], [b'r', 0, 0, 0]),
             cols: FractionalIndex::new(vec![], vec![], [b'c', 0, 0, 0]),
+            registers: Default::default(),
         }
     }
 

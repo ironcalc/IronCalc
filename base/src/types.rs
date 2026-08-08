@@ -189,8 +189,12 @@ pub struct Workbook<A: Position = Ordinal> {
     pub settings: WorkbookSettings,
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
+    /// Per-user viewport state, never encoded: it decodes back as empty.
+    #[bitcode(skip)]
     pub views: HashMap<u32, WorkbookView>,
     pub theme: Theme,
+    /// CRDT metadata riding with the document; `()` encodes to zero bytes.
+    pub meta: A::WorkbookMeta,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -361,6 +365,8 @@ pub trait Position: sealed::Sealed + Sized {
         + bitcode::DecodeOwned
         + Serialize
         + serde::de::DeserializeOwned;
+    /// Workbook-wide replication metadata; `()` for [`Ordinal`].
+    type WorkbookMeta: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
 
     // Key ⇄ ordinal resolution. Ordinals are the 1-based `i32` the rest of the codebase uses;
     // `None` means the key names nothing in this index any more.
@@ -385,6 +391,7 @@ impl Position for Ordinal {
     type Key = i32;
     type SheetIndex = ();
     type MergedCell = MergedCell;
+    type WorkbookMeta = ();
 
     // The key *is* the ordinal, so resolution is the identity and there is nothing to bound-check.
     #[inline]
@@ -410,7 +417,7 @@ pub type CellAddr<A = Ordinal> = (<A as Position>::Key, <A as Position>::Key);
 
 /// A rectangular reference. An axis is a closed 1-based interval, or `None`
 /// meaning the whole axis (full-column `D:D`, full-row `5:7`).
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct RangeRef<A: Position = Ordinal> {
     pub rows: Option<(A::Key, A::Key)>,
     pub cols: Option<(A::Key, A::Key)>,
@@ -557,6 +564,8 @@ pub struct Worksheet<A: Position = Ordinal> {
     pub comments: Vec<Comment<A>>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
+    /// Per-user viewport state, never encoded: it decodes back as empty.
+    #[bitcode(skip)]
     pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
