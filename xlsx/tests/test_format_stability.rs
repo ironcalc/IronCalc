@@ -2,10 +2,10 @@
 
 //! The `.icalc` wire format is a stored format: a file written by an older build must keep loading.
 //!
-//! `tests/format_stability.icalc` was produced by the build that predates stable (fractional-key)
-//! addressing (the build right before it, after `RangeRef`, upstream's worksheet `links` and
-//! upstream's `MergedCell` merged cells landed) and is never regenerated from here — regenerating
-//! it would be exactly the regression this guards against.
+//! `tests/format_stability.icalc` guards the post-views-skip format — views are no longer encoded,
+//! which broke every file written before it — and is never regenerated from here: regenerating it
+//! would be exactly the regression this guards against. It was written by the build that introduced
+//! the views skip (after upstream's worksheet `links` and `MergedCell` merged cells landed).
 
 use ironcalc::import::load_from_icalc;
 use ironcalc_base::types::RangeRef;

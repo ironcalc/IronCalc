@@ -401,6 +401,63 @@ impl Styles {
         self.add_named_cell_style(style_name, xf_id)
     }
 
+    /// Rewrites the named style's record in place and propagates it to the
+    /// cell xfs parented to it (see [`Model::update_named_style`]). Does not
+    /// check for built-ins.
+    pub(crate) fn update_named_style_entry(
+        &mut self,
+        name: &str,
+        new_name: &str,
+        style: &Style,
+        includes: StyleIncludes,
+    ) -> Result<(), String> {
+        let styles = self;
+        let xf_id = styles.get_xf_id_by_name(name)?;
+        if name != new_name && styles.get_xf_id_by_name(new_name).is_ok() {
+            return Err(format!("A style named '{new_name}' already exists"));
+        }
+        if xf_id < 0 || xf_id as usize >= styles.cell_style_xfs.len() {
+            return Err(format!("Style '{name}' points to an invalid xf id"));
+        }
+
+        let (num_fmt_id, font_id, fill_id, border_id) = styles.get_or_create_component_ids(style);
+
+        let record = &mut styles.cell_style_xfs[xf_id as usize];
+        record.num_fmt_id = num_fmt_id;
+        record.font_id = font_id;
+        record.fill_id = fill_id;
+        record.border_id = border_id;
+        record.apply_number_format = includes.number_format;
+        record.apply_font = includes.font;
+        record.apply_fill = includes.fill;
+        record.apply_border = includes.border;
+        record.apply_alignment = includes.alignment;
+        record.apply_protection = includes.protection;
+
+        for cell_xf in styles.cell_xfs.iter_mut().filter(|xf| xf.xf_id == xf_id) {
+            if !cell_xf.apply_number_format {
+                cell_xf.num_fmt_id = num_fmt_id;
+            }
+            if !cell_xf.apply_font {
+                cell_xf.font_id = font_id;
+            }
+            if !cell_xf.apply_fill {
+                cell_xf.fill_id = fill_id;
+            }
+            if !cell_xf.apply_border {
+                cell_xf.border_id = border_id;
+            }
+            if !cell_xf.apply_alignment {
+                cell_xf.alignment = style.alignment.clone();
+            }
+        }
+
+        if name != new_name {
+            styles.rename_named_style_entry(name, new_name)?;
+        }
+        Ok(())
+    }
+
     /// Returns the names of all named styles
     pub fn get_named_style_list(&self) -> Vec<String> {
         self.cell_styles.iter().map(|cs| cs.name.clone()).collect()
@@ -650,54 +707,12 @@ impl<'a> Model<'a> {
         style: &Style,
         includes: StyleIncludes,
     ) -> Result<(), String> {
-        let styles = &mut self.workbook.styles;
-        if styles.is_builtin_style(name) {
+        if self.workbook.styles.is_builtin_style(name) {
             return Err(format!("Cannot modify built-in style '{name}'"));
         }
-        let xf_id = styles.get_xf_id_by_name(name)?;
-        if name != new_name && styles.get_xf_id_by_name(new_name).is_ok() {
-            return Err(format!("A style named '{new_name}' already exists"));
-        }
-        if xf_id < 0 || xf_id as usize >= styles.cell_style_xfs.len() {
-            return Err(format!("Style '{name}' points to an invalid xf id"));
-        }
-
-        let (num_fmt_id, font_id, fill_id, border_id) = styles.get_or_create_component_ids(style);
-
-        let record = &mut styles.cell_style_xfs[xf_id as usize];
-        record.num_fmt_id = num_fmt_id;
-        record.font_id = font_id;
-        record.fill_id = fill_id;
-        record.border_id = border_id;
-        record.apply_number_format = includes.number_format;
-        record.apply_font = includes.font;
-        record.apply_fill = includes.fill;
-        record.apply_border = includes.border;
-        record.apply_alignment = includes.alignment;
-        record.apply_protection = includes.protection;
-
-        for cell_xf in styles.cell_xfs.iter_mut().filter(|xf| xf.xf_id == xf_id) {
-            if !cell_xf.apply_number_format {
-                cell_xf.num_fmt_id = num_fmt_id;
-            }
-            if !cell_xf.apply_font {
-                cell_xf.font_id = font_id;
-            }
-            if !cell_xf.apply_fill {
-                cell_xf.fill_id = fill_id;
-            }
-            if !cell_xf.apply_border {
-                cell_xf.border_id = border_id;
-            }
-            if !cell_xf.apply_alignment {
-                cell_xf.alignment = style.alignment.clone();
-            }
-        }
-
-        if name != new_name {
-            styles.rename_named_style_entry(name, new_name)?;
-        }
-        Ok(())
+        self.workbook
+            .styles
+            .update_named_style_entry(name, new_name, style, includes)
     }
 }
 

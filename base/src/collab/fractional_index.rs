@@ -255,21 +255,27 @@ impl FractionalIndex {
     }
 
     pub fn remove_key(&mut self, key: &FractionalKey) -> Option<FractionalKey> {
+        self.remove_key_at(key, Hlc::now())
+    }
+
+    /// [`Self::remove_key`] stamping `at` rather than the local clock: the apply path passes the
+    /// commit's stamp, so every replica files the same tombstone.
+    pub fn remove_key_at(&mut self, key: &FractionalKey, at: Hlc) -> Option<FractionalKey> {
         // found in index space: move to moved space
-        if let Some(source) = self.tombstone(key, Some(Hlc::now())) {
+        if let Some(source) = self.tombstone(key, Some(at)) {
             return if source.is_empty() {
                 // the key was never moved, so it is the element's own identity
                 Some(key.clone())
             } else {
                 // it sat at a move destination, so the record it came from goes too — and that
                 // record is what the caller knows the element by
-                self.remove_key(&source)
+                self.remove_key_at(&source, at)
             };
         }
         // not in index space, but possibly in moved space?
         match self.moved.binary_search_by_key(&key, |e| &e.key) {
             Ok(i) => {
-                let removed_at = Hlc::now();
+                let removed_at = at;
                 let e = &mut self.moved[i];
                 e.modified_at = removed_at;
                 let moved = std::mem::replace(&mut e.moved, FractionalKey::NULL);
@@ -280,7 +286,7 @@ impl FractionalIndex {
                     // we removed the element that has been moved, we also need to remove
                     // its move destination
                     let removed_source = e.key.clone();
-                    self.remove_key(&moved);
+                    self.remove_key_at(&moved, at);
                     Some(removed_source)
                 }
             }
@@ -343,6 +349,12 @@ impl FractionalIndex {
     /// `modified_at` is stamped from the local clock. It is advisory (nothing here resolves
     /// conflicts by it), so peers disagreeing on it is not divergence.
     pub fn insert_key(&mut self, key: FractionalKey) -> Option<usize> {
+        self.insert_key_at(key, Hlc::now())
+    }
+
+    /// [`Self::insert_key`] stamping `at` instead of reading the local clock — see
+    /// [`Self::remove_key_at`].
+    pub fn insert_key_at(&mut self, key: FractionalKey, at: Hlc) -> Option<usize> {
         // Before the ever-seen check: a rejected key was still handed out, and its ordinal must not
         // be minted again.
         if let Some(ordinal) = virtual_ordinal(&key) {
@@ -358,11 +370,65 @@ impl FractionalIndex {
             index,
             Entry {
                 key,
-                modified_at: Hlc::now(),
+                modified_at: at,
                 moved: FractionalKey::NULL,
             },
         );
         Some(index)
+    }
+
+    /// Replays an author-minted move: `source`'s element takes the `dest` position.
+    /// A `dest` ever seen here means the move is already in — redelivery is a no-op.
+    /// Concurrent moves of one element order by `(at, dest)`; the loser's `dest` is
+    /// still tombstoned, keeping both peers' `moved` spaces identical.
+    pub fn apply_move(&mut self, source: &FractionalKey, dest: FractionalKey, at: Hlc) {
+        if self.active.binary_search_by_key(&&dest, |e| &e.key).is_ok()
+            || self.moved.binary_search_by_key(&&dest, |e| &e.key).is_ok()
+        {
+            return;
+        }
+        let Some(i) = self.position_of(source) else {
+            return; // source no longer exists
+        };
+        let current = &self.active[i];
+        if (at, &dest) <= (current.modified_at, &current.key) {
+            self.park(Entry {
+                key: dest,
+                modified_at: at,
+                moved: FractionalKey::NULL,
+            });
+            return;
+        }
+        let mut entry = self.active.remove(i);
+        let identity = entry.identity().clone();
+        let index = self.lower_bound(&dest);
+        self.active.insert(
+            index,
+            Entry {
+                key: dest.clone(),
+                modified_at: at,
+                moved: identity,
+            },
+        );
+        match entry.moved().cloned() {
+            None => {
+                // The original key: the record it leaves behind points at where it went.
+                entry.modified_at = at;
+                entry.moved = dest;
+                self.park(entry);
+            }
+            Some(moved) => {
+                // Transitive entry: the source record is redirected to the new dest, and the
+                // tombstone keeps the superseded stamp so peers that never applied it agree.
+                if let Ok(j) = self.moved.binary_search_by_key(&&moved, |e| &e.key) {
+                    let e = &mut self.moved[j];
+                    e.modified_at = at;
+                    e.moved = dest;
+                }
+                entry.moved = FractionalKey::NULL;
+                self.park(entry);
+            }
+        }
     }
 
     /// Where `key` would sit among the active entries, whether or not it is one of them.

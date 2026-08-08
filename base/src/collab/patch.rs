@@ -25,22 +25,52 @@
 //! each replica interns them locally on apply. Rows, columns and sheets are addressed by
 //! [`FractionalKey`] instead, which every replica agrees on by construction.
 //!
-//! Every `prev` field is undo data. It is `#[serde(skip)]`, so it is populated only on locally
-//! generated patches and is absent on anything received from a peer.
+//! Every `prev` field is undo data. It is `#[bitcode(skip)]`, so it is populated only on locally
+//! generated patches and comes back defaulted on anything received from a peer.
+//!
+//! # Wire format
+//!
+//! [`encode_patches`] writes a [`PATCH_FORMAT_VERSION`] byte, then the bitcode payload. bitcode
+//! encodes an enum variant as its *index*, so [`Patch`] variants and the property enums below may
+//! only ever be **appended** — reordering or removing one silently reinterprets older payloads.
+//!
+//! Caveat: a malformed [`FractionalKey`] or
+//! [`FractionalIndex`](super::fractional_index::FractionalIndex) payload panics inside the bitcode
+//! decoder instead of erroring, so untrusted bytes must not reach [`decode_patches`] yet.
 
 use crate::cf_types::CfRule;
 use crate::collab::fractional_index::FractionalKey;
-use crate::collab::log::Timestamp;
-use crate::collab::model::{StableCellAddress, StableRange};
+use crate::collab::model::{Stable, StableCellAddress, StableRange};
 use crate::collab::DynError;
 use crate::expressions::token::Error;
 use crate::types::{ArrayKind, Color, Comment, SheetState, Style, Theme};
-use crate::user_model::history::Diff;
-use serde::{Deserialize, Serialize};
+use bitcode::{Decode, Encode};
 
-pub type SheetId = FractionalKey;
+/// Identifies a sheet. Minted at random by the replica creating it, so two peers adding a sheet
+/// concurrently do not collide.
+pub type SheetId = u32;
 
-#[derive(Serialize, Deserialize)]
+/// Version byte prefixing every [`encode_patches`] payload.
+pub const PATCH_FORMAT_VERSION: u8 = 1;
+
+/// Encodes a commit's worth of patches: the version byte, then the bitcode payload.
+pub fn encode_patches(patches: &[Patch]) -> Result<Vec<u8>, DynError> {
+    let mut out = Vec::new();
+    out.push(PATCH_FORMAT_VERSION);
+    out.extend_from_slice(&bitcode::encode(patches));
+    Ok(out)
+}
+
+/// Reads back what [`encode_patches`] wrote, rejecting a payload this build cannot interpret.
+pub fn decode_patches(bytes: &[u8]) -> Result<Vec<Patch>, DynError> {
+    let (&version, payload) = bytes.split_first().ok_or("empty patch payload")?;
+    if version != PATCH_FORMAT_VERSION {
+        return Err(format!("unsupported patch format version: {version}").into());
+    }
+    Ok(bitcode::decode(payload)?)
+}
+
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum Patch {
     // ---- Cells ----
     /// `value: None` clears the cell's contents. A range clear fans out to one patch per populated
@@ -50,7 +80,7 @@ pub enum Patch {
         at: StableCellAddress,
         value: Option<CellInput>,
 
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Box<Option<CellInput>>,
     },
     /// `value` is a [`CellInput::Array`], or `None` to clear the array. `prev` covers the whole
@@ -60,7 +90,7 @@ pub enum Patch {
         anchor: StableCellAddress,
         value: Option<CellInput>,
 
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Vec<Vec<Option<CellInput>>>,
     },
     /// `style: None` clears the cell's formatting.
@@ -69,7 +99,7 @@ pub enum Patch {
         at: StableCellAddress,
         style: Option<Box<Style>>,
 
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Box<Option<Style>>,
     },
 
@@ -82,14 +112,15 @@ pub enum Patch {
         sheet: SheetId,
         keys: Vec<FractionalKey>,
 
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Vec<RowSnapshot>,
     },
-    /// Moved keys are regenerated relative to `dest`.
+    /// `(source identity, destination key)` pairs, both minted by the author. Minting is
+    /// session-dependent, so destinations travel in the patch: every replica applies the keys it is
+    /// given rather than minting its own.
     MoveRows {
         sheet: SheetId,
-        keys: Vec<FractionalKey>,
-        dest: FractionalKey,
+        moves: Vec<(FractionalKey, FractionalKey)>,
     },
     SetRowProperty {
         sheet: SheetId,
@@ -97,7 +128,7 @@ pub enum Patch {
         property: RowProperty,
 
         /// Same discriminant as `property`, holding the value it replaced.
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Option<RowProperty>,
     },
 
@@ -110,13 +141,13 @@ pub enum Patch {
         sheet: SheetId,
         keys: Vec<FractionalKey>,
 
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Vec<ColumnSnapshot>,
     },
+    /// `(source identity, destination key)` pairs — see [`Patch::MoveRows`].
     MoveColumns {
         sheet: SheetId,
-        keys: Vec<FractionalKey>,
-        dest: FractionalKey,
+        moves: Vec<(FractionalKey, FractionalKey)>,
     },
     /// A property write over a column *span*, addressed by its corner keys — see
     /// [`Col`](crate::types::Col) for what a span covers. A [`FractionalKey::NULL`] corner is an
@@ -130,27 +161,30 @@ pub enum Patch {
         property: ColProperty,
 
         /// Same discriminant as `property`, holding the value it replaced.
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Option<ColProperty>,
     },
 
     // ---- Sheets ----
     /// `content: None` creates a blank sheet. `Some(..)` covers both duplicating an existing sheet
-    /// and undoing a [`Patch::DeleteSheet`] — in the latter case `key` is the deleted sheet's own
-    /// key, so existing [`SheetId`] references resolve again.
+    /// and undoing a [`Patch::DeleteSheet`] — in the latter case `id` is the deleted sheet's own
+    /// id, so existing [`SheetId`] references resolve again.
     ///
     /// The content is captured on the authoring replica at commit time, never resolved at apply
     /// time. Resolving on apply would make the result depend on which concurrent edits to the source
     /// sheet a replica had already seen, and replicas would diverge.
+    ///
+    /// `position` is the sheet's place in the tab order.
     AddSheet {
-        key: FractionalKey,
+        id: u32,
         name: String,
+        position: FractionalKey,
         content: Option<Box<SheetContent>>,
     },
     DeleteSheet {
         sheet: SheetId,
 
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Option<Box<SheetContent>>,
     },
     SetSheetProperty {
@@ -158,7 +192,7 @@ pub enum Patch {
         property: SheetProperty,
 
         /// Same discriminant as `property`, holding the value it replaced.
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Option<SheetProperty>,
     },
 
@@ -167,7 +201,7 @@ pub enum Patch {
         property: WorkbookProperty,
 
         /// Same discriminant as `property`, holding the value it replaced.
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Option<WorkbookProperty>,
     },
 
@@ -180,7 +214,7 @@ pub enum Patch {
         name: String,
         formula: Option<String>,
 
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Option<String>,
     },
 
@@ -190,7 +224,7 @@ pub enum Patch {
         name: String,
         definition: Option<Box<NamedStyle>>,
 
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Option<Box<NamedStyle>>,
     },
 
@@ -209,7 +243,7 @@ pub enum Patch {
         sheet: SheetId,
         key: FractionalKey,
 
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Option<Box<ConditionalFormatState>>,
     },
     /// Raising or lowering a rule's priority: the moved keys are regenerated relative to `dest`.
@@ -224,13 +258,32 @@ pub enum Patch {
         property: CfProperty,
 
         /// Same discriminant as `property`, holding the value it replaced.
-        #[serde(skip)]
+        #[bitcode(skip)]
         prev: Option<CfProperty>,
+    },
+
+    /// Whether the cells `range` covers are merged.
+    SetMergedRange {
+        sheet: SheetId,
+        range: StableRange,
+        merged: bool,
+
+        #[bitcode(skip)]
+        prev: bool,
+    },
+    /// `comment: None` removes the comment on `at`.
+    SetComment {
+        sheet: SheetId,
+        at: StableCellAddress,
+        comment: Option<Comment<Stable>>,
+
+        #[bitcode(skip)]
+        prev: Option<Comment<Stable>>,
     },
 }
 
 /// A property of a single row. Each variant is a distinct register.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum RowProperty {
     /// `None` deletes the row style.
     Style(Option<Box<Style>>),
@@ -238,8 +291,26 @@ pub enum RowProperty {
     Hidden(bool),
 }
 
+/// The register a [`RowProperty`] writes to, without its value.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
+pub enum RowPropKind {
+    Style,
+    Height,
+    Hidden,
+}
+
+impl RowProperty {
+    pub fn kind(&self) -> RowPropKind {
+        match self {
+            RowProperty::Style(_) => RowPropKind::Style,
+            RowProperty::Height(_) => RowPropKind::Height,
+            RowProperty::Hidden(_) => RowPropKind::Hidden,
+        }
+    }
+}
+
 /// A property of a single column. Each variant is a distinct register.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum ColProperty {
     /// `None` deletes the column style.
     Style(Option<Box<Style>>),
@@ -247,8 +318,26 @@ pub enum ColProperty {
     Hidden(bool),
 }
 
+/// The register a [`ColProperty`] writes to, without its value.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
+pub enum ColPropKind {
+    Style,
+    Width,
+    Hidden,
+}
+
+impl ColProperty {
+    pub fn kind(&self) -> ColPropKind {
+        match self {
+            ColProperty::Style(_) => ColPropKind::Style,
+            ColProperty::Width(_) => ColPropKind::Width,
+            ColProperty::Hidden(_) => ColPropKind::Hidden,
+        }
+    }
+}
+
 /// A property of a single worksheet. Each variant is a distinct register.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum SheetProperty {
     Name(String),
     Color(Color),
@@ -256,30 +345,92 @@ pub enum SheetProperty {
     ShowGridLines(bool),
     FrozenRows(i32),
     FrozenColumns(i32),
+    /// Where the sheet sits in the tab order. Moving a sheet is a write to this register.
+    Position(FractionalKey),
+}
+
+/// The register a [`SheetProperty`] writes to, without its value.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
+pub enum SheetPropKind {
+    Name,
+    Color,
+    State,
+    ShowGridLines,
+    FrozenRows,
+    FrozenColumns,
+    Position,
+}
+
+impl SheetProperty {
+    pub fn kind(&self) -> SheetPropKind {
+        match self {
+            SheetProperty::Name(_) => SheetPropKind::Name,
+            SheetProperty::Color(_) => SheetPropKind::Color,
+            SheetProperty::State(_) => SheetPropKind::State,
+            SheetProperty::ShowGridLines(_) => SheetPropKind::ShowGridLines,
+            SheetProperty::FrozenRows(_) => SheetPropKind::FrozenRows,
+            SheetProperty::FrozenColumns(_) => SheetPropKind::FrozenColumns,
+            SheetProperty::Position(_) => SheetPropKind::Position,
+        }
+    }
 }
 
 /// A workbook-global property. Each variant is a distinct register.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum WorkbookProperty {
     Theme(Box<Theme>),
     Locale(String),
     Timezone(String),
 }
 
+/// The register a [`WorkbookProperty`] writes to, without its value.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
+pub enum WorkbookPropKind {
+    Theme,
+    Locale,
+    Timezone,
+}
+
+impl WorkbookProperty {
+    pub fn kind(&self) -> WorkbookPropKind {
+        match self {
+            WorkbookProperty::Theme(_) => WorkbookPropKind::Theme,
+            WorkbookProperty::Locale(_) => WorkbookPropKind::Locale,
+            WorkbookProperty::Timezone(_) => WorkbookPropKind::Timezone,
+        }
+    }
+}
+
 /// A property of a single conditional formatting rule. Each variant is a distinct register.
 ///
 /// Priority is deliberately absent: it is the rule's position in the worksheet's conditional
 /// formatting index, changed with [`Patch::MoveConditionalFormats`].
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum CfProperty {
     Rule(Box<CfRule>),
     Ranges(Vec<StableRange>),
 }
 
+/// The register a [`CfProperty`] writes to, without its value.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
+pub enum CfPropKind {
+    Rule,
+    Ranges,
+}
+
+impl CfProperty {
+    pub fn kind(&self) -> CfPropKind {
+        match self {
+            CfProperty::Rule(_) => CfPropKind::Rule,
+            CfProperty::Ranges(_) => CfPropKind::Ranges,
+        }
+    }
+}
+
 /// A named cell style, carried by value rather than as an `xf_id` index into
 /// `Styles.cell_style_xfs`, which is assigned per replica. `builtin_id` is an OOXML constant and is
 /// safe to replicate as-is.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct NamedStyle {
     pub style: Style,
     pub builtin_id: i32,
@@ -287,7 +438,7 @@ pub struct NamedStyle {
 
 /// A conditional formatting rule, without its priority — priority is the rule's position in the
 /// worksheet's conditional formatting index.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct ConditionalFormatState {
     pub rule: CfRule,
     pub ranges: Vec<StableRange>,
@@ -297,7 +448,7 @@ pub struct ConditionalFormatState {
 /// [`Patch::DeleteSheet`]. The sheet's name is carried by `AddSheet` itself and so is absent here.
 ///
 /// Every field is index-free — see the module documentation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct SheetContent {
     pub state: SheetState,
     pub color: Color,
@@ -314,12 +465,12 @@ pub struct SheetContent {
     pub cell_values: Vec<(StableCellAddress, CellInput)>,
     pub cell_styles: Vec<(StableCellAddress, Style)>,
     pub merge_cells: Vec<StableRange>,
-    pub comments: Vec<Comment>,
+    pub comments: Vec<Comment<Stable>>,
     /// Ordered by [`FractionalKey`], which is both each rule's identity and its priority.
     pub conditional_formatting: Vec<(FractionalKey, ConditionalFormatState)>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct RowState {
     pub height: f64,
     pub hidden: bool,
@@ -328,7 +479,7 @@ pub struct RowState {
     pub custom_format: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct ColState {
     pub width: f64,
     pub hidden: bool,
@@ -337,7 +488,7 @@ pub struct ColState {
 }
 
 /// Everything a [`Patch::DeleteRows`] removed, so that undo can put it back. Local-only undo data.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RowSnapshot {
     pub key: FractionalKey,
     pub state: RowState,
@@ -349,7 +500,7 @@ pub struct RowSnapshot {
 
 /// Everything a [`Patch::DeleteColumns`] removed, so that undo can put it back. Local-only undo
 /// data.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ColumnSnapshot {
     pub key: FractionalKey,
     pub state: ColState,
@@ -367,7 +518,7 @@ pub struct ColumnSnapshot {
 ///
 /// Evaluated results — [`FormulaValue`](crate::types::FormulaValue), spill values and spill cells —
 /// are derived state. They are recomputed locally and never replicated.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum CellInput {
     Number(f64),
     Boolean(bool),
@@ -380,4 +531,266 @@ pub enum CellInput {
         range: StableRange,
         kind: ArrayKind,
     },
+}
+
+#[cfg(test)]
+mod test {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use crate::collab::log::CommitId;
+
+    fn key(byte: u8) -> FractionalKey {
+        FractionalKey::from([byte, 0, 0, 0, 0].as_slice())
+    }
+
+    fn range() -> StableRange {
+        StableRange {
+            rows: Some((key(1), key(2))),
+            cols: Some((key(3), FractionalKey::NULL)),
+        }
+    }
+
+    fn comment() -> Comment<Stable> {
+        Comment {
+            text: "note".to_string(),
+            author_name: "me".to_string(),
+            author_id: None,
+            cell_ref: (key(1), key(3)),
+        }
+    }
+
+    fn row_state() -> RowState {
+        RowState {
+            height: 20.0,
+            hidden: false,
+            style: Some(Box::default()),
+            custom_height: true,
+            custom_format: false,
+        }
+    }
+
+    fn col_state() -> ColState {
+        ColState {
+            width: 40.0,
+            hidden: true,
+            style: None,
+            custom_width: true,
+        }
+    }
+
+    fn cf_rule() -> CfRule {
+        CfRule::Formula {
+            formula: "A1>0".to_string(),
+            dxf_id: 0,
+            stop_if_true: false,
+        }
+    }
+
+    fn content() -> SheetContent {
+        SheetContent {
+            state: SheetState::Visible,
+            color: Color::Rgb("#112233".to_string()),
+            show_grid_lines: false,
+            frozen_rows: 1,
+            frozen_columns: 2,
+            rows: vec![(key(1), row_state())],
+            columns: vec![((key(3), key(4)), col_state())],
+            cell_values: vec![((key(1), key(3)), CellInput::Number(3.5))],
+            cell_styles: vec![((key(1), key(3)), Style::default())],
+            merge_cells: vec![range()],
+            comments: vec![comment()],
+            conditional_formatting: vec![(
+                key(9),
+                ConditionalFormatState {
+                    rule: cf_rule(),
+                    ranges: vec![range()],
+                },
+            )],
+        }
+    }
+
+    /// One of every variant, with every `prev` left at its default so the round trip is an equality.
+    fn every_variant() -> Vec<Patch> {
+        vec![
+            Patch::SetCellValue {
+                sheet: 7,
+                at: (key(1), key(3)),
+                value: Some(CellInput::Text("hi".to_string())),
+                prev: Box::default(),
+            },
+            Patch::SetArrayValue {
+                sheet: 7,
+                anchor: (key(1), key(3)),
+                value: Some(CellInput::Array {
+                    formula: "SEQUENCE(2)".to_string(),
+                    range: range(),
+                    kind: ArrayKind::Dynamic,
+                }),
+                prev: Vec::new(),
+            },
+            Patch::SetCellStyle {
+                sheet: 7,
+                at: (key(1), key(3)),
+                style: Some(Box::default()),
+                prev: Box::default(),
+            },
+            Patch::InsertRows {
+                sheet: 7,
+                keys: vec![key(1), key(2)],
+            },
+            Patch::DeleteRows {
+                sheet: 7,
+                keys: vec![key(2)],
+                prev: Vec::new(),
+            },
+            Patch::MoveRows {
+                sheet: 7,
+                moves: vec![(key(1), key(5))],
+            },
+            Patch::SetRowProperty {
+                sheet: 7,
+                row: key(1),
+                property: RowProperty::Height(33.0),
+                prev: None,
+            },
+            Patch::InsertColumns {
+                sheet: 7,
+                keys: vec![key(3)],
+            },
+            Patch::DeleteColumns {
+                sheet: 7,
+                keys: vec![key(4)],
+                prev: Vec::new(),
+            },
+            Patch::MoveColumns {
+                sheet: 7,
+                moves: vec![(key(3), key(6))],
+            },
+            Patch::SetColumnSpan {
+                sheet: 7,
+                span: (FractionalKey::NULL, FractionalKey::NULL),
+                property: ColProperty::Style(Some(Box::default())),
+                prev: None,
+            },
+            Patch::AddSheet {
+                id: 7,
+                name: "Sheet1".to_string(),
+                position: key(1),
+                content: Some(Box::new(content())),
+            },
+            Patch::DeleteSheet {
+                sheet: 7,
+                prev: None,
+            },
+            Patch::SetSheetProperty {
+                sheet: 7,
+                property: SheetProperty::Position(key(2)),
+                prev: None,
+            },
+            Patch::SetWorkbookProperty {
+                property: WorkbookProperty::Theme(Box::default()),
+                prev: None,
+            },
+            Patch::SetDefinedName {
+                scope: Some(7),
+                name: "total".to_string(),
+                formula: Some("Sheet1!$A$1".to_string()),
+                prev: None,
+            },
+            Patch::SetNamedStyle {
+                name: "Good".to_string(),
+                definition: Some(Box::new(NamedStyle {
+                    style: Style::default(),
+                    builtin_id: 26,
+                })),
+                prev: None,
+            },
+            Patch::AddConditionalFormat {
+                sheet: 7,
+                key: key(9),
+                rule: Box::new(cf_rule()),
+                ranges: vec![range()],
+            },
+            Patch::DeleteConditionalFormat {
+                sheet: 7,
+                key: key(9),
+                prev: None,
+            },
+            Patch::MoveConditionalFormats {
+                sheet: 7,
+                keys: vec![key(9)],
+                dest: key(10),
+            },
+            Patch::SetConditionalFormat {
+                sheet: 7,
+                key: key(9),
+                property: CfProperty::Ranges(vec![range()]),
+                prev: None,
+            },
+            Patch::SetMergedRange {
+                sheet: 7,
+                range: range(),
+                merged: true,
+                prev: false,
+            },
+            Patch::SetComment {
+                sheet: 7,
+                at: (key(1), key(3)),
+                comment: Some(comment()),
+                prev: None,
+            },
+        ]
+    }
+
+    #[test]
+    fn patch_wire_round_trip() {
+        let patches = every_variant();
+        let bytes = encode_patches(&patches).unwrap();
+        assert_eq!(bytes[0], PATCH_FORMAT_VERSION);
+        assert_eq!(decode_patches(&bytes).unwrap(), patches);
+
+        // Undo data never leaves the replica that produced it: it decodes back as the default.
+        let local = vec![Patch::SetRowProperty {
+            sheet: 7,
+            row: key(1),
+            property: RowProperty::Hidden(true),
+            prev: Some(RowProperty::Hidden(false)),
+        }];
+        let decoded = decode_patches(&encode_patches(&local).unwrap()).unwrap();
+        assert_ne!(decoded, local);
+        match &decoded[0] {
+            Patch::SetRowProperty { property, prev, .. } => {
+                assert_eq!(property, &RowProperty::Hidden(true));
+                assert_eq!(prev, &None);
+            }
+            other => panic!("wrong variant: {other:?}"),
+        }
+
+        // A payload this build cannot interpret is rejected rather than misread.
+        let mut wrong = bytes.clone();
+        wrong[0] = PATCH_FORMAT_VERSION.wrapping_add(1);
+        assert!(decode_patches(&wrong).is_err());
+        assert!(decode_patches(&[]).is_err());
+
+        // Every property enum reports the register it writes to.
+        assert_eq!(RowProperty::Height(1.0).kind(), RowPropKind::Height);
+        assert_eq!(ColProperty::Hidden(true).kind(), ColPropKind::Hidden);
+        assert_eq!(
+            SheetProperty::Position(key(1)).kind(),
+            SheetPropKind::Position
+        );
+        assert_eq!(
+            WorkbookProperty::Locale("en".to_string()).kind(),
+            WorkbookPropKind::Locale
+        );
+        assert_eq!(CfProperty::Ranges(vec![]).kind(), CfPropKind::Ranges);
+
+        // Commit ids ride the same wire.
+        let id = CommitId::from([1u8, 2, 3, 4, 5, 6, 7, 8, 9].as_slice());
+        let decoded: CommitId = bitcode::decode(&bitcode::encode(&id)).unwrap();
+        assert_eq!(decoded, id);
+        assert_eq!(&*decoded, &[1u8, 2, 3, 4, 5, 6, 7, 8, 9]);
+        let empty: CommitId = bitcode::decode(&bitcode::encode(&CommitId::default())).unwrap();
+        assert_eq!(empty, CommitId::default());
+    }
 }

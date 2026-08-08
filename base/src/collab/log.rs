@@ -27,8 +27,11 @@
 
 use crate::collab::hlc::Hlc;
 use crate::collab::patch::Patch;
-use serde::{Deserialize, Serialize};
+use bitcode::__private::{Buffer, Decoder, Encoder, View};
+use bitcode::{Decode, Encode};
 use smallvec::SmallVec;
+use std::num::NonZeroUsize;
+use std::ops::Deref;
 
 /// Identifies a replica.
 ///
@@ -42,8 +45,71 @@ use smallvec::SmallVec;
 /// concurrent register writes and concurrent inserts.
 pub type SessionId = u32;
 
-/// Identifies a commit. Opaque to us — we never construct one, only compare and store it.
-pub type CommitId = SmallVec<[u8; 8]>;
+/// Identifies a commit. Opaque to us — we compare and store it, never interpret it. Short ids stay
+/// inline, so carrying one costs no allocation.
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub struct CommitId(SmallVec<[u8; 8]>);
+
+impl From<&[u8]> for CommitId {
+    fn from(bytes: &[u8]) -> Self {
+        CommitId(SmallVec::from_slice(bytes))
+    }
+}
+
+impl Deref for CommitId {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+/// bitcode coders delegating to the byte-slice ones — hand-rolled for the same reason as
+/// [`FractionalKeyEncoder`](crate::collab::fractional_key::FractionalKeyEncoder).
+#[derive(Default)]
+pub struct CommitIdEncoder(<[u8] as Encode>::Encoder);
+
+impl Buffer for CommitIdEncoder {
+    fn collect_into(&mut self, out: &mut Vec<u8>) {
+        self.0.collect_into(out);
+    }
+
+    fn reserve(&mut self, additional: NonZeroUsize) {
+        self.0.reserve(additional);
+    }
+}
+
+impl Encoder<CommitId> for CommitIdEncoder {
+    #[inline]
+    fn encode(&mut self, t: &CommitId) {
+        Encoder::<[u8]>::encode(&mut self.0, t);
+    }
+}
+
+impl Encode for CommitId {
+    type Encoder = CommitIdEncoder;
+}
+
+#[derive(Default)]
+pub struct CommitIdDecoder<'a>(<Vec<u8> as Decode<'a>>::Decoder);
+
+impl<'a> View<'a> for CommitIdDecoder<'a> {
+    fn populate(&mut self, input: &mut &'a [u8], length: usize) -> bitcode::__private::Result<()> {
+        self.0.populate(input, length)
+    }
+}
+
+impl<'a> Decoder<'a, CommitId> for CommitIdDecoder<'a> {
+    #[inline]
+    fn decode(&mut self) -> CommitId {
+        let bytes: Vec<u8> = self.0.decode();
+        CommitId::from(bytes.as_slice())
+    }
+}
+
+impl<'a> Decode<'a> for CommitId {
+    type Decoder = CommitIdDecoder<'a>;
+}
 
 /// Arbitrates between writes to the same register.
 ///
@@ -53,7 +119,7 @@ pub type CommitId = SmallVec<[u8; 8]>;
 /// [`Hlc`] carries no node component, so it is the only tiebreak there is.
 ///
 /// Field order is significant: the derived [`Ord`] compares `hlc` first.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode)]
 pub struct Timestamp {
     pub hlc: Hlc,
     pub session: SessionId,
@@ -66,7 +132,7 @@ impl Timestamp {
 }
 
 /// A last-write-wins register: a value tagged with the [`Timestamp`] of the write that produced it.
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub struct Lww<T> {
     pub timestamp: Timestamp,
     pub value: T,
@@ -100,8 +166,6 @@ pub struct Commit<'a> {
     pub id: &'a CommitId,
     /// Replica that authored it.
     pub session: &'a SessionId,
-    /// Commits this one causally depends on. Empty for a root commit.
-    pub parents: &'a [CommitId],
     /// The stamp its author minted for it, above every stamp that author had seen.
     pub hlc: Hlc,
     /// Patches to apply, in order.
@@ -124,14 +188,12 @@ pub trait Consumer {
 }
 
 /// Implemented by consumers whose materialized state can be persisted, so that a framework can
-/// resume from it instead of replaying the log from the beginning.
+/// resume from it instead of replaying the log from the beginning. The framework tracks its own
+/// resume position.
 pub trait Snapshot: Consumer + Sized {
     fn encode(&self) -> Vec<u8>;
 
     fn decode(bytes: &[u8], session: SessionId) -> Result<Self, Self::Error>;
-
-    /// Commits already folded into this snapshot. The framework resumes delivery from here.
-    fn heads(&self) -> &[CommitId];
 }
 
 /// Implemented by consumers that can be returned to their empty state, for frameworks that
