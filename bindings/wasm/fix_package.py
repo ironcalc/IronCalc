@@ -15,11 +15,17 @@ if "snippets" not in package["files"]:
     package["files"].append("snippets")
 
 # The XLSX helpers are built as a second wasm bundle and copied into pkg/ after
-# wasm-pack runs, so wasm-pack never lists them. Ship them so consumers can
-# `import ... from "@ironcalc/wasm/xlsx.js"`.
+# wasm-pack runs, so wasm-pack never lists them. Ship them and expose the core
+# engine at the package root and the helpers at `/xlsx`, so consumers can
+# `import ... from "@ironcalc/wasm/xlsx"`.
 for xlsx_file in ("xlsx.js", "xlsx.d.ts", "xlsx_bg.wasm"):
     if xlsx_file not in package["files"]:
         package["files"].append(xlsx_file)
+
+package["exports"] = {
+    ".": {"types": "./wasm.d.ts", "default": "./wasm.js"},
+    "./xlsx": {"types": "./xlsx.d.ts", "default": "./xlsx.js"},
+}
 
 with open(package_file, "w") as f:
     json.dump(package, f, indent=2)
