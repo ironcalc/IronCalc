@@ -1,14 +1,23 @@
 import type { Model } from "@ironcalc/wasm";
-import { ThemeProvider } from "@mui/material";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useEffect, useImperativeHandle } from "react";
 import { I18nextProvider } from "react-i18next";
 import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
 import i18n from "./i18n";
-import { theme } from "./theme.ts";
+import "./theme/theme.css";
+import "./index.css";
+import {
+  type PartialIronCalcThemeVariables,
+  setThemeVariables,
+  unsetThemeVariables,
+} from "./theme";
 
 interface IronCalcProperties {
   model: Model;
+  themeVariables?: PartialIronCalcThemeVariables;
+  rootContainer?: HTMLElement | null;
+  /** When false, renders without the toolbar, the formula bar is read-only and all edits are blocked. */
+  canEdit?: boolean;
 }
 
 export interface IronCalcHandle {
@@ -16,25 +25,43 @@ export interface IronCalcHandle {
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
-  (properties, ref) => {
+  ({ themeVariables, model, rootContainer, canEdit = true }, ref) => {
+    const root = rootContainer ?? document.body;
+    useEffect(() => {
+      if (root.classList.contains("ic-root")) {
+        console.warn("rootContainer already in use:", root);
+      }
+      root.classList.add("ic-root");
+      return () => root.classList.remove("ic-root");
+    }, [root]);
+
+    useEffect(() => {
+      if (themeVariables) {
+        setThemeVariables(themeVariables, root);
+        return () => unsetThemeVariables(root);
+      }
+    }, [root, themeVariables]);
+
     useImperativeHandle(ref, () => ({
       setLanguage(language: string) {
         if (i18n.language !== language) {
           i18n.changeLanguage(language);
           const lang = language.split("-")[0];
-          properties.model.setLanguage(lang);
+          model.setLanguage(lang);
         }
       },
     }));
+
     return (
-      <ThemeProvider theme={theme}>
+      <div className="ic-widget">
         <I18nextProvider i18n={i18n}>
           <Workbook
-            model={properties.model}
+            model={model}
             workbookState={new WorkbookState()}
+            canEdit={canEdit}
           />
         </I18nextProvider>
-      </ThemeProvider>
+      </div>
     );
   },
 );

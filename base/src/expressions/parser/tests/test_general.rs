@@ -6,6 +6,8 @@ use crate::expressions::lexer::LexerMode;
 use crate::expressions::parser::stringify::{to_rc_format, to_string_displaced, DisplaceData};
 use crate::expressions::parser::Node;
 use crate::expressions::types::CellReferenceRC;
+use crate::language::get_default_language;
+use crate::locale::get_default_locale;
 
 use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
 
@@ -123,10 +125,11 @@ fn test_parser_bad_formula() {
             formula,
             message,
             position,
+            ..
         } => {
             assert_eq!(formula, "#Value");
-            assert_eq!(message, "Invalid error.");
-            assert_eq!(*position, 1);
+            assert_eq!(message, "Unexpected token: 'Spill'");
+            assert_eq!(*position, 0);
         }
         _ => {
             panic!("Expected error in formula");
@@ -152,6 +155,7 @@ fn test_parser_bad_formula_1() {
             formula,
             message,
             position,
+            ..
         } => {
             assert_eq!(formula, "<5");
             assert_eq!(message, "Unexpected token: 'COMPARE'");
@@ -181,6 +185,7 @@ fn test_parser_bad_formula_2() {
             formula,
             message,
             position,
+            ..
         } => {
             assert_eq!(formula, "*5");
             assert_eq!(message, "Unexpected token: 'PRODUCT'");
@@ -210,10 +215,11 @@ fn test_parser_bad_formula_3() {
             formula,
             message,
             position,
+            ..
         } => {
             assert_eq!(formula, "SUM(#VALVE!)");
-            assert_eq!(message, "Invalid error.");
-            assert_eq!(*position, 5);
+            assert_eq!(message, "Unexpected token: 'Spill'");
+            assert_eq!(*position, 0);
         }
         _ => {
             panic!("Expected error in formula");
@@ -421,7 +427,13 @@ fn test_to_string_displaced() {
         column: 1,
         delta: 4,
     };
-    let t = to_string_displaced(&node, context, &displace_data);
+    let t = to_string_displaced(
+        &node,
+        context,
+        &displace_data,
+        get_default_locale(),
+        get_default_language(),
+    );
     assert_eq!(t, "G3".to_string());
 }
 
@@ -442,7 +454,13 @@ fn test_to_string_displaced_full_ranges() {
         delta: 4,
     };
     assert_eq!(
-        to_string_displaced(&node, context, &displace_data),
+        to_string_displaced(
+            &node,
+            context,
+            &displace_data,
+            get_default_locale(),
+            get_default_language(),
+        ),
         "SUM(3:3)".to_string()
     );
 
@@ -453,7 +471,13 @@ fn test_to_string_displaced_full_ranges() {
         delta: 4,
     };
     assert_eq!(
-        to_string_displaced(&node, context, &displace_data),
+        to_string_displaced(
+            &node,
+            context,
+            &displace_data,
+            get_default_locale(),
+            get_default_language(),
+        ),
         "SUM(D:D)".to_string()
     );
 }
@@ -474,7 +498,13 @@ fn test_to_string_displaced_too_low() {
         column: 1,
         delta: -40,
     };
-    let t = to_string_displaced(&node, context, &displace_data);
+    let t = to_string_displaced(
+        &node,
+        context,
+        &displace_data,
+        get_default_locale(),
+        get_default_language(),
+    );
     assert_eq!(t, "#REF!".to_string());
 }
 
@@ -494,6 +524,12 @@ fn test_to_string_displaced_too_high() {
         column: 1,
         delta: 4000000,
     };
-    let t = to_string_displaced(&node, context, &displace_data);
+    let t = to_string_displaced(
+        &node,
+        context,
+        &displace_data,
+        get_default_locale(),
+        get_default_language(),
+    );
     assert_eq!(t, "#REF!".to_string());
 }

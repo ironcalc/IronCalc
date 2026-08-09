@@ -9,7 +9,7 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let z = match self.get_number_no_bools(&args[0], cell) {
+        let z = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };

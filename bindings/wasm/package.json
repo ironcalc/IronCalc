@@ -1,0 +1,12 @@
+{
+  "name": "ironcalc-wasm-dev",
+  "private": true,
+  "description": "Dev tooling for the IronCalc wasm bindings (the published package is generated into pkg/ by wasm-pack)",
+  "scripts": {
+    "docs": "typedoc"
+  },
+  "devDependencies": {
+    "typedoc": "0.28.20",
+    "typescript": "^6.0.3"
+  }
+}

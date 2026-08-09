@@ -12,15 +12,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
+        let x = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let mean = match self.get_number_no_bools(&args[1], cell) {
+        let mean = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[2], cell) {
+        let std_dev = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -68,15 +68,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let p = match self.get_number_no_bools(&args[0], cell) {
+        let p = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let mean = match self.get_number_no_bools(&args[1], cell) {
+        let mean = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[2], cell) {
+        let std_dev = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -119,7 +119,7 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let z = match self.get_number_no_bools(&args[0], cell) {
+        let z = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -158,7 +158,7 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let p = match self.get_number_no_bools(&args[0], cell) {
+        let p = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -204,15 +204,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let alpha = match self.get_number_no_bools(&args[0], cell) {
+        let alpha = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[1], cell) {
+        let std_dev = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let size = match self.get_number_no_bools(&args[2], cell) {
+        let size = match self.get_number(&args[2], cell) {
             Ok(f) => f.floor(),
             Err(e) => return e,
         };
@@ -265,21 +265,21 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let alpha = match self.get_number_no_bools(&args[0], cell) {
+        let alpha = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[1], cell) {
+        let std_dev = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let size = match self.get_number_no_bools(&args[2], cell) {
+        let size = match self.get_number(&args[2], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
 
         // Domain checks
-        if alpha <= 0.0 || alpha >= 1.0 || std_dev <= 0.0 {
+        if alpha <= 0.0 || alpha >= 1.0 || std_dev <= 0.0 || size <= 0.0 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -321,5 +321,18 @@ impl<'a> Model<'a> {
 
         let margin = t_crit * std_dev / size.sqrt();
         CalcResult::Number(margin)
+    }
+
+    // NORMSDIST(z) — always cumulative=TRUE, 1 arg
+    pub(crate) fn fn_normsdist_compat(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let new_args = vec![args[0].clone(), Node::BooleanKind(true)];
+        self.fn_norm_s_dist(&new_args, cell)
     }
 }

@@ -1,3 +1,7 @@
 target/*
 **/node_modules/**
+docs/ironcalc.dev/dist/
+bindings/python/docs/_static/logo-light.svg
+bindings/python/docs/_static/logo-dark.svg
 .DS_Store
+webapp/IronCalc/tests/example.ic

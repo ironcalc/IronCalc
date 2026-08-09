@@ -4,52 +4,62 @@ use crate::{
     types::NumFmt,
 };
 
+// The standard built-in number formats defined by ECMA-376 (§18.8.30), indexed by `numFmtId`
+// so that `DEFAULT_NUM_FMTS[id]` is the format code for that built-in id. Ids 23–36 are
+// reserved/undefined by the spec and resolve to "general". A workbook-defined `numFmt` always
+// takes precedence over this table (see `get_num_fmt`), so this is only consulted for a
+// referenced-but-undefined built-in id.
 const DEFAULT_NUM_FMTS: &[&str] = &[
-    "general",
-    "0",
-    "0.00",
-    "#,##0",
-    "#,##0.00",
-    "$#,##0; \\ - $#,##0",
-    "$#,##0; [Red] \\ - $#,##0",
-    "$#,##0.00; \\ - $#,##0.00",
-    "$#,##0.00; [Red] \\ - $#,##0.00",
-    "0%",
-    "0.00%",
-    "0.00E + 00",
-    "#?/?",
-    "#?? / ??",
-    "mm-dd-yy",
-    "d-mmm-yy",
-    "d-mmm",
-    "mmm-yy",
-    "h:mm AM / PM",
-    "h:mm:ss AM / PM",
-    "h:mm",
-    "h:mm:ss",
-    "m / d / yy h:mm",
-    "#,##0;()#,##0)",
-    "#,##0; [Red]()#,##0)",
-    "#,##0.00;()#,##0.00)",
-    "#,##0.00; [Red]()#,##0.00)",
-    "_()$”*#,##0.00 _); _()$”* \\()#,##0.00\\); _()$”* - ?? _); _()@_)",
-    "mm:ss",
-    "[h]:mm:ss",
-    "mmss .0",
-    "##0.0E + 0",
-    "@",
-    "[$ -404] e / m / d ",
-    "m / d / yy",
-    "[$ -404] e / m / d",
-    "[$ -404] e / / d",
-    "[$ -404] e / m / d",
-    "t0",
-    "t0.00",
-    "t#,##0",
-    "t#,##0.00",
-    "t0%",
-    "t0.00 %",
-    "t#?/?",
+    "general",                                                              // 0
+    "0",                                                                    // 1
+    "0.00",                                                                 // 2
+    "#,##0",                                                                // 3
+    "#,##0.00",                                                             // 4
+    "$#,##0_);($#,##0)",                                                    // 5
+    "$#,##0_);[Red]($#,##0)",                                               // 6
+    "$#,##0.00_);($#,##0.00)",                                              // 7
+    "$#,##0.00_);[Red]($#,##0.00)",                                         // 8
+    "0%",                                                                   // 9
+    "0.00%",                                                                // 10
+    "0.00E+00",                                                             // 11
+    "# ?/?",                                                                // 12
+    "# ??/??",                                                              // 13
+    "mm-dd-yy",                                                             // 14
+    "d-mmm-yy",                                                             // 15
+    "d-mmm",                                                                // 16
+    "mmm-yy",                                                               // 17
+    "h:mm AM/PM",                                                           // 18
+    "h:mm:ss AM/PM",                                                        // 19
+    "h:mm",                                                                 // 20
+    "h:mm:ss",                                                              // 21
+    "m/d/yy h:mm",                                                          // 22
+    "general",                                                              // 23 (reserved)
+    "general",                                                              // 24 (reserved)
+    "general",                                                              // 25 (reserved)
+    "general",                                                              // 26 (reserved)
+    "general",                                                              // 27 (reserved)
+    "general",                                                              // 28 (reserved)
+    "general",                                                              // 29 (reserved)
+    "general",                                                              // 30 (reserved)
+    "general",                                                              // 31 (reserved)
+    "general",                                                              // 32 (reserved)
+    "general",                                                              // 33 (reserved)
+    "general",                                                              // 34 (reserved)
+    "general",                                                              // 35 (reserved)
+    "general",                                                              // 36 (reserved)
+    "#,##0_);(#,##0)",                                                      // 37
+    "#,##0_);[Red](#,##0)",                                                 // 38
+    "#,##0.00_);(#,##0.00)",                                                // 39
+    "#,##0.00_);[Red](#,##0.00)",                                           // 40
+    "_(* #,##0_);_(* \\(#,##0\\);_(* \"-\"_);_(@_)",                        // 41
+    "_(\"$\"* #,##0_);_(\"$\"* \\(#,##0\\);_(\"$\"* \"-\"_);_(@_)",         // 42
+    "_(* #,##0.00_);_(* \\(#,##0.00\\);_(* \"-\"??_);_(@_)",                // 43
+    "_(\"$\"* #,##0.00_);_(\"$\"* \\(#,##0.00\\);_(\"$\"* \"-\"??_);_(@_)", // 44
+    "mm:ss",                                                                // 45
+    "[h]:mm:ss",                                                            // 46
+    "mmss.0",                                                               // 47
+    "##0.0E+0",                                                             // 48
+    "@",                                                                    // 49
 ];
 
 pub fn get_default_num_fmt_id(num_fmt: &str) -> Option<i32> {
@@ -161,4 +171,75 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
         }
     };
     formatter::format::format_number(value, format_code, locale)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // The default table is indexed by `numFmtId`: `get_num_fmt(id, &[])` must return the
+    // ECMA-376 §18.8.30 built-in code for that id.
+    #[test]
+    fn builtin_ids_map_to_the_ecma376_codes() {
+        assert_eq!(get_num_fmt(0, &[]), "general");
+        assert_eq!(get_num_fmt(5, &[]), "$#,##0_);($#,##0)");
+        assert_eq!(get_num_fmt(8, &[]), "$#,##0.00_);[Red]($#,##0.00)");
+        assert_eq!(get_num_fmt(11, &[]), "0.00E+00");
+        assert_eq!(get_num_fmt(37, &[]), "#,##0_);(#,##0)");
+        // id 39 is the one that produced `#VALUE!` in the wild (was "t0.00").
+        assert_eq!(get_num_fmt(39, &[]), "#,##0.00_);(#,##0.00)");
+        assert_eq!(
+            get_num_fmt(44, &[]),
+            "_(\"$\"* #,##0.00_);_(\"$\"* \\(#,##0.00\\);_(\"$\"* \"-\"??_);_(@_)"
+        );
+        assert_eq!(get_num_fmt(49, &[]), "@");
+        // Reserved ids 23–36 resolve to "general".
+        assert_eq!(get_num_fmt(25, &[]), "general");
+        // Out-of-range falls back to "general" too.
+        assert_eq!(get_num_fmt(500, &[]), "general");
+    }
+
+    // A workbook-defined `numFmt` still wins over the default table.
+    #[test]
+    fn workbook_defined_num_fmt_takes_precedence() {
+        let defined = vec![NumFmt {
+            num_fmt_id: 39,
+            format_code: "FILE-OWN".to_string(),
+        }];
+        assert_eq!(get_num_fmt(39, &defined), "FILE-OWN");
+    }
+
+    // Every corrected built-in code must actually be formattable by IronCalc's own formatter
+    // (a valid number must NOT come back as an error). This is what was broken: the old garbage
+    // codes (e.g. "t0.00") made the formatter fail on valid numbers.
+    //
+    // Exception: id 47 (`mmss.0`, elapsed minutes:seconds.tenths) is the correct ECMA-376 code
+    // but IronCalc's *formatter* does not yet parse that pattern — a separate formatter gap, not
+    // a table bug (the old code at id 47 didn't render either). Kept correct in the table so a
+    // future formatter fix makes it work; excluded from this render smoke-check.
+    #[test]
+    fn corrected_builtins_format_without_error() {
+        let mut failures = Vec::new();
+        for id in [
+            5, 6, 7, 8, 11, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 48, 49,
+        ] {
+            let code = get_num_fmt(id, &[]);
+            let out = format_number(1234.5, &code, "en");
+            if out.error.is_some() || out.text.contains("#VALUE!") || out.text.contains("#ERROR!") {
+                failures.push((id, code, out.text, out.error));
+            }
+        }
+        assert!(
+            failures.is_empty(),
+            "codes the formatter rejected: {failures:?}"
+        );
+    }
+
+    // The specific regression: id 39 formats 175000 as a grouped 2-decimal number, not `#VALUE!`.
+    #[test]
+    fn id_39_formats_currency_value() {
+        let out = format_number(175000.0, &get_num_fmt(39, &[]), "en");
+        assert!(out.error.is_none());
+        assert!(out.text.contains("175,000.00"), "got {:?}", out.text);
+    }
 }

@@ -3,3 +3,6 @@ venv/*
 sphinx-venv/*
 html/*
 tests/__pycache*
+__pycache__/
+dist/
+python/ironcalc/*.so

@@ -139,6 +139,118 @@ fn test_move_formula_context_offset() {
 }
 
 #[test]
+fn test_move_formula_lambda_def() {
+    // context E4, area C2:F6, delta (10, 10)
+    // C2 is inside area → becomes M12
+    // X9 is outside area → unchanged
+    let row = 4;
+    let column = 5;
+    let context = &CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+
+    let area = &Area {
+        sheet: 0,
+        row: 2,
+        column: 3,
+        width: 4,
+        height: 5,
+    };
+
+    let node = parser.parse("LAMBDA(x, C2 + x)", context);
+    let t = move_formula(
+        &node,
+        &MoveContext {
+            source_sheet_name: "Sheet1",
+            row,
+            column,
+            area,
+            target_sheet_name: "Sheet1",
+            row_delta: 10,
+            column_delta: 10,
+        },
+    );
+    // C2 is in area → M12; parameter x and the body's x are unchanged
+    assert_eq!(t, "LAMBDA(x,M12+x)");
+
+    // Reference outside the area stays put
+    let node = parser.parse("LAMBDA(y, X9 * y)", context);
+    let t = move_formula(
+        &node,
+        &MoveContext {
+            source_sheet_name: "Sheet1",
+            row,
+            column,
+            area,
+            target_sheet_name: "Sheet1",
+            row_delta: 10,
+            column_delta: 10,
+        },
+    );
+    assert_eq!(t, "LAMBDA(y,X9*y)");
+}
+
+#[test]
+fn test_move_formula_lambda_call() {
+    // context E4, area C2:F6, delta (10, 10)
+    // C2 and D5 are inside area → M12, N15
+    // X9 is outside → unchanged
+    let row = 4;
+    let column = 5;
+    let context = &CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+
+    let area = &Area {
+        sheet: 0,
+        row: 2,
+        column: 3,
+        width: 4,
+        height: 5,
+    };
+
+    // Immediately-invoked LAMBDA: body ref and call arg both in area
+    let node = parser.parse("LAMBDA(x, C2 + x)(D5)", context);
+    let t = move_formula(
+        &node,
+        &MoveContext {
+            source_sheet_name: "Sheet1",
+            row,
+            column,
+            area,
+            target_sheet_name: "Sheet1",
+            row_delta: 10,
+            column_delta: 10,
+        },
+    );
+    assert_eq!(t, "LAMBDA(x,M12+x)(N15)");
+
+    // Call arg outside area → unchanged
+    let node = parser.parse("LAMBDA(x, x + 1)(X9)", context);
+    let t = move_formula(
+        &node,
+        &MoveContext {
+            source_sheet_name: "Sheet1",
+            row,
+            column,
+            area,
+            target_sheet_name: "Sheet1",
+            row_delta: 10,
+            column_delta: 10,
+        },
+    );
+    assert_eq!(t, "LAMBDA(x,x+1)(X9)");
+}
+
+#[test]
 fn test_move_formula_area_limits() {
     // context is E4
     let row = 4;

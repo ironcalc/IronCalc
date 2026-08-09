@@ -15,15 +15,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
+        let x = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let mean = match self.get_number_no_bools(&args[1], cell) {
+        let mean = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[2], cell) {
+        let std_dev = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -76,15 +76,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let p = match self.get_number_no_bools(&args[0], cell) {
+        let p = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let mean = match self.get_number_no_bools(&args[1], cell) {
+        let mean = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let std_dev = match self.get_number_no_bools(&args[2], cell) {
+        let std_dev = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -120,5 +120,19 @@ impl<'a> Model<'a> {
         }
 
         CalcResult::Number(result)
+    }
+
+    // LOGNORMDIST(x, mean, standard_dev) — always cumulative=TRUE, 3 args
+    pub(crate) fn fn_lognormdist_compat(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut new_args = args.to_vec();
+        new_args.push(Node::BooleanKind(true));
+        self.fn_log_norm_dist(&new_args, cell)
     }
 }

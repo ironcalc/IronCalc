@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert'
 import { Model } from "../pkg/wasm.js";
 
-const DEFAULT_ROW_HEIGHT = 28;
+const DEFAULT_ROW_HEIGHT = 25;
 
 test('Frozen rows and columns', () => {
     let model = new Model('Workbook1', 'en', 'UTC', 'en');
@@ -42,37 +42,25 @@ test('Evaluates correctly', (t) => {
     assert.strictEqual(result, "70");
 });
 
+const DEFAULT_STYLE = {
+    num_fmt: 'general',
+    fill: { },
+    font: { sz: 12, name: 'Inter', family: 2, scheme: 'minor' },
+    border: {},
+    quote_prefix: false,
+};
+
 test('Styles work', () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
-    let style = model.getCellStyle(0, 1, 1);
-    assert.deepEqual(style, {
-        num_fmt: 'general',
-        fill: { pattern_type: 'none' },
-        font: {
-            sz: 13,
-            color: '#000000',
-            name: 'Calibri',
-            family: 2,
-            scheme: 'minor'
-        },
-        border: {},
-        quote_prefix: false
-    });
+    let extended = model.getCellStyle(0, 1, 1);
+    assert.deepEqual(extended.style, DEFAULT_STYLE);
+    assert.strictEqual(extended.icon, undefined);
+    assert.strictEqual(extended.data_bar, undefined);
+    assert.strictEqual(extended.custom_icon, undefined);
+
     model.setUserInput(0, 1, 1, "'=1+1");
-    style = model.getCellStyle(0, 1, 1);
-    assert.deepEqual(style, {
-        num_fmt: 'general',
-        fill: { pattern_type: 'none' },
-        font: {
-            sz: 13,
-            color: '#000000',
-            name: 'Calibri',
-            family: 2,
-            scheme: 'minor'
-        },
-        border: {},
-        quote_prefix: true
-    });
+    extended = model.getCellStyle(0, 1, 1);
+    assert.deepEqual(extended.style, { ...DEFAULT_STYLE, quote_prefix: true });
 });
 
 test("Add sheets", (t) => {
@@ -143,10 +131,10 @@ test("invalid column throws an exception", () => {
 
 test("floating column numbers get truncated", () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
-    model.setRowsHeight(0.8, 5.2, 5.5, 100.5);
+    model.setRowsHeight(0.8, 5.2, 5.5, 125);
 
-    assert.strictEqual(model.getRowHeight(0.11, 5.99), 100.5);
-    assert.strictEqual(model.getRowHeight(0, 5), 100.5);
+    assert.strictEqual(model.getRowHeight(0.11, 5.99), 125);
+    assert.strictEqual(model.getRowHeight(0, 5), 125);
 });
 
 test("autofill", () => {
@@ -200,7 +188,7 @@ test('deleteColumns removes cells', () => {
     assert.strictEqual(model.getCellContent(0, 1, 2), '');
 });
 
-test("move row", () => {
+test("move rows", () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.setUserInput(0, 3, 5, "=G3");
     model.setUserInput(0, 4, 5, "=G4");
@@ -209,7 +197,7 @@ test("move row", () => {
     model.setUserInput(0, 7, 5, "=SUM(G4:G4)");
     model.evaluate();
 
-    model.moveRow(0, 3, 1);
+    model.moveRows(0, 3, 1, 1);
     model.evaluate();
 
     assert.strictEqual(model.getCellContent(0, 3, 5), "=G3");
@@ -219,7 +207,7 @@ test("move row", () => {
     assert.strictEqual(model.getCellContent(0, 7, 5), "=SUM(G3:G3)");
 });
 
-test("move column", () => {
+test("move columns", () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.setUserInput(0, 3, 5, "=G3");
     model.setUserInput(0, 4, 5, "=H3");
@@ -228,7 +216,7 @@ test("move column", () => {
     model.setUserInput(0, 7, 5, "=SUM(H3:H7)");
     model.evaluate();
 
-    model.moveColumn(0, 7, 1);
+    model.moveColumns(0, 7, 1, 1);
     model.evaluate();
 
     assert.strictEqual(model.getCellContent(0, 3, 5), "=H3");
@@ -236,4 +224,58 @@ test("move column", () => {
     assert.strictEqual(model.getCellContent(0, 5, 5), "=SUM(H3:J7)");
     assert.strictEqual(model.getCellContent(0, 6, 5), "=SUM(H3:H7)");
     assert.strictEqual(model.getCellContent(0, 7, 5), "=SUM(G3:G7)");
+});
+
+test('Cell links', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.strictEqual(model.getCellLink(0, 2, 2), undefined);
+
+    model.setCellLink(0, 2, 2, { type: "External", target: "https://www.ironcalc.com/" });
+    const link = model.getCellLink(0, 2, 2);
+    assert.strictEqual(link.type, "External");
+    assert.strictEqual(link.target, "https://www.ironcalc.com/");
+
+    model.setCellLink(0, 5, 1, { type: "Internal", location: "Sheet1!A30", tooltip: "Jump!" });
+    const links = model.getLinks(0);
+    assert.strictEqual(links.length, 2);
+    assert.strictEqual(links[0].row, 2);
+    assert.strictEqual(links[0].column, 2);
+    assert.strictEqual(links[0].target, "https://www.ironcalc.com/");
+    assert.strictEqual(links[1].row, 5);
+    assert.strictEqual(links[1].column, 1);
+    assert.strictEqual(links[1].location, "Sheet1!A30");
+    assert.strictEqual(links[1].tooltip, "Jump!");
+
+    // links are undoable
+    model.undo();
+    model.undo();
+    assert.strictEqual(model.getCellLink(0, 2, 2), undefined);
+    model.redo();
+    assert.strictEqual(model.getCellLink(0, 2, 2).target, "https://www.ironcalc.com/");
+
+    model.deleteCellLink(0, 2, 2);
+    assert.strictEqual(model.getCellLink(0, 2, 2), undefined);
+
+    // invalid cell
+    assert.throws(() => model.setCellLink(0, 0, 1, { type: "External", target: "https://x" }));
+});
+
+test('Cell link label and style are one undo step', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.setCellLink(0, 2, 2, { type: "External", target: "https://www.ironcalc.com/" }, "IronCalc");
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "IronCalc");
+    assert.strictEqual(model.getCellStyle(0, 2, 2).style.font.u, true);
+
+    // one undo reverts the link, the content and the style together
+    model.undo();
+    assert.strictEqual(model.getCellLink(0, 2, 2), undefined);
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "");
+    assert.ok(!model.getCellStyle(0, 2, 2).style.font.u);
+    assert.strictEqual(model.canUndo(), false);
+
+    // one redo restores everything
+    model.redo();
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "IronCalc");
+    assert.strictEqual(model.getCellStyle(0, 2, 2).style.font.u, true);
+    assert.strictEqual(model.getCellLink(0, 2, 2).target, "https://www.ironcalc.com/");
 });

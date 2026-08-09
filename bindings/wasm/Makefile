@@ -6,15 +6,21 @@ ifeq ($(PYTHON),)
   $(error No python found. Please install python.)
 endif
 
-all:
+all: deps
 	wasm-pack build --target web --scope ironcalc --release
 	cp README.pkg.md pkg/README.md
-	npx tsc types.ts --target esnext --module esnext
+	pnpm exec tsc types.ts --target esnext --module esnext
 	$(PYTHON) fix_types.py
+	$(PYTHON) fix_package.py
 	rm -f types.js
+	node --test tests/test_package.mjs
+
+# Installs the pinned JS tooling (typescript, typedoc) from pnpm-lock.yaml
+deps:
+	pnpm install --frozen-lockfile
 
 tests:
-	wasm-pack build --target nodejs && node tests/test.mjs
+	wasm-pack build --target nodejs && node tests/test.mjs && node tests/test_cf.mjs
 
 lint:
 	cargo check
@@ -26,4 +32,4 @@ clean:
 	rm -rf pkg
 	rm -f types.js
 
-.PHONY: all lint clean tests
+.PHONY: all deps lint clean tests

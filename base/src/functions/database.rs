@@ -366,16 +366,16 @@ impl<'a> Model<'a> {
             return Err(CalcResult::new_args_number_error(cell));
         }
 
-        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return Err(e),
+        let (db_left, db_right) = {
+            let r = self.get_reference(&args[0], cell)?;
+            (r.left, r.right)
         };
 
         let field_col = self.resolve_db_field_column(db_left, db_right, &args[1], cell)?;
 
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return Err(e),
+        let criteria = {
+            let r = self.get_reference(&args[2], cell)?;
+            (r.left, r.right)
         };
 
         if db_right.row <= db_left.row {
@@ -551,7 +551,7 @@ impl<'a> Model<'a> {
                 })
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
-            CalcResult::Array(_) => {
+            CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 return Err(CalcResult::Error {
                     error: Error::NIMPL,
                     origin: cell,
@@ -587,7 +587,8 @@ impl<'a> Model<'a> {
                 | CalcResult::Range { .. }
                 | CalcResult::EmptyCell
                 | CalcResult::EmptyArg
-                | CalcResult::Array(_) => {}
+                | CalcResult::Array(_)
+                | CalcResult::Lambda(_) => {}
             }
         }
 
@@ -748,7 +749,9 @@ impl<'a> Model<'a> {
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
             CalcResult::Error { .. } => return false,
-            CalcResult::Range { .. } | CalcResult::Array(_) => return false,
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                return false
+            }
         };
 
         // Detect operator prefix

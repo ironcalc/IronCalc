@@ -42,7 +42,7 @@ fn test_last_empty_cell() {
     };
 
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#333444")
+        .update_range_style(&column_g_range, "fill.color", "#333444")
         .unwrap();
 
     // Column 7 has a style but it is empty

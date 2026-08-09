@@ -59,17 +59,17 @@ impl Cell {
 
     /// Creates a new Cell with an unevaluated formula
     pub fn new_formula(f: i32, s: i32) -> Cell {
-        Cell::CellFormula { f, s }
+        Cell::CellFormula {
+            f,
+            s,
+            v: FormulaValue::Unevaluated,
+        }
     }
 
-    /// Returns the formula of a cell if any.
+    /// Returns the formula index of a cell if any.
     pub fn get_formula(&self) -> Option<i32> {
         match self {
-            Cell::CellFormula { f, .. } => Some(*f),
-            Cell::CellFormulaBoolean { f, .. } => Some(*f),
-            Cell::CellFormulaNumber { f, .. } => Some(*f),
-            Cell::CellFormulaString { f, .. } => Some(*f),
-            Cell::CellFormulaError { f, .. } => Some(*f),
+            Cell::CellFormula { f, .. } | Cell::ArrayFormula { f, .. } => Some(*f),
             _ => None,
         }
     }
@@ -80,31 +80,27 @@ impl Cell {
 
     pub fn set_style(&mut self, style: i32) {
         match self {
-            Cell::EmptyCell { s, .. } => *s = style,
-            Cell::BooleanCell { s, .. } => *s = style,
-            Cell::NumberCell { s, .. } => *s = style,
-            Cell::ErrorCell { s, .. } => *s = style,
-            Cell::SharedString { s, .. } => *s = style,
-            Cell::CellFormula { s, .. } => *s = style,
-            Cell::CellFormulaBoolean { s, .. } => *s = style,
-            Cell::CellFormulaNumber { s, .. } => *s = style,
-            Cell::CellFormulaString { s, .. } => *s = style,
-            Cell::CellFormulaError { s, .. } => *s = style,
-        };
+            Cell::EmptyCell { s, .. }
+            | Cell::BooleanCell { s, .. }
+            | Cell::NumberCell { s, .. }
+            | Cell::ErrorCell { s, .. }
+            | Cell::SharedString { s, .. }
+            | Cell::CellFormula { s, .. }
+            | Cell::ArrayFormula { s, .. }
+            | Cell::SpillCell { s, .. } => *s = style,
+        }
     }
 
     pub fn get_style(&self) -> i32 {
         match self {
-            Cell::EmptyCell { s, .. } => *s,
-            Cell::BooleanCell { s, .. } => *s,
-            Cell::NumberCell { s, .. } => *s,
-            Cell::ErrorCell { s, .. } => *s,
-            Cell::SharedString { s, .. } => *s,
-            Cell::CellFormula { s, .. } => *s,
-            Cell::CellFormulaBoolean { s, .. } => *s,
-            Cell::CellFormulaNumber { s, .. } => *s,
-            Cell::CellFormulaString { s, .. } => *s,
-            Cell::CellFormulaError { s, .. } => *s,
+            Cell::EmptyCell { s, .. }
+            | Cell::BooleanCell { s, .. }
+            | Cell::NumberCell { s, .. }
+            | Cell::ErrorCell { s, .. }
+            | Cell::SharedString { s, .. }
+            | Cell::CellFormula { s, .. }
+            | Cell::ArrayFormula { s, .. }
+            | Cell::SpillCell { s, .. } => *s,
         }
     }
 
@@ -115,11 +111,18 @@ impl Cell {
             Cell::NumberCell { .. } => CellType::Number,
             Cell::ErrorCell { .. } => CellType::ErrorValue,
             Cell::SharedString { .. } => CellType::Text,
-            Cell::CellFormula { .. } => CellType::Number,
-            Cell::CellFormulaBoolean { .. } => CellType::LogicalValue,
-            Cell::CellFormulaNumber { .. } => CellType::Number,
-            Cell::CellFormulaString { .. } => CellType::Text,
-            Cell::CellFormulaError { .. } => CellType::ErrorValue,
+            Cell::CellFormula { v, .. } | Cell::ArrayFormula { v, .. } => match v {
+                FormulaValue::Unevaluated | FormulaValue::Number(_) => CellType::Number,
+                FormulaValue::Boolean(_) => CellType::LogicalValue,
+                FormulaValue::Text(_) => CellType::Text,
+                FormulaValue::Error { .. } => CellType::ErrorValue,
+            },
+            Cell::SpillCell { v, .. } => match v {
+                SpillValue::Number(_) => CellType::Number,
+                SpillValue::Boolean(_) => CellType::LogicalValue,
+                SpillValue::Text(_) => CellType::Text,
+                SpillValue::Error(_) => CellType::ErrorValue,
+            },
         }
     }
 
@@ -154,28 +157,20 @@ impl Cell {
     pub fn value(&self, shared_strings: &[String], language: &Language) -> CellValue {
         match self {
             Cell::EmptyCell { .. } => CellValue::None,
-            Cell::BooleanCell { v, s: _ } => CellValue::Boolean(*v),
-            Cell::NumberCell { v, s: _ } => CellValue::Number(*v),
-            Cell::ErrorCell { ei, .. } => {
-                let v = ei.to_localized_error_string(language);
-                CellValue::String(v)
-            }
+            Cell::BooleanCell { v, .. } => CellValue::Boolean(*v),
+            Cell::NumberCell { v, .. } => CellValue::Number(*v),
+            Cell::ErrorCell { ei, .. } => CellValue::String(ei.to_localized_error_string(language)),
             Cell::SharedString { si, .. } => {
-                let s = shared_strings.get(*si as usize);
-                let v = match s {
-                    Some(str) => str.clone(),
-                    None => "".to_string(),
-                };
+                let v = shared_strings
+                    .get(*si as usize)
+                    .cloned()
+                    .unwrap_or_default();
                 CellValue::String(v)
             }
-            Cell::CellFormula { .. } => CellValue::String("#ERROR!".to_string()),
-            Cell::CellFormulaBoolean { v, .. } => CellValue::Boolean(*v),
-            Cell::CellFormulaNumber { v, .. } => CellValue::Number(*v),
-            Cell::CellFormulaString { v, .. } => CellValue::String(v.clone()),
-            Cell::CellFormulaError { ei, .. } => {
-                let v = ei.to_localized_error_string(language);
-                CellValue::String(v)
+            Cell::CellFormula { v, .. } | Cell::ArrayFormula { v, .. } => {
+                formula_value_to_cell_value(v, language)
             }
+            Cell::SpillCell { v, .. } => spill_value_to_cell_value(v, language),
         }
     }
 
@@ -200,5 +195,24 @@ impl Cell {
             }
             CellValue::Number(value) => format_number(value),
         }
+    }
+}
+
+fn formula_value_to_cell_value(v: &FormulaValue, language: &Language) -> CellValue {
+    match v {
+        FormulaValue::Unevaluated => CellValue::String("#ERROR!".to_string()),
+        FormulaValue::Boolean(b) => CellValue::Boolean(*b),
+        FormulaValue::Number(n) => CellValue::Number(*n),
+        FormulaValue::Text(s) => CellValue::String(s.clone()),
+        FormulaValue::Error { ei, .. } => CellValue::String(ei.to_localized_error_string(language)),
+    }
+}
+
+fn spill_value_to_cell_value(v: &SpillValue, language: &Language) -> CellValue {
+    match v {
+        SpillValue::Boolean(b) => CellValue::Boolean(*b),
+        SpillValue::Number(n) => CellValue::Number(*n),
+        SpillValue::Text(s) => CellValue::String(s.clone()),
+        SpillValue::Error(ei) => CellValue::String(ei.to_localized_error_string(language)),
     }
 }

@@ -1,5 +1,4 @@
 #![allow(clippy::unwrap_used)]
-//! <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
 
 //! A workbook is composed of workbook-level properties and a collection of 1 or more sheets.
 //! The workbook part and corresponding properties comprise data
@@ -9,11 +8,13 @@
 //! an enumeration of the worksheets in the workbook.
 //! This is the XML for the smallest possible (blank) workbook:
 //!
+//! ```xml
 //! <workbook>
 //!   <sheets>
 //!     <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
 //!   </sheets>
 //! </workbook>
+//! ```
 //!
 //! Note that this workbook has a single sheet, named Sheet1. An Id for the sheet is required, and a relationship Id
 //! pointing to the location of the sheet definition is also required.
@@ -30,6 +31,8 @@
 
 use std::collections::HashMap;
 
+use ironcalc_base::expressions::parser::{new_parser_english, stringify::to_excel_string};
+use ironcalc_base::expressions::types::CellReferenceRC;
 use ironcalc_base::types::{SheetState, Workbook};
 
 use super::escape::escape_xml;
@@ -60,6 +63,24 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
     // defined names
     // <definedName localSheetId="4" name="answer">shared!$G$5</definedName>
     // <definedName name="numbers">Sheet1!$A$16:$A$18</definedName>
+    // Formulas are stored in IronCalc's internal English form (`LAMBDA(x,x+1)`);
+    // Excel expects future-function and lambda-parameter prefixes
+    // (`_xlfn.LAMBDA(_xlpm.x,_xlpm.x+1)`), so they are parsed and re-stringified.
+    let worksheet_names: Vec<String> = workbook.worksheets.iter().map(|s| s.name.clone()).collect();
+    let mut parser = new_parser_english(
+        worksheet_names,
+        workbook.get_defined_names_with_scope(),
+        workbook.tables.clone(),
+    );
+    let parse_context = CellReferenceRC {
+        sheet: workbook
+            .worksheets
+            .first()
+            .map(|ws| ws.name.clone())
+            .unwrap_or_else(|| "Sheet1".to_string()),
+        row: 1,
+        column: 1,
+    };
     let mut defined_names_str: Vec<String> = vec![];
     for defined_name in &workbook.defined_names {
         let name = &defined_name.name;
@@ -71,7 +92,14 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
         } else {
             "".to_string()
         };
-        let formula = escape_xml(&defined_name.formula);
+        // A formula that fails to parse stringifies back to itself unchanged.
+        let formula_body = defined_name
+            .formula
+            .strip_prefix('=')
+            .unwrap_or(&defined_name.formula);
+        let node = parser.parse(formula_body, &parse_context);
+        let formula = to_excel_string(&node, &parse_context);
+        let formula = escape_xml(&formula);
         defined_names_str.push(format!(
             "<definedName name=\"{name}\"{local_sheet_id}>{formula}</definedName>"
         ))

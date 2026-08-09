@@ -22,6 +22,19 @@ pub struct SelectedView {
 }
 
 impl<'a> UserModel<'a> {
+    // The UI renders every row and column at a whole number of pixels
+    // (the canvas rounds each size before drawing), so all the scroll and
+    // visibility arithmetic in this module must accumulate the rounded
+    // sizes: summing the raw values drifts away from the rendered geometry
+    // as the rounding errors pile up.
+    fn ui_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
+        self.model.get_row_height(sheet, row).map(f64::round)
+    }
+
+    fn ui_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
+        self.model.get_column_width(sheet, column).map(f64::round)
+    }
+
     /// Returns the selected sheet index
     pub fn get_selected_sheet(&self) -> u32 {
         if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
@@ -221,17 +234,24 @@ impl<'a> UserModel<'a> {
             // full row selected, nothing to do
             return Ok(());
         }
+        let worksheet = self.model.workbook.worksheet(sheet)?;
 
         match key {
             "ArrowRight" => {
                 if selected_column > column_start {
-                    let new_column = column_start + 1;
+                    let mut new_column = column_start + 1;
+                    while new_column < LAST_COLUMN && worksheet.is_column_hidden(new_column)? {
+                        new_column += 1;
+                    }
                     if !(is_valid_column_number(new_column)) {
                         return Ok(());
                     }
                     self.set_selected_range(row_start, new_column, row_end, column_end)?;
                 } else {
-                    let new_column = column_end + 1;
+                    let mut new_column = column_end + 1;
+                    while new_column < LAST_COLUMN && worksheet.is_column_hidden(new_column)? {
+                        new_column += 1;
+                    }
                     if !is_valid_column_number(new_column) {
                         return Ok(());
                     }
@@ -239,18 +259,21 @@ impl<'a> UserModel<'a> {
                     let mut width = 0.0;
                     let mut c = left_column;
                     while c <= new_column {
-                        width += self.model.get_column_width(sheet, c)?;
+                        width += self.ui_column_width(sheet, c)?;
                         c += 1;
                     }
                     if width > window_width {
                         self.set_top_left_visible_cell(top_row, left_column + 1)?;
                     }
-                    self.set_selected_range(row_start, column_start, row_end, column_end + 1)?;
+                    self.set_selected_range(row_start, column_start, row_end, new_column)?;
                 }
             }
             "ArrowLeft" => {
                 if selected_column < column_end {
-                    let new_column = column_end - 1;
+                    let mut new_column = column_end - 1;
+                    while new_column > 1 && worksheet.is_column_hidden(new_column)? {
+                        new_column -= 1;
+                    }
                     if !is_valid_column_number(new_column) {
                         return Ok(());
                     }
@@ -259,7 +282,10 @@ impl<'a> UserModel<'a> {
                     }
                     self.set_selected_range(row_start, column_start, row_end, new_column)?;
                 } else {
-                    let new_column = column_start - 1;
+                    let mut new_column = column_start - 1;
+                    while new_column > 1 && worksheet.is_column_hidden(new_column)? {
+                        new_column -= 1;
+                    }
                     if !is_valid_column_number(new_column) {
                         return Ok(());
                     }
@@ -271,13 +297,19 @@ impl<'a> UserModel<'a> {
             }
             "ArrowUp" => {
                 if selected_row < row_end {
-                    let new_row = row_end - 1;
+                    let mut new_row = row_end - 1;
+                    while new_row > 1 && worksheet.is_row_hidden(new_row)? {
+                        new_row -= 1;
+                    }
                     if !is_valid_row(new_row) {
                         return Ok(());
                     }
                     self.set_selected_range(row_start, column_start, new_row, column_end)?;
                 } else {
-                    let new_row = row_start - 1;
+                    let mut new_row = row_start - 1;
+                    while new_row > 1 && worksheet.is_row_hidden(new_row)? {
+                        new_row -= 1;
+                    }
                     if !is_valid_row(new_row) {
                         return Ok(());
                     }
@@ -289,20 +321,26 @@ impl<'a> UserModel<'a> {
             }
             "ArrowDown" => {
                 if selected_row > row_start {
-                    let new_row = row_start + 1;
+                    let mut new_row = row_start + 1;
+                    while new_row < LAST_ROW && worksheet.is_row_hidden(new_row)? {
+                        new_row += 1;
+                    }
                     if !is_valid_row(new_row) {
                         return Ok(());
                     }
                     self.set_selected_range(new_row, column_start, row_end, column_end)?;
                 } else {
-                    let new_row = row_end + 1;
+                    let mut new_row = row_end + 1;
+                    while new_row < LAST_ROW && worksheet.is_row_hidden(new_row)? {
+                        new_row += 1;
+                    }
                     if !is_valid_row(new_row) {
                         return Ok(());
                     }
                     let mut height = 0.0;
                     let mut r = top_row;
                     while r <= new_row + 1 {
-                        height += self.model.get_row_height(sheet, r)?;
+                        height += self.ui_row_height(sheet, r)?;
                         r += 1;
                     }
                     if height >= window_height {
@@ -393,7 +431,16 @@ impl<'a> UserModel<'a> {
             Some(s) => s,
             None => return Err("View not found".to_string()),
         };
-        let new_column = view.column + 1;
+        let mut new_column = view.column + 1;
+        while new_column <= LAST_COLUMN
+            && self
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .is_column_hidden(new_column)?
+        {
+            new_column += 1;
+        }
         if !is_valid_column_number(new_column) {
             return Ok(());
         }
@@ -401,7 +448,7 @@ impl<'a> UserModel<'a> {
         let mut width = 0.0;
         let mut column = view.left_column;
         while column <= new_column {
-            width += self.model.get_column_width(sheet, column)?;
+            width += self.ui_column_width(sheet, column)?;
             column += 1;
         }
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
@@ -431,7 +478,16 @@ impl<'a> UserModel<'a> {
             Some(s) => s,
             None => return Err("View not found".to_string()),
         };
-        let new_column = view.column - 1;
+        let mut new_column = view.column - 1;
+        while new_column >= 1
+            && self
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .is_column_hidden(new_column)?
+        {
+            new_column -= 1;
+        }
         if !is_valid_column_number(new_column) {
             return Ok(());
         }
@@ -463,7 +519,16 @@ impl<'a> UserModel<'a> {
             Some(s) => s,
             None => return Err("View not found".to_string()),
         };
-        let new_row = view.row - 1;
+        let mut new_row = view.row - 1;
+        while new_row >= 1
+            && self
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .is_row_hidden(new_row)?
+        {
+            new_row -= 1;
+        }
         if !is_valid_row(new_row) {
             return Ok(());
         }
@@ -496,7 +561,16 @@ impl<'a> UserModel<'a> {
             Some(s) => s,
             None => return Err("View not found".to_string()),
         };
-        let new_row = view.row + 1;
+        let mut new_row = view.row + 1;
+        while new_row <= LAST_ROW
+            && self
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .is_row_hidden(new_row)?
+        {
+            new_row += 1;
+        }
         if !is_valid_row(new_row) {
             return Ok(());
         }
@@ -504,7 +578,7 @@ impl<'a> UserModel<'a> {
         let mut height = 0.0;
         let mut row = view.top_row;
         while row <= new_row + 1 && row <= LAST_ROW {
-            height += self.model.get_row_height(sheet, row)?;
+            height += self.ui_row_height(sheet, row)?;
             row += 1;
         }
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
@@ -537,7 +611,7 @@ impl<'a> UserModel<'a> {
         };
         let mut scroll_x = 0.0;
         for column in 1..view.left_column {
-            scroll_x += self.model.get_column_width(sheet, column)?;
+            scroll_x += self.ui_column_width(sheet, column)?;
         }
         Ok(scroll_x)
     }
@@ -560,7 +634,7 @@ impl<'a> UserModel<'a> {
         };
         let mut scroll_y = 0.0;
         for row in 1..view.top_row {
-            scroll_y += self.model.get_row_height(sheet, row)?;
+            scroll_y += self.ui_row_height(sheet, row)?;
         }
         Ok(scroll_y)
     }
@@ -583,10 +657,10 @@ impl<'a> UserModel<'a> {
             None => return Err("View not found".to_string()),
         };
         let mut last_row = view.top_row;
-        let mut height = self.model.get_row_height(sheet, last_row)?;
+        let mut height = self.ui_row_height(sheet, last_row)?;
         while height <= window_height as f64 {
             last_row += 1;
-            height += self.model.get_row_height(sheet, last_row)?;
+            height += self.ui_row_height(sheet, last_row)?;
         }
         if !is_valid_row(last_row) {
             return Ok(());
@@ -620,10 +694,10 @@ impl<'a> UserModel<'a> {
         };
 
         let mut first_row = view.top_row;
-        let mut height = self.model.get_row_height(sheet, first_row)?;
+        let mut height = self.ui_row_height(sheet, first_row)?;
         while height <= window_height && first_row > 1 {
             first_row -= 1;
-            height += self.model.get_row_height(sheet, first_row)?;
+            height += self.ui_row_height(sheet, first_row)?;
         }
 
         let row_delta = view.row - view.top_row;
@@ -672,12 +746,12 @@ impl<'a> UserModel<'a> {
             let mut width = 0.0;
             let mut column = left_column;
             while column <= target_column {
-                width += self.model.get_column_width(sheet, column)?;
+                width += self.ui_column_width(sheet, column)?;
                 column += 1;
             }
 
             while width > window_width {
-                width -= self.model.get_column_width(sheet, new_left_column)?;
+                width -= self.ui_column_width(sheet, new_left_column)?;
                 new_left_column += 1;
             }
         } else if target_column < new_left_column {
@@ -688,11 +762,11 @@ impl<'a> UserModel<'a> {
             let mut height = 0.0;
             let mut row = top_row;
             while row <= target_row {
-                height += self.model.get_row_height(sheet, row)?;
+                height += self.ui_row_height(sheet, row)?;
                 row += 1;
             }
             while height > window_height {
-                height -= self.model.get_row_height(sheet, new_top_row)?;
+                height -= self.ui_row_height(sheet, new_top_row)?;
                 new_top_row += 1;
             }
         } else if target_row < new_top_row {
@@ -760,10 +834,10 @@ impl<'a> UserModel<'a> {
                     left_column = new_column;
                 } else {
                     let mut c = new_column;
-                    let mut width = self.model.get_column_width(sheet, c)?;
+                    let mut width = self.ui_column_width(sheet, c)?;
                     while c > 1 && width <= window_width as f64 {
                         c -= 1;
-                        width += self.model.get_column_width(sheet, c)?;
+                        width += self.ui_column_width(sheet, c)?;
                     }
                     if c > view.left_column {
                         left_column = c;
@@ -779,10 +853,10 @@ impl<'a> UserModel<'a> {
                     top_row = new_row;
                 } else {
                     let mut r = new_row;
-                    let mut height = self.model.get_row_height(sheet, r)?;
+                    let mut height = self.ui_row_height(sheet, r)?;
                     while r > 1 && height <= window_height as f64 {
                         r -= 1;
-                        height += self.model.get_row_height(sheet, r)?;
+                        height += self.ui_row_height(sheet, r)?;
                     }
                     if r > view.top_row {
                         top_row = r;

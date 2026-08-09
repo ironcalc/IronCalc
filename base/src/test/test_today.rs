@@ -49,3 +49,29 @@ fn now_basic_europe_berlin() {
     // This is UTC + 1 hour: 45005.572511574 + 1/24
     assert_eq!(model._get_text("A2"), *"3/20/2023, 2:44 PM");
 }
+
+#[test]
+fn today_with_timezone() {
+    mock_time::set_mock_time(TIMESTAMP_2023);
+    let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model._set("A1", "=TODAY(\"Pacific/Kiritimati\")");
+    model._set("A2", "=NOW(\"Europe/Berlin\")");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"3/21/2023");
+    // 45005.572511574
+    assert_eq!(model._get_text("A2"), *"3/20/2023, 2:44 PM");
+    model.evaluate();
+}
+
+#[test]
+fn today_with_invalid_timezone() {
+    mock_time::set_mock_time(TIMESTAMP_2023);
+    let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model._set("A1", "=TODAY(\"Invalid/Timezone\")");
+    model._set("A2", "=NOW(\"Invalid/Timezone\")");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+}

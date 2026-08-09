@@ -1,5 +1,8 @@
-use ironcalc_base::types::{
-    Alignment, BorderItem, HorizontalAlignment, Styles, VerticalAlignment, Workbook,
+use ironcalc_base::types::{Color, Styles, Workbook};
+
+use crate::export::{
+    dxfs_styles::get_dxfs_xml,
+    styles_util::{get_alignment, get_border_xml, get_fill_xml},
 };
 
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
@@ -9,10 +12,16 @@ fn get_fonts_xml(styles: &Styles) -> String {
     let mut fonts_str: Vec<String> = vec![];
     for font in fonts {
         let size = format!("<sz val=\"{}\"/>", font.sz);
-        let color = if let Some(some_color) = &font.color {
-            format!("<color rgb=\"FF{}\"/>", some_color.trim_start_matches('#'))
-        } else {
-            "".to_string()
+        let color = match &font.color {
+            Color::Rgb(s) => format!("<color rgb=\"FF{}\"/>", s.trim_start_matches('#')),
+            Color::Theme(idx, tint) => {
+                if *tint == 0.0 {
+                    format!("<color theme=\"{idx}\"/>")
+                } else {
+                    format!("<color theme=\"{idx}\" tint=\"{:.16}\"/>", tint)
+                }
+            }
+            Color::None => "".to_string(),
         };
         let name = format!("<name val=\"{}\"/>", escape_xml(&font.name));
         let bold = if font.b { "<b/>" } else { "" };
@@ -42,25 +51,22 @@ fn get_fonts_xml(styles: &Styles) -> String {
     )
 }
 
-fn get_color_xml(color: &Option<String>, name: &str) -> String {
-    // We blindly append FF at the beginning of these RGB color to make it ARGB
-    if let Some(some_color) = color {
-        format!("<{name} rgb=\"FF{}\"/>", some_color.trim_start_matches('#'))
-    } else {
-        "".to_string()
-    }
-}
-
 fn get_fills_xml(styles: &Styles) -> String {
     let fills = &styles.fills;
-    let mut fills_str: Vec<String> = vec![];
+    // The first two fills must be the default fills
+    let mut fills_str = vec![
+        "<fill><patternFill patternType=\"none\"/></fill>".to_string(),
+        "<fill><patternFill patternType=\"gray125\"/></fill>".to_string(),
+    ];
+    let mut fill_count = 0;
     for fill in fills {
-        let pattern_type = &fill.pattern_type;
-        let fg_color = get_color_xml(&fill.fg_color, "fgColor");
-        let bg_color = get_color_xml(&fill.bg_color, "bgColor");
-        fills_str.push(format!(
-            "<fill><patternFill patternType=\"{pattern_type}\">{fg_color}{bg_color}</patternFill></fill>"
-        ));
+        if fill_count < 2 {
+            fill_count += 1;
+            continue;
+        } else {
+            fills_str.push(get_fill_xml(fill));
+        }
+        fill_count += 1;
     }
     let fill_count = fills.len();
     format!(
@@ -69,28 +75,12 @@ fn get_fills_xml(styles: &Styles) -> String {
     )
 }
 
-fn get_border_xml(border: &Option<BorderItem>, name: &str) -> String {
-    if let Some(border_item) = border {
-        let color = get_color_xml(&border_item.color, "color");
-        return format!("<{name} style=\"{}\">{color}</{name}>", border_item.style);
-    }
-    format!("<{name}/>")
-}
-
 fn get_borders_xml(styles: &Styles) -> String {
     let borders = &styles.borders;
     let mut borders_str: Vec<String> = vec![];
     let border_count = borders.len();
     for border in borders {
-        // TODO: diagonal_up/diagonal_down?
-        let border_left = get_border_xml(&border.left, "left");
-        let border_right = get_border_xml(&border.right, "right");
-        let border_top = get_border_xml(&border.top, "top");
-        let border_bottom = get_border_xml(&border.bottom, "bottom");
-        let border_diagonal = get_border_xml(&border.diagonal, "diagonal");
-        borders_str.push(format!(
-            "<border>{border_left}{border_right}{border_top}{border_bottom}{border_diagonal}</border>"
-        ));
+        borders_str.push(get_border_xml(border));
     }
     format!(
         "<borders count=\"{border_count}\">{}</borders>",
@@ -122,25 +112,6 @@ fn get_cell_number_formats_xml(styles: &Styles) -> String {
     )
 }
 
-fn get_alignment(alignment: &Alignment) -> String {
-    let wrap_text = if alignment.wrap_text {
-        " wrapText=\"1\""
-    } else {
-        ""
-    };
-    let horizontal = if alignment.horizontal != HorizontalAlignment::default() {
-        format!(" horizontal=\"{}\"", alignment.horizontal)
-    } else {
-        "".to_string()
-    };
-    let vertical = if alignment.vertical != VerticalAlignment::default() {
-        format!(" vertical=\"{}\"", alignment.vertical)
-    } else {
-        "".to_string()
-    };
-    format!("<alignment{wrap_text}{horizontal}{vertical}/>")
-}
-
 fn get_cell_style_xfs_xml(styles: &Styles) -> String {
     let cell_style_xfs = &styles.cell_style_xfs;
     let mut cell_style_str: Vec<String> = vec![];
@@ -149,18 +120,28 @@ fn get_cell_style_xfs_xml(styles: &Styles) -> String {
         let fill_id = cell_style_xf.fill_id;
         let font_id = cell_style_xf.font_id;
         let num_fmt_id = cell_style_xf.num_fmt_id;
-        let apply_alignment_str = if cell_style_xf.apply_alignment {
-            r#" applyAlignment="1""#
+        let apply_alignment_str = if !cell_style_xf.apply_alignment {
+            r#" applyAlignment="0""#
         } else {
             ""
         };
-        let apply_font_str = if cell_style_xf.apply_font {
-            r#" applyFont="1""#
+        let apply_font_str = if !cell_style_xf.apply_font {
+            r#" applyFont="0""#
         } else {
             ""
         };
-        let apply_fill_str = if cell_style_xf.apply_fill {
-            r#" applyFill="1""#
+        let apply_fill_str = if !cell_style_xf.apply_fill {
+            r#" applyFill="0""#
+        } else {
+            ""
+        };
+        let apply_number_format_str = if !cell_style_xf.apply_number_format {
+            r#" applyNumberFormat="0""#
+        } else {
+            ""
+        };
+        let apply_border_str = if !cell_style_xf.apply_border {
+            r#" applyBorder="0""#
         } else {
             ""
         };
@@ -172,7 +153,9 @@ fn get_cell_style_xfs_xml(styles: &Styles) -> String {
               numFmtId=\"{num_fmt_id}\"\
               {apply_alignment_str}\
               {apply_font_str}\
-              {apply_fill_str}/>"
+              {apply_fill_str}\
+              {apply_number_format_str}\
+              {apply_border_str}/>"
         ));
     }
     let style_count = cell_style_xfs.len();
@@ -211,6 +194,16 @@ fn get_cell_xfs_xml(styles: &Styles) -> String {
         } else {
             ""
         };
+        let apply_number_format_str = if cell_xf.apply_number_format {
+            r#" applyNumberFormat="1""#
+        } else {
+            ""
+        };
+        let apply_border_str = if cell_xf.apply_border {
+            r#" applyBorder="1""#
+        } else {
+            ""
+        };
         let properties = format!(
             "xfId=\"{xf_id}\" \
                 borderId=\"{border_id}\" \
@@ -220,7 +213,9 @@ fn get_cell_xfs_xml(styles: &Styles) -> String {
                 {quote_prefix_str}\
                 {apply_alignment_str}\
                 {apply_font_str}\
-                {apply_fill_str}"
+                {apply_fill_str}\
+                {apply_number_format_str}\
+                {apply_border_str}"
         );
         if let Some(alignment) = &cell_xf.alignment {
             let alignment = get_alignment(alignment);
@@ -265,6 +260,7 @@ pub(crate) fn get_styles_xml(model: &Workbook) -> String {
     let cell_style_xfs = get_cell_style_xfs_xml(styles);
     let cell_xfs = get_cell_xfs_xml(styles);
     let cell_styles = get_cell_styles_xml(styles);
+    let dxfs = get_dxfs_xml(styles);
 
     format!(
         "{XML_DECLARATION}
@@ -276,7 +272,7 @@ pub(crate) fn get_styles_xml(model: &Workbook) -> String {
 {cell_style_xfs}\
 {cell_xfs}\
 {cell_styles}\
-<dxfs count=\"0\"/>\
+{dxfs}\
 </styleSheet>"
     )
 }

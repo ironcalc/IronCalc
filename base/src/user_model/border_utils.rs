@@ -1,4 +1,4 @@
-use crate::types::BorderItem;
+use crate::types::{BorderItem, Color};
 
 fn parse_color(s: &str) -> Option<(u8, u8, u8)> {
     let s = s.trim_start_matches('#');
@@ -29,21 +29,25 @@ fn compute_luminance(r: u8, g: u8, b: u8) -> f64 {
     0.299 * r + 0.587 * g + 0.114 * b
 }
 
-fn is_max_color(a: &str, b: &str) -> bool {
-    let (ar, ag, ab) = match parse_color(a) {
-        Some(rgb) => rgb,
-        None => return false, // Invalid color format for 'a'
+fn is_max_color(a: &Color, b: &Color) -> bool {
+    let a_str = match a {
+        Color::Rgb(s) => s.as_str(),
+        Color::Theme(_, _) | Color::None => return false,
     };
-
-    let (br, bg, bb) = match parse_color(b) {
-        Some(rgb) => rgb,
-        None => return false, // Invalid color format for 'b'
+    let b_str = match b {
+        Color::Rgb(s) => s.as_str(),
+        Color::Theme(_, _) | Color::None => return false,
     };
-
+    let (ar, ag, ab) = match parse_color(a_str) {
+        Some(rgb) => rgb,
+        None => return false,
+    };
+    let (br, bg, bb) = match parse_color(b_str) {
+        Some(rgb) => rgb,
+        None => return false,
+    };
     let luminance_a = compute_luminance(ar, ag, ab);
     let luminance_b = compute_luminance(br, bg, bb);
-
-    // 'b' is heavier if its luminance is less than 'a's luminance
     luminance_b < luminance_a
 }
 
@@ -59,9 +63,9 @@ pub(crate) fn is_max_border(a: Option<&BorderItem>, b: Option<&BorderItem>) -> b
                 return false;
             }
             match (&item_a.color, &item_b.color) {
-                (_, None) => false,
-                (None, Some(_)) => true,
-                (Some(color_a), Some(color_b)) => is_max_color(color_a, color_b),
+                (_, Color::None) => false,
+                (Color::None, _) => true,
+                (color_a, color_b) => is_max_color(color_a, color_b),
             }
         }
     }
@@ -70,13 +74,17 @@ pub(crate) fn is_max_border(a: Option<&BorderItem>, b: Option<&BorderItem>) -> b
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::BorderStyle;
+    use crate::types::{BorderStyle, Color};
+
+    fn rgb(s: &str) -> Color {
+        Color::Rgb(s.to_string())
+    }
 
     #[test]
     fn compare_borders() {
         let b = BorderItem {
             style: BorderStyle::Thin,
-            color: Some("#FFF".to_string()),
+            color: Color::Rgb("#FFF".to_string()),
         };
         // Some border *always* beats no border
         assert!(is_max_border(None, Some(&b)));
@@ -88,50 +96,44 @@ mod tests {
     #[test]
     fn basic_colors() {
         // Black vs White
-        assert!(is_max_color("#FFFFFF", "#000000"));
-        assert!(!is_max_color("#000000", "#FFFFFF"));
+        assert!(is_max_color(&rgb("#FFFFFF"), &rgb("#000000")));
+        assert!(!is_max_color(&rgb("#000000"), &rgb("#FFFFFF")));
 
         // Red vs Dark Red
-        assert!(is_max_color("#FF0000", "#800000"));
-        assert!(!is_max_color("#800000", "#FF0000"));
+        assert!(is_max_color(&rgb("#FF0000"), &rgb("#800000")));
+        assert!(!is_max_color(&rgb("#800000"), &rgb("#FF0000")));
 
         // Green vs Dark Green
-        assert!(is_max_color("#00FF00", "#008000"));
-        assert!(!is_max_color("#008000", "#00FF00"));
+        assert!(is_max_color(&rgb("#00FF00"), &rgb("#008000")));
+        assert!(!is_max_color(&rgb("#008000"), &rgb("#00FF00")));
 
         // Blue vs Dark Blue
-        assert!(is_max_color("#0000FF", "#000080"));
-        assert!(!is_max_color("#000080", "#0000FF"));
+        assert!(is_max_color(&rgb("#0000FF"), &rgb("#000080")));
+        assert!(!is_max_color(&rgb("#000080"), &rgb("#0000FF")));
     }
 
     #[test]
     fn same_color() {
-        // Comparing the same color should return false
-        assert!(!is_max_color("#123456", "#123456"));
+        assert!(!is_max_color(&rgb("#123456"), &rgb("#123456")));
     }
 
     #[test]
     fn edge_cases() {
-        // Colors with minimal luminance difference
-        assert!(!is_max_color("#000000", "#010101"));
-        assert!(!is_max_color("#FEFEFE", "#FFFFFF"));
-        assert!(!is_max_color("#7F7F7F", "#808080"));
+        assert!(!is_max_color(&rgb("#000000"), &rgb("#010101")));
+        assert!(!is_max_color(&rgb("#FEFEFE"), &rgb("#FFFFFF")));
+        assert!(!is_max_color(&rgb("#7F7F7F"), &rgb("#808080")));
     }
 
     #[test]
     fn luminance_ordering() {
-        // Colors with known luminance differences
-        assert!(is_max_color("#CCCCCC", "#333333")); // Light gray vs Day
-        assert!(is_max_color("#FFFF00", "#808000")); // Yellow ve
-        assert!(is_max_color("#FF00FF", "#800080")); // Magenta vle
+        assert!(is_max_color(&rgb("#CCCCCC"), &rgb("#333333")));
+        assert!(is_max_color(&rgb("#FFFF00"), &rgb("#808000")));
+        assert!(is_max_color(&rgb("#FF00FF"), &rgb("#800080")));
     }
 
     #[test]
     fn borderline_cases() {
-        // Testing colors with equal luminance
-        assert!(!is_max_color("#777777", "#777777"));
-
-        // Testing black against near-black
-        assert!(!is_max_color("#000000", "#010000"));
+        assert!(!is_max_color(&rgb("#777777"), &rgb("#777777")));
+        assert!(!is_max_color(&rgb("#000000"), &rgb("#010000")));
     }
 }

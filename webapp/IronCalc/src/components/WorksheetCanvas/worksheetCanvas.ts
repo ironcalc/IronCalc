@@ -1,27 +1,31 @@
-import type { CellStyle, Model } from "@ironcalc/wasm";
+import type { CellLink, CellStyle, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
-import { theme } from "../../theme";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
+import { CellLinks, type LinkHoverCell } from "./cellLinks";
 import {
-  COLUMN_WIDTH_SCALE,
+  drawBorder,
+  drawBorderLine,
+  ICON_AREA_WIDTH,
+  renderDataBar,
+  renderIcon,
+  renderRating,
+} from "./cfRenderer";
+import {
   cellPadding,
-  defaultTextColor,
-  gridColor,
-  gridSeparatorColor,
-  headerBackground,
-  headerBorderColor,
-  headerSelectedBackground,
-  headerSelectedColor,
-  headerTextColor,
+  headerColumnWidth,
+  headerRowHeight,
   LAST_COLUMN,
   LAST_ROW,
-  outlineColor,
-  ROW_HEIGH_SCALE,
 } from "./constants";
 import { attachOutlineHandle } from "./outlineHandle";
-import { computeWrappedLines, hexToRGBA10Percent } from "./util";
+import {
+  computeWrappedLines,
+  hexToRGBA10Percent,
+  readThemeFromCSS,
+  type Theme,
+} from "./util";
 
 export interface CanvasSettings {
   model: Model;
@@ -32,6 +36,7 @@ export interface CanvasSettings {
     canvas: HTMLCanvasElement;
     cellOutline: HTMLDivElement;
     areaOutline: HTMLDivElement;
+    cellArrayStructure: HTMLDivElement;
     extendToOutline: HTMLDivElement;
     columnGuide: HTMLDivElement;
     rowGuide: HTMLDivElement;
@@ -40,20 +45,14 @@ export interface CanvasSettings {
   };
   onColumnWidthChanges: (sheet: number, column: number, width: number) => void;
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
+  onLinkHover?: (cell: LinkHoverCell | null) => void;
+  onHideLinkTooltip?: () => void;
+  linkTooltipCell: LinkHoverCell | null;
   refresh: () => void;
 }
 
-export const fonts = {
-  regular: 'Inter, "Adjusted Arial Fallback", sans-serif',
-  mono: '"Fira Mono", "Adjusted Courier New Fallback", serif',
-};
-
-export const headerRowHeight = 28;
-export const headerColumnWidth = 30;
 export const devicePixelRatio = window.devicePixelRatio || 1;
 
-export const defaultCellFontFamily = fonts.regular;
-export const headerFontFamily = fonts.regular;
 export const frozenSeparatorWidth = 3;
 
 interface TextProperties {
@@ -69,6 +68,7 @@ interface TextProperties {
   underlined: boolean;
   strike: boolean;
   lines: [string, number, number, number][];
+  link: CellLink | null;
 }
 export default class WorksheetCanvas {
   sheetWidth: number;
@@ -86,6 +86,8 @@ export default class WorksheetCanvas {
   editor: HTMLDivElement;
 
   areaOutline: HTMLDivElement;
+
+  cellArrayStructure: HTMLDivElement;
 
   cellOutline: HTMLDivElement;
 
@@ -112,6 +114,10 @@ export default class WorksheetCanvas {
   cells: TextProperties[];
   spills: Map<string, number>;
 
+  private cellLinks: CellLinks;
+
+  theme: Theme;
+
   constructor(options: CanvasSettings) {
     this.model = options.model;
     this.sheetWidth = 0;
@@ -124,7 +130,14 @@ export default class WorksheetCanvas {
     this.editor = options.elements.editor;
     this.refresh = options.refresh;
 
+    const rootRef = this.canvas.closest(".ic-root");
+    if (!rootRef) {
+      throw new Error("WorksheetCanvas must be rendered within an .ic-root");
+    }
+    this.theme = readThemeFromCSS(rootRef);
+
     this.cellOutline = options.elements.cellOutline;
+    this.cellArrayStructure = options.elements.cellArrayStructure;
     this.areaOutline = options.elements.areaOutline;
     this.extendToOutline = options.elements.extendToOutline;
     this.rowGuide = options.elements.rowGuide;
@@ -139,6 +152,18 @@ export default class WorksheetCanvas {
     // a cell marked as "spill" means its left border should be skipped
     this.spills = new Map<string, number>();
     this.cells = [];
+
+    this.cellLinks = new CellLinks(this, {
+      onLinkHover: options.onLinkHover,
+      onHideTooltip: options.onHideLinkTooltip,
+      tooltipCell: options.linkTooltipCell,
+    });
+  }
+
+  // Follows a cell link: opens external targets in a new tab, navigates to
+  // internal references
+  followLink(link: CellLink): void {
+    this.cellLinks.followLink(link);
   }
 
   setScrollPosition(scrollPosition: { left: number; top: number }): void {
@@ -347,11 +372,15 @@ export default class WorksheetCanvas {
     fontSize: number;
   } {
     const fontSize = style.font?.sz || 13;
-    let font = `${fontSize}px ${defaultCellFontFamily}`;
-    let color = defaultTextColor;
+    let font = `${fontSize}px ${this.theme.cellFontFamily}`;
+    let color = this.theme.defaultTextColor;
 
     if (style.font) {
-      color = style.font.color;
+      // Font.color is optional: a missing color means "use the default" — fall back
+      // to the theme's default text color rather than leaving it undefined.
+      if (style.font.color) {
+        color = this.model.resolveColor(style.font.color);
+      }
       font = style.font.b ? `bold ${font}` : `400 ${font}`;
       if (style.font.i) {
         font = `italic ${font}`;
@@ -436,6 +465,8 @@ export default class WorksheetCanvas {
     const selectedSheet = this.model.getSelectedSheet();
 
     this.cells = [];
+
+    this.cellLinks.setSheetLinks(this.model.getLinks(selectedSheet));
 
     const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
     const frozenRows = this.model.getFrozenRowsCount(selectedSheet);
@@ -550,11 +581,30 @@ export default class WorksheetCanvas {
     width: number,
     height: number,
   ) {
+    if (width <= 0 || height <= 0) {
+      return;
+    }
     const selectedSheet = this.model.getSelectedSheet();
 
-    const style = this.model.getCellStyle(selectedSheet, row, column);
+    const extended = this.model.getCellStyle(selectedSheet, row, column);
+    const style = extended.style;
+
+    // Suppress text when the CF rule hides the value
+    if (extended.icon && !extended.icon.show_value) {
+      return;
+    }
+    if (extended.data_bar && !extended.data_bar.show_value) {
+      return;
+    }
+    if (extended.rating && !extended.rating.show_value) {
+      return;
+    }
 
     const { font, color: textColor, fontSize } = this.getFontStyle(style);
+
+    // The link is only used for the hover tooltip: it does not affect how the
+    // cell looks. The link styling (color, underline) is part of the cell style.
+    const link = this.cellLinks.getLink(row, column);
 
     // Number = 1,
     // Text = 2,
@@ -587,14 +637,21 @@ export default class WorksheetCanvas {
     );
     const lineCount = lines.length;
     let maxWidth = 0;
-    let minX = x;
+    // When an icon is shown alongside the value, shift text right by the icon area.
+    const ratingIconOffset = extended.rating?.show_value
+      ? extended.rating.count * (style.font?.sz ? style.font.sz * 1.2 : 16)
+      : 0;
+    const iconOffset = extended.icon?.show_value
+      ? ICON_AREA_WIDTH
+      : ratingIconOffset;
+    let minX = x + iconOffset;
     let maxX = x + width;
     const textProperties = {
       row,
       column,
       x: minX,
       y,
-      width,
+      width: width - iconOffset,
       height,
       fontSize,
       textColor,
@@ -602,6 +659,7 @@ export default class WorksheetCanvas {
       underlined: style.font?.u || false,
       strike: style.font?.strike || false,
       lines: [] as [string, number, number, number][],
+      link,
     };
 
     lines.forEach((text, line) => {
@@ -610,7 +668,7 @@ export default class WorksheetCanvas {
       let textY: number;
       // The idea is that in the present font-size and default row heigh,
       // top/bottom and center horizontalAlign coincide
-      const verticalPadding = 4;
+      const verticalPadding = 6.5; // default row height is 25 and font size is 13, so (25 - 13) / 2
       if (horizontalAlign === "right") {
         textX = width - cellPadding + x - textWidth / 2;
       } else if (horizontalAlign === "center") {
@@ -643,23 +701,26 @@ export default class WorksheetCanvas {
     if (
       maxX > rightColumnX &&
       column < LAST_COLUMN &&
-      this.model.getFormattedCellValue(selectedSheet, row, column + 1) === ""
+      (this.model.getFormattedCellValue(selectedSheet, row, column + 1) ===
+        "" ||
+        this.getColumnWidth(selectedSheet, column + 1) === 0)
     ) {
       let spillColumn = column + 1;
       // Keep expanding the spill to the right until:
-      // 1. There is a non-empty cell
+      // 1. There is a non-empty cell (skipping hidden columns)
       // 2. Reaches the end of the row
       // 3. There is the end of frozen columns
       const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
       while (
         rightColumnX < maxX &&
-        this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
-          "" &&
+        (this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
+          "" ||
+          this.getColumnWidth(selectedSheet, spillColumn) === 0) &&
         spillColumn <= LAST_COLUMN &&
         ((column < frozenColumns && spillColumn <= frozenColumns) ||
           column > frozenColumns)
       ) {
-        rightColumnX += this.model.getColumnWidth(selectedSheet, spillColumn);
+        rightColumnX += this.getColumnWidth(selectedSheet, spillColumn);
         // marks (row, spillColumn) as spilling so we don't draw a border to the left
         this.spills.set(`${row}-${spillColumn}`, 1);
         spillColumn += 1;
@@ -670,7 +731,9 @@ export default class WorksheetCanvas {
     if (
       minX < leftColumnX &&
       column > 1 &&
-      this.model.getFormattedCellValue(selectedSheet, row, column - 1) === ""
+      (this.model.getFormattedCellValue(selectedSheet, row, column - 1) ===
+        "" ||
+        this.getColumnWidth(selectedSheet, column - 1) === 0)
     ) {
       let spillColumn = column - 1;
       // Keep expanding the spill to the left until:
@@ -679,8 +742,9 @@ export default class WorksheetCanvas {
       // 3. There is the end of frozen columns
       while (
         leftColumnX > minX &&
-        this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
-          "" &&
+        (this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
+          "" ||
+          this.getColumnWidth(selectedSheet, spillColumn) === 0) &&
         spillColumn >= 1 &&
         ((column <= frozenColumnsCount && spillColumn <= frozenColumnsCount) ||
           column > frozenColumnsCount)
@@ -709,7 +773,7 @@ export default class WorksheetCanvas {
     this.cells.push(textProperties);
   }
 
-  /// Renders the cell style: colors, borders, etc. But not the text.
+  /// Renders the cell style: background color, CF overlays, and borders (but not text).
   private renderCellStyle(
     row: number,
     column: number,
@@ -718,20 +782,42 @@ export default class WorksheetCanvas {
     width: number,
     height: number,
   ): void {
+    if (width <= 0 || height <= 0) {
+      return;
+    }
     const selectedSheet = this.model.getSelectedSheet();
-    const style = this.model.getCellStyle(selectedSheet, row, column);
+    const extended = this.model.getCellStyle(selectedSheet, row, column);
+    const style = extended.style;
 
-    // first the background
-    let backgroundColor = theme.palette.common.white;
-    if (style.fill.fg_color) {
-      backgroundColor = style.fill.fg_color;
+    let backgroundColor = this.theme.backgroundColor;
+    if (style.fill.color) {
+      backgroundColor = this.model.resolveColor(style.fill.color);
     }
     const cellGridColor = this.model.getShowGridLines(selectedSheet)
-      ? gridColor
+      ? this.theme.gridColor
       : backgroundColor;
     const context = this.ctx;
     context.fillStyle = backgroundColor;
-    context.fillRect(x, y, width, height);
+    context.fillRect(x + 0.5, y + 0.5, width - 1, height - 1);
+
+    // CF overlays rendered on top of the background.
+    if (extended.data_bar) {
+      renderDataBar(context, x, y, width, height, extended.data_bar, (c) =>
+        this.model.resolveColor(c),
+      );
+    }
+    if (extended.icon) {
+      const iconSize = style.font?.sz ? style.font.sz * 1.2 : 16;
+      renderIcon(context, x, y, height, extended.icon, iconSize, (c) =>
+        this.model.resolveColor(c),
+      );
+    }
+    if (extended.rating) {
+      const iconSize = style.font?.sz ? style.font.sz * 1.2 : 16;
+      renderRating(context, x, y, height, extended.rating, iconSize, (c) =>
+        this.model.resolveColor(c),
+      );
+    }
 
     // Let's do the border
     // Algorithm:
@@ -741,93 +827,113 @@ export default class WorksheetCanvas {
     //  * otherwise we use the background color of the adjacent cell
     //  * if everything else fails we use the default grid color
     // We only set the left and top borders (right and bottom are set later)
+
+    // Borders — we only draw left and top; the adjacent cell draws right/bottom.
     const border = style.border;
 
-    // we skip don't draw a left border if it is marked as a "spill cell"
+    // Skip the left border for spill cells.
     if (this.spills.get(`${row}-${column}`) !== 1) {
       let borderLeftColor = cellGridColor;
-      let borderLeftWidth = 1;
+      let borderLeftStyle = "thin";
       if (border.left) {
-        borderLeftColor = border.left.color;
-        switch (border.left.style) {
-          case "thin":
-            break;
-          case "medium":
-            borderLeftWidth = 2;
-            break;
-          case "thick":
-            borderLeftWidth = 3;
-        }
+        borderLeftColor = this.model.resolveColor(border.left.color);
+        borderLeftStyle = border.left.style;
       } else {
-        const leftStyle = this.model.getCellStyle(
+        const leftExtended = this.model.getCellStyle(
           selectedSheet,
           row,
           column - 1,
         );
+        const leftStyle = leftExtended.style;
         if (leftStyle.border.right) {
-          borderLeftColor = leftStyle.border.right.color;
-          switch (leftStyle.border.right.style) {
-            case "thin":
-              break;
-            case "medium":
-              borderLeftWidth = 2;
-              break;
-            case "thick":
-              borderLeftWidth = 3;
-          }
-        } else if (style.fill.fg_color) {
-          borderLeftColor = style.fill.fg_color;
-        } else if (leftStyle.fill.fg_color) {
-          borderLeftColor = leftStyle.fill.fg_color;
+          borderLeftColor = this.model.resolveColor(
+            leftStyle.border.right.color,
+          );
+          borderLeftStyle = leftStyle.border.right.style;
+        } else if (style.fill.color) {
+          borderLeftColor = this.model.resolveColor(style.fill.color);
+        } else if (leftStyle.fill.color) {
+          borderLeftColor = this.model.resolveColor(leftStyle.fill.color);
         }
       }
 
-      context.beginPath();
-      context.strokeStyle = borderLeftColor;
-      context.lineWidth = borderLeftWidth;
-      context.moveTo(x, y);
-      context.lineTo(x, y + height);
-      context.stroke();
+      // The left border of the first column is shared with the header separator
+      if (x > headerColumnWidth + 0.51 || border.left) {
+        drawBorder(
+          context,
+          borderLeftStyle,
+          borderLeftColor,
+          x,
+          y,
+          x,
+          y + height,
+          true,
+        );
+      }
+    } else {
+      // If the cell spills to the right we don't want to set the border but we still need to fill
+      // the border gap with the background color
+      const leftExtended = this.model.getCellStyle(
+        selectedSheet,
+        row,
+        column - 1,
+      );
+      const borderLeftStyle = "thin";
+      const leftStyle = leftExtended.style;
+      let borderLeftColor = null;
+      if (style.fill.color) {
+        borderLeftColor = this.model.resolveColor(style.fill.color);
+      } else if (leftStyle.fill.color) {
+        borderLeftColor = this.model.resolveColor(leftStyle.fill.color);
+      }
+      if (borderLeftColor) {
+        drawBorder(
+          context,
+          borderLeftStyle,
+          borderLeftColor,
+          x,
+          y,
+          x,
+          y + height,
+          true,
+        );
+      }
     }
 
     let borderTopColor = cellGridColor;
-    let borderTopWidth = 1;
+    let borderTopStyle = "thin";
     if (border.top) {
-      borderTopColor = border.top.color;
-      switch (border.top.style) {
-        case "thin":
-          break;
-        case "medium":
-          borderTopWidth = 2;
-          break;
-        case "thick":
-          borderTopWidth = 3;
-      }
+      borderTopColor = this.model.resolveColor(border.top.color);
+      borderTopStyle = border.top.style;
     } else {
-      const topStyle = this.model.getCellStyle(selectedSheet, row - 1, column);
+      const topExtended = this.model.getCellStyle(
+        selectedSheet,
+        row - 1,
+        column,
+      );
+      const topStyle = topExtended.style;
       if (topStyle.border.bottom) {
-        borderTopColor = topStyle.border.bottom.color;
-        switch (topStyle.border.bottom.style) {
-          case "thin":
-            break;
-          case "medium":
-            borderTopWidth = 2;
-            break;
-          case "thick":
-            borderTopWidth = 3;
-        }
-      } else if (style.fill.fg_color) {
-        borderTopColor = style.fill.fg_color;
-      } else if (topStyle.fill.fg_color) {
-        borderTopColor = topStyle.fill.fg_color;
+        borderTopColor = this.model.resolveColor(topStyle.border.bottom.color);
+        borderTopStyle = topStyle.border.bottom.style;
+      } else if (style.fill.color) {
+        borderTopColor = this.model.resolveColor(style.fill.color);
+      } else if (topStyle.fill.color) {
+        borderTopColor = this.model.resolveColor(topStyle.fill.color);
       }
     }
-    context.beginPath();
-    context.strokeStyle = borderTopColor;
-    context.lineWidth = borderTopWidth;
-    context.moveTo(x, y);
-    context.lineTo(x + width, y);
-    context.stroke();
+    // The top border of the first row is shared with the header separator
+    if (y > headerRowHeight + 0.51 || border.top) {
+      drawBorder(
+        context,
+        borderTopStyle,
+        borderTopColor,
+        x,
+        y,
+        x + width,
+        y,
+        false,
+      );
+    }
   }
 
   /// Renders the text in the cell.
@@ -937,10 +1043,14 @@ export default class WorksheetCanvas {
         if (fullText === "") {
           continue;
         }
-        const style = this.model.getCellStyle(sheet, row, column);
-        const fontSize = style.font.sz;
-        let font = `${fontSize}px ${defaultCellFontFamily}`;
-        font = style.font.b ? `bold ${font}` : `400 ${font}`;
+        const { style: cellStyle } = this.model.getCellStyle(
+          sheet,
+          row,
+          column,
+        );
+        const fontSize = cellStyle.font.sz;
+        let font = `${fontSize}px ${this.theme.cellFontFamily}`;
+        font = cellStyle.font.b ? `bold ${font}` : `400 ${font}`;
         this.ctx.font = font;
         const lines = fullText.split("\n");
         for (const line of lines) {
@@ -1007,15 +1117,19 @@ export default class WorksheetCanvas {
           continue;
         }
         const width = this.getColumnWidth(sheet, column);
-        const style = this.model.getCellStyle(sheet, row, column);
-        const fontSize = style.font.sz;
+        const { style: cellStyle } = this.model.getCellStyle(
+          sheet,
+          row,
+          column,
+        );
+        const fontSize = cellStyle.font.sz;
         const lineHeight = fontSize * 1.5;
-        let font = `${fontSize}px ${defaultCellFontFamily}`;
-        font = style.font.b ? `bold ${font}` : `400 ${font}`;
+        let font = `${fontSize}px ${this.theme.cellFontFamily}`;
+        font = cellStyle.font.b ? `bold ${font}` : `400 ${font}`;
         this.ctx.font = font;
         const lines = computeWrappedLines(
           fullText,
-          style.alignment?.wrap_text || false,
+          cellStyle.alignment?.wrap_text || false,
           this.ctx,
           width,
         );
@@ -1044,19 +1158,19 @@ export default class WorksheetCanvas {
     div.style.height = `${headerRowHeight}px`;
     div.style.backgroundColor = selected
       ? isFullColumnSelected
-        ? theme.palette.primary.main
-        : headerSelectedBackground
-      : headerBackground;
+        ? this.theme.primaryMain
+        : this.theme.headerSelectedBackground
+      : this.theme.headerBackground;
     div.style.color = selected
       ? isFullColumnSelected
-        ? theme.palette.common.white
-        : headerSelectedColor
-      : headerTextColor;
+        ? this.theme.commonWhite
+        : this.theme.headerSelectedColor
+      : this.theme.headerTextColor;
     div.style.fontWeight = "bold";
-    div.style.borderLeft = `1px solid ${headerBorderColor}`;
-    div.style.borderTop = `1px solid ${headerBorderColor}`;
+    div.style.borderLeft = `1px solid ${this.theme.headerBorderColor}`;
+    div.style.borderTop = `1px solid ${this.theme.headerBorderColor}`;
     if (selected) {
-      div.style.borderBottom = `1px solid ${outlineColor}`;
+      div.style.borderBottom = `1px solid ${this.theme.outlineColor}`;
       div.classList.add("selected");
     } else {
       div.classList.remove("selected");
@@ -1066,8 +1180,9 @@ export default class WorksheetCanvas {
   private removeHandles(): void {
     const root = this.canvas.parentElement;
     if (root) {
-      for (const handle of root.querySelectorAll(".row-resize-handle"))
+      for (const handle of root.querySelectorAll(".row-resize-handle")) {
         handle.remove();
+      }
     }
   }
 
@@ -1095,30 +1210,33 @@ export default class WorksheetCanvas {
 
     for (let row = firstRow; row <= bottomRightCell.row; row += 1) {
       const rowHeight = this.getRowHeight(selectedSheet, row);
+      if (rowHeight <= 0) {
+        continue;
+      }
       const selected = row >= rowStart && row <= rowEnd;
-      context.fillStyle = headerBorderColor;
-      context.fillRect(0.5, topLeftCornerY, headerColumnWidth, rowHeight);
+      context.fillStyle = this.theme.headerBorderColor;
+      context.fillRect(0.5, topLeftCornerY, headerColumnWidth - 1, rowHeight);
       context.fillStyle = selected
         ? isFullRowSelected
-          ? theme.palette.primary.main
-          : headerSelectedBackground
-        : headerBackground;
+          ? this.theme.primaryMain
+          : this.theme.headerSelectedBackground
+        : this.theme.headerBackground;
       context.fillRect(
         0.5,
         topLeftCornerY + 0.5,
-        headerColumnWidth,
+        headerColumnWidth - 1,
         rowHeight - 1,
       );
       if (selected) {
-        context.fillStyle = outlineColor;
+        context.fillStyle = this.theme.outlineColor;
         context.fillRect(headerColumnWidth - 1, topLeftCornerY, 1, rowHeight);
       }
       context.fillStyle = selected
         ? isFullRowSelected
-          ? theme.palette.common.white
-          : headerSelectedColor
-        : headerTextColor;
-      context.font = `bold 12px ${defaultCellFontFamily}`;
+          ? this.theme.commonWhite
+          : this.theme.headerSelectedColor
+        : this.theme.headerTextColor;
+      context.font = this.theme.headerFont;
       context.fillText(
         `${row}`,
         headerColumnWidth / 2,
@@ -1153,18 +1271,20 @@ export default class WorksheetCanvas {
       [rowStart, rowEnd] = [rowEnd, rowStart];
     }
     const isFullColumnSelected = rowStart === 1 && rowEnd === LAST_ROW;
-    for (const header of columnHeaders.querySelectorAll(".column-header"))
+    for (const header of columnHeaders.querySelectorAll(".column-header")) {
       header.remove();
+    }
     for (const handle of columnHeaders.querySelectorAll(
       ".column-resize-handle",
-    ))
+    )) {
       handle.remove();
+    }
     for (const separator of columnHeaders.querySelectorAll(
       ".frozen-column-separator",
-    ))
+    )) {
       separator.remove();
-    columnHeaders.style.fontFamily = headerFontFamily;
-    columnHeaders.style.fontSize = "12px";
+    }
+    columnHeaders.style.font = this.theme.headerFont;
     columnHeaders.style.height = `${headerRowHeight}px`;
     columnHeaders.style.lineHeight = `${headerRowHeight}px`;
     columnHeaders.style.left = `${headerColumnWidth}px`;
@@ -1184,9 +1304,9 @@ export default class WorksheetCanvas {
       const div = document.createElement("div");
       div.className = "frozen-column-separator";
       div.style.width = `${frozenSeparatorWidth}px`;
-      div.style.height = `${headerRowHeight}`;
+      div.style.height = `${headerRowHeight}px`;
       div.style.display = "inline-block";
-      div.style.backgroundColor = gridSeparatorColor;
+      div.style.backgroundColor = this.theme.gridSeparatorColor;
       this.columnHeaders.insertBefore(div, null);
       deltaX += frozenSeparatorWidth;
     }
@@ -1214,6 +1334,9 @@ export default class WorksheetCanvas {
       this.model.getSelectedSheet(),
       column,
     );
+    if (columnWidth <= 0) {
+      return 0;
+    }
     const div = document.createElement("div");
     div.className = "column-header";
     div.textContent = columnNameFromNumber(column);
@@ -1467,8 +1590,12 @@ export default class WorksheetCanvas {
         cellY += this.getRowHeight(this.model.getSelectedSheet(), row);
       }
     }
-    if (row < 1) row = 1;
-    if (column < 1) column = 1;
+    if (row < 1) {
+      row = 1;
+    }
+    if (column < 1) {
+      column = 1;
+    }
     return { row, column };
   }
 
@@ -1496,7 +1623,7 @@ export default class WorksheetCanvas {
       rowEnd,
       columnEnd,
     );
-    extendToOutline.style.border = `1px dashed ${outlineColor}`;
+    extendToOutline.style.border = `1px dashed ${this.theme.outlineColor}`;
     extendToOutline.style.borderRadius = "3px";
 
     extendToOutline.style.left = `${areaX}px`;
@@ -1506,13 +1633,11 @@ export default class WorksheetCanvas {
   }
 
   private getColumnWidth(sheet: number, column: number): number {
-    return Math.round(
-      this.model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE,
-    );
+    return Math.round(this.model.getColumnWidth(sheet, column));
   }
 
   private getRowHeight(sheet: number, row: number): number {
-    return Math.round(this.model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE);
+    return Math.round(this.model.getRowHeight(sheet, row));
   }
 
   private drawCellEditor(): void {
@@ -1534,7 +1659,7 @@ export default class WorksheetCanvas {
     // );
     // cellOutline.style.fontWeight = style.font.b ? "bold" : "normal";
     // cellOutline.style.fontStyle = style.font.i ? "italic" : "normal";
-    // cellOutline.style.backgroundColor = style.fill.fg_color;
+    // cellOutline.style.backgroundColor = style.fill.color;
     // TODO: Should we add the same color as the text?
     // Only if it is not a formula?
     // cellOutline.style.color = style.font.color;
@@ -1552,18 +1677,21 @@ export default class WorksheetCanvas {
   }
 
   private drawCellOutline(): void {
-    const { cellOutline, areaOutline, cellOutlineHandle } = this;
+    const { cellArrayStructure, cellOutline, areaOutline, cellOutlineHandle } =
+      this;
     if (this.workbookState.getEditingCell()) {
       cellOutline.style.visibility = "hidden";
       cellOutlineHandle.style.visibility = "hidden";
-      areaOutline.style.visibility = "hidden";
-      return;
+    } else {
+      cellOutline.style.visibility = "visible";
+      cellOutlineHandle.style.visibility = this.workbookState.isSelecting()
+        ? "hidden"
+        : "visible";
     }
-    cellOutline.style.visibility = "visible";
-    cellOutlineHandle.style.visibility = this.workbookState.isSelecting()
-      ? "hidden"
-      : "visible";
+
     areaOutline.style.visibility = "visible";
+    // By default there is no "array structure"
+    cellArrayStructure.style.visibility = "hidden";
 
     const [selectedSheet, selectedRow, selectedColumn] =
       this.model.getSelectedCell();
@@ -1582,7 +1710,6 @@ export default class WorksheetCanvas {
       (selectedColumn < topLeftCell.column && selectedColumn > frozenColumns)
     ) {
       cellOutline.style.visibility = "hidden";
-      cellOutlineHandle.style.visibility = "hidden";
     }
 
     // Position the cell outline and clip it
@@ -1611,6 +1738,42 @@ export default class WorksheetCanvas {
     if (columnStart > columnEnd) {
       [columnStart, columnEnd] = [columnEnd, columnStart];
     }
+    // we draw the array structure if needed only if the selected cell is part of an array
+    const arrayStructure = this.model.getCellArrayStructure(
+      selectedSheet,
+      selectedRow,
+      selectedColumn,
+    );
+    let array = null;
+    if (arrayStructure === "SingleCell") {
+      // nothing to see here
+    } else if ("DynamicAnchor" in arrayStructure) {
+      cellArrayStructure.style.visibility = "visible";
+      const [arrayWidth, arrayHeight] = arrayStructure.DynamicAnchor;
+      array = [selectedRow, selectedColumn, arrayWidth, arrayHeight];
+    } else if ("DynamicChild" in arrayStructure) {
+      cellArrayStructure.style.visibility = "visible";
+      array = arrayStructure.DynamicChild;
+    } else if ("ArrayAnchor" in arrayStructure) {
+      cellArrayStructure.style.visibility = "visible";
+      const [arrayWidth, arrayHeight] = arrayStructure.ArrayAnchor;
+      array = [selectedRow, selectedColumn, arrayWidth, arrayHeight];
+    } else if ("ArrayChild" in arrayStructure) {
+      cellArrayStructure.style.visibility = "visible";
+      array = arrayStructure.ArrayChild;
+    }
+    if (array !== null) {
+      const [arrayX, arrayY] = this.getCoordinatesByCell(array[0], array[1]);
+      const [arrayX1, arrayY1] = this.getCoordinatesByCell(
+        array[0] + array[3],
+        array[1] + array[2],
+      );
+      cellArrayStructure.style.left = `${arrayX}px`;
+      cellArrayStructure.style.top = `${arrayY}px`;
+      cellArrayStructure.style.width = `${arrayX1 - arrayX}px`;
+      cellArrayStructure.style.height = `${arrayY1 - arrayY}px`;
+    }
+
     let handleX: number;
     let handleY: number;
     // Position the selected area outline
@@ -1620,10 +1783,6 @@ export default class WorksheetCanvas {
       handleX += this.getColumnWidth(selectedSheet, columnStart);
       handleY += this.getRowHeight(selectedSheet, rowStart);
     } else {
-      areaOutline.style.visibility = "visible";
-      cellOutlineHandle.style.visibility = this.workbookState.isSelecting()
-        ? "hidden"
-        : "visible";
       const [areaX, areaY] = this.getCoordinatesByCell(rowStart, columnStart);
       const [areaWidth, areaHeight] = this.getAreaDimensions(
         rowStart,
@@ -1653,7 +1812,7 @@ export default class WorksheetCanvas {
       );
       areaOutline.style.border = isSelecting
         ? "none"
-        : `1px solid ${outlineColor}`;
+        : `1px solid ${this.theme.outlineColor}`;
       // hide the handle if it is out of the visible area
       if (
         (rowEnd > frozenRows && rowEnd < topLeftCell.row - 1) ||
@@ -1777,6 +1936,16 @@ export default class WorksheetCanvas {
     ctx.setLineDash([]);
   }
 
+  private drawHeaderSeparators(x: number, y: number): void {
+    const context = this.ctx;
+    context.save();
+    context.strokeStyle = this.theme.headerBorderColor;
+    context.lineWidth = 1;
+    drawBorderLine(context, x, y, this.width, y);
+    drawBorderLine(context, x, y, x, this.height);
+    context.restore();
+  }
+
   renderSheet(): void {
     const context = this.ctx;
     const { canvas } = this;
@@ -1792,13 +1961,20 @@ export default class WorksheetCanvas {
 
     const { topLeftCell, bottomRightCell } = this.getVisibleCells();
     this.computeCellsText();
+    // The cell geometry may have changed (scroll, resize, edits): a link
+    // tooltip anchored to a cell that moved or lost its link must go.
+    this.cellLinks.validateTooltip();
 
     const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
     const frozenRows = this.model.getFrozenRowsCount(selectedSheet);
 
-    // Draw frozen rows and columns (top-left-pane)
     let x = headerColumnWidth + 0.5;
     let y = headerRowHeight + 0.5;
+
+    // Separators between the headers and the cells
+    this.drawHeaderSeparators(x, y);
+
+    // Draw frozen rows and columns (top-left-pane)
     for (let row = 1; row <= frozenRows; row += 1) {
       const rowHeight = this.getRowHeight(selectedSheet, row);
       x = headerColumnWidth + 0.5;
@@ -1821,7 +1997,7 @@ export default class WorksheetCanvas {
     if (frozenRows) {
       context.beginPath();
       context.lineWidth = frozenSeparatorWidth;
-      context.strokeStyle = gridSeparatorColor;
+      context.strokeStyle = this.theme.gridSeparatorColor;
       context.moveTo(0, y + frozenOffset);
       context.lineTo(this.width, y + frozenOffset);
       y += frozenSeparatorWidth;
@@ -1833,7 +2009,7 @@ export default class WorksheetCanvas {
     if (frozenColumns) {
       context.beginPath();
       context.lineWidth = frozenSeparatorWidth;
-      context.strokeStyle = gridSeparatorColor;
+      context.strokeStyle = this.theme.gridSeparatorColor;
       context.moveTo(x + frozenOffset, 0);
       context.lineTo(x + frozenOffset, this.height);
       x += frozenSeparatorWidth;
@@ -1910,12 +2086,16 @@ export default class WorksheetCanvas {
     this.renderRowHeaders(frozenRows, topLeftCell, bottomRightCell);
 
     // square in the top left corner
+    // (extends 0.5px right and down to meet the headers, which start at +0.5)
+    context.fillStyle = this.theme.headerCornerBackground;
+    context.fillRect(0, 0, headerColumnWidth + 0.5, headerRowHeight + 0.5);
     context.beginPath();
-    context.strokeStyle = gridSeparatorColor;
+    context.strokeStyle = this.theme.gridSeparatorColor;
     context.moveTo(0, 0.5);
     context.lineTo(x + headerColumnWidth, 0.5);
     context.stroke();
 
+    // Overlays drawn on top of everything else
     this.drawCellOutline();
     this.drawCellEditor();
     this.drawExtendToArea();

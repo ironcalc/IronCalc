@@ -585,4 +585,31 @@ impl<'a> Model<'a> {
 
         CalcResult::Number(p)
     }
+
+    // TDIST(x, deg_freedom, tails) — x≥0; tails=1→T.DIST.RT, tails=2→T.DIST.2T
+    pub(crate) fn fn_tdist_compat(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let x = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        if x < 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "TDIST: x must be >= 0".to_string());
+        }
+        let tails = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(e) => return e,
+        };
+        match tails {
+            1 => self.fn_t_dist_rt(&args[0..2], cell),
+            2 => self.fn_t_dist_2t(&args[0..2], cell),
+            _ => CalcResult::new_error(Error::NUM, cell, "TDIST: tails must be 1 or 2".to_string()),
+        }
+    }
 }

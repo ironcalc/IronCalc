@@ -237,7 +237,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         if day == 7 {
                             day = 0;
                         }
-                        text = format!("{}{}", text, &locale.dates.day_names_short[day]);
+                        text = format!("{}{}", text, locale.dates.day_names_short[day]);
                     }
                     TextToken::DayName => {
                         let date = match date {
@@ -254,7 +254,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         if day == 7 {
                             day = 0;
                         }
-                        text = format!("{}{}", text, &locale.dates.day_names[day]);
+                        text = format!("{}{}", text, locale.dates.day_names[day]);
                     }
                     TextToken::Month => {
                         let date = match date {
@@ -296,7 +296,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                             }
                         };
                         let month = date.month() as usize;
-                        text = format!("{}{}", text, &locale.dates.months_short[month - 1]);
+                        text = format!("{}{}", text, locale.dates.months_short[month - 1]);
                     }
                     TextToken::MonthName => {
                         let date = match date {
@@ -310,7 +310,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                             }
                         };
                         let month = date.month() as usize;
-                        text = format!("{}{}", text, &locale.dates.months[month - 1]);
+                        text = format!("{}{}", text, locale.dates.months[month - 1]);
                     }
                     TextToken::MonthLetter => {
                         let date = match date {
@@ -745,7 +745,7 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // NOTE 1: The separator has to be the same
 // NOTE 2: In some engines "2/3" is implemented ad "2/March of the present year"
 // NOTE 3: I did not implement the "short date"
-fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
+pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
     let separator = if value.contains('/') {
         '/'
     } else if value.contains('-') {
@@ -821,11 +821,9 @@ pub(crate) fn parse_formatted_number(
     let value = original.trim();
     let scientific_format = "0.00E+00";
 
-    let (decimal_separator, group_separator) = if locale.numbers.symbols.decimal == "," {
-        (b',', b'.')
-    } else {
-        (b'.', b',')
-    };
+    let symbols = &locale.numbers.symbols;
+    let decimal_separator = symbols.decimal.chars().next().unwrap_or('.');
+    let group_separator = symbols.group.chars().next().unwrap_or(',');
 
     // Check if it is a percentage
     if let Some(p) = value.strip_suffix('%') {
@@ -907,32 +905,41 @@ struct NumberOptions {
 // If it is a number it either uses commas as thousands separator or it does not
 fn parse_number(
     value: &str,
-    decimal_separator: u8,
-    group_separator: u8,
+    decimal_separator: char,
+    group_separator: char,
 ) -> Result<(f64, NumberOptions), String> {
     let mut position = 0;
-    let bytes = value.as_bytes();
-    let len = bytes.len();
+    let characters: Vec<char> = value.chars().collect();
+    let len = characters.len();
     if len == 0 {
         return Err("Cannot parse number".to_string());
     }
     let mut chars = String::from("");
     let mut group_separator_index = Vec::new();
     // get the sign
-    let sign = if bytes[0] == b'-' {
+    let sign = if characters[0] == '-' {
         position += 1;
         -1.0
-    } else if bytes[0] == b'+' {
+    } else if characters[0] == '+' {
         position += 1;
         1.0
     } else {
         1.0
     };
+
+    if position >= len {
+        return Err("Cannot parse number".to_string());
+    }
+
+    if characters[position] == group_separator {
+        return Err("Cannot parse number".to_string());
+    }
+
     // numbers before the decimal point
     while position < len {
-        let x = bytes[position];
+        let x = characters[position];
         if x.is_ascii_digit() {
-            chars.push(x as char);
+            chars.push(x);
         } else if x == group_separator {
             group_separator_index.push(chars.len());
         } else {
@@ -947,15 +954,15 @@ fn parse_number(
         }
     }
     let mut decimal_digits = 0;
-    if position < len && bytes[position] == decimal_separator {
+    if position < len && characters[position] == decimal_separator {
         // numbers after the decimal point
         chars.push('.');
         position += 1;
         let start_position = 0;
         while position < len {
-            let x = bytes[position];
+            let x = characters[position];
             if x.is_ascii_digit() {
-                chars.push(x as char);
+                chars.push(x);
             } else {
                 break;
             }
@@ -964,18 +971,18 @@ fn parse_number(
         decimal_digits = position - start_position;
     }
     let mut is_scientific = false;
-    if position + 1 < len && (bytes[position] == b'e' || bytes[position] == b'E') {
+    if position + 1 < len && (characters[position] == 'e' || characters[position] == 'E') {
         // exponential side
         is_scientific = true;
-        let x = bytes[position + 1];
-        if x == b'-' || x == b'+' || x.is_ascii_digit() {
+        let x = characters[position + 1];
+        if x == '-' || x == '+' || x.is_ascii_digit() {
             chars.push('e');
-            chars.push(x as char);
+            chars.push(x);
             position += 2;
             while position < len {
-                let x = bytes[position];
+                let x = characters[position];
                 if x.is_ascii_digit() {
-                    chars.push(x as char);
+                    chars.push(x);
                 } else {
                     break;
                 }

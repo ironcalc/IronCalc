@@ -1,6 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{test::util::new_empty_model, types::SheetProperties};
+use crate::{
+    test::util::new_empty_model,
+    types::{Color, SheetProperties},
+};
 
 #[test]
 fn workbook_worksheets_info() {
@@ -12,7 +15,7 @@ fn workbook_worksheets_info() {
             name: "Sheet1".to_string(),
             state: "visible".to_string(),
             sheet_id: 1,
-            color: None
+            color: Color::None
         }
     );
 }

@@ -144,3 +144,31 @@ fn test_update_quote_prefix_reenter_text_2() {
     assert_eq!(model._get_text("A2"), *"TRUE");
     assert!(model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
 }
+
+#[test]
+fn normal_string_with_quote_prefix() {
+    let mut model = new_empty_model();
+    model.set_user_input(0, 1, 1, "'Hello".to_string()).unwrap();
+    model.evaluate();
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
+    assert_eq!(model._get_text("A1"), *"Hello");
+    assert_eq!(
+        model.get_localized_cell_content(0, 1, 1).unwrap(),
+        *"'Hello"
+    );
+}
+
+#[test]
+fn dates_with_quote_prefix() {
+    let mut model = new_empty_model();
+    model
+        .set_user_input(0, 1, 1, "'2024-01-01".to_string())
+        .unwrap();
+    model.evaluate();
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
+    assert_eq!(model._get_text("A1"), *"2024-01-01");
+    assert_eq!(
+        model.get_localized_cell_content(0, 1, 1).unwrap(),
+        *"'2024-01-01"
+    );
+}

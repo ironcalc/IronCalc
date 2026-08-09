@@ -1,17 +1,12 @@
 import type { Model } from "@ironcalc/wasm";
-import { styled } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Fx } from "../../icons";
-import { theme } from "../../theme";
-import { FORMULA_BAR_HEIGHT } from "../constants";
+import { Button } from "../Button/Button";
 import Editor from "../Editor/Editor";
-import {
-  COLUMN_WIDTH_SCALE,
-  ROW_HEIGH_SCALE,
-} from "../WorksheetCanvas/constants";
 import type { WorkbookState } from "../workbookState";
 import FormulaBarMenu from "./FormulaBarMenu";
+import "./formula-bar.css";
 
 type FormulaBarProps = {
   cellAddress: string;
@@ -40,8 +35,10 @@ function FormulaBar(properties: FormulaBarProps) {
   };
 
   return (
-    <Container>
-      <AddressContainer $active={isMenuOpen}>
+    <div className="ic-formula-bar-root">
+      <div
+        className={`${isMenuOpen ? "ic-formula-bar-address ic-formula-bar-address--active" : "ic-formula-bar-address"}`}
+      >
         <FormulaBarMenu
           onMenuOpenChange={handleMenuOpenChange}
           openDrawer={properties.openDrawer}
@@ -49,24 +46,36 @@ function FormulaBar(properties: FormulaBarProps) {
           model={model}
           onUpdate={onChange}
         >
-          <CellBarAddress>{cellAddress}</CellBarAddress>
-          <StyledIcon>
-            <ChevronDown size={16} />
-          </StyledIcon>
+          <Button
+            variant="ghost"
+            size="sm"
+            pressed={isMenuOpen}
+            endIcon={<ChevronDown />}
+          >
+            {cellAddress}
+          </Button>
         </FormulaBarMenu>
-      </AddressContainer>
-      <Divider />
-      <FormulaContainer>
-        <FormulaSymbolButton>
+      </div>
+      <div className="ic-formula-bar-divider" />
+      <div className="ic-formula-bar-formula-container">
+        <div className="ic-formula-bar-button">
           <Fx />
-        </FormulaSymbolButton>
-        <EditorWrapper
-          onClick={(event) => {
+        </div>
+        <div
+          className="ic-formula-bar-editor-wrapper"
+          // Start editing on pointerdown, not click: clicking *in the middle*
+          // of existing text does not emit a `click` event (only clicking past
+          // the end does), so an onClick here never fires for mid-text clicks.
+          // Also no preventDefault() — on pointerdown that would cancel the
+          // textarea's focus/caret placement, so the first click would set the
+          // editing cell but never focus the editor.
+          onPointerDown={(event) => {
+            if (!properties.canEdit) {
+              return;
+            }
             const [sheet, row, column] = model.getSelectedCell();
-            const editorWidth =
-              model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
-            const editorHeight =
-              model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
+            const editorWidth = model.getColumnWidth(sheet, column);
+            const editorHeight = model.getRowHeight(sheet, row);
             workbookState.setEditingCell({
               sheet,
               row,
@@ -82,7 +91,6 @@ function FormulaBar(properties: FormulaBarProps) {
               editorHeight,
             });
             event.stopPropagation();
-            event.preventDefault();
           }}
         >
           <Editor
@@ -94,112 +102,12 @@ function FormulaBar(properties: FormulaBarProps) {
             }}
             onTextUpdated={onTextUpdated}
             type="formula-bar"
+            canEdit={properties.canEdit}
           />
-        </EditorWrapper>
-      </FormulaContainer>
-    </Container>
+        </div>
+      </div>
+    </div>
   );
 }
-
-const StyledButton = styled("div")`
-  display: inline-flex;
-  align-items: center;
-  width: 15px;
-  min-width: 0px;
-  padding: 0px;
-  color: inherit;
-  font-weight: inherit;
-  svg {
-    width: 15px;
-    height: 15px;
-  }
-`;
-
-const FormulaSymbolButton = styled(StyledButton)`
-  margin-right: 8px;
-`;
-
-const Divider = styled("div")`
-  background-color: ${theme.palette.grey["300"]};
-  min-width: 1px;
-  height: 16px;
-  margin: 0px 16px 0px 8px;
-`;
-
-const FormulaContainer = styled("div")`
-  margin-left: 0px;
-  line-height: 22px;
-  font-weight: normal;
-  width: 100%;
-  height: 22px;
-  display: flex;
-`;
-
-const Container = styled("div")`
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  background: ${(properties): string =>
-    properties.theme.palette.background.default};
-  height: ${FORMULA_BAR_HEIGHT}px;
-  border-top: 1px solid ${theme.palette.grey["300"]};
-`;
-
-const AddressContainer = styled("div")<{ $active?: boolean }>`
-  color: ${theme.palette.common.black};
-  font-style: normal;
-  font-size: 12px;
-  display: flex;
-  font-weight: 600;
-  align-items: center;
-  gap: 2px;
-  border-radius: 4px;
-  margin-left: 8px;
-  cursor: pointer;
-  background-color: ${(props) =>
-    props.$active ? theme.palette.action.selected : "transparent"};
-  &:hover {
-   background-color: ${(props) =>
-     props.$active ? theme.palette.action.selected : theme.palette.grey["100"]};
-  }
-`;
-
-const CellBarAddress = styled("div")`
-  width: 100%;
-  box-sizing: border-box;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding-left: 8px;
-  background-color: transparent;
-`;
-
-const StyledIcon = styled("div")`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 2px;
-  background-color: transparent;
-`;
-
-const EditorWrapper = styled("div")`
-  position: relative;
-  width: 100%;
-  padding: 0px;
-  border-width: 0px;
-  outline: none;
-  resize: none;
-  white-space: pre-wrap;
-  vertical-align: bottom;
-  overflow: hidden;
-  text-align: left;
-  span {
-    min-width: 1px;
-  }
-  font-family: monospace;
-`;
 
 export default FormulaBar;

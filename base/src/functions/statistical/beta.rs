@@ -212,4 +212,19 @@ impl<'a> Model<'a> {
         let x = a + t * (b - a);
         CalcResult::Number(x)
     }
+
+    // BETADIST(x, alpha, beta, [A], [B]) — always cumulative=TRUE, 3-5 args
+    pub(crate) fn fn_betadist_compat(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let arg_count = args.len();
+        if !(3..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut new_args = args.to_vec();
+        new_args.insert(3, Node::BooleanKind(true));
+        self.fn_beta_dist(&new_args, cell)
+    }
 }

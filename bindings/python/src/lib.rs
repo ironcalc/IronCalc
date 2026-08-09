@@ -1,389 +1,200 @@
 use pyo3::exceptions::PyException;
-use pyo3::{create_exception, prelude::*, wrap_pyfunction};
+use pyo3::prelude::*;
+use pyo3::{create_exception, wrap_pyfunction};
+use serde::Serialize;
 
-use types::{PyCellType, PySheetProperty, PyStyle};
-use xlsx::base::types::{Style, Workbook};
+use xlsx::base::expressions::types::Area;
+use xlsx::base::expressions::utils::{
+    column_to_number, number_to_column, quote_name as quote_name_ic,
+};
+use xlsx::base::types::{Color, Workbook};
 use xlsx::base::{Model, UserModel};
-
-use xlsx::export::{save_to_icalc, save_to_xlsx};
 use xlsx::import;
 
+mod raw_model;
 mod types;
+mod user_model;
+
+pub use raw_model::PyModel;
+pub use types::PyCellType;
+pub use user_model::PyUserModel;
 
 create_exception!(_ironcalc, WorkbookError, PyException);
 
-fn leak_str(s: &str) -> &'static str {
+pub(crate) fn to_py_err(e: impl std::fmt::Display) -> PyErr {
+    WorkbookError::new_err(e.to_string())
+}
+
+/// Converts any serde-serializable value into a Python object (dicts, lists, ...)
+pub(crate) fn to_python<'py, T: Serialize>(
+    py: Python<'py>,
+    value: &T,
+) -> PyResult<Bound<'py, PyAny>> {
+    pythonize::pythonize(py, value).map_err(to_py_err)
+}
+
+/// Converts a Python object (dicts, lists, ...) into a serde-deserializable value
+pub(crate) fn from_python<T: serde::de::DeserializeOwned>(obj: &Bound<'_, PyAny>) -> PyResult<T> {
+    pythonize::depythonize(obj).map_err(to_py_err)
+}
+
+/// Converts a Python value into a `Color`:
+/// * `None` -> no color
+/// * `"#RRGGBB"` -> an RGB color
+/// * `[theme, tint]` -> a theme color
+pub(crate) fn py_to_color(obj: &Bound<'_, PyAny>) -> PyResult<Color> {
+    if obj.is_none() {
+        return Ok(Color::None);
+    }
+    if let Ok(s) = obj.extract::<String>() {
+        return Color::from_rgb(&s).map_err(to_py_err);
+    }
+    from_python::<Color>(obj)
+}
+
+pub(crate) fn area(
+    sheet: u32,
+    start_row: i32,
+    start_column: i32,
+    end_row: i32,
+    end_column: i32,
+) -> Area {
+    let (row1, row2) = if start_row <= end_row {
+        (start_row, end_row)
+    } else {
+        (end_row, start_row)
+    };
+    let (col1, col2) = if start_column <= end_column {
+        (start_column, end_column)
+    } else {
+        (end_column, start_column)
+    };
+    Area {
+        sheet,
+        row: row1,
+        column: col1,
+        width: col2 - col1 + 1,
+        height: row2 - row1 + 1,
+    }
+}
+
+pub(crate) fn leak_str(s: &str) -> &'static str {
     Box::leak(s.to_owned().into_boxed_str())
 }
 
-#[pyclass]
-pub struct PyUserModel {
-    /// The user model, which is a wrapper around the Model
-    pub model: UserModel<'static>,
+// Local mirror of `ironcalc_base::FmtSettings`, which does not implement Serialize
+#[derive(Serialize)]
+pub(crate) struct FmtSettings {
+    pub currency: String,
+    pub currency_format: String,
+    pub short_date: String,
+    pub short_date_example: String,
+    pub long_date: String,
+    pub long_date_example: String,
+    pub number_fmt: String,
+    pub number_example: String,
 }
 
-#[pymethods]
-impl PyUserModel {
-    /// Saves the user model to an xlsx file
-    pub fn save_to_xlsx(&self, file: &str) -> PyResult<()> {
-        let model = self.model.get_model();
-        save_to_xlsx(model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    /// Saves the user model to file in the internal binary ic format
-    pub fn save_to_icalc(&self, file: &str) -> PyResult<()> {
-        let model = self.model.get_model();
-        save_to_icalc(model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn apply_external_diffs(&mut self, external_diffs: &[u8]) -> PyResult<()> {
-        self.model
-            .apply_external_diffs(external_diffs)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn flush_send_queue(&mut self) -> Vec<u8> {
-        self.model.flush_send_queue()
-    }
-
-    pub fn set_user_input(
-        &mut self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-        value: &str,
-    ) -> PyResult<()> {
-        self.model
-            .set_user_input(sheet, row, column, value)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn get_formatted_cell_value(&self, sheet: u32, row: i32, column: i32) -> PyResult<String> {
-        self.model
-            .get_formatted_cell_value(sheet, row, column)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    /// Gets the dimensions of a worksheet, returning the bounds of all non-empty cells.
-    /// Returns a tuple of (min_row, max_row, min_column, max_column).
-    /// For an empty sheet, returns (1, 1, 1, 1).
-    pub fn get_sheet_dimensions(&self, sheet: u32) -> PyResult<(i32, i32, i32, i32)> {
-        let model = self.model.get_model();
-        let worksheet = model
-            .workbook
-            .worksheet(sheet)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))?;
-        let dimension = worksheet.dimension();
-        Ok((
-            dimension.min_row,
-            dimension.max_row,
-            dimension.min_column,
-            dimension.max_column,
-        ))
-    }
-
-    pub fn to_bytes(&self) -> PyResult<Vec<u8>> {
-        let bytes = self.model.to_bytes();
-        Ok(bytes)
+impl From<xlsx::base::FmtSettings> for FmtSettings {
+    fn from(settings: xlsx::base::FmtSettings) -> Self {
+        FmtSettings {
+            currency: settings.currency,
+            currency_format: settings.currency_format,
+            short_date: settings.short_date,
+            short_date_example: settings.short_date_example,
+            long_date: settings.long_date,
+            long_date_example: settings.long_date_example,
+            number_fmt: settings.number_fmt,
+            number_example: settings.number_example,
+        }
     }
 }
 
-/// This is a model implementing the 'raw' API
-#[pyclass]
-pub struct PyModel {
-    model: Model<'static>,
-}
+// Top level utility functions
 
-#[pymethods]
-impl PyModel {
-    /// Saves the model to an xlsx file
-    pub fn save_to_xlsx(&self, file: &str) -> PyResult<()> {
-        save_to_xlsx(&self.model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    /// Saves the model to file in the internal binary ic format
-    pub fn save_to_icalc(&self, file: &str) -> PyResult<()> {
-        save_to_icalc(&self.model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    /// To bytes
-    pub fn to_bytes(&self) -> PyResult<Vec<u8>> {
-        let bytes = self.model.to_bytes();
-        Ok(bytes)
-    }
-
-    /// Evaluates the workbook
-    pub fn evaluate(&mut self) {
-        self.model.evaluate()
-    }
-
-    // Set values
-
-    /// Set an input
-    pub fn set_user_input(
-        &mut self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-        value: &str,
-    ) -> PyResult<()> {
-        self.model
-            .set_user_input(sheet, row, column, value.to_string())
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn clear_cell_contents(&mut self, sheet: u32, row: i32, column: i32) -> PyResult<()> {
-        self.model
-            .cell_clear_contents(sheet, row, column)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    // Get values
-
-    /// Get raw value
-    pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> PyResult<String> {
-        self.model
-            .get_localized_cell_content(sheet, row, column)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    /// Get cell type
-    pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> PyResult<PyCellType> {
-        self.model
-            .get_cell_type(sheet, row, column)
-            .map(|cell_type| cell_type.into())
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    /// Get formatted value
-    pub fn get_formatted_cell_value(&self, sheet: u32, row: i32, column: i32) -> PyResult<String> {
-        self.model
-            .get_formatted_cell_value(sheet, row, column)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    // Set styles
-    pub fn set_cell_style(
-        &mut self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-        py_style: &PyStyle,
-    ) -> PyResult<()> {
-        let style: Style = py_style.into();
-        self.model
-            .set_cell_style(sheet, row, column, &style)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    // Get styles
-    pub fn get_cell_style(&self, sheet: u32, row: i32, column: i32) -> PyResult<PyStyle> {
-        let style = self
-            .model
-            .get_style_for_cell(sheet, row, column)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))?;
-        Ok(style.into())
-    }
-
-    // column widths, row heights
-    // insert/delete rows/columns
-
-    pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> PyResult<()> {
-        self.model
-            .insert_rows(sheet, row, row_count)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn insert_columns(&mut self, sheet: u32, column: i32, column_count: i32) -> PyResult<()> {
-        self.model
-            .insert_columns(sheet, column, column_count)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> PyResult<()> {
-        self.model
-            .delete_rows(sheet, row, row_count)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn delete_columns(&mut self, sheet: u32, column: i32, column_count: i32) -> PyResult<()> {
-        self.model
-            .delete_columns(sheet, column, column_count)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn get_column_width(&self, sheet: u32, column: i32) -> PyResult<f64> {
-        self.model
-            .get_column_width(sheet, column)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn get_row_height(&self, sheet: u32, row: i32) -> PyResult<f64> {
-        self.model
-            .get_row_height(sheet, row)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> PyResult<()> {
-        self.model
-            .set_column_width(sheet, column, width)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn set_row_height(&mut self, sheet: u32, row: i32, height: f64) -> PyResult<()> {
-        self.model
-            .set_row_height(sheet, row, height)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    // frozen rows/columns
-
-    pub fn get_frozen_columns_count(&self, sheet: u32) -> PyResult<i32> {
-        self.model
-            .get_frozen_columns_count(sheet)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn get_frozen_rows_count(&self, sheet: u32) -> PyResult<i32> {
-        self.model
-            .get_frozen_rows_count(sheet)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn set_frozen_columns_count(&mut self, sheet: u32, column_count: i32) -> PyResult<()> {
-        self.model
-            .set_frozen_columns(sheet, column_count)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn set_frozen_rows_count(&mut self, sheet: u32, row_count: i32) -> PyResult<()> {
-        self.model
-            .set_frozen_rows(sheet, row_count)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    // Manipulate sheets (add/remove/rename/change color)
-    pub fn get_worksheets_properties(&self) -> PyResult<Vec<PySheetProperty>> {
-        Ok(self
-            .model
-            .get_worksheets_properties()
-            .into_iter()
-            .map(|s| PySheetProperty {
-                name: s.name,
-                state: s.state,
-                sheet_id: s.sheet_id,
-                color: s.color,
-            })
-            .collect())
-    }
-
-    pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> PyResult<()> {
-        self.model
-            .set_sheet_color(sheet, color)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn add_sheet(&mut self, sheet_name: &str) -> PyResult<()> {
-        self.model
-            .add_sheet(sheet_name)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn new_sheet(&mut self) -> (String, u32) {
-        self.model.new_sheet()
-    }
-
-    pub fn delete_sheet(&mut self, sheet: u32) -> PyResult<()> {
-        self.model
-            .delete_sheet(sheet)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    pub fn rename_sheet(&mut self, sheet: u32, new_name: &str) -> PyResult<()> {
-        self.model
-            .rename_sheet_by_index(sheet, new_name)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))
-    }
-
-    /// Gets the dimensions of a worksheet, returning the bounds of all non-empty cells.
-    /// Returns a tuple of (min_row, max_row, min_column, max_column).
-    /// For an empty sheet, returns (1, 1, 1, 1).
-    pub fn get_sheet_dimensions(&self, sheet: u32) -> PyResult<(i32, i32, i32, i32)> {
-        let worksheet = self
-            .model
-            .workbook
-            .worksheet(sheet)
-            .map_err(|e| WorkbookError::new_err(e.to_string()))?;
-        let dimension = worksheet.dimension();
-        Ok((
-            dimension.min_row,
-            dimension.max_row,
-            dimension.min_column,
-            dimension.max_column,
-        ))
-    }
-
-    #[allow(clippy::panic)]
-    pub fn test_panic(&self) -> PyResult<()> {
-        panic!("This function panics for testing panic handling");
-    }
-}
-
-// Create methods
-
-/// Loads a function from an xlsx file
+/// Returns the column name ("A", "B", ..., "XFD") for a column number (1-indexed)
 #[pyfunction]
+pub fn column_name_from_number(column: i32) -> PyResult<String> {
+    number_to_column(column).ok_or_else(|| to_py_err("Invalid column number"))
+}
+
+/// Returns the column number (1-indexed) for a column name ("A", "B", ..., "XFD")
+#[pyfunction]
+pub fn column_number_from_name(column: &str) -> PyResult<i32> {
+    column_to_number(column).map_err(to_py_err)
+}
+
+/// Quotes a sheet name if needed so it can be used in a formula reference
+#[pyfunction]
+pub fn quote_name(name: &str) -> String {
+    quote_name_ic(name)
+}
+
+/// Returns the list of all supported timezones
+#[pyfunction]
+pub fn get_all_timezones() -> Vec<String> {
+    xlsx::base::get_all_timezones()
+}
+
+/// Returns the list of all supported locales
+#[pyfunction]
+pub fn get_supported_locales() -> Vec<String> {
+    xlsx::base::get_supported_locales()
+}
+
+// Create methods for the raw API
+
+/// Loads a model from an xlsx file (raw API)
+#[pyfunction]
+#[pyo3(signature = (file_path, locale="en", tz="UTC", language_id="en"))]
 pub fn load_from_xlsx(
     file_path: &str,
     locale: &str,
     tz: &str,
     language_id: &str,
 ) -> PyResult<PyModel> {
-    // let locale = leak_str(locale);
-    // let tz = leak_str(tz);
     let language_id = leak_str(language_id);
-
-    let model = import::load_from_xlsx(file_path, locale, tz, language_id)
-        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = import::load_from_xlsx(file_path, locale, tz, language_id).map_err(to_py_err)?;
     Ok(PyModel { model })
 }
 
-/// Loads a function from icalc binary representation
+/// Loads a model from a file in the internal binary ic format (raw API)
 #[pyfunction]
+#[pyo3(signature = (file_name, language_id="en"))]
 pub fn load_from_icalc(file_name: &str, language_id: &str) -> PyResult<PyModel> {
     let language_id = leak_str(language_id);
-    let model = import::load_from_icalc(file_name, language_id)
-        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = import::load_from_icalc(file_name, language_id).map_err(to_py_err)?;
     Ok(PyModel { model })
 }
 
-/// Loads a model from bytes
-/// This function expects the bytes to be in the internal binary ic format
-/// which is the same format used by the `save_to_icalc` function.
+/// Loads a model from bytes in the internal binary ic format (raw API).
+/// This is the same format produced by `save_to_icalc` and `to_bytes`.
 #[pyfunction]
+#[pyo3(signature = (bytes, language_id="en"))]
 pub fn load_from_bytes(bytes: &[u8], language_id: &str) -> PyResult<PyModel> {
-    let workbook: Workbook =
-        bitcode::decode(bytes).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let workbook: Workbook = bitcode::decode(bytes).map_err(to_py_err)?;
     let language_id = leak_str(language_id);
-    let model = Model::from_workbook(workbook, language_id)
-        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = Model::from_workbook(workbook, language_id).map_err(to_py_err)?;
     Ok(PyModel { model })
 }
 
-/// Creates an empty model in the raw API
+/// Creates an empty model (raw API)
 #[pyfunction]
+#[pyo3(signature = (name, locale="en", tz="UTC", language_id="en"))]
 pub fn create(name: &str, locale: &str, tz: &str, language_id: &str) -> PyResult<PyModel> {
     let name = leak_str(name);
     let locale = leak_str(locale);
     let tz = leak_str(tz);
     let language_id = leak_str(language_id);
-    let model = Model::new_empty(name, locale, tz, language_id)
-        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = Model::new_empty(name, locale, tz, language_id).map_err(to_py_err)?;
     Ok(PyModel { model })
 }
 
-/// Creates a model with the user model API
+// Create methods for the user API
+
+/// Creates an empty model (user API)
 #[pyfunction]
+#[pyo3(signature = (name, locale="en", tz="UTC", language_id="en"))]
 pub fn create_user_model(
     name: &str,
     locale: &str,
@@ -394,13 +205,13 @@ pub fn create_user_model(
     let locale = leak_str(locale);
     let tz = leak_str(tz);
     let language_id = leak_str(language_id);
-    let model = UserModel::new_empty(name, locale, tz, language_id)
-        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = UserModel::new_empty(name, locale, tz, language_id).map_err(to_py_err)?;
     Ok(PyUserModel { model })
 }
 
-/// Creates a user model from an Excel file
+/// Creates a user model from an xlsx file
 #[pyfunction]
+#[pyo3(signature = (file_path, locale="en", tz="UTC", language_id="en"))]
 pub fn create_user_model_from_xlsx(
     file_path: &str,
     locale: &str,
@@ -408,32 +219,29 @@ pub fn create_user_model_from_xlsx(
     language_id: &str,
 ) -> PyResult<PyUserModel> {
     let language_id = leak_str(language_id);
-    let model = import::load_from_xlsx(file_path, locale, tz, language_id)
-        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = import::load_from_xlsx(file_path, locale, tz, language_id).map_err(to_py_err)?;
     let model = UserModel::from_model(model);
     Ok(PyUserModel { model })
 }
 
 /// Creates a user model from an icalc file
 #[pyfunction]
+#[pyo3(signature = (file_name, language_id="en"))]
 pub fn create_user_model_from_icalc(file_name: &str, language_id: &str) -> PyResult<PyUserModel> {
     let language_id = leak_str(language_id);
-    let model = import::load_from_icalc(file_name, language_id)
-        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = import::load_from_icalc(file_name, language_id).map_err(to_py_err)?;
     let model = UserModel::from_model(model);
     Ok(PyUserModel { model })
 }
 
-/// Creates a user model from bytes
-/// This function expects the bytes to be in the internal binary ic format
-/// which is the same format used by the `save_to_icalc` function.
+/// Creates a user model from bytes in the internal binary ic format.
+/// This is the same format produced by `save_to_icalc` and `to_bytes`.
 #[pyfunction]
+#[pyo3(signature = (bytes, language_id="en"))]
 pub fn create_user_model_from_bytes(bytes: &[u8], language_id: &str) -> PyResult<PyUserModel> {
-    let workbook: Workbook =
-        bitcode::decode(bytes).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let workbook: Workbook = bitcode::decode(bytes).map_err(to_py_err)?;
     let language_id = leak_str(language_id);
-    let model = Model::from_workbook(workbook, language_id)
-        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = Model::from_workbook(workbook, language_id).map_err(to_py_err)?;
     let user_model = UserModel::from_model(model);
     Ok(PyUserModel { model: user_model })
 }
@@ -445,22 +253,33 @@ pub fn test_panic() {
 }
 
 #[pymodule]
-fn ironcalc(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Add the package version to the module
+fn _ironcalc(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+    m.add("WorkbookError", m.py().get_type::<WorkbookError>())?;
 
-    // Add the functions to the module using the `?` operator
+    m.add_class::<PyModel>()?;
+    m.add_class::<PyUserModel>()?;
+    m.add_class::<PyCellType>()?;
+
+    // Raw API functions
     m.add_function(wrap_pyfunction!(create, m)?)?;
     m.add_function(wrap_pyfunction!(load_from_xlsx, m)?)?;
     m.add_function(wrap_pyfunction!(load_from_icalc, m)?)?;
     m.add_function(wrap_pyfunction!(load_from_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(test_panic, m)?)?;
 
-    // User model functions
+    // User API functions
     m.add_function(wrap_pyfunction!(create_user_model, m)?)?;
     m.add_function(wrap_pyfunction!(create_user_model_from_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(create_user_model_from_xlsx, m)?)?;
     m.add_function(wrap_pyfunction!(create_user_model_from_icalc, m)?)?;
+
+    // Utilities
+    m.add_function(wrap_pyfunction!(column_name_from_number, m)?)?;
+    m.add_function(wrap_pyfunction!(column_number_from_name, m)?)?;
+    m.add_function(wrap_pyfunction!(quote_name, m)?)?;
+    m.add_function(wrap_pyfunction!(get_all_timezones, m)?)?;
+    m.add_function(wrap_pyfunction!(get_supported_locales, m)?)?;
 
     Ok(())
 }

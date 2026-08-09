@@ -236,6 +236,7 @@ fn test_delete_first_column_width() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 4);
     assert!(model.delete_columns(sheet, column, 1).is_ok());
@@ -248,7 +249,8 @@ fn test_delete_first_column_width() {
             max: 6,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -263,6 +265,7 @@ fn test_delete_last_column_width() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 7);
     assert!(model.delete_columns(sheet, column, 1).is_ok());
@@ -275,7 +278,8 @@ fn test_delete_last_column_width() {
             max: 6,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -290,6 +294,7 @@ fn test_delete_last_few_columns_width() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 13);
     assert!(model.delete_columns(sheet, column, 10).is_ok());
@@ -302,7 +307,8 @@ fn test_delete_last_few_columns_width() {
             max: 12,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -316,6 +322,7 @@ fn test_delete_columns_non_overlapping_left() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 3);
     assert!(model.delete_columns(sheet, column, 4).is_ok());
@@ -328,7 +335,8 @@ fn test_delete_columns_non_overlapping_left() {
             max: 13,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -342,6 +350,7 @@ fn test_delete_columns_overlapping_left() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 8);
     assert!(model.delete_columns(sheet, column, 4).is_ok());
@@ -354,7 +363,8 @@ fn test_delete_columns_overlapping_left() {
             max: 16,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -368,6 +378,7 @@ fn test_delete_columns_non_overlapping_right() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 23);
     assert!(model.delete_columns(sheet, column, 4).is_ok());
@@ -380,7 +391,8 @@ fn test_delete_columns_non_overlapping_right() {
             max: 17,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -396,6 +408,7 @@ fn test_delete_middle_column_width() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
 
     // deletes columns 10, 11, 12
@@ -410,7 +423,8 @@ fn test_delete_middle_column_width() {
             max: 14,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -426,6 +440,7 @@ fn delete_range_in_columns() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
 
     // deletes columns [4, 17]
@@ -499,7 +514,7 @@ fn test_move_column_right() {
     model.evaluate();
 
     // Wee swap column G with column H
-    let result = model.move_column_action(0, 7, 1);
+    let result = model.move_columns_action(0, 7, 1, 1);
     assert!(result.is_ok());
     model.evaluate();
 
@@ -519,20 +534,20 @@ fn tets_move_column_error() {
     let mut model = new_empty_model();
     model.evaluate();
 
-    let result = model.move_column_action(0, 7, -10);
+    let result = model.move_columns_action(0, 7, 1, -10);
     assert!(result.is_err());
 
-    let result = model.move_column_action(0, -7, 20);
+    let result = model.move_columns_action(0, -7, 1, 20);
     assert!(result.is_err());
 
-    let result = model.move_column_action(0, LAST_COLUMN, 1);
+    let result = model.move_columns_action(0, LAST_COLUMN, 1, 1);
     assert!(result.is_err());
 
-    let result = model.move_column_action(0, LAST_COLUMN + 1, -10);
+    let result = model.move_columns_action(0, LAST_COLUMN + 1, 1, -10);
     assert!(result.is_err());
 
     // This works
-    let result = model.move_column_action(0, LAST_COLUMN, -1);
+    let result = model.move_columns_action(0, LAST_COLUMN, 1, -1);
     assert!(result.is_ok());
 }
 
@@ -549,7 +564,7 @@ fn test_move_row_down() {
     model.evaluate();
 
     // Move row 3 down by one position
-    let result = model.move_row_action(0, 3, 1);
+    let result = model.move_rows_action(0, 3, 1, 1);
     assert!(result.is_ok());
     model.evaluate();
 
@@ -577,7 +592,7 @@ fn test_move_row_up() {
     model.evaluate();
 
     // Move row 5 up by one position
-    let result = model.move_row_action(0, 5, -1);
+    let result = model.move_rows_action(0, 5, 1, -1);
     assert!(result.is_ok());
     model.evaluate();
 
@@ -597,20 +612,20 @@ fn test_move_row_error() {
     let mut model = new_empty_model();
     model.evaluate();
 
-    let result = model.move_row_action(0, 7, -10);
+    let result = model.move_rows_action(0, 7, 1, -10);
     assert!(result.is_err());
 
-    let result = model.move_row_action(0, -7, 20);
+    let result = model.move_rows_action(0, -7, 1, 20);
     assert!(result.is_err());
 
-    let result = model.move_row_action(0, LAST_ROW, 1);
+    let result = model.move_rows_action(0, LAST_ROW, 1, 1);
     assert!(result.is_err());
 
-    let result = model.move_row_action(0, LAST_ROW + 1, -10);
+    let result = model.move_rows_action(0, LAST_ROW + 1, 1, -10);
     assert!(result.is_err());
 
     // This works
-    let result = model.move_row_action(0, LAST_ROW, -1);
+    let result = model.move_rows_action(0, LAST_ROW, 1, -1);
     assert!(result.is_ok());
 }
 
@@ -626,7 +641,7 @@ fn test_move_row_down_absolute_refs() {
     model._set("E7", "=SUM($G$4:$G$4)");
     model.evaluate();
 
-    assert!(model.move_row_action(0, 3, 1).is_ok());
+    assert!(model.move_rows_action(0, 3, 1, 1).is_ok());
     model.evaluate();
 
     assert_eq!(model._get_formula("E3"), "=$G$3");
@@ -648,7 +663,7 @@ fn test_move_column_right_absolute_refs() {
     model._set("E7", "=SUM($H$3:$H$7)");
     model.evaluate();
 
-    assert!(model.move_column_action(0, 7, 1).is_ok());
+    assert!(model.move_columns_action(0, 7, 1, 1).is_ok());
     model.evaluate();
 
     assert_eq!(model._get_formula("E3"), "=$H$3");
@@ -671,7 +686,7 @@ fn test_move_row_down_mixed_refs() {
     model._set("F4", "=G$3");
     model.evaluate();
 
-    assert!(model.move_row_action(0, 3, 1).is_ok());
+    assert!(model.move_rows_action(0, 3, 1, 1).is_ok());
     model.evaluate();
 
     assert_eq!(model._get_formula("E3"), "=$G3");
@@ -696,7 +711,7 @@ fn test_move_column_right_mixed_refs() {
     model._set("F4", "=H$3");
     model.evaluate();
 
-    assert!(model.move_column_action(0, 7, 1).is_ok());
+    assert!(model.move_columns_action(0, 7, 1, 1).is_ok());
     model.evaluate();
 
     assert_eq!(model._get_formula("E3"), "=$H3");
@@ -725,7 +740,7 @@ fn test_move_row_height() {
     let original_row4_height = model.get_row_height(sheet, 4).unwrap();
 
     // Move row 3 down by one position
-    assert!(model.move_row_action(sheet, 3, 1).is_ok());
+    assert!(model.move_rows_action(sheet, 3, 1, 1).is_ok());
 
     // The custom height should now be on row 4
     assert_eq!(model.get_row_height(sheet, 4), Ok(custom_height));
@@ -748,7 +763,7 @@ fn test_row_move_down_two_updates_intermediate_refs_by_one() {
     model.evaluate();
 
     // Move row 3 down by two positions (row 3 -> row 5)
-    assert!(model.move_row_action(0, 3, 2).is_ok());
+    assert!(model.move_rows_action(0, 3, 1, 2).is_ok());
     model.evaluate();
 
     // Assert that references for the moved row and intermediate row are correct.
@@ -771,7 +786,7 @@ fn test_column_move_right_two_updates_intermediate_refs_by_one() {
     model.evaluate();
 
     // Move column G (7) right by two positions (G -> I)
-    assert!(model.move_column_action(0, 7, 2).is_ok());
+    assert!(model.move_columns_action(0, 7, 1, 2).is_ok());
     model.evaluate();
 
     // Assert that references for moved and intermediate columns are correct.

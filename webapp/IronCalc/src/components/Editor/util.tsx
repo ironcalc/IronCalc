@@ -1,4 +1,6 @@
 import {
+  type CellArrayStructure,
+  columnNumberFromName,
   getTokens,
   type Model,
   type Range,
@@ -26,27 +28,64 @@ export function tokenIsRangeType(token: TokenType): token is Range {
   return typeof token === "object" && "Range" in token;
 }
 
-export function isInReferenceMode(text: string, cursor: number): boolean {
-  // FIXME
-  // This is a gross oversimplification
-  // Returns true if both are true:
-  // 1. Cursor is at the end
-  // 2. Last char is one of [',', '(', '+', '*', '-', '/', '<', '>', '=', '&', ';']
-  // This has many false positives like '="1+' and also likely some false negatives
-  // The right way of doing this is to have a partial parse of the formula tree
-  // and check if the next token could be a reference
+function isDynamicAnchor(
+  structure: CellArrayStructure,
+): structure is { DynamicAnchor: [number, number] } {
+  return typeof structure === "object" && "DynamicAnchor" in structure;
+}
+
+// A token that begins an operand: a value, a name/function, a reference/range,
+// or an opening delimiter of a grouped expression or array. When such a token
+// sits right after the caret there is already an operand there, so the caret is
+// not in an empty slot and the reference-insertion hint must not be shown (e.g.
+// `=|SUM(...)`, where the function name follows the caret).
+function tokenStartsOperand(token: TokenType): boolean {
+  if (typeof token === "object") {
+    return (
+      "Ident" in token ||
+      "Number" in token ||
+      "String" in token ||
+      "Boolean" in token ||
+      "Reference" in token ||
+      "Range" in token
+    );
+  }
+  return token === "LeftParenthesis" || token === "LeftBrace";
+}
+
+// The argument separator tokens (`,` in English locales, `;` otherwise).
+function tokenIsArgumentSeparator(token: TokenType): boolean {
+  return token === "Comma" || token === "Semicolon";
+}
+
+// Returns true when the cursor sits at a position where the formula grammar
+// would accept a reference or range, so that arrow keys / clicking a cell can
+// insert one. This asks the engine for a partial parse of the formula up to the
+// cursor (see `getFormulaCompletion`).
+export function isInReferenceMode(
+  model: Model,
+  text: string,
+  cursor: number,
+): boolean {
   if (!text.startsWith("=")) {
     return false;
   }
-  if (text === "=") {
-    return true;
+  try {
+    const [sheet, row, column] = model.getSelectedCell();
+    // Convert the UTF-16 cursor to a scalar offset
+    const scalarCursor = Array.from(text.slice(0, cursor)).length;
+    const { expecting } = model.getFormulaCompletion(
+      sheet,
+      row,
+      column,
+      text,
+      scalarCursor,
+    );
+    return expecting.includes("Range");
+  } catch (e) {
+    console.error("Error in isInReferenceMode:", e);
+    return false;
   }
-  const l = text.length;
-  const chars = [",", "(", "+", "*", "-", "/", "<", ">", "=", "&", ";"];
-  if (cursor === l && chars.includes(text[l - 1])) {
-    return true;
-  }
-  return false;
 }
 
 // IronCalc Color Palette
@@ -110,9 +149,20 @@ export function getColor(index: number, alpha = 1): string {
   return `rgba(${rgba[0]}, ${rgba[1]}, ${rgba[2]}, ${alpha})`;
 }
 
+// A placeholder shown when the caret sits at a position where a reference could
+// be inserted (e.g. `=SUM(|`). It carries no formula text; it only hints to the
+// user that arrow keys / clicking a cell will insert a reference here. The
+// `ic-insert-range-hint` class is a styling hook designers can restyle later.
+const referenceHint = (
+  <span key="reference-hint" className="ic-insert-range-hint">
+    {"  "}
+  </span>
+);
+
 function getFormulaHTML(
   model: Model,
   text: string,
+  cursor?: number,
 ): { html: JSX.Element[]; activeRanges: ActiveRange[] } {
   let html: JSX.Element[] = [];
   const activeRanges: ActiveRange[] = [];
@@ -124,9 +174,91 @@ function getFormulaHTML(
     const usedColors: Record<string, string> = {};
     const sheet = model.getSelectedSheet();
     const sheetList = model.getWorksheetsProperties().map((s) => s.name);
+
+    // The reference-insertion hint is shown when the caret is in "reference
+    // mode" (the grammar would accept a reference here) and no reference already
+    // sits immediately after the caret. We resolve where in the rendered spans
+    // it belongs by finding the first token starting at/after the caret.
+    const inReferenceMode =
+      cursor !== undefined && isInReferenceMode(model, text, cursor);
+    // Caret as a scalar offset into `formula` (drop the leading `=`).
+    const scalarCursor =
+      cursor === undefined ? -1 : Array.from(text.slice(0, cursor)).length - 1;
+    let hintHandled = false;
+
     for (let index = 0; index < tokenCount; index += 1) {
       const { token, start, end } = tokens[index];
-      if (tokenIsReferenceType(token)) {
+      const isReference = tokenIsReferenceType(token);
+      const isRange = tokenIsRangeType(token);
+
+      // The hint belongs right before the first token that begins at/after the
+      // caret. Suppress it when the caret is not actually in an empty operand
+      // slot:
+      //   * the following token already starts an operand (`=|SUM(...)`,
+      //     `=A1+|B2`) — the reference/value is there, nothing to insert;
+      //   * the caret sits in an empty trailing argument, i.e. right after a
+      //     separator and immediately before `)` (`=SUM(A1,|)`). Note this is
+      //     distinct from `=SUM(|)`, whose previous token is `(`, not a
+      //     separator, and which does mark an insertable first argument.
+      if (inReferenceMode && !hintHandled && start >= scalarCursor) {
+        const previousToken = index > 0 ? tokens[index - 1].token : undefined;
+        const emptyTrailingArgument =
+          token === "RightParenthesis" &&
+          previousToken !== undefined &&
+          tokenIsArgumentSeparator(previousToken);
+        if (!tokenStartsOperand(token) && !emptyTrailingArgument) {
+          html.push(referenceHint);
+        }
+        hintHandled = true;
+      }
+
+      // is next token the spill operator? If so, we want to include it in the reference
+      if (
+        isReference &&
+        tokens[index + 1] &&
+        tokens[index + 1].token === "Spill"
+      ) {
+        const { sheet: refSheet, row, column } = token.Reference;
+        const sheetIndex = refSheet ? sheetList.indexOf(refSheet) : sheet;
+        const structure = model.getCellArrayStructure(sheetIndex, row, column);
+        if (isDynamicAnchor(structure)) {
+          const [width, height] = structure.DynamicAnchor;
+          const rowEnd = row + height - 1;
+          const columnEnd = column + width - 1;
+          const key = `${sheetIndex}-${row}-${column}:${rowEnd}-${columnEnd}`;
+          let color = usedColors[key];
+          if (!color) {
+            color = getColor(colorCount);
+            usedColors[key] = color;
+            colorCount += 1;
+          }
+
+          // we need the whole reference A27# (so from the beginning of the reference to the end of the spill operator)
+          html.push(
+            <span key={index} style={{ color }}>
+              {sliceString(formula, start, tokens[index + 1].end)}
+            </span>,
+          );
+
+          activeRanges.push({
+            sheet: sheetIndex,
+            rowStart: row,
+            columnStart: column,
+            rowEnd,
+            columnEnd,
+            color,
+          });
+        } else {
+          // If the reference is not a dynamic anchor, we treat as text
+          html.push(
+            <span key={index}>
+              {sliceString(formula, start, tokens[index + 1].end)}
+            </span>,
+          );
+        }
+        // Skip the next token since we already processed it
+        index += 1;
+      } else if (isReference) {
         const { sheet: refSheet, row, column } = token.Reference;
         const sheetIndex = refSheet ? sheetList.indexOf(refSheet) : sheet;
         const key = `${sheetIndex}-${row}-${column}`;
@@ -149,7 +281,7 @@ function getFormulaHTML(
           columnEnd: column,
           color,
         });
-      } else if (tokenIsRangeType(token)) {
+      } else if (isRange) {
         let {
           sheet: refSheet,
           left: { row: rowStart, column: columnStart },
@@ -176,7 +308,6 @@ function getFormulaHTML(
             {sliceString(formula, start, end)}
           </span>,
         );
-        colorCount += 1;
 
         activeRanges.push({
           sheet: sheetIndex,
@@ -189,6 +320,10 @@ function getFormulaHTML(
       } else {
         html.push(<span key={index}>{sliceString(formula, start, end)}</span>);
       }
+    }
+    // The caret sits past every token (e.g. `=SUM(`): append the hint at the end.
+    if (inReferenceMode && !hintHandled) {
+      html.push(referenceHint);
     }
     html = [<span key="equals">=</span>].concat(html);
   } else {
@@ -235,6 +370,79 @@ export function parseRangeInSheet(
     }
   }
   return null;
+}
+
+// Parse a single cell like "A3" into { col, row }.
+const parseCell = (cell: string): { col: number; row: number } => {
+  const m = /^([A-Za-z]+)(\d+)$/.exec(cell.trim());
+  if (!m) {
+    throw new Error(`Invalid cell: "${cell}"`);
+  }
+  return { col: columnNumberFromName(m[1]), row: parseInt(m[2], 10) };
+};
+
+// Parse "A1:A4" or "A4" into a normalized rectangle.
+export const parseRect = (token: string) => {
+  const [a, b] = token.split(":");
+  const c1 = parseCell(a);
+  const c2 = b ? parseCell(b) : c1;
+  return {
+    minCol: Math.min(c1.col, c2.col),
+    maxCol: Math.max(c1.col, c2.col),
+    minRow: Math.min(c1.row, c2.row),
+    maxRow: Math.max(c1.row, c2.row),
+  };
+};
+
+function isRangeInRangesRaw(range: string, ranges: string): boolean {
+  const target = parseRect(range);
+  const rects = ranges.trim().split(/\s+/).filter(Boolean).map(parseRect);
+
+  // A cell is covered if it lies inside at least one rectangle.
+  const covered = (col: number, row: number): boolean =>
+    rects.some(
+      (r) =>
+        col >= r.minCol &&
+        col <= r.maxCol &&
+        row >= r.minRow &&
+        row <= r.maxRow,
+    );
+
+  // `range` is "in" `ranges` iff every cell of `range` is covered.
+  for (let col = target.minCol; col <= target.maxCol; col++) {
+    for (let row = target.minRow; row <= target.maxRow; row++) {
+      if (!covered(col, row)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Returns true if every cell of `range` is covered by the union of `ranges`.
+ *
+ * @param range  A single cell or range, e.g. "A3" or "A1:A4"
+ * @param ranges A space-separated list of cells/ranges, e.g. "A1:A2 A4 G6:G10"
+ */
+export function isRangeInRanges(range: string, ranges: string): boolean {
+  try {
+    return isRangeInRangesRaw(range, ranges);
+  } catch (e) {
+    console.error("Error in isRangeInRanges:", e);
+    return false;
+  }
+}
+
+/**
+ * Returns true if `ranges` is a space-separated list of plain references or
+ * ranges in canonical form: upper-case columns, no sheet names, no `$` absolute
+ * markers, single-space separated. For example: "A1:D3 A1:E5 D3 R1:R3 S3:S5".
+ */
+export function isValidRanges(ranges: string): boolean {
+  const cell = "[A-Z]+[1-9][0-9]*";
+  const token = `${cell}(?::${cell})?`;
+  return new RegExp(`^${token}(?: ${token})*$`).test(ranges);
 }
 
 export default getFormulaHTML;

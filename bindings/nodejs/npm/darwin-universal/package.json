@@ -1,6 +1,6 @@
 {
   "name": "@ironcalc/nodejs-darwin-universal",
-  "version": "0.7.1",
+  "version": "0.8.3",
   "os": [
     "darwin"
   ],
@@ -11,5 +11,10 @@
   "license": "MIT",
   "engines": {
     "node": ">= 10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ironcalc/IronCalc.git",
+    "directory": "bindings/nodejs/npm/darwin-universal"
   }
 }
