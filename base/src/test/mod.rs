@@ -113,6 +113,7 @@ mod test_fn_scan;
 mod test_fn_tocol_torow;
 mod test_fn_transpose;
 mod test_fn_type;
+mod test_format_case;
 mod test_frozen_rows_and_columns;
 mod test_geomean;
 mod test_get_cell_content;
