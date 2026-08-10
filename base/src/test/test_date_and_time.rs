@@ -126,6 +126,45 @@ fn test_day_arguments() {
 }
 
 #[test]
+fn test_year_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", "=YEAR(TRUE)");
+    model._set("A2", "=YEAR(FALSE)");
+
+    model.evaluate();
+
+    // We start counting from Dec 31, 1899 (serial 1)
+    assert_eq!(model._get_text("A1"), *"1899");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+}
+
+#[test]
+fn test_month_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MONTH(TRUE)");
+    model._set("A2", "=MONTH(FALSE)");
+
+    model.evaluate();
+
+    // We start counting from Dec 31, 1899 (serial 1)
+    assert_eq!(model._get_text("A1"), *"12");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+}
+
+#[test]
+fn test_day_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DAY(TRUE)");
+    model._set("A2", "=DAY(FALSE)");
+
+    model.evaluate();
+
+    // We start counting from Dec 31, 1899 (serial 1)
+    assert_eq!(model._get_text("A1"), *"31");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+}
+
+#[test]
 fn test_day_small_serial() {
     let mut model = new_empty_model();
     model._set("A1", "=DAY(-1)");
