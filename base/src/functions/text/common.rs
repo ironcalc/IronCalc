@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
@@ -201,7 +202,7 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = "".to_string();
         for arg in args {

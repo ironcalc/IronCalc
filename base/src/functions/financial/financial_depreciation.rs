@@ -8,6 +8,7 @@ use crate::{
 };
 
 use super::accrint::acc_days_between;
+use crate::types::Position;
 
 // ---------------------------------------------------------------------------
 // VDB / AMORDEGRC / AMORLINC
@@ -330,7 +331,7 @@ fn amor_degrc(
     Ok(amor_round(depr))
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // VDB(cost, salvage, life, start_period, end_period, [factor], [no_switch])
     //
     // Variable declining balance depreciation between `start_period` and

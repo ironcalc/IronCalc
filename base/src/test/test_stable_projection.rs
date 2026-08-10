@@ -46,7 +46,7 @@ fn used_extent(ws: &Worksheet) -> (i32, i32) {
     (rows, cols)
 }
 
-fn stable_from_ordinal(ws: &Worksheet) -> Worksheet<Stable> {
+pub(crate) fn stable_from_ordinal(ws: &Worksheet) -> Worksheet<Stable> {
     let (row_count, column_count) = used_extent(ws);
     let mut index = SheetIndexes::default();
     for i in 1..=row_count as u32 {

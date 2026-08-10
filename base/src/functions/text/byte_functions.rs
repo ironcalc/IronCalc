@@ -4,13 +4,14 @@
 // For non-DBCS locales all *B functions behave identically to their non-B
 // counterparts, so we simply delegate.
 
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn fn_findb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.fn_find(args, cell)
     }

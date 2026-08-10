@@ -5,8 +5,9 @@ use crate::{
 };
 
 use crate::expressions::utils::number_to_column;
+use crate::types::Position;
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // ── ADDRESS ───────────────────────────────────────────────────────────────
 
     /// `=ADDRESS(row_num, col_num, [abs_num], [a1], [sheet_text])`

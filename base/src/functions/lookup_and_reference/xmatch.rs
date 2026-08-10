@@ -16,6 +16,7 @@ use crate::functions::{
     },
     util::{compare_values, from_wildcard_to_regex, result_matches_regex},
 };
+use crate::types::Position;
 
 #[derive(PartialEq)]
 enum SearchMode {
@@ -134,7 +135,7 @@ fn linear_search(
     }
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// `=XMATCH(lookup_value, lookup_array, [match_mode], [search_mode])`
     ///
     /// Returns the relative position (1-based) of an item in a row or column array.

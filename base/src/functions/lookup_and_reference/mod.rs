@@ -9,6 +9,7 @@ use crate::{
 
 use super::binary_search::binary_search_on_array;
 use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex, values_are_equal};
+use crate::types::Position;
 
 mod address_areas;
 mod choosecols_chooserows;
@@ -64,9 +65,9 @@ impl LookupTable {
 
     /// Returns the value at the 0-based `(row, column)` offset within the table.
     /// Callers must ensure the offsets are within bounds.
-    fn get(
+    fn get<A: Position>(
         &self,
-        model: &mut Model,
+        model: &mut Model<'_, A>,
         row: i32,
         column: i32,
         cell: CellReferenceIndex,
@@ -84,14 +85,22 @@ impl LookupTable {
     }
 
     /// Materializes the first row of the table (the search vector for HLOOKUP).
-    fn first_row(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
+    fn first_row<A: Position>(
+        &self,
+        model: &mut Model<'_, A>,
+        cell: CellReferenceIndex,
+    ) -> Vec<CalcResult> {
         (0..self.columns())
             .map(|column| self.get(model, 0, column, cell))
             .collect()
     }
 
     /// Materializes the first column of the table (the search vector for VLOOKUP).
-    fn first_column(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
+    fn first_column<A: Position>(
+        &self,
+        model: &mut Model<'_, A>,
+        cell: CellReferenceIndex,
+    ) -> Vec<CalcResult> {
         (0..self.rows())
             .map(|row| self.get(model, row, 0, cell))
             .collect()
@@ -195,7 +204,7 @@ fn index_from_array(
     CalcResult::Array(result)
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// Materializes a value that is expected to be a vector (a single row or a
     /// single column) into a flat list of values. Accepts both range references
     /// and in-formula array literals. Used by the vector-based lookup functions

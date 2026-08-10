@@ -11,6 +11,7 @@ use super::{
     },
     util::{compare_values, from_wildcard_to_regex, result_matches_regex},
 };
+use crate::types::Position;
 
 #[derive(PartialEq)]
 enum SearchMode {
@@ -118,7 +119,7 @@ fn linear_search(
     None
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// The XLOOKUP function searches a range or an array, and then returns the item corresponding
     /// to the first match it finds. If no match exists, then XLOOKUP can return the closest (approximate) match.
     /// =XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])

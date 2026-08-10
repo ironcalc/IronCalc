@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -182,7 +183,7 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
     }
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     fn get_complex_number(
         &mut self,
         node: &Node,

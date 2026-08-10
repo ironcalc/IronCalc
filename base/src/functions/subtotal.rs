@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -32,7 +33,7 @@ pub enum CellTableStatus {
     Filtered,
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     fn get_table_for_cell(&self, sheet_index: u32, row: i32, column: i32) -> bool {
         let worksheet = match self.workbook.worksheet(sheet_index) {
             Ok(ws) => ws,
@@ -62,7 +63,7 @@ impl<'a> Model<'a> {
         let worksheet = self.workbook.worksheet(sheet_index)?;
         let mut hidden = false;
         for row_style in &worksheet.rows {
-            if row_style.r == row {
+            if A::row_ordinal(&worksheet.index, &row_style.r) == Some(row) {
                 hidden = row_style.hidden;
                 break;
             }
@@ -80,14 +81,7 @@ impl<'a> Model<'a> {
 
     // FIXME(TD): This is too much
     fn cell_is_subtotal(&self, sheet_index: u32, row: i32, column: i32) -> bool {
-        let row_data = match self.workbook.worksheets[sheet_index as usize]
-            .sheet_data
-            .get(&row)
-        {
-            Some(r) => r,
-            None => return false,
-        };
-        let cell = match row_data.get(&column) {
+        let cell = match self.workbook.worksheets[sheet_index as usize].cell(row, column) {
             Some(c) => c,
             None => {
                 return false;

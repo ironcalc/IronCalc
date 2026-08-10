@@ -188,6 +188,7 @@ use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
 use crate::number_format::to_precision;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     constants::EXCEL_DATE_BASE,
@@ -588,7 +589,7 @@ pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     }
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     fn get_date_serial(
         &mut self,
         node: &Node,
