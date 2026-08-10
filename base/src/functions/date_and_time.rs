@@ -947,11 +947,11 @@ impl<'a> Model<'a> {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number(&args[0], cell) {
+        let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(n) => n.floor() as i64,
             Err(e) => return e,
         };
-        let end_serial = match self.get_number(&args[1], cell) {
+        let end_serial = match self.get_number_no_bools(&args[1], cell) {
             Ok(n) => n.floor() as i64,
             Err(e) => return e,
         };
@@ -1087,11 +1087,11 @@ impl<'a> Model<'a> {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number(&args[0], cell) {
+        let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(n) => n.floor() as i64,
             Err(e) => return e,
         };
-        let end_serial = match self.get_number(&args[1], cell) {
+        let end_serial = match self.get_number_no_bools(&args[1], cell) {
             Ok(n) => n.floor() as i64,
             Err(e) => return e,
         };
