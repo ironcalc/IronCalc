@@ -173,9 +173,9 @@ fn formula_value_to_spill_value(v: &FormulaValue) -> SpillValue {
 /// * A list of cells with its status (evaluating, evaluated, not evaluated)
 /// * A dictionary with the shared strings and their indices.
 ///   This is an optimization for large files (~1 million rows)
-pub struct Model<'a> {
+pub struct Model<'a, A: Position = Ordinal> {
     /// A Rust internal representation of an Excel workbook
-    pub workbook: Workbook,
+    pub workbook: Workbook<A>,
     /// A list of parsed formulas. They are shared, not owned, so that the
     /// evaluation can hold on to the formula it is running, while the model is
     /// borrowed mutably, without copying it.
@@ -215,6 +215,8 @@ pub struct Model<'a> {
     /// (`parse_formulas`), extended when a formula is added. See
     /// `shared_formula_index`.
     pub(crate) shared_formula_lookup: Vec<SharedFormulaLookup>,
+    /// Replica-local state of the addressing scheme; `()` under ordinal addressing.
+    pub(crate) local: A::Local,
 }
 
 /// Formula text to index in `Worksheet::shared_formulas`, for one sheet.
@@ -253,7 +255,7 @@ pub struct CellIndex {
     pub column: i32,
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn get_next_variable_id(&mut self) -> usize {
         let id = self.last_variable_id;
         self.last_variable_id += 1;
@@ -1354,7 +1356,10 @@ impl<'a> Model<'a> {
         }
         Ok(cells)
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Sets the color of the sheet tab.
     ///
     /// # Examples
@@ -1399,7 +1404,10 @@ impl<'a> Model<'a> {
         worksheet.show_grid_lines = show_grid_lines;
         Ok(())
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     // Returns the 'single' value of a cell. Not arrays or ranges.
     pub(crate) fn get_cell_value(
         &self,
@@ -1554,7 +1562,6 @@ impl<'a> Model<'a> {
     #[inline(always)]
     pub(crate) fn fetch_cell(&self, cell_reference: CellReferenceIndex) -> Option<&Cell> {
         self.workbook.worksheets[cell_reference.sheet as usize]
-            .sheet_data
             .cell(cell_reference.row, cell_reference.column)
     }
 
@@ -1567,7 +1574,10 @@ impl<'a> Model<'a> {
         }
         None
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Returns a model from an internal binary representation of a workbook
     ///
     /// # Examples
@@ -1668,6 +1678,7 @@ impl<'a> Model<'a> {
             evaluation: Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
+            local: Default::default(),
         };
 
         model.parse_formulas();
@@ -1676,7 +1687,10 @@ impl<'a> Model<'a> {
 
         Ok(model)
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Parses a reference like "Sheet1!B4" into {0, 2, 4}
     ///
     /// # Examples
@@ -1742,7 +1756,10 @@ impl<'a> Model<'a> {
 
         Some(CellReferenceIndex { sheet, row, column })
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Moves the formula `value` from `source` (in `area`) to `target`.
     ///
     /// # Examples
@@ -1929,7 +1946,10 @@ impl<'a> Model<'a> {
         }
         Ok(value.to_string())
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Returns the formula in (`sheet`, `row`, `column`) if any
     ///
     /// # Examples
@@ -2017,7 +2037,10 @@ impl<'a> Model<'a> {
             None => Ok(None),
         }
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Updates the value of a cell with some text
     /// It does not change the style unless needs to add "quoting"
     ///
@@ -2727,7 +2750,10 @@ impl<'a> Model<'a> {
             .worksheet_mut(sheet)?
             .set_cell_with_number(row, column, value, style)
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     // Helper function that returns a defined name given the name and scope
     fn get_parsed_defined_name(
         &self,
@@ -2931,7 +2957,7 @@ impl<'a> Model<'a> {
     pub fn get_all_cells(&self) -> Vec<CellIndex> {
         let mut cells = Vec::new();
         for (index, sheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, _) in sheet.sheet_data.cells() {
+            for (row, column, _) in sheet.cells_in_order() {
                 cells.push(CellIndex {
                     index: index as u32,
                     row,
@@ -2942,6 +2968,10 @@ impl<'a> Model<'a> {
         cells
     }
 
+}
+
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Removes the content of every cell in the range but leaves the style.
     ///
     /// See also:
@@ -3166,35 +3196,14 @@ impl<'a> Model<'a> {
         }
         Ok(())
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Returns the style index for cell (`sheet`, `row`, `column`)
     pub fn get_cell_style_index(&self, sheet: u32, row: i32, column: i32) -> Result<i32, String> {
         // First check the cell, then row, the column
-        let cell = self.workbook.worksheet(sheet)?.cell(row, column);
-
-        match cell {
-            Some(cell) => Ok(cell.get_style()),
-            None => {
-                let rows = &self.workbook.worksheet(sheet)?.rows;
-                for r in rows {
-                    if r.r == row {
-                        if r.custom_format {
-                            return Ok(r.s);
-                        }
-                        break;
-                    }
-                }
-                let cols = &self.workbook.worksheet(sheet)?.cols;
-                for c in cols.iter() {
-                    let min = c.min;
-                    let max = c.max;
-                    if column >= min && column <= max {
-                        return Ok(c.style.unwrap_or(0));
-                    }
-                }
-                Ok(0)
-            }
-        }
+        Ok(self.workbook.worksheet(sheet)?.get_style(row, column))
     }
 
     /// Returns the style for cell (`sheet`, `row`, `column`)
@@ -3220,7 +3229,10 @@ impl<'a> Model<'a> {
             .transpose();
         style
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Returns an internal binary representation of the workbook
     ///
     /// See also:
@@ -3406,7 +3418,10 @@ impl<'a> Model<'a> {
 
         Ok(())
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// The context used to parse/stringify defined-name formulas. Defined names
     /// have no natural anchor cell, so we use the first worksheet's A1.
     pub(crate) fn defined_name_context(&self) -> CellReferenceRC {
@@ -3421,7 +3436,10 @@ impl<'a> Model<'a> {
             column: 1,
         }
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Validates if a defined name can be created
     pub fn is_valid_defined_name(
         &mut self,
@@ -3699,7 +3717,10 @@ impl<'a> Model<'a> {
         self.language = language;
         Ok(())
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Gets the current language
     pub fn get_language(&self) -> String {
         self.language.code.clone()

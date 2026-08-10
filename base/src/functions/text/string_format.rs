@@ -1,5 +1,6 @@
 // DOLLAR, FIXED, NUMBERVALUE, PROPER, REPLACE, ARRAYTOTEXT
 
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -54,7 +55,7 @@ fn format_abs(abs_value: f64, decimals: i32, use_thousands: bool) -> String {
     }
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// DOLLAR(number, [decimals]) — Formats a number as a dollar currency string.
     /// Negative numbers use parentheses: ($1,234.57)
     pub(crate) fn fn_dollar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

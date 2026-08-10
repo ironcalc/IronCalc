@@ -1,5 +1,6 @@
 use chrono::{Datelike, Months, NaiveDate};
 
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     constants::EXCEL_DATE_BASE,
@@ -686,8 +687,8 @@ where
 // (settlement, maturity, frequency, [basis])
 // ============================================================
 
-fn parse_coupon_args(
-    model: &mut Model<'_>,
+fn parse_coupon_args<A: Position>(
+    model: &mut Model<'_, A>,
     args: &[Node],
     cell: CellReferenceIndex,
 ) -> Result<(i64, i64, u32, u32), CalcResult> {
@@ -731,7 +732,7 @@ fn parse_coupon_args(
 // Model implementations
 // ============================================================
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // DURATION(settlement, maturity, coupon, yld, frequency, [basis])
     pub(crate) fn fn_duration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();

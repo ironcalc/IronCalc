@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     expressions::{parser::Node, token::OpProduct, types::CellReferenceIndex},
     formatter::parser::{ParsePart, Parser},
@@ -88,7 +89,7 @@ fn get_units_from_format_string(num_fmt: &str) -> Option<Units> {
     }
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     fn compute_cell_units(&self, cell_reference: &CellReferenceIndex) -> Option<Units> {
         let cell_style_res = &self.get_style_for_cell(
             cell_reference.sheet,
