@@ -137,6 +137,22 @@ pub(crate) fn binary_search_descending_or_greater<T: Ord>(target: &T, array: &[T
     Some((n - r - 1) as i32)
 }
 
+/// True when `value` participates in a legacy approximate lookup for `target`.
+///
+/// Excel's old-style approximate engine (MATCH type 1, VLOOKUP/HLOOKUP with
+/// `TRUE`, LOOKUP) only looks at entries of the same comparison type as the
+/// lookup value: a numeric key ignores text, booleans, errors and blanks; a
+/// text key ignores numbers, booleans, errors and blanks; and so on. All
+/// mismatched entries are treated as if they were blank.
+fn is_comparable_type(value: &CalcResult, target: &CalcResult) -> bool {
+    matches!(
+        (value, target),
+        (CalcResult::Number(_), CalcResult::Number(_))
+            | (CalcResult::String(_), CalcResult::String(_))
+            | (CalcResult::Boolean(_), CalcResult::Boolean(_))
+    )
+}
+
 impl<'a> Model<'a> {
     /// Returns an array with the list of cell values in the range
     pub(crate) fn prepare_array(
@@ -175,13 +191,22 @@ impl<'a> Model<'a> {
 /// Old style binary search over an already materialized vector of values.
 /// Returns the index of the matching element or the largest element smaller
 /// than `target`. Returns `-2` if `target` is smaller than every element.
+/// Entries whose type does not match the lookup value (including blanks and
+/// errors) are ignored, matching Excel's legacy approximate lookup engine,
+/// which skips them instead of coercing blanks to zero.
 pub(crate) fn binary_search_on_array(target: &CalcResult, array: &[CalcResult]) -> i32 {
-    // We apply binary search leftmost for value in the array
+    let occupied: Vec<usize> = (0..array.len())
+        .filter(|index| is_comparable_type(&array[*index], target))
+        .collect();
+    if occupied.is_empty() {
+        return -2;
+    }
+    // We apply binary search leftmost for value in the occupied subsequence
     let mut l = 0;
-    let mut r = array.len();
+    let mut r = occupied.len();
     while l < r {
         let m = (l + r) / 2;
-        match compare_values(&array[m], target) {
+        match compare_values(&array[occupied[m]], target) {
             -1 => {
                 l = m + 1;
             }
@@ -189,7 +214,7 @@ pub(crate) fn binary_search_on_array(target: &CalcResult, array: &[CalcResult]) 
                 r = m;
             }
             _ => {
-                return m as i32;
+                return occupied[m] as i32;
             }
         }
     }
@@ -198,5 +223,5 @@ pub(crate) fn binary_search_on_array(target: &CalcResult, array: &[CalcResult]) 
         return -2;
     }
     // Now l points to the leftmost element
-    (l - 1) as i32
+    occupied[l - 1] as i32
 }
