@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::vec::Vec;
 
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
@@ -200,6 +200,11 @@ pub struct Model<'a> {
     pub(crate) parser: Parser<'a>,
     /// The list of cells with formulas that are evaluated or being evaluated
     pub(crate) cells: HashMap<(u32, i32, i32), CellState>,
+    /// Dynamic-array anchors whose spill area changed shape during the current
+    /// evaluation pass (grew, shrank or was newly created). Only these can
+    /// invalidate values already read by earlier spill cells, so only they
+    /// need the reorder scan in `evaluate` phase 1.
+    pub(crate) changed_spill_shapes: HashSet<(u32, i32, i32)>,
     /// The locale of the model
     pub(crate) locale: &'a Locale,
     /// The language used
@@ -931,7 +936,7 @@ impl<'a> Model<'a> {
             let array_height = array.len() as i32;
 
             match original_range {
-                Some((true, _)) => {
+                Some((true, previous_dims)) => {
                     if row + array_height - 1 > LAST_ROW || column + array_width - 1 > LAST_COLUMN {
                         return self.set_cells_with_result(
                             cell_reference,
@@ -1003,6 +1008,12 @@ impl<'a> Model<'a> {
                             };
                             worksheet.update_cell(r, c, cell)?;
                         }
+                    }
+                    // A spill that keeps its previous dimensions rewrote only
+                    // cells it already owned; only a shape change can
+                    // invalidate positions other cells have read.
+                    if previous_dims != (array_width, array_height) {
+                        self.changed_spill_shapes.insert((sheet, row, column));
                     }
                     return Ok(());
                 }
@@ -1199,6 +1210,14 @@ impl<'a> Model<'a> {
                         },
                     )?;
                 }
+            }
+        }
+
+        // A dynamic anchor that produced a scalar collapses to a 1x1 spill
+        // area; if it previously spilled wider, its shape changed.
+        if let Some((true, previous_dims)) = original_range {
+            if previous_dims != (1, 1) {
+                self.changed_spill_shapes.insert((sheet, row, column));
             }
         }
 
@@ -1710,6 +1729,7 @@ impl<'a> Model<'a> {
             parsed_defined_names: HashMap::new(),
             parser,
             cells,
+            changed_spill_shapes: HashSet::new(),
             language,
             locale,
             tz,
@@ -3045,6 +3065,7 @@ impl<'a> Model<'a> {
         while retry && restart_count < max_restarts {
             retry = false;
             self.cells.clear();
+            self.changed_spill_shapes.clear();
             self.support.clear();
             // dynamic links (HYPERLINK) are rebuilt on every evaluation
             self.links.clear();
@@ -3055,6 +3076,20 @@ impl<'a> Model<'a> {
             for i in 0..self.spill_cells.len() {
                 let spill_cell = self.spill_cells[i];
                 self.evaluate_cell(spill_cell);
+
+                // A spill that kept its previous shape only rewrote cells it
+                // already owned. Earlier spill cells that read one of those
+                // cells forced this anchor's evaluation on demand (see the
+                // `Cell::SpillCell` branch of `evaluate_cell`), so they saw
+                // fresh values and no reorder can be needed. Only a shape
+                // change can invalidate positions read as something else.
+                if !self.changed_spill_shapes.contains(&(
+                    spill_cell.sheet,
+                    spill_cell.row,
+                    spill_cell.column,
+                )) {
+                    continue;
+                }
 
                 // Find every cell position written by this spill (anchor + spill cells).
                 let spill_area = self.get_spill_area(spill_cell);

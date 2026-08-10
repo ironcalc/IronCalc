@@ -685,6 +685,7 @@ impl<'a> Model<'a> {
             parsed_defined_names: HashMap::new(),
             parser,
             cells,
+            changed_spill_shapes: std::collections::HashSet::new(),
             locale,
             language,
             tz,
