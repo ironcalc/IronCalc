@@ -434,11 +434,15 @@ impl Lexer {
                         Token::ILLEGAL
                     }
                 }
-                'd' => {
+                'd' | 'D' => {
                     let mut d = 1;
-                    while let Some('d') = self.peek_char() {
-                        d += 1;
-                        self.read_next_char();
+                    while let Some(c) = self.peek_char() {
+                        if c.eq_ignore_ascii_case(&'d') {
+                            d += 1;
+                            self.read_next_char();
+                        } else {
+                            break;
+                        }
                     }
                     match d {
                         1 => Token::Day,
@@ -447,11 +451,15 @@ impl Lexer {
                         _ => Token::DayName,
                     }
                 }
-                'm' => {
+                'm' | 'M' => {
                     let mut m = 1;
-                    while let Some('m') = self.peek_char() {
-                        m += 1;
-                        self.read_next_char();
+                    while let Some(c) = self.peek_char() {
+                        if c.eq_ignore_ascii_case(&'m') {
+                            m += 1;
+                            self.read_next_char();
+                        } else {
+                            break;
+                        }
                     }
                     match m {
                         1 => Token::Month,       // (or minute)
@@ -462,11 +470,15 @@ impl Lexer {
                         _ => Token::MonthName,
                     }
                 }
-                'y' => {
+                'y' | 'Y' => {
                     let mut y = 1;
-                    while let Some('y') = self.peek_char() {
-                        y += 1;
-                        self.read_next_char();
+                    while let Some(c) = self.peek_char() {
+                        if c.eq_ignore_ascii_case(&'y') {
+                            y += 1;
+                            self.read_next_char();
+                        } else {
+                            break;
+                        }
                     }
                     if y == 1 || y == 2 {
                         Token::YearShort
@@ -493,11 +505,15 @@ impl Lexer {
                         Token::ILLEGAL
                     }
                 }
-                's' => {
+                's' | 'S' => {
                     let mut s = 1;
-                    while let Some('s') = self.peek_char() {
-                        s += 1;
-                        self.read_next_char();
+                    while let Some(c) = self.peek_char() {
+                        if c.eq_ignore_ascii_case(&'s') {
+                            s += 1;
+                            self.read_next_char();
+                        } else {
+                            break;
+                        }
                     }
                     if s == 1 {
                         Token::Second
