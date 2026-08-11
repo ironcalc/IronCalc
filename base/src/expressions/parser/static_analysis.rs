@@ -433,6 +433,20 @@ fn sumif_static_result(args: &[Node]) -> StaticResult {
     }
 }
 
+/// XLOOKUP spills according to the shape of its lookup_value argument
+/// (`args[0]`): a scalar lookup yields a scalar; a range/array lookup is
+/// applied elementwise and yields an array of the same dimensions.
+fn xlookup_static_result(args: &[Node]) -> StaticResult {
+    match args.first() {
+        Some(lookup_value) => match run_static_analysis_on_node(lookup_value) {
+            StaticResult::Array(a, b) | StaticResult::Range(a, b) => StaticResult::Array(a, b),
+            StaticResult::Scalar => StaticResult::Scalar,
+            StaticResult::Unknown => StaticResult::Unknown,
+        },
+        None => StaticResult::Scalar,
+    }
+}
+
 fn static_analysis_offset(args: &[Node]) -> StaticResult {
     // If first argument is a single cell reference and there are no4th and 5th argument,
     // or they are 1, then it is a scalar
@@ -1714,7 +1728,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Vstack => StaticResult::Unknown,
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
-        Function::Xlookup => not_implemented(args),
+        Function::Xlookup => xlookup_static_result(args),
         Function::Xmatch => not_implemented(args),
         Function::Trimrange => StaticResult::Unknown,
         Function::Sort => StaticResult::Unknown,

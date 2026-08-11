@@ -176,3 +176,60 @@ fn test_match_and_vlookup_over_the_same_computed_array() {
     assert_eq!(model._get_text("E2"), "2");
     assert_eq!(model._get_text("E3"), "b|y");
 }
+
+// ── vectorized lookup_value ──────────────────────────────────────────────────
+
+fn numeric_model() -> crate::model::Model<'static> {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("B1", "a");
+    model._set("B2", "b");
+    model._set("B3", "c");
+    model
+}
+
+#[test]
+fn test_xlookup_row_vector_lookup_value_spills() {
+    let mut model = numeric_model();
+    model._set("D1", "2");
+    model._set("E1", "3");
+    model._set("F1", "9");
+    model._set("H1", "=XLOOKUP(D1:F1,A1:A3,B1:B3)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "b");
+    assert_eq!(model._get_text("I1"), "c");
+    assert_eq!(model._get_text("J1"), "#N/A");
+}
+
+#[test]
+fn test_xlookup_column_vector_lookup_value_spills() {
+    let mut model = numeric_model();
+    model._set("D3", "3");
+    model._set("D4", "1");
+    model._set("H3", "=XLOOKUP(D3:D4,A1:A3,B1:B3)");
+    model.evaluate();
+    assert_eq!(model._get_text("H3"), "c");
+    assert_eq!(model._get_text("H4"), "a");
+}
+
+#[test]
+fn test_xlookup_array_constant_lookup_value_spills() {
+    let mut model = numeric_model();
+    model._set("H1", "=XLOOKUP({1,3},A1:A3,B1:B3)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "a");
+    assert_eq!(model._get_text("I1"), "c");
+}
+
+#[test]
+fn test_xlookup_vectorized_lookup_value_uses_if_not_found() {
+    let mut model = numeric_model();
+    model._set("D1", "2");
+    model._set("E1", "9");
+    model._set("H1", "=XLOOKUP(D1:E1,A1:A3,B1:B3,\"nf\")");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "b");
+    assert_eq!(model._get_text("I1"), "nf");
+}

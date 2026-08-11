@@ -1,3 +1,4 @@
+use crate::cast::calc_result_to_array_node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
@@ -203,6 +204,52 @@ impl<'a> Model<'a> {
         if lookup_value.is_error() {
             return lookup_value;
         }
+        // A range or array lookup_value is applied elementwise and the results
+        // spill as an array of the same dimensions, as in Excel.
+        match lookup_value {
+            CalcResult::Range { left, right } => {
+                let mut result = Vec::new();
+                for row in left.row..=right.row {
+                    let mut result_row = Vec::new();
+                    for column in left.column..=right.column {
+                        let value = self.evaluate_cell(CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        });
+                        result_row.push(calc_result_to_array_node(
+                            self.xlookup_scalar(value, args, cell),
+                        ));
+                    }
+                    result.push(result_row);
+                }
+                CalcResult::Array(result)
+            }
+            CalcResult::Array(rows) => {
+                let mut result = Vec::new();
+                for row in &rows {
+                    let mut result_row = Vec::new();
+                    for node in row {
+                        let value = array_node_to_calc_result(node, cell);
+                        result_row.push(calc_result_to_array_node(
+                            self.xlookup_scalar(value, args, cell),
+                        ));
+                    }
+                    result.push(result_row);
+                }
+                CalcResult::Array(result)
+            }
+            scalar => self.xlookup_scalar(scalar, args, cell),
+        }
+    }
+
+    /// XLOOKUP for a single lookup_value.
+    fn xlookup_scalar(
+        &mut self,
+        lookup_value: CalcResult,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         // Get optional arguments
         let if_not_found = if args.len() >= 4 {
             let v = self.evaluate_node_in_context(&args[3], cell);
