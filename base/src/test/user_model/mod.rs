@@ -17,6 +17,7 @@ mod test_dynamic_arrays;
 mod test_evaluation;
 mod test_fn_formulatext;
 mod test_general;
+mod test_get_cell_value;
 mod test_grid_lines;
 mod test_hidden_columns;
 mod test_keyboard_navigation;

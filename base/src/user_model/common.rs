@@ -5,6 +5,7 @@ use std::{collections::HashMap, fmt::Debug};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cell::CellValue,
     cf_types::ExtendedStyle,
     constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
@@ -580,6 +581,15 @@ impl<'a> UserModel<'a> {
         column: i32,
     ) -> Result<String, String> {
         self.model.get_formatted_cell_value(sheet, row, column)
+    }
+
+    /// Returns the raw (unformatted) value of a cell
+    ///
+    /// See also:
+    /// * [Model::get_cell_value_by_index]
+    #[inline]
+    pub fn get_cell_value(&self, sheet: u32, row: i32, column: i32) -> Result<CellValue, String> {
+        self.model.get_cell_value_by_index(sheet, row, column)
     }
 
     /// Returns the type of the cell

@@ -5,6 +5,7 @@ use wasm_bindgen::{
 };
 
 use ironcalc_base::{
+    cell::CellValue,
     cf_types::CfRuleInput,
     colors,
     expressions::{
@@ -502,6 +503,26 @@ impl Model {
         self.model
             .get_formatted_cell_value(sheet, row, column)
             .map_err(to_js_error)
+    }
+
+    /// Returns the raw value of a cell as a native JS value
+    /// (null, string, number or boolean). Unlike `getFormattedCellValue`,
+    /// the number is the full-precision f64, not the display rounding.
+    #[wasm_bindgen(
+        js_name = "getCellValue",
+        unchecked_return_type = "string | number | boolean | null"
+    )]
+    pub fn get_cell_value(&self, sheet: u32, row: i32, column: i32) -> Result<JsValue, JsError> {
+        let value = self
+            .model
+            .get_cell_value(sheet, row, column)
+            .map_err(to_js_error)?;
+        Ok(match value {
+            CellValue::None => JsValue::NULL,
+            CellValue::String(s) => JsValue::from_str(&s),
+            CellValue::Number(f) => JsValue::from_f64(f),
+            CellValue::Boolean(b) => JsValue::from_bool(b),
+        })
     }
 
     #[wasm_bindgen(js_name = "getFrozenRowsCount")]
