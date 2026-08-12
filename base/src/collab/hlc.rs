@@ -150,6 +150,9 @@ mod test {
         let before = get_milliseconds_since_epoch() as u64;
         let t = Hlc::now();
         let after = get_milliseconds_since_epoch() as u64;
+        // Holds only while no test running in parallel syncs a stamp from the future: the clock is
+        // process-global, so such a stamp would push `now()` past `after`. Test stamps are anchored
+        // in the past for exactly this reason — see `PAST` in `collab::apply`'s tests.
         assert!((before..=after).contains(&(t.get() >> 16)));
 
         // Stamps strictly increase, and those minted within one millisecond differ in the low 16

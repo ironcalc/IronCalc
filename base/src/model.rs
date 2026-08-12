@@ -1242,7 +1242,7 @@ impl<'a, A: Position> Model<'a, A> {
                     if (r, c) == (row, column) {
                         continue;
                     }
-                    if worksheet.merged_cell_containing(r, c).is_some() {
+                    if worksheet.merged_range_containing(r, c).is_some() {
                         blocked = true;
                         continue;
                     }

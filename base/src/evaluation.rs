@@ -47,7 +47,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
-use crate::types::{ArrayKind, Cell};
+use crate::types::{ArrayKind, Cell, Position};
 
 /// The hasher of the maps the evaluation keeps about positions. Their keys are
 /// three small integers and every formula looks several of them up, which
@@ -475,7 +475,7 @@ impl Default for Evaluation {
     }
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// Evaluates every formula in the workbook.
     ///
     /// Runs passes until one completes without a restart. `RestartLog` learns
@@ -560,7 +560,7 @@ impl<'a> Model<'a> {
     fn dynamic_spills(&self) -> Vec<(CellReferenceIndex, Cell)> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
+            for (row, column, cell) in worksheet.cells() {
                 if !matches!(cell, Cell::ArrayFormula { .. } | Cell::SpillCell { .. }) {
                     continue;
                 }
@@ -634,7 +634,7 @@ impl<'a> Model<'a> {
     fn dynamic_anchors_in_natural_order(&self) -> Vec<CellReferenceIndex> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
+            for (row, column, cell) in worksheet.cells() {
                 if matches!(
                     cell,
                     Cell::ArrayFormula {
