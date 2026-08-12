@@ -14,6 +14,7 @@ use crate::{
     Model,
 };
 
+use crate::types::Position;
 use chrono::{Datelike, Duration, Months, NaiveDate};
 
 // ---------------------------------------------------------------------------
@@ -101,7 +102,8 @@ fn cell_value_key(v: &crate::cell::CellValue) -> Option<String> {
     }
 }
 
-impl<'a> Model<'a> {
+/// Conditional formatting evaluation: runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Evaluates all conditional formatting rules for the workbook.
     ///
     /// Iterates every worksheet's CF rules in priority order (lowest priority number,
@@ -112,6 +114,7 @@ impl<'a> Model<'a> {
         let sheet_count = self.workbook.worksheets.len();
         for sheet_idx in 0..sheet_count {
             let dim = self.workbook.worksheets[sheet_idx].dimension();
+            let index = self.workbook.worksheets[sheet_idx].index.clone();
             let mut cfs = self.workbook.worksheets[sheet_idx]
                 .conditional_formatting
                 .clone();
@@ -124,15 +127,15 @@ impl<'a> Model<'a> {
                 let ranges: Vec<(i32, i32, i32, i32)> = cf
                     .ranges
                     .iter()
-                    .map(|r| {
-                        let (r1, c1, mut r2, mut c2) = r.resolve();
+                    .filter_map(|r| {
+                        let (r1, c1, mut r2, mut c2) = A::resolve_range(r, &index)?;
                         if r.rows.is_none() {
                             r2 = r2.min(dim.max_row);
                         }
                         if r.cols.is_none() {
                             c2 = c2.min(dim.max_column);
                         }
-                        (r1, c1, r2, c2)
+                        Some((r1, c1, r2, c2))
                     })
                     .collect();
                 if ranges.is_empty() {
@@ -1201,7 +1204,10 @@ impl<'a> Model<'a> {
             rating,
         })
     }
+}
 
+/// Conditional formatting authoring: ordinal addressing only.
+impl<'a> Model<'a> {
     // -----------------------------------------------------------------------
     // CRUD API for conditional formatting rules
     // -----------------------------------------------------------------------

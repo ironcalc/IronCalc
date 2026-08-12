@@ -1,14 +1,12 @@
-use crate::calc_result::CalcResult;
-use crate::cf_types::CfCellResult;
 use crate::collab::fractional_index::{FractionalIndex, FractionalKey, SESSION_SUFFIX_LEN};
 use crate::collab::log::{SessionId, Timestamp};
-use crate::collab::patch::{CfPropKind, ColPropKind, RowPropKind, SheetPropKind, WorkbookPropKind};
-use crate::expressions::parser::static_analysis::StaticResult;
-use crate::expressions::parser::{NamedVariable, Node, Parser};
-use crate::expressions::types::CellReferenceIndex;
-use crate::language::{get_default_language, Language};
-use crate::locale::{get_default_locale, Locale};
-use crate::model::{CellOrRange, CellState, ParsedDefinedName};
+use crate::collab::patch::{
+    CfPropKind, ColPropKind, Patch, RowPropKind, SheetPropKind, WorkbookPropKind,
+};
+use crate::expressions::parser::Parser;
+use crate::language::get_default_language;
+use crate::locale::get_default_locale;
+use crate::model::Model;
 use crate::new_empty::{APPLICATION, APP_VERSION, IRONCALC_USER};
 use crate::types::{
     sealed::Sealed, CellAddr, Col, Metadata, Position, RangeRef, Workbook, WorkbookSettings,
@@ -39,6 +37,7 @@ impl Position for Stable {
     type SheetIndex = SheetIndexes;
     type MergedCell = StableRange;
     type WorkbookMeta = WorkbookMeta;
+    type Local = CollabSession;
 
     fn row_ordinal(idx: &SheetIndexes, key: &FractionalKey) -> Option<i32> {
         idx.rows.position_of(key).map(|p| p as i32 + 1)
@@ -60,6 +59,22 @@ impl Position for Stable {
             return None;
         }
         idx.cols.key(ordinal as usize - 1).cloned()
+    }
+
+    fn row_count(idx: &SheetIndexes) -> i32 {
+        idx.rows.len() as i32
+    }
+
+    fn col_count(idx: &SheetIndexes) -> i32 {
+        idx.cols.len() as i32
+    }
+
+    fn resolve_merged(merged: &StableRange, idx: &SheetIndexes) -> Option<(i32, i32, i32, i32)> {
+        Self::resolve_range(merged, idx)
+    }
+
+    fn resolve_range(range: &StableRange, idx: &SheetIndexes) -> Option<(i32, i32, i32, i32)> {
+        range.resolve(idx)
     }
 }
 
@@ -194,44 +209,16 @@ impl Col<Stable> {
     }
 }
 
-pub struct ColabModel<'a> {
-    /// A Rust internal representation of an Excel workbook
-    pub workbook: Workbook<Stable>,
+/// A collaborative model: the evaluation engine running directly on stably addressed storage.
+pub type ColabModel<'a> = Model<'a, Stable>;
+
+/// The replica-local half of a [`ColabModel`]: who we are, and what we have not shipped yet.
+#[derive(Debug, Default)]
+pub struct CollabSession {
     /// This replica's identity: the suffix of every [`FractionalKey`] it mints.
-    pub(crate) session: SessionId,
-    /// A list of parsed formulas
-    pub parsed_formulas: Vec<Vec<(Node, StaticResult)>>,
-    /// A list of parsed defined names
-    pub(crate) parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
-    /// An optimization to lookup strings faster
-    pub(crate) shared_strings: HashMap<String, usize>,
-    /// An instance of the parser
-    pub(crate) parser: Parser<'a>,
-    /// The list of cells with formulas that are evaluated or being evaluated
-    pub(crate) cells: HashMap<(u32, i32, i32), CellState>,
-    /// The locale of the model
-    pub(crate) locale: &'a Locale,
-    /// The language used
-    pub(crate) language: &'a Language,
-    /// The timezone used to evaluate the model
-    pub(crate) tz: Tz,
-    /// The view id. A view consists of a selected sheet and ranges.
-    pub(crate) view_id: u32,
-    /// A stack of variables used for LET function evaluation. The key is the variable id, and the value is the variable value.
-    pub(crate) variable_stack: HashMap<usize, CalcResult>,
-    /// Last variable id used. It is incremented every time a new variable is created (for example, when evaluating a LET function).
-    pub(crate) last_variable_id: usize,
-    /// Lambdas
-    pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
-    /// Last lambda id used. It is incremented every time a new lambda is created.
-    pub(crate) last_lambda_id: usize,
-    /// The list of cells that might spill
-    pub(crate) spill_cells: Vec<CellReferenceIndex>,
-    /// A dictionary to keep track of which cells or ranges support a given cell.
-    pub(crate) support: HashMap<CellReferenceIndex, Vec<CellOrRange>>,
-    /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
-    /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
-    pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
+    pub session: SessionId,
+    /// Patches produced locally and not yet committed to the log.
+    pub pending: Vec<Patch>,
 }
 
 impl ColabModel<'static> {
@@ -273,7 +260,6 @@ impl ColabModel<'static> {
         };
         ColabModel {
             workbook,
-            session,
             parsed_formulas: Vec::new(),
             parsed_defined_names: HashMap::new(),
             shared_strings: HashMap::new(),
@@ -290,6 +276,11 @@ impl ColabModel<'static> {
             spill_cells: Vec::new(),
             support: HashMap::new(),
             cf_cache: HashMap::new(),
+            links: HashMap::new(),
+            local: CollabSession {
+                session,
+                pending: Vec::new(),
+            },
         }
     }
 }
@@ -297,7 +288,7 @@ impl ColabModel<'static> {
 impl ColabModel<'_> {
     /// The suffix this replica mints [`FractionalKey`]s with.
     pub(crate) fn suffix(&self) -> [u8; SESSION_SUFFIX_LEN] {
-        self.session.to_be_bytes()
+        self.local.session.to_be_bytes()
     }
 
     /// Ordering context for a brand new sheet, minting with this replica's session.
@@ -314,7 +305,10 @@ impl ColabModel<'_> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::types::{Cell, Color, Comment, Row, SheetState, Worksheet};
+    use crate::cf_types::{CfRuleInput, ValueOperator};
+    use crate::test::test_stable_projection::stable_from_ordinal;
+    use crate::test::util::new_empty_model;
+    use crate::types::{Cell, Color, Comment, Dxf, Fill, Row, SheetState, Worksheet};
 
     /// Explicit session suffixes: the default is all zeroes, which is the suffix reserved for
     /// [`virtual_key`](crate::collab::fractional_index::virtual_key).
@@ -527,5 +521,136 @@ mod test {
         index.cols.create_key(7).expect("index has room");
         assert_eq!(tail.resolve(&index), Some((3, 8)));
         assert_eq!(head.resolve(&index), Some((1, 3)));
+    }
+
+    /// The stable twin of an ordinal workbook: the same document, addressed by key.
+    fn stable_twin(model: &Model) -> Workbook<Stable> {
+        let wb = &model.workbook;
+        Workbook {
+            shared_strings: wb.shared_strings.clone(),
+            defined_names: wb.defined_names.clone(),
+            worksheets: wb.worksheets.iter().map(stable_from_ordinal).collect(),
+            styles: wb.styles.clone(),
+            name: wb.name.clone(),
+            settings: wb.settings.clone(),
+            metadata: wb.metadata.clone(),
+            tables: wb.tables.clone(),
+            views: wb.views.clone(),
+            theme: wb.theme.clone(),
+            meta: Default::default(),
+        }
+    }
+
+    /// The engine is the same engine: evaluating a workbook and its stable twin has to give the
+    /// same values and the same conditional formatting, cell for cell.
+    #[test]
+    fn stable_eval_matches_ordinal() {
+        let mut ordinal = new_empty_model();
+        ordinal.set_user_input(0, 1, 1, "10".to_string()).unwrap();
+        ordinal.set_user_input(0, 2, 1, "20".to_string()).unwrap();
+        ordinal.set_user_input(0, 3, 1, "text".to_string()).unwrap();
+        ordinal
+            .set_user_input(0, 1, 2, "=A1+A2".to_string())
+            .unwrap();
+        ordinal
+            .set_user_input(0, 2, 2, "=B1*2".to_string())
+            .unwrap();
+        ordinal
+            .set_user_input(0, 3, 2, "=CONCAT(A3, \"!\")".to_string())
+            .unwrap();
+        ordinal
+            .add_conditional_formatting(
+                0,
+                "A1:B3",
+                CfRuleInput::CellIs {
+                    operator: ValueOperator::GreaterThan,
+                    formula: "15".to_string(),
+                    formula2: None,
+                    format: Dxf {
+                        fill: Some(Fill {
+                            color: Color::Rgb("#FF0000".to_string()),
+                        }),
+                        ..Default::default()
+                    },
+                    stop_if_true: false,
+                },
+            )
+            .unwrap();
+        ordinal.evaluate();
+
+        let mut stable = ColabModel::new(1);
+        stable.workbook = stable_twin(&ordinal);
+        // Parses and evaluates: no projection and no copy, the engine reads the stable storage.
+        stable.reset_parsed_structures();
+
+        let cells = ordinal.get_all_cells();
+        assert!(!cells.is_empty());
+        // The rule fired on the stable side, so the comparison below is not vacuous.
+        assert!(!stable.cf_cache.is_empty());
+        for cell in cells {
+            let (sheet, row, column) = (cell.index, cell.row, cell.column);
+            assert_eq!(
+                stable.get_formatted_cell_value(sheet, row, column),
+                ordinal.get_formatted_cell_value(sheet, row, column),
+                "value at ({sheet}, {row}, {column})"
+            );
+            assert_eq!(
+                stable
+                    .get_extended_style_for_cell(sheet, row, column)
+                    .map(|s| s.style),
+                ordinal
+                    .get_extended_style_for_cell(sheet, row, column)
+                    .map(|s| s.style),
+                "conditional formatting at ({sheet}, {row}, {column})"
+            );
+        }
+    }
+
+    /// Formulas are stored in R1C1 with a fixed parse anchor, so a row move needs no reparse: the
+    /// relative offsets resolve against wherever the formula cell now sits.
+    #[test]
+    fn stable_eval_tracks_moves() {
+        let mut ordinal = new_empty_model();
+        for (row, value) in [(1, "10"), (2, "20"), (3, "30"), (4, "40")] {
+            ordinal
+                .set_user_input(0, row, 1, value.to_string())
+                .unwrap();
+        }
+        // Two rows above its own: 20 now, whatever sits there after the move later.
+        ordinal.set_user_input(0, 4, 2, "=A2".to_string()).unwrap();
+
+        let mut stable = ColabModel::new(1);
+        stable.workbook = stable_twin(&ordinal);
+        stable.reset_parsed_structures();
+        assert_eq!(
+            stable.get_formatted_cell_value(0, 4, 2),
+            Ok("20".to_string())
+        );
+
+        // Second row to the end: the rows now read 10, 30, 40, 20 and the formula cell sits third.
+        stable.workbook.worksheets[0].index.rows.move_to(1..2, 4);
+        stable.evaluate();
+
+        assert_eq!(
+            stable.get_formatted_cell_value(0, 1, 1),
+            Ok("10".to_string())
+        );
+        assert_eq!(
+            stable.get_formatted_cell_value(0, 2, 1),
+            Ok("30".to_string())
+        );
+        assert_eq!(
+            stable.get_formatted_cell_value(0, 3, 1),
+            Ok("40".to_string())
+        );
+        assert_eq!(
+            stable.get_formatted_cell_value(0, 4, 1),
+            Ok("20".to_string())
+        );
+        // The formula moved with its row and its offset resolves against the new position.
+        assert_eq!(
+            stable.get_formatted_cell_value(0, 3, 2),
+            Ok("10".to_string())
+        );
     }
 }

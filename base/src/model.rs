@@ -974,7 +974,7 @@ impl<'a, A: Position> Model<'a, A> {
                                 continue;
                             }
                             // Merged cells always block spilling.
-                            if worksheet.merged_cell_containing(r, c).is_some() {
+                            if worksheet.merged_range_containing(r, c).is_some() {
                                 return self.set_cells_with_result(
                                     cell_reference,
                                     cell,

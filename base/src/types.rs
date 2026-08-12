@@ -344,7 +344,10 @@ pub(crate) mod sealed {
 }
 
 /// The addressing scheme of the workbook data model: how rows and columns are named.
-pub trait Position: sealed::Sealed + Sized {
+///
+/// `Clone` is a supertrait so that the `#[derive]`s on the generic containers, which emit
+/// `A: Clone` bounds, are satisfied by a bare `A: Position`.
+pub trait Position: sealed::Sealed + Sized + Clone {
     /// Row/column identifier. Bounds are the union of what the containers' derives need.
     type Key: Clone
         + Ord
@@ -367,6 +370,8 @@ pub trait Position: sealed::Sealed + Sized {
         + serde::de::DeserializeOwned;
     /// Workbook-wide replication metadata; `()` for [`Ordinal`].
     type WorkbookMeta: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
+    /// Replica-local model state, never serialized; `()` for [`Ordinal`].
+    type Local: Default;
 
     // Key ⇄ ordinal resolution. Ordinals are the 1-based `i32` the rest of the codebase uses;
     // `None` means the key names nothing in this index any more.
@@ -374,6 +379,24 @@ pub trait Position: sealed::Sealed + Sized {
     fn col_ordinal(idx: &Self::SheetIndex, key: &Self::Key) -> Option<i32>;
     fn row_at(idx: &Self::SheetIndex, ordinal: i32) -> Option<Self::Key>;
     fn col_at(idx: &Self::SheetIndex, ordinal: i32) -> Option<Self::Key>;
+
+    /// How many rows/columns this index currently addresses. The whole grid under [`Ordinal`].
+    fn row_count(idx: &Self::SheetIndex) -> i32;
+    fn col_count(idx: &Self::SheetIndex) -> i32;
+
+    /// The 1-based ordinal rectangle `(row1, column1, row2, column2)` a range currently denotes,
+    /// or `None` if it collapsed.
+    fn resolve_range(
+        range: &RangeRef<Self>,
+        idx: &Self::SheetIndex,
+    ) -> Option<(i32, i32, i32, i32)>;
+
+    /// The 1-based ordinal rectangle `(row1, column1, row2, column2)` a merged range currently
+    /// covers, or `None` if it collapsed.
+    fn resolve_merged(
+        merged: &Self::MergedCell,
+        idx: &Self::SheetIndex,
+    ) -> Option<(i32, i32, i32, i32)>;
 }
 
 /// Positional addressing: rows and columns are 1-based indices.
@@ -392,6 +415,7 @@ impl Position for Ordinal {
     type SheetIndex = ();
     type MergedCell = MergedCell;
     type WorkbookMeta = ();
+    type Local = ();
 
     // The key *is* the ordinal, so resolution is the identity and there is nothing to bound-check.
     #[inline]
@@ -409,6 +433,28 @@ impl Position for Ordinal {
     #[inline]
     fn col_at(_idx: &(), ordinal: i32) -> Option<i32> {
         Some(ordinal)
+    }
+
+    #[inline]
+    fn row_count(_idx: &()) -> i32 {
+        LAST_ROW
+    }
+    #[inline]
+    fn col_count(_idx: &()) -> i32 {
+        LAST_COLUMN
+    }
+    #[inline]
+    fn resolve_merged(merged: &MergedCell, _idx: &()) -> Option<(i32, i32, i32, i32)> {
+        Some((
+            merged.row,
+            merged.column,
+            merged.last_row(),
+            merged.last_column(),
+        ))
+    }
+
+    fn resolve_range(range: &RangeRef, _idx: &()) -> Option<(i32, i32, i32, i32)> {
+        Some(range.resolve())
     }
 }
 

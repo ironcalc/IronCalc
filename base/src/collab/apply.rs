@@ -955,11 +955,17 @@ mod test {
         FractionalKey::try_from_bytes(&bytes).unwrap()
     }
 
-    /// A stamp `counter` steps into the millisecond after `base`: above everything stamped so far,
+    /// A wall-clock millisecond in the past — Sept 2020, comfortably below the Nov 2022 constant
+    /// [`crate::mock_time`] serves under `cfg(test)`. Fixed rather than read off the clock:
+    /// `Consumer::apply` opens with `Hlc::sync`, so a stamp in the future would become the
+    /// process-global high watermark and drag every concurrent test's `Hlc::now()` with it. A stamp
+    /// from the past is no watermark at all.
+    const PAST: Hlc = Hlc::new(1_600_000_000_000 << 16);
+
+    /// A stamp `counter` steps into the millisecond after [`PAST`]: above anything stamped `PAST`,
     /// and sharing a millisecond with its siblings, so only the counter and session separate them.
-    /// One millisecond ahead rather than years, to barely move the process-global clock.
-    fn same_ms(base: Hlc, counter: u64) -> Hlc {
-        Hlc::new((base.get() & !0xffff) + (1 << 16) + counter)
+    fn same_ms(counter: u64) -> Hlc {
+        Hlc::new(PAST.get() + (1 << 16) + counter)
     }
 
     fn styled() -> Style {
@@ -1376,10 +1382,12 @@ mod test {
         let cols: Vec<FractionalKey> = (1..=2).map(virtual_key).collect();
         let doomed: SheetId = 7;
 
+        // The whole scenario is stamped from the fixed past base, so the commits below keep their
+        // relative order while none of them touches the process-global clock.
         let root = Rec::new(
             1,
             1,
-            Hlc::now(),
+            PAST,
             vec![
                 Patch::AddSheet {
                     id: SHEET,
@@ -1414,11 +1422,10 @@ mod test {
 
         // Everything below is concurrent: same parent, stamps inside one wall millisecond, so only
         // the HLC counter and the session tiebreak separate them.
-        let base = root.hlc;
         let from_a = Rec::new(
             2,
             1,
-            same_ms(base, 1),
+            same_ms(1),
             vec![
                 Patch::SetCellValue {
                     sheet: SHEET,
@@ -1448,7 +1455,7 @@ mod test {
         let from_b = Rec::new(
             3,
             2,
-            same_ms(base, 1),
+            same_ms(1),
             vec![
                 // Same register, same stamp: the session breaks the tie, identically everywhere.
                 Patch::SetCellValue {
@@ -1478,7 +1485,7 @@ mod test {
         let later = Rec::new(
             4,
             1,
-            same_ms(base, 2),
+            same_ms(2),
             vec![Patch::SetSheetProperty {
                 sheet: SHEET,
                 property: SheetProperty::Name("Later".to_string()),

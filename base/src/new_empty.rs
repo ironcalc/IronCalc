@@ -26,6 +26,7 @@ use crate::{
     utils::ParsedReference,
 };
 
+use crate::types::Position;
 use crate::tz::Tz;
 
 pub const APPLICATION: &str = "IronCalc Sheets";
@@ -88,7 +89,10 @@ impl<'a> Model<'a> {
         }
         index + 1
     }
+}
 
+/// Parse machinery: derived evaluation state, built on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     // This function parses all the internal formulas in all the worksheets
     // (in the default language ("en") and locale ("en") and the RC format)
     pub(crate) fn parse_formulas(&mut self) {
@@ -188,6 +192,16 @@ impl<'a> Model<'a> {
         self.parsed_defined_names = parsed_defined_names;
     }
 
+    pub(crate) fn get_sheet_index_by_sheet_id(&self, sheet_id: u32) -> Option<u32> {
+        let worksheets = &self.workbook.worksheets;
+        for (index, worksheet) in worksheets.iter().enumerate() {
+            if worksheet.sheet_id == sheet_id {
+                return Some(index as u32);
+            }
+        }
+        None
+    }
+
     /// Reparses all formulas and defined names
     pub(crate) fn reset_parsed_structures(&mut self) {
         let defined_names = self.workbook.get_defined_names_with_scope();
@@ -199,7 +213,9 @@ impl<'a> Model<'a> {
         self.parse_defined_names();
         self.evaluate();
     }
+}
 
+impl<'a> Model<'a> {
     /// Gets the base name for new sheets
     fn get_sheet_name(&self) -> String {
         let language = self.language;
@@ -597,16 +613,6 @@ impl<'a> Model<'a> {
         }
     }
 
-    pub(crate) fn get_sheet_index_by_sheet_id(&self, sheet_id: u32) -> Option<u32> {
-        let worksheets = &self.workbook.worksheets;
-        for (index, worksheet) in worksheets.iter().enumerate() {
-            if worksheet.sheet_id == sheet_id {
-                return Some(index as u32);
-            }
-        }
-        None
-    }
-
     /// Creates a new workbook with one empty sheet
     pub fn new_empty(
         name: &'a str,
@@ -701,6 +707,7 @@ impl<'a> Model<'a> {
             support: HashMap::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
+            local: Default::default(),
         };
         model.parse_formulas();
         model.evaluate_conditional_formatting();

@@ -9,7 +9,9 @@ use crate::cf_types::{CfRuleInput, ConditionalFormatting, ValueOperator};
 use crate::collab::fractional_index::{virtual_key, FractionalKey};
 use crate::collab::model::{SheetIndexes, Stable, StableRange};
 use crate::test::util::new_empty_model;
-use crate::types::{Col, Color, Comment, Dxf, Fill, MergedCell, Position, RangeRef, Row, Worksheet};
+use crate::types::{
+    Col, Color, Comment, Dxf, Fill, MergedCell, Position, RangeRef, Row, Worksheet,
+};
 
 /// How far the sheet reaches on each axis. Only the used range gets keys — a stable sheet has no
 /// notion of the million rows an ordinal one addresses implicitly.
