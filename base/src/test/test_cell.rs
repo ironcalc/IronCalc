@@ -2,7 +2,9 @@
 
 use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
-use crate::types::{ArrayKind, Cell, CellType, FormulaValue};
+#[cfg(not(feature = "collab-test"))]
+use crate::types::{ArrayKind, FormulaValue};
+use crate::types::{Cell, CellType};
 
 #[test]
 fn test_cell_get_type() {
@@ -43,6 +45,7 @@ fn test_cell_get_type() {
     assert_eq!(model._get_cell("A15").get_type(), CellType::Text);
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn cell_is_always_dynamic() {
     let mut model = new_empty_model();
@@ -73,6 +76,7 @@ fn test_cell_get_text_on_boolean_cell() {
     assert_eq!(model.get_localized_cell_content(0, 1, 1).unwrap(), "TRUE");
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_cell_value_on_empty_shared_string() {
     let mut model = new_empty_model();

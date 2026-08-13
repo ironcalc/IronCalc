@@ -5,6 +5,7 @@ use crate::types::Color;
 // the cell values are always relative to "today" at evaluation time.  This makes
 // every assertion deterministic regardless of when the tests run.
 
+use crate::test::util::TestModel;
 use crate::{
     cf_types::{CfRuleInput, PeriodType},
     test::util::new_empty_model,
@@ -20,7 +21,7 @@ fn period_rule(period: PeriodType) -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
+fn is_red(model: &TestModel<'static>, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()
@@ -31,7 +32,7 @@ fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
 }
 
 // Sets a formula in A{row} and returns the model after evaluating it.
-fn set_formula(model: &mut crate::Model<'static>, row: i32, formula: &str) {
+fn set_formula(model: &mut TestModel<'static>, row: i32, formula: &str) {
     model
         .set_user_input(0, row, 1, formula.to_string())
         .unwrap();

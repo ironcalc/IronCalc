@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 use crate::types::Color;
 
+use crate::test::util::TestModel;
 use crate::{
     cf_types::{CfRule, CfRuleInput},
     test::util::new_empty_model,
@@ -20,7 +21,7 @@ use crate::{
 //
 // Columns: A = atomic number, B = symbol, C = atomic mass
 
-fn model_with_elements() -> crate::Model<'static> {
+fn model_with_elements() -> TestModel<'static> {
     let mut model = new_empty_model();
     let data: &[(i32, &str, &str)] = &[
         (1, "H", "1.008"),
@@ -44,7 +45,7 @@ fn model_with_elements() -> crate::Model<'static> {
     model
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32, col: i32) -> bool {
+fn is_red(model: &TestModel<'static>, row: i32, col: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, col)
         .unwrap()

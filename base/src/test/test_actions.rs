@@ -1,9 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::constants::{DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW};
-use crate::model::Model;
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::test::util::new_empty_model;
-use crate::types::Col;
+use crate::test::util::TestModel;
+// Only the ordinal-only tests below reach for the row/column records directly.
+#[cfg(not(feature = "collab-test"))]
+use crate::{constants::DEFAULT_ROW_HEIGHT, types::Col};
 
 #[test]
 fn test_insert_columns() {
@@ -82,6 +84,7 @@ fn test_insert_rows() {
     assert_eq!(model._get_text("C5"), *"7");
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_insert_rows_styles() {
     let mut model = new_empty_model();
@@ -117,6 +120,7 @@ fn test_insert_rows_styles() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_delete_rows_styles() {
     let mut model = new_empty_model();
@@ -225,6 +229,7 @@ fn test_delete_column_width() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 // We set the style of columns 4 to 7 and delete column 4
 // We check that columns 4 to 6 have the new style
@@ -255,6 +260,7 @@ fn test_delete_first_column_width() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 // Delete the last column in the range
 fn test_delete_last_column_width() {
@@ -284,6 +290,7 @@ fn test_delete_last_column_width() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 // Deletes columns at the end
 fn test_delete_last_few_columns_width() {
@@ -313,6 +320,7 @@ fn test_delete_last_few_columns_width() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_delete_columns_non_overlapping_left() {
     let mut model = new_empty_model();
@@ -341,6 +349,7 @@ fn test_delete_columns_non_overlapping_left() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_delete_columns_overlapping_left() {
     let mut model = new_empty_model();
@@ -369,6 +378,7 @@ fn test_delete_columns_overlapping_left() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_delete_columns_non_overlapping_right() {
     let mut model = new_empty_model();
@@ -397,6 +407,7 @@ fn test_delete_columns_non_overlapping_right() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 // deletes some columns in the middle of the range
 fn test_delete_middle_column_width() {
@@ -429,6 +440,7 @@ fn test_delete_middle_column_width() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 // the range is inside the deleted columns
 fn delete_range_in_columns() {
@@ -485,7 +497,7 @@ fn test_delete_rows() {
 // 			3	1	1	2
 // 			4	2	5	8
 // 			-2	3	6	7
-fn populate_table(model: &mut Model) {
+fn populate_table(model: &mut TestModel) {
     model._set("G1", "3");
     model._set("H1", "1");
     model._set("I1", "1");
@@ -723,6 +735,7 @@ fn test_move_column_right_mixed_refs() {
     assert_eq!(model._get_formula("F4"), "=G$3");
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_move_row_height() {
     let mut model = new_empty_model();

@@ -1207,11 +1207,8 @@ impl<'a, A: Position> Model<'a, A> {
 }
 
 /// Conditional formatting authoring: ordinal addressing only.
-impl<'a> Model<'a> {
-    // -----------------------------------------------------------------------
-    // CRUD API for conditional formatting rules
-    // -----------------------------------------------------------------------
-
+/// Rule translation and dxf interning: neither depends on how cells are addressed.
+impl<'a, A: Position> Model<'a, A> {
     /// Appends `dxf` to the workbook's dxf table and returns its new index.
     fn create_dxf(&mut self, dxf: Dxf) -> u32 {
         let id = self.workbook.styles.dxfs.len() as u32;
@@ -1220,7 +1217,7 @@ impl<'a> Model<'a> {
     }
 
     /// Converts a `CfRuleInput` into a stored `CfRule`, creating a dxf entry when a format is provided.
-    fn cf_rule_from_input(&mut self, rule: CfRuleInput) -> CfRule {
+    pub(crate) fn cf_rule_from_input(&mut self, rule: CfRuleInput) -> CfRule {
         match rule {
             CfRuleInput::ColorScale { thresholds } => CfRule::ColorScale { thresholds },
             CfRuleInput::CellIs {
@@ -1407,7 +1404,7 @@ impl<'a> Model<'a> {
     /// created), so an invalid formula fails the whole operation without leaving
     /// behind an orphan dxf or storing a non-canonical formula that would later
     /// fail to parse as English.
-    fn cf_rule_input_to_internal(
+    pub(crate) fn cf_rule_input_to_internal(
         &mut self,
         rule: &mut CfRuleInput,
         sheet: u32,
@@ -1460,6 +1457,12 @@ impl<'a> Model<'a> {
         }
         Ok(())
     }
+}
+
+impl<'a> Model<'a> {
+    // -----------------------------------------------------------------------
+    // CRUD API for conditional formatting rules
+    // -----------------------------------------------------------------------
 
     /// Translates every formula in a CF rule from the internal English
     /// representation into the active language/locale for display.

@@ -16,7 +16,8 @@ mod undo_redo;
 
 pub use common::UserModel;
 
-#[cfg(test)]
+// Only the `user_model` test corpus names it, and that is ordinal-only.
+#[cfg(all(test, not(feature = "collab-test")))]
 pub use ui::SelectedView;
 
 pub use clipboard::ClipboardData;

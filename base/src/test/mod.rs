@@ -66,6 +66,8 @@ mod test_set_user_input;
 mod test_shared_formulas;
 mod test_sheet_markup;
 mod test_sheets;
+// Builds stable storage out of an ordinal model, which `collab-test` no longer has.
+#[cfg(all(feature = "collab", not(feature = "collab-test")))]
 pub(crate) mod test_stable_projection;
 mod test_statistical_functions;
 mod test_styles;
@@ -143,4 +145,6 @@ mod test_today;
 mod test_trigonometric_reciprocals;
 mod test_types;
 mod text_functions;
+// `UserModel` is ordinal-only.
+#[cfg(not(feature = "collab-test"))]
 mod user_model;

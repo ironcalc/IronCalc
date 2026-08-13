@@ -11,10 +11,14 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
+default = ["collab"]
 # Replaces the system clock with the mock in `mock_time.rs` so dependent
 # crates can test volatile functions (NOW, TODAY, ...) deterministically.
 mock_time = []
+# Collaborative (CRDT) addressing: the `collab` module and everything that reads it.
 collab = []
+# `collab`, plus the test corpus running against `ColabModel` instead of `Model`.
+collab-test = ["collab"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

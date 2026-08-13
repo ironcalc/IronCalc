@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{expressions::token, test::util::new_empty_model, types::Cell};
+#[cfg(not(feature = "collab-test"))]
+use crate::expressions::token;
+use crate::{test::util::new_empty_model, types::Cell};
 
 #[test]
 fn test_update_cell_with_text() {
@@ -204,6 +206,7 @@ fn test_worksheet_update_cell() {
     assert_eq!(update_result, Err("Incorrect row or column".to_string()));
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_set_cell_style() {
     let mut model = new_empty_model();
@@ -227,6 +230,7 @@ fn test_worksheet_set_cell_style() {
     assert_eq!(update_result, Err("Incorrect row or column".to_string()));
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_set_cell_with_formula() {
     let mut model = new_empty_model();
@@ -250,6 +254,7 @@ fn test_worksheet_set_cell_with_formula() {
     assert_eq!(update_result, Err("Incorrect row or column".to_string()));
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_set_cell_with_number() {
     let mut model = new_empty_model();
@@ -273,6 +278,7 @@ fn test_worksheet_set_cell_with_number() {
     assert_eq!(update_result, Err("Incorrect row or column".to_string()));
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_set_cell_with_string() {
     let mut model = new_empty_model();
@@ -296,6 +302,7 @@ fn test_worksheet_set_cell_with_string() {
     assert_eq!(update_result, Err("Incorrect row or column".to_string()));
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_set_cell_with_boolean() {
     let mut model = new_empty_model();
@@ -319,6 +326,7 @@ fn test_worksheet_set_cell_with_boolean() {
     assert_eq!(update_result, Err("Incorrect row or column".to_string()));
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_set_cell_with_error() {
     let mut model = new_empty_model();
@@ -379,6 +387,7 @@ fn test_worksheet_cell_clear_contents() {
     assert_eq!(update_result, Ok(()))
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_cell_clear_contents_with_style() {
     let mut model = new_empty_model();

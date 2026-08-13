@@ -31,6 +31,7 @@ pub mod builtin_styles;
 pub mod calc_result;
 pub mod cell;
 pub mod cf_types;
+#[cfg(feature = "collab")]
 pub mod collab;
 pub mod colors;
 pub mod expressions;

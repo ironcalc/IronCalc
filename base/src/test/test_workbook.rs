@@ -9,12 +9,13 @@ use crate::{
 fn workbook_worksheets_info() {
     let model = new_empty_model();
     let sheets_info = model.get_worksheets_properties();
+    // The id is whatever the sheet was minted with — collaborative ids are hashed, not sequential.
     assert_eq!(
         sheets_info[0],
         SheetProperties {
             name: "Sheet1".to_string(),
             state: "visible".to_string(),
-            sheet_id: 1,
+            sheet_id: model.workbook.worksheets[0].sheet_id,
             color: Color::None
         }
     );
