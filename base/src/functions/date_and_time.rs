@@ -1608,7 +1608,7 @@ impl<'a> Model<'a> {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number(&args[0], cell) {
+        let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
@@ -1616,8 +1616,8 @@ impl<'a> Model<'a> {
             Ok(d) => d,
             Err(e) => return e,
         };
-        let mut days = match self.get_number(&args[1], cell) {
-            Ok(f) => f as i32,
+        let mut days = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor() as i32,
             Err(s) => return s,
         };
         let weekend = [false, false, false, false, false, true, true];
@@ -1627,11 +1627,25 @@ impl<'a> Model<'a> {
         };
         while days != 0 {
             if days > 0 {
+                if date.num_days_from_ce() - EXCEL_DATE_BASE >= MAXIMUM_DATE_SERIAL_NUMBER {
+                    return CalcResult::Error {
+                        error: Error::NUM,
+                        origin: cell,
+                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
+                    };
+                }
                 date += chrono::Duration::days(1);
                 if !Self::is_weekend(date.weekday(), &weekend) && !holiday_set.contains(&date) {
                     days -= 1;
                 }
             } else {
+                if date.num_days_from_ce() - EXCEL_DATE_BASE <= MINIMUM_DATE_SERIAL_NUMBER {
+                    return CalcResult::Error {
+                        error: Error::NUM,
+                        origin: cell,
+                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
+                    };
+                }
                 date -= chrono::Duration::days(1);
                 if !Self::is_weekend(date.weekday(), &weekend) && !holiday_set.contains(&date) {
                     days += 1;
@@ -1674,7 +1688,7 @@ impl<'a> Model<'a> {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number(&args[0], cell) {
+        let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
@@ -1682,8 +1696,8 @@ impl<'a> Model<'a> {
             Ok(d) => d,
             Err(e) => return e,
         };
-        let mut days = match self.get_number(&args[1], cell) {
-            Ok(f) => f as i32,
+        let mut days = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor() as i32,
             Err(s) => return s,
         };
         let weekend_mask = match self.weekend_mask(args.get(2), cell) {
@@ -1706,12 +1720,26 @@ impl<'a> Model<'a> {
 
         while days != 0 {
             if days > 0 {
+                if date.num_days_from_ce() - EXCEL_DATE_BASE >= MAXIMUM_DATE_SERIAL_NUMBER {
+                    return CalcResult::Error {
+                        error: Error::NUM,
+                        origin: cell,
+                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
+                    };
+                }
                 date += chrono::Duration::days(1);
                 if !Self::is_weekend(date.weekday(), &weekend_mask) && !holiday_set.contains(&date)
                 {
                     days -= 1;
                 }
             } else {
+                if date.num_days_from_ce() - EXCEL_DATE_BASE <= MINIMUM_DATE_SERIAL_NUMBER {
+                    return CalcResult::Error {
+                        error: Error::NUM,
+                        origin: cell,
+                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
+                    };
+                }
                 date -= chrono::Duration::days(1);
                 if !Self::is_weekend(date.weekday(), &weekend_mask) && !holiday_set.contains(&date)
                 {
