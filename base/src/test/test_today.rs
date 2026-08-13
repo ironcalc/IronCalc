@@ -19,6 +19,25 @@ fn today_basic() {
 }
 
 #[test]
+fn today_now_wrong_arguments() {
+    let mut model = new_empty_model();
+    // 1 is an invalid timezone, it returns #VALUE!
+    model._set("A1", "=TODAY(1)");
+    model._set("A2", "=NOW(1)");
+
+    model._set("A3", "=TODAY(1, 2)");
+    model._set("A4", "=NOW(1, 2)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+}
+
+#[test]
 fn today_with_wrong_tz() {
     let model = Model::new_empty("model", "en", "Wrong Timezone", "en");
     assert!(model.is_err());
