@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 use crate::types::Color;
 
+use crate::test::util::TestModel;
 use crate::{
     cf_types::{CfRule, CfRuleInput, Cfvo, ValueOperator},
     test::util::new_empty_model,
@@ -102,7 +103,7 @@ fn test_stop_if_true_stored_as_false() {
 //   unmatched A1/A2/A3 retain the DataBar as normal.
 // ---------------------------------------------------------------------------
 
-fn model_with_stop_if_true_over_data_bar() -> crate::Model<'static> {
+fn model_with_stop_if_true_over_data_bar() -> TestModel<'static> {
     let mut model = new_empty_model();
     for i in 1i32..=5 {
         model.set_user_input(0, i, 1, i.to_string()).unwrap();

@@ -653,7 +653,7 @@ fn test_date_size_one_broadcast() {
     model._set("F2", "=DATE(2021,2,1)");
     model.evaluate();
 
-    let v = |m: &crate::model::Model, r: &str| m.get_cell_value_by_ref(r).unwrap();
+    let v = |m: &crate::test::util::TestModel, r: &str| m.get_cell_value_by_ref(r).unwrap();
     // The spilled grid must equal the element-wise scalar results.
     assert_eq!(v(&model, "Sheet1!A1"), v(&model, "Sheet1!E1"));
     assert_eq!(v(&model, "Sheet1!B1"), v(&model, "Sheet1!F1"));

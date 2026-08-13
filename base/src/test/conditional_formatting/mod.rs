@@ -10,6 +10,7 @@ mod text;
 mod time_period;
 mod top_bottom;
 
+use crate::test::util::TestModel;
 use crate::{
     cf_types::{CfRule, CfRuleInput, Cfvo, ColorScaleThreshold, Icon, ValueOperator},
     test::util::new_empty_model,
@@ -20,7 +21,7 @@ use crate::{
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn model_with_values() -> crate::Model<'static> {
+fn model_with_values() -> TestModel<'static> {
     let mut model = new_empty_model();
     for i in 1i32..=5 {
         model.set_user_input(0, i, 1, i.to_string()).unwrap();

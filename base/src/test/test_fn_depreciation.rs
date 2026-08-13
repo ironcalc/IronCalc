@@ -2,7 +2,7 @@
 
 use crate::test::util::new_empty_model;
 
-fn num(model: &mut crate::model::Model, cell: &str) -> f64 {
+fn num(model: &mut crate::test::util::TestModel, cell: &str) -> f64 {
     model._get_text(cell).parse::<f64>().unwrap()
 }
 

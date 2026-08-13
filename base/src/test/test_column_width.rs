@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used)]
+// Every test here drives the ordinal column records directly, which `collab-test` has no writer for.
+#![cfg(not(feature = "collab-test"))]
 
 use crate::constants::{COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH};
 use crate::test::util::new_empty_model;
