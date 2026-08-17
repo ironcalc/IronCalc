@@ -2,9 +2,9 @@
 lint:
 	cargo fmt -- --check
 	cargo clippy --all-targets --all-features -- -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings
-	cd webapp/IronCalc/ && npm install && npm run check && npm run typecheck
-	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run check && npm run typecheck
-	cd webapp/embed.ironcalc.com/ && npm install && npm run check && npm run typecheck
+	cd webapp/IronCalc/ && npm install && npm run check
+	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run check
+	cd webapp/embed.ironcalc.com/ && npm install && npm run check
 	cd docs/docs.ironcalc.com/ && npm install && npm run build
 
 .PHONY: format
@@ -28,7 +28,11 @@ test-js:
 	# Regrettably we need to build the wasm twice, once for the nodejs tests
 	# and a second one for the vitest.
 	cd bindings/wasm/ && make tests && make
-	cd webapp/IronCalc/ && npm install && npm run test
+	# Type checks need the built wasm pkg (and the built workbook for the apps),
+	# so they live here rather than in `lint`.
+	cd webapp/IronCalc/ && npm install && npm run typecheck && npm run test && npm run build
+	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run typecheck
+	cd webapp/embed.ironcalc.com/ && npm install && npm run typecheck
 
 .PHONY: test-nodejs
 test-nodejs:
