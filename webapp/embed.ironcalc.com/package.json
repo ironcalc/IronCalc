@@ -9,6 +9,7 @@
     "dist": "npm run build && npm run build:embed",
     "preview": "vite preview",
     "check": "biome check ./src *.html *.json",
+    "typecheck": "tsc -b",
     "check-write": "biome check --write ./src *.html *.json"
   },
   "dependencies": {

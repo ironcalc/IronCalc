@@ -2,8 +2,9 @@
 lint:
 	cargo fmt -- --check
 	cargo clippy --all-targets --all-features -- -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings
-	cd webapp/IronCalc/ && npm install && npm run check
-	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run check
+	cd webapp/IronCalc/ && npm install && npm run check && npm run typecheck
+	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run check && npm run typecheck
+	cd webapp/embed.ironcalc.com/ && npm install && npm run check && npm run typecheck
 	cd docs/docs.ironcalc.com/ && npm install && npm run build
 
 .PHONY: format
