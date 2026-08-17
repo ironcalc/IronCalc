@@ -164,7 +164,8 @@ fn test_time_function_errors() {
     let model = test_time_expressions(&[
         ("A1", "=TIME()"),          // Wrong arg count
         ("A2", "=TIME(12)"),        // Wrong arg count
-        ("A3", "=TIME(12,30,0,0)"), // Wrong arg count
+        ("A3", "=TIME(12,30)"),     // Wrong arg count
+        ("A4", "=TIME(12,30,0,0)"), // Wrong arg count
         ("B1", "=TIME(-1,0,0)"),    // Negative hour
         ("B2", "=TIME(0,-1,0)"),    // Negative minute
         ("B3", "=TIME(0,0,-1)"),    // Negative second
@@ -174,6 +175,7 @@ fn test_time_function_errors() {
     assert_eq!(model._get_text("A1"), *"#ERROR!");
     assert_eq!(model._get_text("A2"), *"#ERROR!");
     assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
 
     // Negative values should return #NUM! error
     assert_eq!(model._get_text("B1"), *"#NUM!");
