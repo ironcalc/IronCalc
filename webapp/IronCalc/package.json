@@ -20,6 +20,7 @@
   "scripts": {
     "build": "vite build && tsc -p tsconfig.json",
     "check": "biome check ./src ./tests .storybook/ *.ts *.json && npm run lint:i18n",
+    "typecheck": "tsc -p tsconfig.test.json",
     "check-write": "biome check --write ./src ./tests .storybook/ *.ts *.json",
     "lint:i18n": "node scripts/lint-i18n.js",
     "test": "vitest run",
