@@ -20,7 +20,7 @@ async function loadModel(): Promise<Model> {
       const response = await fetch(exampleUrl);
       if (response.ok) {
         const bytes = new Uint8Array(await response.arrayBuffer());
-        return Model.from_bytes(bytes, "en");
+        return Model.fromBytes(bytes, "en");
       }
     } catch {
       // Fall through to a new empty workbook on any fetch/parse error.

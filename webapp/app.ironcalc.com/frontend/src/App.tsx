@@ -69,7 +69,7 @@ function App() {
         // Get a remote model
         try {
           const model_bytes = await get_model(modelHash);
-          loadedModel = Model.from_bytes(model_bytes, languageId);
+          loadedModel = Model.fromBytes(model_bytes, languageId);
           localStorage.removeItem("selected");
         } catch (_e) {
           console.error(_e);
@@ -79,7 +79,7 @@ function App() {
       } else if (exampleFilename) {
         try {
           const model_bytes = await get_documentation_model(exampleFilename);
-          loadedModel = Model.from_bytes(model_bytes, languageId);
+          loadedModel = Model.fromBytes(model_bytes, languageId);
           localStorage.removeItem("selected");
         } catch (_e) {
           console.error(_e);
@@ -197,7 +197,7 @@ function App() {
             const bytes = new Uint8Array(await blob.arrayBuffer());
             const locale = loadDefaultLocaleFromStorage();
             const languageId = getLanguageFromLocale(locale);
-            const newModel = Model.from_bytes(bytes, languageId);
+            const newModel = Model.fromBytes(bytes, languageId);
             saveModelToStorage(newModel);
 
             setModel(newModel);
@@ -240,7 +240,7 @@ function App() {
             const bytes = new Uint8Array(await blob.arrayBuffer());
             const locale = loadDefaultLocaleFromStorage();
             const languageId = getLanguageFromLocale(locale);
-            const newModel = Model.from_bytes(bytes, languageId);
+            const newModel = Model.fromBytes(bytes, languageId);
             saveModelToStorage(newModel);
             setModel(newModel);
           }}
@@ -255,7 +255,7 @@ function App() {
                 const model_bytes = await get_documentation_model(templateId);
                 const locale = loadDefaultLocaleFromStorage();
                 const languageId = getLanguageFromLocale(locale);
-                const importedModel = Model.from_bytes(model_bytes, languageId);
+                const importedModel = Model.fromBytes(model_bytes, languageId);
                 saveModelToStorage(importedModel);
                 setModel(importedModel);
                 break;
@@ -272,7 +272,7 @@ function App() {
           const model_bytes = await get_documentation_model(fileName);
           const locale = loadDefaultLocaleFromStorage();
           const languageId = getLanguageFromLocale(locale);
-          const importedModel = Model.from_bytes(model_bytes, languageId);
+          const importedModel = Model.fromBytes(model_bytes, languageId);
           saveModelToStorage(importedModel);
           setModel(importedModel);
           setTemplatesDialogOpen(false);

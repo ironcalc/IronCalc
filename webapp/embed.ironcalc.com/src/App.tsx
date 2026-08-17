@@ -48,7 +48,7 @@ function App() {
       }
 
       if (data.type === "ironcalc:load-workbook:v1") {
-        setModel(Model.from_bytes(new Uint8Array(data.workbookBytes), "en"));
+        setModel(Model.fromBytes(new Uint8Array(data.workbookBytes), "en"));
       }
       if (data.type === "ironcalc:load-empty:v1") {
         setModel(new Model("Workbook", "en", "UTC", "en"));
