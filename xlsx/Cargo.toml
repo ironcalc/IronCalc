@@ -17,7 +17,7 @@ readme = "README.md"
 mock_time = ["ironcalc_base/mock_time"]
 
 [dependencies]
-zip = "0.6"
+zip = { version = "0.6.6", default-features = false, features = ["deflate", "time"] }
 roxmltree = "0.19"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
