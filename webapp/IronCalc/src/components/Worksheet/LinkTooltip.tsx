@@ -1,5 +1,5 @@
 import type { CellLink } from "@ironcalc/wasm";
-import { Copy, Link, Link2Off, PencilLine } from "lucide-react";
+import { Copy, Globe, Link2Off, PencilLine } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LinkHoverCell } from "../WorksheetCanvas/cellLinks";
@@ -74,7 +74,7 @@ const LinkTooltip = (props: {
     >
       <div className="ic-worksheet-link-tooltip-row">
         <span className="ic-worksheet-link-tooltip-icon">
-          <Link size={12} />
+          <Globe size={12} />
         </span>
         <button
           type="button"
@@ -86,47 +86,50 @@ const LinkTooltip = (props: {
         >
           {linkLabel(link)}
         </button>
-        <button
-          type="button"
-          className="ic-worksheet-link-tooltip-button"
-          title={t("link_tooltip.copy")}
-          onClick={() => {
-            const text = link.type === "External" ? link.target : link.location;
-            navigator.clipboard?.writeText(text).catch(() => {
-              // clipboard access denied or unavailable: nothing to do
-            });
-          }}
-        >
-          <Copy size={12} />
-        </button>
-        {/* Dynamic links (created by formulas like HYPERLINK) cannot be edited
-          or deleted: only the formula itself can change them. */}
-        {onEdit && !link.dynamic && (
+        <div className="ic-worksheet-link-tooltip-actions">
           <button
             type="button"
             className="ic-worksheet-link-tooltip-button"
-            title={t("link_tooltip.edit")}
+            title={t("link_tooltip.copy")}
             onClick={() => {
-              onHide();
-              onEdit(cell.row, cell.column);
+              const text =
+                link.type === "External" ? link.target : link.location;
+              navigator.clipboard?.writeText(text).catch(() => {
+                // clipboard access denied or unavailable: nothing to do
+              });
             }}
           >
-            <PencilLine size={12} />
+            <Copy size={12} />
           </button>
-        )}
-        {onDelete && !link.dynamic && (
-          <button
-            type="button"
-            className="ic-worksheet-link-tooltip-button"
-            title={t("link_tooltip.break")}
-            onClick={() => {
-              onHide();
-              onDelete(cell.row, cell.column);
-            }}
-          >
-            <Link2Off size={12} />
-          </button>
-        )}
+          {/* Dynamic links (created by formulas like HYPERLINK) cannot be edited
+            or deleted: only the formula itself can change them. */}
+          {onEdit && !link.dynamic && (
+            <button
+              type="button"
+              className="ic-worksheet-link-tooltip-button"
+              title={t("link_tooltip.edit")}
+              onClick={() => {
+                onHide();
+                onEdit(cell.row, cell.column);
+              }}
+            >
+              <PencilLine size={12} />
+            </button>
+          )}
+          {onDelete && !link.dynamic && (
+            <button
+              type="button"
+              className="ic-worksheet-link-tooltip-button"
+              title={t("link_tooltip.break")}
+              onClick={() => {
+                onHide();
+                onDelete(cell.row, cell.column);
+              }}
+            >
+              <Link2Off size={12} />
+            </button>
+          )}
+        </div>
       </div>
       {link.tooltip ? (
         <div className="ic-worksheet-link-tooltip-text">{link.tooltip}</div>
