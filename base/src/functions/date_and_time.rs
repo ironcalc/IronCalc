@@ -710,9 +710,14 @@ impl<'a> Model<'a> {
         };
 
         fn date_node(year_f: f64, month_f: f64, day_f: f64) -> ArrayNode {
-            let year = year_f.floor() as i32;
+            let mut year = year_f.floor() as i32;
             if year < 0 {
                 return ArrayNode::Error(Error::NUM);
+            }
+            // Excel: a year between 0 and 1899 (inclusive) is treated as an
+            // offset from 1900, e.g. DATE(100, 1, 1) is 2000-01-01
+            if year < 1900 {
+                year += 1900;
             }
             match permissive_date_to_serial_number(
                 day_f.floor() as i32,
