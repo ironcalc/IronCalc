@@ -1,6 +1,6 @@
 # IronCalc Web bindings
 
-This package contains web bindings for IronCalc. Note that it does not contain the xlsx writer and reader, only the engine.
+This package contains web bindings for IronCalc. Note that it does not contain the xlsx writer and reader, only the engine. For XLSX import and export, use [`@ironcalc/wasm-xlsx`](https://www.npmjs.com/package/@ironcalc/wasm-xlsx).
 
 
 ## Usage
