@@ -1997,7 +1997,7 @@ export default class WorksheetCanvas {
     if (frozenRows) {
       // Grid line of the last frozen row, no cell below it draws it
       context.fillStyle = this.theme.gridSeparatorColor;
-      context.fillRect(0, y - 1, this.width, 1);
+      context.fillRect(0, Math.max(0, Math.round(y) - 1), this.width, 1);
       context.beginPath();
       context.lineWidth = frozenSeparatorWidth;
       context.strokeStyle = this.theme.gridSeparatorColor;
@@ -2010,9 +2010,9 @@ export default class WorksheetCanvas {
 
     // If there are frozen columns draw a separator
     if (frozenColumns) {
-      // Grid line of the last frozen column, no cell to its right draws it
+      // Grid line of the last frozen column, no cell to its right draws it.
       context.fillStyle = this.theme.gridSeparatorColor;
-      context.fillRect(x - 1, 0, 1, this.height);
+      context.fillRect(Math.max(0, Math.round(x) - 2), 0, 2, this.height);
       context.beginPath();
       context.lineWidth = frozenSeparatorWidth;
       context.strokeStyle = this.theme.gridSeparatorColor;

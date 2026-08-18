@@ -12,10 +12,14 @@ export function themeColor(
   anchor?: Element | null,
 ): string {
   const root =
-    anchor?.closest(".ic-root") ?? document.querySelector(".ic-root");
-  const color = root
-    ? getComputedStyle(root).getPropertyValue(name).trim()
-    : "";
+    anchor?.closest(".ic-root") ??
+    (typeof document !== "undefined"
+      ? document.querySelector(".ic-root")
+      : null);
+  const color =
+    root && typeof getComputedStyle !== "undefined"
+      ? getComputedStyle(root).getPropertyValue(name).trim()
+      : "";
   return color || defaultThemeVariables[name];
 }
 

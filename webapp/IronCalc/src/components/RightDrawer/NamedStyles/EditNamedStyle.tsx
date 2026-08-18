@@ -240,7 +240,7 @@ const EditNamedStyle = ({
       style.border.left;
     return (firstSide?.style as BorderStyle) || BorderStyle.Thin;
   });
-  const [defaultColor] = useState(() => themeColor("--palette-common-black"));
+  const defaultColor = themeColor("--palette-common-black");
   const [borderColor, setBorderColor] = useState<Color>(() => {
     const firstSide =
       style.border.top ??
