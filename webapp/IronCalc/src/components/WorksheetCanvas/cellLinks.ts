@@ -27,7 +27,7 @@ export interface CellLinksOptions {
 }
 
 // Handles the cell links of the selected sheet: hit-testing the rendered
-// cells on pointer moves (cursor + hover reporting) and following a link.
+// cells on pointer moves (hover reporting) and following a link.
 // The tooltip itself is rendered by React (see Worksheet/LinkTooltip.tsx).
 export class CellLinks {
   private worksheet: WorksheetCanvas;
@@ -76,16 +76,9 @@ export class CellLinks {
         event.clientX - rect.left,
         event.clientY - rect.top,
       );
-      if (cell) {
-        canvas.style.cursor = "pointer";
-        this.options.onLinkHover?.(cell);
-      } else {
-        canvas.style.cursor = "";
-        this.options.onLinkHover?.(null);
-      }
+      this.options.onLinkHover?.(cell);
     };
     container.onpointerleave = () => {
-      canvas.style.cursor = "";
       this.options.onLinkHover?.(null);
     };
     // Ctrl+click (Cmd+click on Mac) on a link cell follows the link. Only the
