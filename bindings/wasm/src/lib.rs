@@ -143,6 +143,27 @@ impl Model {
         Ok(Model { model })
     }
 
+    /// Loads a workbook from the bytes of an xlsx file.
+    /// Only available in `@ironcalc/wasm-xlsx`.
+    #[cfg(feature = "xlsx")]
+    #[wasm_bindgen(js_name = "fromXlsx")]
+    pub fn from_xlsx(
+        bytes: &[u8],
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<Model, JsError> {
+        let workbook = ironcalc::import::load_from_xlsx_bytes(bytes, name, locale, timezone)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        let language_id = leak_str(language_id);
+        let calc_model =
+            ironcalc_base::Model::from_workbook(workbook, language_id).map_err(to_js_error)?;
+        Ok(Model {
+            model: BaseModel::from_model(calc_model),
+        })
+    }
+
     pub fn undo(&mut self) -> Result<(), JsError> {
         self.model.undo().map_err(to_js_error)
     }
@@ -909,6 +930,17 @@ impl Model {
     #[wasm_bindgen(js_name = "toBytes")]
     pub fn to_bytes(&self) -> Vec<u8> {
         self.model.to_bytes()
+    }
+
+    /// Serializes the workbook to xlsx bytes.
+    /// Only available in `@ironcalc/wasm-xlsx`.
+    #[cfg(feature = "xlsx")]
+    #[wasm_bindgen(js_name = "toXlsx")]
+    pub fn to_xlsx(&self) -> Result<Vec<u8>, JsError> {
+        let writer = std::io::Cursor::new(Vec::new());
+        let writer = ironcalc::export::save_xlsx_to_writer(self.model.get_model(), writer)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        Ok(writer.into_inner())
     }
 
     #[wasm_bindgen(js_name = "getName")]

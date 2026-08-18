@@ -13,7 +13,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const pkgDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'pkg');
+const pkgDir = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    process.env.PKG_DIR || 'pkg',
+);
 
 test('npm tarball contains every module imported by wasm.js', () => {
     const wasmJs = readFileSync(path.join(pkgDir, 'wasm.js'), 'utf8');

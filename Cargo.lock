@@ -1029,6 +1029,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e1d5e639ff6bab73cb6885cc7e7b1de96c3f32c68ec55f3952614bec1092244"
 dependencies = [
  "deranged",
+ "js-sys",
  "num-conv",
  "powerfmt",
  "serde_core",
@@ -1091,9 +1092,11 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 name = "wasm"
 version = "0.8.4"
 dependencies = [
+ "ironcalc",
  "ironcalc_base",
  "serde",
  "serde-wasm-bindgen",
+ "time",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]

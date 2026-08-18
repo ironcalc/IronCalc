@@ -10,11 +10,20 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+default = []
+xlsx = ["dep:ironcalc", "dep:time"]
+
 [dependencies]
 # Uses `../ironcalc/base` when used locally, and uses
 # the indicated version from crates.io when published.
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
 ironcalc_base = { path = "../../base", version = "0.8" }
+ironcalc = { path = "../../xlsx", version = "0.8", optional = true }
+# zip's `time` feature needs the `time` crate's wasm-bindgen backend to read
+# the clock when writing xlsx archives. Feature-unifying it here keeps that
+# out of the xlsx crate itself.
+time = { version = "0.3", features = ["wasm-bindgen"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = "0.2.100"
 serde-wasm-bindgen = "0.4"
