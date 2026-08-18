@@ -186,6 +186,7 @@
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin: 0px 4px 2px 0px;
 }
 
 .ic-worksheet-link-tooltip-icon {
@@ -216,6 +217,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  margin-left: auto;
 }
 
 .ic-worksheet-link-tooltip-button {
