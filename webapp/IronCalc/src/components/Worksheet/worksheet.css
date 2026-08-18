@@ -154,14 +154,18 @@
   flex-direction: column;
   align-items: stretch;
   gap: 2px;
-  padding: 4px 8px;
+  padding: 2px 2px 2px 6px;
   border-radius: 4px;
-  background-color: #333333;
-  color: #ffffff;
-  font-size: 12px;
-  font-family: var(--palette-sheet-default-cell-font-family);
+  background-color: color-mix(
+    in srgb,
+    var(--palette-grey-900) 90%,
+    transparent
+  );
+  color: var(--palette-common-white);
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
   white-space: nowrap;
-  box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-md);
   z-index: 20;
 }
 
@@ -173,7 +177,7 @@
 
 /* The optional descriptive text of the link, below the label and actions */
 .ic-worksheet-link-tooltip-text {
-  color: #b0b0b0;
+  color: var(--palette-grey-400);
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -182,7 +186,7 @@
 .ic-worksheet-link-tooltip-icon {
   display: flex;
   align-items: center;
-  color: #b0b0b0;
+  color: var(--palette-grey-400);
 }
 
 .ic-worksheet-link-tooltip-label {
@@ -203,21 +207,27 @@
   text-decoration: underline;
 }
 
+.ic-worksheet-link-tooltip-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .ic-worksheet-link-tooltip-button {
   display: flex;
   align-items: center;
   background: none;
   border: none;
-  padding: 2px;
+  padding: 4px;
   margin: 0;
-  color: #b0b0b0;
+  color: var(--palette-grey-400);
   cursor: pointer;
   border-radius: 2px;
 }
 
 .ic-worksheet-link-tooltip-button:hover {
-  color: #ffffff;
-  background-color: #4d4d4d;
+  color: var(--palette-common-white);
+  background-color: var(--palette-grey-800);
 }
 
 /* Editor wrapper */
