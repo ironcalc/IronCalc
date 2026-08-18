@@ -74,7 +74,7 @@ const LinkTooltip = (props: {
     >
       <div className="ic-worksheet-link-tooltip-row">
         <span className="ic-worksheet-link-tooltip-icon">
-          <Globe size={12} />
+          <Globe />
         </span>
         <button
           type="button"
@@ -91,6 +91,7 @@ const LinkTooltip = (props: {
             type="button"
             className="ic-worksheet-link-tooltip-button"
             title={t("link_tooltip.copy")}
+            aria-label={t("link_tooltip.copy")}
             onClick={() => {
               const text =
                 link.type === "External" ? link.target : link.location;
@@ -99,7 +100,7 @@ const LinkTooltip = (props: {
               });
             }}
           >
-            <Copy size={12} />
+            <Copy />
           </button>
           {/* Dynamic links (created by formulas like HYPERLINK) cannot be edited
             or deleted: only the formula itself can change them. */}
@@ -108,12 +109,13 @@ const LinkTooltip = (props: {
               type="button"
               className="ic-worksheet-link-tooltip-button"
               title={t("link_tooltip.edit")}
+              aria-label={t("link_tooltip.edit")}
               onClick={() => {
                 onHide();
                 onEdit(cell.row, cell.column);
               }}
             >
-              <PencilLine size={12} />
+              <PencilLine />
             </button>
           )}
           {onDelete && !link.dynamic && (
@@ -121,12 +123,13 @@ const LinkTooltip = (props: {
               type="button"
               className="ic-worksheet-link-tooltip-button"
               title={t("link_tooltip.break")}
+              aria-label={t("link_tooltip.break")}
               onClick={() => {
                 onHide();
                 onDelete(cell.row, cell.column);
               }}
             >
-              <Link2Off size={12} />
+              <Link2Off />
             </button>
           )}
         </div>
