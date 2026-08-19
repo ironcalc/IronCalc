@@ -442,7 +442,7 @@ const Workbook = (props: {
         "ic-worksheet-sheet-container",
       )[0];
       if (el) {
-        (el as HTMLElement).style.cursor = "auto";
+        (el as HTMLElement).style.cursor = "";
       }
       setRedrawId((id) => id + 1);
     },

@@ -28,6 +28,10 @@
   height: 100%;
 }
 
+.ic-worksheet-sheet-container.ic-worksheet-link-cursor {
+  cursor: pointer;
+}
+
 /* Column resize handle */
 .ic-worksheet-sheet-container .column-resize-handle {
   position: absolute;

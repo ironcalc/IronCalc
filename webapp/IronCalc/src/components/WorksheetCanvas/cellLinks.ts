@@ -26,6 +26,38 @@ export interface CellLinksOptions {
   tooltipCell: LinkHoverCell | null;
 }
 
+// Pointer cursor while Ctrl/Cmd+click would follow a link
+const LINK_CURSOR_CLASS = "ic-worksheet-link-cursor";
+let linkContainer: HTMLElement | null = null;
+let linkHovered = false;
+let modifierDown = false;
+let modifierTracked = false;
+
+function updateLinkCursor(): void {
+  linkContainer?.classList.toggle(
+    LINK_CURSOR_CLASS,
+    linkHovered && modifierDown,
+  );
+}
+
+// The container is never focused so Ctrl/Cmd is tracked on the window
+function trackModifierKey(): void {
+  if (modifierTracked || typeof window === "undefined") {
+    return;
+  }
+  modifierTracked = true;
+  const onKey = (event: KeyboardEvent): void => {
+    modifierDown = event.ctrlKey || event.metaKey;
+    updateLinkCursor();
+  };
+  window.addEventListener("keydown", onKey);
+  window.addEventListener("keyup", onKey);
+  window.addEventListener("blur", () => {
+    modifierDown = false;
+    updateLinkCursor();
+  });
+}
+
 // Handles the cell links of the selected sheet: hit-testing the rendered
 // cells on pointer moves (hover reporting) and following a link.
 // The tooltip itself is rendered by React (see Worksheet/LinkTooltip.tsx).
@@ -40,6 +72,7 @@ export class CellLinks {
     this.options = options;
     this.links = new Map<string, CellLink>();
     this.attachHandlers();
+    trackModifierKey();
   }
 
   setSheetLinks(cellLinks: CellLink[]): void {
@@ -64,6 +97,7 @@ export class CellLinks {
     // previous instance instead of accumulating stale ones.
     const canvas = this.worksheet.canvas;
     const container = canvas.parentElement ?? canvas;
+    linkContainer = container;
     container.onpointermove = (event) => {
       // While the pointer is over the tooltip it is not hovering any cell:
       // the tooltip component handles its own pointer events.
@@ -76,9 +110,14 @@ export class CellLinks {
         event.clientX - rect.left,
         event.clientY - rect.top,
       );
+      linkHovered = cell !== null;
+      modifierDown = event.ctrlKey || event.metaKey;
+      updateLinkCursor();
       this.options.onLinkHover?.(cell);
     };
     container.onpointerleave = () => {
+      linkHovered = false;
+      updateLinkCursor();
       this.options.onLinkHover?.(null);
     };
     // Ctrl+click (Cmd+click on Mac) on a link cell follows the link. Only the

@@ -334,7 +334,7 @@ const Worksheet = forwardRef(
         }
         workbookState.setCopyStyles(null);
         if (worksheetElement.current) {
-          worksheetElement.current.style.cursor = "auto";
+          worksheetElement.current.style.cursor = "";
         }
         refresh();
       },
