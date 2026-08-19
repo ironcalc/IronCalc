@@ -26,7 +26,18 @@ export interface CellLinksOptions {
   tooltipCell: LinkHoverCell | null;
 }
 
-// Pointer cursor while Ctrl/Cmd+click would follow a link
+// Cmd on Mac, Ctrl elsewhere (on Mac Ctrl+click is a right click)
+const isMac =
+  typeof navigator !== "undefined" && navigator.userAgent.includes("Mac");
+
+function hasLinkModifier(event: {
+  ctrlKey: boolean;
+  metaKey: boolean;
+}): boolean {
+  return isMac ? event.metaKey : event.ctrlKey;
+}
+
+// Pointer cursor while the modifier+click would follow a link
 const LINK_CURSOR_CLASS = "ic-worksheet-link-cursor";
 let linkContainer: HTMLElement | null = null;
 let linkHovered = false;
@@ -40,14 +51,14 @@ function updateLinkCursor(): void {
   );
 }
 
-// The container is never focused so Ctrl/Cmd is tracked on the window
+// The container is never focused so the modifier is tracked on the window
 function trackModifierKey(): void {
   if (modifierTracked || typeof window === "undefined") {
     return;
   }
   modifierTracked = true;
   const onKey = (event: KeyboardEvent): void => {
-    modifierDown = event.ctrlKey || event.metaKey;
+    modifierDown = hasLinkModifier(event);
     updateLinkCursor();
   };
   window.addEventListener("keydown", onKey);
@@ -111,7 +122,7 @@ export class CellLinks {
         event.clientY - rect.top,
       );
       linkHovered = cell !== null;
-      modifierDown = event.ctrlKey || event.metaKey;
+      modifierDown = hasLinkModifier(event);
       updateLinkCursor();
       this.options.onLinkHover?.(cell);
     };
@@ -120,10 +131,10 @@ export class CellLinks {
       updateLinkCursor();
       this.options.onLinkHover?.(null);
     };
-    // Ctrl+click (Cmd+click on Mac) on a link cell follows the link. Only the
-    // primary button: on Mac Ctrl+click is a right click (context menu).
+    // Cmd+click (Ctrl+click outside Mac) on a link cell follows the link,
+    // primary button only
     container.onpointerdown = (event) => {
-      if (event.button !== 0 || !(event.ctrlKey || event.metaKey)) {
+      if (event.button !== 0 || !hasLinkModifier(event)) {
         return;
       }
       const target = event.target as Element;
