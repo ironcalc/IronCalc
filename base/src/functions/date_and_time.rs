@@ -537,6 +537,7 @@ pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     }
 
     let year_str = parts[year_idx];
+    let year_is_first = year_idx == 0;
     // Remove the year from the remaining vector to process day / month.
     parts.remove(year_idx);
     let part1 = parts[0];
@@ -546,7 +547,10 @@ pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     let is_numeric = |s: &str| s.chars().all(char::is_numeric);
 
     // Determine month and day.
-    let (month_str, day_str) = if !is_numeric(part1) {
+    let (month_str, day_str) = if year_is_first {
+        // Year-first dates use the unambiguous YYYY-MM-DD order.
+        (part1, part2)
+    } else if !is_numeric(part1) {
         // textual month in first
         (part1, part2)
     } else if !is_numeric(part2) {
@@ -573,7 +577,16 @@ pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     }
 
     match date_to_serial_number(day, month, year) {
-        Ok(n) => Ok(n),
+        Ok(n) => {
+            if {
+                n > MAXIMUM_DATE_SERIAL_NUMBER as i32 || n < MINIMUM_DATE_SERIAL_NUMBER as i32
+            }
+            {
+                Err("Not a valid date".to_string())
+            } else {
+                Ok(n)
+            }
+        }
         Err(_) => Err("Not a valid date".to_string()),
     }
 }
@@ -1289,14 +1302,16 @@ impl<'a> Model<'a> {
                     message: "Invalid date".to_string(),
                 },
             },
-            CalcResult::Number(f) => CalcResult::Number(f.floor()),
-            CalcResult::Boolean(b) => {
-                if b {
-                    CalcResult::Number(1.0)
-                } else {
-                    CalcResult::Number(0.0)
-                }
-            }
+            CalcResult::Number(_) => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Invalid date".to_string(),
+            },
+            CalcResult::Boolean(_) => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Invalid date".to_string(),
+            },
             err @ CalcResult::Error { .. } => err,
             CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 CalcResult::Error {
@@ -1305,7 +1320,11 @@ impl<'a> Model<'a> {
                     message: "Arrays not supported yet".to_string(),
                 }
             }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(0.0),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Invalid date".to_string(),
+            },
         }
     }
 
