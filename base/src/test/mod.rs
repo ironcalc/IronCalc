@@ -28,8 +28,6 @@ mod test_fn_depreciation;
 mod test_fn_financial_simple;
 mod test_forecast;
 mod test_statistical_functions;
-// FIXME: These tests are failing
-// mod test_fn_datevalue_datedif;
 mod test_fn_day;
 mod test_fn_exact;
 mod test_fn_financial;
