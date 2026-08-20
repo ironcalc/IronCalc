@@ -52,15 +52,23 @@ pub struct Entry {
     pub key: FractionalKey,
     /// Hybrid logical clock stamp of the last modification.
     pub modified_at: Hlc,
-    /// If this [Entry] was generates as a move destination, this field will hold the source key
-    /// that was moved. Otherwise, it will be [FractionalKey::NULL].
+    /// The other end of the element's chain: an active record points back at the element's identity
+    /// ([FractionalKey::NULL] when it sits on it), the parked identity record points at the position
+    /// the element holds now, and every other parked record points back at the identity.
     ///
-    /// For moved keys it's reverse: it will point to the destination. It can also point to
-    /// [FractionalKey::NULL], which means that this entry has been removed.
+    /// [FractionalKey::NULL] on a parked record ends the chain: the element is removed.
     pub moved: FractionalKey,
 }
 
 impl Entry {
+    pub fn new(key: FractionalKey, modified_at: Hlc, moved: FractionalKey) -> Self {
+        Entry {
+            key,
+            modified_at,
+            moved,
+        }
+    }
+
     pub fn moved(&self) -> Option<&FractionalKey> {
         if self.moved.is_empty() {
             None
@@ -182,18 +190,44 @@ impl FractionalIndex {
     }
 
     pub fn position_of(&self, identity: &FractionalKey) -> Option<usize> {
-        match self.active.binary_search_by_key(&identity, |e| &e.key) {
-            Ok(index) => Some(index),
-            Err(_) => {
-                let moved_index = self
-                    .moved
-                    .binary_search_by_key(&identity, |e| &e.key)
-                    .ok()?;
-                let e = &self.moved[moved_index];
-                let dest = e.moved()?;
-                self.position_of(dest)
+        self.resolve(identity)?.ok()
+    }
+
+    /// Follows `key`'s chain to the record that ends it: `Ok` indexes the active entry the element
+    /// holds, `Err` the parked record a removal ended the chain with. `None` when the chain leads
+    /// nowhere — an unknown key, or a cycle a malformed payload introduced.
+    fn resolve(&self, key: &FractionalKey) -> Option<Result<usize, usize>> {
+        let mut cursor = key;
+        // A chain longer than the parked space has to revisit a record, so this bound is a cycle
+        // check rather than a heuristic.
+        for _ in 0..=self.moved.len() {
+            if let Ok(i) = self.active.binary_search_by_key(&cursor, |e| &e.key) {
+                return Some(Ok(i));
+            }
+            let j = self.moved.binary_search_by_key(&cursor, |e| &e.key).ok()?;
+            match self.moved[j].moved() {
+                Some(next) => cursor = next,
+                None => return Some(Err(j)),
             }
         }
+        None
+    }
+
+    /// [`Self::resolve`] plus the key the element answers to, read off the record that ends the
+    /// chain: an active one names its identity, a null terminal *is* the identity.
+    fn locate(&self, key: &FractionalKey) -> Option<(FractionalKey, Result<usize, usize>)> {
+        let end = self.resolve(key)?;
+        let identity = match end {
+            Ok(i) => self.active[i].identity(),
+            Err(j) => &self.moved[j].key,
+        };
+        Some((identity.clone(), end))
+    }
+
+    /// The key of the position `identity`'s element holds, `None` when it holds none.
+    fn held_key(&self, identity: &FractionalKey) -> Option<FractionalKey> {
+        let i = self.position_of(identity)?;
+        Some(self.active[i].key.clone())
     }
 
     pub fn move_to<R: RangeBounds<usize>>(&mut self, source: R, dest: usize) {
@@ -240,14 +274,13 @@ impl FractionalIndex {
                     self.park(entry);
                 }
                 Some(moved) => {
-                    // this is a transitive entry, we need to tombstone it and update its source
+                    // a transitive entry: the identity record tracks where the element went, and the
+                    // position it leaves keeps both its pointer back and the stamp it arrived with
                     if let Ok(i) = self.moved.binary_search_by_key(&moved, |e| &e.key) {
                         let e = &mut self.moved[i];
                         e.modified_at = modified_at;
                         e.moved = dest_key;
                     }
-                    entry.modified_at = modified_at;
-                    entry.moved = FractionalKey::NULL;
                     self.park(entry);
                 }
             }
@@ -260,40 +293,15 @@ impl FractionalIndex {
 
     /// [`Self::remove_key`] stamping `at` rather than the local clock: the apply path passes the
     /// commit's stamp, so every replica files the same tombstone.
+    ///
+    /// A removal is a move to nowhere — one write of the element's position register, arbitrated
+    /// against every other write to it — so an insert of the same key past `at` puts the element
+    /// back. Returns the identity it answered to, `None` when the key is unknown or the write loses.
     pub fn remove_key_at(&mut self, key: &FractionalKey, at: Hlc) -> Option<FractionalKey> {
-        // found in index space: move to moved space
-        if let Some(source) = self.tombstone(key, Some(at)) {
-            return if source.is_empty() {
-                // the key was never moved, so it is the element's own identity
-                Some(key.clone())
-            } else {
-                // it sat at a move destination, so the record it came from goes too — and that
-                // record is what the caller knows the element by
-                self.remove_key_at(&source, at)
-            };
-        }
-        // not in index space, but possibly in moved space?
-        match self.moved.binary_search_by_key(&key, |e| &e.key) {
-            Ok(i) => {
-                let removed_at = at;
-                let e = &mut self.moved[i];
-                e.modified_at = removed_at;
-                let moved = std::mem::replace(&mut e.moved, FractionalKey::NULL);
-                if moved == FractionalKey::NULL {
-                    // already removed
-                    None
-                } else {
-                    // we removed the element that has been moved, we also need to remove
-                    // its move destination
-                    let removed_source = e.key.clone();
-                    self.remove_key_at(&moved, at);
-                    Some(removed_source)
-                }
-            }
-            Err(_) => {
-                None // we cannot remove key before it appeared
-            }
-        }
+        let (identity, end) = self.locate(key)?;
+        let held = end.ok();
+        // It took effect only if it is what ended the element's chain.
+        (self.write_register(&identity, held, None, at) && held.is_some()).then_some(identity)
     }
 
     /// The *positions* of the stored keys bracketing index `i`, session suffix stripped. An empty
@@ -340,99 +348,167 @@ impl FractionalIndex {
         Some(&self.active[index].key)
     }
 
-    /// Insert an externally minted `key` at its sorted position.
+    /// Insert an externally minted `key` at its sorted position, or put the element it names back
+    /// onto it.
     ///
-    /// Returns `None` if the key was *ever* seen — active or parked — which is what makes the index a
-    /// 2P-set: a tombstone is final, so a delete always wins over a concurrent insert of the same key
-    /// and two peers minting the same key converge on one element.
-    ///
-    /// `modified_at` is stamped from the local clock. It is advisory (nothing here resolves
-    /// conflicts by it), so peers disagreeing on it is not divergence.
+    /// Returns `None` when nothing moved: the key already names a live element, or the insert is not
+    /// strictly newer than the write it races — so a delete wins over a concurrent insert of the
+    /// same key, and redelivery of the original insert cannot resurrect.
     pub fn insert_key(&mut self, key: FractionalKey) -> Option<usize> {
         self.insert_key_at(key, Hlc::now())
     }
 
     /// [`Self::insert_key`] stamping `at` instead of reading the local clock — see
     /// [`Self::remove_key_at`].
+    ///
+    /// An insert of a key this index has seen is a move of its element onto it: it undoes a removal,
+    /// and it takes the element back from a destination an older move sent it to.
     pub fn insert_key_at(&mut self, key: FractionalKey, at: Hlc) -> Option<usize> {
         // Before the ever-seen check: a rejected key was still handed out, and its ordinal must not
         // be minted again.
         if let Some(ordinal) = virtual_ordinal(&key) {
             self.watermark = self.watermark.max(ordinal);
         }
-        if self.active.binary_search_by_key(&&key, |e| &e.key).is_ok()
-            || self.moved.binary_search_by_key(&&key, |e| &e.key).is_ok()
-        {
-            return None;
+        match self.locate(&key) {
+            // it's a new entry
+            None => {
+                let index = self.active_index(&key);
+                self.active
+                    .insert(index, Entry::new(key, at, FractionalKey::NULL));
+                Some(index)
+            }
+            Some((identity, end)) => {
+                let held = end.ok();
+                let existed = match held {
+                    Some(i) => self.active[i].key == key, // this key already exists
+                    None => false,
+                };
+                self.write_register(&identity, held, Some(&key), at);
+                // An index only for an insert that put the element here: a register write the state outranks
+                // moves nothing, and neither does re-stamping a record already sitting here.
+                match self.active.binary_search_by_key(&&key, |e| &e.key) {
+                    Ok(index) if !existed => Some(index),
+                    _ => None,
+                }
+            }
         }
-        let index = self.lower_bound(&key);
-        self.active.insert(
-            index,
-            Entry {
-                key,
-                modified_at: at,
-                moved: FractionalKey::NULL,
-            },
-        );
-        Some(index)
     }
 
-    /// Replays an author-minted move: `source`'s element takes the `dest` position.
-    /// A `dest` ever seen here means the move is already in — redelivery is a no-op.
-    /// Concurrent moves of one element order by `(at, dest)`; the loser's `dest` is
-    /// still tombstoned, keeping both peers' `moved` spaces identical.
+    /// Replays an author-minted move: `source`'s element takes the `dest` position, or keeps what it
+    /// has if a newer write to its register already carried. Taking back a position it passed
+    /// through is what makes moves invertible.
+    ///
+    /// Concurrent moves of one element order by `(at, dest)`; the loser's `dest` is still filed as a
+    /// position the element passed through, keeping both peers' `moved` spaces identical.
     pub fn apply_move(&mut self, source: &FractionalKey, dest: FractionalKey, at: Hlc) {
-        if self.active.binary_search_by_key(&&dest, |e| &e.key).is_ok()
-            || self.moved.binary_search_by_key(&&dest, |e| &e.key).is_ok()
-        {
-            return;
-        }
-        let Some(i) = self.position_of(source) else {
-            return; // source no longer exists
+        let Some((identity, end)) = self.locate(source) else {
+            return; // a key this index has never seen
         };
-        let current = &self.active[i];
-        if (at, &dest) <= (current.modified_at, &current.key) {
-            self.park(Entry {
-                key: dest,
-                modified_at: at,
-                moved: FractionalKey::NULL,
-            });
-            return;
-        }
-        let mut entry = self.active.remove(i);
-        let identity = entry.identity().clone();
-        let index = self.lower_bound(&dest);
-        self.active.insert(
-            index,
-            Entry {
-                key: dest.clone(),
-                modified_at: at,
-                moved: identity,
-            },
-        );
-        match entry.moved().cloned() {
-            None => {
-                // The original key: the record it leaves behind points at where it went.
-                entry.modified_at = at;
-                entry.moved = dest;
-                self.park(entry);
-            }
-            Some(moved) => {
-                // Transitive entry: the source record is redirected to the new dest, and the
-                // tombstone keeps the superseded stamp so peers that never applied it agree.
-                if let Ok(j) = self.moved.binary_search_by_key(&&moved, |e| &e.key) {
-                    let e = &mut self.moved[j];
-                    e.modified_at = at;
-                    e.moved = dest;
+        self.write_register(&identity, end.ok(), Some(&dest), at);
+    }
+
+    /// Applies an op as a join: the element's position register takes `{identity → dest}` — a null
+    /// `dest` for a removal — and `dest` itself is filed as the position it names.
+    ///
+    /// Every op is this one write. Ops commute: the state depends on the set of writes, never on
+    /// the order they arrive in. Both records are filed whether the register write won or lost,
+    /// so a peer where it lost holds the same bookkeeping as one where it won.
+    /// `held` comes from [`Self::locate`].
+    fn write_register(
+        &mut self,
+        identity: &FractionalKey,
+        held: Option<usize>,
+        dest: Option<&FractionalKey>,
+        at: Hlc,
+    ) -> bool {
+        let moving = match dest {
+            Some(d) if d != identity => Some(d), // it's a move operation
+            Some(_) => None, // element sits back on its own identity (undo operation)
+            None => None,    // removal
+        };
+        // previous move destination (but different from the current one)
+        let prev_dest = match held {
+            Some(i) => {
+                let key = &self.active[i].key;
+                if key != identity && Some(key) != moving {
+                    Some(key.clone())
+                } else {
+                    None
                 }
-                entry.moved = FractionalKey::NULL;
-                self.park(entry);
+            }
+            None => None,
+        };
+        // Removed, or back on its own identity: one record, and only the space it sits in tells the
+        // two apart — [`Self::wins`] gives the removal an equal stamp.
+        let won = self.join(
+            Entry::new(
+                identity.clone(),
+                at,
+                moving.unwrap_or(&FractionalKey::NULL).clone(),
+            ),
+            dest.is_some() && moving.is_none(),
+        );
+
+        // insert move destination entry
+        if let Some(dest) = moving {
+            let filed = self.join(Entry::new(dest.clone(), at, identity.clone()), true);
+            // move destination has been written, but its origin was not (it lost concurrent write)
+            if !won && filed {
+                self.park_active(dest);
             }
         }
+        // previous move destination has been overridden, so we need to park it
+        if won {
+            if let Some(prev_dest) = prev_dest {
+                self.park_active(&prev_dest);
+            }
+        }
+        won
+    }
+
+    /// Parks the active record filed under `key`, if any, unchanged: it keeps the stamp it arrived
+    /// with, so a peer that never filed it in `active` holds the same record.
+    fn park_active(&mut self, key: &FractionalKey) {
+        if let Ok(i) = self.active.binary_search_by_key(&key, |e| &e.key) {
+            let e = self.active.remove(i);
+            self.park(e);
+        }
+    }
+
+    /// Joins one record into the state by the rule [`Self::merge`] arbitrates with, moving it
+    /// between the spaces as the winner demands. Binary searches only: an op touches the handful of
+    /// records it implies, never the space it sits in. Returns whether it beat what was there.
+    fn join(&mut self, e: Entry, active: bool) -> bool {
+        let slot = match self.active.binary_search_by_key(&&e.key, |o| &o.key) {
+            Ok(i) => {
+                if !Self::wins((&e, active), (&self.active[i], true)) {
+                    return false;
+                }
+                if active {
+                    self.active[i] = e;
+                } else {
+                    self.active.remove(i);
+                    self.park(e);
+                }
+                return true;
+            }
+            Err(i) => i, // where it goes if it ends up active
+        };
+        match self.moved.binary_search_by_key(&&e.key, |o| &o.key) {
+            Ok(j) if !Self::wins((&e, active), (&self.moved[j], false)) => return false,
+            Ok(j) if active => {
+                self.moved.remove(j);
+                self.active.insert(slot, e);
+            }
+            Ok(j) => self.moved[j] = e,
+            Err(_) if active => self.active.insert(slot, e),
+            Err(j) => self.moved.insert(j, e),
+        }
+        true
     }
 
     /// Where `key` would sit among the active entries, whether or not it is one of them.
-    pub fn lower_bound(&self, key: &FractionalKey) -> usize {
+    pub fn active_index(&self, key: &FractionalKey) -> usize {
         match self.active.binary_search_by_key(&key, |e| &e.key) {
             Ok(i) | Err(i) => i,
         }
@@ -485,153 +561,194 @@ impl FractionalIndex {
         self.active.iter()
     }
 
+    /// Joins `other`'s state in: each key is an LWW register over its record and the space it sits
+    /// in. Both inputs must be settled.
     pub fn merge(&mut self, other: &Self) -> bool {
-        let mut changed = false;
-        let mut o1 = 0;
-        let mut o2 = 0;
-        for e in other.active.iter() {
-            let index = &self.active[o1..];
-            match index.binary_search_by_key(&&e.key, |e| &e.key) {
-                Ok(i) => {
-                    // key found in current index space
-                    o1 += i;
-                    let e2 = &mut self.active[o1];
-                    if e2.modified_at <= e.modified_at {
-                        e2.modified_at = e.modified_at;
-                        // if two entries have the same modified_at value, we'll resolve the result
-                        // by higher moved key
-                        e2.moved = (&e2.moved).max(&e.moved).clone();
-                        changed = true;
+        if other.active.is_empty() && other.moved.is_empty() {
+            return false; // nothing to join against
+        }
+        if self.active.is_empty() && self.moved.is_empty() {
+            // Nothing of ours to arbitrate: adopt their records, which are settled already.
+            self.active = other.active.clone();
+            self.moved = other.moved.clone();
+            self.bump_watermark();
+            return true;
+        }
+        // Changes are collected against the spaces as streamed, then applied in the order that keeps
+        // those indices valid: replacements shift nothing, removals compact, inserts merge in last.
+        let (mut a_set, mut a_del, mut a_ins) = (Vec::new(), Vec::new(), Vec::new());
+        let (mut m_set, mut m_del, mut m_ins) = (Vec::new(), Vec::new(), Vec::new());
+        // Candidates are kept as keys, not indices: every phase below moves records.
+        let mut touched: Vec<FractionalKey> = Vec::new();
+        {
+            let mut mine = Entries::new(&self.active, &self.moved).peekable();
+            let mut theirs = Entries::new(&other.active, &other.moved).peekable();
+            let (mut ai, mut mi) = (0, 0); // cursors into `self.active` / `self.moved`
+            loop {
+                let ord = match (mine.peek(), theirs.peek()) {
+                    (Some(a), Some(b)) => a.0.key.cmp(&b.0.key),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => break,
+                };
+                if ord == std::cmp::Ordering::Greater {
+                    // Theirs alone: a record we have never held.
+                    if let Some((e, is_active)) = theirs.next() {
+                        if is_active {
+                            a_ins.push(e.clone());
+                        } else {
+                            m_ins.push(e.clone());
+                        }
+                        touched.push(e.key.clone());
+                    }
+                    continue;
+                }
+                let Some((ours, is_active)) = mine.next() else {
+                    break;
+                };
+                let i = if is_active { ai } else { mi };
+                if is_active {
+                    ai += 1;
+                } else {
+                    mi += 1;
+                }
+                if ord == std::cmp::Ordering::Less {
+                    continue; // ours alone: it stands
+                }
+                let Some(incoming) = theirs.next() else { break };
+                if (is_active == incoming.1 && ours == incoming.0)
+                    || !Self::wins(incoming, (ours, is_active))
+                {
+                    continue; // the same record on both sides, or ours outranks theirs
+                }
+                match (is_active, incoming.1) {
+                    (true, true) => a_set.push((i, incoming.0.clone())),
+                    (false, false) => m_set.push((i, incoming.0.clone())),
+                    (true, false) => {
+                        a_del.push(i);
+                        m_ins.push(incoming.0.clone());
+                    }
+                    (false, true) => {
+                        m_del.push(i);
+                        a_ins.push(incoming.0.clone());
                     }
                 }
-                Err(i) => {
-                    // key not found in current index space, search moved space first
-                    let moved = &self.moved[o2..];
-                    match moved.binary_search_by_key(&&e.key, |e| &e.key) {
-                        Ok(j) => {
-                            o2 += j;
-                            // `e` existed in `other.index` and on `self.moved`: since we key can
-                            // be (re)moved only AFTER it appeared, it means that other has outdated update
-                        }
-                        Err(j) => {
-                            o1 += i;
-                            o2 += j;
-                            // key didn't exist in moved space either, we can insert it into index
-                            self.active.insert(o1, e.clone());
-                            changed = true;
-                        }
-                    }
-                }
+                touched.push(incoming.0.key.clone());
             }
         }
+        // A register they overwrite orphans the position we hold for its element, so that position
+        // joins the candidates — read here, while the spaces are still as streamed.
+        let held: Vec<FractionalKey> = touched.iter().filter_map(|k| self.held_key(k)).collect();
+        touched.extend(held);
 
-        let mut o1 = 0;
-        let mut o2 = 0;
-        for e in other.moved.iter() {
-            let index = &self.active[o1..];
-            match index.binary_search_by_key(&&e.key, |e| &e.key) {
-                Ok(i) => {
-                    // moved key found in current index space, it has to be moved
-                    o1 += i;
-                    let removed = self.active.remove(o1);
-                    if let Some(moved) = removed.moved() {
-                        // this key is transitive - it's move destination of another key
-                    }
-
-                    let moved = &self.moved[o2..];
-                    match moved.binary_search_by_key(&&e.key, |e| &e.key) {
-                        Ok(i) => {
-                            // technically this shouldn't happen (the same key should never
-                            // be present in both index and moved spaces)
-                            o2 += i;
-                            let e2 = &mut self.moved[o2];
-                            // Same pairwise last-writer-wins as below, for the same reason.
-                            if (e2.modified_at, &e2.moved) < (e.modified_at, &e.moved) {
-                                e2.modified_at = e.modified_at;
-                                e2.moved = e.moved.clone();
-                                changed = true;
-                            }
-                        }
-                        Err(i) => {
-                            o2 += i;
-                            self.moved.insert(o2, e.clone());
-                        }
-                    }
-                }
-                Err(_) => {
-                    // not found in regular index space, try moved space
-                    let moved = &self.moved[o2..];
-                    match moved.binary_search_by_key(&&e.key, |e| &e.key) {
-                        Ok(i) => {
-                            o2 += i;
-                            let e2 = &mut self.moved[o2];
-                            // Last writer wins, the destination key breaking a tie. The two have to
-                            // be compared as one pair: taking the newer timestamp but then the
-                            // *higher* key lets a newer-but-lower record win here and lose on the
-                            // peer that sent it, and the two never converge.
-                            let loser = if (e2.modified_at, &e2.moved) < (e.modified_at, &e.moved) {
-                                e2.modified_at = e.modified_at;
-                                changed = true;
-                                std::mem::replace(&mut e2.moved, e.moved.clone())
-                            } else {
-                                e.moved.clone()
-                            };
-                            let winner = e2.moved.clone();
-                            // Two peers moving one element mint a destination each, and neither
-                            // payload mentions the other's — so the loop above read the incoming one
-                            // as a position nobody had heard of and inserted it alongside ours. Both
-                            // now claim this identity and the element shows up twice in `view`.
-                            if loser != winner
-                                && !loser.is_empty()
-                                && self.tombstone(&loser, None).is_some()
-                            {
-                                // The offsets only narrow the searches, and an entry leaving `index`
-                                // invalidates them. Conflicts are rare enough that widening back to
-                                // the whole vector costs nothing measurable.
-                                o1 = 0;
-                                o2 = 0;
-                                changed = true;
-                            }
-                        }
-                        Err(i) => {
-                            o2 += i;
-                            self.moved.insert(o2, e.clone());
-                        }
-                    }
-                }
-            }
+        let changed = !(a_set.is_empty()
+            && a_del.is_empty()
+            && a_ins.is_empty()
+            && m_set.is_empty()
+            && m_del.is_empty()
+            && m_ins.is_empty());
+        for (i, e) in a_set {
+            self.active[i] = e;
         }
-        // A merge brings in keys nobody here minted, so the watermark is re-derived from the two
-        // spaces it is defined over. It can only ever grow.
+        for (i, e) in m_set {
+            self.moved[i] = e;
+        }
+        Self::remove_all(&mut self.active, &a_del);
+        Self::remove_all(&mut self.moved, &m_del);
+        Self::insert_all(&mut self.active, a_ins);
+        Self::insert_all(&mut self.moved, m_ins);
+        let parked = self.park_stale(&touched);
+        self.bump_watermark();
+        changed || parked
+    }
+
+    /// Removes the entries at `indices` (ascending, unique) in one compacting pass.
+    fn remove_all(space: &mut Vec<Entry>, indices: &[usize]) {
+        if indices.is_empty() {
+            return;
+        }
+        let mut next = 0;
+        let mut write = 0;
+        for read in 0..space.len() {
+            if indices.get(next) == Some(&read) {
+                next += 1;
+                continue;
+            }
+            space.swap(write, read);
+            write += 1;
+        }
+        space.truncate(write);
+    }
+
+    /// Merges `entries` — ascending by key, none of them already filed — into `space` from the back,
+    /// so each entry already there moves at most once.
+    fn insert_all(space: &mut Vec<Entry>, mut entries: Vec<Entry>) {
+        if entries.is_empty() {
+            return;
+        }
+        space.reserve_exact(entries.len());
+        space.extend(entries.iter().cloned()); // grows once; these slots are all overwritten below
+        let mut write = space.len();
+        let mut read = write - entries.len();
+        while let Some(e) = entries.pop() {
+            while read > 0 && space[read - 1].key > e.key {
+                write -= 1;
+                read -= 1;
+                space.swap(write, read);
+            }
+            write -= 1;
+            space[write] = e;
+        }
+    }
+
+    /// Make sure that virtual key watermark is up to date.
+    fn bump_watermark(&mut self) {
         self.watermark = Self::max_virtual_ordinal(&self.active)
             .max(Self::max_virtual_ordinal(&self.moved))
             .max(self.watermark);
-        changed
     }
 
-    /// Drops `key` from the active index and parks it in `moved` under [FractionalKey::NULL] — the
-    /// same tombstone [Self::move_to] leaves for a destination it supersedes.
-    ///
-    /// Returns the origin the entry carried, [FractionalKey::NULL] for one that was never moved, or
-    /// `None` if `key` held no position at all. The two are worth telling apart: an origin names a
-    /// record in `moved` space that still points here and has to be dealt with in turn, where `None`
-    /// means there was nothing to drop in the first place.
-    ///
-    /// `at` is what the parked record gets stamped with. A local edit passes a fresh [`Hlc`]; a merge
-    /// passes `None` to keep the timestamp the entry already carried, since a merge that read the
-    /// clock would land on different state on every peer.
-    fn tombstone(&mut self, key: &FractionalKey, at: Option<Hlc>) -> Option<FractionalKey> {
-        let Ok(i) = self.active.binary_search_by_key(&key, |e| &e.key) else {
-            return None;
+    /// Last write wins conflict resolution.
+    /// If timestamps are equal: remove > move (highest key wins) > insert.
+    fn wins(a: (&Entry, bool), b: (&Entry, bool)) -> bool {
+        (a.0.modified_at, a.0.moved.is_empty(), &a.0.moved, !a.1)
+            > (b.0.modified_at, b.0.moved.is_empty(), &b.0.moved, !b.1)
+    }
+
+    /// Whether `e` speaks for nobody: its element's register names another position. An active
+    /// record stands only while that register points back at it.
+    fn is_stale(e: &Entry, active: &[Entry], moved: &[Entry]) -> bool {
+        let Some(identity) = e.moved() else {
+            return false; // it sits on its own identity: no other record speaks for it
         };
-        let mut e = self.active.remove(i);
-        if let Some(at) = at {
-            e.modified_at = at;
+        match moved.binary_search_by_key(&identity, |o| &o.key) {
+            Ok(h) => moved[h].moved() != Some(&e.key), // origin in moved points to different dest
+            Err(_) => active.binary_search_by_key(&identity, |o| &o.key).is_ok(), // origin is in active
         }
-        // Whatever identity it carried belongs to whatever superseded this position.
-        let origin = std::mem::replace(&mut e.moved, FractionalKey::NULL);
-        self.park(e);
-        Some(origin)
+    }
+
+    /// Parks the active records among `touched` that their element's register does not name — from
+    /// settled inputs, only a key the join wrote, or one whose register it wrote, can dangle.
+    fn park_stale(&mut self, touched: &[FractionalKey]) -> bool {
+        if touched.is_empty() {
+            return false;
+        }
+        // Chosen before any record is moved: [`Self::is_stale`] reads both spaces as joined.
+        let mut stale: Vec<usize> = touched
+            .iter()
+            .filter_map(|k| self.active.binary_search_by_key(&k, |e| &e.key).ok())
+            .filter(|&i| Self::is_stale(&self.active[i], &self.active, &self.moved))
+            .collect();
+        if stale.is_empty() {
+            return false;
+        }
+        stale.sort_unstable();
+        stale.dedup();
+        // Parked, a record keeps pointing back at its identity, as any position passed through.
+        let parked: Vec<Entry> = stale.iter().map(|&i| self.active[i].clone()).collect();
+        Self::remove_all(&mut self.active, &stale);
+        Self::insert_all(&mut self.moved, parked);
+        true
     }
 
     /// Files `e` in `moved` space, replacing whatever was already filed under its key.
@@ -676,6 +793,42 @@ impl FractionalIndex {
         }
         // Through `new`, so the watermark is re-derived rather than carried in the payload.
         Ok(FractionalIndex::new(active, moved, suffix))
+    }
+}
+
+struct Entries<'a> {
+    active: &'a [Entry],
+    moved: &'a [Entry],
+}
+
+impl<'a> Entries<'a> {
+    fn new(active: &'a [Entry], moved: &'a [Entry]) -> Self {
+        Entries { active, moved }
+    }
+}
+
+impl<'a> Iterator for Entries<'a> {
+    /// `0` is iterated [Entry].
+    /// `1` is true if entry lives in active space, false otherwise.
+    type Item = (&'a Entry, bool);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (active, moved) = (self.active, self.moved);
+        let take_active = match (active.first(), moved.first()) {
+            (Some(a), Some(m)) => a.key <= m.key,
+            (Some(_), None) => true,
+            (None, Some(_)) => false,
+            (None, None) => return None,
+        };
+        if take_active {
+            let (e, rest) = active.split_first()?;
+            self.active = rest;
+            Some((e, true))
+        } else {
+            let (e, rest) = moved.split_first()?;
+            self.moved = rest;
+            Some((e, false))
+        }
     }
 }
 
@@ -875,9 +1028,8 @@ impl CreateKeys {
     fn new(index: &FractionalIndex, i: usize, count: usize) -> Self {
         let (lo, hi) = FractionalIndex::neighbours(&index.active, i)
             .expect("cannot mint fractional keys past the end of the index");
-        // A tombstone sitting in the gap raises its floor. The index is a 2P-set, so a key it has
-        // ever seen can never be inserted again — re-minting one would yield a key that silently
-        // does nothing, which is exactly what undoing a delete must not produce.
+        // A parked record sitting in the gap raises its floor: its key already names an element, so
+        // re-minting it would address that one — reviving it, at worst — instead of creating one.
         let lo = index.moved.iter().fold(lo, |floor, e| {
             let position = e.key.position();
             if position > floor && (hi.is_empty() || position < hi) {
@@ -955,6 +1107,400 @@ mod test {
     /// `move_to`, so this tracks element movement *within* a single [FractionalIndex].
     fn identity_order(fi: &FractionalIndex) -> Vec<FractionalKey> {
         fi.view().cloned().collect()
+    }
+
+    /// A wall-clock millisecond in the past — Sept 2020, below the Nov 2022 constant
+    /// [`crate::mock_time`] serves under `cfg(test)`. A stamp from the future would become the
+    /// process-global high watermark and drag every concurrent test's `Hlc::now()` with it.
+    const PAST: Hlc = Hlc::new(1_600_000_000_000 << 16);
+
+    /// A stamp `step` counter ticks above [`PAST`], still inside the same millisecond.
+    fn at(step: u64) -> Hlc {
+        Hlc::new(PAST.get() + step)
+    }
+
+    /// An index of `count` virtual keys, all stamped `at(1)`.
+    fn virtual_index(count: u32) -> (FractionalIndex, Vec<FractionalKey>) {
+        let mut fi = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
+        let keys: Vec<FractionalKey> = (1..=count).map(virtual_key).collect();
+        for key in &keys {
+            fi.insert_key_at(key.clone(), at(1));
+        }
+        (fi, keys)
+    }
+
+    /// Parked records no active entry's chain reaches: exactly the removed elements' records.
+    fn unreachable(fi: &FractionalIndex) -> Vec<FractionalKey> {
+        fi.moved
+            .iter()
+            .filter(|e| fi.position_of(&e.key).is_none())
+            .map(|e| e.key.clone())
+            .collect()
+    }
+
+    /// A delete is invertible: an insert of the same key stamped past it puts the element back where
+    /// it was, and nothing stamped before it does.
+    #[test]
+    fn undo_remove() {
+        let (mut fi, keys) = virtual_index(3);
+        assert_eq!(fi.remove_key_at(&keys[1], at(10)), Some(keys[1].clone()));
+        assert_eq!(identity_order(&fi), vec![keys[0].clone(), keys[2].clone()]);
+        assert_eq!(fi.position_of(&keys[1]), None);
+        // Redelivery of the original insert, and a stamp equal to the delete's, leave it removed.
+        assert_eq!(fi.insert_key_at(keys[1].clone(), at(1)), None);
+        assert_eq!(fi.insert_key_at(keys[1].clone(), at(10)), None);
+        assert_eq!(fi.len(), 2);
+        // Strictly newer: back at the same position, under the same key.
+        assert_eq!(fi.insert_key_at(keys[1].clone(), at(20)), Some(1));
+        assert_eq!(identity_order(&fi), keys);
+        assert_eq!(fi.get(1).unwrap().key, keys[1]);
+        // Redelivered revival: nothing left to do.
+        assert_eq!(fi.insert_key_at(keys[1].clone(), at(20)), None);
+        assert_eq!(fi.len(), 3);
+
+        // Delete and revival commute: whichever arrives first, the newer one decides.
+        let (mut x, mut y) = (fi.clone(), fi.clone());
+        x.remove_key_at(&keys[1], at(30));
+        x.insert_key_at(keys[1].clone(), at(40));
+        y.insert_key_at(keys[1].clone(), at(40));
+        y.remove_key_at(&keys[1], at(30));
+        assert_eq!(x, y);
+        assert_eq!(identity_order(&x), keys);
+    }
+
+    /// A move is invertible, one hop at a time: each undo names the position the element held
+    /// before, and a concurrent move settles by `(at, dest)` whichever order the two arrive in.
+    #[test]
+    fn undo_move() {
+        let (mut fi, keys) = virtual_index(3);
+        let identity = keys[0].clone();
+        let d1 = fi.create_keys(2, 1).next().unwrap(); // between the second and third
+        let d2 = fi.create_keys(3, 1).next().unwrap(); // past the end
+        let middle = vec![keys[1].clone(), identity.clone(), keys[2].clone()];
+        let end = vec![keys[1].clone(), keys[2].clone(), identity.clone()];
+
+        fi.apply_move(&identity, d1.clone(), at(10));
+        assert_eq!(identity_order(&fi), middle);
+        let moved_away = fi.clone();
+
+        // Moved back onto its own key: original position, original key.
+        fi.apply_move(&identity, identity.clone(), at(20));
+        assert_eq!(identity_order(&fi), keys);
+        assert_eq!(fi.position_of(&identity), Some(0));
+        assert_eq!(fi.get(0).unwrap().key, identity);
+        // Redelivery of the undone move changes nothing.
+        let settled = fi.clone();
+        fi.apply_move(&identity, identity.clone(), at(20));
+        assert_eq!(fi, settled);
+
+        // The undo racing a newer move elsewhere, delivered in both orders.
+        let (mut x, mut y) = (moved_away.clone(), moved_away);
+        x.apply_move(&identity, identity.clone(), at(20));
+        x.apply_move(&identity, d2.clone(), at(30));
+        y.apply_move(&identity, d2.clone(), at(30));
+        y.apply_move(&identity, identity.clone(), at(20));
+        assert_eq!(x, y);
+        // The later stamp holds the element.
+        assert_eq!(identity_order(&x), end);
+        assert_eq!(x.position_of(&identity), Some(2));
+        assert_eq!(x.get(2).unwrap().key, d2);
+        assert_eq!(x.position_of(&d1), Some(2)); // the position it passed through still finds it
+
+        // Two hops, undone one at a time: `fi` sits back on its identity, stamped at(20).
+        fi.apply_move(&identity, d1.clone(), at(30));
+        assert_eq!(identity_order(&fi), middle);
+        fi.apply_move(&identity, d2.clone(), at(40));
+        assert_eq!(identity_order(&fi), end);
+        // Undo the last move only: back to the first destination.
+        fi.apply_move(&identity, d1.clone(), at(50));
+        assert_eq!(identity_order(&fi), middle);
+        assert_eq!(fi.get(1).unwrap().key, d1);
+        // Undo the first one too: back where it started, under its own key.
+        fi.apply_move(&identity, identity.clone(), at(60));
+        assert_eq!(identity_order(&fi), keys);
+        assert_eq!(fi.get(0).unwrap().key, identity);
+        // Every position it passed through still resolves to it.
+        for key in [&d1, &d2] {
+            assert_eq!(fi.position_of(key), Some(0));
+        }
+    }
+
+    /// A remove, its undo and a concurrent move of the same element race: whichever order the three
+    /// reach a replica in, it has to end on the same records and the same readout.
+    #[test]
+    fn remove_move_races_commute() {
+        let (fi, keys) = virtual_index(3);
+        let k = keys[1].clone();
+        let d = fi.create_keys(3, 1).next().unwrap(); // a destination a peer minted
+
+        // The remove and its undo first, the move arriving late.
+        let mut a = fi.clone();
+        a.remove_key_at(&k, at(10));
+        a.insert_key_at(k.clone(), at(40));
+        a.apply_move(&k, d.clone(), at(30));
+
+        // The move first: the remove and the undo meet an element that has moved on.
+        let mut b = fi.clone();
+        b.apply_move(&k, d.clone(), at(30));
+        b.remove_key_at(&k, at(10));
+        b.insert_key_at(k.clone(), at(40));
+
+        // The move in between: it meets a removed element.
+        let mut c = fi.clone();
+        c.remove_key_at(&k, at(10));
+        c.apply_move(&k, d.clone(), at(30));
+        c.insert_key_at(k.clone(), at(40));
+
+        assert_eq!(a, b);
+        assert_eq!(a, c);
+        // The newest write holds the element: it is back where it was inserted.
+        for replica in [&a, &b, &c] {
+            assert_eq!(identity_order(replica), keys);
+            assert_eq!(replica.position_of(&d), Some(1));
+        }
+    }
+
+    /// Ops name the key their author observed — the position the element held then, not its
+    /// identity — so every key on a dead chain has to lead back to the same element.
+    #[test]
+    fn held_key_addressing_after_remove() {
+        let (mut fi, keys) = virtual_index(2);
+        let k = keys[0].clone();
+        let d = fi.create_keys(2, 1).next().unwrap();
+        fi.apply_move(&k, d.clone(), at(10));
+        assert_eq!(fi.remove_key_at(&d, at(20)), Some(k.clone()));
+
+        let once = fi.clone();
+        // Redelivered remove by the same key must be a no-op.
+        assert_eq!(fi.remove_key_at(&d, at(20)), None);
+        assert_eq!(fi, once, "redelivered remove diverged");
+        // Undo naming the observed position must revive the SAME element, not fork a new identity.
+        fi.insert_key_at(d.clone(), at(30));
+        assert!(
+            fi.position_of(&k).is_some(),
+            "identity forked: k no longer resolves"
+        );
+        assert_eq!(fi.position_of(&k), fi.position_of(&d));
+
+        // The same, two hops along: the removal names the last of them.
+        let (mut fi, keys) = virtual_index(3);
+        let identity = keys[0].clone();
+        let d1 = fi.create_keys(2, 1).next().unwrap();
+        let d2 = fi.create_keys(3, 1).next().unwrap();
+        fi.apply_move(&identity, d1.clone(), at(10));
+        fi.apply_move(&identity, d2.clone(), at(20));
+        assert_eq!(fi.remove_key_at(&d2, at(30)), Some(identity.clone()));
+        let once = fi.clone();
+        assert_eq!(fi.remove_key_at(&d2, at(30)), None);
+        assert_eq!(fi, once, "redelivered remove diverged");
+        // An undo naming a position it passed through puts that same element back on it.
+        assert!(fi.insert_key_at(d1.clone(), at(40)).is_some());
+        assert_eq!(
+            identity_order(&fi),
+            vec![keys[1].clone(), identity.clone(), keys[2].clone()]
+        );
+        for key in [&d1, &d2] {
+            assert_eq!(fi.position_of(&identity), fi.position_of(key));
+        }
+    }
+
+    /// An op is a join, so delivery order cannot matter. The hand-written races above check the
+    /// orders someone thought of; this one checks every order of a racing set.
+    #[test]
+    fn ops_commute_in_all_orders() {
+        #[derive(Clone, Debug)]
+        enum Op {
+            Remove(FractionalKey, Hlc),
+            Insert(FractionalKey, Hlc),
+            Move(FractionalKey, FractionalKey, Hlc),
+        }
+
+        fn apply(fi: &mut FractionalIndex, op: &Op) {
+            match op {
+                Op::Remove(key, at) => {
+                    fi.remove_key_at(key, *at);
+                }
+                Op::Insert(key, at) => {
+                    fi.insert_key_at(key.clone(), *at);
+                }
+                Op::Move(source, dest, at) => fi.apply_move(source, dest.clone(), *at),
+            }
+        }
+
+        fn permutations(ops: &[Op]) -> Vec<Vec<Op>> {
+            if ops.is_empty() {
+                return vec![Vec::new()];
+            }
+            let mut out = Vec::new();
+            for i in 0..ops.len() {
+                let mut rest = ops.to_vec();
+                let head = rest.remove(i);
+                for mut tail in permutations(&rest) {
+                    tail.insert(0, head.clone());
+                    out.push(tail);
+                }
+            }
+            out
+        }
+
+        let (base, keys) = virtual_index(3);
+        let key = keys[1].clone();
+        let mut gen = base.create_keys(3, 2);
+        let (d1, d2) = (gen.next().unwrap(), gen.next().unwrap());
+        drop(gen);
+        // One element removed, undone, and moved to two destinations by two peers.
+        let ops = [
+            Op::Remove(key.clone(), at(10)),
+            Op::Move(key.clone(), d1, at(30)),
+            Op::Move(key.clone(), d2, at(35)),
+            Op::Insert(key, at(40)),
+        ];
+
+        let mut expected: Option<(FractionalIndex, Vec<FractionalKey>)> = None;
+        for order in permutations(&ops) {
+            let mut fi = base.clone();
+            for op in &order {
+                apply(&mut fi, op);
+            }
+            let readout = identity_order(&fi);
+            match &expected {
+                None => expected = Some((fi, readout)),
+                Some((first, first_readout)) => {
+                    assert_eq!(&fi, first, "records diverged on {order:?}");
+                    assert_eq!(&readout, first_readout, "readout diverged on {order:?}");
+                }
+            }
+        }
+        // The newest write holds the element, and every destination is filed as passed through.
+        let (fi, readout) = expected.unwrap();
+        assert_eq!(readout, keys);
+        assert_eq!(fi.moved.len(), 2);
+    }
+
+    /// "Removed" is not a flag on a record: it is a record no active entry's chain reaches any more.
+    #[test]
+    fn removed_means_unreachable() {
+        let (mut fi, keys) = virtual_index(3);
+        let d = fi.create_keys(3, 1).next().unwrap();
+
+        fi.apply_move(&keys[0], d.clone(), at(10));
+        assert!(unreachable(&fi).is_empty(), "a move removes nothing");
+
+        fi.remove_key_at(&keys[2], at(20));
+        assert_eq!(unreachable(&fi), vec![keys[2].clone()]);
+
+        // Removing a moved element strands its whole chain, identity record included.
+        assert_eq!(fi.remove_key_at(&keys[0], at(30)), Some(keys[0].clone()));
+        let mut stranded = unreachable(&fi);
+        stranded.sort();
+        let mut expected = vec![keys[0].clone(), keys[2].clone(), d.clone()];
+        expected.sort();
+        assert_eq!(stranded, expected);
+        assert_eq!(identity_order(&fi), vec![keys[1].clone()]);
+
+        // A revival makes the same records reachable again: an insert names the position it puts the
+        // element on, so naming its identity brings it back onto that, not onto where it had moved.
+        assert_eq!(fi.insert_key_at(keys[0].clone(), at(40)), Some(0));
+        assert_eq!(unreachable(&fi), vec![keys[2].clone()]);
+        assert_eq!(identity_order(&fi), vec![keys[0].clone(), keys[1].clone()]);
+        assert_eq!(fi.get(0).unwrap().key, keys[0]);
+        assert_eq!(fi.position_of(&d), Some(0)); // the position it passed through still finds it
+
+        fi.insert_key_at(keys[2].clone(), at(50));
+        assert!(unreachable(&fi).is_empty());
+    }
+
+    /// Two peers diverging over moves, deletes and revivals, then exchanging states: the join has to
+    /// land both on the same records *and* the same readout.
+    #[test]
+    fn merge_convergence() {
+        let (mut a, keys) = virtual_index(3);
+        let mut b = FractionalIndex::new(vec![], vec![], [b'b', 0, 0, 0]);
+        assert!(b.merge(&a));
+        assert_eq!(a, b);
+
+        // A moves the first element past the end and deletes the last one...
+        let da = a.create_keys(3, 1).next().unwrap();
+        a.apply_move(&keys[0], da.clone(), at(10));
+        a.remove_key_at(&keys[2], at(20));
+        // ...while B moves the same element elsewhere, and deletes the middle one only to undo it.
+        let db = b.create_keys(2, 1).next().unwrap();
+        b.apply_move(&keys[0], db.clone(), at(30));
+        b.remove_key_at(&keys[1], at(11));
+        b.insert_key_at(keys[1].clone(), at(40));
+
+        let (pa, pb) = (a.clone(), b.clone());
+        assert!(a.merge(&pb));
+        assert!(b.merge(&pa));
+        assert_eq!(a, b);
+        assert_eq!(identity_order(&a), identity_order(&b));
+        // The newer move holds the element, the delete of the last one carries, the undone one does
+        // not, and the superseded destination still resolves to the element.
+        assert_eq!(identity_order(&a), vec![keys[1].clone(), keys[0].clone()]);
+        assert_eq!(a.position_of(&keys[2]), None);
+        assert_eq!(a.position_of(&keys[0]), Some(1));
+        assert_eq!(a.get(1).unwrap().key, db);
+        assert_eq!(a.position_of(&da), Some(1));
+        // Merging again, either way round, is a no-op, and so is a peer with nothing to say.
+        assert!(!a.merge(&b));
+        assert!(!b.merge(&a));
+        assert!(!a.merge(&FractionalIndex::default()));
+    }
+
+    /// A join settles the element two peers contest, and leaves an agreeing one alone.
+    #[test]
+    fn merge_settles_the_contested_element() {
+        let (mut a, keys) = virtual_index(300);
+        let mut b = FractionalIndex::new(a.active.clone(), vec![], [b'b', 0, 0, 0]);
+        let identity = keys[100].clone();
+        let da = a.create_keys(300, 1).next().unwrap(); // A moves it past the end
+        let db = b.create_keys(0, 1).next().unwrap(); // B moves it to the front
+        a.apply_move(&identity, da.clone(), at(10));
+        b.apply_move(&identity, db.clone(), at(20));
+
+        let (pa, pb) = (a.clone(), b.clone());
+        assert!(a.merge(&pb));
+        assert!(b.merge(&pa));
+        assert_eq!(a, b);
+        assert_eq!(identity_order(&a), identity_order(&b));
+        assert_eq!(a.len(), 300, "the element must not be duplicated");
+        // The newer move holds it; the loser's destination is demoted, and still resolves to it.
+        assert_eq!(a.position_of(&identity), Some(0));
+        assert_eq!(a.get(0).unwrap().key, db);
+        assert_eq!(a.position_of(&da), Some(0));
+        assert_eq!(a.moved.len(), 2); // the register, and the destination it left
+
+        // Two identical states have nothing to join, either way round.
+        let twin = a.clone();
+        assert!(!a.merge(&twin));
+        assert_eq!(a, twin);
+        let mut back = twin.clone();
+        assert!(!back.merge(&a));
+        assert_eq!(back, a);
+
+        // A diff: keys one side alone has, plus a second contested element.
+        let mut c = a.clone();
+        let extra: Vec<FractionalKey> = c.create_keys(300, 3).collect();
+        for key in &extra {
+            assert!(c.insert_key_at(key.clone(), at(30)).is_some());
+        }
+        let contested = keys[200].clone();
+        let dc = c.create_keys(150, 1).next().unwrap();
+        let dd = a.create_keys(151, 1).next().unwrap();
+        c.apply_move(&contested, dc.clone(), at(40));
+        a.apply_move(&contested, dd, at(50));
+
+        let (pa, pc) = (a.clone(), c.clone());
+        assert!(a.merge(&pc));
+        assert!(c.merge(&pa));
+        assert_eq!(a, c);
+        assert_eq!(identity_order(&a), identity_order(&c));
+        assert_eq!(a.len(), 303, "three keys joined, nothing duplicated");
+        // The later move holds the second element, and the earlier one still resolves to it.
+        assert_eq!(a.position_of(&contested), a.position_of(&dc));
+        for key in &extra {
+            assert!(a.position_of(key).is_some());
+        }
     }
 
     #[test]
@@ -1204,7 +1750,7 @@ mod test {
     }
 
     #[test]
-    fn insert_key_places_sorted_and_never_resurrects() {
+    fn insert_key_places_sorted_and_resurrects_only_forwards() {
         let mut fi = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
         let (v1, v2, v3) = (virtual_key(1), virtual_key(2), virtual_key(3));
 
@@ -1221,10 +1767,12 @@ mod test {
         assert_eq!(fi.insert_key(v2.clone()), None);
         assert_eq!(fi.len(), 3);
 
-        // A tombstone is final: the key can never come back.
+        // A tombstone stands until an insert stamped past it undoes the delete.
         assert_eq!(fi.remove_key(&v2), Some(v2.clone()));
-        assert_eq!(fi.insert_key(v2.clone()), None);
+        assert_eq!(fi.insert_key_at(v2.clone(), PAST), None);
         assert_eq!(fi.len(), 2);
+        assert_eq!(fi.insert_key(v2.clone()), Some(1));
+        assert_eq!(fi.len(), 3);
     }
 
     #[test]
@@ -1292,12 +1840,32 @@ mod test {
     #[test]
     fn lower_bound_finds_the_insertion_point() {
         let mut fi = FractionalIndex::new(vec![], vec![], [b'a', 0, 0, 0]);
-        assert_eq!(fi.lower_bound(&virtual_key(1)), 0);
+        assert_eq!(fi.active_index(&virtual_key(1)), 0);
         fi.insert_key(virtual_key(2));
         fi.insert_key(virtual_key(4));
-        assert_eq!(fi.lower_bound(&virtual_key(1)), 0);
-        assert_eq!(fi.lower_bound(&virtual_key(2)), 0); // present: its own slot
-        assert_eq!(fi.lower_bound(&virtual_key(3)), 1);
-        assert_eq!(fi.lower_bound(&virtual_key(5)), 2); // past the tail
+        assert_eq!(fi.active_index(&virtual_key(1)), 0);
+        assert_eq!(fi.active_index(&virtual_key(2)), 0); // present: its own slot
+        assert_eq!(fi.active_index(&virtual_key(3)), 1);
+        assert_eq!(fi.active_index(&virtual_key(5)), 2); // past the tail
+    }
+
+    /// Two peers moving one element mint a destination each: whichever order the two moves arrive
+    /// in, the loser leaves the same record behind.
+    #[test]
+    fn concurrent_moves_apply_in_both_orders() {
+        let (fi, keys) = virtual_index(3);
+        let mut gen = fi.create_keys(3, 2);
+        let (d1, d2) = (gen.next().unwrap(), gen.next().unwrap());
+        drop(gen);
+        let i = keys[0].clone();
+        let (mut x, mut y) = (fi.clone(), fi);
+        x.apply_move(&i, d1.clone(), at(10));
+        x.apply_move(&i, d2.clone(), at(20));
+        y.apply_move(&i, d2.clone(), at(20));
+        y.apply_move(&i, d1.clone(), at(10));
+        assert_eq!(x, y, "concurrent moves must commute");
+        assert_eq!(x.position_of(&i), Some(2));
+        assert_eq!(x.get(2).unwrap().key, d2);
+        assert_eq!(x.position_of(&d1), Some(2));
     }
 }
