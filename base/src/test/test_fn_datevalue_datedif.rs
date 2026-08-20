@@ -110,14 +110,27 @@ fn test_datevalue_mmdd_with_day_gt_12() {
 #[test]
 fn test_datevalue_error_conditions() {
     let cases = [
-        "=DATEVALUE(\"31/04/2023\")",   // invalid day (Apr has 30 days)
-        "=DATEVALUE(\"13/13/2023\")",   // invalid month
-        "=DATEVALUE(\"not a date\")",   // non-date text
+        "=DATEVALUE(\"31/04/2023\")", // invalid day (Apr has 30 days)
+        "=DATEVALUE(\"13/13/2023\")", // invalid month
+        "=DATEVALUE(\"not a date\")", // non-date text
     ];
     for formula in cases {
         let result = eval_formula(formula);
         assert_eq!(result, *"#VALUE!", "Expected #VALUE! for {}", formula);
     }
+}
+
+#[test]
+fn test_datevalue_arguments() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEVALUE()");
+    model._set("A2", "=DATEVALUE(\"2023-01-02\")");
+    model._set("A3", "=DATEVALUE(\"2023-01-02\", \"2023-01-03\")");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"44928");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
 }
 
 // Helper to set and evaluate a single DATEDIF call
