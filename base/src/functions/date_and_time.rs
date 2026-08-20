@@ -578,7 +578,7 @@ pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
 
     match date_to_serial_number(day, month, year) {
         Ok(n) => {
-            if { n > MAXIMUM_DATE_SERIAL_NUMBER as i32 || n < MINIMUM_DATE_SERIAL_NUMBER as i32 } {
+            if !(MINIMUM_DATE_SERIAL_NUMBER..=MAXIMUM_DATE_SERIAL_NUMBER).contains(&n) {
                 Err("Not a valid date".to_string())
             } else {
                 Ok(n)
