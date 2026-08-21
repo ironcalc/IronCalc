@@ -31,7 +31,8 @@ use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::expressions::utils::{is_valid_column_number, is_valid_identifier, is_valid_row};
 use crate::formatter::format::parse_formatted_number;
 use crate::formatter::lexer::is_likely_date_number_format;
-use crate::locale::get_locale;
+use crate::language::get_default_language;
+use crate::locale::{get_default_locale, get_locale};
 use crate::new_empty::is_valid_sheet_name;
 use crate::types::{
     Cell, Color, Comment, Dxf, Position, RangeRef, SheetProperties, SheetState, Style, Theme,
@@ -761,7 +762,7 @@ impl CollabModel<'_> {
         let mut patches = Vec::new();
         let range = self.stable_range(i, id, range, &mut patches);
         let prev = self.workbook.worksheets[i]
-            .merge_cells
+            .merged_cells
             .iter()
             .any(|r| r == &range);
         patches.push(Patch::SetMergedRange {
@@ -916,7 +917,8 @@ impl CollabModel<'_> {
                 row,
                 column,
             };
-            let displaced = to_string_displaced(&node, &context, displace);
+            let displaced =
+                to_string_displaced(&node, &context, displace, self.locale, self.language);
             let parsed = self.parse_at(i, moved_row, moved_column, &displaced);
             let formula = to_rc_format(&parsed);
             if self.workbook.worksheets[i].shared_formulas.get(f as usize) == Some(&formula) {
@@ -947,7 +949,15 @@ impl CollabModel<'_> {
         for (scope, name, formula) in names {
             let body = formula.strip_prefix('=').unwrap_or(&formula).to_string();
             let node = self.parse_internal_formula(&body, &context);
-            let displaced = to_string_displaced(&node, &context, displace);
+            // Defined names are stored in the English internal form, so render the displaced
+            // formula in the default locale/language to compare against and store.
+            let displaced = to_string_displaced(
+                &node,
+                &context,
+                displace,
+                get_default_locale(),
+                get_default_language(),
+            );
             if displaced == body {
                 continue;
             }
@@ -1888,7 +1898,7 @@ mod test {
             let sheet = sheet as u32;
             out += &format!(
                 "{} {:?} {:?} {} {:?} {:?}\n",
-                ws.name, ws.color, ws.state, ws.show_grid_lines, ws.merge_cells, ws.comments
+                ws.name, ws.color, ws.state, ws.show_grid_lines, ws.merged_cells, ws.comments
             );
             for column in 1..=Stable::col_count(&ws.index) {
                 out += &format!(

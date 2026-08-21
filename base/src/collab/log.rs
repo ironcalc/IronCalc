@@ -157,7 +157,7 @@ impl<T> Lww<T> {
     /// a commit writes the same values again.
     pub fn merge(&mut self, value: T, timestamp: &Timestamp) -> bool {
         if *timestamp >= self.timestamp {
-            self.timestamp = timestamp.clone();
+            self.timestamp = *timestamp;
             self.value = value;
             true
         } else {
@@ -258,7 +258,7 @@ mod tests {
     #[test]
     fn patches_of_the_same_commit_resolve_to_the_last_one() {
         let t = ts(4, 1);
-        let mut reg = Lww::new("first", t.clone());
+        let mut reg = Lww::new("first", t);
         assert!(reg.merge("second", &t));
         assert_eq!(reg.value, "second");
     }

@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use crate::cf_types::ConditionalFormatting;
-use crate::collab::fractional_index::{FractionalIndex, FractionalKey};
+use crate::collab::fractional_index::FractionalKey;
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Consumer, SessionId, Snapshot, Timestamp};
 use crate::collab::model::{
@@ -90,7 +90,7 @@ fn wins<K: Clone + Eq + Hash>(
     match registers.get(key) {
         Some(stored) if ts < stored => false,
         _ => {
-            registers.insert(key.clone(), ts.clone());
+            registers.insert(key.clone(), *ts);
             true
         }
     }
@@ -653,7 +653,7 @@ impl CollabModel<'_> {
                 self.workbook
                     .meta
                     .sheet_positions
-                    .insert(*id, (position.clone(), ts.clone()));
+                    .insert(*id, (position.clone(), *ts));
                 if self.sheet_index(*id).is_none() {
                     let sheet = Worksheet {
                         dimension: "A1".to_string(),
@@ -707,7 +707,7 @@ impl CollabModel<'_> {
                     self.workbook
                         .meta
                         .sheet_positions
-                        .insert(*sheet, (position.clone(), ts.clone()));
+                        .insert(*sheet, (position.clone(), *ts));
                     self.sort_sheets();
                     return;
                 }
@@ -860,7 +860,7 @@ impl CollabModel<'_> {
                         .index
                         .registers
                         .cf_positions
-                        .insert(key.clone(), (position.clone(), ts.clone()));
+                        .insert(key.clone(), (position.clone(), *ts));
                     sort_cf(sheet);
                     return;
                 }
@@ -959,17 +959,13 @@ impl CollabModel<'_> {
                 .index
                 .registers
                 .cell_values
-                .insert(at.clone(), ts.clone());
+                .insert(at.clone(), *ts);
             self.write_cell(i, at, Some(value));
         }
         for (at, style) in &content.cell_styles {
             let s = self.intern_style(style);
             let sheet = &mut self.workbook.worksheets[i];
-            sheet
-                .index
-                .registers
-                .cell_styles
-                .insert(at.clone(), ts.clone());
+            sheet.index.registers.cell_styles.insert(at.clone(), *ts);
             match sheet
                 .sheet_data
                 .get_mut(&at.0)
@@ -982,11 +978,7 @@ impl CollabModel<'_> {
 
         let sheet = &mut self.workbook.worksheets[i];
         for range in &content.merge_cells {
-            sheet
-                .index
-                .registers
-                .merges
-                .insert(range.clone(), ts.clone());
+            sheet.index.registers.merges.insert(range.clone(), *ts);
             sheet.merged_cells.push(range.clone());
         }
         for comment in &content.comments {
@@ -994,17 +986,13 @@ impl CollabModel<'_> {
                 .index
                 .registers
                 .comments
-                .insert(comment.cell_ref.clone(), ts.clone());
+                .insert(comment.cell_ref.clone(), *ts);
             sheet.comments.push(comment.clone());
         }
         for (key, state) in &content.conditional_formatting {
             let registers = &mut sheet.index.registers;
-            registers
-                .cf
-                .insert((key.clone(), CfPropKind::Rule), ts.clone());
-            registers
-                .cf
-                .insert((key.clone(), CfPropKind::Ranges), ts.clone());
+            registers.cf.insert((key.clone(), CfPropKind::Rule), *ts);
+            registers.cf.insert((key.clone(), CfPropKind::Ranges), *ts);
             registers.cf_order.push(key.clone());
             sheet.conditional_formatting.push(ConditionalFormatting {
                 ranges: state.ranges.clone(),
@@ -1027,11 +1015,7 @@ impl CollabModel<'_> {
         };
         let sheet = &mut self.workbook.worksheets[i];
         for kind in [RowPropKind::Style, RowPropKind::Height, RowPropKind::Hidden] {
-            sheet
-                .index
-                .registers
-                .rows
-                .insert((key.clone(), kind), ts.clone());
+            sheet.index.registers.rows.insert((key.clone(), kind), *ts);
         }
         sheet.rows.push(Row {
             r: key.clone(),
@@ -1057,7 +1041,7 @@ impl CollabModel<'_> {
                 .index
                 .registers
                 .col_spans
-                .insert((span.clone(), kind), ts.clone());
+                .insert((span.clone(), kind), *ts);
         }
         sheet.cols.push(Col {
             min: span.0.clone(),
