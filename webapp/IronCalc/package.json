@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
+    "@napi-rs/canvas": "^1.0.7",
     "@storybook/react": "^10.4.2",
     "@storybook/react-vite": "^10.4.2",
     "@types/react": "^19.2.17",

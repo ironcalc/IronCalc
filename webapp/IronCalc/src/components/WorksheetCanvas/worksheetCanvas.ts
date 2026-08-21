@@ -605,14 +605,6 @@ export default class WorksheetCanvas {
     let y = headerRowHeight + 0.5;
     for (let row = 1; row <= frozenRows; row += 1) {
       const rowHeight = this.getRowHeight(selectedSheet, row);
-      this.computeCellTextLeftRight(
-        selectedSheet,
-        row,
-        rowHeight,
-        topLeftCell,
-        bottomRightCell,
-      );
-
       x = headerColumnWidth + 0.5;
       for (let column = 1; column <= frozenColumns; column += 1) {
         const columnWidth = this.getColumnWidth(selectedSheet, column);
@@ -647,6 +639,15 @@ export default class WorksheetCanvas {
     for (let row = 1; row <= frozenRows; row += 1) {
       x = frozenX;
       const rowHeight = this.getRowHeight(selectedSheet, row);
+      // Cells outside the viewport whose text may spill into it belong to
+      // this pane (not the frozen corner): their text must clip to it
+      this.computeCellTextLeftRight(
+        selectedSheet,
+        row,
+        rowHeight,
+        topLeftCell,
+        bottomRightCell,
+      );
       for (
         let { column } = topLeftCell;
         column <= bottomRightCell.column;
@@ -667,13 +668,6 @@ export default class WorksheetCanvas {
       x = headerColumnWidth;
       const rowHeight = this.getRowHeight(selectedSheet, row);
 
-      this.computeCellTextLeftRight(
-        selectedSheet,
-        row,
-        rowHeight,
-        topLeftCell,
-        bottomRightCell,
-      );
       for (let column = 1; column <= frozenColumns; column += 1) {
         const columnWidth = this.getColumnWidth(selectedSheet, column);
         this.computeCellText(row, column, x, y, columnWidth, rowHeight);
@@ -690,6 +684,15 @@ export default class WorksheetCanvas {
       x = frozenX;
       const rowHeight = this.getRowHeight(selectedSheet, row);
 
+      // Cells outside the viewport whose text may spill into it belong to
+      // this pane (not the frozen columns): their text must clip to it
+      this.computeCellTextLeftRight(
+        selectedSheet,
+        row,
+        rowHeight,
+        topLeftCell,
+        bottomRightCell,
+      );
       for (
         let { column } = topLeftCell;
         column <= bottomRightCell.column;
