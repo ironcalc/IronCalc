@@ -42,6 +42,8 @@
 
 use crate::cf_types::CfRule;
 use crate::collab::fractional_index::FractionalKey;
+use crate::collab::hlc::Hlc;
+use crate::collab::log::Timestamp;
 use crate::collab::model::{Stable, StableCellAddress, StableRange};
 use crate::collab::DynError;
 use crate::constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
@@ -78,15 +80,18 @@ pub fn decode_patches(bytes: &[u8]) -> Result<Vec<Patch>, DynError> {
 /// [`log`](crate::collab::log) — so an inverse wins by being later, never by rewriting history.
 ///
 /// It is built from the `prev` fields, which are local-only, so this is meaningful only on patches
-/// this replica authored. What inverts: every `Set*` whose `prev` is populated, and an insert, into
-/// the matching delete. What does not, and is dropped:
+/// this replica authored. What inverts: every `Set*` whose `prev` is populated, an insert into the
+/// matching delete, and a delete into the matching insert followed by restores of the snapshot's
+/// state and cells. What does not, and is dropped:
 ///
-/// - `DeleteRows`/`DeleteColumns`/`MoveRows`/`MoveColumns`: the index is a 2P-set, so a key it has
-///   ever seen can never be inserted again — the snapshots in `prev` have nowhere to go back to,
+/// - `MoveRows`/`MoveColumns`, until move emission lands,
 /// - `SetArrayValue`, whose `prev` covers a rectangle rather than the anchor it would write to,
 /// - `AddSheet`/`DeleteSheet`, since [`SheetContent`] carries no sheet name to restore,
 /// - `MoveConditionalFormats`, which is a no-op to begin with,
 /// - anything whose `prev` came off the wire, where it decodes as the default.
+///
+/// Content restores replay at the stamp they were captured with, via the `ts` field, so a
+/// concurrent newer edit to a restored cell survives the undo.
 pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
     let mut out = Vec::new();
     for patch in patches.iter().rev() {
@@ -96,10 +101,12 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                 at,
                 value,
                 prev,
+                ..
             } => out.push(Patch::SetCellValue {
                 sheet: *sheet,
                 at: at.clone(),
                 value: (**prev).clone(),
+                ts: None,
                 prev: Box::new(value.clone()),
             }),
             Patch::SetCellStyle {
@@ -107,10 +114,12 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                 at,
                 style,
                 prev,
+                ..
             } => out.push(Patch::SetCellStyle {
                 sheet: *sheet,
                 at: at.clone(),
                 style: (**prev).clone().map(Box::new),
+                ts: None,
                 prev: Box::new(style.as_ref().map(|s| (**s).clone())),
             }),
             Patch::InsertRows { sheet, keys } => out.push(Patch::DeleteRows {
@@ -131,6 +140,7 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                         sheet: *sheet,
                         row: row.clone(),
                         property: property.clone(),
+                        ts: None,
                         prev: None,
                     });
                 }
@@ -143,6 +153,7 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                         sheet: *sheet,
                         span: span.clone(),
                         property: property.clone(),
+                        ts: None,
                         prev: None,
                     });
                 }
@@ -235,9 +246,147 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                 comment: prev.clone(),
                 prev: comment.clone(),
             }),
+            Patch::DeleteRows { sheet, keys, prev } => {
+                // Snapshots came off the wire, or none were taken: there is nothing to restore.
+                if prev.len() != keys.len() {
+                    continue;
+                }
+                out.push(Patch::InsertRows {
+                    sheet: *sheet,
+                    keys: keys.clone(),
+                });
+                for snap in prev {
+                    let state = &snap.state;
+                    let ts = |kind| {
+                        Some(
+                            snap.prop_ts
+                                .iter()
+                                .find_map(|(k, ts)| if *k == kind { Some(*ts) } else { None })
+                                .unwrap_or_default(), // zero timestamp so it loses over any more recent
+                        )
+                    };
+                    if let Some(style) = &state.style {
+                        out.push(Patch::SetRowProperty {
+                            sheet: *sheet,
+                            row: snap.key.clone(),
+                            property: RowProperty::Style(Some(style.clone())),
+                            ts: ts(RowPropKind::Style),
+                            prev: None,
+                        });
+                    }
+                    if state.custom_height {
+                        out.push(Patch::SetRowProperty {
+                            sheet: *sheet,
+                            row: snap.key.clone(),
+                            property: RowProperty::Height(state.height),
+                            ts: ts(RowPropKind::Height),
+                            prev: None,
+                        });
+                    }
+                    if state.hidden {
+                        out.push(Patch::SetRowProperty {
+                            sheet: *sheet,
+                            row: snap.key.clone(),
+                            property: RowProperty::Hidden(true),
+                            ts: ts(RowPropKind::Hidden),
+                            prev: None,
+                        });
+                    }
+                }
+                for snap in prev {
+                    for (col, input, ts) in &snap.cell_values {
+                        out.push(Patch::SetCellValue {
+                            sheet: *sheet,
+                            at: (snap.key.clone(), col.clone()),
+                            value: Some(input.clone()),
+                            ts: Some(ts.clone()),
+                            prev: Box::new(None),
+                        });
+                    }
+                }
+                for snap in prev {
+                    for (col, style, ts) in &snap.cell_styles {
+                        out.push(Patch::SetCellStyle {
+                            sheet: *sheet,
+                            at: (snap.key.clone(), col.clone()),
+                            style: Some(Box::new(style.clone())),
+                            ts: Some(ts.clone()),
+                            prev: Box::new(None),
+                        });
+                    }
+                }
+            }
+            Patch::DeleteColumns { sheet, keys, prev } => {
+                if prev.len() != keys.len() {
+                    continue;
+                }
+                out.push(Patch::InsertColumns {
+                    sheet: *sheet,
+                    keys: keys.clone(),
+                });
+                for snap in prev {
+                    let state = &snap.state;
+                    let span = (snap.key.clone(), snap.key.clone());
+                    let ts = |kind| {
+                        Some(
+                            snap.prop_ts
+                                .iter()
+                                .find_map(|(k, ts)| if *k == kind { Some(*ts) } else { None })
+                                .unwrap_or_default(), // zero timestamp so it loses over any more recent
+                        )
+                    };
+                    if let Some(style) = &state.style {
+                        out.push(Patch::SetColumnSpan {
+                            sheet: *sheet,
+                            span: span.clone(),
+                            property: ColProperty::Style(Some(style.clone())),
+                            ts: ts(ColPropKind::Style),
+                            prev: None,
+                        });
+                    }
+                    if state.custom_width {
+                        out.push(Patch::SetColumnSpan {
+                            sheet: *sheet,
+                            span: span.clone(),
+                            property: ColProperty::Width(state.width),
+                            ts: ts(ColPropKind::Width),
+                            prev: None,
+                        });
+                    }
+                    if state.hidden {
+                        out.push(Patch::SetColumnSpan {
+                            sheet: *sheet,
+                            span,
+                            property: ColProperty::Hidden(true),
+                            ts: ts(ColPropKind::Hidden),
+                            prev: None,
+                        });
+                    }
+                }
+                for snap in prev {
+                    for (row, input, ts) in &snap.cell_values {
+                        out.push(Patch::SetCellValue {
+                            sheet: *sheet,
+                            at: (row.clone(), snap.key.clone()),
+                            value: Some(input.clone()),
+                            ts: Some(ts.clone()),
+                            prev: Box::new(None),
+                        });
+                    }
+                }
+                for snap in prev {
+                    for (row, style, ts) in &snap.cell_styles {
+                        out.push(Patch::SetCellStyle {
+                            sheet: *sheet,
+                            at: (row.clone(), snap.key.clone()),
+                            style: Some(Box::new(style.clone())),
+                            ts: Some(ts.clone()),
+                            prev: Box::new(None),
+                        });
+                    }
+                }
+            }
             Patch::SetArrayValue { .. }
-            | Patch::DeleteRows { .. }
-            | Patch::DeleteColumns { .. }
             | Patch::MoveRows { .. }
             | Patch::MoveColumns { .. }
             | Patch::AddSheet { .. }
@@ -258,6 +407,10 @@ pub enum Patch {
         at: StableCellAddress,
         value: Option<CellInput>,
 
+        /// `None` applies at the commit's stamp; `Some` replays at the given stamp — undo restores
+        /// use it so they lose to concurrent newer edits.
+        ts: Option<Timestamp>,
+
         #[bitcode(skip)]
         prev: Box<Option<CellInput>>,
     },
@@ -276,6 +429,9 @@ pub enum Patch {
         sheet: SheetId,
         at: StableCellAddress,
         style: Option<Box<Style>>,
+
+        /// See [`Patch::SetCellValue`]'s `ts`.
+        ts: Option<Timestamp>,
 
         #[bitcode(skip)]
         prev: Box<Option<Style>>,
@@ -304,6 +460,9 @@ pub enum Patch {
         sheet: SheetId,
         row: FractionalKey,
         property: RowProperty,
+
+        /// See [`Patch::SetCellValue`]'s `ts`.
+        ts: Option<Timestamp>,
 
         /// Same discriminant as `property`, holding the value it replaced.
         #[bitcode(skip)]
@@ -337,6 +496,9 @@ pub enum Patch {
         sheet: SheetId,
         span: (FractionalKey, FractionalKey),
         property: ColProperty,
+
+        /// See [`Patch::SetCellValue`]'s `ts`.
+        ts: Option<Timestamp>,
 
         /// Same discriminant as `property`, holding the value it replaced.
         #[bitcode(skip)]
@@ -692,14 +854,17 @@ impl Default for ColState {
 }
 
 /// Everything a [`Patch::DeleteRows`] removed, so that undo can put it back. Local-only undo data.
+/// Each entry carries the stamp of the write it captured, so the restore can replay at that stamp.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RowSnapshot {
     pub key: FractionalKey,
     pub state: RowState,
     /// Keyed by column.
-    pub cell_values: Vec<(FractionalKey, CellInput)>,
+    pub cell_values: Vec<(FractionalKey, CellInput, Timestamp)>,
     /// Keyed by column.
-    pub cell_styles: Vec<(FractionalKey, Style)>,
+    pub cell_styles: Vec<(FractionalKey, Style, Timestamp)>,
+    /// Only the property kinds that had a register entry.
+    pub prop_ts: Vec<(RowPropKind, Timestamp)>,
 }
 
 /// Everything a [`Patch::DeleteColumns`] removed, so that undo can put it back. Local-only undo
@@ -709,9 +874,11 @@ pub struct ColumnSnapshot {
     pub key: FractionalKey,
     pub state: ColState,
     /// Keyed by row.
-    pub cell_values: Vec<(FractionalKey, CellInput)>,
+    pub cell_values: Vec<(FractionalKey, CellInput, Timestamp)>,
     /// Keyed by row.
-    pub cell_styles: Vec<(FractionalKey, Style)>,
+    pub cell_styles: Vec<(FractionalKey, Style, Timestamp)>,
+    /// Only the property kinds that had a register entry.
+    pub prop_ts: Vec<(ColPropKind, Timestamp)>,
 }
 
 /// The contents of a cell as authored, never as evaluated.
@@ -820,6 +987,7 @@ mod test {
                 sheet: 7,
                 at: (key(1), key(3)),
                 value: Some(CellInput::Text("hi".to_string())),
+                ts: None,
                 prev: Box::default(),
             },
             Patch::SetArrayValue {
@@ -836,6 +1004,7 @@ mod test {
                 sheet: 7,
                 at: (key(1), key(3)),
                 style: Some(Box::default()),
+                ts: None,
                 prev: Box::default(),
             },
             Patch::InsertRows {
@@ -855,6 +1024,8 @@ mod test {
                 sheet: 7,
                 row: key(1),
                 property: RowProperty::Height(33.0),
+                // A restore's stamp travels: it is not `#[bitcode(skip)]` undo data.
+                ts: Some(Timestamp::new(Hlc::new(42), 3)),
                 prev: None,
             },
             Patch::InsertColumns {
@@ -874,6 +1045,7 @@ mod test {
                 sheet: 7,
                 span: (FractionalKey::NULL, FractionalKey::NULL),
                 property: ColProperty::Style(Some(Box::default())),
+                ts: None,
                 prev: None,
             },
             Patch::AddSheet {
@@ -958,6 +1130,7 @@ mod test {
             sheet: 7,
             row: key(1),
             property: RowProperty::Hidden(true),
+            ts: None,
             prev: Some(RowProperty::Hidden(false)),
         }];
         let decoded = decode_patches(&encode_patches(&local).unwrap()).unwrap();

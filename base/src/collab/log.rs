@@ -119,7 +119,7 @@ impl<'a> Decode<'a> for CommitId {
 /// [`Hlc`] carries no node component, so it is the only tiebreak there is.
 ///
 /// Field order is significant: the derived [`Ord`] compares `hlc` first.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode)]
 pub struct Timestamp {
     pub hlc: Hlc,
     pub session: SessionId,
@@ -128,6 +128,12 @@ pub struct Timestamp {
 impl Timestamp {
     pub fn new(hlc: Hlc, session: SessionId) -> Self {
         Timestamp { hlc, session }
+    }
+}
+
+impl Default for Timestamp {
+    fn default() -> Self {
+        Timestamp::new(Hlc::new(0), 0)
     }
 }
 
