@@ -36,7 +36,7 @@ pub const IRONCALC_USER: &str = "IronCalc User";
 /// Name cannot be blank, must be shorter than 31 characters.
 /// You can use all alphanumeric characters but not the following special characters:
 /// \ , / , * , ? , : , [ , ].
-fn is_valid_sheet_name(name: &str) -> bool {
+pub(crate) fn is_valid_sheet_name(name: &str) -> bool {
     let invalid = ['\\', '/', '*', '?', ':', '[', ']'];
     !name.is_empty() && name.chars().count() <= 31 && !name.contains(&invalid[..])
 }
@@ -80,7 +80,10 @@ impl<'a> Model<'a> {
             index: Default::default(),
         }
     }
+}
 
+/// Parse machinery: derived evaluation state, built on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     pub fn get_new_sheet_id(&self) -> u32 {
         let mut index = 1;
         let worksheets = &self.workbook.worksheets;
@@ -89,10 +92,20 @@ impl<'a> Model<'a> {
         }
         index + 1
     }
-}
 
-/// Parse machinery: derived evaluation state, built on any addressing scheme.
-impl<'a, A: Position> Model<'a, A> {
+    /// Gets the base name for new sheets
+    pub(crate) fn get_sheet_name(&self) -> String {
+        let language = self.language;
+        match language.code.as_str() {
+            "en" => "Sheet".to_string(),
+            "es" => "Hoja".to_string(),
+            "fr" => "Feuil".to_string(),
+            "de" => "Tabelle".to_string(),
+            "it" => "Foglio".to_string(),
+            _ => "Sheet".to_string(),
+        }
+    }
+
     // This function parses all the internal formulas in all the worksheets
     // (in the default language ("en") and locale ("en") and the RC format)
     pub(crate) fn parse_formulas(&mut self) {
@@ -216,19 +229,6 @@ impl<'a, A: Position> Model<'a, A> {
 }
 
 impl<'a> Model<'a> {
-    /// Gets the base name for new sheets
-    fn get_sheet_name(&self) -> String {
-        let language = self.language;
-        match language.code.as_str() {
-            "en" => "Sheet".to_string(),
-            "es" => "Hoja".to_string(),
-            "fr" => "Feuil".to_string(),
-            "de" => "Tabelle".to_string(),
-            "it" => "Foglio".to_string(),
-            _ => "Sheet".to_string(),
-        }
-    }
-
     /// Adds a sheet with a automatically generated name
     pub fn new_sheet(&mut self) -> (String, u32) {
         // First we find a name
@@ -715,7 +715,8 @@ impl<'a> Model<'a> {
     }
 }
 
-#[cfg(test)]
+// Sheet creation, duplication and renaming through the ordinal writers.
+#[cfg(all(test, not(feature = "collab-test")))]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;

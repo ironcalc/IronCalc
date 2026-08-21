@@ -1,15 +1,21 @@
 use crate::collab::fractional_index::{FractionalIndex, FractionalKey, SESSION_SUFFIX_LEN};
+use crate::collab::hlc::Hlc;
 use crate::collab::log::{SessionId, Timestamp};
 use crate::collab::patch::{
     CfPropKind, ColPropKind, Patch, RowPropKind, SheetPropKind, WorkbookPropKind,
 };
+use crate::constants::{
+    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
+};
 use crate::expressions::parser::Parser;
+use crate::expressions::utils::{is_valid_column_number, is_valid_row};
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::Model;
 use crate::new_empty::{APPLICATION, APP_VERSION, IRONCALC_USER};
 use crate::types::{
-    sealed::Sealed, CellAddr, Col, Metadata, Position, RangeRef, Workbook, WorkbookSettings,
+    sealed::Sealed, CellAddr, Col, Metadata, Position, RangeRef, Row, Style, Workbook,
+    WorkbookSettings, Worksheet,
 };
 use crate::tz::Tz;
 use bitcode::{Decode, Encode};
@@ -105,6 +111,9 @@ pub struct SheetRegisters {
     pub cf: HashMap<(FractionalKey, CfPropKind), Timestamp>,
     /// CF rule identity ↔ storage order; kept sorted, position = priority.
     pub cf_order: Vec<FractionalKey>,
+    /// Where a rule sits, for the rules that were ever moved. Position keys are CRDT-only state,
+    /// so the value sits with its guard, as in [`WorkbookMeta::sheet_positions`].
+    pub cf_positions: HashMap<FractionalKey, (FractionalKey, Timestamp)>,
 }
 
 /// Workbook-wide registers: those outliving the sheet they talk about, and those no sheet owns.
@@ -161,8 +170,8 @@ fn resolve_axis(
         // Concurrent moves can invert the corners; the rectangle they bound is still the same one.
         (Some(lo), Some(hi)) => Some((lo.min(hi), lo.max(hi))),
         (lo_ord, hi_ord) => {
-            let lo = lo_ord.unwrap_or_else(|| index.lower_bound(lo) as i32 + 1);
-            let hi = hi_ord.unwrap_or_else(|| index.lower_bound(hi) as i32);
+            let lo = lo_ord.unwrap_or_else(|| index.active_index(lo) as i32 + 1);
+            let hi = hi_ord.unwrap_or_else(|| index.active_index(hi) as i32);
             (lo <= hi).then_some((lo, hi))
         }
     }
@@ -209,19 +218,131 @@ impl Col<Stable> {
     }
 }
 
-/// A collaborative model: the evaluation engine running directly on stably addressed storage.
-pub type ColabModel<'a> = Model<'a, Stable>;
+impl Worksheet<Stable> {
+    /// The column record that owns property `kind` at ordinal `column`: of the spans covering it,
+    /// the one whose register was written last. Only concurrency makes them overlap; a record with
+    /// no register entry for `kind` never wrote it and does not compete.
+    fn covering_col(&self, column: i32, kind: ColPropKind) -> Option<&Col<Stable>> {
+        let mut best: Option<(&Timestamp, &Col<Stable>)> = None;
+        for col in &self.cols {
+            match col.resolve(&self.index) {
+                Some((min, max)) if (min..=max).contains(&column) => {}
+                _ => continue,
+            }
+            let span = (col.min.clone(), col.max.clone());
+            let Some(ts) = self.index.registers.col_spans.get(&(span, kind)) else {
+                continue;
+            };
+            if best.is_none_or(|(stored, _)| stored < ts) {
+                best = Some((ts, col));
+            }
+        }
+        best.map(|(_, col)| col)
+    }
 
-/// The replica-local half of a [`ColabModel`]: who we are, and what we have not shipped yet.
+    pub fn get_column_width(&self, column: i32) -> Result<f64, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        Ok(match self.covering_col(column, ColPropKind::Width) {
+            Some(col) => col.width * COLUMN_WIDTH_FACTOR,
+            None => DEFAULT_COLUMN_WIDTH,
+        })
+    }
+
+    pub fn is_column_hidden(&self, column: i32) -> Result<bool, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        Ok(self
+            .covering_col(column, ColPropKind::Hidden)
+            .is_some_and(|col| col.hidden))
+    }
+
+    pub fn get_column_style(&self, column: i32) -> Result<Option<i32>, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        Ok(self
+            .covering_col(column, ColPropKind::Style)
+            .and_then(|col| col.style))
+    }
+
+    /// Rows are addressed one key at a time, so there is nothing to resolve between.
+    fn row_record(&self, row: i32) -> Option<&Row<Stable>> {
+        let key = Stable::row_at(&self.index, row)?;
+        self.rows.iter().find(|r| r.r == key)
+    }
+
+    pub fn row_height(&self, row: i32) -> Result<f64, String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        Ok(match self.row_record(row) {
+            Some(record) => record.height * ROW_HEIGHT_FACTOR,
+            None => DEFAULT_ROW_HEIGHT,
+        })
+    }
+
+    pub fn is_row_hidden(&self, row: i32) -> Result<bool, String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        Ok(self.row_record(row).is_some_and(|record| record.hidden))
+    }
+}
+
+/// A collaborative model: the evaluation engine running directly on stably addressed storage.
+pub type CollabModel<'a> = Model<'a, Stable>;
+
+/// Reads that stable addressing has to answer for itself, because a column property is a span
+/// register rather than a record per column.
+impl CollabModel<'_> {
+    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
+        self.workbook.worksheet(sheet)?.get_column_width(column)
+    }
+
+    pub fn is_column_hidden(&self, sheet: u32, column: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_column_hidden(column)
+    }
+
+    pub fn get_column_style(&self, sheet: u32, column: i32) -> Result<Option<Style>, String> {
+        match self.workbook.worksheet(sheet)?.get_column_style(column)? {
+            Some(index) => self.workbook.styles.get_style(index).map(Some),
+            None => Ok(None),
+        }
+    }
+
+    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
+        self.workbook.worksheet(sheet)?.row_height(row)
+    }
+
+    pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_row_hidden(row)
+    }
+}
+
+/// One mutator call's worth of patches, stamped once and already applied locally.
+///
+/// Contract with the hosting framework: it transports each of these as a single commit, carrying
+/// `hlc` unchanged as [`Commit::hlc`](crate::collab::log::Commit::hlc). Anything else and the
+/// author's register timestamps stop matching its peers'.
+#[derive(Debug)]
+pub struct LocalCommit {
+    pub hlc: Hlc,
+    pub patches: Vec<Patch>,
+}
+
+/// The replica-local half of a [`CollabModel`]: who we are, and what we have not shipped yet.
 #[derive(Debug, Default)]
 pub struct CollabSession {
     /// This replica's identity: the suffix of every [`FractionalKey`] it mints.
     pub session: SessionId,
-    /// Patches produced locally and not yet committed to the log.
-    pub pending: Vec<Patch>,
+    /// Commits produced locally and not yet handed to the log.
+    pub pending: Vec<LocalCommit>,
 }
 
-impl ColabModel<'static> {
+impl CollabModel<'static> {
     /// An empty replica: a workbook with **no sheets at all**, since every sheet arrives as a
     /// [`Patch::AddSheet`](crate::collab::patch::Patch::AddSheet) like any other write.
     ///
@@ -258,7 +379,7 @@ impl ColabModel<'static> {
             theme: Default::default(),
             meta: Default::default(),
         };
-        ColabModel {
+        CollabModel {
             workbook,
             parsed_formulas: Vec::new(),
             parsed_defined_names: HashMap::new(),
@@ -285,7 +406,7 @@ impl ColabModel<'static> {
     }
 }
 
-impl ColabModel<'_> {
+impl CollabModel<'_> {
     /// The suffix this replica mints [`FractionalKey`]s with.
     pub(crate) fn suffix(&self) -> [u8; SESSION_SUFFIX_LEN] {
         self.local.session.to_be_bytes()
@@ -302,12 +423,12 @@ impl ColabModel<'_> {
     }
 }
 
-#[cfg(test)]
+// Two of these build stable storage out of an ordinal model, through a helper `collab-test` gates.
+#[cfg(all(test, not(feature = "collab-test")))]
 mod test {
     use super::*;
     use crate::cf_types::{CfRuleInput, ValueOperator};
     use crate::test::test_stable_projection::stable_from_ordinal;
-    use crate::test::util::new_empty_model;
     use crate::types::{Cell, Color, Comment, Dxf, Fill, Row, SheetState, Worksheet};
 
     /// Explicit session suffixes: the default is all zeroes, which is the suffix reserved for
@@ -545,7 +666,7 @@ mod test {
     /// same values and the same conditional formatting, cell for cell.
     #[test]
     fn stable_eval_matches_ordinal() {
-        let mut ordinal = new_empty_model();
+        let mut ordinal = Model::new_empty("model", "en", "UTC", "en").unwrap();
         ordinal.set_user_input(0, 1, 1, "10".to_string()).unwrap();
         ordinal.set_user_input(0, 2, 1, "20".to_string()).unwrap();
         ordinal.set_user_input(0, 3, 1, "text".to_string()).unwrap();
@@ -578,7 +699,7 @@ mod test {
             .unwrap();
         ordinal.evaluate();
 
-        let mut stable = ColabModel::new(1);
+        let mut stable = CollabModel::new(1);
         stable.workbook = stable_twin(&ordinal);
         // Parses and evaluates: no projection and no copy, the engine reads the stable storage.
         stable.reset_parsed_structures();
@@ -610,7 +731,7 @@ mod test {
     /// relative offsets resolve against wherever the formula cell now sits.
     #[test]
     fn stable_eval_tracks_moves() {
-        let mut ordinal = new_empty_model();
+        let mut ordinal = Model::new_empty("model", "en", "UTC", "en").unwrap();
         for (row, value) in [(1, "10"), (2, "20"), (3, "30"), (4, "40")] {
             ordinal
                 .set_user_input(0, row, 1, value.to_string())
@@ -619,7 +740,7 @@ mod test {
         // Two rows above its own: 20 now, whatever sits there after the move later.
         ordinal.set_user_input(0, 4, 2, "=A2".to_string()).unwrap();
 
-        let mut stable = ColabModel::new(1);
+        let mut stable = CollabModel::new(1);
         stable.workbook = stable_twin(&ordinal);
         stable.reset_parsed_structures();
         assert_eq!(

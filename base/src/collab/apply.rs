@@ -17,7 +17,7 @@ use crate::cf_types::ConditionalFormatting;
 use crate::collab::fractional_index::FractionalKey;
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Consumer, SessionId, Snapshot, Timestamp};
-use crate::collab::model::{ColabModel, Stable, StableCellAddress, StableRange};
+use crate::collab::model::{CollabModel, Stable, StableCellAddress, StableRange};
 use crate::collab::patch::{
     CellInput, CfPropKind, CfProperty, ColPropKind, ColProperty, ColState, Patch, RowPropKind,
     RowProperty, RowState, SheetContent, SheetId, SheetProperty, WorkbookProperty,
@@ -33,7 +33,7 @@ use crate::types::{
 /// Version byte prefixing every [`Snapshot::encode`] payload.
 pub const SNAPSHOT_FORMAT_VERSION: u8 = 1;
 
-impl Consumer for ColabModel<'_> {
+impl Consumer for CollabModel<'_> {
     type Error = DynError;
 
     fn apply(&mut self, commit: Commit<'_>) -> Result<(), Self::Error> {
@@ -43,11 +43,12 @@ impl Consumer for ColabModel<'_> {
         for patch in commit.patches {
             self.apply_patch(patch, &ts);
         }
+        self.resync_parsed();
         Ok(())
     }
 }
 
-impl Snapshot for ColabModel<'static> {
+impl Snapshot for CollabModel<'static> {
     /// A version byte, then the workbook. Views are per-user state and are never encoded.
     fn encode(&self) -> Vec<u8> {
         let mut out = vec![SNAPSHOT_FORMAT_VERSION];
@@ -63,7 +64,7 @@ impl Snapshot for ColabModel<'static> {
             return Err(format!("unsupported snapshot format version: {version}").into());
         }
 
-        let mut model = ColabModel::new(session);
+        let mut model = CollabModel::new(session);
         model.workbook = bitcode::decode(workbook)?;
         // The suffix is never in the payload — see `FractionalIndex::decode`.
         let suffix = model.suffix();
@@ -178,52 +179,81 @@ fn build_cell(
     }
 }
 
+/// The row and column record lists are kept sorted by the key they are filed under, so that two
+/// replicas that saw the same writes in different orders still hold byte-identical worksheets.
 fn row_record<'r>(sheet: &'r mut Worksheet<Stable>, key: &FractionalKey) -> &'r mut Row<Stable> {
-    if let Some(i) = sheet.rows.iter().position(|r| &r.r == key) {
-        return &mut sheet.rows[i];
-    }
-    sheet.rows.push(Row {
-        r: key.clone(),
-        height: DEFAULT_ROW_HEIGHT / ROW_HEIGHT_FACTOR,
-        custom_format: false,
-        custom_height: false,
-        s: 0,
-        hidden: false,
-    });
-    sheet.rows.last_mut().expect("just pushed")
+    let at = match sheet.rows.binary_search_by(|r| r.r.cmp(key)) {
+        Ok(at) => return &mut sheet.rows[at],
+        Err(at) => at,
+    };
+    sheet.rows.insert(
+        at,
+        Row {
+            r: key.clone(),
+            height: DEFAULT_ROW_HEIGHT / ROW_HEIGHT_FACTOR,
+            custom_format: false,
+            custom_height: false,
+            s: 0,
+            hidden: false,
+        },
+    );
+    &mut sheet.rows[at]
 }
 
+/// See [`row_record`]; a column record is filed under its span's two corners.
 fn col_record<'r>(
     sheet: &'r mut Worksheet<Stable>,
     span: &(FractionalKey, FractionalKey),
 ) -> &'r mut Col<Stable> {
-    if let Some(i) = sheet
+    let at = match sheet
         .cols
-        .iter()
-        .position(|c| c.min == span.0 && c.max == span.1)
+        .binary_search_by(|c| (&c.min, &c.max).cmp(&(&span.0, &span.1)))
     {
-        return &mut sheet.cols[i];
-    }
-    sheet.cols.push(Col {
-        min: span.0.clone(),
-        max: span.1.clone(),
-        width: DEFAULT_COLUMN_WIDTH / COLUMN_WIDTH_FACTOR,
-        custom_width: false,
-        hidden: false,
-        style: None,
+        Ok(at) => return &mut sheet.cols[at],
+        Err(at) => at,
+    };
+    sheet.cols.insert(
+        at,
+        Col {
+            min: span.0.clone(),
+            max: span.1.clone(),
+            width: DEFAULT_COLUMN_WIDTH / COLUMN_WIDTH_FACTOR,
+            custom_width: false,
+            hidden: false,
+            style: None,
+        },
+    );
+    &mut sheet.cols[at]
+}
+
+/// Puts the rules back in priority order and renumbers them, which is what priority *is* under
+/// stable addressing: a rule sorts by the position key written for it, by its own identity when
+/// none was, and identity breaks any tie.
+fn sort_cf(sheet: &mut Worksheet<Stable>) {
+    let mut order = std::mem::take(&mut sheet.index.registers.cf_order);
+    let mut rules = std::mem::take(&mut sheet.conditional_formatting);
+    let positions = &sheet.index.registers.cf_positions;
+    let mut pairs: Vec<_> = order.drain(..).zip(rules.drain(..)).collect();
+    //TODO: optimize?
+    pairs.sort_by_cached_key(|(key, _)| {
+        let position = positions.get(key).map(|(p, _)| p).unwrap_or(key).clone();
+        (position, key.clone())
     });
-    sheet.cols.last_mut().expect("just pushed")
-}
-
-/// Rewrites every rule's priority to its storage position, which is what priority *is* under stable
-/// addressing — see [`Patch::MoveConditionalFormats`].
-fn renumber_cf(sheet: &mut Worksheet<Stable>) {
-    for (i, cf) in sheet.conditional_formatting.iter_mut().enumerate() {
+    for (i, (key, mut cf)) in pairs.into_iter().enumerate() {
         cf.priority = i as u32 + 1;
+        order.push(key);
+        rules.push(cf);
     }
+    sheet.index.registers.cf_order = order;
+    sheet.conditional_formatting = rules;
 }
 
-impl ColabModel<'_> {
+/// Where rule `key` currently sits in storage.
+fn cf_slot(sheet: &Worksheet<Stable>, key: &FractionalKey) -> Option<usize> {
+    sheet.index.registers.cf_order.iter().position(|k| k == key)
+}
+
+impl CollabModel<'_> {
     fn sheet_index(&self, sheet: SheetId) -> Option<usize> {
         self.workbook
             .worksheets
@@ -265,7 +295,19 @@ impl ColabModel<'_> {
         self.workbook.meta.sheet_positions = positions;
     }
 
-    fn apply_patch(&mut self, patch: &Patch, ts: &Timestamp) {
+    /// Rebuilds the parse tables a commit invalidated. They are derived from `shared_formulas` and
+    /// the defined names, both of which patches append to, and re-deriving is cheaper than tracking
+    /// which sheet index moved where. Evaluation stays the caller's business.
+    pub(crate) fn resync_parsed(&mut self) {
+        let defined_names = self.workbook.get_defined_names_with_scope();
+        self.parser
+            .set_worksheets_and_names(self.workbook.get_worksheet_names(), defined_names);
+        self.parsed_formulas = Vec::new();
+        self.parse_formulas();
+        self.parse_defined_names();
+    }
+
+    pub(crate) fn apply_patch(&mut self, patch: &Patch, ts: &Timestamp) {
         match patch {
             Patch::SetCellValue {
                 sheet, at, value, ..
@@ -660,18 +702,16 @@ impl ColabModel<'_> {
                     return;
                 }
                 let sheet = &mut self.workbook.worksheets[i];
-                // The key is both identity and priority, so storage order is key order.
-                if let Err(at) = sheet.index.registers.cf_order.binary_search(key) {
-                    sheet.index.registers.cf_order.insert(at, key.clone());
-                    sheet.conditional_formatting.insert(
-                        at,
-                        ConditionalFormatting {
-                            ranges: ranges.clone(),
-                            cf_rule: (**rule).clone(),
-                            priority: 0,
-                        },
-                    );
-                    renumber_cf(sheet);
+                // originally cf_order was sorted by key, however now we support move operations
+                // which may change keys order
+                if cf_slot(sheet, key).is_none() {
+                    sheet.index.registers.cf_order.push(key.clone());
+                    sheet.conditional_formatting.push(ConditionalFormatting {
+                        ranges: ranges.clone(),
+                        cf_rule: (**rule).clone(),
+                        priority: 0,
+                    });
+                    sort_cf(sheet);
                 }
             }
             Patch::DeleteConditionalFormat { sheet, key, .. } => {
@@ -680,10 +720,10 @@ impl ColabModel<'_> {
                 };
                 let sheet = &mut self.workbook.worksheets[i];
                 // The guards stay: they keep a concurrent edit from resurrecting the rule.
-                if let Ok(at) = sheet.index.registers.cf_order.binary_search(key) {
+                if let Some(at) = cf_slot(sheet, key) {
                     sheet.index.registers.cf_order.remove(at);
                     sheet.conditional_formatting.remove(at);
-                    renumber_cf(sheet);
+                    sort_cf(sheet);
                 }
             }
             Patch::SetConditionalFormat {
@@ -695,12 +735,29 @@ impl ColabModel<'_> {
                 let Some(i) = self.sheet_index(*sheet) else {
                     return;
                 };
-                let registers = &mut self.workbook.worksheets[i].index.registers;
-                if !wins(&mut registers.cf, &(key.clone(), property.kind()), ts) {
+                let sheet = &mut self.workbook.worksheets[i];
+                if let CfProperty::Priority(position) = property {
+                    // Order outlives the rule's other registers, so its guard rides with its value.
+                    match sheet.index.registers.cf_positions.get(key) {
+                        Some((_, stored)) if ts < stored => return, // outdated patch
+                        _ => { /* do nothing */ }
+                    }
+                    sheet
+                        .index
+                        .registers
+                        .cf_positions
+                        .insert(key.clone(), (position.clone(), ts.clone()));
+                    sort_cf(sheet);
                     return;
                 }
-                let sheet = &mut self.workbook.worksheets[i];
-                let Ok(at) = sheet.index.registers.cf_order.binary_search(key) else {
+                if !wins(
+                    &mut sheet.index.registers.cf,
+                    &(key.clone(), property.kind()),
+                    ts,
+                ) {
+                    return;
+                }
+                let Some(at) = cf_slot(sheet, key) else {
                     return;
                 };
                 match property {
@@ -710,6 +767,7 @@ impl ColabModel<'_> {
                     CfProperty::Ranges(ranges) => {
                         sheet.conditional_formatting[at].ranges = ranges.clone()
                     }
+                    CfProperty::Priority(_) => unreachable!("handled above"),
                 }
             }
             // A move over `cf_order`, needing the author-minted destinations `MoveRows` carries.
@@ -841,21 +899,11 @@ impl ColabModel<'_> {
             });
         }
         // The payload is ordered by key, but nothing stops a peer from sending it otherwise.
-        if !sheet.index.registers.cf_order.is_sorted() {
-            let mut pairs: Vec<_> = sheet
-                .index
-                .registers
-                .cf_order
-                .drain(..)
-                .zip(sheet.conditional_formatting.drain(..))
-                .collect();
-            pairs.sort_by(|(a, _), (b, _)| a.cmp(b));
-            for (key, cf) in pairs {
-                sheet.index.registers.cf_order.push(key);
-                sheet.conditional_formatting.push(cf);
-            }
-        }
-        renumber_cf(sheet);
+        sheet.rows.sort_by(|a, b| a.r.cmp(&b.r));
+        sheet
+            .cols
+            .sort_by(|a, b| (&a.min, &a.max).cmp(&(&b.min, &b.max)));
+        sort_cf(sheet);
     }
 
     fn seed_row(&mut self, i: usize, key: &FractionalKey, state: &RowState, ts: &Timestamp) {
@@ -936,7 +984,7 @@ mod test {
             }
         }
 
-        fn deliver(&self, model: &mut ColabModel<'_>) {
+        fn deliver(&self, model: &mut CollabModel<'_>) {
             model
                 .apply(Commit {
                     id: &self.id,
@@ -996,7 +1044,7 @@ mod test {
 
     const SHEET: SheetId = 42;
 
-    fn cell(model: &ColabModel<'_>, row: &FractionalKey, col: &FractionalKey) -> Option<Cell> {
+    fn cell(model: &CollabModel<'_>, row: &FractionalKey, col: &FractionalKey) -> Option<Cell> {
         let sheet = model.workbook.worksheets.first()?;
         sheet.sheet_data.get(row)?.get(col).cloned()
     }
@@ -1030,7 +1078,7 @@ mod test {
     fn apply_registers() {
         let rows: Vec<FractionalKey> = (1..=3).map(virtual_key).collect();
         let cols: Vec<FractionalKey> = (1..=3).map(virtual_key).collect();
-        let mut model = ColabModel::new(1);
+        let mut model = CollabModel::new(1);
 
         let genesis = genesis(&rows, &cols);
         genesis.deliver(&mut model);
@@ -1218,11 +1266,12 @@ mod test {
         assert_eq!(sheet.rows[0].r, rows[0]);
         assert_eq!(sheet.rows[0].height, 33.0);
         assert!(sheet.rows[0].custom_height);
+        // Records are kept sorted by span, so the open-ended one comes first.
         assert_eq!(sheet.cols.len(), 2);
-        assert_eq!(sheet.cols[0].width, 120.0);
-        assert_eq!(sheet.cols[1].min, FractionalKey::NULL);
-        assert!(sheet.cols[1].hidden);
-        assert_eq!(sheet.cols[1].resolve(&sheet.index), Some((1, 3)));
+        assert_eq!(sheet.cols[1].width, 120.0);
+        assert_eq!(sheet.cols[0].min, FractionalKey::NULL);
+        assert!(sheet.cols[0].hidden);
+        assert_eq!(sheet.cols[0].resolve(&sheet.index), Some((1, 3)));
         assert_eq!(sheet.name, "Renamed");
         assert_eq!(sheet.color, Color::Rgb("#ff0000".to_string()));
         assert_eq!(sheet.merged_cells, vec![merged.clone()]);
@@ -1346,7 +1395,7 @@ mod test {
             ],
         ));
 
-        let mut model = ColabModel::new(1);
+        let mut model = CollabModel::new(1);
         for rec in &log {
             rec.deliver(&mut model);
         }
@@ -1369,7 +1418,7 @@ mod test {
         assert_eq!(sheet.index.cols.len(), 1);
 
         // The identical sequence lands on the identical workbook — indexes and registers included.
-        let mut peer = ColabModel::new(2);
+        let mut peer = CollabModel::new(2);
         for rec in &log {
             rec.deliver(&mut peer);
         }
@@ -1493,8 +1542,8 @@ mod test {
             }],
         );
 
-        let mut a = ColabModel::new(1);
-        let mut b = ColabModel::new(2);
+        let mut a = CollabModel::new(1);
+        let mut b = CollabModel::new(2);
         root.deliver(&mut a);
         root.deliver(&mut b);
         // Causally respected, but the concurrent commits arrive in different orders.
@@ -1529,11 +1578,118 @@ mod test {
         assert!(a.workbook.meta.sheet_existence.contains_key(&doomed));
     }
 
+    /// Overlapping spans and reordered rules: two things only concurrency can produce, and both
+    /// have to read the same on every replica whatever order the commits arrived in.
+    #[test]
+    fn overlap_and_priority() {
+        let rows: Vec<FractionalKey> = (1..=2).map(virtual_key).collect();
+        let cols: Vec<FractionalKey> = (1..=5).map(virtual_key).collect();
+        let (first, second) = (minted(&[0x20], 1), minted(&[0x30], 1));
+
+        let root = Rec::new(1, 1, PAST, genesis(&rows, &cols).patches);
+        // A wide span from one replica, a narrower one from another, one HLC step later.
+        let wide = Rec::new(
+            2,
+            1,
+            same_ms(1),
+            vec![
+                Patch::SetColumnSpan {
+                    sheet: SHEET,
+                    span: (cols[0].clone(), cols[3].clone()),
+                    property: ColProperty::Width(10.0),
+                    prev: None,
+                },
+                Patch::SetColumnSpan {
+                    sheet: SHEET,
+                    span: (cols[0].clone(), cols[3].clone()),
+                    property: ColProperty::Hidden(true),
+                    prev: None,
+                },
+                Patch::AddConditionalFormat {
+                    sheet: SHEET,
+                    key: first.clone(),
+                    rule: Box::new(cf_rule("A1>0")),
+                    ranges: vec![],
+                },
+                Patch::AddConditionalFormat {
+                    sheet: SHEET,
+                    key: second.clone(),
+                    rule: Box::new(cf_rule("A1>1")),
+                    ranges: vec![],
+                },
+            ],
+        );
+        let narrow = Rec::new(
+            3,
+            2,
+            same_ms(2),
+            vec![
+                Patch::SetColumnSpan {
+                    sheet: SHEET,
+                    span: (cols[1].clone(), cols[1].clone()),
+                    property: ColProperty::Width(20.0),
+                    prev: None,
+                },
+                // The second rule takes a position below the first one's identity key.
+                Patch::SetConditionalFormat {
+                    sheet: SHEET,
+                    key: second.clone(),
+                    property: CfProperty::Priority(minted(&[0x10], 2)),
+                    prev: None,
+                },
+            ],
+        );
+
+        let mut a = CollabModel::new(1);
+        let mut b = CollabModel::new(2);
+        for rec in [&root, &wide, &narrow] {
+            rec.deliver(&mut a);
+        }
+        for rec in [&root, &narrow, &wide] {
+            rec.deliver(&mut b);
+        }
+        assert_eq!(a.workbook, b.workbook);
+
+        // The newest span covering a position wins it, per position and per property kind.
+        let widths: Vec<f64> = (1..=5).map(|c| a.get_column_width(0, c).unwrap()).collect();
+        assert_eq!(widths[0], widths[2]);
+        assert_ne!(widths[0], widths[1]);
+        assert_eq!(widths[4], DEFAULT_COLUMN_WIDTH);
+        for column in 1..=5 {
+            assert_eq!(
+                a.get_column_width(0, column).unwrap(),
+                b.get_column_width(0, column).unwrap()
+            );
+            assert_eq!(
+                a.is_column_hidden(0, column).unwrap(),
+                b.is_column_hidden(0, column).unwrap()
+            );
+        }
+        // The narrower span wrote no `Hidden` register, so the wide one still owns that property.
+        assert!(a.is_column_hidden(0, 2).unwrap());
+        assert!(!a.is_column_hidden(0, 5).unwrap());
+
+        // The moved rule sorts first, and priorities are renumbered to storage order.
+        let sheet = &a.workbook.worksheets[0];
+        assert_eq!(sheet.index.registers.cf_order, vec![second, first]);
+        assert_eq!(sheet.conditional_formatting[0].cf_rule, cf_rule("A1>1"));
+        let priorities: Vec<u32> = sheet
+            .conditional_formatting
+            .iter()
+            .map(|cf| cf.priority)
+            .collect();
+        assert_eq!(priorities, vec![1, 2]);
+        assert_eq!(
+            b.workbook.worksheets[0].index.registers.cf_order,
+            sheet.index.registers.cf_order
+        );
+    }
+
     #[test]
     fn snapshot_round_trip() {
         let rows: Vec<FractionalKey> = (1..=3).map(virtual_key).collect();
         let cols: Vec<FractionalKey> = (1..=2).map(virtual_key).collect();
-        let mut model = ColabModel::new(1);
+        let mut model = CollabModel::new(1);
         genesis(&rows, &cols).deliver(&mut model);
         Rec::new(
             2,
@@ -1557,7 +1713,7 @@ mod test {
         .deliver(&mut model);
 
         // A third replica picks the snapshot up, so the keys it mints are its own.
-        let restored = ColabModel::decode(&model.encode(), 3).unwrap();
+        let restored = CollabModel::decode(&model.encode(), 3).unwrap();
         assert_eq!(restored.workbook, model.workbook);
         assert_eq!(restored.shared_strings, model.shared_strings);
         assert_eq!(

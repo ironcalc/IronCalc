@@ -9,7 +9,7 @@ use crate::types::Cell;
 #[cfg(not(feature = "collab-test"))]
 pub type TestModel<'a> = Model<'a>;
 #[cfg(feature = "collab-test")]
-pub type TestModel<'a> = crate::collab::model::ColabModel<'a>;
+pub type TestModel<'a> = crate::collab::model::CollabModel<'a>;
 
 #[cfg(not(feature = "collab-test"))]
 pub fn new_empty_model() -> TestModel<'static> {
@@ -20,7 +20,7 @@ pub fn new_empty_model() -> TestModel<'static> {
 /// the corpus assumes `Sheet1` is already there.
 #[cfg(feature = "collab-test")]
 pub fn new_empty_model() -> TestModel<'static> {
-    let mut model = crate::collab::model::ColabModel::new(1);
+    let mut model = crate::collab::model::CollabModel::new(1);
     model.new_sheet();
     model
 }
@@ -79,7 +79,7 @@ macro_rules! test_helpers {
 
 test_helpers!(Model<'_>);
 #[cfg(feature = "collab-test")]
-test_helpers!(crate::collab::model::ColabModel<'_>);
+test_helpers!(crate::collab::model::CollabModel<'_>);
 
 #[cfg(not(feature = "collab-test"))]
 impl TestModel<'_> {

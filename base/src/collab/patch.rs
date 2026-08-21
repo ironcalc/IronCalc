@@ -13,7 +13,9 @@
 //! any wide span it partly overlaps eagerly — the wide register is removed and the narrower ones
 //! written in the same commit — so locally spans never overlap. Only concurrency can make them, and
 //! overlapping spans are then resolved per position by register write timestamp: LWW, newest
-//! covering span wins. The resolution machinery is phase-5 work. Open-ended spans are spelled two
+//! covering span wins. v1 emitters never shatter: a column property write is a point write to the
+//! single-column span `(k, k)`, and the read-time resolution handles narrow-over-wide. Open-ended
+//! spans are spelled two
 //! ways on purpose: `Option` axes in the generic [`RangeRef`](crate::types::RangeRef) world, where
 //! [`Ordinal`](crate::types::Ordinal) has no sentinel to spare, and [`FractionalKey::NULL`]
 //! brackets in this FractionalKey-native patch and storage layer.
@@ -42,12 +44,14 @@ use crate::cf_types::CfRule;
 use crate::collab::fractional_index::FractionalKey;
 use crate::collab::model::{Stable, StableCellAddress, StableRange};
 use crate::collab::DynError;
+use crate::constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
 use crate::expressions::token::Error;
 use crate::types::{ArrayKind, Color, Comment, SheetState, Style, Theme};
+use crate::{COLUMN_WIDTH_FACTOR, ROW_HEIGHT_FACTOR};
 use bitcode::{Decode, Encode};
 
-/// Identifies a sheet. Minted at random by the replica creating it, so two peers adding a sheet
-/// concurrently do not collide.
+/// Identifies a sheet. Minted by hashing the creating replica's session, so two peers adding a
+/// sheet concurrently do not collide.
 pub type SheetId = u32;
 
 /// Version byte prefixing every [`encode_patches`] payload.
@@ -68,6 +72,180 @@ pub fn decode_patches(bytes: &[u8]) -> Result<Vec<Patch>, DynError> {
         return Err(format!("unsupported patch format version: {version}").into());
     }
     Ok(bitcode::decode(payload)?)
+}
+
+/// The patches that undo `patches`, in reverse order. Undo is a new commit — see
+/// [`log`](crate::collab::log) — so an inverse wins by being later, never by rewriting history.
+///
+/// It is built from the `prev` fields, which are local-only, so this is meaningful only on patches
+/// this replica authored. What inverts: every `Set*` whose `prev` is populated, and an insert, into
+/// the matching delete. What does not, and is dropped:
+///
+/// - `DeleteRows`/`DeleteColumns`/`MoveRows`/`MoveColumns`: the index is a 2P-set, so a key it has
+///   ever seen can never be inserted again — the snapshots in `prev` have nowhere to go back to,
+/// - `SetArrayValue`, whose `prev` covers a rectangle rather than the anchor it would write to,
+/// - `AddSheet`/`DeleteSheet`, since [`SheetContent`] carries no sheet name to restore,
+/// - `MoveConditionalFormats`, which is a no-op to begin with,
+/// - anything whose `prev` came off the wire, where it decodes as the default.
+pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
+    let mut out = Vec::new();
+    for patch in patches.iter().rev() {
+        match patch {
+            Patch::SetCellValue {
+                sheet,
+                at,
+                value,
+                prev,
+            } => out.push(Patch::SetCellValue {
+                sheet: *sheet,
+                at: at.clone(),
+                value: (**prev).clone(),
+                prev: Box::new(value.clone()),
+            }),
+            Patch::SetCellStyle {
+                sheet,
+                at,
+                style,
+                prev,
+            } => out.push(Patch::SetCellStyle {
+                sheet: *sheet,
+                at: at.clone(),
+                style: (**prev).clone().map(Box::new),
+                prev: Box::new(style.as_ref().map(|s| (**s).clone())),
+            }),
+            Patch::InsertRows { sheet, keys } => out.push(Patch::DeleteRows {
+                sheet: *sheet,
+                keys: keys.clone(),
+                prev: Vec::new(),
+            }),
+            Patch::InsertColumns { sheet, keys } => out.push(Patch::DeleteColumns {
+                sheet: *sheet,
+                keys: keys.clone(),
+                prev: Vec::new(),
+            }),
+            Patch::SetRowProperty {
+                sheet, row, prev, ..
+            } => {
+                if let Some(property) = prev {
+                    out.push(Patch::SetRowProperty {
+                        sheet: *sheet,
+                        row: row.clone(),
+                        property: property.clone(),
+                        prev: None,
+                    });
+                }
+            }
+            Patch::SetColumnSpan {
+                sheet, span, prev, ..
+            } => {
+                if let Some(property) = prev {
+                    out.push(Patch::SetColumnSpan {
+                        sheet: *sheet,
+                        span: span.clone(),
+                        property: property.clone(),
+                        prev: None,
+                    });
+                }
+            }
+            Patch::SetSheetProperty { sheet, prev, .. } => {
+                if let Some(property) = prev {
+                    out.push(Patch::SetSheetProperty {
+                        sheet: *sheet,
+                        property: property.clone(),
+                        prev: None,
+                    });
+                }
+            }
+            Patch::SetWorkbookProperty { prev, .. } => {
+                if let Some(property) = prev {
+                    out.push(Patch::SetWorkbookProperty {
+                        property: property.clone(),
+                        prev: None,
+                    });
+                }
+            }
+            Patch::SetDefinedName {
+                scope,
+                name,
+                formula,
+                prev,
+            } => out.push(Patch::SetDefinedName {
+                scope: *scope,
+                name: name.clone(),
+                formula: prev.clone(),
+                prev: formula.clone(),
+            }),
+            Patch::SetNamedStyle {
+                name,
+                definition,
+                prev,
+            } => out.push(Patch::SetNamedStyle {
+                name: name.clone(),
+                definition: prev.clone(),
+                prev: definition.clone(),
+            }),
+            Patch::AddConditionalFormat { sheet, key, .. } => {
+                out.push(Patch::DeleteConditionalFormat {
+                    sheet: *sheet,
+                    key: key.clone(),
+                    prev: None,
+                })
+            }
+            Patch::DeleteConditionalFormat { sheet, key, prev } => {
+                if let Some(state) = prev {
+                    out.push(Patch::AddConditionalFormat {
+                        sheet: *sheet,
+                        key: key.clone(),
+                        rule: Box::new(state.rule.clone()),
+                        ranges: state.ranges.clone(),
+                    });
+                }
+            }
+            Patch::SetConditionalFormat {
+                sheet, key, prev, ..
+            } => {
+                if let Some(property) = prev {
+                    out.push(Patch::SetConditionalFormat {
+                        sheet: *sheet,
+                        key: key.clone(),
+                        property: property.clone(),
+                        prev: None,
+                    });
+                }
+            }
+            Patch::SetMergedRange {
+                sheet,
+                range,
+                merged,
+                prev,
+            } => out.push(Patch::SetMergedRange {
+                sheet: *sheet,
+                range: range.clone(),
+                merged: *prev,
+                prev: *merged,
+            }),
+            Patch::SetComment {
+                sheet,
+                at,
+                comment,
+                prev,
+            } => out.push(Patch::SetComment {
+                sheet: *sheet,
+                at: at.clone(),
+                comment: prev.clone(),
+                prev: comment.clone(),
+            }),
+            Patch::SetArrayValue { .. }
+            | Patch::DeleteRows { .. }
+            | Patch::DeleteColumns { .. }
+            | Patch::MoveRows { .. }
+            | Patch::MoveColumns { .. }
+            | Patch::AddSheet { .. }
+            | Patch::DeleteSheet { .. }
+            | Patch::MoveConditionalFormats { .. } => {}
+        }
+    }
+    out
 }
 
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
@@ -246,7 +424,8 @@ pub enum Patch {
         #[bitcode(skip)]
         prev: Option<Box<ConditionalFormatState>>,
     },
-    /// Raising or lowering a rule's priority: the moved keys are regenerated relative to `dest`.
+    /// Dead: superseded by [`CfProperty::Priority`], which writes a position register instead of
+    /// reordering an index. Kept because variants are append-only; applying it does nothing.
     MoveConditionalFormats {
         sheet: SheetId,
         keys: Vec<FractionalKey>,
@@ -402,13 +581,13 @@ impl WorkbookProperty {
 }
 
 /// A property of a single conditional formatting rule. Each variant is a distinct register.
-///
-/// Priority is deliberately absent: it is the rule's position in the worksheet's conditional
-/// formatting index, changed with [`Patch::MoveConditionalFormats`].
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum CfProperty {
     Rule(Box<CfRule>),
     Ranges(Vec<StableRange>),
+    /// Where the rule sits among the sheet's rules, which is what its priority *is*. A rule with
+    /// no position written sorts by its own identity key.
+    Priority(FractionalKey),
 }
 
 /// The register a [`CfProperty`] writes to, without its value.
@@ -416,6 +595,7 @@ pub enum CfProperty {
 pub enum CfPropKind {
     Rule,
     Ranges,
+    Priority,
 }
 
 impl CfProperty {
@@ -423,6 +603,7 @@ impl CfProperty {
         match self {
             CfProperty::Rule(_) => CfPropKind::Rule,
             CfProperty::Ranges(_) => CfPropKind::Ranges,
+            CfProperty::Priority(_) => CfPropKind::Priority,
         }
     }
 }
@@ -479,12 +660,35 @@ pub struct RowState {
     pub custom_format: bool,
 }
 
+impl Default for RowState {
+    fn default() -> Self {
+        RowState {
+            height: DEFAULT_ROW_HEIGHT / ROW_HEIGHT_FACTOR,
+            hidden: false,
+            style: None,
+            custom_height: false,
+            custom_format: false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct ColState {
     pub width: f64,
     pub hidden: bool,
     pub style: Option<Box<Style>>,
     pub custom_width: bool,
+}
+
+impl Default for ColState {
+    fn default() -> Self {
+        ColState {
+            width: DEFAULT_COLUMN_WIDTH / COLUMN_WIDTH_FACTOR,
+            hidden: false,
+            style: None,
+            custom_width: false,
+        }
+    }
 }
 
 /// Everything a [`Patch::DeleteRows`] removed, so that undo can put it back. Local-only undo data.
