@@ -6,6 +6,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use crate::constants::DEFAULT_ROW_HEIGHT;
 use crate::{
     cf_types::ConditionalFormatting,
     constants::{LAST_COLUMN, LAST_ROW},
@@ -15,6 +16,7 @@ use crate::{
             column_to_number, is_valid_column, is_valid_row, number_to_column, parse_reference_a1,
         },
     },
+    ROW_HEIGHT_FACTOR,
 };
 
 fn default_as_false() -> bool {
@@ -637,6 +639,16 @@ pub struct Row<A: Position = Ordinal> {
     pub custom_height: bool,
     pub s: i32,
     pub hidden: bool,
+}
+
+impl<A: Position> Row<A> {
+    pub fn is_empty(&self) -> bool {
+        self.s == 0
+            && !self.custom_format
+            && !self.custom_height
+            && !self.hidden
+            && self.height == DEFAULT_ROW_HEIGHT / ROW_HEIGHT_FACTOR
+    }
 }
 
 // ECMA-376-1:2016 section 18.3.1.13

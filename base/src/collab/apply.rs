@@ -14,10 +14,12 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use crate::cf_types::ConditionalFormatting;
-use crate::collab::fractional_index::FractionalKey;
+use crate::collab::fractional_index::{FractionalIndex, FractionalKey};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Consumer, SessionId, Snapshot, Timestamp};
-use crate::collab::model::{CollabModel, Stable, StableCellAddress, StableRange};
+use crate::collab::model::{
+    CollabModel, SheetIndexes, SheetRegisters, Stable, StableCellAddress, StableRange,
+};
 use crate::collab::patch::{
     CellInput, CfPropKind, CfProperty, ColPropKind, ColProperty, ColState, Patch, RowPropKind,
     RowProperty, RowState, SheetContent, SheetId, SheetProperty, WorkbookProperty,
@@ -126,6 +128,10 @@ fn put_cell(sheet: &mut Worksheet<Stable>, at: &StableCellAddress, cell: Cell) {
 fn remove_cell(sheet: &mut Worksheet<Stable>, at: &StableCellAddress) {
     if let Some(row) = sheet.sheet_data.get_mut(&at.0) {
         row.remove(&at.1);
+        // An emptied map must go: a replica whose write lost never filed the row at all.
+        if row.is_empty() {
+            sheet.sheet_data.remove(&at.0);
+        }
     }
 }
 
@@ -176,6 +182,45 @@ fn build_cell(
                 v: FormulaValue::Unevaluated,
             }
         }
+    }
+}
+
+/// Whether a cell outlives a delete stamped `at`: each half survives only under a guard strictly
+/// newer than it, and a surviving half resets the dominated one to its default.
+fn keep_cell(
+    registers: &SheetRegisters,
+    address: &StableCellAddress,
+    at: Hlc,
+    cell: &mut Cell,
+) -> bool {
+    let newer_value = if let Some(v) = registers.cell_values.get(address) {
+        v.hlc > at
+    } else {
+        false
+    };
+    let newer_style = if let Some(s) = registers.cell_styles.get(address) {
+        s.hlc > at
+    } else {
+        false
+    };
+    if newer_value && !newer_style {
+        cell.set_style(0);
+    }
+    if newer_style && !newer_value {
+        *cell = Cell::EmptyCell {
+            s: cell.get_style(),
+        };
+    }
+    newer_value || newer_style
+}
+
+fn cell_deleted(index: &SheetIndexes, at: &StableCellAddress, ts: Hlc) -> bool {
+    match index.rows.removed_at(&at.0) {
+        Some(tombstone) if tombstone >= ts => true,
+        _ => match index.cols.removed_at(&at.1) {
+            Some(tombstone) => tombstone >= ts,
+            None => false,
+        },
     }
 }
 
@@ -310,13 +355,21 @@ impl CollabModel<'_> {
     pub(crate) fn apply_patch(&mut self, patch: &Patch, ts: &Timestamp) {
         match patch {
             Patch::SetCellValue {
-                sheet, at, value, ..
+                sheet,
+                at,
+                value,
+                ts: at_ts,
+                ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
                     return;
                 };
-                let registers = &mut self.workbook.worksheets[i].index.registers;
-                if !wins(&mut registers.cell_values, at, ts) {
+                let ts = at_ts.as_ref().unwrap_or(ts);
+                let index = &mut self.workbook.worksheets[i].index;
+                // The guard is written either way; only the content is dead under a tombstone.
+                if !wins(&mut index.registers.cell_values, at, ts)
+                    || cell_deleted(index, at, ts.hlc)
+                {
                     return;
                 }
                 self.write_cell(i, at, value.as_ref());
@@ -338,13 +391,20 @@ impl CollabModel<'_> {
                 self.write_cell(i, anchor, value.as_ref());
             }
             Patch::SetCellStyle {
-                sheet, at, style, ..
+                sheet,
+                at,
+                style,
+                ts: at_ts,
+                ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
                     return;
                 };
-                let registers = &mut self.workbook.worksheets[i].index.registers;
-                if !wins(&mut registers.cell_styles, at, ts) {
+                let ts = at_ts.as_ref().unwrap_or(ts);
+                let index = &mut self.workbook.worksheets[i].index;
+                if !wins(&mut index.registers.cell_styles, at, ts)
+                    || cell_deleted(index, at, ts.hlc)
+                {
                     return;
                 }
                 let s = match style {
@@ -386,10 +446,40 @@ impl CollabModel<'_> {
                 let sheet = &mut self.workbook.worksheets[i];
                 for key in keys {
                     sheet.index.rows.remove_key_at(key, ts.hlc);
-                    // Cells and record go, their guards stay: a concurrent write loses to this
-                    // delete.
-                    sheet.sheet_data.remove(key);
-                    sheet.rows.retain(|row| &row.r != key);
+                    // The delete is one more write per register: it takes what it outranks and
+                    // leaves what a newer write already claimed.
+                    let registers = &sheet.index.registers;
+                    if let Some(row) = sheet.sheet_data.get_mut(key) {
+                        row.retain(|col, cell| {
+                            keep_cell(registers, &(key.clone(), col.clone()), ts.hlc, cell)
+                        });
+                        if row.is_empty() {
+                            sheet.sheet_data.remove(key);
+                        }
+                    }
+                    let kept = |kind| {
+                        registers
+                            .rows
+                            .get(&(key.clone(), kind))
+                            .is_some_and(|guard| guard.hlc > ts.hlc)
+                    };
+                    if let Ok(at) = sheet.rows.binary_search_by(|row| row.r.cmp(key)) {
+                        let row = &mut sheet.rows[at];
+                        if !kept(RowPropKind::Style) {
+                            row.s = 0;
+                            row.custom_format = false;
+                        }
+                        if !kept(RowPropKind::Height) {
+                            row.height = DEFAULT_ROW_HEIGHT / ROW_HEIGHT_FACTOR;
+                            row.custom_height = false;
+                        }
+                        if !kept(RowPropKind::Hidden) {
+                            row.hidden = false;
+                        }
+                        if row.is_empty() {
+                            sheet.rows.remove(at);
+                        }
+                    }
                 }
             }
             Patch::DeleteColumns { sheet, keys, .. } => {
@@ -399,9 +489,17 @@ impl CollabModel<'_> {
                 let sheet = &mut self.workbook.worksheets[i];
                 for key in keys {
                     sheet.index.cols.remove_key_at(key, ts.hlc);
-                    for row in sheet.sheet_data.values_mut() {
-                        row.remove(key);
-                    }
+                    let registers = &sheet.index.registers;
+                    // Retain, not `iter_mut`: a row the delete empties has to go with its last cell.
+                    sheet.sheet_data.retain(|row_key, row| {
+                        let address = (row_key.clone(), key.clone());
+                        if let Some(cell) = row.get_mut(key) {
+                            if !keep_cell(registers, &address, ts.hlc, cell) {
+                                row.remove(key);
+                            }
+                        }
+                        !row.is_empty()
+                    });
                     // Spans are regions, not sets of columns: what they cover resolves against the
                     // index, which just shrank.
                 }
@@ -428,13 +526,27 @@ impl CollabModel<'_> {
                 sheet,
                 row,
                 property,
+                ts: at_ts,
                 ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
                     return;
                 };
-                let registers = &mut self.workbook.worksheets[i].index.registers;
-                if !wins(&mut registers.rows, &(row.clone(), property.kind()), ts) {
+                let ts = at_ts.as_ref().unwrap_or(ts);
+                let index = &mut self.workbook.worksheets[i].index;
+                // is row tombstone higher than patch timestamp?
+                let row_deleted = if let Some(t) = index.rows.removed_at(row) {
+                    t >= ts.hlc
+                } else {
+                    false
+                };
+                if row_deleted
+                    || !wins(
+                        &mut index.registers.rows,
+                        &(row.clone(), property.kind()),
+                        ts,
+                    )
+                {
                     return;
                 }
                 let style = match property {
@@ -458,11 +570,13 @@ impl CollabModel<'_> {
                 sheet,
                 span,
                 property,
+                ts: at_ts,
                 ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
                     return;
                 };
+                let ts = at_ts.as_ref().unwrap_or(ts);
                 let registers = &mut self.workbook.worksheets[i].index.registers;
                 if !wins(
                     &mut registers.col_spans,
@@ -1098,30 +1212,35 @@ mod test {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[0].clone()),
                     value: Some(CellInput::Number(41.0)),
+                    ts: None,
                     prev: Box::default(),
                 },
                 Patch::SetCellValue {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[1].clone()),
                     value: Some(CellInput::Text("hello".to_string())),
+                    ts: None,
                     prev: Box::default(),
                 },
                 Patch::SetCellValue {
                     sheet: SHEET,
                     at: (rows[1].clone(), cols[0].clone()),
                     value: Some(CellInput::Formula("A1*2".to_string())),
+                    ts: None,
                     prev: Box::default(),
                 },
                 Patch::SetCellValue {
                     sheet: SHEET,
                     at: (rows[2].clone(), cols[0].clone()),
                     value: Some(CellInput::Boolean(true)),
+                    ts: None,
                     prev: Box::default(),
                 },
                 Patch::SetCellValue {
                     sheet: SHEET,
                     at: (rows[2].clone(), cols[0].clone()),
                     value: None,
+                    ts: None,
                     prev: Box::default(),
                 },
             ],
@@ -1171,18 +1290,21 @@ mod test {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[0].clone()),
                     style: Some(Box::new(styled())),
+                    ts: None,
                     prev: Box::default(),
                 },
                 Patch::SetRowProperty {
                     sheet: SHEET,
                     row: rows[0].clone(),
                     property: RowProperty::Height(33.0),
+                    ts: None,
                     prev: None,
                 },
                 Patch::SetColumnSpan {
                     sheet: SHEET,
                     span: (cols[0].clone(), cols[1].clone()),
                     property: ColProperty::Width(120.0),
+                    ts: None,
                     prev: None,
                 },
                 // The whole-sheet span: the register `(NULL, NULL)` names and ordinal code cannot.
@@ -1190,6 +1312,7 @@ mod test {
                     sheet: SHEET,
                     span: (FractionalKey::NULL, FractionalKey::NULL),
                     property: ColProperty::Hidden(true),
+                    ts: None,
                     prev: None,
                 },
                 Patch::SetSheetProperty {
@@ -1310,6 +1433,7 @@ mod test {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[0].clone()),
                     value: Some(CellInput::Number(0.0)),
+                    ts: None,
                     prev: Box::default(),
                 },
                 Patch::SetSheetProperty {
@@ -1339,6 +1463,7 @@ mod test {
                 sheet: 999,
                 at: (rows[0].clone(), cols[0].clone()),
                 value: Some(CellInput::Number(1.0)),
+                ts: None,
                 prev: Box::default(),
             }],
         )
@@ -1360,6 +1485,7 @@ mod test {
                     sheet: SHEET,
                     at: (row.clone(), col.clone()),
                     value: Some(CellInput::Text(format!("{row:?}/{col:?}"))),
+                    ts: None,
                     prev: Box::default(),
                 });
             }
@@ -1480,6 +1606,7 @@ mod test {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[0].clone()),
                     value: Some(CellInput::Number(1.0)),
+                    ts: None,
                     prev: Box::default(),
                 },
                 Patch::MoveRows {
@@ -1497,6 +1624,7 @@ mod test {
                     sheet: doomed,
                     at: (rows[1].clone(), cols[0].clone()),
                     value: Some(CellInput::Number(99.0)),
+                    ts: None,
                     prev: Box::default(),
                 },
             ],
@@ -1511,6 +1639,7 @@ mod test {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[0].clone()),
                     value: Some(CellInput::Number(2.0)),
+                    ts: None,
                     prev: Box::default(),
                 },
                 Patch::MoveRows {
@@ -1597,12 +1726,14 @@ mod test {
                     sheet: SHEET,
                     span: (cols[0].clone(), cols[3].clone()),
                     property: ColProperty::Width(10.0),
+                    ts: None,
                     prev: None,
                 },
                 Patch::SetColumnSpan {
                     sheet: SHEET,
                     span: (cols[0].clone(), cols[3].clone()),
                     property: ColProperty::Hidden(true),
+                    ts: None,
                     prev: None,
                 },
                 Patch::AddConditionalFormat {
@@ -1628,6 +1759,7 @@ mod test {
                     sheet: SHEET,
                     span: (cols[1].clone(), cols[1].clone()),
                     property: ColProperty::Width(20.0),
+                    ts: None,
                     prev: None,
                 },
                 // The second rule takes a position below the first one's identity key.
@@ -1700,12 +1832,14 @@ mod test {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[0].clone()),
                     value: Some(CellInput::Text("kept".to_string())),
+                    ts: None,
                     prev: Box::default(),
                 },
                 Patch::SetCellStyle {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[0].clone()),
                     style: Some(Box::new(styled())),
+                    ts: None,
                     prev: Box::default(),
                 },
             ],
@@ -1730,6 +1864,7 @@ mod test {
                 sheet: SHEET,
                 at: (rows[1].clone(), cols[1].clone()),
                 value: Some(CellInput::Number(7.0)),
+                ts: None,
                 prev: Box::default(),
             }],
         );

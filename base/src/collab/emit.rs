@@ -361,6 +361,7 @@ impl CollabModel<'_> {
             sheet: id,
             at: at.clone(),
             value: input,
+            ts: None,
             prev: Box::new(prev),
         });
         let stored = self.get_cell_style_or_none(sheet, row, column)?;
@@ -371,6 +372,7 @@ impl CollabModel<'_> {
                 sheet: id,
                 at,
                 style: Some(Box::new(style)),
+                ts: None,
                 prev: Box::new(stored),
             });
         }
@@ -524,12 +526,14 @@ impl CollabModel<'_> {
             sheet: id,
             at: at.clone(),
             value: None,
+            ts: None,
             prev: Box::new(prev),
         });
         patches.push(Patch::SetCellStyle {
             sheet: id,
             at,
             style: None,
+            ts: None,
             prev: Box::new(style),
         });
         self.commit_local(patches);
@@ -552,6 +556,7 @@ impl CollabModel<'_> {
             sheet: id,
             at,
             style: Some(Box::new(style.clone())),
+            ts: None,
             prev: Box::new(prev),
         });
         self.commit_local(patches);
@@ -588,6 +593,7 @@ impl CollabModel<'_> {
             sheet: id,
             row: key,
             property: RowProperty::Height(height / ROW_HEIGHT_FACTOR),
+            ts: None,
             prev,
         });
         self.commit_local(patches);
@@ -607,6 +613,7 @@ impl CollabModel<'_> {
             sheet: id,
             row: key,
             property: RowProperty::Hidden(hidden),
+            ts: None,
             prev,
         });
         self.commit_local(patches);
@@ -626,6 +633,7 @@ impl CollabModel<'_> {
             sheet: id,
             row: key,
             property: RowProperty::Style(Some(Box::new(style.clone()))),
+            ts: None,
             prev,
         });
         self.commit_local(patches);
@@ -651,6 +659,7 @@ impl CollabModel<'_> {
             sheet: id,
             span: (key.clone(), key),
             property,
+            ts: None,
             prev,
         });
         Ok(patches)
@@ -918,6 +927,7 @@ impl CollabModel<'_> {
                 sheet: id,
                 at,
                 value: Some(CellInput::Formula(formula)),
+                ts: None,
                 prev: Box::new(prev),
             });
         }
@@ -961,9 +971,11 @@ impl CollabModel<'_> {
         index.create_keys(at - 1, count).collect()
     }
 
-    /// Everything the rows `keys` name is about to lose, so that undo can put it back.
+    /// Everything the rows `keys` name is about to lose, so that undo can put it back — including
+    /// the stamp each register holds, which is what the restore replays at.
     fn row_snapshots(&self, i: usize, keys: &[FractionalKey]) -> Vec<RowSnapshot> {
         let sheet = &self.workbook.worksheets[i];
+        let registers = &sheet.index.registers;
         keys.iter()
             .map(|key| {
                 let row = sheet.rows.iter().find(|r| &r.r == key);
@@ -992,11 +1004,19 @@ impl CollabModel<'_> {
                             ((key.clone(), col.clone()), col.clone(), cell.get_style())
                         }),
                 );
+                let prop_ts = [RowPropKind::Style, RowPropKind::Height, RowPropKind::Hidden]
+                    .into_iter()
+                    .filter_map(|kind| {
+                        let ts = registers.rows.get(&(key.clone(), kind))?;
+                        Some((kind, ts.clone()))
+                    })
+                    .collect();
                 RowSnapshot {
                     key: key.clone(),
                     state,
                     cell_values,
                     cell_styles,
+                    prop_ts,
                 }
             })
             .collect()
@@ -1005,6 +1025,7 @@ impl CollabModel<'_> {
     /// [`Self::row_snapshots`] for columns; the cells are keyed by row instead.
     fn column_snapshots(&self, i: usize, keys: &[FractionalKey]) -> Vec<ColumnSnapshot> {
         let sheet = &self.workbook.worksheets[i];
+        let registers = &sheet.index.registers;
         keys.iter()
             .map(|key| {
                 let col = sheet.cols.iter().find(|c| &c.min == key && &c.max == key);
@@ -1027,11 +1048,20 @@ impl CollabModel<'_> {
                         Some(((row.clone(), key.clone()), row.clone(), cell.get_style()))
                     }),
                 );
+                let span = (key.clone(), key.clone());
+                let prop_ts = [ColPropKind::Style, ColPropKind::Width, ColPropKind::Hidden]
+                    .into_iter()
+                    .filter_map(|kind| {
+                        let ts = registers.col_spans.get(&(span.clone(), kind))?;
+                        Some((kind, ts.clone()))
+                    })
+                    .collect();
                 ColumnSnapshot {
                     key: key.clone(),
                     state,
                     cell_values,
                     cell_styles,
+                    prop_ts,
                 }
             })
             .collect()
@@ -1044,18 +1074,24 @@ impl CollabModel<'_> {
         &self,
         i: usize,
         cells: impl Iterator<Item = (StableCellAddress, FractionalKey, i32)>,
-    ) -> (Vec<(FractionalKey, CellInput)>, Vec<(FractionalKey, Style)>) {
+    ) -> (
+        Vec<(FractionalKey, CellInput, Timestamp)>,
+        Vec<(FractionalKey, Style, Timestamp)>,
+    ) {
+        let registers = &self.workbook.worksheets[i].index.registers;
         let mut values = Vec::new();
         let mut styles = Vec::new();
         let mut cells: Vec<_> = cells.collect();
         cells.sort_by(|(_, a_axis, _), (_, b_axis, _)| a_axis.cmp(b_axis));
         for (at, key, style) in cells {
             if let Some(input) = self.cell_input(i, &at) {
-                values.push((key.clone(), input));
+                let ts = registers.cell_values.get(&at).copied().unwrap_or_default();
+                values.push((key.clone(), input, ts));
             }
             if style != 0 {
                 if let Ok(style) = self.workbook.styles.get_style(style) {
-                    styles.push((key, style));
+                    let ts = registers.cell_styles.get(&at).copied().unwrap_or_default();
+                    styles.push((key, style, ts));
                 }
             }
         }
@@ -1261,6 +1297,7 @@ impl CollabModel<'_> {
                 sheet: id,
                 at,
                 value: Some(CellInput::Formula(renamed)),
+                ts: None,
                 prev: Box::new(prev),
             });
         }
@@ -1423,6 +1460,7 @@ impl CollabModel<'_> {
                     sheet: id,
                     at,
                     value: Some(CellInput::Formula(renamed)),
+                    ts: None,
                     prev: Box::new(prev),
                 });
             }
@@ -1931,5 +1969,81 @@ mod test {
         assert!(!a.is_row_hidden(0, 2).unwrap());
         a.evaluate();
         assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("2".to_string()));
+    }
+
+    #[test]
+    fn delete_beats_older_write() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 2, 1, "anchor".to_string()).unwrap();
+        let setup = a.flush();
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        // Stamped below the deletes, but reaching A only after them.
+        b.set_user_input(0, 2, 2, "old".to_string()).unwrap();
+        // Row 3 holds nothing outside the doomed column, so B's map for it empties.
+        b.set_user_input(0, 3, 1, "old-col".to_string()).unwrap();
+        a.delete_rows(0, 2, 1).unwrap();
+        a.delete_columns(0, 1, 1).unwrap();
+
+        let late = b.flush();
+        let deletes = a.flush();
+        deliver(&mut b, 1, &deletes);
+        deliver(&mut a, 2, &late);
+
+        // Shared strings are interned per replica, so only the sheet itself has to match.
+        let (a_ws, b_ws) = (&a.workbook.worksheets[0], &b.workbook.worksheets[0]);
+        assert!(a_ws.sheet_data.is_empty()); // the deletes outrank the writes on both sides
+        assert_eq!(b_ws.sheet_data, a_ws.sheet_data);
+        assert_eq!(b_ws.index, a_ws.index);
+    }
+
+    /// Undoing a delete replays the restores at the stamps they were captured with, so a
+    /// concurrent newer edit to a restored cell outlives the undo.
+    #[test]
+    fn undo_delete_concurrent() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 2, 1, "keep".to_string()).unwrap();
+        a.set_user_input(0, 2, 2, "edit-me".to_string()).unwrap();
+        let setup = a.flush();
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        a.delete_rows(0, 2, 1).unwrap();
+        // Later in program order, so the shared clock stamps it above the delete and the restores.
+        b.set_user_input(0, 2, 2, "999".to_string()).unwrap();
+
+        // Undo: one commit carrying the inverses of the delete, newest first.
+        let deletes = a.flush();
+        let undo: Vec<Patch> = deletes
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+
+        let undone = a.flush();
+        deliver(&mut b, 1, &deletes);
+        // The surviving edit is dead but invisible until the undo puts its row back.
+        assert_eq!(b.get_formatted_cell_value(0, 2, 2), Ok("".to_string()));
+        deliver(&mut b, 1, &undone);
+        deliver(&mut a, 2, &b.flush());
+        a.evaluate();
+        b.evaluate();
+
+        // The uncontested cell came back; the contested one kept B's newer edit.
+        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("keep".to_string()));
+        assert_eq!(a.get_formatted_cell_value(0, 2, 2), Ok("999".to_string()));
+        assert_eq!(
+            b.workbook.worksheets[0].index.registers,
+            a.workbook.worksheets[0].index.registers
+        );
+        assert_eq!(b.get_formatted_cell_value(0, 2, 1), Ok("keep".to_string()));
+        assert_eq!(b.get_formatted_cell_value(0, 2, 2), Ok("999".to_string()));
+        assert_eq!(b.workbook, a.workbook);
     }
 }

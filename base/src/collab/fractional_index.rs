@@ -213,6 +213,13 @@ impl FractionalIndex {
         None
     }
 
+    /// The stamp of the removal that ended `key`'s chain: `None` while its element is still active,
+    /// or when the key is unknown here.
+    pub(crate) fn removed_at(&self, key: &FractionalKey) -> Option<Hlc> {
+        let j = self.resolve(key)?.err()?;
+        Some(self.moved[j].modified_at)
+    }
+
     /// [`Self::resolve`] plus the key the element answers to, read off the record that ends the
     /// chain: an active one names its identity, a null terminal *is* the identity.
     fn locate(&self, key: &FractionalKey) -> Option<(FractionalKey, Result<usize, usize>)> {
