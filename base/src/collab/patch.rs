@@ -42,7 +42,6 @@
 
 use crate::cf_types::CfRule;
 use crate::collab::fractional_index::FractionalKey;
-use crate::collab::hlc::Hlc;
 use crate::collab::log::Timestamp;
 use crate::collab::model::{Stable, StableCellAddress, StableRange};
 use crate::collab::DynError;
@@ -299,7 +298,7 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                             sheet: *sheet,
                             at: (snap.key.clone(), col.clone()),
                             value: Some(input.clone()),
-                            ts: Some(ts.clone()),
+                            ts: Some(*ts),
                             prev: Box::new(None),
                         });
                     }
@@ -310,7 +309,7 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                             sheet: *sheet,
                             at: (snap.key.clone(), col.clone()),
                             style: Some(Box::new(style.clone())),
-                            ts: Some(ts.clone()),
+                            ts: Some(*ts),
                             prev: Box::new(None),
                         });
                     }
@@ -369,7 +368,7 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                             sheet: *sheet,
                             at: (row.clone(), snap.key.clone()),
                             value: Some(input.clone()),
-                            ts: Some(ts.clone()),
+                            ts: Some(*ts),
                             prev: Box::new(None),
                         });
                     }
@@ -380,7 +379,7 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                             sheet: *sheet,
                             at: (row.clone(), snap.key.clone()),
                             style: Some(Box::new(style.clone())),
-                            ts: Some(ts.clone()),
+                            ts: Some(*ts),
                             prev: Box::new(None),
                         });
                     }
@@ -908,6 +907,7 @@ pub enum CellInput {
 mod test {
     #![allow(clippy::unwrap_used)]
     use super::*;
+    use crate::collab::hlc::Hlc;
     use crate::collab::log::CommitId;
 
     fn key(byte: u8) -> FractionalKey {
