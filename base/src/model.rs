@@ -2711,7 +2711,9 @@ impl<'a> Model<'a> {
     }
 
     // Helper function that returns a defined name given the name and scope
-    fn get_parsed_defined_name(
+    // pub(crate) because `functions::statistical::if_ifs::node_to_range` needs to
+    // tell a name that resolves to a single cell from one that resolves to a range.
+    pub(crate) fn get_parsed_defined_name(
         &self,
         name: &str,
         scope: Option<u32>,
