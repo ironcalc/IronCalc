@@ -76,11 +76,14 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     date = {
         let month_diff = month - 1;
         let abs_month = month_diff.unsigned_abs();
-        if month_diff <= 0 {
-            date = date - Months::new(abs_month);
+        let shifted = if month_diff <= 0 {
+            date.checked_sub_months(Months::new(abs_month))
         } else {
-            date = date + Months::new(abs_month);
-        }
+            date.checked_add_months(Months::new(abs_month))
+        };
+        let Some(date) = shifted else {
+            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        };
         if !is_date_within_range(date) {
             return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
         }
@@ -90,11 +93,14 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     date = {
         let day_diff = day - 1;
         let abs_day = day_diff.unsigned_abs() as u64;
-        if day_diff <= 0 {
-            date = date - Days::new(abs_day);
+        let shifted = if day_diff <= 0 {
+            date.checked_sub_days(Days::new(abs_day))
         } else {
-            date = date + Days::new(abs_day);
-        }
+            date.checked_add_days(Days::new(abs_day))
+        };
+        let Some(date) = shifted else {
+            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        };
         if !is_date_within_range(date) {
             return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
         }
@@ -141,6 +147,18 @@ mod tests {
         assert_eq!(
             permissive_date_to_serial_number(256, 1, 2004),
             date_to_serial_number(12, 9, 2004)
+        );
+    }
+
+    #[test]
+    fn test_extreme_offsets_do_not_panic() {
+        assert_eq!(
+            permissive_date_to_serial_number(1, i32::MAX, 2025),
+            Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
+        );
+        assert_eq!(
+            permissive_date_to_serial_number(i32::MAX, 1, 2025),
+            Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
         );
     }
 
