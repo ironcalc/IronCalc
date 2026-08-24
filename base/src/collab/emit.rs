@@ -1352,11 +1352,20 @@ impl CollabModel<'_> {
         if moves.is_empty() {
             return Err("Cannot move rows there".to_string());
         }
+        // A row named past the tail holds nothing yet, so its inverse files it back onto its identity.
+        let prev = moves
+            .iter()
+            .map(|(id, _)| index.held_key(id).unwrap_or_else(|| id.clone()))
+            .collect();
         let mut patches = Vec::new();
         if !keys.is_empty() {
             patches.push(Patch::InsertRows { sheet: id, keys });
         }
-        patches.push(Patch::MoveRows { sheet: id, moves });
+        patches.push(Patch::MoveRows {
+            sheet: id,
+            moves,
+            prev,
+        });
         let steps = Self::move_steps(row, row_count, delta, |r| DisplaceData::RowMove {
             sheet,
             row: r,
@@ -1398,11 +1407,20 @@ impl CollabModel<'_> {
         if moves.is_empty() {
             return Err("Cannot move columns there".to_string());
         }
+        // A column named past the tail holds nothing yet, so its inverse files it back onto its identity.
+        let prev = moves
+            .iter()
+            .map(|(id, _)| index.held_key(id).unwrap_or_else(|| id.clone()))
+            .collect();
         let mut patches = Vec::new();
         if !keys.is_empty() {
             patches.push(Patch::InsertColumns { sheet: id, keys });
         }
-        patches.push(Patch::MoveColumns { sheet: id, moves });
+        patches.push(Patch::MoveColumns {
+            sheet: id,
+            moves,
+            prev,
+        });
         let steps = Self::move_steps(column, column_count, delta, |c| DisplaceData::ColumnMove {
             sheet,
             column: c,
@@ -2332,6 +2350,78 @@ mod test {
         );
         assert_eq!(b.get_formatted_cell_value(0, 2, 1), Ok("keep".to_string()));
         assert_eq!(b.get_formatted_cell_value(0, 2, 2), Ok("999".to_string()));
+        assert_eq!(b.workbook, a.workbook);
+    }
+
+    #[test]
+    fn undo_move_concurrent() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap(); // A1=1
+        a.set_user_input(0, 2, 1, "2".to_string()).unwrap(); // A2=2
+        a.set_user_input(0, 3, 1, "3".to_string()).unwrap(); // A3=3
+        a.set_user_input(0, 1, 2, "=A2*10".to_string()).unwrap(); // B1
+        let cell_count = a.get_all_cells().len();
+        let setup = a.flush();
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        // Peer A: move row A2 past the tail (to A6)
+        a.move_rows_action(0, 2, 1, 4).unwrap();
+        a.evaluate();
+        assert_eq!(a.get_cell_formula(0, 1, 2), Ok(Some("=A6*10".to_string())));
+        assert_eq!(a.get_formatted_cell_value(0, 6, 1), Ok("2".to_string()));
+        assert_eq!(a.get_formatted_cell_value(0, 1, 2), Ok("20".to_string()));
+
+        // Peer B never saw the move: the edit names the row's identity and must follow it both ways
+        b.set_user_input(0, 2, 1, "20".to_string()).unwrap(); // A2=20
+
+        // Peer A: undo recent move
+        let moved = a.flush();
+        let undo: Vec<Patch> = moved
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+        let undone = a.flush();
+
+        deliver(&mut b, 1, &moved);
+        deliver(&mut b, 1, &undone);
+        deliver(&mut a, 2, &b.flush());
+        a.evaluate();
+        b.evaluate();
+
+        for m in [&a, &b] {
+            // A2=20 -> Peer B change is still in effect
+            assert_eq!(m.get_formatted_cell_value(0, 2, 1), Ok("20".to_string()));
+            // B1=A2*10 -> Peer A undo move (A2->A6) is in effect
+            assert_eq!(m.get_cell_formula(0, 1, 2), Ok(Some("=A2*10".to_string())));
+            assert_eq!(m.get_formatted_cell_value(0, 1, 2), Ok("200".to_string()));
+            // A6 (move destination) has no value
+            assert_eq!(m.get_formatted_cell_value(0, 6, 1), Ok("".to_string()));
+        }
+        assert_eq!(a.get_all_cells().len(), cell_count);
+        assert_eq!(b.workbook, a.workbook);
+
+        // Redo: the inverse of the inverse.
+        let redo: Vec<Patch> = undone
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(redo);
+        deliver(&mut b, 1, &a.flush());
+        a.evaluate();
+        b.evaluate();
+
+        for m in [&a, &b] {
+            // Peer A redo moves A2 back to A6, but that doesn't conflict with Peer's B change A2=20
+            assert_eq!(m.get_formatted_cell_value(0, 6, 1), Ok("20".to_string()));
+            assert_eq!(m.get_cell_formula(0, 1, 2), Ok(Some("=A6*10".to_string())));
+            assert_eq!(m.get_formatted_cell_value(0, 1, 2), Ok("200".to_string()));
+        }
         assert_eq!(b.workbook, a.workbook);
     }
 }
