@@ -47,7 +47,7 @@ where
                 },
             )
         })
-        .filter(|m| m.width >= 1 && m.height >= 1 && m.width * m.height > 1)
+        .filter(|m| m.width >= 1 && m.height >= 1 && !(m.width == 1 && m.height == 1))
         .collect();
 }
 

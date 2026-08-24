@@ -49,7 +49,7 @@ impl<'a> Model<'a> {
         if row + height - 1 > LAST_ROW || column + width - 1 > LAST_COLUMN {
             return Err("Range is out of bounds".to_string());
         }
-        if width * height == 1 {
+        if width == 1 && height == 1 {
             return Err("Cannot merge a single cell".to_string());
         }
         let worksheet = self.workbook.worksheet(sheet)?;
