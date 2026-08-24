@@ -189,7 +189,7 @@ fn load_merge_cells(ws: Node) -> Result<Vec<MergedCell>, XlsxError> {
             };
             let width = last_column - column + 1;
             let height = last_row - row + 1;
-            if width < 1 || height < 1 || width * height == 1 {
+            if width < 1 || height < 1 || (width == 1 && height == 1) {
                 continue;
             }
             if merged_cells

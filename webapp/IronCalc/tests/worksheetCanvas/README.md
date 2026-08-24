@@ -29,17 +29,6 @@ These tests are part of `npm run test`, so they run in `make tests` /
 golden fails the test instead of being silently created — generate goldens
 locally and commit them.
 
-## Why this is deterministic
-
-- The fonts are the app's own Inter files (`fonts/*.woff2` at the package
-  root), registered with the canvas at harness load, and the theme injected
-  through `fakeDom.ts` uses the same font stacks as `theme.css` — so text
-  rasterization matches the real app and does not depend on system fonts.
-- Skia ships prebuilt with `@napi-rs/canvas`, so the same package version
-  draws the same pixels on every machine. Comparison is exact equality — a
-  failure always means the renderer drew something different, never
-  anti-aliasing noise.
-
 ## How it works
 
 - `fakeDom.ts` — a minimal DOM stub (the renderer's constructor touches DOM
@@ -55,5 +44,5 @@ locally and commit them.
 - The screenshots are cropped to the cell area. Column headers are DOM divs
   (they never appear on the canvas), and the row headers are cropped away
   with them.
-- Selection outlines, the editor, and tooltips are DOM overlays and are not
+- Selection outlines, the editor, and tooltips and any other HTML DOM overlays and are not
   captured either.
