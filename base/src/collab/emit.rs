@@ -920,24 +920,73 @@ impl CollabModel<'_> {
             let displaced =
                 to_string_displaced(&node, &context, displace, self.locale, self.language);
             let parsed = self.parse_at(i, moved_row, moved_column, &displaced);
-            let formula = to_rc_format(&parsed);
-            if self.workbook.worksheets[i].shared_formulas.get(f as usize) == Some(&formula) {
-                continue;
+            if let Some(patch) = self.formula_patch(i, id, at, f, to_rc_format(&parsed)) {
+                patches.push(patch);
             }
-            let prev = self.cell_input(i, &at);
-            patches.push(Patch::SetCellValue {
-                sheet: id,
-                at,
-                value: Some(CellInput::Formula(formula)),
-                ts: None,
-                prev: Box::new(prev),
-            });
         }
         patches
     }
 
-    /// Re-emits every defined name whose formula `displace` changes.
-    fn displace_defined_names(&mut self, displace: &DisplaceData) -> Vec<Patch> {
+    /// The patch re-emitting the formula at `at` as `formula`, `None` when the stored text already
+    /// says that.
+    fn formula_patch(
+        &self,
+        i: usize,
+        id: SheetId,
+        at: StableCellAddress,
+        f: i32,
+        formula: String,
+    ) -> Option<Patch> {
+        if self.workbook.worksheets[i].shared_formulas.get(f as usize) == Some(&formula) {
+            return None;
+        }
+        let prev = self.cell_input(i, &at);
+        Some(Patch::SetCellValue {
+            sheet: id,
+            at,
+            value: Some(CellInput::Formula(formula)),
+            ts: None,
+            prev: Box::new(prev),
+        })
+    }
+
+    /// [`Self::displace_formulas`] for a move, which upstream composes as one step per row or
+    /// column: each step displaces the references *and* carries the anchor along with the cells it
+    /// shifts, so the whole block is a fold over the steps.
+    fn displace_moves(&mut self, i: usize, steps: &[DisplaceData]) -> Vec<Patch> {
+        let mut patches = Vec::new();
+        for (j, id, row, column, at, f) in self.formula_cells() {
+            let Some(mut node) = self
+                .parsed_formulas
+                .get(j)
+                .and_then(|sheet| sheet.get(f as usize))
+                .map(|(node, _)| node.clone())
+            else {
+                continue;
+            };
+            let (mut row, mut column) = (row, column);
+            for step in steps {
+                let context = CellReferenceRC {
+                    sheet: self.workbook.worksheets[j].get_name(),
+                    row,
+                    column,
+                };
+                let displaced =
+                    to_string_displaced(&node, &context, step, self.locale, self.language);
+                if j == i {
+                    (row, column) = move_anchor(step, row, column);
+                }
+                node = self.parse_at(j, row, column, &displaced);
+            }
+            if let Some(patch) = self.formula_patch(j, id, at, f, to_rc_format(&node)) {
+                patches.push(patch);
+            }
+        }
+        patches
+    }
+
+    /// Re-emits every defined name whose formula `steps` change, folded in order.
+    fn displace_defined_names(&mut self, steps: &[DisplaceData]) -> Vec<Patch> {
         let context = self.defined_name_context();
         let names: Vec<(Option<SheetId>, String, String)> = self
             .workbook
@@ -948,16 +997,19 @@ impl CollabModel<'_> {
         let mut patches = Vec::new();
         for (scope, name, formula) in names {
             let body = formula.strip_prefix('=').unwrap_or(&formula).to_string();
-            let node = self.parse_internal_formula(&body, &context);
             // Defined names are stored in the English internal form, so render the displaced
             // formula in the default locale/language to compare against and store.
-            let displaced = to_string_displaced(
-                &node,
-                &context,
-                displace,
-                get_default_locale(),
-                get_default_language(),
-            );
+            let mut displaced = body.clone();
+            for step in steps {
+                let node = self.parse_internal_formula(&displaced, &context);
+                displaced = to_string_displaced(
+                    &node,
+                    &context,
+                    step,
+                    get_default_locale(),
+                    get_default_language(),
+                );
+            }
             if displaced == body {
                 continue;
             }
@@ -1018,7 +1070,7 @@ impl CollabModel<'_> {
                     .into_iter()
                     .filter_map(|kind| {
                         let ts = registers.rows.get(&(key.clone(), kind))?;
-                        Some((kind, ts.clone()))
+                        Some((kind, *ts))
                     })
                     .collect();
                 RowSnapshot {
@@ -1063,7 +1115,7 @@ impl CollabModel<'_> {
                     .into_iter()
                     .filter_map(|kind| {
                         let ts = registers.col_spans.get(&(span.clone(), kind))?;
-                        Some((kind, ts.clone()))
+                        Some((kind, *ts))
                     })
                     .collect();
                 ColumnSnapshot {
@@ -1131,7 +1183,7 @@ impl CollabModel<'_> {
             Some((if s == i && r >= row { r + row_count } else { r }, c))
         };
         patches.extend(self.displace_formulas(&displace, moved));
-        patches.extend(self.displace_defined_names(&displace));
+        patches.extend(self.displace_defined_names(&[displace]));
         self.commit_local(patches);
         Ok(())
     }
@@ -1166,7 +1218,7 @@ impl CollabModel<'_> {
             _ => Some((r - row_count, c)),
         };
         patches.extend(self.displace_formulas(&displace, moved));
-        patches.extend(self.displace_defined_names(&displace));
+        patches.extend(self.displace_defined_names(&[displace]));
         self.commit_local(patches);
         Ok(())
     }
@@ -1210,7 +1262,7 @@ impl CollabModel<'_> {
             ))
         };
         patches.extend(self.displace_formulas(&displace, moved));
-        patches.extend(self.displace_defined_names(&displace));
+        patches.extend(self.displace_defined_names(&[displace]));
         self.commit_local(patches);
         Ok(())
     }
@@ -1250,9 +1302,132 @@ impl CollabModel<'_> {
             _ => Some((r, c - column_count)),
         };
         patches.extend(self.displace_formulas(&displace, moved));
-        patches.extend(self.displace_defined_names(&displace));
+        patches.extend(self.displace_defined_names(&[displace]));
         self.commit_local(patches);
         Ok(())
+    }
+
+    /// `plan_move`'s inputs for a block of `count` elements at ordinal `first` moving by `delta`:
+    /// the source positions, and the destination in the pre-drain coordinates it reads.
+    fn move_span(first: i32, count: i32, delta: i32) -> (std::ops::Range<usize>, usize) {
+        let source = (first - 1) as usize..(first - 1 + count) as usize;
+        // Past the block, the drained entries are what the planner subtracts back off.
+        let dest = if delta > 0 {
+            first + count - 1 + delta
+        } else {
+            first + delta - 1
+        };
+        (source, dest as usize)
+    }
+
+    /// Moves the rows `[row, row + row_count)` by `delta`, rewriting the formulas that referenced
+    /// across them. Content, properties and ranges are keyed by identity, so they follow the rows
+    /// without a patch of their own.
+    ///
+    /// Arrays are a later phase: upstream's array-split guard is deferred with them.
+    pub fn move_rows_action(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        row_count: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        if row_count <= 0 || delta == 0 {
+            return Ok(());
+        }
+        let target_first = row + delta;
+        let target_last = row + row_count - 1 + delta;
+        if !(1..=LAST_ROW).contains(&target_first) || !(1..=LAST_ROW).contains(&target_last) {
+            return Err("Target row out of boundaries".to_string());
+        }
+        if !(1..=LAST_ROW).contains(&row) || !(1..=LAST_ROW).contains(&(row + row_count - 1)) {
+            return Err("Initial row out of boundaries".to_string());
+        }
+        let (i, id) = self.sheet_of(sheet)?;
+        let index = &self.workbook.worksheets[i].index.rows;
+        let (source, dest) = Self::move_span(row, row_count, delta);
+        // `plan_move` rebuilds this same tail internally, deterministically, to plan over it.
+        let keys = index.plan_virtual(target_last.max(row + row_count - 1) as usize);
+        let moves = index.plan_move(source, dest);
+        if moves.is_empty() {
+            return Err("Cannot move rows there".to_string());
+        }
+        let mut patches = Vec::new();
+        if !keys.is_empty() {
+            patches.push(Patch::InsertRows { sheet: id, keys });
+        }
+        patches.push(Patch::MoveRows { sheet: id, moves });
+        let steps = Self::move_steps(row, row_count, delta, |r| DisplaceData::RowMove {
+            sheet,
+            row: r,
+            delta,
+        });
+        patches.extend(self.displace_moves(i, &steps));
+        patches.extend(self.displace_defined_names(&steps));
+        self.commit_local(patches);
+        Ok(())
+    }
+
+    /// [`Self::move_rows_action`] for columns.
+    pub fn move_columns_action(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        if column_count <= 0 || delta == 0 {
+            return Ok(());
+        }
+        let target_first = column + delta;
+        let target_last = column + column_count - 1 + delta;
+        if !(1..=LAST_COLUMN).contains(&target_first) || !(1..=LAST_COLUMN).contains(&target_last) {
+            return Err("Target column out of boundaries".to_string());
+        }
+        if !(1..=LAST_COLUMN).contains(&column)
+            || !(1..=LAST_COLUMN).contains(&(column + column_count - 1))
+        {
+            return Err("Initial column out of boundaries".to_string());
+        }
+        let (i, id) = self.sheet_of(sheet)?;
+        let index = &self.workbook.worksheets[i].index.cols;
+        let (source, dest) = Self::move_span(column, column_count, delta);
+        // `plan_move` rebuilds this same tail internally, deterministically, to plan over it.
+        let keys = index.plan_virtual(target_last.max(column + column_count - 1) as usize);
+        let moves = index.plan_move(source, dest);
+        if moves.is_empty() {
+            return Err("Cannot move columns there".to_string());
+        }
+        let mut patches = Vec::new();
+        if !keys.is_empty() {
+            patches.push(Patch::InsertColumns { sheet: id, keys });
+        }
+        patches.push(Patch::MoveColumns { sheet: id, moves });
+        let steps = Self::move_steps(column, column_count, delta, |c| DisplaceData::ColumnMove {
+            sheet,
+            column: c,
+            delta,
+        });
+        patches.extend(self.displace_moves(i, &steps));
+        patches.extend(self.displace_defined_names(&steps));
+        self.commit_local(patches);
+        Ok(())
+    }
+
+    /// The single-element steps a block move is composed of, in the order upstream applies them:
+    /// from the far end of the block, so each step meets the ordinals the last one left.
+    fn move_steps(
+        first: i32,
+        count: i32,
+        delta: i32,
+        step: impl Fn(i32) -> DisplaceData,
+    ) -> Vec<DisplaceData> {
+        let range = first..first + count;
+        if delta > 0 {
+            range.rev().map(step).collect()
+        } else {
+            range.map(step).collect()
+        }
     }
 
     /// Deletes a sheet by index. Fails if it is the last one.
@@ -1642,6 +1817,35 @@ impl CollabModel<'_> {
     }
 }
 
+/// Where one move step lands the ordinal `at`, `pivot` being the element it moves: the mapping
+/// [`to_string_displaced`] applies to references, and the one the cells themselves follow.
+fn move_shift(at: i32, pivot: i32, delta: i32) -> i32 {
+    if at == pivot {
+        at + delta
+    } else if delta > 0 && at > pivot && at <= pivot + delta {
+        at - 1
+    } else if delta < 0 && at < pivot && at >= pivot + delta {
+        at + 1
+    } else {
+        at
+    }
+}
+
+/// [`move_shift`] over the anchor of a cell, along whichever axis `step` moves.
+fn move_anchor(step: &DisplaceData, row: i32, column: i32) -> (i32, i32) {
+    match step {
+        DisplaceData::RowMove {
+            row: pivot, delta, ..
+        } => (move_shift(row, *pivot, *delta), column),
+        DisplaceData::ColumnMove {
+            column: pivot,
+            delta,
+            ..
+        } => (row, move_shift(column, *pivot, *delta)),
+        _ => (row, column),
+    }
+}
+
 /// Calls phase 5b does not answer. They validate nothing and change nothing: the caller gets an
 /// error rather than an edit that would never reach a peer.
 macro_rules! unsupported {
@@ -1688,8 +1892,6 @@ unsupported! { &mut self
     move_cell_value_to_area(value: &str, source: &CellReferenceIndex, target: &CellReferenceIndex, area: &Area) -> String;
     extend_to(sheet: u32, row: i32, column: i32, target_row: i32, target_column: i32) -> String;
     extend_copied_value(value: &str, source: &CellReferenceIndex, target: &CellReferenceIndex) -> String;
-    move_rows_action(sheet: u32, row: i32, row_count: i32, delta: i32) -> ();
-    move_columns_action(sheet: u32, column: i32, column_count: i32, delta: i32) -> ();
     delete_row_style(sheet: u32, row: i32) -> ();
     delete_column_style(sheet: u32, column: i32) -> ();
     copy_cell_style(source: (u32, i32, i32), destination: (u32, i32, i32)) -> ();
@@ -1840,6 +2042,12 @@ mod test {
 
             m.insert_rows(0, 3, 2).unwrap();
             m.delete_columns(0, 4, 1).unwrap();
+            // Both blocks cross formulas already in the sheet, so the rewrites are exercised.
+            // Neither crosses A1, which `top` names: upstream leaves defined names alone on a
+            // structural edit and emission does not, so the script keeps off that divergence.
+            m.move_rows_action(0, 2, 2, 4).unwrap();
+            m.move_columns_action(0, 2, 1, 1).unwrap();
+            m.move_rows_action(0, 6, 2, 3).unwrap();
             m.evaluate();
         }};
     }
@@ -1871,21 +2079,91 @@ mod test {
             );
         }
         assert_eq!(a.get_all_cells().len(), cells.len());
-        // The rewrite really did happen: the reference across the insert grew, and the one into
-        // the deleted column broke.
+        // The rewrite really did happen. The reference across the insert grew to A1:A7; the row
+        // move then sent row 7 to 5 and pulled the range's top end down with it, and the column
+        // move carried the formula itself from B to C.
         assert_eq!(
-            a.get_cell_formula(0, 7, 2),
-            Ok(Some("=SUM(A1:A7)".to_string()))
+            a.get_cell_formula(0, 5, 3),
+            Ok(Some("=SUM(A1:A5)".to_string()))
         );
+        assert_eq!(a.get_formatted_cell_value(0, 5, 3), Ok("13".to_string()));
+        // The one into the deleted column broke, and column D was left where it was.
         assert_eq!(
             a.get_cell_formula(0, 1, 4),
             Ok(Some("=#REF!+1".to_string()))
         );
-        assert_eq!(a.get_formatted_cell_value(0, 2, 4), Ok("10".to_string()));
+        // The last move reaches past every materialized row, so rows 6 and 7 land on 9 and 10 —
+        // ordinals that only exist because the commit carried them.
+        assert_eq!(a.get_formatted_cell_value(0, 9, 4), Ok("10".to_string()));
+        // The moved rows carried their contents: row 2 held 2, and now row 9 does.
+        assert_eq!(a.get_formatted_cell_value(0, 9, 1), Ok("2".to_string()));
+        // A reference into the block follows the row it names, not the ordinal it had.
+        assert_eq!(a.get_cell_formula(0, 1, 2), Ok(Some("=A3+1".to_string())));
 
         let mut b = CollabModel::new(2);
         deliver(&mut b, 1, &a.flush());
         b.evaluate();
+        assert_eq!(b.workbook, a.workbook);
+    }
+
+    /// A move racing an edit inside the block it moves. B addresses the cell by the ordinal it
+    /// still sees, and identity addressing has to land that edit on the row's new ordinal.
+    #[test]
+    fn concurrent_move_and_edit() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        for row in 1..=4 {
+            a.set_user_input(0, row, 1, format!("{row}")).unwrap();
+        }
+        let setup = a.flush();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        // Rows 1 and 2 go to 3 and 4, landing on the last ordinal; B, still on the old view, edits
+        // the second of them.
+        a.move_rows_action(0, 1, 2, 2).unwrap();
+        b.set_user_input(0, 2, 1, "edited".to_string()).unwrap();
+
+        let (from_a, from_b) = (a.flush(), b.flush());
+        deliver(&mut b, 1, &from_a);
+        deliver(&mut a, 2, &from_b);
+        a.evaluate();
+        b.evaluate();
+
+        // The edit traveled with the row rather than staying on the ordinal it named.
+        for m in [&a, &b] {
+            assert_eq!(
+                m.get_formatted_cell_value(0, 4, 1),
+                Ok("edited".to_string())
+            );
+            assert_eq!(m.get_formatted_cell_value(0, 3, 1), Ok("1".to_string()));
+            assert_eq!(m.get_formatted_cell_value(0, 1, 1), Ok("3".to_string()));
+            assert_eq!(m.get_formatted_cell_value(0, 2, 1), Ok("4".to_string()));
+        }
+        assert_eq!(b.workbook, a.workbook);
+
+        // The move above left minted keys on the tail. A second move reaching *past* that tail has
+        // to materialize rows that still sort last, and a write far below has to land where it says.
+        a.move_rows_action(0, 1, 1, 4).unwrap();
+        a.set_user_input(0, 8, 1, "far".to_string()).unwrap();
+        deliver(&mut b, 1, &a.flush());
+        a.evaluate();
+        b.evaluate();
+
+        for m in [&a, &b] {
+            // Row 1 went to 5, the rest shifted up one.
+            assert_eq!(m.get_formatted_cell_value(0, 1, 1), Ok("4".to_string()));
+            assert_eq!(m.get_formatted_cell_value(0, 2, 1), Ok("1".to_string()));
+            assert_eq!(
+                m.get_formatted_cell_value(0, 3, 1),
+                Ok("edited".to_string())
+            );
+            assert_eq!(m.get_formatted_cell_value(0, 4, 1), Ok("".to_string()));
+            assert_eq!(m.get_formatted_cell_value(0, 5, 1), Ok("3".to_string()));
+            // Named row 8, reads back at row 8 — not at whatever ordinal a stale mint would give.
+            assert_eq!(m.get_formatted_cell_value(0, 8, 1), Ok("far".to_string()));
+            assert_eq!(m.workbook.worksheets[0].index.rows.len(), 8);
+        }
         assert_eq!(b.workbook, a.workbook);
     }
 
