@@ -83,7 +83,6 @@ pub fn decode_patches(bytes: &[u8]) -> Result<Vec<Patch>, DynError> {
 /// matching delete, and a delete into the matching insert followed by restores of the snapshot's
 /// state and cells. What does not, and is dropped:
 ///
-/// - `MoveRows`/`MoveColumns`, until move emission lands,
 /// - `SetArrayValue`, whose `prev` covers a rectangle rather than the anchor it would write to,
 /// - `AddSheet`/`DeleteSheet`, since [`SheetContent`] carries no sheet name to restore,
 /// - `MoveConditionalFormats`, which is a no-op to begin with,
@@ -124,12 +123,30 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
             Patch::InsertRows { sheet, keys } => out.push(Patch::DeleteRows {
                 sheet: *sheet,
                 keys: keys.clone(),
-                prev: Vec::new(),
+                prev: keys
+                    .iter()
+                    .map(|k| RowSnapshot {
+                        key: k.clone(),
+                        state: RowState::default(),
+                        cell_values: Vec::new(),
+                        cell_styles: Vec::new(),
+                        prop_ts: Vec::new(),
+                    })
+                    .collect(),
             }),
             Patch::InsertColumns { sheet, keys } => out.push(Patch::DeleteColumns {
                 sheet: *sheet,
                 keys: keys.clone(),
-                prev: Vec::new(),
+                prev: keys
+                    .iter()
+                    .map(|k| ColumnSnapshot {
+                        key: k.clone(),
+                        state: ColState::default(),
+                        cell_values: Vec::new(),
+                        cell_styles: Vec::new(),
+                        prop_ts: Vec::new(),
+                    })
+                    .collect(),
             }),
             Patch::SetRowProperty {
                 sheet, row, prev, ..
@@ -385,9 +402,36 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                     }
                 }
             }
+            Patch::MoveRows { sheet, moves, prev } => {
+                if prev.len() != moves.len() {
+                    continue; // came off the wire: no undo data
+                }
+                out.push(Patch::MoveRows {
+                    sheet: *sheet,
+                    moves: moves
+                        .iter()
+                        .zip(prev)
+                        .map(|((id, _), held)| (id.clone(), held.clone()))
+                        .collect(),
+                    // The forward destinations, so inverting the inverse moves them forward again.
+                    prev: moves.iter().map(|(_, dest)| dest.clone()).collect(),
+                });
+            }
+            Patch::MoveColumns { sheet, moves, prev } => {
+                if prev.len() != moves.len() {
+                    continue;
+                }
+                out.push(Patch::MoveColumns {
+                    sheet: *sheet,
+                    moves: moves
+                        .iter()
+                        .zip(prev)
+                        .map(|((id, _), held)| (id.clone(), held.clone()))
+                        .collect(),
+                    prev: moves.iter().map(|(_, dest)| dest.clone()).collect(),
+                });
+            }
             Patch::SetArrayValue { .. }
-            | Patch::MoveRows { .. }
-            | Patch::MoveColumns { .. }
             | Patch::AddSheet { .. }
             | Patch::DeleteSheet { .. }
             | Patch::MoveConditionalFormats { .. } => {}
@@ -454,6 +498,11 @@ pub enum Patch {
     MoveRows {
         sheet: SheetId,
         moves: Vec<(FractionalKey, FractionalKey)>,
+
+        /// The key each element held before the move, aligned with `moves` — what the inverse files
+        /// it back to.
+        #[bitcode(skip)]
+        prev: Vec<FractionalKey>,
     },
     SetRowProperty {
         sheet: SheetId,
@@ -484,6 +533,11 @@ pub enum Patch {
     MoveColumns {
         sheet: SheetId,
         moves: Vec<(FractionalKey, FractionalKey)>,
+
+        /// The key each element held before the move, aligned with `moves` — what the inverse files
+        /// it back to.
+        #[bitcode(skip)]
+        prev: Vec<FractionalKey>,
     },
     /// A property write over a column *span*, addressed by its corner keys — see
     /// [`Col`](crate::types::Col) for what a span covers. A [`FractionalKey::NULL`] corner is an
@@ -1019,6 +1073,7 @@ mod test {
             Patch::MoveRows {
                 sheet: 7,
                 moves: vec![(key(1), key(5))],
+                prev: vec![],
             },
             Patch::SetRowProperty {
                 sheet: 7,
@@ -1040,6 +1095,7 @@ mod test {
             Patch::MoveColumns {
                 sheet: 7,
                 moves: vec![(key(3), key(6))],
+                prev: vec![],
             },
             Patch::SetColumnSpan {
                 sheet: 7,

@@ -247,7 +247,7 @@ impl FractionalIndex {
     }
 
     /// The key of the position `identity`'s element holds, `None` when it holds none.
-    fn held_key(&self, identity: &FractionalKey) -> Option<FractionalKey> {
+    pub(crate) fn held_key(&self, identity: &FractionalKey) -> Option<FractionalKey> {
         let i = self.position_of(identity)?;
         Some(self.active[i].key.clone())
     }
