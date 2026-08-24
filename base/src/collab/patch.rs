@@ -84,7 +84,8 @@ pub fn decode_patches(bytes: &[u8]) -> Result<Vec<Patch>, DynError> {
 /// state and cells. What does not, and is dropped:
 ///
 /// - `SetArrayValue`, whose `prev` covers a rectangle rather than the anchor it would write to,
-/// - `AddSheet`/`DeleteSheet`, since [`SheetContent`] carries no sheet name to restore,
+/// - `DeleteSheet` with no [`SheetRestore`] captured — a user-initiated delete still takes no
+///   snapshot, so only the one an `AddSheet` inverted into puts its sheet back,
 /// - `MoveConditionalFormats`, which is a no-op to begin with,
 /// - anything whose `prev` came off the wire, where it decodes as the default.
 ///
@@ -431,9 +432,31 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                     prev: moves.iter().map(|(_, dest)| dest.clone()).collect(),
                 });
             }
+            Patch::AddSheet {
+                id,
+                name,
+                position,
+                content,
+            } => out.push(Patch::DeleteSheet {
+                sheet: *id,
+                // The redo reuses the id, so references to the sheet resolve again.
+                prev: Some(Box::new(SheetRestore {
+                    name: name.clone(),
+                    position: position.clone(),
+                    content: content.clone(),
+                })),
+            }),
+            Patch::DeleteSheet {
+                sheet,
+                prev: Some(restore),
+            } => out.push(Patch::AddSheet {
+                id: *sheet,
+                name: restore.name.clone(),
+                position: restore.position.clone(),
+                content: restore.content.clone(),
+            }),
             Patch::SetArrayValue { .. }
-            | Patch::AddSheet { .. }
-            | Patch::DeleteSheet { .. }
+            | Patch::DeleteSheet { prev: None, .. }
             | Patch::MoveConditionalFormats { .. } => {}
         }
     }
@@ -578,7 +601,7 @@ pub enum Patch {
         sheet: SheetId,
 
         #[bitcode(skip)]
-        prev: Option<Box<SheetContent>>,
+        prev: Option<Box<SheetRestore>>,
     },
     SetSheetProperty {
         sheet: SheetId,
@@ -838,6 +861,15 @@ pub struct NamedStyle {
 pub struct ConditionalFormatState {
     pub rule: CfRule,
     pub ranges: Vec<StableRange>,
+}
+
+/// Everything a [`Patch::DeleteSheet`] removed, as the [`Patch::AddSheet`] that puts it back.
+/// Local-only undo data.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SheetRestore {
+    pub name: String,
+    pub position: FractionalKey,
+    pub content: Option<Box<SheetContent>>,
 }
 
 /// A complete worksheet payload, used to seed [`Patch::AddSheet`] and to restore a

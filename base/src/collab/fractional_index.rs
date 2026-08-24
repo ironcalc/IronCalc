@@ -1102,7 +1102,7 @@ impl CreateKeys {
 
     /// The first position and stride of a run of `count` keys between `lo` and `hi`, or `None` if no
     /// width up to [MAX_POSITION_LEN] has room for it.
-    fn plan(lo: &[u8], hi: &[u8], count: usize) -> Option<(KeyBuf, u8)> {
+    pub(crate) fn plan(lo: &[u8], hi: &[u8], count: usize) -> Option<(KeyBuf, u8)> {
         // Capacity grows with width, so the first width that fits is the narrowest one. Widening
         // past it to [RUN_WIDTH] is free — the key is one word either way — and pays for the stride.
         let width = (1..=FractionalIndex::MAX_POSITION_LEN)

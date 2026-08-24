@@ -7,7 +7,7 @@
 //! mutation is a patch.
 
 use crate::cf_types::{CfRuleInput, ConditionalFormattingView};
-use crate::collab::fractional_index::{FractionalIndex, FractionalKey, KeyBuf};
+use crate::collab::fractional_index::{CreateKeys, FractionalIndex, FractionalKey, KeyBuf};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::Timestamp;
 use crate::collab::model::{CollabModel, LocalCommit, Stable, StableCellAddress, StableRange};
@@ -103,6 +103,26 @@ impl CollabModel<'_> {
         let mut buf = KeyBuf::from(&(2 * slot).to_be_bytes()[1..]);
         buf.extend_from_slice(&self.suffix());
         FractionalKey::try_from_bytes(&buf).expect("position and suffix are 7 bytes")
+    }
+
+    fn sheet_ordering_key(&self, at: usize) -> Option<&FractionalKey> {
+        let sheet_id = &self.workbook.worksheets.get(at)?.sheet_id;
+        let (key, _) = self.workbook.meta.sheet_positions.get(sheet_id)?;
+        Some(key)
+    }
+
+    /// A tab-order key landing a sheet at index `at`, between the sheets it comes to sit among.
+    fn insert_position(&self, at: usize) -> Result<FractionalKey, String> {
+        if at >= self.workbook.worksheets.len() {
+            return Ok(self.sheet_position());
+        }
+        let nil = FractionalKey::NULL;
+        let hi = self.sheet_ordering_key(at).unwrap_or(&nil);
+        let lo = self.sheet_ordering_key(at - 1).unwrap_or(&nil);
+        let no_room = || format!("No room for a sheet at index {at}");
+        let (mut buf, _) = CreateKeys::plan(lo.position(), hi.position(), 1).ok_or_else(no_room)?;
+        buf.extend_from_slice(&self.suffix());
+        FractionalKey::try_from_bytes(&buf).map_err(|_| no_room())
     }
 
     /// The key row `row` of worksheet `i` answers to, appending to `patches` whatever has to be
@@ -416,6 +436,53 @@ impl CollabModel<'_> {
         }]);
         let at = self.get_sheet_index_by_sheet_id(id).unwrap_or_default();
         (name, at)
+    }
+
+    pub fn add_sheet(&mut self, name: &str) -> Result<(), String> {
+        self.insert_sheet(name, self.workbook.worksheets.len() as u32, None)
+    }
+
+    pub fn insert_sheet(
+        &mut self,
+        name: &str,
+        sheet_index: u32,
+        sheet_id: Option<u32>,
+    ) -> Result<(), String> {
+        if !is_valid_sheet_name(name) {
+            return Err(format!("Invalid name for a sheet: '{name}'"));
+        }
+        if self
+            .workbook
+            .get_worksheet_names()
+            .iter()
+            .map(|s| s.to_uppercase())
+            .any(|x| x == name.to_uppercase())
+        {
+            return Err("A worksheet already exists with that name".to_string());
+        }
+        if sheet_index as usize > self.workbook.worksheets.len() {
+            return Err("Sheet index out of range".to_string());
+        }
+        let id = match sheet_id {
+            // Existence guards outlive their sheet, so a dead id can never be handed out again.
+            Some(id)
+                if id == 0
+                    || self.workbook.worksheets.iter().any(|ws| ws.sheet_id == id)
+                    || self.workbook.meta.sheet_existence.contains_key(&id) =>
+            {
+                return Err(format!("Sheet id {id} is not available"));
+            }
+            Some(id) => id,
+            None => self.new_sheet_id(),
+        };
+        let position = self.insert_position(sheet_index as usize)?;
+        self.commit_local(vec![Patch::AddSheet {
+            id,
+            name: name.to_string(),
+            position,
+            content: None,
+        }]);
+        Ok(())
     }
 
     /// Sets a cell as if a user had typed `value` into it.
@@ -1461,6 +1528,14 @@ impl CollabModel<'_> {
         Ok(())
     }
 
+    /// Deletes a sheet by name. Fails if it does not exist or it is the last one.
+    pub fn delete_sheet_by_name(&mut self, name: &str) -> Result<(), String> {
+        match self.get_sheet_index_by_name(name) {
+            Some(sheet_index) => self.delete_sheet(sheet_index),
+            None => Err("Sheet not found".to_string()),
+        }
+    }
+
     /// Renames a sheet, rewriting every formula and defined name that named it.
     pub fn rename_sheet_by_index(&mut self, sheet: u32, new_name: &str) -> Result<(), String> {
         let (i, id) = self.sheet_of(sheet)?;
@@ -1899,9 +1974,6 @@ unsupported! { &self
 }
 
 unsupported! { &mut self
-    add_sheet(name: &str) -> ();
-    insert_sheet(name: &str, index: u32, sheet_id: Option<u32>) -> ();
-    delete_sheet_by_name(name: &str) -> ();
     duplicate_sheet(source: u32) -> (String, u32);
     set_language(language_id: &str) -> ();
     set_user_array_formula(sheet: u32, row: i32, column: i32, width: i32, height: i32, value: &str) -> ();
@@ -2422,6 +2494,124 @@ mod test {
             assert_eq!(m.get_cell_formula(0, 1, 2), Ok(Some("=A6*10".to_string())));
             assert_eq!(m.get_formatted_cell_value(0, 1, 2), Ok("200".to_string()));
         }
+        assert_eq!(b.workbook, a.workbook);
+    }
+
+    /// The tab order a replica shows.
+    fn names(model: &CollabModel<'_>) -> Vec<String> {
+        model
+            .get_worksheets_properties()
+            .into_iter()
+            .map(|p| p.name)
+            .collect()
+    }
+
+    /// Sheet lifecycle: named creation, insertion anywhere in the tab order, deletion by name and
+    /// the undo of an add — all of it converging on a second replica.
+    #[test]
+    fn sheet_lifecycle() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.add_sheet("Beta").unwrap();
+        a.add_sheet("Gamma").unwrap();
+        assert_eq!(names(&a), ["Sheet1", "Beta", "Gamma"]);
+        // A named add lands at the end, and the ordinal writers can address it there.
+        a.set_user_input(2, 1, 1, "gamma".to_string()).unwrap();
+
+        a.insert_sheet("Mid", 1, None).unwrap();
+        assert_eq!(names(&a), ["Sheet1", "Mid", "Beta", "Gamma"]);
+        a.insert_sheet("First", 0, None).unwrap();
+        a.insert_sheet("Last", 5, None).unwrap();
+        assert_eq!(
+            names(&a),
+            ["First", "Sheet1", "Mid", "Beta", "Gamma", "Last"]
+        );
+        // Two inserts into the same gap still order by the index each named.
+        a.insert_sheet("Mid2", 3, None).unwrap();
+        assert_eq!(
+            names(&a),
+            ["First", "Sheet1", "Mid", "Mid2", "Beta", "Gamma", "Last"]
+        );
+
+        // Validation, with the ordinal writers' messages verbatim.
+        assert_eq!(
+            a.add_sheet("bad/name"),
+            Err("Invalid name for a sheet: 'bad/name'".to_string())
+        );
+        assert_eq!(
+            a.add_sheet("bETA"),
+            Err("A worksheet already exists with that name".to_string())
+        );
+        assert_eq!(
+            a.insert_sheet("Nope", 99, None),
+            Err("Sheet index out of range".to_string())
+        );
+        // An id already spoken for is refused: reusing one would address that sheet, not create one.
+        let taken = a.workbook.worksheets[0].sheet_id;
+        assert_eq!(
+            a.insert_sheet("Nope", 0, Some(taken)),
+            Err(format!("Sheet id {taken} is not available"))
+        );
+        assert_eq!(
+            a.insert_sheet("Nope", 0, Some(0)),
+            Err("Sheet id 0 is not available".to_string())
+        );
+        a.insert_sheet("Chosen", 0, Some(4242)).unwrap();
+        assert_eq!(a.workbook.worksheets[0].sheet_id, 4242);
+
+        // Deletion by name is case insensitive, and an unknown name is an error, not a no-op.
+        a.delete_sheet_by_name("mid2").unwrap();
+        assert_eq!(
+            a.delete_sheet_by_name("Mid2"),
+            Err("Sheet not found".to_string())
+        );
+        assert_eq!(
+            names(&a),
+            ["Chosen", "First", "Sheet1", "Mid", "Beta", "Gamma", "Last"]
+        );
+
+        // A dead sheet's key is still filed, so an insert into the gap it left must not re-mint it.
+        a.insert_sheet("Revived", 3, None).unwrap();
+        assert_eq!(names(&a)[3], "Revived");
+        assert_eq!(a.workbook.worksheets.len(), 8);
+
+        // Undo of an add removes the sheet again.
+        let setup = a.flush();
+        a.add_sheet("Doomed").unwrap();
+        assert_eq!(names(&a).last().map(String::as_str), Some("Doomed"));
+        let added = a.flush();
+        let undo: Vec<Patch> = added
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+        assert!(!names(&a).contains(&"Doomed".to_string()));
+        assert_eq!(a.workbook.worksheets.len(), 8);
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+        deliver(&mut b, 1, &added);
+        deliver(&mut b, 1, &a.flush());
+        a.evaluate();
+        b.evaluate();
+        assert_eq!(names(&b), names(&a));
+        let gamma = names(&b).iter().position(|n| n == "Gamma").unwrap() as u32;
+        assert_eq!(
+            b.get_formatted_cell_value(gamma, 1, 1),
+            Ok("gamma".to_string())
+        );
+        assert_eq!(b.workbook, a.workbook);
+
+        // Concurrent inserts at the same index: both survive, in the same order on both replicas.
+        a.insert_sheet("FromA", 1, None).unwrap();
+        b.insert_sheet("FromB", 1, None).unwrap();
+        let (from_a, from_b) = (a.flush(), b.flush());
+        deliver(&mut b, 1, &from_a);
+        deliver(&mut a, 2, &from_b);
+        assert!(names(&a).contains(&"FromA".to_string()));
+        assert!(names(&a).contains(&"FromB".to_string()));
+        assert_eq!(names(&b), names(&a));
         assert_eq!(b.workbook, a.workbook);
     }
 }
