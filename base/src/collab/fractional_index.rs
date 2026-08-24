@@ -163,9 +163,24 @@ impl FractionalIndex {
     /// emits the keys as a patch and applies that.
     pub fn plan_virtual(&self, through: usize) -> Vec<FractionalKey> {
         let missing = through.saturating_sub(self.len());
+        let from = self.watermark.max(self.implied_watermark());
         (1..=missing as u32)
-            .map(|i| virtual_key(self.watermark + i))
+            .map(|i| virtual_key(from + i))
             .collect()
+    }
+
+    /// The ordinal the highest *filed* position already stands for. A virtual key has to sort past
+    /// every key in the index, and [Self::watermark] only counts the ones virtual mints handed out.
+    fn implied_watermark(&self) -> u32 {
+        let highest = match (self.active.last(), self.moved.last()) {
+            (Some(a), Some(m)) => a.key.position().max(m.key.position()),
+            (Some(a), None) => a.key.position(),
+            (None, Some(m)) => m.key.position(),
+            (None, None) => &[],
+        };
+        let mut buf = [0, 0, 0, 0];
+        buf[1..(1 + highest.len())].copy_from_slice(highest);
+        u32::from_be_bytes(buf) / 2
     }
 
     /// The identity of every element, in the order they sit in.
@@ -237,60 +252,80 @@ impl FractionalIndex {
         Some(self.active[i].key.clone())
     }
 
-    pub fn move_to<R: RangeBounds<usize>>(&mut self, source: R, dest: usize) {
+    /// Plan move operation (moving range of elements under new position) without actually applying
+    /// anything. Only generate necessary [FractionalKey]s, that can be later applied
+    /// via [FractionalIndex::apply_move].
+    pub fn plan_move<R: RangeBounds<usize>>(
+        &self,
+        source: R,
+        dest: usize,
+    ) -> Vec<(FractionalKey, FractionalKey)> {
         let start = match source.start_bound() {
             Bound::Included(&i) => i,
             Bound::Excluded(&i) => i + 1,
             Bound::Unbounded => 0,
         };
-        if start == dest {
-            return; // no op
+        let end = match source.end_bound() {
+            Bound::Included(&i) => i + 1,
+            Bound::Excluded(&i) => i,
+            Bound::Unbounded => self.active.len(),
+        };
+        let l = self.active.len();
+        // Rows past the tail are named rather than built, off the base `plan_virtual` mints from:
+        // the caller's own call hands back the very keys this plans over.
+        let from = self.watermark.max(self.implied_watermark());
+        let eff = l.max(end.max(dest));
+        let end = end.min(eff);
+        if start == dest || start >= end || dest > eff {
+            return Vec::new(); // no op
         }
-        let to_move: Vec<_> = self.active.drain(source).collect();
-        let len = to_move.len();
-        // if start < dest, we need to shift by the number of drained entries
-        let mut dest = if start < dest { dest - len } else { dest };
+        let len = end - start;
 
-        let modified_at = Hlc::now();
-        let mut key_gen = self.create_keys(dest, len);
-        for mut entry in to_move {
-            let dest_key = key_gen
-                .next()
-                .expect("destination is too crowded to create a fractional key for");
-            // if the entry is transitive (shows a move destination), we want to update the source
-            // key instead
-            let moved_key = entry.moved().unwrap_or(&entry.key).clone();
-            // insert new marker key into index
-            self.active.insert(
-                dest,
-                Entry {
-                    key: dest_key.clone(),
-                    modified_at,
-                    moved: moved_key.clone(),
-                },
-            );
-            dest += 1;
+        // we precompute virtual key position for potential lower & upper bounds since it's cheap
+        let lo_position = (2 * (from + (dest.saturating_sub(l)) as u32)).to_be_bytes();
+        let hi_position = (2 * (from + (dest.saturating_sub(l + 1)) as u32)).to_be_bytes();
 
-            // move drained entry into moved space
-            match entry.moved() {
-                None => {
-                    // this is the original key to be moved, and the record it leaves behind is the
-                    // same whether or not one was already filed under it
-                    entry.modified_at = modified_at;
-                    entry.moved = dest_key;
-                    self.park(entry);
-                }
-                Some(moved) => {
-                    // a transitive entry: the identity record tracks where the element went, and the
-                    // position it leaves keeps both its pointer back and the stamp it arrived with
-                    if let Ok(i) = self.moved.binary_search_by_key(&moved, |e| &e.key) {
-                        let e = &mut self.moved[i];
-                        e.modified_at = modified_at;
-                        e.moved = dest_key;
-                    }
-                    self.park(entry);
-                }
+        let lo: &[u8] = if dest > 0 {
+            match self.active.get(dest - 1) {
+                None => &lo_position[1..],
+                Some(e) => e.key.position(),
             }
+        } else {
+            [].as_ref()
+        };
+        let hi: &[u8] = if dest < eff {
+            match self.active.get(dest) {
+                None => &hi_position[1..],
+                Some(e) => e.key.position(),
+            }
+        } else {
+            [].as_ref()
+        };
+
+        let keys: Vec<FractionalKey> = CreateKeys::between(self, lo, hi, len).collect();
+        if keys.len() != len {
+            return Vec::new(); // the gap cannot name the run
+        }
+        (start..end)
+            .map(|i| match self.active.get(i) {
+                Some(e) => e.identity().clone(),
+                None => virtual_key(from + (i - l + 1) as u32),
+            })
+            .zip(keys)
+            .collect()
+    }
+
+    /// Moves the elements at `source` before `dest`, one [`Hlc`] for the whole run.
+    ///
+    /// A local move is a planned one applied to itself: [`Self::plan_move`] then
+    /// [`Self::apply_move`], the same path a replicated move takes.
+    ///
+    /// A plan reaching past the tail names identities this index has never inserted, which
+    /// [`Self::apply_move`] drops: a local move wants rows that are materialized already.
+    pub fn move_to<R: RangeBounds<usize>>(&mut self, source: R, dest: usize) {
+        let at = Hlc::now();
+        for (identity, dest) in self.plan_move(source, dest) {
+            self.apply_move(&identity, dest, at);
         }
     }
 
@@ -1035,6 +1070,12 @@ impl CreateKeys {
     fn new(index: &FractionalIndex, i: usize, count: usize) -> Self {
         let (lo, hi) = FractionalIndex::neighbours(&index.active, i)
             .expect("cannot mint fractional keys past the end of the index");
+        Self::between(index, lo, hi, count)
+    }
+
+    /// [`Self::new`] for a gap the caller brackets: a gap reaching past the tail has no active
+    /// neighbour to read. Identical to [`Self::new`] when both bounds do come from `active`.
+    fn between<'a>(index: &'a FractionalIndex, lo: &'a [u8], hi: &[u8], count: usize) -> Self {
         // A parked record sitting in the gap raises its floor: its key already names an element, so
         // re-minting it would address that one — reviving it, at worst — instead of creating one.
         let lo = index.moved.iter().fold(lo, |floor, e| {
