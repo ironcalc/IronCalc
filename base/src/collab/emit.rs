@@ -7,14 +7,15 @@
 //! mutation is a patch.
 
 use crate::cf_types::{CfRuleInput, ConditionalFormattingView};
+use crate::collab::apply::free_sheet_name;
 use crate::collab::fractional_index::{CreateKeys, FractionalIndex, FractionalKey, KeyBuf};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::Timestamp;
 use crate::collab::model::{CollabModel, LocalCommit, Stable, StableCellAddress, StableRange};
 use crate::collab::patch::{
     CellInput, CfProperty, ColPropKind, ColProperty, ColState, ColumnSnapshot,
-    ConditionalFormatState, Patch, RowPropKind, RowProperty, RowSnapshot, RowState, SheetId,
-    SheetPropKind, SheetProperty, WorkbookPropKind, WorkbookProperty,
+    ConditionalFormatState, Patch, RowPropKind, RowProperty, RowSnapshot, RowState, SheetContent,
+    SheetId, SheetPropKind, SheetProperty, SheetRestore, WorkbookPropKind, WorkbookProperty,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
@@ -1241,6 +1242,92 @@ impl CollabModel<'_> {
         (values, styles)
     }
 
+    /// The whole of worksheet `i` as a payload: what an `AddSheet` seeds a copy from, and what the
+    /// undo of a delete puts back. Keys are carried as they are — the copy addresses the same rows.
+    fn sheet_content(&self, i: usize) -> SheetContent {
+        let sheet = &self.workbook.worksheets[i];
+        let mut cell_values = Vec::new();
+        let mut cell_styles = Vec::new();
+        for (row, cells) in &sheet.sheet_data {
+            for (col, cell) in cells {
+                let at = (row.clone(), col.clone());
+                if let Some(input) = self.cell_input(i, &at) {
+                    cell_values.push((at.clone(), input));
+                }
+                // Only a cell holding a style of its own: 0 is the table's default entry.
+                if cell.get_style() != 0 {
+                    if let Ok(style) = self.workbook.styles.get_style(cell.get_style()) {
+                        cell_styles.push((at, style));
+                    }
+                }
+            }
+        }
+        // `sheet_data` is a hash map, and the payload travels: sort so it does not depend on it.
+        cell_values.sort_by(|(a, _), (b, _)| a.cmp(b));
+        cell_styles.sort_by(|(a, _), (b, _)| a.cmp(b));
+        SheetContent {
+            state: sheet.state.clone(),
+            color: sheet.color.clone(),
+            show_grid_lines: sheet.show_grid_lines,
+            frozen_rows: sheet.frozen_rows,
+            frozen_columns: sheet.frozen_columns,
+            rows: sheet
+                .rows
+                .iter()
+                .map(|row| {
+                    let state = RowState {
+                        height: row.height,
+                        hidden: row.hidden,
+                        style: match row.custom_format {
+                            true => self.workbook.styles.get_style(row.s).ok().map(Box::new),
+                            false => None,
+                        },
+                        custom_height: row.custom_height,
+                        custom_format: row.custom_format,
+                    };
+                    (row.r.clone(), state)
+                })
+                .collect(),
+            columns: sheet
+                .cols
+                .iter()
+                .map(|col| {
+                    let state = ColState {
+                        width: col.width,
+                        hidden: col.hidden,
+                        style: col
+                            .style
+                            .and_then(|s| self.workbook.styles.get_style(s).ok())
+                            .map(Box::new),
+                        custom_width: col.custom_width,
+                    };
+                    ((col.min.clone(), col.max.clone()), state)
+                })
+                .collect(),
+            cell_values,
+            cell_styles,
+            merge_cells: sheet.merge_cells.clone(),
+            comments: sheet.comments.clone(),
+            // `cf_order` is kept aligned with the rules themselves, entry by entry.
+            conditional_formatting: sheet
+                .index
+                .registers
+                .cf_order
+                .iter()
+                .cloned()
+                .zip(
+                    sheet
+                        .conditional_formatting
+                        .iter()
+                        .map(|cf| ConditionalFormatState {
+                            rule: cf.cf_rule.clone(),
+                            ranges: cf.ranges.clone(),
+                        }),
+                )
+                .collect(),
+        }
+    }
+
     /// Inserts `row_count` rows above `row`, displacing the formulas that referenced across it.
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         let (i, id) = self.sheet_of(sheet)?;
@@ -1534,11 +1621,20 @@ impl CollabModel<'_> {
         if self.workbook.worksheets.len() == 1 {
             return Err("Cannot delete only sheet".to_string());
         }
-        let (_, id) = self.sheet_of(sheet)?;
-        self.commit_local(vec![Patch::DeleteSheet {
-            sheet: id,
-            prev: None,
-        }]);
+        let (i, id) = self.sheet_of(sheet)?;
+        // The authored name and the filed key, so the undo revives the sheet as it was filed.
+        let prev = match (
+            self.authored_name(id).cloned(),
+            self.workbook.meta.sheet_positions.get(&id),
+        ) {
+            (Some(name), Some((position, _))) => Some(Box::new(SheetRestore {
+                name,
+                position: position.clone(),
+                content: Some(Box::new(self.sheet_content(i))),
+            })),
+            _ => None,
+        };
+        self.commit_local(vec![Patch::DeleteSheet { sheet: id, prev }]);
         Ok(())
     }
 
@@ -1548,6 +1644,93 @@ impl CollabModel<'_> {
             Some(sheet_index) => self.delete_sheet(sheet_index),
             None => Err("Sheet not found".to_string()),
         }
+    }
+
+    pub fn duplicate_sheet(&mut self, source: u32) -> Result<(String, u32), String> {
+        let (i, source_id) = self.sheet_of(source)?;
+        // The repair pass names sheets; asking it here gives the copy the name it would keep
+        // anyway. A peer authoring the same name concurrently falls through to that pass.
+        let mut taken = self
+            .workbook
+            .worksheets
+            .iter()
+            .map(|ws| ws.name.to_uppercase())
+            .collect();
+        let new_name = free_sheet_name(self.workbook.worksheets[i].name.clone(), &mut taken);
+        let id = self.new_sheet_id();
+        let position = self.insert_position(i + 1)?;
+
+        // The cached nodes were parsed in the source's context, so an implicit reference already
+        // resolves to it — and, carrying no name, follows the copy once it hosts the formula.
+        let source_formulas = self.workbook.worksheets[i].shared_formulas.clone();
+        let retargeted: Vec<String> = self
+            .parsed_formulas
+            .get(i)
+            .into_iter()
+            .flatten()
+            .map(|(node, _)| {
+                let mut node = node.clone();
+                rename_sheet_in_node(&mut node, source, &new_name);
+                to_rc_format(&node)
+            })
+            .collect();
+        let mut content = self.sheet_content(i);
+        for (_, input) in &mut content.cell_values {
+            if let CellInput::Formula(formula) = input {
+                if let Some(k) = source_formulas.iter().position(|f| f == formula) {
+                    if let Some(text) = retargeted.get(k) {
+                        *formula = text.clone();
+                    }
+                }
+            }
+        }
+        let mut patches = vec![Patch::AddSheet {
+            id,
+            name: new_name.clone(),
+            position,
+            content: Some(Box::new(content)),
+        }];
+
+        // Names local to the source are always copied; a global one only when it names the source.
+        // Locals come first so that, with the de-dup below, they win over a global of the same name.
+        let mut names: Vec<(bool, String, String)> = self
+            .workbook
+            .defined_names
+            .iter()
+            .filter(|dn| dn.sheet_id == Some(source_id) || dn.sheet_id.is_none())
+            .map(|dn| (dn.sheet_id.is_none(), dn.name.clone(), dn.formula.clone()))
+            .collect();
+        names.sort_by_key(|(is_global, _, _)| *is_global);
+        let context = self.defined_name_context();
+        let mut copied: Vec<String> = Vec::new();
+        for (is_global, name, formula) in names {
+            if copied.iter().any(|n| n.eq_ignore_ascii_case(&name)) {
+                continue;
+            }
+            let had_equals = formula.trim_start().starts_with('=');
+            let body = formula.strip_prefix('=').unwrap_or(&formula).to_string();
+            let mut node = self.parse_internal_formula(&body, &context);
+            let before = to_english_string(&node, &context);
+            rename_sheet_in_node(&mut node, source, &new_name);
+            let after = to_english_string(&node, &context);
+            if is_global && before == after {
+                continue;
+            }
+            copied.push(name.clone());
+            patches.push(Patch::SetDefinedName {
+                scope: Some(id),
+                name,
+                formula: Some(if had_equals {
+                    format!("={after}")
+                } else {
+                    after
+                }),
+                prev: None,
+            });
+        }
+        self.commit_local(patches);
+        let at = self.get_sheet_index_by_sheet_id(id).unwrap_or_default();
+        Ok((new_name, at))
     }
 
     /// Renames a sheet, rewriting every formula and defined name that named it.
@@ -1988,7 +2171,6 @@ unsupported! { &self
 }
 
 unsupported! { &mut self
-    duplicate_sheet(source: u32) -> (String, u32);
     set_language(language_id: &str) -> ();
     set_user_array_formula(sheet: u32, row: i32, column: i32, width: i32, height: i32, value: &str) -> ();
     range_clear_contents(area: &Area) -> ();
@@ -2794,5 +2976,263 @@ mod test {
             assert_eq!(sheet_name(peer, added_id(&two_c)), "Sheet2");
         }
         assert_eq!(naming(&c), naming(&d));
+    }
+
+    /// Every defined name, as `(name, scope, formula)`.
+    fn defined(model: &CollabModel<'_>) -> Vec<(String, Option<SheetId>, String)> {
+        model
+            .workbook
+            .defined_names
+            .iter()
+            .map(|dn| (dn.name.clone(), dn.sheet_id, dn.formula.clone()))
+            .collect()
+    }
+
+    /// A copy carries the whole sheet: contents, formatting, sheet properties and the defined names
+    /// that named it — with every reference to the original retargeted at the copy.
+    #[test]
+    fn duplicate_sheet_scenario() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.add_sheet("Other").unwrap();
+        a.set_user_input(1, 1, 1, "5".to_string()).unwrap();
+
+        a.set_user_input(0, 1, 1, "10".to_string()).unwrap();
+        a.set_user_input(0, 2, 1, "=Sheet1!A1*2".to_string())
+            .unwrap();
+        a.set_user_input(0, 3, 1, "=A1+1".to_string()).unwrap();
+        a.set_user_input(0, 4, 1, "=Other!A1".to_string()).unwrap();
+        let mut style = Style::default();
+        style.font.b = true;
+        a.set_cell_style(0, 1, 1, &style).unwrap();
+        a.set_row_height(0, 2, 42.0).unwrap();
+        let merged = RangeRef::parse_a1("B1:C2").unwrap();
+        a.set_merged_range(0, &merged, true).unwrap();
+        a.new_defined_name("loc", Some(0), "Sheet1!$A$1").unwrap();
+        a.new_defined_name("glob", None, "Sheet1!$A$1").unwrap();
+        a.new_defined_name("elsewhere", None, "Other!$A$1").unwrap();
+        a.evaluate();
+
+        let (name, at) = a.duplicate_sheet(0).unwrap();
+        assert_eq!((name.as_str(), at), ("Sheet1 (1)", 1));
+        // The copy sits right after the original, which keeps its own name.
+        assert_eq!(names(&a), ["Sheet1", "Sheet1 (1)", "Other"]);
+        a.evaluate();
+
+        // An explicit self-reference now names the copy; an implicit one follows its host, and a
+        // reference to a third sheet is left where it pointed.
+        assert_eq!(
+            a.get_cell_formula(1, 2, 1),
+            Ok(Some("='Sheet1 (1)'!A1*2".to_string()))
+        );
+        assert_eq!(a.get_cell_formula(1, 3, 1), Ok(Some("=A1+1".to_string())));
+        assert_eq!(
+            a.get_cell_formula(1, 4, 1),
+            Ok(Some("=Other!A1".to_string()))
+        );
+        // The source is untouched.
+        assert_eq!(
+            a.get_cell_formula(0, 2, 1),
+            Ok(Some("=Sheet1!A1*2".to_string()))
+        );
+        for sheet in [0, 1] {
+            assert_eq!(
+                a.get_formatted_cell_value(sheet, 1, 1),
+                Ok("10".to_string())
+            );
+            assert_eq!(
+                a.get_formatted_cell_value(sheet, 2, 1),
+                Ok("20".to_string())
+            );
+            assert_eq!(
+                a.get_formatted_cell_value(sheet, 3, 1),
+                Ok("11".to_string())
+            );
+            assert_eq!(a.get_formatted_cell_value(sheet, 4, 1), Ok("5".to_string()));
+        }
+        // Formatting, row properties and merges came along.
+        assert_eq!(a.get_cell_style_or_none(1, 1, 1), Ok(Some(style)));
+        assert_eq!(a.get_row_height(1, 2), Ok(42.0));
+        assert_eq!(
+            a.workbook.worksheets[1].merge_cells,
+            a.workbook.worksheets[0].merge_cells
+        );
+
+        // Upstream's naming rules: the local name is copied as a local of the copy, the global one
+        // that named the source gets a local copy beside it, the unrelated global is left alone.
+        let copy_id = a.workbook.worksheets[1].sheet_id;
+        let source_id = a.workbook.worksheets[0].sheet_id;
+        assert_eq!(
+            defined(&a),
+            [
+                (
+                    "loc".to_string(),
+                    Some(source_id),
+                    "Sheet1!$A$1".to_string()
+                ),
+                ("glob".to_string(), None, "Sheet1!$A$1".to_string()),
+                ("elsewhere".to_string(), None, "Other!$A$1".to_string()),
+                (
+                    "loc".to_string(),
+                    Some(copy_id),
+                    "'Sheet1 (1)'!$A$1".to_string()
+                ),
+                (
+                    "glob".to_string(),
+                    Some(copy_id),
+                    "'Sheet1 (1)'!$A$1".to_string()
+                ),
+            ]
+        );
+
+        // The two sheets are independent documents from here on.
+        a.set_user_input(0, 1, 1, "100".to_string()).unwrap();
+        a.set_user_input(1, 1, 1, "7".to_string()).unwrap();
+        a.evaluate();
+        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("200".to_string()));
+        assert_eq!(a.get_formatted_cell_value(1, 2, 1), Ok("14".to_string()));
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &a.flush());
+        b.evaluate();
+        assert_eq!(names(&b), names(&a));
+        assert_eq!(defined(&b), defined(&a));
+        for (sheet, row) in [(0, 1), (0, 2), (1, 1), (1, 2), (1, 3), (1, 4)] {
+            assert_eq!(
+                b.get_formatted_cell_value(sheet, row, 1),
+                a.get_formatted_cell_value(sheet, row, 1),
+                "value at ({sheet}, {row})"
+            );
+        }
+        assert_eq!(b.workbook, a.workbook);
+
+        // Out of range is an error, with the ordinal writer's message.
+        assert_eq!(
+            a.duplicate_sheet(99),
+            Err("Invalid sheet index".to_string())
+        );
+    }
+
+    #[test]
+    fn delete_sheet_undo() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.add_sheet("Tail").unwrap();
+        a.insert_sheet("Data", 1, None).unwrap();
+        a.set_user_input(1, 1, 1, "10".to_string()).unwrap();
+        a.set_user_input(1, 2, 1, "=A1*2".to_string()).unwrap();
+        let mut style = Style::default();
+        style.font.b = true;
+        a.set_cell_style(1, 1, 1, &style).unwrap();
+        a.set_row_height(1, 1, 42.0).unwrap();
+        a.set_sheet_color(1, &Color::Rgb("#00ff00".to_string()))
+            .unwrap();
+        // Scoped to another sheet: the delete must leave it alone.
+        a.new_defined_name("kept", Some(0), "Sheet1!$A$1").unwrap();
+        a.evaluate();
+        let data_id = a.workbook.worksheets[1].sheet_id;
+        let data_key = a.workbook.meta.sheet_positions[&data_id].0.clone();
+        let before = projection(&a);
+        let setup = a.flush();
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        // B edits the sheet A is deleting. Reaching A after the delete, the edit is dropped there —
+        // and the restore holds what A captured, so it is lost on B too rather than resurrected.
+        b.set_user_input(1, 1, 1, "999".to_string()).unwrap();
+        a.delete_sheet(1).unwrap();
+        let deleted = a.flush();
+        deliver(&mut a, 2, &b.flush());
+        deliver(&mut b, 1, &deleted);
+        assert_eq!(names(&a), ["Sheet1", "Tail"]);
+        assert_eq!(names(&b), names(&a));
+        assert_eq!(b.workbook, a.workbook);
+
+        // Undo: everything the sheet held comes back.
+        let undo: Vec<Patch> = deleted
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+        let undone = a.flush();
+        deliver(&mut b, 1, &undone);
+        a.evaluate();
+        b.evaluate();
+        assert_eq!(projection(&a), before);
+        assert_eq!(a.workbook.worksheets[1].sheet_id, data_id);
+        assert_eq!(a.get_formatted_cell_value(1, 1, 1), Ok("10".to_string()));
+        assert_eq!(a.get_formatted_cell_value(1, 2, 1), Ok("20".to_string()));
+        assert_eq!(names(&b), names(&a));
+        assert_eq!(b.workbook, a.workbook);
+
+        // Redo takes it away again.
+        let redo: Vec<Patch> = undone
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(redo);
+        let redone = a.flush();
+        deliver(&mut b, 1, &redone);
+        assert_eq!(names(&a), ["Sheet1", "Tail"]);
+        assert_eq!(names(&b), names(&a));
+        assert_eq!(b.workbook, a.workbook);
+
+        // While it is dead B takes its name, and A fills the gap it left in the tab order.
+        b.add_sheet("Data").unwrap();
+        let grabbed = b.flush();
+        a.insert_sheet("Filler", 1, None).unwrap();
+        let filler_id = a.workbook.worksheets[1].sheet_id;
+        // The gap re-mints the very key the dead sheet still holds: only the id separates them.
+        assert_eq!(a.workbook.meta.sheet_positions[&filler_id].0, data_key);
+        let filled = a.flush();
+        deliver(&mut a, 2, &grabbed);
+        deliver(&mut b, 1, &filled);
+
+        let undo: Vec<Patch> = redone
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+        let revived = a.flush();
+        deliver(&mut b, 1, &revived);
+
+        // A third replica meets the two sheets sharing a key in the opposite order, which only the
+        // id tiebreak keeps from showing them in the opposite order too.
+        let mut c = CollabModel::new(3);
+        for (session, commits) in [
+            (1, &setup),
+            (1, &deleted),
+            (1, &undone),
+            (1, &redone),
+            (2, &grabbed),
+            (1, &revived),
+            (1, &filled),
+        ] {
+            deliver(&mut c, session, commits);
+        }
+        a.evaluate();
+        b.evaluate();
+        c.evaluate();
+        for peer in [&a, &b, &c] {
+            // The revival authors the name anew, so B's earlier "Data" keeps it and the sheet
+            // coming back gives way.
+            assert_eq!(
+                sorted_names(peer),
+                ["Data", "Data (1)", "Filler", "Sheet1", "Tail"]
+            );
+            assert_eq!(sheet_name(peer, data_id), "Data (1)");
+            let data = peer.get_sheet_index_by_sheet_id(data_id).unwrap();
+            assert_eq!(
+                peer.get_formatted_cell_value(data, 2, 1),
+                Ok("20".to_string())
+            );
+        }
+        assert_eq!(naming(&a), naming(&b));
+        assert_eq!(naming(&a), naming(&c));
+        assert_eq!(b.workbook, a.workbook);
     }
 }

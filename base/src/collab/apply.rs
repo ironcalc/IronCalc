@@ -116,7 +116,7 @@ fn split_name_suffix(name: &str) -> (&str, u32) {
 
 /// The first name `taken` does not already hold, case-insensitively: `authored` itself, else the
 /// numbered variants of its base. Records the winner in `taken`.
-fn free_sheet_name(authored: String, taken: &mut HashSet<String>) -> String {
+pub(crate) fn free_sheet_name(authored: String, taken: &mut HashSet<String>) -> String {
     if taken.insert(authored.to_uppercase()) {
         return authored;
     }
@@ -383,7 +383,8 @@ impl CollabModel<'_> {
                 positions.get(&a.sheet_id).map(|(key, _)| key),
                 positions.get(&b.sheet_id).map(|(key, _)| key),
             ) {
-                (Some(a), Some(b)) => a.cmp(b),
+                // A revived sheet's re-filed key can equal one minted into the gap it left.
+                (Some(x), Some(y)) => x.cmp(y).then_with(|| a.sheet_id.cmp(&b.sheet_id)),
                 (Some(_), None) => Ordering::Less,
                 (None, Some(_)) => Ordering::Greater,
                 (None, None) => a.sheet_id.cmp(&b.sheet_id),
