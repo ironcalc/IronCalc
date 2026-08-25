@@ -314,6 +314,13 @@
     "title": "Benutzerdefiniertes Zahlenformat"
   },
   "regional_settings": {
+    "appearance": {
+      "dark": "Dunkel",
+      "light": "Hell",
+      "system": "System",
+      "theme_label": "Design",
+      "title": "Erscheinungsbild"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",

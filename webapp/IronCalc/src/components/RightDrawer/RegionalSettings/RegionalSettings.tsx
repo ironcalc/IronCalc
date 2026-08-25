@@ -1,5 +1,5 @@
 import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
-import { Check, X } from "lucide-react";
+import { Check, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
@@ -85,6 +85,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
   const [selectedLanguage, setSelectedLanguage] = useState(
     properties.initialLanguage,
   );
+  const [selectedTheme, setSelectedTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
     setSelectedLocale(properties.initialLocale);
@@ -182,6 +183,34 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 triggerLabel: timezone,
               }))}
             />
+          </div>
+        </div>
+        <div className="ic-regional-settings-section">
+          <div className="ic-regional-settings-section-title">
+            {t("regional_settings.appearance.title")}
+          </div>
+          <div className="ic-regional-settings-field-wrapper">
+            <span className="ic-regional-settings-label">
+              {t("regional_settings.appearance.theme_label")}
+            </span>
+            <div className="ic-regional-settings-toggle-group">
+              <Button
+                variant={selectedTheme === "light" ? "secondary" : "ghost"}
+                size="sm"
+                startIcon={<Sun size={14} />}
+                onClick={() => setSelectedTheme("light")}
+              >
+                {t("regional_settings.appearance.light")}
+              </Button>
+              <Button
+                variant={selectedTheme === "dark" ? "secondary" : "ghost"}
+                size="sm"
+                startIcon={<Moon size={14} />}
+                onClick={() => setSelectedTheme("dark")}
+              >
+                {t("regional_settings.appearance.dark")}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

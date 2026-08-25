@@ -314,6 +314,13 @@
     "title": "Custom number format"
   },
   "regional_settings": {
+    "appearance": {
+      "dark": "Dark",
+      "light": "Light",
+      "system": "System",
+      "theme_label": "Theme",
+      "title": "Appearance"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",

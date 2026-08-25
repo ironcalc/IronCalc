@@ -93,6 +93,47 @@
   width: 100%;
 }
 
+.ic-regional-settings-label {
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  font-weight: 500;
+  color: var(--palette-common-black);
+  margin-bottom: 8px;
+}
+
+/* Segmented toggle (same look as the icon sets mode toggle) */
+.ic-regional-settings-toggle-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  border: 1px solid var(--palette-grey-300);
+  border-radius: 6px;
+  background-color: var(--palette-common-white);
+  height: 32px;
+  padding: 0 1px;
+  overflow: hidden;
+  gap: 1px;
+}
+
+.ic-regional-settings-toggle-group .ic-button {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  gap: 6px;
+  border-radius: 4px;
+}
+
+.ic-regional-settings-toggle-group .ic-button__icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ic-regional-settings-toggle-group .ic-button__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
 .ic-regional-settings-footer {
   color: var(--palette-grey-700);
   display: flex;

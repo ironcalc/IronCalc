@@ -314,6 +314,13 @@
     "title": "Format de nombre personnalisé"
   },
   "regional_settings": {
+    "appearance": {
+      "dark": "Sombre",
+      "light": "Clair",
+      "system": "Système",
+      "theme_label": "Thème",
+      "title": "Apparence"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",
