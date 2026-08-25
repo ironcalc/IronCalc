@@ -31,6 +31,45 @@ enum MatchMode {
     WildcardMatch = 2,
 }
 
+/// Which of the two array arguments of XLOOKUP is being evaluated. Excel
+/// reports a different error for each: a `lookup_array` that is not a range
+/// simply finds nothing (`#N/A`), while a `return_array` that is not a range,
+/// or that does not line up with the `lookup_array`, is an invalid argument
+/// (`#VALUE!`).
+#[derive(PartialEq, Clone, Copy)]
+enum VectorArgument {
+    LookupArray,
+    ReturnArray,
+}
+
+impl VectorArgument {
+    fn not_a_vector_error(self, cell: CellReferenceIndex) -> CalcResult {
+        match self {
+            VectorArgument::LookupArray => CalcResult::Error {
+                error: Error::ERROR,
+                origin: cell,
+                message: "Second argument must be a vector".to_string(),
+            },
+            VectorArgument::ReturnArray => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Arrays must be of the same size".to_string(),
+            },
+        }
+    }
+
+    fn not_a_range_error(self, cell: CellReferenceIndex) -> CalcResult {
+        CalcResult::Error {
+            error: match self {
+                VectorArgument::LookupArray => Error::NA,
+                VectorArgument::ReturnArray => Error::VALUE,
+            },
+            origin: cell,
+            message: "Range expected".to_string(),
+        }
+    }
+}
+
 // lookup_value in array, match_mode search_mode
 fn linear_search(
     lookup_value: &CalcResult,
@@ -219,11 +258,11 @@ impl<'a> Model<'a> {
         // Materialise lookup_array (args[1]) and return_array (args[2]) into flat
         // vectors so a range reference or an in-formula array constant (e.g.
         // `A1:A2&"|"&B1:B2`) is handled the same way. See issue #1338.
-        let lookup_array = match self.xlookup_vector(&args[1], cell) {
+        let lookup_array = match self.xlookup_vector(&args[1], cell, VectorArgument::LookupArray) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let return_array = match self.xlookup_vector(&args[2], cell) {
+        let return_array = match self.xlookup_vector(&args[2], cell, VectorArgument::ReturnArray) {
             Ok(v) => v,
             Err(e) => return e,
         };
@@ -287,6 +326,7 @@ impl<'a> Model<'a> {
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
+        argument: VectorArgument,
     ) -> Result<Vec<CalcResult>, CalcResult> {
         match self.evaluate_node_in_context(node, cell) {
             CalcResult::Range { left, right } => {
@@ -295,11 +335,7 @@ impl<'a> Model<'a> {
                 } else if left.column == right.column {
                     true
                 } else {
-                    return Err(CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Second argument must be a vector".to_string(),
-                    });
+                    return Err(argument.not_a_vector_error(cell));
                 };
                 let mut row2 = right.row;
                 let mut column2 = right.column;
@@ -340,11 +376,7 @@ impl<'a> Model<'a> {
                 let is_row_vec = n_rows == 1;
                 let is_col_vec = n_cols == 1;
                 if n_rows == 0 || n_cols == 0 || (!is_row_vec && !is_col_vec) {
-                    return Err(CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Second argument must be a vector".to_string(),
-                    });
+                    return Err(argument.not_a_vector_error(cell));
                 }
                 Ok(rows
                     .iter()
@@ -353,11 +385,7 @@ impl<'a> Model<'a> {
                     .collect())
             }
             error @ CalcResult::Error { .. } => Err(error),
-            _ => Err(CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Range expected".to_string(),
-            }),
+            _ => Err(argument.not_a_range_error(cell)),
         }
     }
 }

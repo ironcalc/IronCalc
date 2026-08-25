@@ -74,3 +74,69 @@ fn test_xlookup_approximate_and_binary() {
     assert_eq!(model._get_text("D1"), "twenty");
     assert_eq!(model._get_text("D2"), "thirty");
 }
+
+// A bad argument is #VALUE!, a lookup that finds nothing is #N/A. See the
+// `Errors` sheet of xlsx/tests/calc_tests/LOOKUP_AND_REFERENCE/XLOOKUP.xlsx.
+
+#[test]
+fn test_xlookup_scalar_return_array_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "apple");
+    model._set("A2", "banana");
+    model._set("D1", "=XLOOKUP(\"banana\",A1:A2,TRUE)");
+    model._set("D2", "=XLOOKUP(\"banana\",A1:A2,3)");
+    // Not found, so the scalar return_array is never read: still #VALUE!.
+    model._set("D3", "=XLOOKUP(\"missing\",A1:A2,3)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#VALUE!");
+    assert_eq!(model._get_text("D2"), "#VALUE!");
+    assert_eq!(model._get_text("D3"), "#VALUE!");
+}
+
+#[test]
+fn test_xlookup_scalar_lookup_array_is_na() {
+    let mut model = new_empty_model();
+    model._set("B1", "one");
+    model._set("B2", "two");
+    model._set("D1", "=XLOOKUP(\"banana\",3,B1:B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#N/A");
+}
+
+#[test]
+fn test_xlookup_arrays_of_different_sizes_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("A4", "4");
+    model._set("B1", "a");
+    model._set("B2", "b");
+    model._set("B3", "c");
+    model._set("C1", "x");
+    // Column vectors of length 4 and 3.
+    model._set("D1", "=XLOOKUP(1,A1:A4,B1:B3)");
+    // A two dimensional return_array does not line up with a vector.
+    model._set("D2", "=XLOOKUP(1,A1:A3,B1:C3)");
+    // Same for an array constant.
+    model._set("D3", "=XLOOKUP(1,A1:A3,{10;20})");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#VALUE!");
+    assert_eq!(model._get_text("D2"), "#VALUE!");
+    assert_eq!(model._get_text("D3"), "#VALUE!");
+}
+
+#[test]
+fn test_xlookup_not_found_is_still_na() {
+    // The #VALUE! cases above must not swallow a plain "no match" result.
+    let mut model = new_empty_model();
+    model._set("A1", "apple");
+    model._set("A2", "banana");
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("D1", "=XLOOKUP(\"cherry\",A1:A2,B1:B2)");
+    model._set("D2", "=XLOOKUP(\"cherry\",A1:A2,{10;20})");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#N/A");
+    assert_eq!(model._get_text("D2"), "#N/A");
+}
