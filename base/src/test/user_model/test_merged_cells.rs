@@ -414,7 +414,71 @@ fn paste_over_merges_is_rejected() {
 }
 
 #[test]
-fn cut_paste_unmerges_the_source() {
+fn copy_paste_recreates_the_merge_at_the_target() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 2, 2, "5").unwrap();
+    // merge B2:C3
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+
+    // select the merged cell (selection covers the whole merge) and copy it
+    model.set_selected_cell(2, 2).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(10, 10).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, false)
+        .unwrap();
+
+    // the source merge is untouched and the target got its own J10:K11 merge
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        vec![merged(2, 2, 2, 2), merged(10, 10, 2, 2)]
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 10, 10),
+        Ok("5".to_string())
+    );
+
+    model.undo().unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
+    assert_eq!(
+        model.get_formatted_cell_value(0, 10, 10),
+        Ok("".to_string())
+    );
+
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        vec![merged(2, 2, 2, 2), merged(10, 10, 2, 2)]
+    );
+}
+
+#[test]
+fn copy_paste_keeps_merges_at_their_relative_position() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 1, 1, "a").unwrap();
+    model.set_user_input(0, 2, 2, "5").unwrap();
+    model.set_user_input(0, 4, 4, "x").unwrap();
+    // merge B2:C3, in the middle of the copied area
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+
+    // copy A1:D4 and paste it at F1
+    model.set_selected_range(1, 1, 4, 4).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(1, 6).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, false)
+        .unwrap();
+
+    // the pasted merge keeps its offset inside the area: G2:H3
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        vec![merged(2, 2, 2, 2), merged(2, 7, 2, 2)]
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 2, 7), Ok("5".to_string()));
+}
+
+#[test]
+fn cut_paste_moves_the_merge_to_the_target() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 2, 2, "5").unwrap();
     // merge B2:C3
@@ -428,17 +492,35 @@ fn cut_paste_unmerges_the_source() {
         .paste_from_clipboard(0, clipboard.range, &clipboard.data, true)
         .unwrap();
 
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    // the merge moved with its content: gone from the source, at J10:K11 now
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        vec![merged(10, 10, 2, 2)]
+    );
     assert_eq!(
         model.get_formatted_cell_value(0, 10, 10),
         Ok("5".to_string())
     );
     assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("".to_string()));
 
-    // undo restores the merge and its content
+    // undo moves the merge and its content back to the source
     model.undo().unwrap();
     assert_eq!(model.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
     assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("5".to_string()));
+    assert_eq!(
+        model.get_formatted_cell_value(0, 10, 10),
+        Ok("".to_string())
+    );
+
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        vec![merged(10, 10, 2, 2)]
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 10, 10),
+        Ok("5".to_string())
+    );
 }
 
 #[test]

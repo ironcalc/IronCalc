@@ -276,9 +276,28 @@ impl<'a> UserModel<'a> {
             }
         }
         if is_cut {
-            // A cut removes the merged cells of the source area (moving a
-            // merged range keeps only its content, not the merge itself)
-            let old_merged_cells = self.model.get_merged_cells(source_sheet)?.to_vec();
+            // A cut moves the merged cells of the source area to the target:
+            // they are removed from the source and recreated, translated by
+            // the paste offset. A merge is matched by intersection: it can
+            // stick out of the cut range when its covered cells are empty (the
+            // copied range is clamped to the sheet dimension), and it moves
+            // whole.
+            let source_merges: Vec<_> = self
+                .model
+                .get_merged_cells(source_sheet)?
+                .iter()
+                .filter(|m| {
+                    m.intersects(
+                        source_first_row,
+                        source_first_column,
+                        source_last_column - source_first_column + 1,
+                        source_last_row - source_first_row + 1,
+                    )
+                })
+                .cloned()
+                .collect();
+            let old_source_merged_cells = self.model.get_merged_cells(source_sheet)?.to_vec();
+            let old_target_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
             self.model.unmerge_cells(&Area {
                 sheet: source_sheet,
                 row: source_first_row,
@@ -286,13 +305,43 @@ impl<'a> UserModel<'a> {
                 width: source_last_column - source_first_column + 1,
                 height: source_last_row - source_first_row + 1,
             })?;
-            let new_merged_cells = self.model.get_merged_cells(source_sheet)?.to_vec();
-            if old_merged_cells != new_merged_cells {
-                diff_list.push(Diff::SetMergedCells {
-                    sheet: source_sheet,
-                    old_value: old_merged_cells,
-                    new_value: new_merged_cells,
-                });
+            for m in source_merges {
+                let merge_area = Area {
+                    sheet,
+                    row: m.row + selected_row - source_first_row,
+                    column: m.column + selected_column - source_first_column,
+                    width: m.width,
+                    height: m.height,
+                };
+                // Capture the content and links the merge will clear: a merge
+                // sticking out of the pasted block can swallow cells that were
+                // not part of the paste
+                let mut merge_diffs = self.covered_cells_clear_diffs(&merge_area)?;
+                // A translated merge can conflict outside the checked target
+                // area (another merge, an array formula) or fall off the
+                // sheet: those are dropped, the rest of the cut still lands
+                if self.model.merge_cells(&merge_area).is_ok() {
+                    diff_list.append(&mut merge_diffs);
+                }
+            }
+            // One snapshot per touched sheet (source and target coincide on a
+            // same-sheet cut)
+            let mut snapshot_sheets = vec![source_sheet];
+            if sheet != source_sheet {
+                snapshot_sheets.push(sheet);
+            }
+            for (snapshot_sheet, old_value) in snapshot_sheets
+                .into_iter()
+                .zip([old_source_merged_cells, old_target_merged_cells])
+            {
+                let new_value = self.model.get_merged_cells(snapshot_sheet)?.to_vec();
+                if old_value != new_value {
+                    diff_list.push(Diff::SetMergedCells {
+                        sheet: snapshot_sheet,
+                        old_value,
+                        new_value,
+                    });
+                }
             }
             for row in source_first_row..=source_last_row {
                 for column in source_first_column..=source_last_column {
@@ -460,6 +509,55 @@ impl<'a> UserModel<'a> {
                 });
             }
         } else {
+            // Copy-paste recreates the merged cells of the copied area at the
+            // target. A merge is matched by intersection: it can stick out of
+            // the copied range when its covered cells are empty (the copied
+            // range is clamped to the sheet dimension), and is recreated whole.
+            let source_merges: Vec<_> = self
+                .model
+                .get_merged_cells(source_sheet)?
+                .iter()
+                .filter(|m| {
+                    m.intersects(
+                        source_first_row,
+                        source_first_column,
+                        source_last_column - source_first_column + 1,
+                        source_last_row - source_first_row + 1,
+                    )
+                })
+                .cloned()
+                .collect();
+            if !source_merges.is_empty() {
+                let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+                for m in source_merges {
+                    let merge_area = Area {
+                        sheet,
+                        row: m.row + selected_row - source_first_row,
+                        column: m.column + selected_column - source_first_column,
+                        width: m.width,
+                        height: m.height,
+                    };
+                    // Capture the content and links the merge will clear: a
+                    // merge sticking out of the pasted block can swallow cells
+                    // that were not part of the paste
+                    let mut merge_diffs = self.covered_cells_clear_diffs(&merge_area)?;
+                    // A translated merge can conflict outside the checked
+                    // target area (another merge, an array formula) or fall
+                    // off the sheet: those are skipped, the rest still paste
+                    if self.model.merge_cells(&merge_area).is_ok() {
+                        diff_list.append(&mut merge_diffs);
+                    }
+                }
+                let new_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+                if old_merged_cells != new_merged_cells {
+                    diff_list.push(Diff::SetMergedCells {
+                        sheet,
+                        old_value: old_merged_cells,
+                        new_value: new_merged_cells,
+                    });
+                }
+            }
+
             // Copy-paste: duplicate CF rules from the source area to the target.
             let cf_copies = self.model.get_cf_rules_to_copy(
                 source_sheet,
