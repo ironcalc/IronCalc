@@ -454,6 +454,13 @@ impl CollabModel<'_> {
     }
 
     pub(crate) fn apply_patch(&mut self, patch: &Patch, ts: &Timestamp) {
+        if let Some(sheet) = patch.target_sheet() {
+            if let Some(timestamp) = self.workbook.meta.sheet_existence.get(&sheet) {
+                if ts < timestamp && self.sheet_index(sheet).is_some() {
+                    return;
+                }
+            }
+        }
         match patch {
             Patch::SetCellValue {
                 sheet,

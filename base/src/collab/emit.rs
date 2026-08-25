@@ -3235,4 +3235,55 @@ mod test {
         assert_eq!(naming(&a), naming(&c));
         assert_eq!(b.workbook, a.workbook);
     }
+
+    #[test]
+    fn late_edit_to_revived_sheet() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.add_sheet("Data").unwrap();
+        a.set_user_input(1, 1, 1, "10".to_string()).unwrap(); // A: Data!A1=10
+        let setup = a.flush();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        b.set_user_input(1, 5, 1, "999".to_string()).unwrap(); // B: Data!A5=999
+        let early = b.flush();
+        a.delete_sheet(1).unwrap(); // A: delete 'Data'
+        let deleted = a.flush();
+        b.set_user_input(1, 6, 1, "888".to_string()).unwrap(); // B (concurrently): Data!A6=888
+        let late = b.flush();
+        let undo: Vec<Patch> = deleted
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+        let undone = a.flush();
+
+        // A meets both edits after the revive; B meets the delete after making them.
+        deliver(&mut a, 2, &early);
+        deliver(&mut a, 2, &late);
+        deliver(&mut b, 1, &deleted);
+        deliver(&mut b, 1, &undone);
+        a.evaluate();
+        b.evaluate();
+        // Dropped on both, not merely agreed on: the revive stamp outranks either edit's.
+        assert_eq!(a.get_formatted_cell_value(1, 5, 1), Ok("".to_string()));
+        assert_eq!(b.get_formatted_cell_value(1, 5, 1), Ok("".to_string()));
+        assert_eq!(a.get_formatted_cell_value(1, 1, 1), Ok("10".to_string()));
+        // A resurrected row would re-enter the index right after the snapshot's, so the ordinal the
+        // edit was authored at says nothing: what proves it gone is the sheet still being one row.
+        let rows = |m: &CollabModel<'_>| m.workbook.worksheets[1].sheet_data.len();
+        assert_eq!((rows(&a), rows(&b)), (1, 1));
+        assert_eq!(b.workbook, a.workbook);
+
+        // Only writes from before the revive die: new work on the revived sheet applies as usual.
+        b.set_user_input(1, 5, 1, "42".to_string()).unwrap();
+        deliver(&mut a, 2, &b.flush());
+        a.evaluate();
+        b.evaluate();
+        assert_eq!(a.get_formatted_cell_value(1, 5, 1), Ok("42".to_string()));
+        assert_eq!(b.get_formatted_cell_value(1, 5, 1), Ok("42".to_string()));
+        assert_eq!(b.workbook, a.workbook);
+    }
 }

@@ -699,6 +699,39 @@ pub enum Patch {
     },
 }
 
+impl Patch {
+    /// The sheet this writes *into*, if any. Workbook-scoped patches answer `None`, and so do
+    /// [`Patch::AddSheet`]/[`Patch::DeleteSheet`], which manage sheet existence rather than obey it.
+    pub(crate) fn target_sheet(&self) -> Option<SheetId> {
+        match self {
+            Patch::SetCellValue { sheet, .. }
+            | Patch::SetArrayValue { sheet, .. }
+            | Patch::SetCellStyle { sheet, .. }
+            | Patch::InsertRows { sheet, .. }
+            | Patch::DeleteRows { sheet, .. }
+            | Patch::MoveRows { sheet, .. }
+            | Patch::SetRowProperty { sheet, .. }
+            | Patch::InsertColumns { sheet, .. }
+            | Patch::DeleteColumns { sheet, .. }
+            | Patch::MoveColumns { sheet, .. }
+            | Patch::SetColumnSpan { sheet, .. }
+            | Patch::SetSheetProperty { sheet, .. }
+            | Patch::AddConditionalFormat { sheet, .. }
+            | Patch::DeleteConditionalFormat { sheet, .. }
+            | Patch::MoveConditionalFormats { sheet, .. }
+            | Patch::SetConditionalFormat { sheet, .. }
+            | Patch::SetMergedRange { sheet, .. }
+            | Patch::SetComment { sheet, .. } => Some(*sheet),
+            // `SetDefinedName`'s scope is a name scope, not a place a write lands.
+            Patch::AddSheet { .. }
+            | Patch::DeleteSheet { .. }
+            | Patch::SetWorkbookProperty { .. }
+            | Patch::SetDefinedName { .. }
+            | Patch::SetNamedStyle { .. } => None,
+        }
+    }
+}
+
 /// A property of a single row. Each variant is a distinct register.
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum RowProperty {
