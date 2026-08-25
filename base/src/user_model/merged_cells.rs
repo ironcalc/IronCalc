@@ -17,36 +17,7 @@ impl UserModel<'_> {
         let sheet = range.sheet;
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
 
-        // Capture the content and links that merging will clear
-        let mut diff_list: Vec<Diff> = Vec::new();
-        let worksheet = self.model.workbook.worksheet(sheet)?;
-        for row in range.row..range.row + range.height {
-            for column in range.column..range.column + range.width {
-                if row == range.row && column == range.column {
-                    continue;
-                }
-                if let Some(link) = worksheet.links.get(&(row, column)) {
-                    diff_list.push(Diff::SetCellLink {
-                        sheet,
-                        row,
-                        column,
-                        old_value: Box::new(Some(link.clone())),
-                        new_value: Box::new(None),
-                    });
-                }
-                let old_value = worksheet.cell(row, column).cloned();
-                if matches!(&old_value, None | Some(Cell::EmptyCell { .. })) {
-                    continue;
-                }
-                diff_list.push(Diff::SetCellValue {
-                    sheet,
-                    row,
-                    column,
-                    new_value: "".to_string(),
-                    old_value: Box::new(old_value),
-                });
-            }
-        }
+        let mut diff_list = self.covered_cells_clear_diffs(range)?;
 
         self.model.merge_cells(range)?;
 
@@ -87,5 +58,41 @@ impl UserModel<'_> {
     /// Returns the list of merged cells of the worksheet.
     pub fn get_merged_cells(&self, sheet: u32) -> Result<Vec<MergedCell>, String> {
         Ok(self.model.get_merged_cells(sheet)?.to_vec())
+    }
+
+    // Captures the undo diffs for the content and links that merging `range`
+    // will clear: everything but the anchor.
+    pub(super) fn covered_cells_clear_diffs(&self, range: &Area) -> Result<Vec<Diff>, String> {
+        let sheet = range.sheet;
+        let mut diff_list: Vec<Diff> = Vec::new();
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        for row in range.row..range.row + range.height {
+            for column in range.column..range.column + range.width {
+                if row == range.row && column == range.column {
+                    continue;
+                }
+                if let Some(link) = worksheet.links.get(&(row, column)) {
+                    diff_list.push(Diff::SetCellLink {
+                        sheet,
+                        row,
+                        column,
+                        old_value: Box::new(Some(link.clone())),
+                        new_value: Box::new(None),
+                    });
+                }
+                let old_value = worksheet.cell(row, column).cloned();
+                if matches!(&old_value, None | Some(Cell::EmptyCell { .. })) {
+                    continue;
+                }
+                diff_list.push(Diff::SetCellValue {
+                    sheet,
+                    row,
+                    column,
+                    new_value: "".to_string(),
+                    old_value: Box::new(old_value),
+                });
+            }
+        }
+        Ok(diff_list)
     }
 }
