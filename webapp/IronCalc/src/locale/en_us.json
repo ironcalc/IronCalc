@@ -317,7 +317,6 @@
     "appearance": {
       "dark": "Dark",
       "light": "Light",
-      "system": "System",
       "theme_label": "Theme",
       "title": "Appearance"
     },
