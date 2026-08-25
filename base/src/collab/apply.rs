@@ -10,7 +10,7 @@
 //! resurrect a deleted one.
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use crate::cf_types::ConditionalFormatting;
@@ -45,7 +45,7 @@ impl Consumer for CollabModel<'_> {
         for patch in commit.patches {
             self.apply_patch(patch, &ts);
         }
-        self.resync_parsed();
+        self.resync_derived(commit.patches);
         Ok(())
     }
 }
@@ -94,6 +94,58 @@ fn wins<K: Clone + Eq + Hash>(
             true
         }
     }
+}
+
+/// Excel's cap, mirrored by [`is_valid_sheet_name`](crate::new_empty::is_valid_sheet_name).
+const MAX_SHEET_NAME_LEN: usize = 31;
+
+/// Splits a name on a trailing `" (n)"`, so repairing `"Data (1)"` continues that numbering rather
+/// than nesting another suffix. Without one, the whole name is the base and numbering starts at 1.
+fn split_name_suffix(name: &str) -> (&str, u32) {
+    let Some((base, digits)) = name
+        .strip_suffix(')')
+        .and_then(|rest| rest.rsplit_once(" ("))
+    else {
+        return (name, 1);
+    };
+    match digits.parse::<u32>() {
+        Ok(n) => (base, n.saturating_add(1)),
+        Err(_) => (name, 1),
+    }
+}
+
+/// The first name `taken` does not already hold, case-insensitively: `authored` itself, else the
+/// numbered variants of its base. Records the winner in `taken`.
+fn free_sheet_name(authored: String, taken: &mut HashSet<String>) -> String {
+    if taken.insert(authored.to_uppercase()) {
+        return authored;
+    }
+    let (base, mut n) = split_name_suffix(&authored);
+    loop {
+        let suffix = format!(" ({n})");
+        let room = MAX_SHEET_NAME_LEN.saturating_sub(suffix.chars().count());
+        // Truncate by characters, never bytes: the base can hold multi-byte ones.
+        let candidate: String = base.chars().take(room).chain(suffix.chars()).collect();
+        if taken.insert(candidate.to_uppercase()) {
+            return candidate;
+        }
+        n += 1;
+    }
+}
+
+/// Whether a commit can have changed which names are live, and so needs the names re-derived.
+fn touches_sheet_names(patches: &[Patch]) -> bool {
+    patches.iter().any(|patch| {
+        matches!(
+            patch,
+            Patch::AddSheet { .. }
+                | Patch::DeleteSheet { .. }
+                | Patch::SetSheetProperty {
+                    property: SheetProperty::Name(_),
+                    ..
+                }
+        )
+    })
 }
 
 /// Index of `formula` in a sheet's shared formula table, appending it if new. Indices are assigned
@@ -338,6 +390,54 @@ impl CollabModel<'_> {
             }
         });
         self.workbook.meta.sheet_positions = positions;
+    }
+
+    /// Files a sheet's authored name, under the same last-write-wins arbitration as every other
+    /// register. Both `AddSheet` and a rename write here; nobody writes the display name.
+    fn file_sheet_name(&mut self, sheet: SheetId, name: &str, ts: &Timestamp) {
+        let names = &mut self.workbook.meta.sheet_names;
+        if names.get(&sheet).is_some_and(|(_, stored)| ts < stored) {
+            return;
+        }
+        names.insert(sheet, (name.to_string(), *ts));
+    }
+
+    /// Derives every `Worksheet::name` from the authored names, repairing the collisions concurrent
+    /// adds and renames can produce — Excel needs names case-insensitively unique, and formulas
+    /// resolve sheets by display name.
+    ///
+    /// Deterministic and commutative: the inputs are the replicated name registers and their total
+    /// stamp order, so every replica derives the same names whatever order the commits arrived in.
+    ///
+    /// Known limit: formulas name sheets by display-name text, so when a repair renames the losing
+    /// sheet, a formula written against that name silently retargets to the winner — convergent
+    /// everywhere, but not intent-preserving. It goes away once formulas are stored as typed
+    /// `Node<A: Position>` holding stable sheet references rather than strings.
+    fn normalize_sheet_names(&mut self) {
+        // Sheet id breaks the tie between two sheets one commit added: they share its stamp.
+        let mut authored: Vec<(Timestamp, SheetId, usize, String)> = Vec::new();
+        let mut taken: HashSet<String> = HashSet::new();
+        for (i, sheet) in self.workbook.worksheets.iter().enumerate() {
+            match self.workbook.meta.sheet_names.get(&sheet.sheet_id) {
+                Some((name, ts)) => authored.push((*ts, sheet.sheet_id, i, name.clone())),
+                // Every live sheet arrived as an `AddSheet`, which files the register.
+                None => debug_assert!(false, "sheet {} has no authored name", sheet.sheet_id),
+            }
+        }
+        // First write wins: the earliest stamp keeps its authored name, later ones give way.
+        authored.sort();
+        for (_, _, i, name) in authored {
+            self.workbook.worksheets[i].name = free_sheet_name(name, &mut taken);
+        }
+    }
+
+    /// Re-derives what a commit invalidated. Display names come first: the parse tables resolve
+    /// sheets by them.
+    pub(crate) fn resync_derived(&mut self, patches: &[Patch]) {
+        if touches_sheet_names(patches) {
+            self.normalize_sheet_names();
+        }
+        self.resync_parsed();
     }
 
     /// Rebuilds the parse tables a commit invalidated. They are derived from `shared_formulas` and
@@ -654,6 +754,8 @@ impl CollabModel<'_> {
                     .meta
                     .sheet_positions
                     .insert(*id, (position.clone(), *ts));
+                // Same register a rename writes: a redelivered add must not undo a later rename.
+                self.file_sheet_name(*id, name, ts);
                 if self.sheet_index(*id).is_none() {
                     let sheet = Worksheet {
                         dimension: "A1".to_string(),
@@ -711,19 +813,25 @@ impl CollabModel<'_> {
                     self.sort_sheets();
                     return;
                 }
+                if let SheetProperty::Name(name) = property {
+                    // The display name is derived, so a rename only files what the user authored.
+                    self.file_sheet_name(*sheet, name, ts);
+                    return;
+                }
                 let registers = &mut self.workbook.worksheets[i].index.registers;
                 if !wins(&mut registers.props, &property.kind(), ts) {
                     return;
                 }
                 let sheet = &mut self.workbook.worksheets[i];
                 match property {
-                    SheetProperty::Name(name) => sheet.name = name.clone(),
                     SheetProperty::Color(color) => sheet.color = color.clone(),
                     SheetProperty::State(state) => sheet.state = state.clone(),
                     SheetProperty::ShowGridLines(show) => sheet.show_grid_lines = *show,
                     SheetProperty::FrozenRows(rows) => sheet.frozen_rows = *rows,
                     SheetProperty::FrozenColumns(columns) => sheet.frozen_columns = *columns,
-                    SheetProperty::Position(_) => unreachable!("handled above"),
+                    SheetProperty::Name(_) | SheetProperty::Position(_) => {
+                        unreachable!("handled above")
+                    }
                 }
             }
             Patch::SetWorkbookProperty { property, .. } => {

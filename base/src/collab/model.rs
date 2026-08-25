@@ -123,6 +123,9 @@ pub struct WorkbookMeta {
     pub sheet_existence: HashMap<u32, Timestamp>,
     /// Tab-order register; the position key is CRDT-only state, so value sits with its guard.
     pub sheet_positions: HashMap<u32, (FractionalKey, Timestamp)>,
+    /// Authored sheet names. `Worksheet::name` is the *display* name, derived from these and
+    /// repaired for collisions, so the value sits with its guard.
+    pub sheet_names: HashMap<u32, (String, Timestamp)>,
     pub props: HashMap<WorkbookPropKind, Timestamp>,
     pub defined_names: HashMap<(Option<u32>, String), Timestamp>,
     pub named_styles: HashMap<String, Timestamp>,

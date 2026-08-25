@@ -53,7 +53,7 @@ impl CollabModel<'_> {
         for patch in &patches {
             self.apply_patch(patch, &ts);
         }
-        self.resync_parsed();
+        self.resync_derived(&patches);
         self.local.pending.push(LocalCommit { hlc, patches });
     }
 
@@ -118,7 +118,11 @@ impl CollabModel<'_> {
         }
         let nil = FractionalKey::NULL;
         let hi = self.sheet_ordering_key(at).unwrap_or(&nil);
-        let lo = self.sheet_ordering_key(at - 1).unwrap_or(&nil);
+        // Inserting at the front has no sheet below it, and NULL is that open lower end.
+        let lo = at
+            .checked_sub(1)
+            .and_then(|below| self.sheet_ordering_key(below))
+            .unwrap_or(&nil);
         let no_room = || format!("No room for a sheet at index {at}");
         let (mut buf, _) = CreateKeys::plan(lo.position(), hi.position(), 1).ok_or_else(no_room)?;
         buf.extend_from_slice(&self.suffix());
@@ -241,11 +245,21 @@ impl CollabModel<'_> {
         })
     }
 
+    /// The name written to a sheet's name register, which its display name is derived from.
+    fn authored_name(&self, sheet: SheetId) -> Option<&String> {
+        self.workbook
+            .meta
+            .sheet_names
+            .get(&sheet)
+            .map(|(name, _)| name)
+    }
+
     /// The sheet property `kind` currently holds, as the property a write would replace.
     fn sheet_prev(&self, i: usize, kind: SheetPropKind) -> Option<SheetProperty> {
         let sheet = &self.workbook.worksheets[i];
         Some(match kind {
-            SheetPropKind::Name => SheetProperty::Name(sheet.name.clone()),
+            // The authored name, not the displayed one: undo has to restore what was written.
+            SheetPropKind::Name => SheetProperty::Name(self.authored_name(sheet.sheet_id)?.clone()),
             SheetPropKind::Color => SheetProperty::Color(sheet.color.clone()),
             SheetPropKind::State => SheetProperty::State(sheet.state.clone()),
             SheetPropKind::ShowGridLines => SheetProperty::ShowGridLines(sheet.show_grid_lines),
@@ -2613,5 +2627,172 @@ mod test {
         assert!(names(&a).contains(&"FromB".to_string()));
         assert_eq!(names(&b), names(&a));
         assert_eq!(b.workbook, a.workbook);
+    }
+
+    /// The sheet each display name ended up on. Equality of this across replicas is the real
+    /// convergence claim: agreeing on the *set* of names would not stop two replicas swapping them.
+    fn naming<'a>(model: &'a CollabModel<'_>) -> Vec<(&'a str, SheetId)> {
+        model
+            .workbook
+            .worksheets
+            .iter()
+            .map(|ws| (ws.name.as_str(), ws.sheet_id))
+            .collect()
+    }
+
+    /// The id of the sheet a single-`AddSheet` commit created.
+    fn added_id(commits: &[LocalCommit]) -> SheetId {
+        match commits.first().and_then(|c| c.patches.first()) {
+            Some(Patch::AddSheet { id, .. }) => *id,
+            other => panic!("expected an AddSheet, got {other:?}"),
+        }
+    }
+
+    /// The display name `model` gave the sheet with this id.
+    fn sheet_name<'a>(model: &'a CollabModel<'_>, id: SheetId) -> &'a str {
+        model
+            .workbook
+            .worksheets
+            .iter()
+            .find(|ws| ws.sheet_id == id)
+            .map(|ws| ws.name.as_str())
+            .unwrap()
+    }
+
+    fn sorted_names(model: &CollabModel<'_>) -> Vec<String> {
+        let mut out = names(model);
+        out.sort();
+        out
+    }
+
+    /// Concurrent adds and renames can author the same name on different replicas. Excel needs them
+    /// case-insensitively unique, so the losers are renumbered — the same way everywhere.
+    #[test]
+    fn sheet_name_repair() {
+        // One Sheet1, shared by three replicas.
+        let mut p1 = CollabModel::new(1);
+        p1.new_sheet();
+        let setup = p1.flush();
+        let mut p2 = CollabModel::new(2);
+        let mut p3 = CollabModel::new(3);
+        deliver(&mut p2, 1, &setup);
+        deliver(&mut p3, 1, &setup);
+
+        // All three add "Data" without having seen each other. Local validation cannot see it.
+        p1.add_sheet("Data").unwrap();
+        p2.add_sheet("Data").unwrap();
+        p3.add_sheet("Data").unwrap();
+        let (c1, c2, c3) = (p1.flush(), p2.flush(), p3.flush());
+        let (id1, id2, id3) = (added_id(&c1), added_id(&c2), added_id(&c3));
+
+        deliver(&mut p1, 2, &c2);
+        deliver(&mut p1, 3, &c3);
+        deliver(&mut p2, 1, &c1);
+        deliver(&mut p2, 3, &c3);
+        deliver(&mut p3, 1, &c1);
+        deliver(&mut p3, 2, &c2);
+
+        let expected = ["Data", "Data (1)", "Data (2)", "Sheet1"];
+        for peer in [&p1, &p2, &p3] {
+            assert_eq!(peer.workbook.worksheets.len(), 4);
+            assert_eq!(sorted_names(peer), expected);
+            // First write wins: p1 authored first, so p1's sheet keeps the name unsuffixed.
+            assert_eq!(sheet_name(peer, id1), "Data");
+        }
+        // Same names *on the same sheets*, not merely the same set of names.
+        assert_eq!(naming(&p1), naming(&p2));
+        assert_eq!(naming(&p2), naming(&p3));
+
+        // Commutativity: delivery order cannot change what a replica ends up showing.
+        let authored = [(1u32, &c1), (2, &c2), (3, &c3)];
+        let orders = [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ];
+        let replays: Vec<CollabModel<'static>> = orders
+            .iter()
+            .map(|order| {
+                let mut consumer = CollabModel::new(9);
+                deliver(&mut consumer, 1, &setup);
+                for &i in order {
+                    let (session, commits) = authored[i];
+                    deliver(&mut consumer, session, commits);
+                }
+                consumer
+            })
+            .collect();
+        for (order, replay) in orders.iter().zip(&replays) {
+            assert_eq!(naming(replay), naming(&replays[0]), "order {order:?}");
+            assert_eq!(replay.workbook, replays[0].workbook, "order {order:?}");
+        }
+        assert_eq!(naming(&replays[0]), naming(&p1));
+
+        // A replica that never saw the collision authors "Data (1)" itself. The trailing " (1)" is
+        // a number to continue, not a base to suffix again, so it lands on "Data (3)".
+        let mut p4 = CollabModel::new(4);
+        deliver(&mut p4, 1, &setup);
+        p4.add_sheet("Data (1)").unwrap();
+        let c4 = p4.flush();
+        let id4 = added_id(&c4);
+        deliver(&mut p4, 1, &c1);
+        deliver(&mut p4, 2, &c2);
+        deliver(&mut p4, 3, &c3);
+        deliver(&mut p1, 4, &c4);
+        for peer in [&p1, &p4] {
+            assert_eq!(
+                sorted_names(peer),
+                ["Data", "Data (1)", "Data (2)", "Data (3)", "Sheet1"]
+            );
+            assert_eq!(sheet_name(peer, id4), "Data (3)");
+            assert_eq!(sheet_name(peer, id1), "Data");
+        }
+        assert_eq!(naming(&p1), naming(&p4));
+        // The other two sheets kept whatever the first pass gave them.
+        assert_eq!(sheet_name(&p1, id2), sheet_name(&p2, id2));
+        assert_eq!(sheet_name(&p1, id3), sheet_name(&p2, id3));
+
+        // Two replicas rename *different* sheets to the same name.
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.add_sheet("Other").unwrap();
+        let base = a.flush();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &base);
+        let (sheet1, other) = (
+            a.workbook.worksheets[0].sheet_id,
+            a.workbook.worksheets[1].sheet_id,
+        );
+        a.rename_sheet_by_index(0, "X").unwrap();
+        b.rename_sheet_by_index(1, "X").unwrap();
+        let (ra, rb) = (a.flush(), b.flush());
+        deliver(&mut a, 2, &rb);
+        deliver(&mut b, 1, &ra);
+        for peer in [&a, &b] {
+            assert_eq!(sorted_names(peer), ["X", "X (1)"]);
+            assert_eq!(sheet_name(peer, sheet1), "X");
+            assert_eq!(sheet_name(peer, other), "X (1)");
+        }
+        assert_eq!(naming(&a), naming(&b));
+
+        // The auto-generated name races too: both replicas mint "Sheet2" off the same tab list.
+        let mut c = CollabModel::new(1);
+        c.new_sheet();
+        let one = c.flush();
+        let mut d = CollabModel::new(2);
+        deliver(&mut d, 1, &one);
+        assert_eq!(c.new_sheet().0, "Sheet2");
+        assert_eq!(d.new_sheet().0, "Sheet2");
+        let (two_c, two_d) = (c.flush(), d.flush());
+        deliver(&mut c, 2, &two_d);
+        deliver(&mut d, 1, &two_c);
+        for peer in [&c, &d] {
+            assert_eq!(sorted_names(peer), ["Sheet1", "Sheet2", "Sheet2 (1)"]);
+            assert_eq!(sheet_name(peer, added_id(&two_c)), "Sheet2");
+        }
+        assert_eq!(naming(&c), naming(&d));
     }
 }
