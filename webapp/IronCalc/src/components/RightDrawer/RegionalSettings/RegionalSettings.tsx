@@ -123,7 +123,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
       <div className="ic-regional-settings-content">
         <div className="ic-regional-settings-section">
           <div className="ic-regional-settings-section-title">
-            {t("regional_settings.locale.title")}
+            {t("regional_settings.regional_title")}
           </div>
           <div className="ic-regional-settings-field-wrapper">
             <Select
@@ -168,11 +168,6 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 </span>
               </div>
             </div>
-          </div>
-        </div>
-        <div className="ic-regional-settings-section">
-          <div className="ic-regional-settings-section-title">
-            {t("regional_settings.timezone.title")}
           </div>
           <div className="ic-regional-settings-field-wrapper">
             <Select

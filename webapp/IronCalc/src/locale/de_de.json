@@ -335,16 +335,15 @@
       "locale_example1": "Zahl",
       "locale_example2": "Datum und Uhrzeit",
       "locale_example3": "Formeltrennzeichen",
-      "locale_label": "Regionaleinstellung",
-      "title": "Regionaleinstellung"
+      "locale_label": "Regionaleinstellung"
     },
-    "open_regional_settings": "Regionaleinstellungen öffnen",
+    "open_regional_settings": "Einstellungen öffnen",
+    "regional_title": "Regionaleinstellungen",
     "timezone": {
       "timezone_helper": "Das Ändern dieser Einstellung wirkt sich auf datums- und zeitbezogene Funktionen aus, einschließlich HEUTE() und JETZT().",
-      "timezone_label": "Zeitzone",
-      "title": "Zeitzone"
+      "timezone_label": "Zeitzone"
     },
-    "title": "Regionaleinstellungen"
+    "title": "Einstellungen"
   },
   "right_drawer": {
     "close": "Schließen",

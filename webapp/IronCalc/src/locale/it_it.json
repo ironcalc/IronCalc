@@ -335,16 +335,15 @@
       "locale_example1": "Numero",
       "locale_example2": "Data e ora",
       "locale_example3": "Separatore formule",
-      "locale_label": "Impostazioni locali",
-      "title": "Impostazioni locali"
+      "locale_label": "Impostazioni locali"
     },
-    "open_regional_settings": "Apri impostazioni regionali",
+    "open_regional_settings": "Apri impostazioni",
+    "regional_title": "Impostazioni regionali",
     "timezone": {
       "timezone_helper": "La modifica di questa impostazione influirà sulle funzioni relative a data e ora, incluse ADESSO() e OGGI().",
-      "timezone_label": "Fuso orario",
-      "title": "Fuso orario"
+      "timezone_label": "Fuso orario"
     },
-    "title": "Impostazioni regionali"
+    "title": "Impostazioni"
   },
   "right_drawer": {
     "close": "Chiudi",

@@ -335,16 +335,15 @@
       "locale_example1": "Nombre",
       "locale_example2": "Date et heure",
       "locale_example3": "Délimiteur de formule",
-      "locale_label": "Paramètres régionaux",
-      "title": "Paramètres régionaux"
+      "locale_label": "Paramètres régionaux"
     },
-    "open_regional_settings": "Ouvrir les paramètres régionaux",
+    "open_regional_settings": "Ouvrir les paramètres",
+    "regional_title": "Paramètres régionaux",
     "timezone": {
       "timezone_helper": "Modifier ce paramètre aura un impact sur les fonctions liées à la date et à l’heure, y compris AUJOURDHUI() et MAINTENANT().",
-      "timezone_label": "Fuseau horaire",
-      "title": "Fuseau horaire"
+      "timezone_label": "Fuseau horaire"
     },
-    "title": "Paramètres régionaux"
+    "title": "Paramètres"
   },
   "right_drawer": {
     "close": "Fermer",

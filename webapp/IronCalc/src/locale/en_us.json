@@ -335,16 +335,15 @@
       "locale_example1": "Number",
       "locale_example2": "Date and Time",
       "locale_example3": "Formula delimiter",
-      "locale_label": "Locale",
-      "title": "Locale"
+      "locale_label": "Locale"
     },
-    "open_regional_settings": "Open regional settings",
+    "open_regional_settings": "Open settings",
+    "regional_title": "Regional settings",
     "timezone": {
       "timezone_helper": "Modifying this setting will impact date- and time-related functions, including TODAY() and NOW().",
-      "timezone_label": "Timezone",
-      "title": "Timezone"
+      "timezone_label": "Timezone"
     },
-    "title": "Regional Settings"
+    "title": "Settings"
   },
   "right_drawer": {
     "close": "Close",
