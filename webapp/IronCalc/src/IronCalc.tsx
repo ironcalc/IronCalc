@@ -6,11 +6,7 @@ import { WorkbookState } from "./components/workbookState.ts";
 import i18n from "./i18n";
 import "./theme/theme.css";
 import "./index.css";
-import {
-  type PartialIronCalcThemeVariables,
-  setThemeVariables,
-  unsetThemeVariables,
-} from "./theme";
+import type { PartialIronCalcThemeVariables } from "./theme";
 
 interface IronCalcProperties {
   model: Model;
@@ -35,13 +31,6 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
       return () => root.classList.remove("ic-root");
     }, [root]);
 
-    useEffect(() => {
-      if (themeVariables) {
-        setThemeVariables(themeVariables, root);
-        return () => unsetThemeVariables(root);
-      }
-    }, [root, themeVariables]);
-
     useImperativeHandle(ref, () => ({
       setLanguage(language: string) {
         if (i18n.language !== language) {
@@ -59,6 +48,7 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
             model={model}
             workbookState={new WorkbookState()}
             canEdit={canEdit}
+            themeVariables={themeVariables}
           />
         </I18nextProvider>
       </div>

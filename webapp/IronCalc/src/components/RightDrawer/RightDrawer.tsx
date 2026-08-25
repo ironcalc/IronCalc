@@ -6,6 +6,7 @@ import type {
 } from "@ironcalc/wasm";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
+import type { ColorMode } from "../../theme";
 import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
 import NamedRanges from "./NamedRanges/NamedRanges";
 import NamedStylesPanel from "./NamedStyles/NamedStylesPanel";
@@ -61,6 +62,8 @@ interface RightDrawerProps {
   initialTimezone: string;
   initialLanguage: string;
   onSettingsSave: (locale: string, timezone: string, language: string) => void;
+  colorMode: ColorMode;
+  onColorModeChange: (mode: ColorMode) => void;
 }
 
 const RightDrawer = ({
@@ -86,6 +89,8 @@ const RightDrawer = ({
   initialTimezone,
   initialLanguage,
   onSettingsSave,
+  colorMode,
+  onColorModeChange,
 }: RightDrawerProps) => {
   const [drawerWidth, setDrawerWidth] = useState(width);
   const [isResizing, setIsResizing] = useState(false);
@@ -194,6 +199,8 @@ const RightDrawer = ({
             initialTimezone={initialTimezone}
             initialLanguage={initialLanguage}
             onSave={onSettingsSave}
+            colorMode={colorMode}
+            onColorModeChange={onColorModeChange}
           />
         );
       case "conditionalFormatting":

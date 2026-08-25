@@ -159,6 +159,48 @@ export const darkThemeVariables: IronCalcThemeVariables = {
     'bold 12px Inter, "Adjusted Arial Fallback", sans-serif',
 };
 
+export type ColorMode = "light" | "dark";
+
+const COLOR_MODE_STORAGE_KEY = "IronCalc-ColorMode";
+
+// Storage access throws in sandboxed iframes (the embed) and in private mode,
+// where the preference simply cannot be remembered.
+
+export function readStoredColorMode(): ColorMode {
+  try {
+    return localStorage.getItem(COLOR_MODE_STORAGE_KEY) === "dark"
+      ? "dark"
+      : "light";
+  } catch {
+    return "light";
+  }
+}
+
+export function storeColorMode(mode: ColorMode): void {
+  try {
+    localStorage.setItem(COLOR_MODE_STORAGE_KEY, mode);
+  } catch {
+    return;
+  }
+}
+
+/**
+ * Applies a color mode to `target`, on top of the CSS defaults in theme.css.
+ * `overrides` (the host's `themeVariables`) always win over the mode palette.
+ */
+export function applyColorMode(
+  mode: ColorMode,
+  target: HTMLElement,
+  overrides?: PartialIronCalcThemeVariables,
+): void {
+  unsetThemeVariables(target);
+  const variables =
+    mode === "dark" ? { ...darkThemeVariables, ...overrides } : overrides;
+  if (variables) {
+    setThemeVariables(variables, target);
+  }
+}
+
 export function setThemeVariables(
   variables: PartialIronCalcThemeVariables,
   target: HTMLElement = document.documentElement,

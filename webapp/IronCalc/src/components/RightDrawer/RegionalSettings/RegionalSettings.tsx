@@ -2,6 +2,7 @@ import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
 import { Check, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { ColorMode } from "../../../theme";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import "./regional-settings.css";
@@ -13,6 +14,9 @@ type RegionalSettingsProps = {
   initialTimezone: string;
   initialLanguage: string;
   onSave: (locale: string, timezone: string, language: string) => void;
+  colorMode: ColorMode;
+  /** Applied immediately, it is not part of the workbook settings saved below */
+  onColorModeChange: (mode: ColorMode) => void;
 };
 
 // Display mapping for locale codes (e.g., "en" -> "en-US")
@@ -85,7 +89,6 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
   const [selectedLanguage, setSelectedLanguage] = useState(
     properties.initialLanguage,
   );
-  const [selectedTheme, setSelectedTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
     setSelectedLocale(properties.initialLocale);
@@ -195,18 +198,22 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             </span>
             <div className="ic-regional-settings-toggle-group">
               <Button
-                variant={selectedTheme === "light" ? "secondary" : "ghost"}
+                variant={
+                  properties.colorMode === "light" ? "secondary" : "ghost"
+                }
                 size="sm"
                 startIcon={<Sun size={14} />}
-                onClick={() => setSelectedTheme("light")}
+                onClick={() => properties.onColorModeChange("light")}
               >
                 {t("regional_settings.appearance.light")}
               </Button>
               <Button
-                variant={selectedTheme === "dark" ? "secondary" : "ghost"}
+                variant={
+                  properties.colorMode === "dark" ? "secondary" : "ghost"
+                }
                 size="sm"
                 startIcon={<Moon size={14} />}
-                onClick={() => setSelectedTheme("dark")}
+                onClick={() => properties.onColorModeChange("dark")}
               >
                 {t("regional_settings.appearance.dark")}
               </Button>

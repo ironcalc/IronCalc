@@ -7,8 +7,22 @@ import type {
   WorksheetProperties,
 } from "@ironcalc/wasm";
 import { type Color, getThemeList } from "@ironcalc/wasm";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
+import {
+  applyColorMode,
+  type ColorMode,
+  type PartialIronCalcThemeVariables,
+  readStoredColorMode,
+  storeColorMode,
+  unsetThemeVariables,
+} from "../../theme";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
@@ -51,8 +65,10 @@ const Workbook = (props: {
   workbookState: WorkbookState;
   /** When false, the toolbar is hidden, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
+  /** Host overrides, applied on top of the active color mode. */
+  themeVariables?: PartialIronCalcThemeVariables;
 }) => {
-  const { model, workbookState, canEdit = true } = props;
+  const { model, workbookState, canEdit = true, themeVariables } = props;
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const worksheetRef = useRef<{
@@ -76,6 +92,20 @@ const Workbook = (props: {
     row: number;
     column: number;
   } | null>(null);
+
+  const [colorMode, setColorMode] = useState<ColorMode>(readStoredColorMode);
+
+  // A layout effect, so the variables are in place before the browser paints
+  // and before the canvas (a plain effect in Worksheet) reads them from CSS.
+  useLayoutEffect(() => {
+    const root = rootRef.current?.closest<HTMLElement>(".ic-root");
+    if (!root) {
+      return;
+    }
+    applyColorMode(colorMode, root, themeVariables);
+    storeColorMode(colorMode);
+    return () => unsetThemeVariables(root);
+  }, [colorMode, themeVariables]);
 
   const openDrawer = useCallback((type: DrawerType) => {
     setDrawerType(type);
@@ -1073,6 +1103,8 @@ const Workbook = (props: {
         initialLocale={model.getLocale()}
         initialTimezone={model.getTimezone()}
         initialLanguage={model.getLanguage()}
+        colorMode={colorMode}
+        onColorModeChange={setColorMode}
         onSettingsSave={(locale, timezone, language) => {
           model.setLocale(locale);
           model.setTimezone(timezone);
