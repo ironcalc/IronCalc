@@ -1643,6 +1643,8 @@ impl<'a> UserModel<'a> {
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
                 view.range = [row_start, column_start, last_row, last_column];
+                view.focus_row = last_row;
+                view.focus_column = last_column;
             }
         }
         Ok(())

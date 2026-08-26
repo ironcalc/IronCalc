@@ -2,6 +2,7 @@
 
 use crate::{
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_WINDOW_WIDTH, LAST_COLUMN},
+    expressions::types::Area,
     expressions::utils::number_to_column,
     test::util::new_empty_model,
     UserModel,
@@ -203,4 +204,119 @@ fn arrow_right_decreases_hidden_columns() {
     let view = model.get_selected_view();
     // Selected range should now be C5:H10 again
     assert_eq!(view.range, [start_row, start_column, end_row, end_column]);
+}
+
+// Merged cell T47:V51 (columns 20-22). Once the selection grows over the
+// merge the selected cell U46 sits mid-edge (not on a corner): expansion must
+// keep working and shrinking must collapse back over the merged cell.
+#[test]
+fn expand_selection_over_a_merged_cell() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model
+        .merge_cells(&Area {
+            sheet: 0,
+            row: 47,
+            column: 20,
+            width: 3,
+            height: 5,
+        })
+        .unwrap();
+    model.set_selected_cell(46, 21).unwrap(); // U46
+
+    // shift+down drags the whole merge in: T46:V51, selected cell still U46
+    model.on_expand_selected_range("ArrowDown").unwrap();
+    let view = model.get_selected_view();
+    assert_eq!(view.range, [46, 20, 51, 22]);
+    assert_eq!((view.row, view.column), (46, 21));
+
+    // the next one crosses the merge in a single keystroke: T46:V52
+    model.on_expand_selected_range("ArrowDown").unwrap();
+    assert_eq!(model.get_selected_view().range, [46, 20, 52, 22]);
+
+    // shrinking retraces the same steps back to the single cell U46
+    model.on_expand_selected_range("ArrowUp").unwrap();
+    assert_eq!(model.get_selected_view().range, [46, 20, 51, 22]);
+    model.on_expand_selected_range("ArrowUp").unwrap();
+    assert_eq!(model.get_selected_view().range, [46, 21, 46, 21]);
+}
+
+// The same sideways: merged D2:F4, anchor G3 to its right
+#[test]
+fn expand_selection_sideways_over_a_merged_cell() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model
+        .merge_cells(&Area {
+            sheet: 0,
+            row: 2,
+            column: 4,
+            width: 3,
+            height: 3,
+        })
+        .unwrap();
+    model.set_selected_cell(3, 7).unwrap(); // G3
+
+    model.on_expand_selected_range("ArrowLeft").unwrap();
+    assert_eq!(model.get_selected_view().range, [2, 4, 4, 7]);
+    model.on_expand_selected_range("ArrowLeft").unwrap();
+    assert_eq!(model.get_selected_view().range, [2, 3, 4, 7]);
+
+    model.on_expand_selected_range("ArrowRight").unwrap();
+    assert_eq!(model.get_selected_view().range, [2, 4, 4, 7]);
+    model.on_expand_selected_range("ArrowRight").unwrap();
+    assert_eq!(model.get_selected_view().range, [3, 7, 3, 7]);
+}
+
+// With the anchor on a corner, a selection extended past a merged cell must
+// be able to shrink back over it (recomputing from anchor and focus; growing
+// the previous range would re-add the merge forever)
+#[test]
+fn selection_shrinks_back_over_a_merged_cell() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    // merged B4:C5
+    model
+        .merge_cells(&Area {
+            sheet: 0,
+            row: 4,
+            column: 2,
+            width: 2,
+            height: 2,
+        })
+        .unwrap();
+    model.set_selected_cell(3, 2).unwrap(); // B3
+
+    model.on_expand_selected_range("ArrowDown").unwrap();
+    assert_eq!(model.get_selected_view().range, [3, 2, 5, 3]);
+    model.on_expand_selected_range("ArrowDown").unwrap();
+    assert_eq!(model.get_selected_view().range, [3, 2, 6, 3]);
+
+    model.on_expand_selected_range("ArrowUp").unwrap();
+    assert_eq!(model.get_selected_view().range, [3, 2, 5, 3]);
+    model.on_expand_selected_range("ArrowUp").unwrap();
+    assert_eq!(model.get_selected_view().range, [3, 2, 3, 2]);
+}
+
+// A selection restored with the selected cell mid-edge (a merge grew the
+// range past it) is accepted and expansion keeps working
+#[test]
+fn set_selected_range_accepts_a_mid_edge_selected_cell() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model
+        .merge_cells(&Area {
+            sheet: 0,
+            row: 47,
+            column: 20,
+            width: 3,
+            height: 5,
+        })
+        .unwrap();
+    model.set_selected_cell(46, 21).unwrap(); // U46
+    model.set_selected_range(46, 20, 51, 22).unwrap();
+    assert_eq!(model.get_selected_view().range, [46, 20, 51, 22]);
+
+    model.on_expand_selected_range("ArrowDown").unwrap();
+    assert_eq!(model.get_selected_view().range, [46, 20, 52, 22]);
 }

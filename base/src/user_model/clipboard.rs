@@ -109,7 +109,9 @@ impl<'a> UserModel<'a> {
         let (source_first_row, source_first_column, source_last_row, source_last_column) =
             source_range;
         let sheet = view.sheet;
-        let [selected_row, selected_column, _, _] = view.range;
+        // Paste is anchored at the selected cell (the range is normalized, so
+        // its start corner is not necessarily where the selection began)
+        let (selected_row, selected_column) = (view.row, view.column);
         let mut max_row = selected_row;
         let mut max_column = selected_column;
         let area = &Area {

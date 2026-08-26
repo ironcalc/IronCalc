@@ -1293,12 +1293,27 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     // <pageSetup orientation="portrait" r:id="rId1"/>
 
     let mut views = HashMap::new();
+    // The focus (the moving corner of the selection) is not in the file: use
+    // the corner of the range opposite the selected cell on each axis.
+    let [range_start_row, range_start_column, range_end_row, range_end_column] = sheet_view.range;
+    let focus_row = if sheet_view.selected_row == range_end_row {
+        range_start_row
+    } else {
+        range_end_row
+    };
+    let focus_column = if sheet_view.selected_column == range_end_column {
+        range_start_column
+    } else {
+        range_end_column
+    };
     views.insert(
         0,
         WorksheetView {
             row: sheet_view.selected_row,
             column: sheet_view.selected_column,
             range: sheet_view.range,
+            focus_row,
+            focus_column,
             top_row: 1,
             left_column: 1,
         },

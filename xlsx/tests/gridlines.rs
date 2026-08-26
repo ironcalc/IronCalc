@@ -18,6 +18,8 @@ fn test_gridlines_issue_1269() {
             row: 1,
             column: 1,
             range: [1, 1, 1, 1],
+            focus_row: 1,
+            focus_column: 1,
             top_row: 1,
             left_column: 1
         }
