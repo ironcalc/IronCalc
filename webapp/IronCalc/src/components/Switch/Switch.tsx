@@ -5,10 +5,10 @@ import {
   useId,
 } from "react";
 
-import "./toggle.css";
+import "./switch.css";
 
 /**
- * This is a reusable toggle switch with an optional label on its left.
+ * This is a reusable switch with an optional label on its left.
  * States: default, hover, focused, disabled.
  */
 
@@ -18,7 +18,7 @@ import "./toggle.css";
  * `onChange` receives the new checked value, not the event.
  */
 
-export interface ToggleProperties
+export interface SwitchProperties
   extends Omit<
     InputHTMLAttributes<HTMLInputElement>,
     "type" | "onChange" | "size"
@@ -28,8 +28,8 @@ export interface ToggleProperties
   label?: ReactNode;
 }
 
-export const Toggle = forwardRef<HTMLInputElement, ToggleProperties>(
-  function Toggle(
+export const Switch = forwardRef<HTMLInputElement, SwitchProperties>(
+  function Switch(
     {
       checked,
       onChange,
@@ -44,12 +44,12 @@ export const Toggle = forwardRef<HTMLInputElement, ToggleProperties>(
   ) {
     const autoId = useId();
     const id = idProperty ?? autoId;
-    const toggleClassName = ["ic-toggle", disabled && "disabled", className]
+    const switchClassName = ["ic-switch", disabled && "disabled", className]
       .filter(Boolean)
       .join(" ");
     return (
-      <label className={toggleClassName} style={style} htmlFor={id}>
-        {label && <span className="ic-toggle-label">{label}</span>}
+      <label className={switchClassName} style={style} htmlFor={id}>
+        {label && <span className="ic-switch-label">{label}</span>}
         <input
           ref={ref}
           id={id}
@@ -59,15 +59,15 @@ export const Toggle = forwardRef<HTMLInputElement, ToggleProperties>(
           checked={checked}
           disabled={disabled}
           onChange={(event) => onChange(event.target.checked)}
-          className="ic-toggle-input"
+          className="ic-switch-input"
           {...rest}
         />
-        <span className="ic-toggle-track" aria-hidden="true">
-          <span className="ic-toggle-thumb" />
+        <span className="ic-switch-track" aria-hidden="true">
+          <span className="ic-switch-thumb" />
         </span>
       </label>
     );
   },
 );
 
-Toggle.displayName = "Toggle";
+Switch.displayName = "Switch";

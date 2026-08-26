@@ -1,23 +1,23 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import type { ToggleProperties } from "./Toggle";
-import { Toggle } from "./Toggle";
+import type { SwitchProperties } from "./Switch";
+import { Switch } from "./Switch";
 
-type ToggleStoryProps = Omit<ToggleProperties, "checked" | "onChange"> & {
+type SwitchStoryProps = Omit<SwitchProperties, "checked" | "onChange"> & {
   checked?: boolean;
 };
 
-// Wrapper so the toggle is controlled by the story, not by the caller.
-function ToggleStory({ checked = false, ...props }: ToggleStoryProps) {
+// Wrapper so the switch is controlled by the story, not by the caller.
+function SwitchStory({ checked = false, ...props }: SwitchStoryProps) {
   const [value, setValue] = useState(checked);
-  return <Toggle {...props} checked={value} onChange={setValue} />;
+  return <Switch {...props} checked={value} onChange={setValue} />;
 }
 
-const defaultArgs: ToggleStoryProps = {};
+const defaultArgs: SwitchStoryProps = {};
 
 const meta = {
-  title: "Components/Toggle",
-  component: ToggleStory,
+  title: "Components/Switch",
+  component: SwitchStory,
   parameters: {
     layout: "centered",
   },
@@ -26,18 +26,18 @@ const meta = {
   argTypes: {
     checked: {
       control: "boolean",
-      description: "Initial state of the toggle",
+      description: "Initial state of the switch",
     },
     disabled: {
       control: "boolean",
-      description: "Disable the toggle",
+      description: "Disable the switch",
     },
     label: {
       control: "text",
       description: "Optional label rendered on the left of the switch",
     },
   },
-} satisfies Meta<typeof ToggleStory>;
+} satisfies Meta<typeof SwitchStory>;
 
 export default meta;
 
@@ -53,8 +53,8 @@ export const Default: Story = {
   args: defaultArgs,
   render: () => (
     <Column>
-      <ToggleStory checked />
-      <ToggleStory />
+      <SwitchStory checked />
+      <SwitchStory />
     </Column>
   ),
 };
@@ -63,8 +63,8 @@ export const WithLabel: Story = {
   args: defaultArgs,
   render: () => (
     <Column>
-      <ToggleStory label="On" checked />
-      <ToggleStory label="Off" />
+      <SwitchStory label="On" checked />
+      <SwitchStory label="Off" />
     </Column>
   ),
 };
@@ -73,8 +73,8 @@ export const Disabled: Story = {
   args: defaultArgs,
   render: () => (
     <Column>
-      <ToggleStory label="On" checked disabled />
-      <ToggleStory label="Off" disabled />
+      <SwitchStory label="On" checked disabled />
+      <SwitchStory label="Off" disabled />
     </Column>
   ),
 };

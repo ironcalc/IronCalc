@@ -150,12 +150,12 @@
   gap: 12px;
 }
 
-.ic-edit-style-format-group > .ic-toggle {
+.ic-edit-style-format-group > .ic-switch {
   display: flex;
   justify-content: space-between;
 }
 
-.ic-edit-style-format-group .ic-toggle-label {
+.ic-edit-style-format-group .ic-switch-label {
   font-weight: 800;
 }
 
