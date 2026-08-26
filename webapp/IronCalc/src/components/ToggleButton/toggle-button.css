@@ -1,0 +1,52 @@
+.ic-toggle-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: fit-content;
+  border-radius: 6px;
+  background-color: var(--palette-grey-50);
+  overflow: hidden;
+  gap: 1px;
+  outline: 1px solid var(--palette-grey-300);
+  outline-offset: -1px;
+}
+
+.ic-toggle-button .ic-button.ic-button--ghost {
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.ic-toggle-button .ic-button--ghost:not(:disabled)[aria-pressed="true"] {
+  background-color: var(--palette-common-white);
+  box-shadow: 0 1px 2px var(--black-12);
+}
+
+.ic-toggle-button
+  .ic-button--ghost:not(:disabled, :focus-visible)[aria-pressed="true"] {
+  border-color: var(--palette-grey-400);
+}
+
+.ic-toggle-button .ic-button:not([aria-pressed="true"]) {
+  opacity: 0.6;
+}
+
+.ic-toggle-button
+  .ic-button--ghost:not([aria-pressed="true"], :disabled):hover {
+  background-color: transparent;
+  opacity: 1;
+}
+
+.ic-toggle-button .ic-button:not(.ic-button--icon-only) {
+  padding: 0 8px;
+}
+
+.ic-toggle-button--full-width {
+  display: flex;
+  width: 100%;
+}
+
+.ic-toggle-button--full-width .ic-button {
+  flex: 1;
+}
