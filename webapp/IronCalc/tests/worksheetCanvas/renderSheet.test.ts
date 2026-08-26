@@ -164,6 +164,25 @@ test("bold text, colors and borders", async () => {
   await expectScreenshot(await renderToCanvas(model), "bold-colors-borders");
 });
 
+test("merging cells with different fills paints only the anchor fill", async () => {
+  const model = await newModel();
+  labelTopLeftCell(model);
+  // B2 is yellow and C2 red; merging B2:C2 with the yellow B2 as anchor
+  // must paint the whole merged rectangle yellow — no red from the covered
+  // cell may bleed through at the edges
+  model.setUserInput(0, 2, 2, "Merged B2:C2");
+  model.updateRangeStyle(cell(2, 2), "fill.color", "#FFFF00");
+  model.updateRangeStyle(cell(2, 3), "fill.color", "#FF0000");
+  model.mergeCells(cell(2, 2, 2, 1));
+  // The same vertically: B4 yellow over a red B5
+  model.setUserInput(0, 4, 2, "Merged B4:B5");
+  model.updateRangeStyle(cell(4, 2), "fill.color", "#FFFF00");
+  model.updateRangeStyle(cell(5, 2), "fill.color", "#FF0000");
+  model.mergeCells(cell(4, 2, 1, 2));
+
+  await expectScreenshot(await renderToCanvas(model), "merge-covers-fills");
+});
+
 test("wrapped text inside a merged range", async () => {
   const model = await newModel();
   labelTopLeftCell(model);
