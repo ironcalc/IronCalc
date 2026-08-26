@@ -121,6 +121,47 @@ test("a merged cell across the frozen line: outline spans only the visible rows"
   });
 });
 
+// Six frozen rows, scrolled down to row 35, and B4:B34 merged: the merge
+// starts in the frozen pane and disappears into the hidden band behind the
+// separator. Selecting it must show the outline over the frozen part (rows
+// 4-6 down to the separator), with no bottom edge (the cell continues under
+// the separator) and no handle (its corner is not on screen).
+test("a merged cell reaching from the frozen pane into the hidden band keeps its outline", async () => {
+  const model = await newModel();
+  model.setFrozenRowsCount(0, 6);
+  model.setTopLeftVisibleCell(35, 1);
+  model.mergeCells(cell(4, 2, 1, 31));
+  model.setSelectedCell(4, 2);
+  const { worksheet } = await renderWorksheet(model);
+
+  const [x, y] = [columnX(2), rowY(4)];
+  // Rows 4-6 in the frozen pane plus the separator the merge vanishes under
+  const heightOnScreen = 3 * ROW_HEIGHT + FROZEN_SEPARATOR;
+  expect(worksheet.cellOutline.style.visibility).toBe("visible");
+  expect(rect(worksheet.cellOutline)).toEqual({
+    left: x - 1,
+    top: y - 1,
+    width: COLUMN_WIDTH - 1,
+    height: heightOnScreen - 1,
+  });
+  expect(worksheet.cellOutline.style.borderBottom).toBe("none");
+  expect(worksheet.cellOutline.style.borderRight).toBe("");
+  expect(worksheet.cellOutlineHandle.style.visibility).toBe("hidden");
+});
+
+// A merged cell that lies entirely in the hidden band shows no outline at all
+test("a merged cell entirely scrolled behind the frozen pane hides its outline", async () => {
+  const model = await newModel();
+  model.setFrozenRowsCount(0, 6);
+  model.setTopLeftVisibleCell(35, 1);
+  model.mergeCells(cell(10, 2, 1, 11));
+  model.setSelectedCell(10, 2);
+  const { worksheet } = await renderWorksheet(model);
+
+  expect(worksheet.cellOutline.style.visibility).toBe("hidden");
+  expect(worksheet.cellOutlineHandle.style.visibility).toBe("hidden");
+});
+
 // The same geometry for a plain (unmerged) selection B3:B18 across the
 // frozen line, drawn by the area outline
 test("a selected area across the frozen line: area outline spans only the visible rows", async () => {
