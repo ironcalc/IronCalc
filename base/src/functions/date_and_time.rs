@@ -818,7 +818,7 @@ impl<'a> Model<'a> {
         if args_count != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let serial_number = match self.get_number(&args[0], cell) {
+        let serial_number = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
@@ -826,7 +826,7 @@ impl<'a> Model<'a> {
             Ok(d) => d,
             Err(e) => return e,
         };
-        let months = match self.get_number(&args[1], cell) {
+        let months = match self.get_number_no_bools(&args[1], cell) {
             Ok(c) => {
                 let t = c.trunc();
                 t as i32
@@ -843,7 +843,7 @@ impl<'a> Model<'a> {
         };
 
         let serial_number = native_date.num_days_from_ce() - EXCEL_DATE_BASE;
-        if serial_number < MINIMUM_DATE_SERIAL_NUMBER {
+        if !(MINIMUM_DATE_SERIAL_NUMBER..=MAXIMUM_DATE_SERIAL_NUMBER).contains(&serial_number) {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
