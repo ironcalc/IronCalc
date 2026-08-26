@@ -42,7 +42,7 @@ import { Input } from "../../Input/Input";
 import { Menu } from "../../Menu/Menu";
 import { MenuItem } from "../../Menu/MenuItem";
 import { Select } from "../../Select/Select";
-import { Toggle } from "../../Toggle/Toggle";
+import { Switch } from "../../Switch/Switch";
 import type { FormatStyle } from "../ConditionalFormatting/FormatStylePicker";
 import "./edit-named-style.css";
 import {
@@ -446,7 +446,7 @@ const EditNamedStyle = ({
         </div>
 
         <div className="ic-edit-style-styled-box ic-edit-style-format-group">
-          <Toggle
+          <Switch
             checked={includeFormat}
             onChange={setIncludeFormat}
             label={t("named_styles.number_label")}
@@ -483,7 +483,7 @@ const EditNamedStyle = ({
           )}
         </div>
         <div className="ic-edit-style-styled-box ic-edit-style-format-group">
-          <Toggle
+          <Switch
             checked={includeFont}
             onChange={(checked) => {
               setIncludeFont(checked);
@@ -562,7 +562,7 @@ const EditNamedStyle = ({
           )}
         </div>
         <div className="ic-edit-style-styled-box ic-edit-style-format-group">
-          <Toggle
+          <Switch
             checked={includeFill}
             onChange={(checked) => {
               setIncludeFill(checked);
@@ -611,7 +611,7 @@ const EditNamedStyle = ({
           )}
         </div>
         <div className="ic-edit-style-styled-box ic-edit-style-format-group">
-          <Toggle
+          <Switch
             checked={includeAlignment}
             onChange={setIncludeAlignment}
             label={t("named_styles.alignment_label")}
@@ -684,7 +684,7 @@ const EditNamedStyle = ({
           )}
         </div>
         <div className="ic-edit-style-styled-box ic-edit-style-format-group">
-          <Toggle
+          <Switch
             checked={includeBorder}
             onChange={(checked) => {
               setIncludeBorder(checked);
