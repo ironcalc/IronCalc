@@ -1069,6 +1069,21 @@ export default class WorksheetCanvas {
     }
   }
 
+  // The fill color a cell shows on screen: a cell covered by a merged range
+  // is painted with the fill of the merge anchor, whatever its own style says
+  // (covered cells keep their styles in the model). Returns the resolved
+  // color, or null when the effective style has no fill.
+  private getEffectiveFillColor(row: number, column: number): string | null {
+    const merge = this.mergeMap.get(`${row}-${column}`);
+    const [r, c] = merge ? [merge.row, merge.column] : [row, column];
+    const style = this.model.getCellStyle(
+      this.model.getSelectedSheet(),
+      r,
+      c,
+    ).style;
+    return style.fill.color ? this.model.resolveColor(style.fill.color) : null;
+  }
+
   // Draws the left border of cell (row, column) from (x, y) to (x, y + height)
   // Algorithm:
   //  * we use the border if present
@@ -1076,6 +1091,9 @@ export default class WorksheetCanvas {
   //  * otherwise we use the color of the background
   //  * otherwise we use the background color of the adjacent cell
   //  * if everything else fails we use the default grid color
+  // Backgrounds are the effective (merge-aware) fills; borders are read from
+  // the cells themselves — a merged range's perimeter borders come from its
+  // perimeter cells.
   private renderLeftBorder(
     row: number,
     column: number,
@@ -1093,9 +1111,12 @@ export default class WorksheetCanvas {
     const context = this.ctx;
     const border = style.border;
 
+    const fillColor = this.getEffectiveFillColor(row, column);
+    const leftFillColor = this.getEffectiveFillColor(row, column - 1);
+
     // Skip the left border for spill cells.
     if (this.spills.get(`${row}-${column}`) !== 1) {
-      let borderLeftColor = this.getCellGridColor(selectedSheet, style);
+      let borderLeftColor = this.getCellGridColor(selectedSheet, fillColor);
       let borderLeftStyle = "thin";
       if (border.left) {
         borderLeftColor = this.model.resolveColor(border.left.color);
@@ -1103,10 +1124,10 @@ export default class WorksheetCanvas {
       } else if (leftStyle.border.right) {
         borderLeftColor = this.model.resolveColor(leftStyle.border.right.color);
         borderLeftStyle = leftStyle.border.right.style;
-      } else if (style.fill.color) {
-        borderLeftColor = this.model.resolveColor(style.fill.color);
-      } else if (leftStyle.fill.color) {
-        borderLeftColor = this.model.resolveColor(leftStyle.fill.color);
+      } else if (fillColor) {
+        borderLeftColor = fillColor;
+      } else if (leftFillColor) {
+        borderLeftColor = leftFillColor;
       }
 
       // The left border of the first column is shared with the header separator
@@ -1125,17 +1146,11 @@ export default class WorksheetCanvas {
     } else {
       // If the cell spills to the right we don't want to set the border but we still need to fill
       // the border gap with the background color
-      const leftExtended = this.model.getCellStyle(
-        selectedSheet,
-        row,
-        column - 1,
-      );
-      const leftStyle = leftExtended.style;
       let borderLeftColor = this.theme.backgroundColor;
-      if (style.fill.color) {
-        borderLeftColor = this.model.resolveColor(style.fill.color);
-      } else if (leftStyle.fill.color) {
-        borderLeftColor = this.model.resolveColor(leftStyle.fill.color);
+      if (fillColor) {
+        borderLeftColor = fillColor;
+      } else if (leftFillColor) {
+        borderLeftColor = leftFillColor;
       }
       if (borderLeftColor) {
         drawBorder(context, "thin", borderLeftColor, x, y, x, y + height, true);
@@ -1160,8 +1175,10 @@ export default class WorksheetCanvas {
       column,
     ).style;
     const border = style.border;
+    const fillColor = this.getEffectiveFillColor(row, column);
+    const topFillColor = this.getEffectiveFillColor(row - 1, column);
 
-    let borderTopColor = this.getCellGridColor(selectedSheet, style);
+    let borderTopColor = this.getCellGridColor(selectedSheet, fillColor);
     let borderTopStyle = "thin";
     if (border.top) {
       borderTopColor = this.model.resolveColor(border.top.color);
@@ -1169,10 +1186,10 @@ export default class WorksheetCanvas {
     } else if (topStyle.border.bottom) {
       borderTopColor = this.model.resolveColor(topStyle.border.bottom.color);
       borderTopStyle = topStyle.border.bottom.style;
-    } else if (style.fill.color) {
-      borderTopColor = this.model.resolveColor(style.fill.color);
-    } else if (topStyle.fill.color) {
-      borderTopColor = this.model.resolveColor(topStyle.fill.color);
+    } else if (fillColor) {
+      borderTopColor = fillColor;
+    } else if (topFillColor) {
+      borderTopColor = topFillColor;
     }
     // The top border of the first row is shared with the header separator
     if (y > headerRowHeight + 0.51 || border.top) {
@@ -1189,15 +1206,13 @@ export default class WorksheetCanvas {
     }
   }
 
-  // Grid line color for a cell: the theme grid color, or the cell background
-  // when grid lines are hidden
-  private getCellGridColor(sheet: number, style: CellStyle): string {
+  // Grid line color for a cell: the theme grid color, or the cell's
+  // effective background when grid lines are hidden
+  private getCellGridColor(sheet: number, fillColor: string | null): string {
     if (this.model.getShowGridLines(sheet)) {
       return this.theme.gridColor;
     }
-    return style.fill.color
-      ? this.model.resolveColor(style.fill.color)
-      : this.theme.backgroundColor;
+    return fillColor ?? this.theme.backgroundColor;
   }
 
   /// Renders the text in the cell.
