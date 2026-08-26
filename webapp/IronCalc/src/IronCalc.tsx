@@ -49,6 +49,7 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
             workbookState={new WorkbookState()}
             canEdit={canEdit}
             themeVariables={themeVariables}
+            themeRoot={root}
           />
         </I18nextProvider>
       </div>

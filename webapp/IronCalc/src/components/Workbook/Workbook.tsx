@@ -67,8 +67,16 @@ const Workbook = (props: {
   canEdit?: boolean;
   /** Host overrides, applied on top of the active color mode. */
   themeVariables?: PartialIronCalcThemeVariables;
+  /** Element the theme variables are written to. IronCalc only marks it `.ic-root` in an effect, too late to look it up here. */
+  themeRoot?: HTMLElement;
 }) => {
-  const { model, workbookState, canEdit = true, themeVariables } = props;
+  const {
+    model,
+    workbookState,
+    canEdit = true,
+    themeVariables,
+    themeRoot,
+  } = props;
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const worksheetRef = useRef<{
@@ -98,14 +106,17 @@ const Workbook = (props: {
   // A layout effect, so the variables are in place before the browser paints
   // and before the canvas (a plain effect in Worksheet) reads them from CSS.
   useLayoutEffect(() => {
-    const root = rootRef.current?.closest<HTMLElement>(".ic-root");
+    const root = themeRoot ?? rootRef.current?.closest<HTMLElement>(".ic-root");
     if (!root) {
       return;
     }
     applyColorMode(colorMode, root, themeVariables);
-    storeColorMode(colorMode);
     return () => unsetThemeVariables(root);
-  }, [colorMode, themeVariables]);
+  }, [colorMode, themeVariables, themeRoot]);
+
+  useEffect(() => {
+    storeColorMode(colorMode);
+  }, [colorMode]);
 
   const openDrawer = useCallback((type: DrawerType) => {
     setDrawerType(type);
