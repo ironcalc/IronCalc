@@ -82,15 +82,10 @@ pub fn hsl_to_rgb(hsl: [i32; 3]) -> [i32; 3] {
     let hue = (hsl[0] as f64) / 360.0;
     let saturation = (hsl[1] as f64) / 100.0;
     let luminosity = (hsl[2] as f64) / 100.0;
-    let red;
-    let green;
-    let blue;
 
-    if saturation == 0.0 {
+    let (red, green, blue) = if saturation == 0.0 {
         // achromatic
-        red = luminosity * 255.0;
-        green = luminosity * 255.0;
-        blue = luminosity * 255.0;
+        (luminosity * 255.0, luminosity * 255.0, luminosity * 255.0)
     } else {
         let q = if luminosity < 0.5 {
             luminosity * (1.0 + saturation)
@@ -98,10 +93,12 @@ pub fn hsl_to_rgb(hsl: [i32; 3]) -> [i32; 3] {
             luminosity + saturation - luminosity * saturation
         };
         let p = 2.0 * luminosity - q;
-        red = 255.0 * hue_to_rgb(p, q, hue + 1.0 / 3.0);
-        green = 255.0 * hue_to_rgb(p, q, hue);
-        blue = 255.0 * hue_to_rgb(p, q, hue - 1.0 / 3.0);
-    }
+        (
+            255.0 * hue_to_rgb(p, q, hue + 1.0 / 3.0),
+            255.0 * hue_to_rgb(p, q, hue),
+            255.0 * hue_to_rgb(p, q, hue - 1.0 / 3.0),
+        )
+    };
     [
         red.round() as i32,
         green.round() as i32,
