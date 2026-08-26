@@ -11,6 +11,8 @@ export type {
 export { Button } from "./components/Button/Button";
 export type { IconButtonProperties } from "./components/Button/IconButton";
 export { IconButton } from "./components/Button/IconButton";
+export type { CheckboxProperties } from "./components/Checkbox/Checkbox";
+export { Checkbox } from "./components/Checkbox/Checkbox";
 export type { InputProperties, InputSize } from "./components/Input/Input";
 export { Input } from "./components/Input/Input";
 export type { MenuProperties } from "./components/Menu/Menu";

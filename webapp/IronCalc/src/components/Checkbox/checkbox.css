@@ -1,0 +1,76 @@
+.ic-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-common-black);
+}
+
+.ic-checkbox.disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Visually hidden but focusable */
+.ic-checkbox-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ic-checkbox-box {
+  position: relative;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--palette-grey-400);
+  border-radius: 4px;
+  background-color: var(--palette-common-white);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.ic-checkbox:hover
+  .ic-checkbox-input:not(:disabled, :checked)
+  + .ic-checkbox-box {
+  border-color: var(--palette-grey-500);
+}
+
+.ic-checkbox-input:checked + .ic-checkbox-box {
+  background-color: var(--palette-primary-main);
+  border-color: var(--palette-primary-main);
+}
+
+.ic-checkbox:hover
+  .ic-checkbox-input:checked:not(:disabled)
+  + .ic-checkbox-box {
+  background-color: var(--palette-primary-dark);
+  border-color: var(--palette-primary-dark);
+}
+
+.ic-checkbox-input:focus-visible + .ic-checkbox-box {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+}
+
+.ic-checkbox-input:checked + .ic-checkbox-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 3px;
+  height: 6px;
+  border: 2px solid var(--palette-common-white);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
