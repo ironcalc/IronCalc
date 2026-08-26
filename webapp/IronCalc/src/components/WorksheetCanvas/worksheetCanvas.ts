@@ -1047,7 +1047,7 @@ export default class WorksheetCanvas {
     }
 
     // Borders — we only draw left and top; the adjacent cell draws right/bottom.
-    // Borders are stored per cell (like Excel does), so the left edge of a
+    // Borders are stored per cell, so the left edge of a
     // merged range is drawn one segment per row and the top edge one segment
     // per column, each consulting its own perimeter cell and neighbour.
     if (!merge) {

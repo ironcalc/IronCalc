@@ -325,7 +325,7 @@ interface IconThreshold {
 }
 
 // Thresholds are ordered HIGH→LOW (index 0 = highest icon bucket, index n-1 = lowest/"else").
-// Each threshold's value is the LOWER bound for that icon bucket (like Excel's dialog).
+// Each threshold's value is the LOWER bound for that icon bucket.
 function defaultThresholds(icons: IconSetIcon[]): IconThreshold[] {
   const count = icons.length;
   return icons.map((icon, i) => ({

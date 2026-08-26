@@ -361,7 +361,7 @@ fn parse_time_with_normalization(text: &str) -> Option<f64> {
     None
 }
 
-// Normalize time components with overflow handling (like Excel)
+// Normalize time components with overflow handling
 fn normalize_time_components(hour: i32, minute: i32, second: i32) -> f64 {
     // Convert everything to total seconds
     let mut total_seconds = hour * 3600 + minute * 60 + second;
