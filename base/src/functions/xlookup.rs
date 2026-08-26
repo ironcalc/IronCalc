@@ -216,11 +216,10 @@ impl<'a> Model<'a> {
         // lookup_array
         match self.evaluate_node_in_context(&args[1], cell) {
             CalcResult::Range { left, right } => {
-                let is_row_vector;
-                if left.row == right.row {
-                    is_row_vector = false;
+                let is_row_vector = if left.row == right.row {
+                    false
                 } else if left.column == right.column {
-                    is_row_vector = true;
+                    true
                 } else {
                     // second argument must be a vector
                     return CalcResult::Error {
@@ -228,7 +227,7 @@ impl<'a> Model<'a> {
                         origin: cell,
                         message: "Second argument must be a vector".to_string(),
                     };
-                }
+                };
                 // return array
                 match self.evaluate_node_in_context(&args[2], cell) {
                     CalcResult::Range {

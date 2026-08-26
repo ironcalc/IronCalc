@@ -2104,20 +2104,18 @@ impl<'a> Model<'a> {
         value: &str,
     ) -> Result<(), String> {
         let style_index = self.get_cell_style_index(sheet, row, column)?;
-        let new_style_index;
-        if common::value_needs_quoting(value, self.language) {
-            new_style_index = self
-                .workbook
+
+        let new_style_index = if common::value_needs_quoting(value, self.language) {
+            self.workbook
                 .styles
-                .get_style_with_quote_prefix(style_index)?;
+                .get_style_with_quote_prefix(style_index)?
         } else if self.workbook.styles.style_is_quote_prefix(style_index) {
-            new_style_index = self
-                .workbook
+            self.workbook
                 .styles
-                .get_style_without_quote_prefix(style_index)?;
+                .get_style_without_quote_prefix(style_index)?
         } else {
-            new_style_index = style_index;
-        }
+            style_index
+        };
 
         self.set_cell_with_string(sheet, row, column, value, new_style_index)
     }
