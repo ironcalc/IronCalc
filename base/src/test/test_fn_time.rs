@@ -474,7 +474,7 @@ fn test_timevalue_malformed_but_parseable() {
         ("D3", "=TIMEVALUE(\"23:59:60\")"), // Should error (invalid second)
     ]);
 
-    // Milliseconds are not supported, should return a #VALUE! error like Excel
+    // Milliseconds are not supported, should return a #VALUE! error
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("A2"), *"#VALUE!");
 

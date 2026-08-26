@@ -953,7 +953,7 @@ impl<'a> Model<'a> {
                             if r == row && c == column {
                                 continue;
                             }
-                            // Merged cells always block spilling, like in Excel.
+                            // Merged cells always block spilling.
                             if target_worksheet.merged_cell_containing(r, c).is_some() {
                                 return self.set_cells_with_result(
                                     cell_reference,

@@ -357,9 +357,8 @@ fn test_named_style_base_record_includes_all_categories() {
 
 #[test]
 fn test_named_style_partial_includes() {
-    // A style created with partial includes (like Excel's "Percent": number
-    // format only) stores them on its cellStyleXfs record, and updating the
-    // style preserves them.
+    // A style created with partial includes stores them on its cellStyleXfs record,
+    // and updating the style preserves them.
     let mut model = new_empty_model();
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
     style.num_fmt = "0%".to_string();
@@ -407,7 +406,7 @@ fn test_apply_partial_named_style_merges_with_cell_format() {
     bold.font.b = true;
     model.set_cell_style(0, 1, 1, &bold).unwrap();
 
-    // "my percent" includes only the number format, like Excel's "Percent"
+    // "my percent" includes only the number format
     let percent = Style {
         num_fmt: "0%".to_string(),
         ..Default::default()

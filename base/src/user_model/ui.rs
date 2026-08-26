@@ -274,9 +274,19 @@ impl<'a> UserModel<'a> {
             ));
             }
         }
-        // A selection can never cover part of a merged cell
-        let range = self
-            .grow_range_over_merged_cells(sheet, [start_row, start_column, end_row, end_column])?;
+        // A selection can never cover part of a merged cell — except full-row
+        // and full-column selections which may slice through
+        // merged ranges without dragging their other rows/columns in
+        let full_columns = start_row == 1 && end_row == LAST_ROW;
+        let full_rows = start_column == 1 && end_column == LAST_COLUMN;
+        let range = if full_columns || full_rows {
+            [start_row, start_column, end_row, end_column]
+        } else {
+            self.grow_range_over_merged_cells(
+                sheet,
+                [start_row, start_column, end_row, end_column],
+            )?
+        };
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
                 view.range = range;

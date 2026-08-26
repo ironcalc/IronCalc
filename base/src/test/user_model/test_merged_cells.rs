@@ -2,6 +2,7 @@
 
 use bitcode::decode;
 
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
 use crate::test::user_model::util::new_empty_user_model;
 use crate::types::{Link, MergedCell};
@@ -254,6 +255,24 @@ fn structural_ops_replay_on_external_model() {
 fn selected(model: &UserModel) -> (i32, i32, [i32; 4]) {
     let view = model.get_selected_view();
     (view.row, view.column, view.range)
+}
+
+#[test]
+fn full_row_and_column_selections_do_not_grow_over_merges() {
+    let mut model = new_empty_user_model();
+    // merge B2:C3
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+
+    // Like in Excel, selecting a row that slices through a merged range
+    // selects just that row, it does not drag the other rows of the merge in
+    model.set_selected_cell(2, 1).unwrap();
+    model.set_selected_range(2, 1, 2, LAST_COLUMN).unwrap();
+    assert_eq!(selected(&model).2, [2, 1, 2, LAST_COLUMN]);
+
+    // same for a column crossing the merge
+    model.set_selected_cell(1, 2).unwrap();
+    model.set_selected_range(1, 2, LAST_ROW, 2).unwrap();
+    assert_eq!(selected(&model).2, [1, 2, LAST_ROW, 2]);
 }
 
 #[test]
