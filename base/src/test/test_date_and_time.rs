@@ -663,3 +663,46 @@ fn test_date_size_one_broadcast() {
     assert!(matches!(v(&model, "Sheet1!B1"), CellValue::Number(_)));
     assert!(matches!(v(&model, "Sheet1!A2"), CellValue::Number(_)));
 }
+
+#[test]
+fn test_edate_function() {
+    let mut model = new_empty_model();
+
+    // Basic functionality
+    model._set("A1", "=EDATE(44561,1)"); // Add 1 month
+    model._set("A2", "=EDATE(44561,-1)"); // Subtract 1 month
+    model._set("A3", "=EDATE(44561,12)"); // Add 12 months
+
+    // Edge cases
+    model._set("A4", "=EDATE(44561,0)"); // No change
+    model._set("A5", "=EDATE(45351,12)"); // Leap day + 12 months
+    model._set("A6", "=EDATE(45351,48)"); // Leap day + 48 months
+
+    // Error cases
+    model._set("A7", "=EDATE()"); // Wrong arg count
+    model._set("A8", "=EDATE(44561,44926,5)"); // Wrong arg count
+    model._set("A9", "=EDATE(-1,1)"); // Invalid date
+    model._set("A10", "=EDATE(TRUE,1)"); // Booleans
+    model._set("A11", "=EDATE(45351,100000)"); // Beyond max date
+    model._set("A12", "=EDATE(45351,-100000)"); // Below min date
+
+    model.evaluate();
+
+    // Basic functionality (approximate values expected)
+    assert_eq!(model._get_text("A1"), *"44592");
+    assert_eq!(model._get_text("A2"), *"44530");
+    assert_eq!(model._get_text("A3"), *"44926");
+
+    // Edge cases
+    assert_eq!(model._get_text("A4"), *"44561");
+    assert_eq!(model._get_text("A5"), *"45716");
+    assert_eq!(model._get_text("A6"), *"46812");
+
+    // Error cases
+    assert_eq!(model._get_text("A7"), *"#ERROR!");
+    assert_eq!(model._get_text("A8"), *"#ERROR!");
+    assert_eq!(model._get_text("A9"), *"#NUM!");
+    assert_eq!(model._get_text("A10"), *"#VALUE!");
+    assert_eq!(model._get_text("A11"), *"#NUM!");
+    assert_eq!(model._get_text("A12"), *"#NUM!");
+}
