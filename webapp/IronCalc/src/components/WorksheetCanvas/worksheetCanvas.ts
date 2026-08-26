@@ -2059,13 +2059,24 @@ export default class WorksheetCanvas {
       height = this.getRowHeight(selectedSheet, selectedRow) + 2 * padding;
     }
 
-    // Hidden when scrolled entirely out of view (under the frozen panes)
+    // Hidden when scrolled entirely out of view (under the frozen panes).
+    // For a merged cell that means every row/column of it: a merge reaching
+    // from the frozen pane into the hidden band still shows its frozen part.
     if (
-      (lastRow < topLeftCell.row && lastRow > frozenRows) ||
-      (lastColumn < topLeftCell.column && lastColumn > frozenColumns)
+      (selectedRow > frozenRows && lastRow < topLeftCell.row) ||
+      (selectedColumn > frozenColumns && lastColumn < topLeftCell.column)
     ) {
       cellOutline.style.visibility = "hidden";
     }
+    // A merged cell that continues under the frozen separator has no visible
+    // bottom/right edge: suppress that border instead of drawing it on the
+    // separator as if the cell ended there
+    cellOutline.style.borderBottom =
+      lastRow > frozenRows && lastRow < topLeftCell.row ? "none" : "";
+    cellOutline.style.borderRight =
+      lastColumn > frozenColumns && lastColumn < topLeftCell.column
+        ? "none"
+        : "";
     // A merged cell partially scrolled under the frozen panes is clipped
     const outlineClipRows =
       selectedRow < topLeftCell.row && selectedRow > frozenRows;
@@ -2131,8 +2142,8 @@ export default class WorksheetCanvas {
       handleY += this.getRowHeight(selectedSheet, lastRow);
       // hide the handle if its corner is scrolled under the frozen panes
       if (
-        (lastRow > frozenRows && lastRow < topLeftCell.row - 1) ||
-        (lastColumn > frozenColumns && lastColumn < topLeftCell.column - 1)
+        (lastRow > frozenRows && lastRow < topLeftCell.row) ||
+        (lastColumn > frozenColumns && lastColumn < topLeftCell.column)
       ) {
         cellOutlineHandle.style.visibility = "hidden";
       }
