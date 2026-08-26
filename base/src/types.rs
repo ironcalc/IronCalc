@@ -167,12 +167,21 @@ impl Display for SheetState {
 /// position of the viewport.
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct WorksheetView {
-    /// The row index of the currently selected cell.
+    /// The row index of the currently selected cell (the anchor of the selection).
     pub row: i32,
-    /// The column index of the currently selected cell.
+    /// The column index of the currently selected cell (the anchor of the selection).
     pub column: i32,
     /// The selected range in the worksheet, specified as [start_row, start_column, end_row, end_column].
+    /// Always normalized (start <= end). This is derived state: the bounding box of the
+    /// anchor and the focus, grown so it never covers a merged cell partially.
     pub range: [i32; 4],
+    /// The row of the focus: the moving corner of the selection, the one that
+    /// keyboard- or pointer-extending the selection displaces. It is not
+    /// necessarily a corner of `range` (extending over merged cells grows the
+    /// range beyond the anchor-focus bounding box).
+    pub focus_row: i32,
+    /// The column of the focus.
+    pub focus_column: i32,
     /// The row index of the topmost visible cell in the worksheet view.
     pub top_row: i32,
     /// The column index of the leftmost visible cell in the worksheet view.

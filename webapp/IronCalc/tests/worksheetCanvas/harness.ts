@@ -11,6 +11,7 @@ import {
   headerColumnWidth,
   headerRowHeight,
 } from "../../src/components/WorksheetCanvas/constants";
+import type WorksheetCanvas from "../../src/components/WorksheetCanvas/worksheetCanvas";
 import { WorkbookState } from "../../src/components/workbookState";
 import { FakeCanvasElement, FakeElement, installDomGlobals } from "./fakeDom";
 
@@ -48,10 +49,14 @@ export interface RenderOptions {
   height?: number;
 }
 
-export async function renderToCanvas(
+// Builds the WorksheetCanvas for `model` and renders one frame. Returns the
+// (uncropped) canvas and the worksheet itself, whose DOM overlays
+// (cellOutline, areaOutline, cellOutlineHandle, ...) are fake elements: tests
+// can assert the exact geometry the renderer assigned to their styles.
+export async function renderWorksheet(
   model: Model,
   options: RenderOptions = {},
-): Promise<Canvas> {
+): Promise<{ canvas: Canvas; worksheet: WorksheetCanvas }> {
   installDomGlobals(DEVICE_PIXEL_RATIO);
   // Imported dynamically: the module reads `window` at load time, so the
   // fake DOM globals must be installed first
@@ -97,6 +102,16 @@ export async function renderToCanvas(
     refresh: () => {},
   });
   worksheet.renderSheet();
+  return { canvas, worksheet };
+}
+
+export async function renderToCanvas(
+  model: Model,
+  options: RenderOptions = {},
+): Promise<Canvas> {
+  const { canvas } = await renderWorksheet(model, options);
+  const width = options.width ?? 430;
+  const height = options.height ?? 230;
 
   // Crop the headers away: the column headers are HTML and never appear on
   // the canvas (so they show as a blank band), and without them the row

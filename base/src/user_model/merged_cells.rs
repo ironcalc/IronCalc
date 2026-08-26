@@ -21,6 +21,31 @@ impl UserModel<'_> {
 
         self.model.merge_cells(range)?;
 
+        // A covered cell can never stay selected: if the selected cell is now
+        // inside the merged range, snap the selection to the whole merged
+        // cell, anchored at its top-left corner. The scroll position and the
+        // selection are left alone on undo.
+        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
+            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
+                if view.row >= range.row
+                    && view.row < range.row + range.height
+                    && view.column >= range.column
+                    && view.column < range.column + range.width
+                {
+                    view.row = range.row;
+                    view.column = range.column;
+                    view.range = [
+                        range.row,
+                        range.column,
+                        range.row + range.height - 1,
+                        range.column + range.width - 1,
+                    ];
+                    view.focus_row = range.row;
+                    view.focus_column = range.column;
+                }
+            }
+        }
+
         let new_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         diff_list.push(Diff::SetMergedCells {
             sheet,

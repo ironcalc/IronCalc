@@ -561,3 +561,27 @@ fn paste_csv_over_merges_is_rejected() {
         Ok("4".to_string())
     );
 }
+
+// Merging a range whose selected cell is not the anchor must move the
+// selection to the anchor: a covered cell can never stay selected (the UI
+// draws the selection outline from the selected cell, sized like the merged
+// rectangle, so a selected covered cell renders a shifted selection).
+#[test]
+fn merging_snaps_the_selection_to_the_anchor() {
+    let mut model = new_empty_user_model();
+    // Select H20 and extend the selection to G19: H20 stays the selected cell
+    model.set_selected_cell(20, 8).unwrap();
+    model.on_area_selecting(19, 7).unwrap();
+    let view = model.get_selected_view();
+    assert_eq!(view.range, [19, 7, 20, 8]);
+    assert_eq!((view.row, view.column), (20, 8));
+
+    // Merge the selected area, as the toolbar button does
+    model.merge_cells(&area(0, 19, 7, 2, 2)).unwrap();
+
+    // The selected cell must be the anchor G19 and the selected range the
+    // whole merged range
+    let view = model.get_selected_view();
+    assert_eq!((view.row, view.column), (19, 7));
+    assert_eq!(view.range, [19, 7, 20, 8]);
+}

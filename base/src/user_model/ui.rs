@@ -55,6 +55,41 @@ impl<'a> UserModel<'a> {
         })
     }
 
+    // The selected range for a selection anchored at (anchor_row, anchor_column)
+    // whose moving corner (focus) is at (focus_row, focus_column): the bounding
+    // box of both cells — each taken as its whole merged cell when inside one —
+    // grown so it never covers a merged cell partially. Recomputing the range
+    // from anchor and focus (instead of stretching the previous, already grown,
+    // range) is what lets a selection shrink back over a merged cell.
+    fn selection_range(
+        &self,
+        sheet: u32,
+        anchor_row: i32,
+        anchor_column: i32,
+        focus_row: i32,
+        focus_column: i32,
+    ) -> Result<[i32; 4], String> {
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let cell_rect = |row: i32, column: i32| match worksheet.merged_cell_containing(row, column)
+        {
+            Some(m) => (m.row, m.column, m.last_row(), m.last_column()),
+            None => (row, column, row, column),
+        };
+        let (anchor_first_row, anchor_first_column, anchor_last_row, anchor_last_column) =
+            cell_rect(anchor_row, anchor_column);
+        let (focus_first_row, focus_first_column, focus_last_row, focus_last_column) =
+            cell_rect(focus_row, focus_column);
+        self.grow_range_over_merged_cells(
+            sheet,
+            [
+                anchor_first_row.min(focus_first_row),
+                anchor_first_column.min(focus_first_column),
+                anchor_last_row.max(focus_last_row),
+                anchor_last_column.max(focus_last_column),
+            ],
+        )
+    }
+
     // Grows the range until it fully contains every merged cell it touches
     // (growing to swallow one merge can graze another, hence the fixpoint
     // loop). The orientation of the range is preserved: the start corner stays
@@ -205,6 +240,8 @@ impl<'a> UserModel<'a> {
                 view.row = row;
                 view.column = column;
                 view.range = range;
+                view.focus_row = row;
+                view.focus_column = column;
             }
         }
         Ok(())
@@ -247,55 +284,60 @@ impl<'a> UserModel<'a> {
                 None => return Ok(()),
             }
         };
-        if start_row == 1 && end_row == LAST_ROW {
-            // full row selected. The cell must be at the top or the bottom of the range
-            if selected_column != start_column && selected_column != end_column {
-                return Err(format!(
-                    "The selected cell is not the column edge. Column '{selected_column}' and column range '({start_column}, {end_column})'"
-                ));
-            }
-        } else if start_column == 1 && end_column == LAST_COLUMN {
-            // full column selected. The cell must be at the left or the right of the range
-            if selected_row != start_row && selected_row != end_row {
-                return Err(format!(
-                    "The selected cell is not in the row edge. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
-                ));
-            }
-        } else {
-            // The selected cell must be on one of the corners of the selected range:
-            if selected_row != start_row && selected_row != end_row {
-                return Err(format!(
-                "The selected cell is not in one of the corners. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
+        // The selected cell must be inside the range. It is not necessarily on
+        // a corner: extending a selection over merged cells can grow the range
+        // past the selected cell on any side.
+        let min_row = start_row.min(end_row);
+        let max_row = start_row.max(end_row);
+        let min_column = start_column.min(end_column);
+        let max_column = start_column.max(end_column);
+        if selected_row < min_row || selected_row > max_row {
+            return Err(format!(
+                "The selected cell is not inside the range. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
             ));
-            }
-            if selected_column != start_column && selected_column != end_column {
-                return Err(format!(
-                "The selected cell is not in one of the corners. Column '{selected_column}' and column range '({start_column}, {end_column})'"
-            ));
-            }
         }
+        if selected_column < min_column || selected_column > max_column {
+            return Err(format!(
+                "The selected cell is not inside the range. Column '{selected_column}' and column range '({start_column}, {end_column})'"
+            ));
+        }
+        // The focus is the moving corner of the selection: the corner of the
+        // requested range opposite the selected cell on each axis.
+        let focus_row = if selected_row == end_row {
+            start_row
+        } else {
+            end_row
+        };
+        let focus_column = if selected_column == end_column {
+            start_column
+        } else {
+            end_column
+        };
         // A selection can never cover part of a merged cell — except full-row
         // and full-column selections which may slice through
         // merged ranges without dragging their other rows/columns in
         let full_columns = start_row == 1 && end_row == LAST_ROW;
         let full_rows = start_column == 1 && end_column == LAST_COLUMN;
         let range = if full_columns || full_rows {
-            [start_row, start_column, end_row, end_column]
+            [min_row, min_column, max_row, max_column]
         } else {
-            self.grow_range_over_merged_cells(
-                sheet,
-                [start_row, start_column, end_row, end_column],
-            )?
+            self.grow_range_over_merged_cells(sheet, [min_row, min_column, max_row, max_column])?
         };
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
                 view.range = range;
+                view.focus_row = focus_row;
+                view.focus_column = focus_column;
             }
         }
         Ok(())
     }
 
-    /// The selected range is expanded with the keyboard
+    /// The selected range is expanded with the keyboard: the focus (the moving
+    /// corner of the selection) steps one cell in the key's direction — from
+    /// the far edge of its merged cell when it is inside one — skipping hidden
+    /// rows and columns, and the selected range is recomputed from the anchor
+    /// and the new focus.
     pub fn on_expand_selected_range(&mut self, key: &str) -> Result<(), String> {
         let (sheet, window_width, window_height) =
             if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
@@ -307,12 +349,14 @@ impl<'a> UserModel<'a> {
             } else {
                 return Ok(());
             };
-        let (selected_row, selected_column, range, top_row, left_column) =
+        let (selected_row, selected_column, focus_row, focus_column, range, top_row, left_column) =
             if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
                 if let Some(view) = worksheet.views.get(&self.model.view_id) {
                     (
                         view.row,
                         view.column,
+                        view.focus_row,
+                        view.focus_column,
                         view.range,
                         view.top_row,
                         view.left_column,
@@ -335,28 +379,30 @@ impl<'a> UserModel<'a> {
             // full row selected, nothing to do
             return Ok(());
         }
+        let frozen_rows = self.model.get_frozen_rows_count(sheet)?;
+        let frozen_columns = self.model.get_frozen_columns_count(sheet)?;
         let worksheet = self.model.workbook.worksheet(sheet)?;
+        // Stepping starts at the far edge of the focus' merged cell, so a
+        // single keystroke crosses the whole merged range
+        let focus_merge = worksheet
+            .merged_cell_containing(focus_row, focus_column)
+            .cloned();
 
+        let mut new_focus_row = focus_row;
+        let mut new_focus_column = focus_column;
         match key {
             "ArrowRight" => {
-                if selected_column > column_start {
-                    let mut new_column = column_start + 1;
-                    while new_column < LAST_COLUMN && worksheet.is_column_hidden(new_column)? {
-                        new_column += 1;
-                    }
-                    if !(is_valid_column_number(new_column)) {
-                        return Ok(());
-                    }
-                    self.set_selected_range(row_start, new_column, row_end, column_end)?;
-                } else {
-                    let mut new_column = column_end + 1;
-                    while new_column < LAST_COLUMN && worksheet.is_column_hidden(new_column)? {
-                        new_column += 1;
-                    }
-                    if !is_valid_column_number(new_column) {
-                        return Ok(());
-                    }
-                    // if the column is not fully visible we 'scroll' right until it is
+                let edge = focus_merge.map_or(focus_column, |m| m.last_column());
+                let mut new_column = edge + 1;
+                while new_column < LAST_COLUMN && worksheet.is_column_hidden(new_column)? {
+                    new_column += 1;
+                }
+                if !is_valid_column_number(new_column) {
+                    return Ok(());
+                }
+                if new_column > selected_column {
+                    // extending right: if the column is not fully visible we
+                    // 'scroll' right until it is
                     let mut width = 0.0;
                     let mut c = left_column;
                     while c <= new_column {
@@ -366,78 +412,51 @@ impl<'a> UserModel<'a> {
                     if width > window_width {
                         self.set_top_left_visible_cell(top_row, left_column + 1)?;
                     }
-                    self.set_selected_range(row_start, column_start, row_end, new_column)?;
                 }
+                new_focus_column = new_column;
             }
             "ArrowLeft" => {
-                if selected_column < column_end {
-                    let mut new_column = column_end - 1;
-                    while new_column > 1 && worksheet.is_column_hidden(new_column)? {
-                        new_column -= 1;
-                    }
-                    if !is_valid_column_number(new_column) {
-                        return Ok(());
-                    }
-                    if new_column < left_column {
-                        self.set_top_left_visible_cell(top_row, new_column)?;
-                    }
-                    self.set_selected_range(row_start, column_start, row_end, new_column)?;
-                } else {
-                    let mut new_column = column_start - 1;
-                    while new_column > 1 && worksheet.is_column_hidden(new_column)? {
-                        new_column -= 1;
-                    }
-                    if !is_valid_column_number(new_column) {
-                        return Ok(());
-                    }
-                    if new_column < left_column {
-                        self.set_top_left_visible_cell(top_row, new_column)?;
-                    }
-                    self.set_selected_range(row_start, new_column, row_end, column_end)?;
+                let edge = focus_merge.map_or(focus_column, |m| m.column);
+                let mut new_column = edge - 1;
+                while new_column > 1 && worksheet.is_column_hidden(new_column)? {
+                    new_column -= 1;
                 }
+                if !is_valid_column_number(new_column) {
+                    return Ok(());
+                }
+                // Frozen columns are always visible: no scrolling needed there
+                if new_column < left_column && new_column > frozen_columns {
+                    self.set_top_left_visible_cell(top_row, new_column)?;
+                }
+                new_focus_column = new_column;
             }
             "ArrowUp" => {
-                if selected_row < row_end {
-                    let mut new_row = row_end - 1;
-                    while new_row > 1 && worksheet.is_row_hidden(new_row)? {
-                        new_row -= 1;
-                    }
-                    if !is_valid_row(new_row) {
-                        return Ok(());
-                    }
-                    self.set_selected_range(row_start, column_start, new_row, column_end)?;
-                } else {
-                    let mut new_row = row_start - 1;
-                    while new_row > 1 && worksheet.is_row_hidden(new_row)? {
-                        new_row -= 1;
-                    }
-                    if !is_valid_row(new_row) {
-                        return Ok(());
-                    }
-                    if new_row < top_row {
-                        self.set_top_left_visible_cell(new_row, left_column)?;
-                    }
-                    self.set_selected_range(new_row, column_start, row_end, column_end)?;
+                let edge = focus_merge.map_or(focus_row, |m| m.row);
+                let mut new_row = edge - 1;
+                while new_row > 1 && worksheet.is_row_hidden(new_row)? {
+                    new_row -= 1;
                 }
+                if !is_valid_row(new_row) {
+                    return Ok(());
+                }
+                // Frozen rows are always visible: no scrolling needed there
+                if new_row < top_row && new_row > frozen_rows {
+                    self.set_top_left_visible_cell(new_row, left_column)?;
+                }
+                new_focus_row = new_row;
             }
             "ArrowDown" => {
-                if selected_row > row_start {
-                    let mut new_row = row_start + 1;
-                    while new_row < LAST_ROW && worksheet.is_row_hidden(new_row)? {
-                        new_row += 1;
-                    }
-                    if !is_valid_row(new_row) {
-                        return Ok(());
-                    }
-                    self.set_selected_range(new_row, column_start, row_end, column_end)?;
-                } else {
-                    let mut new_row = row_end + 1;
-                    while new_row < LAST_ROW && worksheet.is_row_hidden(new_row)? {
-                        new_row += 1;
-                    }
-                    if !is_valid_row(new_row) {
-                        return Ok(());
-                    }
+                let edge = focus_merge.map_or(focus_row, |m| m.last_row());
+                let mut new_row = edge + 1;
+                while new_row < LAST_ROW && worksheet.is_row_hidden(new_row)? {
+                    new_row += 1;
+                }
+                if !is_valid_row(new_row) {
+                    return Ok(());
+                }
+                if new_row > selected_row {
+                    // extending down: scroll one row if the new row is not
+                    // fully visible
                     let mut height = 0.0;
                     let mut r = top_row;
                     while r <= new_row + 1 {
@@ -447,12 +466,26 @@ impl<'a> UserModel<'a> {
                     if height >= window_height {
                         self.set_top_left_visible_cell(top_row + 1, left_column)?;
                     }
-                    self.set_selected_range(row_start, column_start, new_row, column_end)?;
                 }
+                new_focus_row = new_row;
             }
-            _ => {}
+            _ => return Ok(()),
         }
 
+        let new_range = self.selection_range(
+            sheet,
+            selected_row,
+            selected_column,
+            new_focus_row,
+            new_focus_column,
+        )?;
+        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
+            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
+                view.range = new_range;
+                view.focus_row = new_focus_row;
+                view.focus_column = new_focus_column;
+            }
+        }
         Ok(())
     }
 
@@ -565,6 +598,8 @@ impl<'a> UserModel<'a> {
                 view.row = new_row;
                 view.column = new_column;
                 view.range = new_range;
+                view.focus_row = new_row;
+                view.focus_column = new_column;
                 if width > window_width as f64 {
                     view.left_column += 1;
                 }
@@ -615,6 +650,8 @@ impl<'a> UserModel<'a> {
                 view.row = new_row;
                 view.column = new_column;
                 view.range = new_range;
+                view.focus_row = new_row;
+                view.focus_column = new_column;
                 if new_column < view.left_column {
                     view.left_column = new_column;
                 }
@@ -665,6 +702,8 @@ impl<'a> UserModel<'a> {
                 view.row = new_row;
                 view.column = new_column;
                 view.range = new_range;
+                view.focus_row = new_row;
+                view.focus_column = new_column;
                 if new_row < view.top_row {
                     view.top_row = new_row;
                 }
@@ -722,6 +761,8 @@ impl<'a> UserModel<'a> {
                 view.row = new_row;
                 view.column = new_column;
                 view.range = new_range;
+                view.focus_row = new_row;
+                view.focus_column = new_column;
                 if height > window_height as f64 {
                     view.top_row += 1;
                 }
@@ -812,6 +853,8 @@ impl<'a> UserModel<'a> {
                 view.row = new_row;
                 view.column = new_column;
                 view.range = new_range;
+                view.focus_row = new_row;
+                view.focus_column = new_column;
             }
         }
         Ok(())
@@ -851,6 +894,8 @@ impl<'a> UserModel<'a> {
                 view.row = new_row;
                 view.column = new_column;
                 view.range = new_range;
+                view.focus_row = new_row;
+                view.focus_column = new_column;
             }
         }
         Ok(())
@@ -868,26 +913,24 @@ impl<'a> UserModel<'a> {
             } else {
                 return Ok(());
             };
-        let (selected_row, selected_column, range, top_row, left_column) =
+        let (selected_row, selected_column, top_row, left_column) =
             if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
                 if let Some(view) = worksheet.views.get(&self.model.view_id) {
-                    (
-                        view.row,
-                        view.column,
-                        view.range,
-                        view.top_row,
-                        view.left_column,
-                    )
+                    (view.row, view.column, view.top_row, view.left_column)
                 } else {
                     return Ok(());
                 }
             } else {
                 return Ok(());
             };
-        let [row_start, column_start, _row_end, _column_end] = range;
+        let frozen_rows = self.model.get_frozen_rows_count(sheet)?;
+        let frozen_columns = self.model.get_frozen_columns_count(sheet)?;
 
         let mut new_left_column = left_column;
-        if target_column >= selected_column {
+        if target_column <= frozen_columns {
+            // The target is in the frozen pane, which is always visible:
+            // no scrolling
+        } else if target_column >= selected_column {
             let mut width = 0.0;
             let mut column = left_column;
             while column <= target_column {
@@ -903,7 +946,10 @@ impl<'a> UserModel<'a> {
             new_left_column = target_column;
         }
         let mut new_top_row = top_row;
-        if target_row >= selected_row {
+        if target_row <= frozen_rows {
+            // The target is in the frozen pane, which is always visible:
+            // no scrolling
+        } else if target_row >= selected_row {
             let mut height = 0.0;
             let mut row = top_row;
             while row <= target_row {
@@ -918,14 +964,21 @@ impl<'a> UserModel<'a> {
             new_top_row = target_row;
         }
 
-        // A selection can never cover part of a merged cell
-        let range = self.grow_range_over_merged_cells(
+        // The target is the new focus; the range is recomputed from the anchor
+        // (never stretched from the previous, already grown, range: that would
+        // keep merged cells the pointer has left)
+        let range = self.selection_range(
             sheet,
-            [row_start, column_start, target_row, target_column],
+            selected_row,
+            selected_column,
+            target_row,
+            target_column,
         )?;
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
                 view.range = range;
+                view.focus_row = target_row;
+                view.focus_column = target_column;
                 if new_top_row != top_row {
                     view.top_row = new_top_row;
                 }
@@ -1023,6 +1076,8 @@ impl<'a> UserModel<'a> {
                 view.row = new_row;
                 view.column = new_column;
                 view.range = new_range;
+                view.focus_row = new_row;
+                view.focus_column = new_column;
 
                 view.top_row = top_row;
                 view.left_column = left_column;

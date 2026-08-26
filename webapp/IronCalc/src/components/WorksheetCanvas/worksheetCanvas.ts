@@ -2041,11 +2041,19 @@ export default class WorksheetCanvas {
     let lastRow = selectedRow;
     let lastColumn = selectedColumn;
     if (selectedMerge) {
-      const [, , mergeWidth, mergeHeight] = this.getMergedRect(selectedMerge);
-      width = mergeWidth + 2 * padding;
-      height = mergeHeight + 2 * padding;
       lastRow = selectedMerge.row + selectedMerge.height - 1;
       lastColumn = selectedMerge.column + selectedMerge.width - 1;
+      // On-screen dimensions, not the summed cell sizes: when the merged
+      // range straddles a frozen pane, the rows/columns scrolled behind the
+      // frozen separator take no space on screen
+      const [mergeWidth, mergeHeight] = this.getAreaDimensions(
+        selectedMerge.row,
+        selectedMerge.column,
+        lastRow,
+        lastColumn,
+      );
+      width = mergeWidth + 2 * padding;
+      height = mergeHeight + 2 * padding;
     } else {
       width = this.getColumnWidth(selectedSheet, selectedColumn) + 2 * padding;
       height = this.getRowHeight(selectedSheet, selectedRow) + 2 * padding;
@@ -2115,9 +2123,12 @@ export default class WorksheetCanvas {
       isSingleMergedCell
     ) {
       areaOutline.style.visibility = "hidden";
-      [handleX, handleY] = this.getCoordinatesByCell(rowStart, columnStart);
-      handleX += width - 2 * padding;
-      handleY += height - 2 * padding;
+      // The handle sits on the on-screen bottom-right corner of the last
+      // cell (for a merged cell that can be in a different pane than the
+      // anchor, so it cannot be derived from the outline's origin and size)
+      [handleX, handleY] = this.getCoordinatesByCell(lastRow, lastColumn);
+      handleX += this.getColumnWidth(selectedSheet, lastColumn);
+      handleY += this.getRowHeight(selectedSheet, lastRow);
       // hide the handle if its corner is scrolled under the frozen panes
       if (
         (lastRow > frozenRows && lastRow < topLeftCell.row - 1) ||
