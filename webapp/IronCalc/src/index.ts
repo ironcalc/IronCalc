@@ -25,6 +25,11 @@ export type { ConfirmProperties } from "./components/Modal/Confirm";
 export { Confirm } from "./components/Modal/Confirm";
 export type { SwitchProperties } from "./components/Switch/Switch";
 export { Switch } from "./components/Switch/Switch";
+export type {
+  ToggleButtonOption,
+  ToggleButtonProperties,
+} from "./components/ToggleButton/ToggleButton";
+export { ToggleButton } from "./components/ToggleButton/ToggleButton";
 export type { TooltipProperties } from "./components/Tooltip/Tooltip";
 export { Tooltip } from "./components/Tooltip/Tooltip";
 export type { IronCalcHandle } from "./IronCalc";
