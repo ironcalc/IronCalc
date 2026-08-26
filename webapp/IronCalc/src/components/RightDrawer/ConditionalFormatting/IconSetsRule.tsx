@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
+import { Checkbox } from "../../Checkbox/Checkbox";
 import ColorPicker from "../../ColorPicker/ColorPicker";
 import { resolveColorToHex } from "../../ColorPicker/util";
 import IconPicker, { iconSpecFor } from "../../IconPicker/IconPicker";
@@ -880,14 +881,11 @@ const IconSetsRule = ({
             <div className="ic-edit-rule-label">
               {t("conditional_formatting.data_bars_preferences")}
             </div>
-            <label className="ic-edit-rule-checkbox-row">
-              <input
-                type="checkbox"
-                checked={showValue}
-                onChange={(e) => setShowValue(e.target.checked)}
-              />
-              {t("conditional_formatting.icon_sets_show_value")}
-            </label>
+            <Checkbox
+              checked={showValue}
+              onChange={setShowValue}
+              label={t("conditional_formatting.icon_sets_show_value")}
+            />
           </div>
         </div>
       </div>

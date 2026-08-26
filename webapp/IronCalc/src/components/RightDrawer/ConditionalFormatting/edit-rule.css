@@ -254,48 +254,6 @@
   height: 100%;
 }
 
-.ic-edit-rule-checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--typography-font-size);
-  font-family: var(--typography-font-family);
-  color: var(--palette-common-black);
-  cursor: pointer;
-  margin: 4px 0;
-}
-
-.ic-edit-rule-checkbox-row input[type="checkbox"] {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid var(--palette-grey-400);
-  border-radius: 4px;
-  background: var(--palette-common-white);
-  cursor: pointer;
-  position: relative;
-  flex-shrink: 0;
-  margin: 0;
-}
-
-.ic-edit-rule-checkbox-row input[type="checkbox"]:checked {
-  background: var(--palette-primary-main);
-  border-color: var(--palette-primary-main);
-}
-
-.ic-edit-rule-checkbox-row input[type="checkbox"]:checked::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 3px;
-  height: 6px;
-  border: 2px solid var(--palette-common-white);
-  border-top: none;
-  border-left: none;
-  transform: rotate(45deg) translate(-1px, -1px);
-}
-
 .ic-fsp-preset[aria-pressed="true"] {
   outline: 1px solid var(--palette-common-black);
   outline-offset: 1px;
