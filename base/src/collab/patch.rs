@@ -55,6 +55,10 @@ use bitcode::{Decode, Encode};
 /// sheet concurrently do not collide.
 pub type SheetId = u32;
 
+/// Identifies a named style. Hashed from the name it was created under, so two peers creating the
+/// same style concurrently write one register rather than two.
+pub type NamedStyleId = u64;
+
 /// Version byte prefixing every [`encode_patches`] payload.
 pub const PATCH_FORMAT_VERSION: u8 = 1;
 
@@ -203,15 +207,15 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                 formula: prev.clone(),
                 prev: formula.clone(),
             }),
-            Patch::SetNamedStyle {
-                name,
-                definition,
-                prev,
-            } => out.push(Patch::SetNamedStyle {
-                name: name.clone(),
-                definition: prev.clone(),
-                prev: definition.clone(),
-            }),
+            Patch::SetNamedStyle { id, property, prev } => {
+                if let Some(previous) = prev {
+                    out.push(Patch::SetNamedStyle {
+                        id: *id,
+                        property: previous.clone(),
+                        prev: Some(property.clone()),
+                    });
+                }
+            }
             Patch::AddConditionalFormat { sheet, key, .. } => {
                 out.push(Patch::DeleteConditionalFormat {
                     sheet: *sheet,
@@ -634,14 +638,12 @@ pub enum Patch {
         prev: Option<String>,
     },
 
-    // ---- Named styles (keyed by name) ----
-    /// `definition: None` deletes the style.
     SetNamedStyle {
-        name: String,
-        definition: Option<Box<NamedStyle>>,
+        id: NamedStyleId,
+        property: NamedStyleProperty,
 
         #[bitcode(skip)]
-        prev: Option<Box<NamedStyle>>,
+        prev: Option<NamedStyleProperty>,
     },
 
     // ---- Conditional formatting ----
@@ -886,6 +888,32 @@ impl CfProperty {
 pub struct NamedStyle {
     pub style: Style,
     pub builtin_id: i32,
+}
+
+/// A property of a named style. Each variant is a distinct register.
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+pub enum NamedStyleProperty {
+    /// What the author called it. The name shown in the style table is derived from this and
+    /// repaired for collisions, exactly as a sheet's is.
+    Name(String),
+    /// `None` deletes the style. Its name register survives, so an undo can revive it.
+    Definition(Option<Box<NamedStyle>>),
+}
+
+/// The register a [`NamedStyleProperty`] writes to, without its value.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
+pub enum NamedStylePropKind {
+    Name,
+    Definition,
+}
+
+impl NamedStyleProperty {
+    pub fn kind(&self) -> NamedStylePropKind {
+        match self {
+            NamedStyleProperty::Name(_) => NamedStylePropKind::Name,
+            NamedStyleProperty::Definition(_) => NamedStylePropKind::Definition,
+        }
+    }
 }
 
 /// A conditional formatting rule, without its priority — priority is the rule's position in the
@@ -1195,11 +1223,16 @@ mod test {
                 prev: None,
             },
             Patch::SetNamedStyle {
-                name: "Good".to_string(),
-                definition: Some(Box::new(NamedStyle {
+                id: 42,
+                property: NamedStyleProperty::Definition(Some(Box::new(NamedStyle {
                     style: Style::default(),
                     builtin_id: 26,
-                })),
+                }))),
+                prev: None,
+            },
+            Patch::SetNamedStyle {
+                id: 42,
+                property: NamedStyleProperty::Name("Good".to_string()),
                 prev: None,
             },
             Patch::AddConditionalFormat {
@@ -1282,6 +1315,10 @@ mod test {
             WorkbookPropKind::Locale
         );
         assert_eq!(CfProperty::Ranges(vec![]).kind(), CfPropKind::Ranges);
+        assert_eq!(
+            NamedStyleProperty::Name(String::new()).kind(),
+            NamedStylePropKind::Name
+        );
 
         // Commit ids ride the same wire.
         let id = CommitId::from([1u8, 2, 3, 4, 5, 6, 7, 8, 9].as_slice());

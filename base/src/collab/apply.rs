@@ -10,7 +10,7 @@
 //! resurrect a deleted one.
 
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::hash::Hash;
 
 use crate::cf_types::ConditionalFormatting;
@@ -20,16 +20,18 @@ use crate::collab::log::{Commit, Consumer, SessionId, Snapshot, Timestamp};
 use crate::collab::model::{
     CollabModel, SheetIndexes, SheetRegisters, Stable, StableCellAddress, StableRange,
 };
+use crate::collab::naming::NameRepair;
 use crate::collab::patch::{
-    CellInput, CfPropKind, CfProperty, ColPropKind, ColProperty, ColState, Patch, RowPropKind,
-    RowProperty, RowState, SheetContent, SheetId, SheetProperty, WorkbookProperty,
+    CellInput, CfPropKind, CfProperty, ColPropKind, ColProperty, ColState, NamedStyleId,
+    NamedStyleProperty, Patch, RowPropKind, RowProperty, RowState, SheetContent, SheetId,
+    SheetProperty, WorkbookProperty,
 };
 use crate::collab::DynError;
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
 };
 use crate::types::{
-    Cell, Col, DefinedName, FormulaValue, Row, SheetState, Style, StyleIncludes, Worksheet,
+    Cell, CellStyles, Col, DefinedName, FormulaValue, Row, SheetState, Style, Worksheet,
 };
 
 /// Version byte prefixing every [`Snapshot::encode`] payload.
@@ -96,41 +98,25 @@ fn wins<K: Clone + Eq + Hash>(
     }
 }
 
-/// Excel's cap, mirrored by [`is_valid_sheet_name`](crate::new_empty::is_valid_sheet_name).
-const MAX_SHEET_NAME_LEN: usize = 31;
+/// Sheet names are case-insensitively unique and capped at Excel's 31, mirrored by
+/// [`is_valid_sheet_name`](crate::new_empty::is_valid_sheet_name).
+pub(crate) const SHEET_NAMES: NameRepair = NameRepair {
+    case_insensitive: true,
+    max_len: 31,
+};
 
-/// Splits a name on a trailing `" (n)"`, so repairing `"Data (1)"` continues that numbering rather
-/// than nesting another suffix. Without one, the whole name is the base and numbering starts at 1.
-fn split_name_suffix(name: &str) -> (&str, u32) {
-    let Some((base, digits)) = name
-        .strip_suffix(')')
-        .and_then(|rest| rest.rsplit_once(" ("))
-    else {
-        return (name, 1);
-    };
-    match digits.parse::<u32>() {
-        Ok(n) => (base, n.saturating_add(1)),
-        Err(_) => (name, 1),
-    }
-}
+/// Style names are case-sensitive — `get_style_index_by_name` matches exactly — and capped at
+/// OOXML's 255.
+pub(crate) const STYLE_NAMES: NameRepair = NameRepair {
+    case_insensitive: false,
+    max_len: 255,
+};
 
-/// The first name `taken` does not already hold, case-insensitively: `authored` itself, else the
-/// numbered variants of its base. Records the winner in `taken`.
-pub(crate) fn free_sheet_name(authored: String, taken: &mut HashSet<String>) -> String {
-    if taken.insert(authored.to_uppercase()) {
-        return authored;
-    }
-    let (base, mut n) = split_name_suffix(&authored);
-    loop {
-        let suffix = format!(" ({n})");
-        let room = MAX_SHEET_NAME_LEN.saturating_sub(suffix.chars().count());
-        // Truncate by characters, never bytes: the base can hold multi-byte ones.
-        let candidate: String = base.chars().take(room).chain(suffix.chars()).collect();
-        if taken.insert(candidate.to_uppercase()) {
-            return candidate;
-        }
-        n += 1;
-    }
+/// Whether the style table holds this entry itself rather than deriving it from a register, by
+/// `Styles::is_builtin_style`'s rule. No patch authors a built-in — `create_named_style` files
+/// `builtin_id: 0`, and every named-style mutator refuses a built-in name — so the rest is derived.
+fn is_builtin_entry(entry: &CellStyles) -> bool {
+    entry.builtin_id > 0 || entry.name.eq_ignore_ascii_case("normal")
 }
 
 /// Whether a commit can have changed which names are live, and so needs the names re-derived.
@@ -415,20 +401,68 @@ impl CollabModel<'_> {
     /// everywhere, but not intent-preserving. It goes away once formulas are stored as typed
     /// `Node<A: Position>` holding stable sheet references rather than strings.
     fn normalize_sheet_names(&mut self) {
-        // Sheet id breaks the tie between two sheets one commit added: they share its stamp.
-        let mut authored: Vec<(Timestamp, SheetId, usize, String)> = Vec::new();
-        let mut taken: HashSet<String> = HashSet::new();
+        let mut authored: Vec<(Timestamp, (SheetId, usize), String)> = Vec::new();
         for (i, sheet) in self.workbook.worksheets.iter().enumerate() {
             match self.workbook.meta.sheet_names.get(&sheet.sheet_id) {
-                Some((name, ts)) => authored.push((*ts, sheet.sheet_id, i, name.clone())),
+                Some((name, ts)) => authored.push((*ts, (sheet.sheet_id, i), name.clone())),
                 // Every live sheet arrived as an `AddSheet`, which files the register.
                 None => debug_assert!(false, "sheet {} has no authored name", sheet.sheet_id),
             }
         }
-        // First write wins: the earliest stamp keeps its authored name, later ones give way.
-        authored.sort();
-        for (_, _, i, name) in authored {
-            self.workbook.worksheets[i].name = free_sheet_name(name, &mut taken);
+        for ((_, i), name) in SHEET_NAMES.assign(authored) {
+            self.workbook.worksheets[i].name = name;
+        }
+    }
+
+    /// Every live named style as `(id, display name)`, in the order the style table shows them:
+    /// first write wins, around the built-in entries no register owns.
+    pub(crate) fn named_style_display(&self) -> Vec<(NamedStyleId, String)> {
+        let authored: Vec<(Timestamp, NamedStyleId, String)> = self
+            .workbook
+            .meta
+            .named_styles
+            .iter()
+            .filter(|(_, state)| state.definition.0.is_some())
+            .map(|(id, state)| (state.name.1, *id, state.name.0.clone()))
+            .collect();
+        let mut taken = STYLE_NAMES.taken(
+            self.workbook
+                .styles
+                .cell_styles
+                .iter()
+                .filter(|entry| is_builtin_entry(entry))
+                .map(|entry| entry.name.as_str()),
+        );
+        STYLE_NAMES.assign_within(authored, &mut taken)
+    }
+
+    /// Derives the style table from the named-style registers, the way sheet names are derived: the
+    /// live styles, named first-write-wins, after the built-ins no register owns.
+    fn normalize_named_styles(&mut self) {
+        let assignments = self.named_style_display();
+        self.workbook.styles.cell_styles.retain(is_builtin_entry);
+        for (id, name) in assignments {
+            let Some(definition) = self
+                .workbook
+                .meta
+                .named_styles
+                .get(&id)
+                .and_then(|state| state.definition.0.clone())
+            else {
+                continue;
+            };
+            // A replicated style includes every formatting category (a quote prefix is a cell's
+            // own state, never a style's). Its record is content-addressed, so the table is a
+            // function of the registers rather than of the order their writes arrived in.
+            let xf_id = self
+                .workbook
+                .styles
+                .get_base_style_index_or_create(&definition.style);
+            self.workbook.styles.cell_styles.push(CellStyles {
+                name,
+                xf_id,
+                builtin_id: definition.builtin_id,
+            });
         }
     }
 
@@ -437,6 +471,12 @@ impl CollabModel<'_> {
     pub(crate) fn resync_derived(&mut self, patches: &[Patch]) {
         if touches_sheet_names(patches) {
             self.normalize_sheet_names();
+        }
+        if patches
+            .iter()
+            .any(|patch| matches!(patch, Patch::SetNamedStyle { .. }))
+        {
+            self.normalize_named_styles();
         }
         self.resync_parsed();
     }
@@ -890,38 +930,19 @@ impl CollabModel<'_> {
                     (None, None) => {}
                 }
             }
-            Patch::SetNamedStyle {
-                name, definition, ..
-            } => {
-                if !wins(&mut self.workbook.meta.named_styles, name, ts) {
-                    return;
-                }
-                let styles = &mut self.workbook.styles;
-                match definition {
-                    Some(definition) => {
-                        // A replicated named style includes every formatting category; a
-                        // quote prefix is a cell's own state and never part of it.
-                        let includes = StyleIncludes::default();
-                        let result = if styles.get_xf_id_by_name(name).is_ok() {
-                            styles.update_named_style_entry(name, name, &definition.style, includes)
-                        } else {
-                            styles.create_named_style(name, &definition.style, includes)
-                        };
-                        if result.is_err() {
-                            return;
-                        }
-                        if let Some(cs) = styles.cell_styles.iter_mut().find(|cs| &cs.name == name)
-                        {
-                            cs.builtin_id = definition.builtin_id;
-                        }
+            // The style table itself is derived from these registers by `normalize_named_styles`.
+            Patch::SetNamedStyle { id, property, .. } => {
+                let state = self.workbook.meta.named_styles.entry(*id).or_default();
+                // Each value guards itself, and the one this patch does not carry keeps the guard
+                // it has — zero for an id first seen here, which any real write then beats.
+                match property {
+                    NamedStyleProperty::Name(name) if state.name.1 <= *ts => {
+                        state.name = (name.clone(), *ts);
                     }
-                    // Cells keep their formatting; only the name association goes.
-                    None => {
-                        if let Some(at) = styles.cell_styles.iter().position(|cs| &cs.name == name)
-                        {
-                            styles.cell_styles.remove(at);
-                        }
+                    NamedStyleProperty::Definition(definition) if state.definition.1 <= *ts => {
+                        state.definition = (definition.clone(), *ts);
                     }
+                    _ => {}
                 }
             }
             Patch::AddConditionalFormat {
@@ -1452,11 +1473,16 @@ mod test {
                     prev: None,
                 },
                 Patch::SetNamedStyle {
-                    name: "Good".to_string(),
-                    definition: Some(Box::new(NamedStyle {
+                    id: 7,
+                    property: NamedStyleProperty::Definition(Some(Box::new(NamedStyle {
                         style: named_styled(),
-                        builtin_id: 26,
-                    })),
+                        builtin_id: 0,
+                    }))),
+                    prev: None,
+                },
+                Patch::SetNamedStyle {
+                    id: 7,
+                    property: NamedStyleProperty::Name("Good".to_string()),
                     prev: None,
                 },
                 Patch::SetWorkbookProperty {
