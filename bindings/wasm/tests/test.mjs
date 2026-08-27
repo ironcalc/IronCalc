@@ -257,17 +257,25 @@ test('Merged cells', () => {
     model.setUserInput(0, 2, 2, "5");
     model.setUserInput(0, 3, 3, "hello");
 
-    // merge B2:C3
+    // merging a range where more than one cell has content fails
+    assert.throws(
+        () => model.mergeCells({ sheet: 0, row: 2, column: 2, width: 2, height: 2 }),
+        /more than one cell has content/,
+    );
+    assert.deepEqual(model.getMergedCells(0), []);
+
+    // with a single cell with content, its content moves to the anchor
+    model.setUserInput(0, 2, 2, "");
     model.mergeCells({ sheet: 0, row: 2, column: 2, width: 2, height: 2 });
     assert.deepEqual(model.getMergedCells(0), [{ row: 2, column: 2, width: 2, height: 2 }]);
-    // the anchor keeps its content, the covered cell is cleared
-    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "5");
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "hello");
     assert.strictEqual(model.getFormattedCellValue(0, 3, 3), "");
     // covered cells cannot be edited
     assert.throws(() => model.setUserInput(0, 3, 3, "42"));
 
     model.undo();
     assert.deepEqual(model.getMergedCells(0), []);
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "");
     assert.strictEqual(model.getFormattedCellValue(0, 3, 3), "hello");
 
     model.redo();
