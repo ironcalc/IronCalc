@@ -1,7 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { AlignCenter, AlignLeft, AlignRight } from "lucide-react";
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Bold,
+  Italic,
+  Strikethrough,
+  Underline,
+} from "lucide-react";
 import { useState } from "react";
-import type { ToggleButtonProperties } from "./ToggleButton";
+import type {
+  ToggleButtonOption,
+  ToggleButtonProperties,
+} from "./ToggleButton";
 import { ToggleButton } from "./ToggleButton";
 
 type ToggleButtonStoryProps = Omit<
@@ -24,6 +35,18 @@ function ToggleButtonStory({
       options={options}
       value={selected}
       onChange={setSelected}
+    />
+  );
+}
+
+// A lone option toggles on and off: the empty value matches no option.
+function SingleOptionStory({ option }: { option: ToggleButtonOption<string> }) {
+  const [value, setValue] = useState(option.value);
+  return (
+    <ToggleButton
+      options={[option]}
+      value={value}
+      onChange={(next) => setValue(value === next ? "" : next)}
     />
   );
 }
@@ -88,6 +111,37 @@ export const Default: Story = {
       <ToggleButtonStory options={modeOptions} />
       <ToggleButtonStory options={operatorOptions} />
       <ToggleButtonStory options={alignOptions} />
+    </Column>
+  ),
+};
+
+export const SingleOption: Story = {
+  args: defaultArgs,
+  render: () => (
+    <Column>
+      <SingleOptionStory option={{ value: "bold", label: "Bold" }} />
+      <div style={{ display: "flex", gap: 4 }}>
+        <SingleOptionStory
+          option={{ value: "bold", icon: <Bold />, "aria-label": "Bold" }}
+        />
+        <SingleOptionStory
+          option={{ value: "italic", icon: <Italic />, "aria-label": "Italic" }}
+        />
+        <SingleOptionStory
+          option={{
+            value: "underline",
+            icon: <Underline />,
+            "aria-label": "Underline",
+          }}
+        />
+        <SingleOptionStory
+          option={{
+            value: "strikethrough",
+            icon: <Strikethrough />,
+            "aria-label": "Strikethrough",
+          }}
+        />
+      </div>
     </Column>
   ),
 };
