@@ -9,6 +9,12 @@ import {
   Underline,
 } from "lucide-react";
 import { useState } from "react";
+import {
+  BorderBottomIcon,
+  BorderLeftIcon,
+  BorderRightIcon,
+  BorderTopIcon,
+} from "../../icons";
 import type {
   ToggleButtonOption,
   ToggleButtonProperties,
@@ -17,7 +23,7 @@ import { ToggleButton } from "./ToggleButton";
 
 type ToggleButtonStoryProps = Omit<
   ToggleButtonProperties<string>,
-  "value" | "onChange"
+  "value" | "onChange" | "multiple"
 > & {
   value?: string;
 };
@@ -32,6 +38,20 @@ function ToggleButtonStory({
   return (
     <ToggleButton
       {...props}
+      options={options}
+      value={selected}
+      onChange={setSelected}
+    />
+  );
+}
+
+// Every option toggles on its own, so the selection is a list.
+function MultipleStory({ options, ...props }: ToggleButtonStoryProps) {
+  const [selected, setSelected] = useState<string[]>([]);
+  return (
+    <ToggleButton
+      {...props}
+      multiple
       options={options}
       value={selected}
       onChange={setSelected}
@@ -59,6 +79,28 @@ const modeOptions = [
 const operatorOptions = [
   { value: ">=", icon: "≥", "aria-label": "Greater than or equal" },
   { value: ">", icon: ">", "aria-label": "Greater than" },
+];
+
+const fontOptions = [
+  { value: "bold", icon: <Bold />, "aria-label": "Bold" },
+  { value: "italic", icon: <Italic />, "aria-label": "Italic" },
+  { value: "underline", icon: <Underline />, "aria-label": "Underline" },
+  {
+    value: "strikethrough",
+    icon: <Strikethrough />,
+    "aria-label": "Strikethrough",
+  },
+];
+
+const borderOptions = [
+  { value: "top", icon: <BorderTopIcon />, "aria-label": "Top border" },
+  { value: "right", icon: <BorderRightIcon />, "aria-label": "Right border" },
+  {
+    value: "bottom",
+    icon: <BorderBottomIcon />,
+    "aria-label": "Bottom border",
+  },
+  { value: "left", icon: <BorderLeftIcon />, "aria-label": "Left border" },
 ];
 
 const alignOptions = [
@@ -115,33 +157,25 @@ export const Default: Story = {
   ),
 };
 
+// Adjacent selected options round only the outer ends of the run.
+export const Multiple: Story = {
+  args: defaultArgs,
+  render: () => (
+    <Column>
+      <MultipleStory options={fontOptions} />
+      <MultipleStory options={borderOptions} size="md" />
+    </Column>
+  ),
+};
+
 export const SingleOption: Story = {
   args: defaultArgs,
   render: () => (
     <Column>
       <SingleOptionStory option={{ value: "bold", label: "Bold" }} />
-      <div style={{ display: "flex", gap: 4 }}>
-        <SingleOptionStory
-          option={{ value: "bold", icon: <Bold />, "aria-label": "Bold" }}
-        />
-        <SingleOptionStory
-          option={{ value: "italic", icon: <Italic />, "aria-label": "Italic" }}
-        />
-        <SingleOptionStory
-          option={{
-            value: "underline",
-            icon: <Underline />,
-            "aria-label": "Underline",
-          }}
-        />
-        <SingleOptionStory
-          option={{
-            value: "strikethrough",
-            icon: <Strikethrough />,
-            "aria-label": "Strikethrough",
-          }}
-        />
-      </div>
+      <SingleOptionStory
+        option={{ value: "bold", icon: <Bold />, "aria-label": "Bold" }}
+      />
     </Column>
   ),
 };

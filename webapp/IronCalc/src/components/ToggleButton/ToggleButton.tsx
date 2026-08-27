@@ -5,10 +5,13 @@ import { IconButton } from "../Button/IconButton";
 import "./toggle-button.css";
 
 /**
- * A group of mutually exclusive buttons where at most one option is selected.
- * Every option is a "ghost" Button; the selected one is the pressed Button.
- * A `value` that matches no option leaves them all unpressed, which is how a
+ * A group of buttons where the selected ones are pressed. Every option is a
+ * "ghost" Button.
+ * By default the options are mutually exclusive: at most one is selected, and a
+ * `value` that matches no option leaves them all unpressed, which is how a
  * single option toggles on and off.
+ * With `multiple`, each option toggles independently and `value` is the array of
+ * the selected ones. Adjacent selected options are drawn as one run.
  * Sizes: xs, sm, md (same as Button).
  */
 
@@ -21,24 +24,30 @@ export interface ToggleButtonOption<T extends string> {
 }
 
 /** Extends native `<div>` props.
- * Defaults: `size` "sm", `fullWidth` false.
+ * Defaults: `size` "sm", `fullWidth` false, `multiple` false.
  * `onChange` receives the new value, not the event.
  */
 
-export interface ToggleButtonProperties<T extends string>
+interface ToggleButtonBaseProperties<T extends string>
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
   options: ToggleButtonOption<T>[];
-  value: T;
-  onChange: (value: T) => void;
   size?: ButtonSize;
   fullWidth?: boolean;
   disabled?: boolean;
 }
 
+export type ToggleButtonProperties<T extends string> =
+  ToggleButtonBaseProperties<T> &
+    (
+      | { multiple?: false; value: T; onChange: (value: T) => void }
+      | { multiple: true; value: T[]; onChange: (values: T[]) => void }
+    );
+
 export function ToggleButton<T extends string>({
   options,
   value,
   onChange,
+  multiple,
   size = "sm",
   fullWidth = false,
   disabled = false,
@@ -46,6 +55,20 @@ export function ToggleButton<T extends string>({
   style,
   ...rest
 }: ToggleButtonProperties<T>) {
+  const selectedValues = multiple ? value : [value];
+
+  const toggle = (optionValue: T) => {
+    if (multiple) {
+      onChange(
+        value.includes(optionValue)
+          ? value.filter((selected) => selected !== optionValue)
+          : [...value, optionValue],
+      );
+    } else {
+      onChange(optionValue);
+    }
+  };
+
   const groupClassName = [
     "ic-toggle-button",
     fullWidth && "ic-toggle-button--full-width",
@@ -57,13 +80,12 @@ export function ToggleButton<T extends string>({
   return (
     <div className={groupClassName} style={style} {...rest}>
       {options.map((option) => {
-        const selected = option.value === value;
         const properties = {
           size,
           variant: "ghost",
-          pressed: selected,
+          pressed: selectedValues.includes(option.value),
           disabled: disabled || option.disabled,
-          onClick: () => onChange(option.value),
+          onClick: () => toggle(option.value),
         } as const;
 
         return option.label === undefined ? (
