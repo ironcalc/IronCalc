@@ -1834,8 +1834,8 @@ impl<'a, A: Position> Model<'a, A> {
     }
 }
 
-/// Document mutation and construction: ordinal addressing only.
-impl<'a> Model<'a> {
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Moves the formula `value` from `source` (in `area`) to `target`.
     ///
     /// # Examples
@@ -2022,10 +2022,7 @@ impl<'a> Model<'a> {
         }
         Ok(value.to_string())
     }
-}
 
-/// Reads and evaluation: everything here runs on any addressing scheme.
-impl<'a, A: Position> Model<'a, A> {
     /// Returns the formula in (`sheet`, `row`, `column`) if any
     ///
     /// # Examples
