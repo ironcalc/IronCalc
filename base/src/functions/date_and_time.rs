@@ -653,17 +653,9 @@ impl<'a> Model<'a> {
             }
             Err(s) => return s,
         };
-        // Serial number 0 (e.g. an empty cell or omitted argument) is not a
-        // real calendar day, but Excel still resolves it to January 1900 for the
-        // purposes of month arithmetic, so we special case it here.
-        let date = if serial_number == 0 {
-            #[allow(clippy::expect_used)]
-            chrono::NaiveDate::from_ymd_opt(1900, 1, 1).expect("problem with chrono::NaiveDate")
-        } else {
-            match self.excel_date(serial_number, cell) {
-                Ok(d) => d,
-                Err(e) => return e,
-            }
+        let date = match self.excel_date(serial_number, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
             return CalcResult::Error {
