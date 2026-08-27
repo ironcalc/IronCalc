@@ -263,38 +263,6 @@
   transform: scale(0.95);
 }
 
-.ic-is-operator-group {
-  display: flex;
-  padding: 3px 3px 3px 10px;
-  width: auto;
-  gap: 2px;
-}
-
-.ic-is-operator-group--compact {
-  position: relative;
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-  border: 1px solid var(--palette-grey-300);
-  border-radius: 6px;
-  background-color: var(--palette-common-white);
-  height: 32px;
-  padding: 0 1px;
-  overflow: hidden;
-  gap: 1px;
-}
-
-.ic-is-operator-group .ic-button,
-.ic-is-operator-group--compact .ic-button {
-  min-width: 0;
-  padding: 0;
-  border-radius: 4px;
-}
-
-.ic-is-mode-toggle .ic-button {
-  flex: 1;
-}
-
 .ic-is-picker-disabled {
   opacity: 0.4;
   cursor: not-allowed;

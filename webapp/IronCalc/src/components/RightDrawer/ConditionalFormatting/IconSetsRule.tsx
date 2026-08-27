@@ -32,6 +32,10 @@ import { resolveColorToHex } from "../../ColorPicker/util";
 import IconPicker, { iconSpecFor } from "../../IconPicker/IconPicker";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
+import {
+  ToggleButton,
+  type ToggleButtonOption,
+} from "../../ToggleButton/ToggleButton";
 import { Tooltip } from "../../Tooltip/Tooltip";
 
 interface IconSetIcon {
@@ -419,6 +423,19 @@ interface IconSetsRuleProps {
 
 type Mode = "preset" | "rating";
 
+const OPERATOR_OPTIONS: ToggleButtonOption<">=" | ">">[] = [
+  {
+    value: ">=",
+    icon: <span className="ic-is-op-text">{"≥"}</span>,
+    "aria-label": "Greater than or equal",
+  },
+  {
+    value: ">",
+    icon: <span className="ic-is-op-text">{">"}</span>,
+    "aria-label": "Greater than",
+  },
+];
+
 const IconSetsRule = ({
   onSave,
   onCancel,
@@ -583,22 +600,22 @@ const IconSetsRule = ({
           </div>
         </div>
         <div className="ic-edit-rule-section">
-          <div className="ic-is-operator-group--compact ic-is-mode-toggle">
-            <Button
-              variant={mode === "preset" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setMode("preset")}
-            >
-              {t("conditional_formatting.icon_sets_mode_preset")}
-            </Button>
-            <Button
-              variant={mode === "rating" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setMode("rating")}
-            >
-              {t("conditional_formatting.icon_sets_ratings")}
-            </Button>
-          </div>
+          <ToggleButton
+            fullWidth
+            size="md"
+            value={mode}
+            onChange={setMode}
+            options={[
+              {
+                value: "preset",
+                label: t("conditional_formatting.icon_sets_mode_preset"),
+              },
+              {
+                value: "rating",
+                label: t("conditional_formatting.icon_sets_ratings"),
+              },
+            ]}
+          />
           {mode === "preset" &&
             groups.map((group) => (
               <div key={group.key} className="ic-fsp-presets-section">
@@ -670,26 +687,14 @@ const IconSetsRule = ({
                   >
                     <div className="ic-edit-rule-label">{getLabel(i)}</div>
                     <div className="ic-is-threshold-controls">
-                      <div className="ic-is-operator-group--compact">
-                        <IconButton
-                          size="sm"
-                          variant={
-                            threshold.operator === ">=" ? "secondary" : "ghost"
-                          }
-                          icon={<span className="ic-is-op-text">{"≥"}</span>}
-                          aria-label="Greater than or equal"
-                          onClick={() => updateThreshold(i, { operator: ">=" })}
-                        />
-                        <IconButton
-                          size="sm"
-                          variant={
-                            threshold.operator === ">" ? "secondary" : "ghost"
-                          }
-                          icon={<span className="ic-is-op-text">{">"}</span>}
-                          aria-label="Greater than"
-                          onClick={() => updateThreshold(i, { operator: ">" })}
-                        />
-                      </div>
+                      <ToggleButton
+                        size="md"
+                        options={OPERATOR_OPTIONS}
+                        value={threshold.operator}
+                        onChange={(operator) =>
+                          updateThreshold(i, { operator })
+                        }
+                      />
                       <div className="ic-is-threshold-value-wrap">
                         <Input
                           type="text"
@@ -785,26 +790,14 @@ const IconSetsRule = ({
                   >
                     <div className="ic-edit-rule-label">{getLabel(i)}</div>
                     <div className="ic-is-threshold-controls">
-                      <div className="ic-is-operator-group--compact">
-                        <IconButton
-                          size="sm"
-                          variant={
-                            threshold.operator === ">=" ? "secondary" : "ghost"
-                          }
-                          icon={<span className="ic-is-op-text">{"≥"}</span>}
-                          aria-label="Greater than or equal"
-                          onClick={() => updateThreshold(i, { operator: ">=" })}
-                        />
-                        <IconButton
-                          size="sm"
-                          variant={
-                            threshold.operator === ">" ? "secondary" : "ghost"
-                          }
-                          icon={<span className="ic-is-op-text">{">"}</span>}
-                          aria-label="Greater than"
-                          onClick={() => updateThreshold(i, { operator: ">" })}
-                        />
-                      </div>
+                      <ToggleButton
+                        size="md"
+                        options={OPERATOR_OPTIONS}
+                        value={threshold.operator}
+                        onChange={(operator) =>
+                          updateThreshold(i, { operator })
+                        }
+                      />
                       <div className="ic-is-threshold-value-wrap">
                         <Input
                           type="text"
