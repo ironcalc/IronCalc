@@ -3,35 +3,7 @@
 }
 
 .ic-link-dialog-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--palette-grey-300);
-  border-radius: 6px;
   margin-bottom: 4px;
-}
-
-.ic-link-dialog-tab {
-  flex: 1;
-  border: none;
-  background: none;
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: var(--typography-font-size);
-  color: var(--palette-grey-700);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.ic-link-dialog-tab:hover {
-  background-color: var(--palette-grey-100);
-}
-
-.ic-link-dialog-tab.selected {
-  background-color: var(--palette-grey-200);
-  color: var(--palette-grey-900);
-  font-weight: 600;
 }
 
 .ic-link-dialog-footer {
