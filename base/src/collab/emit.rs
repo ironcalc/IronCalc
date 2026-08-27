@@ -2252,9 +2252,6 @@ unsupported! { &self
 unsupported! { &mut self
     set_language(language_id: &str) -> ();
     set_user_array_formula(sheet: u32, row: i32, column: i32, width: i32, height: i32, value: &str) -> ();
-    move_cell_value_to_area(value: &str, source: &CellReferenceIndex, target: &CellReferenceIndex, area: &Area) -> String;
-    extend_to(sheet: u32, row: i32, column: i32, target_row: i32, target_column: i32) -> String;
-    extend_copied_value(value: &str, source: &CellReferenceIndex, target: &CellReferenceIndex) -> String;
     delete_row_style(sheet: u32, row: i32) -> ();
     delete_column_style(sheet: u32, column: i32) -> ();
     copy_cell_style(source: (u32, i32, i32), destination: (u32, i32, i32)) -> ();
