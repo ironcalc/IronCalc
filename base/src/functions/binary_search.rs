@@ -195,9 +195,12 @@ impl<'a> Model<'a> {
 /// errors) are ignored, matching Excel's legacy approximate lookup engine,
 /// which skips them instead of coercing blanks to zero.
 pub(crate) fn binary_search_on_array(target: &CalcResult, array: &[CalcResult]) -> i32 {
-    let occupied: Vec<usize> = (0..array.len())
-        .filter(|index| is_comparable_type(&array[*index], target))
-        .collect();
+    let mut occupied: Vec<usize> = Vec::with_capacity(array.len());
+    for (index, value) in array.iter().enumerate() {
+        if is_comparable_type(value, target) {
+            occupied.push(index);
+        }
+    }
     if occupied.is_empty() {
         return -2;
     }
