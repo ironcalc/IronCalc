@@ -520,13 +520,21 @@ impl CollabModel<'_> {
                     None => 0,
                 };
                 let sheet = &mut self.workbook.worksheets[i];
-                match sheet
-                    .sheet_data
-                    .get_mut(&at.0)
-                    .and_then(|r| r.get_mut(&at.1))
-                {
-                    Some(cell) => cell.set_style(s),
-                    None => put_cell(sheet, at, Cell::EmptyCell { s }),
+                let empty = matches!(
+                    sheet.sheet_data.get(&at.0).and_then(|r| r.get(&at.1)),
+                    None | Some(Cell::EmptyCell { .. })
+                );
+                match style {
+                    // Cleared style, no value: nothing left for the cell to hold, so it goes too.
+                    None if empty => remove_cell(sheet, at),
+                    _ => match sheet
+                        .sheet_data
+                        .get_mut(&at.0)
+                        .and_then(|r| r.get_mut(&at.1))
+                    {
+                        Some(cell) => cell.set_style(s),
+                        None => put_cell(sheet, at, Cell::EmptyCell { s }),
+                    },
                 }
             }
             Patch::InsertRows { sheet, keys } => {

@@ -391,26 +391,94 @@ impl CollabModel<'_> {
     ) -> Result<Vec<Patch>, String> {
         let (i, id) = self.sheet_of(sheet)?;
         let (at, mut patches) = self.resolve_cell(i, id, row, column);
+        match input {
+            Some(input) => {
+                let prev = self.cell_input(i, &at);
+                patches.push(Patch::SetCellValue {
+                    sheet: id,
+                    at: at.clone(),
+                    value: Some(input),
+                    ts: None,
+                    prev: Box::new(prev),
+                });
+                let stored = self.get_cell_style_or_none(sheet, row, column)?;
+                if Some(&style) != stored.as_ref() {
+                    patches.push(Patch::SetCellStyle {
+                        sheet: id,
+                        at,
+                        style: Some(Box::new(style)),
+                        ts: None,
+                        prev: Box::new(stored),
+                    });
+                }
+                Ok(patches)
+            }
+            None => {
+                // clear cell
+                patches.extend(self.clear_patches(i, id, at, false));
+                Ok(patches)
+            }
+        }
+    }
+
+    fn cell_style_at(&self, i: usize, at: &StableCellAddress) -> Option<Style> {
+        let cell = self.workbook.worksheets[i]
+            .sheet_data
+            .get(&at.0)?
+            .get(&at.1)?;
+        self.workbook.styles.get_style(cell.get_style()).ok()
+    }
+
+    /// The patches clearing the cell at `at`: the value tombstone, and the style either written
+    /// back (the value write takes the cell with it) or cleared alongside it when `all`.
+    ///
+    /// Both registers are always written, even where there is nothing to clear: the stamps are what
+    /// make a concurrent older write to the cell lose whichever order it arrives in.
+    fn clear_patches(&self, i: usize, id: SheetId, at: StableCellAddress, all: bool) -> Vec<Patch> {
         let prev = self.cell_input(i, &at);
-        let clearing = input.is_none();
-        patches.push(Patch::SetCellValue {
-            sheet: id,
-            at: at.clone(),
-            value: input,
-            ts: None,
-            prev: Box::new(prev),
-        });
-        let stored = self.get_cell_style_or_none(sheet, row, column)?;
-        let restore = if clearing { stored.clone() } else { None };
-        if restore.is_some() || (!clearing && Some(&style) != stored.as_ref()) {
-            let style = restore.unwrap_or(style);
-            patches.push(Patch::SetCellStyle {
+        let stored = self.cell_style_at(i, &at);
+        vec![
+            Patch::SetCellValue {
+                sheet: id,
+                at: at.clone(),
+                value: None,
+                ts: None,
+                prev: Box::new(prev),
+            },
+            Patch::SetCellStyle {
                 sheet: id,
                 at,
-                style: Some(Box::new(style)),
+                style: if all { None } else { stored.clone() }.map(Box::new),
                 ts: None,
                 prev: Box::new(stored),
-            });
+            },
+        ]
+    }
+
+    /// The patches clearing every cell the `area` actually holds, styles included when `all`.
+    ///
+    /// Only cells that exist are written, so a clear outranks a concurrent older write only where it
+    /// could see one; a write to a coordinate absent here has no clear patch to lose to, anywhere.
+    fn range_clear_patches(&self, area: &Area, all: bool) -> Result<Vec<Patch>, String> {
+        if !self.can_clear_range(area)? {
+            return Err("Cannot clear the range because it contains array formulas".to_string());
+        }
+        let (i, id) = self.sheet_of(area.sheet)?;
+        let sheet = &self.workbook.worksheets[i];
+        let mut patches = Vec::new();
+        for row in area.row..area.row + area.height {
+            let Some(row_key) = Stable::row_at(&sheet.index, row) else {
+                continue;
+            };
+            for column in area.column..area.column + area.width {
+                let Some(col_key) = Stable::col_at(&sheet.index, column) else {
+                    continue;
+                };
+                if sheet.cell(row, column).is_none() {
+                    continue;
+                }
+                patches.extend(self.clear_patches(i, id, (row_key.clone(), col_key), all));
+            }
         }
         Ok(patches)
     }
@@ -605,23 +673,29 @@ impl CollabModel<'_> {
         let i = self.check_cell(sheet, row, column)?;
         let (_, id) = self.sheet_of(sheet)?;
         let (at, mut patches) = self.resolve_cell(i, id, row, column);
-        let prev = self.cell_input(i, &at);
-        let style = self.get_cell_style_or_none(sheet, row, column)?;
-        patches.push(Patch::SetCellValue {
-            sheet: id,
-            at: at.clone(),
-            value: None,
-            ts: None,
-            prev: Box::new(prev),
-        });
-        patches.push(Patch::SetCellStyle {
-            sheet: id,
-            at,
-            style: None,
-            ts: None,
-            prev: Box::new(style),
-        });
+        patches.extend(self.clear_patches(i, id, at, true));
         self.commit_local(patches);
+        Ok(())
+    }
+
+    /// Removes the content of every cell in the range but leaves the style.
+    ///
+    /// A coordinate that held nothing stays absent, where upstream materializes an `EmptyCell` for
+    /// it: display-identical, but the two models hold different cell counts.
+    pub fn range_clear_contents(&mut self, area: &Area) -> Result<(), String> {
+        let patches = self.range_clear_patches(area, false)?;
+        if !patches.is_empty() {
+            self.commit_local(patches);
+        }
+        Ok(())
+    }
+
+    /// Removes both content and style from every cell in the range.
+    pub fn range_clear_all(&mut self, area: &Area) -> Result<(), String> {
+        let patches = self.range_clear_patches(area, true)?;
+        if !patches.is_empty() {
+            self.commit_local(patches);
+        }
         Ok(())
     }
 
@@ -2178,8 +2252,6 @@ unsupported! { &self
 unsupported! { &mut self
     set_language(language_id: &str) -> ();
     set_user_array_formula(sheet: u32, row: i32, column: i32, width: i32, height: i32, value: &str) -> ();
-    range_clear_contents(area: &Area) -> ();
-    range_clear_all(area: &Area) -> ();
     move_cell_value_to_area(value: &str, source: &CellReferenceIndex, target: &CellReferenceIndex, area: &Area) -> String;
     extend_to(sheet: u32, row: i32, column: i32, target_row: i32, target_column: i32) -> String;
     extend_copied_value(value: &str, source: &CellReferenceIndex, target: &CellReferenceIndex) -> String;
@@ -2694,6 +2766,193 @@ mod test {
             assert_eq!(m.get_formatted_cell_value(0, 6, 1), Ok("20".to_string()));
             assert_eq!(m.get_cell_formula(0, 1, 2), Ok(Some("=A6*10".to_string())));
             assert_eq!(m.get_formatted_cell_value(0, 1, 2), Ok("200".to_string()));
+        }
+        assert_eq!(b.workbook, a.workbook);
+    }
+
+    fn area(row: i32, column: i32, width: i32, height: i32) -> Area {
+        Area {
+            sheet: 0,
+            row,
+            column,
+            width,
+            height,
+        }
+    }
+
+    fn bold() -> Style {
+        let mut style = Style::default();
+        style.font.b = true;
+        style
+    }
+
+    fn italic() -> Style {
+        let mut style = Style::default();
+        style.font.i = true;
+        style
+    }
+
+    /// How many patches of one kind a commit carries.
+    fn count(commit: &LocalCommit, kind: fn(&Patch) -> bool) -> usize {
+        commit.patches.iter().filter(|p| kind(p)).count()
+    }
+
+    /// Clearing a range: contents go, formatting stays or goes with them, and the coordinates the
+    /// range names but the sheet does not hold are left alone — nothing is materialized.
+    #[test]
+    fn range_clear() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap(); // A1=1
+        a.set_user_input(0, 2, 1, "=A1*2".to_string()).unwrap(); // A2=A1*2
+        a.set_cell_style(0, 1, 2, &bold()).unwrap(); // B1=(bold)
+        a.set_user_input(0, 2, 2, "keep".to_string()).unwrap(); // B2="keep"
+        a.set_cell_style(0, 2, 2, &italic()).unwrap(); // B2=(italic)
+        a.set_user_input(0, 1, 3, "100".to_string()).unwrap(); // C1=100
+        a.flush();
+
+        // A1:B4 — rows 3 and 4 do not exist yet, and A3..B4 were never written.
+        a.range_clear_contents(&area(1, 1, 2, 4)).unwrap();
+        a.evaluate();
+
+        let commits = a.flush();
+        assert_eq!(commits.len(), 1); // one user action, one commit
+        let clear = &commits[0];
+        // Only the four cells the sheet holds are written, and nothing is materialized for the rest.
+        assert_eq!(count(clear, |p| matches!(p, Patch::SetCellValue { .. })), 4);
+        assert_eq!(count(clear, |p| matches!(p, Patch::SetCellStyle { .. })), 4);
+        assert_eq!(clear.patches.len(), 8);
+        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 2);
+
+        // Contents gone, formatting kept.
+        for (row, column) in [(1, 1), (2, 1), (2, 2)] {
+            assert_eq!(
+                a.get_formatted_cell_value(0, row, column),
+                Ok(String::new()),
+                "value at ({row}, {column})"
+            );
+        }
+        assert_eq!(a.get_cell_formula(0, 2, 1), Ok(None));
+        assert_eq!(a.get_cell_style_or_none(0, 1, 2), Ok(Some(bold())));
+        assert_eq!(a.get_cell_style_or_none(0, 2, 2), Ok(Some(italic())));
+        // Outside the range nothing moved.
+        assert_eq!(a.get_formatted_cell_value(0, 1, 3), Ok("100".to_string()));
+
+        // The clear left the four cells behind, holding just their styles, so they are cleared again.
+        a.range_clear_all(&area(1, 1, 2, 4)).unwrap();
+        let commits = a.flush();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].patches.len(), 8);
+        assert_eq!(a.get_cell_style_or_none(0, 1, 2), Ok(None));
+        assert_eq!(a.get_cell_style_or_none(0, 2, 2), Ok(None));
+        // Nothing left in the range at all — only C1 survives.
+        assert_eq!(a.get_all_cells().len(), 1);
+        assert_eq!(a.get_formatted_cell_value(0, 1, 3), Ok("100".to_string()));
+
+        // A range the sheet holds nothing in is not an edit at all: no commit, no rows minted.
+        a.range_clear_all(&area(6, 4, 2, 2)).unwrap();
+        a.range_clear_contents(&area(1, 1, 2, 4)).unwrap();
+        assert!(a.flush().is_empty());
+        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 2);
+        assert_eq!(a.workbook.worksheets[0].index.cols.len(), 3);
+
+        // Upstream's validation, error string included; a rejected call emits nothing.
+        let bad = "Row or column is outside valid range.".to_string();
+        assert_eq!(a.range_clear_contents(&area(0, 1, 1, 1)), Err(bad.clone()));
+        assert_eq!(a.range_clear_all(&area(1, 0, 1, 1)), Err(bad));
+        let off_sheet = Area {
+            sheet: 9,
+            row: 1,
+            column: 1,
+            width: 1,
+            height: 1,
+        };
+        assert_eq!(
+            a.range_clear_all(&off_sheet),
+            Err("Invalid sheet index".to_string())
+        );
+        assert!(a.flush().is_empty());
+    }
+
+    #[test]
+    fn range_clear_converges() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+        a.set_user_input(0, 1, 2, "2".to_string()).unwrap();
+        let setup = a.flush();
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        // Both stamped below the clear and reaching A only after it. A1 is a cell the clear can
+        // see; B3 is not — row 3 does not exist when the clear is authored.
+        b.set_user_input(0, 1, 1, "11".to_string()).unwrap();
+        b.set_user_input(0, 3, 2, "33".to_string()).unwrap();
+        a.range_clear_contents(&area(1, 1, 2, 3)).unwrap();
+        // Later in program order, so the shared clock stamps it above the clear.
+        b.set_user_input(0, 1, 2, "42".to_string()).unwrap();
+
+        let clear = a.flush();
+        let from_b = b.flush();
+        deliver(&mut b, 1, &clear);
+        deliver(&mut a, 2, &from_b);
+        a.evaluate();
+        b.evaluate();
+
+        for m in [&a, &b] {
+            // The older write to a cell the clear saw lost; the newer one to the same cell won.
+            assert_eq!(m.get_formatted_cell_value(0, 1, 1), Ok(String::new()));
+            assert_eq!(m.get_formatted_cell_value(0, 1, 2), Ok("42".to_string()));
+            // The clear never named B3, so nothing there was ever contested.
+            assert_eq!(m.get_formatted_cell_value(0, 3, 2), Ok("33".to_string()));
+        }
+        assert_eq!(b.workbook, a.workbook);
+    }
+
+    #[test]
+    fn range_clear_undo_concurrent() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+        a.set_cell_style(0, 1, 1, &bold()).unwrap();
+        a.set_user_input(0, 2, 1, "edit-me".to_string()).unwrap();
+        a.set_user_input(0, 3, 1, "3".to_string()).unwrap();
+        let setup = a.flush();
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        // A clear is nothing but register writes, so its inverse is nothing but register writes.
+        a.range_clear_all(&area(1, 1, 1, 3)).unwrap();
+        b.set_user_input(0, 2, 1, "999".to_string()).unwrap();
+
+        let cleared = a.flush();
+        let undo: Vec<Patch> = cleared
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+
+        let undone = a.flush();
+        deliver(&mut b, 1, &cleared);
+        deliver(&mut b, 1, &undone);
+        deliver(&mut a, 2, &b.flush());
+        a.evaluate();
+        b.evaluate();
+
+        for m in [&a, &b] {
+            // The uncontested cells came back, style included.
+            assert_eq!(m.get_formatted_cell_value(0, 1, 1), Ok("1".to_string()));
+            assert_eq!(m.get_cell_style_or_none(0, 1, 1), Ok(Some(bold())));
+            assert_eq!(m.get_formatted_cell_value(0, 3, 1), Ok("3".to_string()));
+            // The contested one too: the undo's stamp is above B's edit, so the restore wins.
+            //TODO: should contesting undo win over concurrent edit?
+            assert_eq!(
+                m.get_formatted_cell_value(0, 2, 1),
+                Ok("edit-me".to_string())
+            );
         }
         assert_eq!(b.workbook, a.workbook);
     }
