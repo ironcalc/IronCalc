@@ -12,11 +12,9 @@ import "./toggle-button.css";
 
 export interface ToggleButtonOption<T extends string> {
   value: T;
-  /** Text of the button. Omit it to get an icon-only button. */
-  label?: ReactNode;
+  label?: ReactNode /** Text of the button. Omit it to get an icon-only button. */;
   icon?: ReactNode;
-  /** Required when there is no `label`. */
-  "aria-label"?: string;
+  "aria-label"?: string /** Required when there is no `label`. */;
   disabled?: boolean;
 }
 
@@ -31,13 +29,10 @@ export interface ToggleButtonProperties<T extends string>
   value: T;
   onChange: (value: T) => void;
   size?: ButtonSize;
-  /** Stretch the group and share its width equally between the options. */
   fullWidth?: boolean;
   disabled?: boolean;
 }
 
-// Not a forwardRef like the other components: a generic forwardRef needs a cast
-// that loses the inference on `value`/`onChange`, and nobody needs the ref.
 export function ToggleButton<T extends string>({
   options,
   value,
