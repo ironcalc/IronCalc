@@ -450,6 +450,7 @@ impl CollabModel<'_> {
             content: None,
         }]);
         let at = self.get_sheet_index_by_sheet_id(id).unwrap_or_default();
+        self.evaluate();
         (name, at)
     }
 
@@ -497,6 +498,7 @@ impl CollabModel<'_> {
             position,
             content: None,
         }]);
+        self.evaluate();
         Ok(())
     }
 
@@ -1635,6 +1637,7 @@ impl CollabModel<'_> {
             _ => None,
         };
         self.commit_local(vec![Patch::DeleteSheet { sheet: id, prev }]);
+        self.evaluate();
         Ok(())
     }
 
@@ -1730,6 +1733,7 @@ impl CollabModel<'_> {
         }
         self.commit_local(patches);
         let at = self.get_sheet_index_by_sheet_id(id).unwrap_or_default();
+        self.evaluate();
         Ok((new_name, at))
     }
 
@@ -1799,6 +1803,7 @@ impl CollabModel<'_> {
             });
         }
         self.commit_local(patches);
+        self.evaluate();
         Ok(())
     }
 
@@ -3285,5 +3290,20 @@ mod test {
         assert_eq!(a.get_formatted_cell_value(1, 5, 1), Ok("42".to_string()));
         assert_eq!(b.get_formatted_cell_value(1, 5, 1), Ok("42".to_string()));
         assert_eq!(b.workbook, a.workbook);
+    }
+
+    #[test]
+    fn new_sheet_reevaluates_stale_refs() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "7".to_string()).unwrap();
+        a.set_user_input(0, 2, 1, "=Sheet2!C3".to_string()).unwrap();
+        a.evaluate();
+        // No sheet named Sheet2 yet: the reference is broken, as upstream agrees.
+        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("#REF!".to_string()));
+
+        // Creating "Sheet2" resolves the reference: `new_sheet` re-evaluated, as upstream's does.
+        a.new_sheet();
+        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("0".to_string()));
     }
 }
