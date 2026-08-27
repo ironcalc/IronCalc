@@ -28,14 +28,58 @@ pub enum MergeStructure {
 
 impl<'a> Model<'a> {
     /// Merges the cells in `range` into a single merged cell anchored at its
-    /// top-left corner. The content of every cell other than the anchor is
-    /// cleared (styles are kept), mimicking Excel's behavior.
+    /// top-left corner, mimicking Excel's behavior:
+    /// * the content and links of every cell other than the anchor are cleared
+    /// * the style of the anchor is copied to every cell of the range, so the
+    ///   old styles of the covered cells are forgotten (after unmerging the
+    ///   whole range shows the anchor's formatting)
+    /// * borders are the exception: the anchor's borders outline the merged
+    ///   cell as a whole, so each cell keeps only the border sides that lie on
+    ///   the perimeter of the range (interior edges have no border)
     ///
     /// Fails if:
     /// * the range is invalid, out of bounds or a single cell
     /// * the range intersects an existing merged cell
     /// * the range intersects an array formula
     pub fn merge_cells(&mut self, range: &Area) -> Result<(), String> {
+        self.merge_cells_keep_styles(range)?;
+        let Area {
+            sheet,
+            row,
+            column,
+            width,
+            height,
+        } = *range;
+        let anchor_style = self.get_style_for_cell(sheet, row, column)?;
+        for r in row..row + height {
+            for c in column..column + width {
+                let mut style = anchor_style.clone();
+                if r != row {
+                    style.border.top = None;
+                }
+                if r != row + height - 1 {
+                    style.border.bottom = None;
+                }
+                if c != column {
+                    style.border.left = None;
+                }
+                if c != column + width - 1 {
+                    style.border.right = None;
+                }
+                if self.get_style_for_cell(sheet, r, c)? != style {
+                    self.set_cell_style(sheet, r, c, &style)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    // Registers the merged cell and clears the content and links of the
+    // covered cells, but leaves every cell's style untouched. Used by the
+    // clipboard when recreating a pasted merge: the pasted cells already carry
+    // the merged style pattern of the source, and stamping the anchor's style
+    // would drop the perimeter borders that live on non-anchor cells.
+    pub(crate) fn merge_cells_keep_styles(&mut self, range: &Area) -> Result<(), String> {
         let Area {
             sheet,
             row,

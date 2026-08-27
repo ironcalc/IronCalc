@@ -5,7 +5,7 @@ use bitcode::decode;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
 use crate::test::user_model::util::new_empty_user_model;
-use crate::types::{Link, MergedCell};
+use crate::types::{BorderItem, BorderStyle, Color, Link, MergedCell};
 use crate::user_model::history::{Diff, QueueDiffs};
 use crate::UserModel;
 
@@ -248,6 +248,164 @@ fn structural_ops_replay_on_external_model() {
         model2.get_merged_cells(0).unwrap(),
         vec![merged(2, 2, 2, 3)]
     );
+}
+
+// ── Styles ───────────────────────────────────────────────────────────────────
+
+fn thin(color: &str) -> Option<BorderItem> {
+    Some(BorderItem {
+        style: BorderStyle::Thin,
+        color: Color::Rgb(color.to_string()),
+    })
+}
+
+#[test]
+fn merge_stamps_the_anchor_style_and_undo_restores_the_old_ones() {
+    let mut model = new_empty_user_model();
+    // anchor B2 red, covered C3 blue
+    model
+        .update_range_style(&area(0, 2, 2, 1, 1), "fill.color", "#FF0000")
+        .unwrap();
+    model
+        .update_range_style(&area(0, 3, 3, 1, 1), "fill.color", "#0000FF")
+        .unwrap();
+
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    for (row, column) in [(2, 2), (2, 3), (3, 2), (3, 3)] {
+        assert_eq!(
+            model.get_cell_style(0, row, column).unwrap().fill.color,
+            Color::Rgb("#FF0000".to_string())
+        );
+    }
+
+    // undo brings the old styles back
+    model.undo().unwrap();
+    assert_eq!(
+        model.get_cell_style(0, 3, 3).unwrap().fill.color,
+        Color::Rgb("#0000FF".to_string())
+    );
+    assert_eq!(
+        model.get_cell_style(0, 2, 3).unwrap().fill.color,
+        Color::None
+    );
+
+    // redo stamps them again
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_cell_style(0, 3, 3).unwrap().fill.color,
+        Color::Rgb("#FF0000".to_string())
+    );
+
+    // unmerging keeps the stamped styles: the blue is forgotten
+    model.unmerge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    assert_eq!(
+        model.get_cell_style(0, 3, 3).unwrap().fill.color,
+        Color::Rgb("#FF0000".to_string())
+    );
+}
+
+#[test]
+fn merge_moves_the_anchor_borders_to_the_perimeter_and_undo_restores_them() {
+    let mut model = new_empty_user_model();
+    // full outline on the anchor B2, another border on covered C3
+    model._set_cell_border("B2", "#111111");
+    model._set_cell_border("C3", "#999999");
+
+    // merge B2:C3
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+
+    // the outline now wraps the whole merged cell
+    let b2 = model._get_cell_border("B2");
+    assert_eq!(b2.left, thin("#111111"));
+    assert_eq!(b2.top, thin("#111111"));
+    assert_eq!(b2.right, None);
+    assert_eq!(b2.bottom, None);
+    let c2 = model._get_cell_border("C2");
+    assert_eq!(c2.top, thin("#111111"));
+    assert_eq!(c2.right, thin("#111111"));
+    assert_eq!(c2.left, None);
+    assert_eq!(c2.bottom, None);
+    let b3 = model._get_cell_border("B3");
+    assert_eq!(b3.left, thin("#111111"));
+    assert_eq!(b3.bottom, thin("#111111"));
+    let c3 = model._get_cell_border("C3");
+    assert_eq!(c3.right, thin("#111111"));
+    assert_eq!(c3.bottom, thin("#111111"));
+    assert_eq!(c3.left, None);
+    assert_eq!(c3.top, None);
+
+    // undo restores the two original outlines
+    model.undo().unwrap();
+    let b2 = model._get_cell_border("B2");
+    assert_eq!(
+        [b2.left, b2.right, b2.top, b2.bottom],
+        [
+            thin("#111111"),
+            thin("#111111"),
+            thin("#111111"),
+            thin("#111111")
+        ]
+    );
+    let c3 = model._get_cell_border("C3");
+    assert_eq!(
+        [c3.left, c3.right, c3.top, c3.bottom],
+        [
+            thin("#999999"),
+            thin("#999999"),
+            thin("#999999"),
+            thin("#999999")
+        ]
+    );
+}
+
+#[test]
+fn merge_style_stamping_replays_on_external_models() {
+    let mut model1 = new_empty_user_model();
+    let mut model2 = new_empty_user_model();
+
+    model1
+        .update_range_style(&area(0, 2, 2, 1, 1), "fill.color", "#FF0000")
+        .unwrap();
+    model1.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    model2
+        .apply_external_diffs(&model1.flush_send_queue())
+        .unwrap();
+
+    assert_eq!(
+        model2.get_cell_style(0, 3, 3).unwrap().fill.color,
+        Color::Rgb("#FF0000".to_string())
+    );
+}
+
+#[test]
+fn copy_paste_keeps_the_perimeter_borders_of_a_merged_cell() {
+    let mut model = new_empty_user_model();
+    // outline the anchor and merge B2:C3: the right/bottom sides of the
+    // outline now live on the non-anchor cells
+    model._set_cell_border("B2", "#111111");
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+
+    model.set_selected_cell(2, 2).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(10, 10).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, false)
+        .unwrap();
+
+    // the pasted merge keeps the full outline, including the sides that are
+    // not on its anchor
+    let j10 = model._get_cell_border("J10");
+    assert_eq!(j10.left, thin("#111111"));
+    assert_eq!(j10.top, thin("#111111"));
+    assert_eq!(j10.right, None);
+    let k11 = model._get_cell_border("K11");
+    assert_eq!(k11.right, thin("#111111"));
+    assert_eq!(k11.bottom, thin("#111111"));
+    assert_eq!(k11.left, None);
+    assert_eq!(k11.top, None);
+    // and the covered cell of the pasted merge has no interior borders
+    assert_eq!(model._get_cell_border("K10").left, None);
+    assert_eq!(model._get_cell_border("K10").bottom, None);
 }
 
 // ── Navigation and selection ─────────────────────────────────────────────────
