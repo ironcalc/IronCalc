@@ -711,10 +711,13 @@ const EditNamedStyle = ({
                 <div className="ic-edit-style-controls-row">
                   <ToggleButton
                     size="md"
-                    // A mixed selection matches neither option, so both show
-                    // unpressed.
+                    // "mixed" matches no option, so both show unpressed.
                     value={
-                      allBorderSidesOn ? "all" : noBorderSidesOn ? "none" : ""
+                      allBorderSidesOn
+                        ? "all"
+                        : noBorderSidesOn
+                          ? "none"
+                          : "mixed"
                     }
                     onChange={(value) =>
                       setAllBorderSides(value === "all" && !allBorderSidesOn)
