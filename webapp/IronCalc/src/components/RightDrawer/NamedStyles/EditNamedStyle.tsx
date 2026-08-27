@@ -34,7 +34,6 @@ import {
 } from "../../../icons";
 import { STYLE_OPTIONS as LINE_STYLE_OPTIONS } from "../../BorderPicker/LineStylePicker";
 import { Button } from "../../Button/Button";
-import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
 import { resolveColorToHex, themeColor } from "../../ColorPicker/util";
 import { NumberFormats } from "../../FormatMenu/formatUtil";
@@ -43,6 +42,7 @@ import { Menu } from "../../Menu/Menu";
 import { MenuItem } from "../../Menu/MenuItem";
 import { Select } from "../../Select/Select";
 import { Switch } from "../../Switch/Switch";
+import { ToggleButton } from "../../ToggleButton/ToggleButton";
 import type { FormatStyle } from "../ConditionalFormatting/FormatStylePicker";
 import "./edit-named-style.css";
 import {
@@ -150,6 +150,10 @@ function initFormatStyle(model: Model, style: CellStyle): FormatStyle {
 }
 
 const CUSTOM_VALUE = "__custom__";
+
+const FONT_ATTRS = ["bold", "italic", "underline", "strike"] as const;
+
+const BORDER_SIDES = ["top", "right", "bottom", "left"] as const;
 
 const EditNamedStyle = ({
   model,
@@ -269,12 +273,8 @@ const EditNamedStyle = ({
     !borderSides.bottom &&
     !borderSides.left;
 
-  const toggleBorderSide = (side: keyof typeof borderSides) =>
-    setBorderSides((current) => ({ ...current, [side]: !current[side] }));
-
-  const toggleFontAttr = (
-    key: keyof Pick<FormatStyle, "bold" | "italic" | "underline" | "strike">,
-  ) => setFormatStyle((current) => ({ ...current, [key]: !current[key] }));
+  const setAllBorderSides = (on: boolean) =>
+    setBorderSides({ top: on, right: on, bottom: on, left: on });
 
   const isCustom = !knownFormats.includes(numFmt);
   const wasCustomRef = useRef(isCustom);
@@ -499,32 +499,42 @@ const EditNamedStyle = ({
                 {t("named_styles.font_style_label")}
               </span>
               <div className="ic-edit-style-controls-row">
-                <div className="ic-edit-style-button-group">
-                  <IconButton
-                    icon={<Bold />}
-                    pressed={formatStyle.bold}
-                    aria-label={t("toolbar.bold")}
-                    onClick={() => toggleFontAttr("bold")}
-                  />
-                  <IconButton
-                    icon={<Italic />}
-                    pressed={formatStyle.italic}
-                    aria-label={t("toolbar.italic")}
-                    onClick={() => toggleFontAttr("italic")}
-                  />
-                  <IconButton
-                    icon={<Underline />}
-                    pressed={formatStyle.underline}
-                    aria-label={t("toolbar.underline")}
-                    onClick={() => toggleFontAttr("underline")}
-                  />
-                  <IconButton
-                    icon={<Strikethrough />}
-                    pressed={formatStyle.strike}
-                    aria-label={t("toolbar.strike_through")}
-                    onClick={() => toggleFontAttr("strike")}
-                  />
-                </div>
+                <ToggleButton
+                  multiple
+                  size="md"
+                  value={FONT_ATTRS.filter((attr) => formatStyle[attr])}
+                  onChange={(attrs) =>
+                    setFormatStyle((current) => ({
+                      ...current,
+                      bold: attrs.includes("bold"),
+                      italic: attrs.includes("italic"),
+                      underline: attrs.includes("underline"),
+                      strike: attrs.includes("strike"),
+                    }))
+                  }
+                  options={[
+                    {
+                      value: "bold",
+                      icon: <Bold />,
+                      "aria-label": t("toolbar.bold"),
+                    },
+                    {
+                      value: "italic",
+                      icon: <Italic />,
+                      "aria-label": t("toolbar.italic"),
+                    },
+                    {
+                      value: "underline",
+                      icon: <Underline />,
+                      "aria-label": t("toolbar.underline"),
+                    },
+                    {
+                      value: "strike",
+                      icon: <Strikethrough />,
+                      "aria-label": t("toolbar.strike_through"),
+                    },
+                  ]}
+                />
                 <div className="ic-input-control md ic-edit-style-swatch-wrapper">
                   <button
                     ref={fontColorRef}
@@ -622,63 +632,61 @@ const EditNamedStyle = ({
                 <span className="ic-edit-style-sublabel">
                   {t("named_styles.horizontal_align_label")}
                 </span>
-                <div className="ic-edit-style-button-group">
-                  <IconButton
-                    icon={<AlignLeft />}
-                    pressed={horizontalAlign === "left"}
-                    aria-label={t("toolbar.align_left")}
-                    onClick={() =>
-                      setHorizontalAlign(
-                        horizontalAlign === "left" ? "general" : "left",
-                      )
-                    }
-                  />
-                  <IconButton
-                    icon={<AlignCenter />}
-                    pressed={horizontalAlign === "center"}
-                    aria-label={t("toolbar.align_center")}
-                    onClick={() =>
-                      setHorizontalAlign(
-                        horizontalAlign === "center" ? "general" : "center",
-                      )
-                    }
-                  />
-                  <IconButton
-                    icon={<AlignRight />}
-                    pressed={horizontalAlign === "right"}
-                    aria-label={t("toolbar.align_right")}
-                    onClick={() =>
-                      setHorizontalAlign(
-                        horizontalAlign === "right" ? "general" : "right",
-                      )
-                    }
-                  />
-                </div>
+                <ToggleButton
+                  size="md"
+                  value={horizontalAlign}
+                  // "general" is the unpressed state: clicking the pressed
+                  // option goes back to it.
+                  onChange={(value) =>
+                    setHorizontalAlign(
+                      horizontalAlign === value ? "general" : value,
+                    )
+                  }
+                  options={[
+                    {
+                      value: "left",
+                      icon: <AlignLeft />,
+                      "aria-label": t("toolbar.align_left"),
+                    },
+                    {
+                      value: "center",
+                      icon: <AlignCenter />,
+                      "aria-label": t("toolbar.align_center"),
+                    },
+                    {
+                      value: "right",
+                      icon: <AlignRight />,
+                      "aria-label": t("toolbar.align_right"),
+                    },
+                  ]}
+                />
               </div>
               <div className="ic-edit-style-subrow">
                 <span className="ic-edit-style-sublabel">
                   {t("named_styles.vertical_align_label")}
                 </span>
-                <div className="ic-edit-style-button-group">
-                  <IconButton
-                    icon={<ArrowUpToLine />}
-                    pressed={verticalAlign === "top"}
-                    aria-label={t("toolbar.vertical_align_top")}
-                    onClick={() => setVerticalAlign("top")}
-                  />
-                  <IconButton
-                    icon={<ArrowMiddleFromLine />}
-                    pressed={verticalAlign === "center"}
-                    aria-label={t("toolbar.vertical_align_middle")}
-                    onClick={() => setVerticalAlign("center")}
-                  />
-                  <IconButton
-                    icon={<ArrowDownToLine />}
-                    pressed={verticalAlign === "bottom"}
-                    aria-label={t("toolbar.vertical_align_bottom")}
-                    onClick={() => setVerticalAlign("bottom")}
-                  />
-                </div>
+                <ToggleButton
+                  size="md"
+                  value={verticalAlign}
+                  onChange={setVerticalAlign}
+                  options={[
+                    {
+                      value: "top",
+                      icon: <ArrowUpToLine />,
+                      "aria-label": t("toolbar.vertical_align_top"),
+                    },
+                    {
+                      value: "center",
+                      icon: <ArrowMiddleFromLine />,
+                      "aria-label": t("toolbar.vertical_align_middle"),
+                    },
+                    {
+                      value: "bottom",
+                      icon: <ArrowDownToLine />,
+                      "aria-label": t("toolbar.vertical_align_bottom"),
+                    },
+                  ]}
+                />
               </div>
             </>
           )}
@@ -701,60 +709,64 @@ const EditNamedStyle = ({
                   {t("named_styles.border_label")}
                 </span>
                 <div className="ic-edit-style-controls-row">
-                  <div className="ic-edit-style-button-group">
-                    <IconButton
-                      icon={<BorderOuterIcon />}
-                      pressed={allBorderSidesOn}
-                      aria-label={t("toolbar.borders.all")}
-                      onClick={() =>
-                        setBorderSides({
-                          top: !allBorderSidesOn,
-                          right: !allBorderSidesOn,
-                          bottom: !allBorderSidesOn,
-                          left: !allBorderSidesOn,
-                        })
-                      }
-                    />
-                    <IconButton
-                      icon={<BorderNoneIcon />}
-                      pressed={noBorderSidesOn}
-                      aria-label={t("toolbar.borders.clear")}
-                      onClick={() =>
-                        setBorderSides({
-                          top: false,
-                          right: false,
-                          bottom: false,
-                          left: false,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="ic-edit-style-button-group">
-                    <IconButton
-                      icon={<BorderTopIcon />}
-                      pressed={borderSides.top}
-                      aria-label={t("toolbar.borders.top")}
-                      onClick={() => toggleBorderSide("top")}
-                    />
-                    <IconButton
-                      icon={<BorderRightIcon />}
-                      pressed={borderSides.right}
-                      aria-label={t("toolbar.borders.right")}
-                      onClick={() => toggleBorderSide("right")}
-                    />
-                    <IconButton
-                      icon={<BorderBottomIcon />}
-                      pressed={borderSides.bottom}
-                      aria-label={t("toolbar.borders.bottom")}
-                      onClick={() => toggleBorderSide("bottom")}
-                    />
-                    <IconButton
-                      icon={<BorderLeftIcon />}
-                      pressed={borderSides.left}
-                      aria-label={t("toolbar.borders.left")}
-                      onClick={() => toggleBorderSide("left")}
-                    />
-                  </div>
+                  <ToggleButton
+                    size="md"
+                    // A mixed selection matches neither option, so both show
+                    // unpressed.
+                    value={
+                      allBorderSidesOn ? "all" : noBorderSidesOn ? "none" : ""
+                    }
+                    onChange={(value) =>
+                      setAllBorderSides(value === "all" && !allBorderSidesOn)
+                    }
+                    options={[
+                      {
+                        value: "all",
+                        icon: <BorderOuterIcon />,
+                        "aria-label": t("toolbar.borders.all"),
+                      },
+                      {
+                        value: "none",
+                        icon: <BorderNoneIcon />,
+                        "aria-label": t("toolbar.borders.clear"),
+                      },
+                    ]}
+                  />
+                  <ToggleButton
+                    multiple
+                    size="md"
+                    value={BORDER_SIDES.filter((side) => borderSides[side])}
+                    onChange={(sides) =>
+                      setBorderSides({
+                        top: sides.includes("top"),
+                        right: sides.includes("right"),
+                        bottom: sides.includes("bottom"),
+                        left: sides.includes("left"),
+                      })
+                    }
+                    options={[
+                      {
+                        value: "top",
+                        icon: <BorderTopIcon />,
+                        "aria-label": t("toolbar.borders.top"),
+                      },
+                      {
+                        value: "right",
+                        icon: <BorderRightIcon />,
+                        "aria-label": t("toolbar.borders.right"),
+                      },
+                      {
+                        value: "bottom",
+                        icon: <BorderBottomIcon />,
+                        "aria-label": t("toolbar.borders.bottom"),
+                      },
+                      {
+                        value: "left",
+                        icon: <BorderLeftIcon />,
+                        "aria-label": t("toolbar.borders.left"),
+                      },
+                    ]}
+                  />
                 </div>
               </div>
               <div className="ic-edit-style-subrow">
