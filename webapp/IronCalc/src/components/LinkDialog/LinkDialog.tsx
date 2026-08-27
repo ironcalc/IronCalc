@@ -11,6 +11,10 @@ import { useModalFocus } from "../Modal/useModalFocus";
 import { useModalKeyDown } from "../Modal/useModalKeyDown";
 import { Select } from "../Select/Select";
 import {
+  ToggleButton,
+  type ToggleButtonOption,
+} from "../ToggleButton/ToggleButton";
+import {
   buildMailto,
   CELL_REFERENCE_REGEX,
   DEFINED_NAME_REGEX,
@@ -229,10 +233,10 @@ export function LinkDialog({
     return null;
   }
 
-  const tabs: { id: LinkDialogTab; label: string }[] = [
-    { id: "external", label: t("link_dialog.external_tab") },
-    { id: "document", label: t("link_dialog.document_tab") },
-    { id: "email", label: t("link_dialog.email_tab") },
+  const tabs: ToggleButtonOption<LinkDialogTab>[] = [
+    { value: "external", label: t("link_dialog.external_tab") },
+    { value: "document", label: t("link_dialog.document_tab") },
+    { value: "email", label: t("link_dialog.email_tab") },
   ];
 
   const stopEditorKeys = (event: React.KeyboardEvent): void => {
@@ -261,22 +265,14 @@ export function LinkDialog({
         />
       </div>
       <div className="ic-modal-dialog-body">
-        <div className="ic-link-dialog-tabs" role="tablist">
-          {tabs.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === entry.id}
-              className={["ic-link-dialog-tab", tab === entry.id && "selected"]
-                .filter(Boolean)
-                .join(" ")}
-              onClick={() => setTab(entry.id)}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </div>
+        <ToggleButton
+          fullWidth
+          size="md"
+          className="ic-link-dialog-tabs"
+          options={tabs}
+          value={tab}
+          onChange={setTab}
+        />
         {tab === "external" && (
           <Input
             autoFocus
