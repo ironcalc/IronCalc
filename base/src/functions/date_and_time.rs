@@ -1776,16 +1776,16 @@ impl<'a> Model<'a> {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number(&args[0], cell) {
+        let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let end_serial = match self.get_number(&args[1], cell) {
+        let end_serial = match self.get_number_no_bools(&args[1], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
         let basis = if args.len() == 3 {
-            match self.get_number(&args[2], cell) {
+            match self.get_number_no_bools(&args[2], cell) {
                 Ok(f) => f as i32,
                 Err(s) => return s,
             }
