@@ -2606,16 +2606,6 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
-    pub(crate) fn get_cell_structure(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<CellStructure, String> {
-        let worksheet = self.workbook.worksheet(sheet)?;
-        worksheet.get_cell_structure(row, column)
-    }
-
     fn set_cell_with_formula(
         &mut self,
         sheet: u32,
@@ -2768,6 +2758,54 @@ impl<'a> Model<'a> {
 
 /// Reads and evaluation: everything here runs on any addressing scheme.
 impl<'a, A: Position> Model<'a, A> {
+    pub(crate) fn get_cell_structure(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<CellStructure, String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        worksheet.get_cell_structure(row, column)
+    }
+
+    // Returns true if for every array formula in the range, the whole spill is included in the range,
+    // false otherwise.
+    pub(crate) fn can_clear_range(&self, range: &Area) -> Result<bool, String> {
+        let sheet = range.sheet;
+        for row in range.row..range.row + range.height {
+            for column in range.column..range.column + range.width {
+                match self.get_cell_structure(sheet, row, column)? {
+                    CellStructure::ArrayFormula { range: r } => {
+                        let (width, height) = r;
+                        if column + width > range.column + range.width
+                            || row + height > range.row + range.height
+                        {
+                            return Ok(false);
+                        }
+                    }
+                    CellStructure::SpillArray {
+                        anchor: a,
+                        range: r,
+                    } => {
+                        let (anchor_row, anchor_column) = a;
+                        let (width, height) = r;
+                        if anchor_column < range.column
+                            || anchor_row < range.row
+                            || anchor_column + width > range.column + range.width
+                            || anchor_row + height > range.row + range.height
+                        {
+                            return Ok(false);
+                        }
+                    }
+                    _ => {
+                        // noop
+                    }
+                }
+            }
+        }
+        Ok(true)
+    }
+
     // Helper function that returns a defined name given the name and scope
     fn get_parsed_defined_name(
         &self,
@@ -3198,44 +3236,6 @@ impl<'a> Model<'a> {
                 || column >= range.column + range.width
         });
         Ok(())
-    }
-
-    // Returns true if for every array formula in the range, the whole spill is included in the range,
-    // false otherwise.
-    pub(crate) fn can_clear_range(&self, range: &Area) -> Result<bool, String> {
-        let sheet = range.sheet;
-        for row in range.row..range.row + range.height {
-            for column in range.column..range.column + range.width {
-                match self.get_cell_structure(sheet, row, column)? {
-                    CellStructure::ArrayFormula { range: r } => {
-                        let (width, height) = r;
-                        if column + width > range.column + range.width
-                            || row + height > range.row + range.height
-                        {
-                            return Ok(false);
-                        }
-                    }
-                    CellStructure::SpillArray {
-                        anchor: a,
-                        range: r,
-                    } => {
-                        let (anchor_row, anchor_column) = a;
-                        let (width, height) = r;
-                        if anchor_column < range.column
-                            || anchor_row < range.row
-                            || anchor_column + width > range.column + range.width
-                            || anchor_row + height > range.row + range.height
-                        {
-                            return Ok(false);
-                        }
-                    }
-                    _ => {
-                        // noop
-                    }
-                }
-            }
-        }
-        Ok(true)
     }
 
     /// Deletes a range by removing it from worksheet data. All content and style is removed.

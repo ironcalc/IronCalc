@@ -81,7 +81,6 @@ test_helpers!(Model<'_>);
 #[cfg(feature = "collab-test")]
 test_helpers!(crate::collab::model::CollabModel<'_>);
 
-#[cfg(not(feature = "collab-test"))]
 impl TestModel<'_> {
     pub fn _cell_clear_contents(
         &mut self,
@@ -108,21 +107,5 @@ impl TestModel<'_> {
             height: 1,
         };
         self.range_clear_all(&area)
-    }
-}
-
-#[cfg(feature = "collab-test")]
-impl TestModel<'_> {
-    pub fn _cell_clear_contents(
-        &mut self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<(), String> {
-        self.cell_clear_contents(sheet, row, column)
-    }
-
-    pub fn _cell_clear_all(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
-        self.cell_clear_all(sheet, row, column)
     }
 }
