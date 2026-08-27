@@ -5,13 +5,14 @@ use super::{common::UserModel, history::Diff};
 
 impl UserModel<'_> {
     /// Merges the cells of `range` into a single merged cell anchored at its
-    /// top-left corner. Like in Excel, the content and links of every covered
-    /// cell are cleared and the anchor's style is copied to the whole range
-    /// (with its borders kept only on the perimeter); undoing restores
-    /// everything.
+    /// top-left corner. At most one cell of the range may have content: its
+    /// content, link and style move to the anchor and the style is copied to
+    /// the whole range (with its borders outlining the merged cell as a
+    /// whole); undoing restores everything.
     ///
-    /// Fails if the range is invalid, a single cell, or intersects an existing
-    /// merged cell or an array formula.
+    /// Fails if the range is invalid, a single cell, intersects an existing
+    /// merged cell or an array formula, or contains more than one cell with
+    /// content.
     ///
     /// See also:
     /// * [Model::merge_cells](crate::Model::merge_cells)
@@ -20,6 +21,14 @@ impl UserModel<'_> {
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
 
         let mut diff_list = self.covered_cells_clear_diffs(range)?;
+
+        // Merging moves the content and link of the single covered cell with
+        // content to the anchor: capture the anchor's state before so the
+        // gained content can be recorded as diffs of its own (redo and
+        // external models replay the diffs, not merge_cells).
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let anchor_old_value = worksheet.cell(range.row, range.column).cloned();
+        let anchor_old_link = worksheet.links.get(&(range.row, range.column)).cloned();
 
         // Merging stamps the anchor's style on the whole range: capture the
         // explicit style of every cell before and after so undo restores them
@@ -35,6 +44,33 @@ impl UserModel<'_> {
         }
 
         self.model.merge_cells(range)?;
+
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let anchor_new_value = worksheet.cell(range.row, range.column).cloned();
+        let anchor_had_content = !matches!(&anchor_old_value, None | Some(Cell::EmptyCell { .. }));
+        let anchor_has_content = !matches!(&anchor_new_value, None | Some(Cell::EmptyCell { .. }));
+        if !anchor_had_content && anchor_has_content {
+            let new_value =
+                self.model
+                    .get_localized_cell_content(sheet, range.row, range.column)?;
+            diff_list.push(Diff::SetCellValue {
+                sheet,
+                row: range.row,
+                column: range.column,
+                new_value,
+                old_value: Box::new(anchor_old_value),
+            });
+        }
+        let anchor_new_link = worksheet.links.get(&(range.row, range.column)).cloned();
+        if anchor_new_link != anchor_old_link {
+            diff_list.push(Diff::SetCellLink {
+                sheet,
+                row: range.row,
+                column: range.column,
+                old_value: Box::new(anchor_old_link),
+                new_value: Box::new(anchor_new_link),
+            });
+        }
 
         for (row, column, old_style) in old_styles {
             let new_style = self.model.get_cell_style_or_none(sheet, row, column)?;

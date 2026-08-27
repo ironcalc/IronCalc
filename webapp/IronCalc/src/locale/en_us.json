@@ -199,6 +199,8 @@
     "error_editing_formula": "Error editing formula",
     "error_inserting_columns": "Failed to insert columns",
     "error_inserting_rows": "Failed to insert rows",
+    "error_merging_cells": "Cannot merge cells",
+    "error_merging_cells_content": "Only one cell in the selection can have content.",
     "error_moving_columns": "Failed to move columns",
     "error_moving_rows": "Failed to move rows"
   },

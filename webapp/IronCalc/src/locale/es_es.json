@@ -199,6 +199,8 @@
     "error_editing_formula": "Error al editar la fórmula",
     "error_inserting_columns": "Error al insertar las columnas",
     "error_inserting_rows": "Error al insertar las filas",
+    "error_merging_cells": "No se pueden combinar las celdas",
+    "error_merging_cells_content": "Solo una celda de la selección puede tener contenido.",
     "error_moving_columns": "Error al mover las columnas",
     "error_moving_rows": "Error al mover las filas"
   },

@@ -38,15 +38,37 @@ fn last_diff_list(model: &mut UserModel) -> Vec<Diff> {
 fn merge_undo_redo() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 2, 2, "5").unwrap();
-    model.set_user_input(0, 3, 3, "hello").unwrap();
 
     model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
     assert_eq!(model.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
     assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("5".to_string()));
+
+    model.undo().unwrap();
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("5".to_string()));
+
+    model.redo().unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("5".to_string()));
+}
+
+#[test]
+fn merge_moves_content_to_the_anchor_and_undo_restores_it() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 3, 3, "hello").unwrap();
+
+    // C3 is the only cell with content in B2:C3: it moves to the anchor
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 2),
+        Ok("hello".to_string())
+    );
     assert_eq!(model.get_formatted_cell_value(0, 3, 3), Ok("".to_string()));
 
     model.undo().unwrap();
     assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("".to_string()));
     assert_eq!(
         model.get_formatted_cell_value(0, 3, 3),
         Ok("hello".to_string())
@@ -54,15 +76,42 @@ fn merge_undo_redo() {
 
     model.redo().unwrap();
     assert_eq!(model.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 2),
+        Ok("hello".to_string())
+    );
     assert_eq!(model.get_formatted_cell_value(0, 3, 3), Ok("".to_string()));
 
     // undo again after the redo
     model.undo().unwrap();
     assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("".to_string()));
     assert_eq!(
         model.get_formatted_cell_value(0, 3, 3),
         Ok("hello".to_string())
     );
+}
+
+#[test]
+fn merge_with_more_than_one_content_cell_fails_and_leaves_no_trace() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 2, 2, "5").unwrap();
+    model.set_user_input(0, 3, 3, "hello").unwrap();
+    model.flush_send_queue();
+
+    assert_eq!(
+        model.merge_cells(&area(0, 2, 2, 2, 2)),
+        Err("Cannot merge cells: more than one cell has content".to_string())
+    );
+    // the model is untouched and the history is clean
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("5".to_string()));
+    assert_eq!(
+        model.get_formatted_cell_value(0, 3, 3),
+        Ok("hello".to_string())
+    );
+    let queue: Vec<QueueDiffs> = decode(&model.flush_send_queue()).unwrap();
+    assert!(queue.is_empty());
 }
 
 #[test]
@@ -91,8 +140,10 @@ fn merge_diff_shape() {
 
     model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
     let list = last_diff_list(&mut model);
-    // one SetCellValue for the cleared covered cell C3 plus the SetMergedCells
-    assert_eq!(list.len(), 2);
+    // a SetCellValue clearing the covered cell C3, a SetCellValue giving its
+    // content to the anchor B2, a SetCellStyle for the anchor (the moved cell
+    // brings an explicit style along) and the SetMergedCells
+    assert_eq!(list.len(), 4);
     assert!(matches!(
         &list[0],
         Diff::SetCellValue {
@@ -102,8 +153,26 @@ fn merge_diff_shape() {
             ..
         }
     ));
+    assert!(matches!(
+        &list[1],
+        Diff::SetCellValue {
+            sheet: 0,
+            row: 2,
+            column: 2,
+            ..
+        }
+    ));
+    assert!(matches!(
+        &list[2],
+        Diff::SetCellStyle {
+            sheet: 0,
+            row: 2,
+            column: 2,
+            ..
+        }
+    ));
     assert!(
-        matches!(&list[1], Diff::SetMergedCells { sheet: 0, old_value, new_value }
+        matches!(&list[3], Diff::SetMergedCells { sheet: 0, old_value, new_value }
             if old_value.is_empty() && new_value == &vec![merged(2, 2, 2, 2)])
     );
 }
@@ -131,7 +200,6 @@ fn external_diffs_replay() {
     let mut model1 = new_empty_user_model();
     let mut model2 = new_empty_user_model();
 
-    model1.set_user_input(0, 2, 2, "5").unwrap();
     model1.set_user_input(0, 3, 3, "hello").unwrap();
     model2
         .apply_external_diffs(&model1.flush_send_queue())
@@ -142,11 +210,16 @@ fn external_diffs_replay() {
         .apply_external_diffs(&model1.flush_send_queue())
         .unwrap();
 
+    // the content moved to the anchor on the external model too
     assert_eq!(
         model2.get_merged_cells(0).unwrap(),
         vec![merged(2, 2, 2, 2)]
     );
     assert_eq!(model2.get_formatted_cell_value(0, 3, 3), Ok("".to_string()));
+    assert_eq!(
+        model2.get_formatted_cell_value(0, 2, 2),
+        Ok("hello".to_string())
+    );
 
     // the undo also replays
     model1.undo().unwrap();
@@ -154,6 +227,7 @@ fn external_diffs_replay() {
         .apply_external_diffs(&model1.flush_send_queue())
         .unwrap();
     assert!(model2.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model2.get_formatted_cell_value(0, 2, 2), Ok("".to_string()));
     assert_eq!(
         model2.get_formatted_cell_value(0, 3, 3),
         Ok("hello".to_string())
@@ -161,7 +235,7 @@ fn external_diffs_replay() {
 }
 
 #[test]
-fn merge_clears_covered_links_and_undo_restores_them() {
+fn merge_moves_the_content_cell_link_to_the_anchor_and_undo_restores_it() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 3, 3, "ironcalc").unwrap();
     let link = Link::External {
@@ -170,8 +244,37 @@ fn merge_clears_covered_links_and_undo_restores_them() {
     };
     model.set_cell_link(0, 3, 3, link.clone(), None).unwrap();
 
+    // C3 is the only cell with content: its link moves to the anchor with it
     model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
     assert_eq!(model.get_cell_link(0, 3, 3), Ok(None));
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(link.clone())));
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 2),
+        Ok("ironcalc".to_string())
+    );
+
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 3, 3), Ok(Some(link.clone())));
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(None));
+
+    model.redo().unwrap();
+    assert_eq!(model.get_cell_link(0, 3, 3), Ok(None));
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(Some(link)));
+}
+
+#[test]
+fn merge_clears_the_link_of_a_covered_cell_without_content() {
+    let mut model = new_empty_user_model();
+    // a link on a cell with no content does not move to the anchor
+    let link = Link::External {
+        target: "https://www.ironcalc.com".to_string(),
+        tooltip: None,
+    };
+    model.set_cell_link(0, 3, 3, link.clone(), None).unwrap();
+
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    assert_eq!(model.get_cell_link(0, 3, 3), Ok(None));
+    assert_eq!(model.get_cell_link(0, 2, 2), Ok(None));
 
     model.undo().unwrap();
     assert_eq!(model.get_cell_link(0, 3, 3), Ok(Some(link)));
@@ -304,35 +407,42 @@ fn merge_stamps_the_anchor_style_and_undo_restores_the_old_ones() {
     );
 }
 
-#[test]
-fn merge_moves_the_anchor_borders_to_the_perimeter_and_undo_restores_them() {
-    let mut model = new_empty_user_model();
-    // full outline on the anchor B2, another border on covered C3
-    model._set_cell_border("B2", "#111111");
-    model._set_cell_border("C3", "#999999");
-
-    // merge B2:C3
-    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
-
-    // the outline now wraps the whole merged cell
+// Asserts that a full "#color" outline wraps the merged range B2:C3 as a
+// whole: each cell shows only the sides of its corner of the perimeter.
+fn assert_outline_wraps_b2_c3(model: &UserModel, color: &str) {
     let b2 = model._get_cell_border("B2");
-    assert_eq!(b2.left, thin("#111111"));
-    assert_eq!(b2.top, thin("#111111"));
+    assert_eq!(b2.left, thin(color));
+    assert_eq!(b2.top, thin(color));
     assert_eq!(b2.right, None);
     assert_eq!(b2.bottom, None);
     let c2 = model._get_cell_border("C2");
-    assert_eq!(c2.top, thin("#111111"));
-    assert_eq!(c2.right, thin("#111111"));
+    assert_eq!(c2.top, thin(color));
+    assert_eq!(c2.right, thin(color));
     assert_eq!(c2.left, None);
     assert_eq!(c2.bottom, None);
     let b3 = model._get_cell_border("B3");
-    assert_eq!(b3.left, thin("#111111"));
-    assert_eq!(b3.bottom, thin("#111111"));
+    assert_eq!(b3.left, thin(color));
+    assert_eq!(b3.bottom, thin(color));
+    assert_eq!(b3.top, None);
+    assert_eq!(b3.right, None);
     let c3 = model._get_cell_border("C3");
-    assert_eq!(c3.right, thin("#111111"));
-    assert_eq!(c3.bottom, thin("#111111"));
+    assert_eq!(c3.right, thin(color));
+    assert_eq!(c3.bottom, thin(color));
     assert_eq!(c3.left, None);
     assert_eq!(c3.top, None);
+}
+
+#[test]
+fn merge_moves_the_anchor_borders_to_the_perimeter_and_undo_restores_them() {
+    let mut model = new_empty_user_model();
+    // full outline on the anchor B2, another border on covered C3; no content
+    model._set_cell_border("B2", "#111111");
+    model._set_cell_border("C3", "#999999");
+
+    // merge B2:C3: the empty range takes the anchor's style, so its outline
+    // wraps the whole merged cell and the C3 outline is dropped
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    assert_outline_wraps_b2_c3(&model, "#111111");
 
     // undo restores the two original outlines
     model.undo().unwrap();
@@ -359,6 +469,82 @@ fn merge_moves_the_anchor_borders_to_the_perimeter_and_undo_restores_them() {
 }
 
 #[test]
+fn merge_moves_the_content_cell_borders_to_the_perimeter_and_undo_restores_them() {
+    let mut model = new_empty_user_model();
+    // C3 is the bottom-right corner of B2:C3 and the only cell with content
+    model.set_user_input(0, 3, 3, "x").unwrap();
+    model._set_cell_border("C3", "#999999");
+
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+
+    // the borders come from the cell with content, wherever it sat: its full
+    // outline wraps the merged cell as a whole
+    assert_outline_wraps_b2_c3(&model, "#999999");
+
+    // undo restores the original outline on C3 alone
+    model.undo().unwrap();
+    let c3 = model._get_cell_border("C3");
+    assert_eq!(
+        [c3.left, c3.right, c3.top, c3.bottom],
+        [
+            thin("#999999"),
+            thin("#999999"),
+            thin("#999999"),
+            thin("#999999")
+        ]
+    );
+    let b2 = model._get_cell_border("B2");
+    assert_eq!(
+        [b2.left, b2.right, b2.top, b2.bottom],
+        [None, None, None, None]
+    );
+}
+
+#[test]
+fn merge_stamps_the_content_cell_style_and_undo_restores_the_old_ones() {
+    let mut model = new_empty_user_model();
+    // anchor B2 red but empty, C3 blue with content
+    model
+        .update_range_style(&area(0, 2, 2, 1, 1), "fill.color", "#FF0000")
+        .unwrap();
+    model
+        .update_range_style(&area(0, 3, 3, 1, 1), "fill.color", "#0000FF")
+        .unwrap();
+    model.set_user_input(0, 3, 3, "7").unwrap();
+
+    // the content cell's blue wins over the anchor's red
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("7".to_string()));
+    for (row, column) in [(2, 2), (2, 3), (3, 2), (3, 3)] {
+        assert_eq!(
+            model.get_cell_style(0, row, column).unwrap().fill.color,
+            Color::Rgb("#0000FF".to_string())
+        );
+    }
+
+    // undo brings the old styles and content back
+    model.undo().unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 3, 3), Ok("7".to_string()));
+    assert_eq!(
+        model.get_cell_style(0, 2, 2).unwrap().fill.color,
+        Color::Rgb("#FF0000".to_string())
+    );
+    assert_eq!(
+        model.get_cell_style(0, 3, 3).unwrap().fill.color,
+        Color::Rgb("#0000FF".to_string())
+    );
+
+    // redo stamps them again
+    model.redo().unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("7".to_string()));
+    assert_eq!(
+        model.get_cell_style(0, 2, 2).unwrap().fill.color,
+        Color::Rgb("#0000FF".to_string())
+    );
+}
+
+#[test]
 fn merge_style_stamping_replays_on_external_models() {
     let mut model1 = new_empty_user_model();
     let mut model2 = new_empty_user_model();
@@ -380,9 +566,10 @@ fn merge_style_stamping_replays_on_external_models() {
 #[test]
 fn copy_paste_keeps_the_perimeter_borders_of_a_merged_cell() {
     let mut model = new_empty_user_model();
-    // outline the anchor and merge B2:C3: the right/bottom sides of the
-    // outline now live on the non-anchor cells
-    model._set_cell_border("B2", "#111111");
+    // C3, the bottom-right corner of B2:C3, has content and an outline: after
+    // merging, the surviving bottom/right borders live on non-anchor cells
+    model.set_user_input(0, 3, 3, "x").unwrap();
+    model._set_cell_border("C3", "#111111");
     model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
 
     model.set_selected_cell(2, 2).unwrap();
@@ -394,18 +581,26 @@ fn copy_paste_keeps_the_perimeter_borders_of_a_merged_cell() {
 
     // the pasted merge keeps the full outline, including the sides that are
     // not on its anchor
+    assert_eq!(
+        model.get_formatted_cell_value(0, 10, 10),
+        Ok("x".to_string())
+    );
     let j10 = model._get_cell_border("J10");
     assert_eq!(j10.left, thin("#111111"));
     assert_eq!(j10.top, thin("#111111"));
-    assert_eq!(j10.right, None);
+    assert_eq!([j10.right, j10.bottom], [None, None]);
+    let k10 = model._get_cell_border("K10");
+    assert_eq!(k10.top, thin("#111111"));
+    assert_eq!(k10.right, thin("#111111"));
+    assert_eq!([k10.left, k10.bottom], [None, None]);
+    let j11 = model._get_cell_border("J11");
+    assert_eq!(j11.left, thin("#111111"));
+    assert_eq!(j11.bottom, thin("#111111"));
+    assert_eq!([j11.right, j11.top], [None, None]);
     let k11 = model._get_cell_border("K11");
     assert_eq!(k11.right, thin("#111111"));
     assert_eq!(k11.bottom, thin("#111111"));
-    assert_eq!(k11.left, None);
-    assert_eq!(k11.top, None);
-    // and the covered cell of the pasted merge has no interior borders
-    assert_eq!(model._get_cell_border("K10").left, None);
-    assert_eq!(model._get_cell_border("K10").bottom, None);
+    assert_eq!([k11.left, k11.top], [None, None]);
 }
 
 // ── Navigation and selection ─────────────────────────────────────────────────
