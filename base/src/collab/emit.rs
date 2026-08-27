@@ -736,6 +736,17 @@ impl CollabModel<'_> {
         self.set_cell_style(sheet, row, column, &style)
     }
 
+    /// Copies a cell's style onto another cell. The source style is the effective one, so a style
+    /// the source only inherits from its row or column still lands on the destination cell itself.
+    pub fn copy_cell_style(
+        &mut self,
+        source: (u32, i32, i32),
+        destination: (u32, i32, i32),
+    ) -> Result<(), String> {
+        let style = self.get_style_for_cell(source.0, source.1, source.2)?;
+        self.set_cell_style(destination.0, destination.1, destination.2, &style)
+    }
+
     /// Changes the height of a row.
     pub fn set_row_height(&mut self, sheet: u32, row: i32, height: f64) -> Result<(), String> {
         let (i, id) = self.sheet_of(sheet)?;
@@ -799,6 +810,27 @@ impl CollabModel<'_> {
         Ok(())
     }
 
+    /// Resets a row's style to the default, if it has one.
+    pub fn delete_row_style(&mut self, sheet: u32, row: i32) -> Result<(), String> {
+        let (i, id) = self.sheet_of(sheet)?;
+        // No row validation, mirroring the ordinal model — which validates the column but not the row.
+        let Some(key) = Stable::row_at(&self.workbook.worksheets[i].index, row) else {
+            return Ok(());
+        };
+        let prev = self.row_prev(i, &key, RowPropKind::Style);
+        if !matches!(prev, Some(RowProperty::Style(Some(_)))) {
+            return Ok(());
+        }
+        self.commit_local(vec![Patch::SetRowProperty {
+            sheet: id,
+            row: key,
+            property: RowProperty::Style(None),
+            ts: None,
+            prev,
+        }]);
+        Ok(())
+    }
+
     /// The patch a single-column property write emits. v1 writes points, never spans: see the
     /// shattering paragraph in [`patch`](crate::collab::patch).
     fn column_patches(
@@ -856,6 +888,21 @@ impl CollabModel<'_> {
     ) -> Result<(), String> {
         let property = ColProperty::Style(Some(Box::new(style.clone())));
         let patches = self.column_patches(sheet, column, property)?;
+        self.commit_local(patches);
+        Ok(())
+    }
+
+    /// Resets a column's style to the default, if it has one.
+    pub fn delete_column_style(&mut self, sheet: u32, column: i32) -> Result<(), String> {
+        let (i, _) = self.sheet_of(sheet)?;
+        let Some(key) = Stable::col_at(&self.workbook.worksheets[i].index, column) else {
+            return Ok(());
+        };
+        let prev = self.col_prev(i, &key, ColPropKind::Style);
+        if !matches!(prev, Some(ColProperty::Style(Some(_)))) {
+            return Ok(());
+        }
+        let patches = self.column_patches(sheet, column, ColProperty::Style(None))?;
         self.commit_local(patches);
         Ok(())
     }
@@ -2252,9 +2299,6 @@ unsupported! { &self
 unsupported! { &mut self
     set_language(language_id: &str) -> ();
     set_user_array_formula(sheet: u32, row: i32, column: i32, width: i32, height: i32, value: &str) -> ();
-    delete_row_style(sheet: u32, row: i32) -> ();
-    delete_column_style(sheet: u32, column: i32) -> ();
-    copy_cell_style(source: (u32, i32, i32), destination: (u32, i32, i32)) -> ();
     create_named_style(name: &str, style: &Style) -> ();
     delete_named_style(name: &str) -> ();
     update_named_style(name: &str, new_name: &str, style: &Style) -> (i32, i32);
@@ -2789,9 +2833,96 @@ mod test {
         style
     }
 
+    fn struck() -> Style {
+        let mut style = Style::default();
+        style.font.strike = true;
+        style
+    }
+
     /// How many patches of one kind a commit carries.
     fn count(commit: &LocalCommit, kind: fn(&Patch) -> bool) -> usize {
         commit.patches.iter().filter(|p| kind(p)).count()
+    }
+
+    #[test]
+    fn style_deletion_and_copy() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        let plain = a.get_style_for_cell(0, 1, 5).unwrap();
+
+        a.set_row_style(0, 2, &bold()).unwrap();
+        a.set_column_style(0, 3, &italic()).unwrap();
+        a.set_cell_style(0, 2, 1, &struck()).unwrap(); // own style inside the bold row
+        a.set_cell_style(0, 7, 3, &struck()).unwrap(); // own style inside the italic column
+        let mut wire = a.flush();
+
+        // What each cell inherits before anything is deleted.
+        assert_eq!(a.get_style_for_cell(0, 2, 5), Ok(bold()));
+        assert_eq!(a.get_style_for_cell(0, 6, 3), Ok(italic()));
+        assert_eq!(a.get_style_for_cell(0, 2, 1), Ok(struck()));
+
+        // A copy reads the source's effective style: its own here, its row's below.
+        a.copy_cell_style((0, 7, 3), (0, 9, 9)).unwrap();
+        a.copy_cell_style((0, 2, 5), (0, 10, 9)).unwrap();
+        assert_eq!(a.get_cell_style_or_none(0, 9, 9), Ok(Some(struck())));
+        assert_eq!(a.get_cell_style_or_none(0, 10, 9), Ok(Some(bold())));
+        wire.extend(a.flush());
+
+        // The row's style goes; the cell that had its own, and the copy taken off the row, do not.
+        a.delete_row_style(0, 2).unwrap();
+        assert_eq!(a.get_style_for_cell(0, 2, 5), Ok(plain.clone()));
+        assert_eq!(a.get_style_for_cell(0, 2, 1), Ok(struck()));
+        assert_eq!(a.get_cell_style_or_none(0, 10, 9), Ok(Some(bold())));
+        let deleted_row = a.flush();
+        assert_eq!(deleted_row.len(), 1); // one user action, one commit
+
+        // Same for the column.
+        a.delete_column_style(0, 3).unwrap();
+        assert_eq!(a.get_style_for_cell(0, 6, 3), Ok(plain.clone()));
+        assert_eq!(a.get_style_for_cell(0, 7, 3), Ok(struck()));
+        let deleted_col = a.flush();
+        assert_eq!(deleted_col.len(), 1);
+
+        // Nothing to reset is not an edit — the style just cleared, one never set on a row and a
+        // column the sheet does hold, and one on a row and a column it has no key for at all.
+        a.delete_row_style(0, 2).unwrap();
+        a.delete_column_style(0, 3).unwrap();
+        a.delete_row_style(0, 7).unwrap();
+        a.delete_column_style(0, 1).unwrap();
+        a.delete_row_style(0, 400).unwrap();
+        a.delete_column_style(0, 40).unwrap();
+        assert!(a.flush().is_empty());
+
+        // Upstream's validation, error strings included; a rejected call emits nothing.
+        assert_eq!(
+            a.delete_column_style(0, 0),
+            Err("Column number '0' is not valid.".to_string())
+        );
+        let bad_sheet = Err("Invalid sheet index".to_string());
+        assert_eq!(a.delete_row_style(9, 1), bad_sheet);
+        assert_eq!(a.delete_column_style(9, 1), bad_sheet);
+        assert_eq!(a.copy_cell_style((9, 1, 1), (0, 1, 1)), bad_sheet);
+        assert_eq!(a.copy_cell_style((0, 1, 1), (9, 1, 1)), bad_sheet);
+        assert_eq!(
+            a.copy_cell_style((0, 1, 1), (0, 0, 1)),
+            Err("Incorrect row or column".to_string())
+        );
+        assert!(a.flush().is_empty());
+
+        // The deletion's prev is all undo needs: no inversion of its own.
+        let undo: Vec<Patch> = invert_patches(&deleted_row[0].patches);
+        a.commit_local(undo);
+        assert_eq!(a.get_style_for_cell(0, 2, 5), Ok(bold()));
+        assert_eq!(a.get_style_for_cell(0, 6, 3), Ok(plain));
+
+        wire.extend(deleted_row);
+        wire.extend(deleted_col);
+        wire.extend(a.flush());
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &wire);
+        a.evaluate();
+        b.evaluate();
+        assert_eq!(b.workbook, a.workbook);
     }
 
     /// Clearing a range: contents go, formatting stays or goes with them, and the coordinates the
