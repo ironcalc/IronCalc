@@ -706,3 +706,36 @@ fn test_edate_function() {
     assert_eq!(model._get_text("A11"), *"#NUM!");
     assert_eq!(model._get_text("A12"), *"#NUM!");
 }
+
+fn test_fn_eomonth_empty_arguments() {
+    let mut model = new_empty_model();
+
+    // Blank start_date, matches Excel resolving it to January 1900
+    model._set("B1", "7");
+    model._set("C1", "=EOMONTH(A1,B1)");
+
+    // Blank months, treated as 0
+    model._set("A2", "=DATE(2023,3,2)");
+    model._set("C2", "=EOMONTH(A2,B2)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("C1"), *"244");
+    assert_eq!(model._get_text("C2"), *"45016");
+}
+
+#[test]
+fn test_fn_eomonth_wrong_arguments() {
+    let mut model = new_empty_model();
+
+    // Date serial 46000: 9 Dec 2025
+    model._set("A1", "=EOMONTH()");
+    model._set("A2", "=EOMONTH(46000, 3)");
+    model._set("A3", "=EOMONTH(46000, 3, 1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"46112");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+}
