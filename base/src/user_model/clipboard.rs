@@ -322,7 +322,10 @@ impl<'a> UserModel<'a> {
                 // A translated merge can conflict outside the checked target
                 // area (another merge, an array formula) or fall off the
                 // sheet: those are dropped, the rest of the cut still lands
-                if self.model.merge_cells(&merge_area).is_ok() {
+                // merge_cells_keep_styles: the pasted cells already carry the
+                // merged style pattern of the source; stamping the anchor's
+                // style would drop the perimeter borders of non-anchor cells
+                if self.model.merge_cells_keep_styles(&merge_area).is_ok() {
                     diff_list.append(&mut merge_diffs);
                 }
             }
@@ -546,7 +549,11 @@ impl<'a> UserModel<'a> {
                     // A translated merge can conflict outside the checked
                     // target area (another merge, an array formula) or fall
                     // off the sheet: those are skipped, the rest still paste
-                    if self.model.merge_cells(&merge_area).is_ok() {
+                    // merge_cells_keep_styles: the pasted cells already carry
+                    // the merged style pattern of the source; stamping the
+                    // anchor's style would drop the perimeter borders of
+                    // non-anchor cells
+                    if self.model.merge_cells_keep_styles(&merge_area).is_ok() {
                         diff_list.append(&mut merge_diffs);
                     }
                 }

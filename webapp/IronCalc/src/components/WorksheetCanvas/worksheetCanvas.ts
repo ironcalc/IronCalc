@@ -1071,8 +1071,9 @@ export default class WorksheetCanvas {
 
   // The fill color a cell shows on screen: a cell covered by a merged range
   // is painted with the fill of the merge anchor, whatever its own style says
-  // (covered cells keep their styles in the model). Returns the resolved
-  // color, or null when the effective style has no fill.
+  // (merging stamps the anchor's style on the covered cells, but merges from
+  // imported files may predate that invariant). Returns the resolved color,
+  // or null when the effective style has no fill.
   private getEffectiveFillColor(row: number, column: number): string | null {
     const merge = this.mergeMap.get(`${row}-${column}`);
     const [r, c] = merge ? [merge.row, merge.column] : [row, column];

@@ -3,7 +3,7 @@
 use crate::expressions::types::Area;
 use crate::merged_cells::MergeStructure;
 use crate::test::util::new_empty_model;
-use crate::types::{Color, MergedCell};
+use crate::types::{Border, BorderItem, BorderStyle, Color, MergedCell, Style};
 
 fn area(sheet: u32, row: i32, column: i32, width: i32, height: i32) -> Area {
     Area {
@@ -41,20 +41,121 @@ fn merge_keeps_anchor_and_clears_covered() {
     );
 }
 
+fn thin(color: &str) -> Option<BorderItem> {
+    Some(BorderItem {
+        style: BorderStyle::Thin,
+        color: Color::Rgb(color.to_string()),
+    })
+}
+
 #[test]
-fn merge_preserves_covered_styles() {
+fn merge_copies_anchor_style_to_covered_cells() {
     let mut model = new_empty_model();
     model._set("C2", "7");
-    let mut style = model.get_style_for_cell(0, 2, 3).unwrap();
-    style.fill.color = Color::Rgb("#FF0000".to_string());
-    model.set_cell_style(0, 2, 3, &style).unwrap();
+    // anchor B2 is red and bold, covered C2 is blue
+    let mut anchor_style = model.get_style_for_cell(0, 2, 2).unwrap();
+    anchor_style.fill.color = Color::Rgb("#FF0000".to_string());
+    anchor_style.font.b = true;
+    model.set_cell_style(0, 2, 2, &anchor_style).unwrap();
+    let mut covered_style = model.get_style_for_cell(0, 2, 3).unwrap();
+    covered_style.fill.color = Color::Rgb("#0000FF".to_string());
+    model.set_cell_style(0, 2, 3, &covered_style).unwrap();
 
     model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
     model.evaluate();
 
-    assert_eq!(model._get_text("C2"), "");
-    let style_after = model.get_style_for_cell(0, 2, 3).unwrap();
-    assert_eq!(style_after.fill.color, Color::Rgb("#FF0000".to_string()));
+    // every cell of the merge shows the anchor's style, the blue is forgotten
+    for (row, column) in [(2, 2), (2, 3), (3, 2), (3, 3)] {
+        let style = model.get_style_for_cell(0, row, column).unwrap();
+        assert_eq!(style.fill.color, Color::Rgb("#FF0000".to_string()));
+        assert!(style.font.b);
+    }
+
+    // unmerging keeps the copied styles
+    model.unmerge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    let style = model.get_style_for_cell(0, 2, 3).unwrap();
+    assert_eq!(style.fill.color, Color::Rgb("#FF0000".to_string()));
+    assert!(style.font.b);
+}
+
+#[test]
+fn merge_keeps_anchor_borders_only_on_the_perimeter() {
+    let mut model = new_empty_model();
+    // the anchor has a full outline
+    let style = Style {
+        border: Border {
+            left: thin("#111111"),
+            right: thin("#222222"),
+            top: thin("#333333"),
+            bottom: thin("#444444"),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    model.set_cell_style(0, 2, 2, &style).unwrap();
+
+    // merge B2:D4 (3x3)
+    model.merge_cells(&area(0, 2, 2, 3, 3)).unwrap();
+
+    for row in 2..5 {
+        for column in 2..5 {
+            let border = model.get_style_for_cell(0, row, column).unwrap().border;
+            // each side survives only on the corresponding edge of the range
+            assert_eq!(border.left, if column == 2 { thin("#111111") } else { None });
+            assert_eq!(border.right, if column == 4 { thin("#222222") } else { None });
+            assert_eq!(border.top, if row == 2 { thin("#333333") } else { None });
+            assert_eq!(border.bottom, if row == 4 { thin("#444444") } else { None });
+        }
+    }
+    // in particular the anchor lost its interior-facing sides and the center
+    // cell has no borders at all
+    let anchor_border = model.get_style_for_cell(0, 2, 2).unwrap().border;
+    assert_eq!(anchor_border.right, None);
+    assert_eq!(anchor_border.bottom, None);
+    assert_eq!(
+        model.get_style_for_cell(0, 3, 3).unwrap().border,
+        Border::default()
+    );
+}
+
+#[test]
+fn merge_spreads_a_left_border_along_the_left_edge() {
+    let mut model = new_empty_model();
+    // the anchor has a left border only
+    let style = Style {
+        border: Border {
+            left: thin("#111111"),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    model.set_cell_style(0, 2, 2, &style).unwrap();
+
+    // merge B2:C4
+    model.merge_cells(&area(0, 2, 2, 2, 3)).unwrap();
+
+    for row in 2..5 {
+        // the whole left edge shows the border
+        assert_eq!(
+            model.get_style_for_cell(0, row, 2).unwrap().border.left,
+            thin("#111111")
+        );
+        // the right column has no borders at all
+        assert_eq!(
+            model.get_style_for_cell(0, row, 3).unwrap().border,
+            Border::default()
+        );
+    }
+}
+
+#[test]
+fn merge_without_styles_does_not_create_cells() {
+    let mut model = new_empty_model();
+    model._set("B2", "5");
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    // stamping is skipped when nothing changes: the covered cells stay
+    // style-less so row/column styles are still inherited
+    assert_eq!(model.get_cell_style_or_none(0, 3, 3).unwrap(), None);
 }
 
 #[test]

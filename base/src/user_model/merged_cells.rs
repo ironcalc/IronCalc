@@ -6,7 +6,9 @@ use super::{common::UserModel, history::Diff};
 impl UserModel<'_> {
     /// Merges the cells of `range` into a single merged cell anchored at its
     /// top-left corner. Like in Excel, the content and links of every covered
-    /// cell are cleared (styles are kept); undoing restores them.
+    /// cell are cleared and the anchor's style is copied to the whole range
+    /// (with its borders kept only on the perimeter); undoing restores
+    /// everything.
     ///
     /// Fails if the range is invalid, a single cell, or intersects an existing
     /// merged cell or an array formula.
@@ -19,7 +21,35 @@ impl UserModel<'_> {
 
         let mut diff_list = self.covered_cells_clear_diffs(range)?;
 
+        // Merging stamps the anchor's style on the whole range: capture the
+        // explicit style of every cell before and after so undo restores them
+        let mut old_styles = Vec::new();
+        for row in range.row..range.row + range.height {
+            for column in range.column..range.column + range.width {
+                old_styles.push((
+                    row,
+                    column,
+                    self.model.get_cell_style_or_none(sheet, row, column)?,
+                ));
+            }
+        }
+
         self.model.merge_cells(range)?;
+
+        for (row, column, old_style) in old_styles {
+            let new_style = self.model.get_cell_style_or_none(sheet, row, column)?;
+            if new_style != old_style {
+                if let Some(new_style) = new_style {
+                    diff_list.push(Diff::SetCellStyle {
+                        sheet,
+                        row,
+                        column,
+                        old_value: Box::new(old_style),
+                        new_value: Box::new(new_style),
+                    });
+                }
+            }
+        }
 
         // A covered cell can never stay selected: if the selected cell is now
         // inside the merged range, snap the selection to the whole merged
