@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
 use crate::model::{CellStructure, Model};
-use crate::types::MergedCell;
+use crate::types::{Cell, MergedCell};
 
 /// Position of a cell relative to the merged cells of a worksheet
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -28,21 +28,24 @@ pub enum MergeStructure {
 
 impl<'a> Model<'a> {
     /// Merges the cells in `range` into a single merged cell anchored at its
-    /// top-left corner, mimicking Excel's behavior:
-    /// * the content and links of every cell other than the anchor are cleared
-    /// * the style of the anchor is copied to every cell of the range, so the
-    ///   old styles of the covered cells are forgotten (after unmerging the
-    ///   whole range shows the anchor's formatting)
-    /// * borders are the exception: the anchor's borders outline the merged
-    ///   cell as a whole, so each cell keeps only the border sides that lie on
-    ///   the perimeter of the range (interior edges have no border)
+    /// top-left corner:
+    /// * at most one cell of the range may have content; if more than one does
+    ///   the merge fails and nothing changes
+    /// * the content, link and style of that single cell move to the anchor
+    ///   and its style is copied to every cell of the range, so the old styles
+    ///   of the other cells are forgotten (after unmerging the whole range
+    ///   shows that cell's formatting). With no content anywhere the anchor
+    ///   plays that role
+    /// * borders included: the content cell's borders outline the merged cell
+    ///   as a whole, so each cell of the range keeps only the border sides
+    ///   that lie on the perimeter (interior edges have no border)
     ///
     /// Fails if:
     /// * the range is invalid, out of bounds or a single cell
     /// * the range intersects an existing merged cell
     /// * the range intersects an array formula
+    /// * more than one cell of the range has content
     pub fn merge_cells(&mut self, range: &Area) -> Result<(), String> {
-        self.merge_cells_keep_styles(range)?;
         let Area {
             sheet,
             row,
@@ -50,10 +53,63 @@ impl<'a> Model<'a> {
             width,
             height,
         } = *range;
-        let anchor_style = self.get_style_for_cell(sheet, row, column)?;
+        self.check_merge_range(range)?;
+        // Find the single cell with content, if any. Spill cells don't count:
+        // they hold values computed by an anchor outside the range, not
+        // content of their own (the spill is blocked and re-evaluated).
+        let worksheet = self.workbook.worksheet(sheet)?;
+        let mut content_cell = None;
         for r in row..row + height {
             for c in column..column + width {
-                let mut style = anchor_style.clone();
+                if matches!(
+                    worksheet.cell(r, c),
+                    None | Some(Cell::EmptyCell { .. }) | Some(Cell::SpillCell { .. })
+                ) {
+                    continue;
+                }
+                if content_cell.is_some() {
+                    return Err("Cannot merge cells: more than one cell has content".to_string());
+                }
+                content_cell = Some((r, c));
+            }
+        }
+        // The merged cell takes the content and style of the single cell with
+        // content; of the anchor if the whole range is empty.
+        let (source_row, source_column) = content_cell.unwrap_or((row, column));
+        let merged_style = self.get_style_for_cell(sheet, source_row, source_column)?;
+        if (source_row, source_column) != (row, column) {
+            // Move the content and link to the anchor before the covered
+            // cells (the source among them) are cleared. The anchor is known
+            // to be empty: otherwise there would be two cells with content.
+            let source_cell = self
+                .workbook
+                .worksheet(sheet)?
+                .cell(source_row, source_column)
+                .cloned();
+            match source_cell {
+                Some(Cell::CellFormula { .. }) | Some(Cell::ArrayFormula { .. }) => {
+                    // Formulas are stored relative to their cell: re-enter the
+                    // text at the anchor so the formula stays as written.
+                    let content =
+                        self.get_localized_cell_content(sheet, source_row, source_column)?;
+                    self.set_user_input(sheet, row, column, content)?;
+                }
+                Some(cell) => {
+                    self.workbook
+                        .worksheet_mut(sheet)?
+                        .update_cell(row, column, cell)?;
+                }
+                None => {}
+            }
+            let worksheet = self.workbook.worksheet_mut(sheet)?;
+            if let Some(link) = worksheet.links.remove(&(source_row, source_column)) {
+                worksheet.links.insert((row, column), link);
+            }
+        }
+        self.merge_cells_keep_styles(range)?;
+        for r in row..row + height {
+            for c in column..column + width {
+                let mut style = merged_style.clone();
                 if r != row {
                     style.border.top = None;
                 }
@@ -74,12 +130,9 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
-    // Registers the merged cell and clears the content and links of the
-    // covered cells, but leaves every cell's style untouched. Used by the
-    // clipboard when recreating a pasted merge: the pasted cells already carry
-    // the merged style pattern of the source, and stamping the anchor's style
-    // would drop the perimeter borders that live on non-anchor cells.
-    pub(crate) fn merge_cells_keep_styles(&mut self, range: &Area) -> Result<(), String> {
+    // Checks that `range` is a valid merge target: in bounds, more than one
+    // cell and intersecting no existing merged cell or array formula.
+    fn check_merge_range(&self, range: &Area) -> Result<(), String> {
         let Area {
             sheet,
             row,
@@ -128,6 +181,23 @@ impl<'a> Model<'a> {
                 }
             }
         }
+        Ok(())
+    }
+
+    // Registers the merged cell and clears the content and links of the
+    // covered cells, but leaves every cell's style untouched. Used by the
+    // clipboard when recreating a pasted merge: the pasted cells already carry
+    // the merged style pattern of the source, and stamping the anchor's style
+    // would drop the perimeter borders that live on non-anchor cells.
+    pub(crate) fn merge_cells_keep_styles(&mut self, range: &Area) -> Result<(), String> {
+        let Area {
+            sheet,
+            row,
+            column,
+            width,
+            height,
+        } = *range;
+        self.check_merge_range(range)?;
         // Clear the content and links of the covered cells. Going through
         // prepare_cell_for_user_input keeps dynamic array formulas consistent:
         // a covered spill anchor loses its spill and an outside anchor spilling

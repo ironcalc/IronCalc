@@ -65,9 +65,10 @@ const Workbook = (props: {
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
 
-  const [alertDialogMessage, setAlertDialogMessage] = useState<string | null>(
-    null,
-  );
+  const [alertDialog, setAlertDialog] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
   const [drawerType, setDrawerType] = useState<DrawerType>("namedRanges");
@@ -214,8 +215,14 @@ const Workbook = (props: {
       } else {
         model.mergeCells(area);
       }
-    } catch (_e) {
-      // merging over an array formula is not possible
+    } catch (e) {
+      if (`${e}`.includes("more than one cell has content")) {
+        setAlertDialog({
+          title: t("error_dialog.error_merging_cells"),
+          message: t("error_dialog.error_merging_cells_content"),
+        });
+      }
+      // other failures (e.g. merging over an array formula) stay silent
     }
     setRedrawId((id) => id + 1);
   };
@@ -285,7 +292,10 @@ const Workbook = (props: {
           }),
         );
       } catch {
-        setAlertDialogMessage(t("error_dialog.error_clipboard_paste"));
+        setAlertDialog({
+          title: t("error_dialog.error_deleting_cells"),
+          message: t("error_dialog.error_clipboard_paste"),
+        });
       }
     }
   }, [focusWorkbook, t]);
@@ -356,7 +366,10 @@ const Workbook = (props: {
           column + width,
         );
       } catch (e) {
-        setAlertDialogMessage(`${e}`);
+        setAlertDialog({
+          title: t("error_dialog.error_deleting_cells"),
+          message: `${e}`,
+        });
       }
       setRedrawId((id) => id + 1);
     },
@@ -678,7 +691,10 @@ const Workbook = (props: {
             );
             setRedrawId((id) => id + 1);
           } catch (e) {
-            setAlertDialogMessage(`${e}`);
+            setAlertDialog({
+              title: t("error_dialog.error_deleting_cells"),
+              message: `${e}`,
+            });
           }
         } else if (mimeType === "text/plain") {
           const {
@@ -698,7 +714,10 @@ const Workbook = (props: {
             model.pasteCsvText(range, value);
             setRedrawId((id) => id + 1);
           } catch (e) {
-            setAlertDialogMessage(`${e}`);
+            setAlertDialog({
+              title: t("error_dialog.error_deleting_cells"),
+              message: `${e}`,
+            });
           }
         } else {
           // NOT IMPLEMENTED
@@ -1146,10 +1165,10 @@ const Workbook = (props: {
         }}
       />
       <Alert
-        open={alertDialogMessage !== null}
-        onClose={() => setAlertDialogMessage(null)}
-        title={t("error_dialog.error_deleting_cells")}
-        message={alertDialogMessage}
+        open={alertDialog !== null}
+        onClose={() => setAlertDialog(null)}
+        title={alertDialog?.title ?? ""}
+        message={alertDialog?.message ?? ""}
       />
       {linkDialogCell && (
         <LinkDialog

@@ -16,11 +16,9 @@ fn area(sheet: u32, row: i32, column: i32, width: i32, height: i32) -> Area {
 }
 
 #[test]
-fn merge_keeps_anchor_and_clears_covered() {
+fn merge_keeps_anchor_content() {
     let mut model = new_empty_model();
     model._set("B2", "5");
-    model._set("C2", "7");
-    model._set("C3", "hello");
     model.evaluate();
 
     // Merge B2:C3
@@ -28,7 +26,45 @@ fn merge_keeps_anchor_and_clears_covered() {
     model.evaluate();
 
     assert_eq!(model._get_text("B2"), "5");
-    assert_eq!(model._get_text("C2"), "");
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        &[MergedCell {
+            row: 2,
+            column: 2,
+            width: 2,
+            height: 2
+        }]
+    );
+}
+
+#[test]
+fn merge_with_more_than_one_content_cell_is_rejected() {
+    let mut model = new_empty_model();
+    model._set("B2", "5");
+    model._set("C3", "hello");
+    model.evaluate();
+
+    assert_eq!(
+        model.merge_cells(&area(0, 2, 2, 2, 2)),
+        Err("Cannot merge cells: more than one cell has content".to_string())
+    );
+    // nothing changed
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model._get_text("B2"), "5");
+    assert_eq!(model._get_text("C3"), "hello");
+}
+
+#[test]
+fn merge_moves_the_single_content_cell_to_the_anchor() {
+    let mut model = new_empty_model();
+    model._set("C3", "hello");
+    model.evaluate();
+
+    // Merge B2:C3: the only content is at C3, not at the anchor
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    model.evaluate();
+
+    assert_eq!(model._get_text("B2"), "hello");
     assert_eq!(model._get_text("C3"), "");
     assert_eq!(
         model.get_merged_cells(0).unwrap(),
@@ -41,6 +77,22 @@ fn merge_keeps_anchor_and_clears_covered() {
     );
 }
 
+#[test]
+fn merge_moves_a_formula_to_the_anchor_unchanged() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("C3", "=A1+1");
+    model.evaluate();
+
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+    model.evaluate();
+
+    assert_eq!(model._get_text("B2"), "11");
+    assert_eq!(model._get_formula("B2"), "=A1+1");
+    assert!(!model._has_formula("C3"));
+    assert_eq!(model._get_text("C3"), "");
+}
+
 fn thin(color: &str) -> Option<BorderItem> {
     Some(BorderItem {
         style: BorderStyle::Thin,
@@ -49,40 +101,80 @@ fn thin(color: &str) -> Option<BorderItem> {
 }
 
 #[test]
-fn merge_copies_anchor_style_to_covered_cells() {
+fn merge_copies_the_content_cell_style_to_the_whole_range() {
     let mut model = new_empty_model();
     model._set("C2", "7");
-    // anchor B2 is red and bold, covered C2 is blue
+    // the empty anchor B2 is red, the content cell C2 is blue and bold
     let mut anchor_style = model.get_style_for_cell(0, 2, 2).unwrap();
     anchor_style.fill.color = Color::Rgb("#FF0000".to_string());
-    anchor_style.font.b = true;
     model.set_cell_style(0, 2, 2, &anchor_style).unwrap();
-    let mut covered_style = model.get_style_for_cell(0, 2, 3).unwrap();
-    covered_style.fill.color = Color::Rgb("#0000FF".to_string());
-    model.set_cell_style(0, 2, 3, &covered_style).unwrap();
+    let mut content_style = model.get_style_for_cell(0, 2, 3).unwrap();
+    content_style.fill.color = Color::Rgb("#0000FF".to_string());
+    content_style.font.b = true;
+    model.set_cell_style(0, 2, 3, &content_style).unwrap();
 
     model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
     model.evaluate();
 
-    // every cell of the merge shows the anchor's style, the blue is forgotten
+    // the content moved to the anchor and every cell of the merge shows the
+    // content cell's style; the anchor's red is forgotten
+    assert_eq!(model._get_text("B2"), "7");
     for (row, column) in [(2, 2), (2, 3), (3, 2), (3, 3)] {
         let style = model.get_style_for_cell(0, row, column).unwrap();
-        assert_eq!(style.fill.color, Color::Rgb("#FF0000".to_string()));
+        assert_eq!(style.fill.color, Color::Rgb("#0000FF".to_string()));
         assert!(style.font.b);
     }
 
     // unmerging keeps the copied styles
     model.unmerge_cells(&area(0, 2, 2, 2, 2)).unwrap();
     let style = model.get_style_for_cell(0, 2, 3).unwrap();
-    assert_eq!(style.fill.color, Color::Rgb("#FF0000".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#0000FF".to_string()));
     assert!(style.font.b);
 }
 
 #[test]
-fn merge_keeps_anchor_borders_only_on_the_perimeter() {
+fn merge_without_content_copies_the_anchor_style() {
     let mut model = new_empty_model();
-    // the anchor has a full outline
-    let style = Style {
+    // nothing has content: the anchor's style is the one that spreads
+    let mut anchor_style = model.get_style_for_cell(0, 2, 2).unwrap();
+    anchor_style.fill.color = Color::Rgb("#FF0000".to_string());
+    model.set_cell_style(0, 2, 2, &anchor_style).unwrap();
+    let mut covered_style = model.get_style_for_cell(0, 3, 3).unwrap();
+    covered_style.fill.color = Color::Rgb("#0000FF".to_string());
+    model.set_cell_style(0, 3, 3, &covered_style).unwrap();
+
+    model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
+
+    for (row, column) in [(2, 2), (2, 3), (3, 2), (3, 3)] {
+        let style = model.get_style_for_cell(0, row, column).unwrap();
+        assert_eq!(style.fill.color, Color::Rgb("#FF0000".to_string()));
+    }
+}
+
+// Asserts that the full outline of the style source (left #111111, right
+// #222222, top #333333, bottom #444444) wraps the merged range B2:D4 as a
+// whole: each side runs along the matching edge and the interior has no
+// borders.
+fn assert_outline_wraps_b2_d4(model: &crate::model::Model) {
+    for row in 2..5 {
+        for column in 2..5 {
+            let border = model.get_style_for_cell(0, row, column).unwrap().border;
+            assert_eq!(
+                border.left,
+                if column == 2 { thin("#111111") } else { None }
+            );
+            assert_eq!(
+                border.right,
+                if column == 4 { thin("#222222") } else { None }
+            );
+            assert_eq!(border.top, if row == 2 { thin("#333333") } else { None });
+            assert_eq!(border.bottom, if row == 4 { thin("#444444") } else { None });
+        }
+    }
+}
+
+fn full_outline() -> Style {
+    Style {
         border: Border {
             left: thin("#111111"),
             right: thin("#222222"),
@@ -91,22 +183,19 @@ fn merge_keeps_anchor_borders_only_on_the_perimeter() {
             ..Default::default()
         },
         ..Default::default()
-    };
-    model.set_cell_style(0, 2, 2, &style).unwrap();
+    }
+}
 
-    // merge B2:D4 (3x3)
+#[test]
+fn merge_moves_anchor_borders_to_the_perimeter() {
+    let mut model = new_empty_model();
+    // the anchor has a full outline (and no cell has content)
+    model.set_cell_style(0, 2, 2, &full_outline()).unwrap();
+
+    // merge B2:D4 (3x3): the outline wraps the whole merged cell
     model.merge_cells(&area(0, 2, 2, 3, 3)).unwrap();
 
-    for row in 2..5 {
-        for column in 2..5 {
-            let border = model.get_style_for_cell(0, row, column).unwrap().border;
-            // each side survives only on the corresponding edge of the range
-            assert_eq!(border.left, if column == 2 { thin("#111111") } else { None });
-            assert_eq!(border.right, if column == 4 { thin("#222222") } else { None });
-            assert_eq!(border.top, if row == 2 { thin("#333333") } else { None });
-            assert_eq!(border.bottom, if row == 4 { thin("#444444") } else { None });
-        }
-    }
+    assert_outline_wraps_b2_d4(&model);
     // in particular the anchor lost its interior-facing sides and the center
     // cell has no borders at all
     let anchor_border = model.get_style_for_cell(0, 2, 2).unwrap().border;
@@ -116,6 +205,100 @@ fn merge_keeps_anchor_borders_only_on_the_perimeter() {
         model.get_style_for_cell(0, 3, 3).unwrap().border,
         Border::default()
     );
+}
+
+#[test]
+fn merge_moves_interior_content_cell_borders_to_the_perimeter() {
+    let mut model = new_empty_model();
+    // C3 sits strictly inside B2:D4 and has content and a full outline
+    model._set("C3", "x");
+    model.set_cell_style(0, 3, 3, &full_outline()).unwrap();
+    model.evaluate();
+
+    model.merge_cells(&area(0, 2, 2, 3, 3)).unwrap();
+    model.evaluate();
+
+    // the borders come from the cell with content, wherever it sat: its
+    // outline wraps the merged cell as a whole
+    assert_eq!(model._get_text("B2"), "x");
+    assert_outline_wraps_b2_d4(&model);
+}
+
+#[test]
+fn merge_moves_edge_content_cell_borders_to_the_perimeter() {
+    let mut model = new_empty_model();
+    // D3 sits on the right edge of B2:D4 with content and a full outline
+    model._set("D3", "x");
+    model.set_cell_style(0, 3, 4, &full_outline()).unwrap();
+    model.evaluate();
+
+    model.merge_cells(&area(0, 2, 2, 3, 3)).unwrap();
+    model.evaluate();
+
+    assert_eq!(model._get_text("B2"), "x");
+    assert_outline_wraps_b2_d4(&model);
+}
+
+#[test]
+fn merge_spreads_a_partial_content_cell_border() {
+    let mut model = new_empty_model();
+    // D4, the bottom-right corner of B2:D4, has content and only a bottom
+    // border
+    model._set("D4", "x");
+    let style = Style {
+        border: Border {
+            bottom: thin("#444444"),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    model.set_cell_style(0, 4, 4, &style).unwrap();
+    model.evaluate();
+
+    model.merge_cells(&area(0, 2, 2, 3, 3)).unwrap();
+    model.evaluate();
+
+    // the merged cell has that bottom border, spread along its bottom edge,
+    // and nothing else
+    assert_eq!(model._get_text("B2"), "x");
+    for row in 2..5 {
+        for column in 2..5 {
+            let border = model.get_style_for_cell(0, row, column).unwrap().border;
+            assert_eq!(border.bottom, if row == 4 { thin("#444444") } else { None });
+            assert_eq!(border.left, None);
+            assert_eq!(border.right, None);
+            assert_eq!(border.top, None);
+        }
+    }
+}
+
+#[test]
+fn merge_single_row_wraps_the_content_cell_outline() {
+    let mut model = new_empty_model();
+    // C2, in the middle of the single-row merge B2:D2, has content and a
+    // full outline
+    model._set("C2", "x");
+    model.set_cell_style(0, 2, 3, &full_outline()).unwrap();
+    model.evaluate();
+
+    model.merge_cells(&area(0, 2, 2, 3, 1)).unwrap();
+    model.evaluate();
+
+    // the outline wraps the merged cell: left side on the first cell, right
+    // side on the last one, top and bottom all along
+    for column in 2..5 {
+        let border = model.get_style_for_cell(0, 2, column).unwrap().border;
+        assert_eq!(border.top, thin("#333333"));
+        assert_eq!(border.bottom, thin("#444444"));
+        assert_eq!(
+            border.left,
+            if column == 2 { thin("#111111") } else { None }
+        );
+        assert_eq!(
+            border.right,
+            if column == 4 { thin("#222222") } else { None }
+        );
+    }
 }
 
 #[test]
@@ -300,7 +483,7 @@ fn merge_over_dynamic_spill_children() {
 }
 
 #[test]
-fn merge_over_dynamic_anchor_clears_formula() {
+fn merge_over_dynamic_anchor_moves_the_formula() {
     let mut model = new_empty_model();
     model._set("A1", "10");
     model._set("A2", "20");
@@ -310,12 +493,17 @@ fn merge_over_dynamic_anchor_clears_formula() {
     model.evaluate();
     assert_eq!(model._get_text("C4"), "30");
 
-    // B2:C3 covers the anchor C2 as a covered cell: the formula is deleted
+    // B2:C3 covers the anchor C2, the only cell with content (its spill cells
+    // don't count): the formula moves to the merge anchor B2, where its spill
+    // is blocked by the merge itself
     model.merge_cells(&area(0, 2, 2, 2, 2)).unwrap();
     model.evaluate();
+    assert!(model._has_formula("B2"));
+    assert_eq!(model._get_formula("B2"), "=A1:A3");
+    assert_eq!(model._get_text("B2"), "#SPILL!");
+    assert!(!model._has_formula("C2"));
     assert_eq!(model._get_text("C2"), "");
     assert_eq!(model._get_text("C4"), "");
-    assert!(!model._has_formula("C2"));
 }
 
 #[test]

@@ -199,6 +199,8 @@
     "error_editing_formula": "Errore durante la modifica della formula",
     "error_inserting_columns": "Impossibile inserire le colonne",
     "error_inserting_rows": "Impossibile inserire le righe",
+    "error_merging_cells": "Impossibile unire le celle",
+    "error_merging_cells_content": "Solo una cella della selezione può avere contenuto.",
     "error_moving_columns": "Impossibile spostare le colonne",
     "error_moving_rows": "Impossibile spostare le righe"
   },
