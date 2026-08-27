@@ -17,7 +17,7 @@ export type ButtonVariant =
 export type ButtonSize = "xs" | "sm" | "md";
 
 /** Extends native `<button>` props.
- * Defaults: `variant` "primary", `size` "md", `pressed` false.
+ * Defaults: `variant` "primary", `size` "md", `pressed` false, `type` "button".
  * Optional: `startIcon`, `endIcon`.
  */
 
@@ -57,6 +57,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
     return (
       <button
         ref={ref}
+        type="button"
         disabled={disabled}
         aria-pressed={pressed}
         className={buttonClassName}

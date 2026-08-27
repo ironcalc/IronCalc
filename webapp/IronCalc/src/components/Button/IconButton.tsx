@@ -6,7 +6,7 @@ export type { ButtonSize, ButtonVariant };
 /**
  * Icon-only button. Same variants and sizes as Button.
  * Use it for toolbar actions, to close drawers and modals, etc.
- * Defaults: `variant` "ghost", `size` "sm", `pressed` false.
+ * Defaults: `variant` "ghost", `size` "sm", `pressed` false, `type` "button".
  */
 export interface IconButtonProperties
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label"> {
@@ -44,6 +44,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
     return (
       <button
         ref={ref}
+        type="button"
         className={buttonClassName}
         disabled={disabled}
         aria-pressed={pressed}

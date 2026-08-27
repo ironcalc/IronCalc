@@ -5,8 +5,10 @@ import { IconButton } from "../Button/IconButton";
 import "./toggle-button.css";
 
 /**
- * A group of mutually exclusive buttons where exactly one option is selected.
+ * A group of mutually exclusive buttons where at most one option is selected.
  * Every option is a "ghost" Button; the selected one is the pressed Button.
+ * A `value` that matches no option leaves them all unpressed, which is how a
+ * single option toggles on and off.
  * Sizes: xs, sm, md (same as Button).
  */
 
@@ -14,7 +16,7 @@ export interface ToggleButtonOption<T extends string> {
   value: T;
   label?: ReactNode /** Text of the button. Omit it to get an icon-only button. */;
   icon?: ReactNode;
-  "aria-label"?: string /** Required when there is no `label`. */;
+  "aria-label"?: string /** Accessible name. Icon-only buttons fall back to `value`. */;
   disabled?: boolean;
 }
 
