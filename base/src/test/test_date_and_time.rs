@@ -707,23 +707,6 @@ fn test_edate_function() {
     assert_eq!(model._get_text("A12"), *"#NUM!");
 }
 
-fn test_fn_eomonth_empty_arguments() {
-    let mut model = new_empty_model();
-
-    // Blank start_date, matches Excel resolving it to January 1900
-    model._set("B1", "7");
-    model._set("C1", "=EOMONTH(A1,B1)");
-
-    // Blank months, treated as 0
-    model._set("A2", "=DATE(2023,3,2)");
-    model._set("C2", "=EOMONTH(A2,B2)");
-
-    model.evaluate();
-
-    assert_eq!(model._get_text("C1"), *"244");
-    assert_eq!(model._get_text("C2"), *"45016");
-}
-
 #[test]
 fn test_fn_eomonth_wrong_arguments() {
     let mut model = new_empty_model();
