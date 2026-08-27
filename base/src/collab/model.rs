@@ -2,7 +2,8 @@ use crate::collab::fractional_index::{FractionalIndex, FractionalKey, SESSION_SU
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{SessionId, Timestamp};
 use crate::collab::patch::{
-    CfPropKind, ColPropKind, Patch, RowPropKind, SheetPropKind, WorkbookPropKind,
+    CfPropKind, ColPropKind, NamedStyle, NamedStyleId, Patch, RowPropKind, SheetPropKind,
+    WorkbookPropKind,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
@@ -128,7 +129,19 @@ pub struct WorkbookMeta {
     pub sheet_names: HashMap<u32, (String, Timestamp)>,
     pub props: HashMap<WorkbookPropKind, Timestamp>,
     pub defined_names: HashMap<(Option<u32>, String), Timestamp>,
-    pub named_styles: HashMap<String, Timestamp>,
+    /// Named styles; entries survive deletion (resurrection guard).
+    pub named_styles: HashMap<NamedStyleId, NamedStyleState>,
+}
+
+/// A named style's two registers. Both are CRDT-only state — the style table shows a *display* name
+/// and a locally interned `xf_id` — so each value sits with its own guard, as in
+/// [`WorkbookMeta::sheet_positions`].
+#[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
+pub struct NamedStyleState {
+    /// The authored name, which the display name is derived from and repaired for collisions.
+    pub name: (String, Timestamp),
+    /// `None` is a deleted style: the entry and its name survive, so an undo can revive it.
+    pub definition: (Option<Box<NamedStyle>>, Timestamp),
 }
 
 /// A description of a continuous range of cells, described using stable identifiers, which can be

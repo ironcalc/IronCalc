@@ -6,6 +6,7 @@ pub mod fractional_key;
 pub mod hlc;
 pub mod log;
 pub mod model;
+pub mod naming;
 pub mod patch;
 pub mod varint;
 

@@ -7,15 +7,17 @@
 //! mutation is a patch.
 
 use crate::cf_types::{CfRuleInput, ConditionalFormattingView};
-use crate::collab::apply::free_sheet_name;
+use crate::collab::apply::SHEET_NAMES;
 use crate::collab::fractional_index::{CreateKeys, FractionalIndex, FractionalKey, KeyBuf};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::Timestamp;
 use crate::collab::model::{CollabModel, LocalCommit, Stable, StableCellAddress, StableRange};
+use crate::collab::naming::stable_id;
 use crate::collab::patch::{
     CellInput, CfProperty, ColPropKind, ColProperty, ColState, ColumnSnapshot,
-    ConditionalFormatState, Patch, RowPropKind, RowProperty, RowSnapshot, RowState, SheetContent,
-    SheetId, SheetPropKind, SheetProperty, SheetRestore, WorkbookPropKind, WorkbookProperty,
+    ConditionalFormatState, NamedStyle, NamedStyleId, NamedStyleProperty, Patch, RowPropKind,
+    RowProperty, RowSnapshot, RowState, SheetContent, SheetId, SheetPropKind, SheetProperty,
+    SheetRestore, WorkbookPropKind, WorkbookProperty,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
@@ -731,8 +733,7 @@ impl CollabModel<'_> {
         column: i32,
         style_name: &str,
     ) -> Result<(), String> {
-        let index = self.workbook.styles.get_style_index_by_name(style_name)?;
-        let style = self.workbook.styles.get_style(index)?;
+        let style = self.workbook.styles.get_style_by_name(style_name)?;
         self.set_cell_style(sheet, row, column, &style)
     }
 
@@ -1202,11 +1203,10 @@ impl CollabModel<'_> {
         let mut patches = Vec::new();
         for (scope, name, formula) in names {
             let body = formula.strip_prefix('=').unwrap_or(&formula).to_string();
-            // Defined names are stored in the English internal form, so render the displaced
-            // formula in the default locale/language to compare against and store.
             let mut displaced = body.clone();
             for step in steps {
                 let node = self.parse_internal_formula(&displaced, &context);
+                // Defined names are stored in English (see `parse_internal_formula`).
                 displaced = to_string_displaced(
                     &node,
                     &context,
@@ -1774,13 +1774,9 @@ impl CollabModel<'_> {
         let (i, source_id) = self.sheet_of(source)?;
         // The repair pass names sheets; asking it here gives the copy the name it would keep
         // anyway. A peer authoring the same name concurrently falls through to that pass.
-        let mut taken = self
-            .workbook
-            .worksheets
-            .iter()
-            .map(|ws| ws.name.to_uppercase())
-            .collect();
-        let new_name = free_sheet_name(self.workbook.worksheets[i].name.clone(), &mut taken);
+        let mut taken =
+            SHEET_NAMES.taken(self.workbook.worksheets.iter().map(|ws| ws.name.as_str()));
+        let new_name = SHEET_NAMES.free_name(self.workbook.worksheets[i].name.clone(), &mut taken);
         let id = self.new_sheet_id();
         let position = self.insert_position(i + 1)?;
 
@@ -2224,12 +2220,182 @@ impl CollabModel<'_> {
     }
 
     pub fn get_named_style(&self, name: &str) -> Result<Style, String> {
-        let xf_id = self.workbook.styles.get_style_index_by_name(name)?;
-        self.workbook.styles.get_style(xf_id)
+        self.workbook.styles.get_style_by_name(name)
     }
 
     pub fn get_named_style_list(&self) -> Vec<String> {
         self.workbook.styles.get_named_style_list()
+    }
+}
+
+/// Named styles: one register per style, keyed by a hash of the name it was created under, with the
+/// style table derived from them.
+impl CollabModel<'_> {
+    /// The id a style authored as `name` takes: the hash of the name, salted past any style already
+    /// live here — so creating one under a name a rename freed does not land on the renamed style.
+    fn new_style_id(&self, name: &str) -> NamedStyleId {
+        let live = |id: &NamedStyleId| {
+            self.workbook
+                .meta
+                .named_styles
+                .get(id)
+                .is_some_and(|state| state.definition.0.is_some())
+        };
+        (0..)
+            .map(|salt| stable_id(name, salt))
+            .find(|id| !live(id))
+            .expect("a free salt")
+    }
+
+    /// The style showing `name`, erroring as the ordinal model's lookup does.
+    fn style_id_by_name(&self, name: &str) -> Result<NamedStyleId, String> {
+        self.named_style_display()
+            .into_iter()
+            .find(|(_, display)| display == name)
+            .map(|(id, _)| id)
+            .ok_or_else(|| format!("Style '{name}' not found"))
+    }
+
+    /// Creates a named style. Fails if a style already shows that name.
+    pub fn create_named_style(&mut self, name: &str, style: &Style) -> Result<(), String> {
+        if self.workbook.styles.get_xf_id_by_name(name).is_ok() {
+            return Err("A style with that name already exists".to_string());
+        }
+        let id = self.new_style_id(name);
+        self.commit_local(vec![
+            Patch::SetNamedStyle {
+                id,
+                property: NamedStyleProperty::Definition(Some(Box::new(NamedStyle {
+                    style: style.clone(),
+                    builtin_id: 0,
+                }))),
+                // Nothing was defined under this id, which is what undoing the create puts back.
+                prev: Some(NamedStyleProperty::Definition(None)),
+            },
+            Patch::SetNamedStyle {
+                id,
+                property: NamedStyleProperty::Name(name.to_string()),
+                prev: None,
+            },
+        ]);
+        Ok(())
+    }
+
+    /// Deletes a named style. Cells that used it keep their formatting; only the name goes.
+    pub fn delete_named_style(&mut self, name: &str) -> Result<(), String> {
+        if self.workbook.styles.is_builtin_style(name) {
+            return Err(format!("Cannot delete built-in style '{name}'"));
+        }
+        let id = self.style_id_by_name(name)?;
+        let prev = self.definition_of(id);
+        self.commit_local(vec![Patch::SetNamedStyle {
+            id,
+            property: NamedStyleProperty::Definition(None),
+            prev: Some(NamedStyleProperty::Definition(prev)),
+        }]);
+        Ok(())
+    }
+
+    /// Updates a named style's formatting and, when `new_name` differs, its name. Everything drawn
+    /// with the old style follows in the same commit.
+    pub fn update_named_style(
+        &mut self,
+        name: &str,
+        new_name: &str,
+        style: &Style,
+    ) -> Result<(), String> {
+        if self.workbook.styles.is_builtin_style(name) {
+            return Err(format!("Cannot modify built-in style '{name}'"));
+        }
+        let id = self.style_id_by_name(name)?;
+        if name != new_name && self.workbook.styles.get_xf_id_by_name(new_name).is_ok() {
+            return Err(format!("A style named '{new_name}' already exists"));
+        }
+        let old_style = self.workbook.styles.get_style_by_name(name)?;
+        // Cells styled by name carry the style itself (patches resolve names locally), so what
+        // draws the old style is its anonymous format index — if any cell ever took it.
+        let old_xf_id = self.workbook.styles.get_style_index(&old_style);
+        let prev = self.definition_of(id);
+        let mut patches = vec![Patch::SetNamedStyle {
+            id,
+            property: NamedStyleProperty::Definition(Some(Box::new(NamedStyle {
+                style: style.clone(),
+                builtin_id: prev.as_ref().map(|d| d.builtin_id).unwrap_or(0),
+            }))),
+            prev: Some(NamedStyleProperty::Definition(prev)),
+        }];
+        if name != new_name {
+            patches.push(Patch::SetNamedStyle {
+                id,
+                property: NamedStyleProperty::Name(new_name.to_string()),
+                prev: Some(NamedStyleProperty::Name(name.to_string())),
+            });
+        }
+        if let Some(old_xf_id) = old_xf_id {
+            if self.workbook.styles.get_style_index(style) != Some(old_xf_id) {
+                patches.extend(self.restyle_patches(old_xf_id, style));
+            }
+        }
+        self.commit_local(patches);
+        Ok(())
+    }
+
+    fn definition_of(&self, id: NamedStyleId) -> Option<Box<NamedStyle>> {
+        let state = self.workbook.meta.named_styles.get(&id)?;
+        state.definition.0.clone()
+    }
+
+    /// Repoints everything drawn with `old_xf` at `style`. Style *index* equality is the test, as in
+    /// the ordinal model: a cell styled the same way by hand moves with the named style.
+    fn restyle_patches(&self, old_xf: i32, style: &Style) -> Vec<Patch> {
+        let prev = self.workbook.styles.get_style(old_xf).ok();
+        let mut patches = Vec::new();
+        for sheet in &self.workbook.worksheets {
+            let id = sheet.sheet_id;
+            // `sheet_data` is a hash map: sort, so the commit does not depend on its iteration.
+            let mut cells: Vec<StableCellAddress> = sheet
+                .sheet_data
+                .iter()
+                .flat_map(|(row, row_data)| {
+                    row_data
+                        .iter()
+                        .filter(|(_, cell)| cell.get_style() == old_xf)
+                        .map(move |(column, _)| (row.clone(), column.clone()))
+                })
+                .collect();
+            cells.sort();
+            patches.extend(cells.into_iter().map(|at| Patch::SetCellStyle {
+                sheet: id,
+                at,
+                style: Some(Box::new(style.clone())),
+                ts: None,
+                prev: Box::new(prev.clone()),
+            }));
+            // A row's index only draws anything when it is its custom format.
+            for row in sheet
+                .rows
+                .iter()
+                .filter(|r| r.custom_format && r.s == old_xf)
+            {
+                patches.push(Patch::SetRowProperty {
+                    sheet: id,
+                    row: row.r.clone(),
+                    property: RowProperty::Style(Some(Box::new(style.clone()))),
+                    ts: None,
+                    prev: Some(RowProperty::Style(prev.clone().map(Box::new))),
+                });
+            }
+            for col in sheet.cols.iter().filter(|c| c.style == Some(old_xf)) {
+                patches.push(Patch::SetColumnSpan {
+                    sheet: id,
+                    span: (col.min.clone(), col.max.clone()),
+                    property: ColProperty::Style(Some(Box::new(style.clone()))),
+                    ts: None,
+                    prev: Some(ColProperty::Style(prev.clone().map(Box::new))),
+                });
+            }
+        }
+        patches
     }
 }
 
@@ -2299,9 +2465,6 @@ unsupported! { &self
 unsupported! { &mut self
     set_language(language_id: &str) -> ();
     set_user_array_formula(sheet: u32, row: i32, column: i32, width: i32, height: i32, value: &str) -> ();
-    create_named_style(name: &str, style: &Style) -> ();
-    delete_named_style(name: &str) -> ();
-    update_named_style(name: &str, new_name: &str, style: &Style) -> (i32, i32);
     raise_conditional_formatting_priority(sheet: u32, index: usize) -> ();
     lower_conditional_formatting_priority(sheet: u32, index: usize) -> ();
 }
@@ -2893,11 +3056,10 @@ mod test {
         a.delete_column_style(0, 40).unwrap();
         assert!(a.flush().is_empty());
 
+        assert_eq!(a.delete_column_style(0, 0), Ok(()));
+        assert!(a.flush().is_empty());
+
         // Upstream's validation, error strings included; a rejected call emits nothing.
-        assert_eq!(
-            a.delete_column_style(0, 0),
-            Err("Column number '0' is not valid.".to_string())
-        );
         let bad_sheet = Err("Invalid sheet index".to_string());
         assert_eq!(a.delete_row_style(9, 1), bad_sheet);
         assert_eq!(a.delete_column_style(9, 1), bad_sheet);
@@ -2920,6 +3082,143 @@ mod test {
         wire.extend(a.flush());
         let mut b = CollabModel::new(2);
         deliver(&mut b, 1, &wire);
+        a.evaluate();
+        b.evaluate();
+        assert_eq!(b.workbook, a.workbook);
+    }
+
+    #[test]
+    fn named_styles() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        let mut wire = a.flush();
+
+        // create, apply, read back
+        a.create_named_style("bold", &bold()).unwrap();
+        assert_eq!(a.get_named_style("bold"), Ok(bold()));
+        assert_eq!(a.get_named_style_list(), ["normal", "bold"]);
+        assert_eq!(
+            a.create_named_style("bold", &italic()),
+            Err("A style with that name already exists".to_string())
+        );
+        a.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
+        a.set_row_style(0, 2, &bold()).unwrap();
+        a.set_column_style(0, 3, &bold()).unwrap();
+        // Never named, styled the same way by hand: the sweep below cannot tell the two apart.
+        a.set_cell_style(0, 5, 5, &bold()).unwrap();
+        assert_eq!(a.get_style_for_cell(0, 1, 1), Ok(bold()));
+
+        // modify named style
+        let mut bolder = bold();
+        bolder.font.i = true;
+        a.update_named_style("bold", "bold", &bolder).unwrap();
+        assert_eq!(a.get_named_style("bold"), Ok(bolder.clone()));
+        // The cell, the row, the column — and the hand-styled cell: style index equality is the
+        // test (see `restyle_patches`), unlike upstream, which only moves cells parented to the style.
+        for (row, column) in [(1, 1), (2, 5), (6, 3), (5, 5)] {
+            assert_eq!(
+                a.get_style_for_cell(0, row, column),
+                Ok(bolder.clone()),
+                "cell ({row}, {column})"
+            );
+        }
+
+        // rename to 'strong': now 'bold' should be free to be reused
+        a.update_named_style("bold", "strong", &bolder).unwrap();
+        assert_eq!(a.get_named_style_list(), ["normal", "strong"]);
+        a.create_named_style("bold", &italic()).unwrap();
+        assert_eq!(a.get_named_style("bold"), Ok(italic()));
+        assert_eq!(a.get_named_style("strong"), Ok(bolder.clone()));
+        // Two registers, not one: the second "bold" salted its way past the live id.
+        assert_eq!(a.workbook.meta.named_styles.len(), 2);
+
+        // delete named style 'strong'
+        wire.extend(a.flush());
+        let strong = a.style_id_by_name("strong").unwrap();
+        a.delete_named_style("strong").unwrap();
+        // style is no longer reachable by name, but it's still referenced by cell
+        // this behavior differs from Excel, but it's how IronCalc works atm.
+        assert!(a.get_named_style("strong").is_err());
+        assert_eq!(a.get_style_for_cell(0, 1, 1), Ok(bolder.clone()));
+        let deleted = a.flush();
+        a.commit_local(invert_patches(&deleted[0].patches));
+        assert_eq!(a.get_named_style("strong"), Ok(bolder.clone()));
+        assert_eq!(a.style_id_by_name("strong"), Ok(strong));
+        wire.extend(deleted);
+        wire.extend(a.flush());
+
+        assert!(
+            a.delete_named_style("normal").is_err(),
+            "can't delete built-in style"
+        );
+        assert!(
+            a.update_named_style("normal", "plain", &bold()).is_err(),
+            "can't modify built-in styles"
+        );
+        assert!(a.delete_named_style("nope").is_err(), "style missing");
+        assert!(
+            a.update_named_style("nope", "x", &bold()).is_err(),
+            "style missing"
+        );
+        assert!(
+            a.update_named_style("bold", "strong", &italic()).is_err(),
+            "rename to existing"
+        );
+        assert!(a.flush().is_empty());
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &wire);
+        a.evaluate();
+        b.evaluate();
+        assert_eq!(b.workbook, a.workbook);
+
+        // two peers creating the same style give it the same id
+        a.create_named_style("shared", &bold()).unwrap();
+        b.create_named_style("shared", &italic()).unwrap();
+        let (from_a, from_b) = (a.flush(), b.flush());
+        deliver(&mut a, 2, &from_b);
+        deliver(&mut b, 1, &from_a);
+        for peer in [&a, &b] {
+            // The later definition stands, and there is only ever one name to hold it.
+            assert_eq!(peer.get_named_style("shared"), Ok(italic()));
+            assert_eq!(
+                peer.get_named_style_list()
+                    .iter()
+                    .filter(|n| n.starts_with("shared"))
+                    .count(),
+                1
+            );
+        }
+        a.evaluate();
+        b.evaluate();
+        assert_eq!(b.workbook, a.workbook);
+
+        // two peers rename the same style and update separate properties
+        a.update_named_style("shared", "renamed", &italic())
+            .unwrap();
+        b.update_named_style("shared", "shared", &bold()).unwrap();
+        let (from_a, from_b) = (a.flush(), b.flush());
+        deliver(&mut a, 2, &from_b);
+        deliver(&mut b, 1, &from_a);
+        for peer in [&a, &b] {
+            // rename last-write-wins conflict resolution
+            assert_eq!(peer.get_named_style("renamed"), Ok(bold()));
+        }
+        a.evaluate();
+        b.evaluate();
+        assert_eq!(b.workbook, a.workbook);
+
+        // two peers rename different styles to the same name
+        a.update_named_style("renamed", "same", &bold()).unwrap();
+        b.update_named_style("bold", "same", &italic()).unwrap();
+        let (from_a, from_b) = (a.flush(), b.flush());
+        deliver(&mut a, 2, &from_b);
+        deliver(&mut b, 1, &from_a);
+        for peer in [&a, &b] {
+            // same rename conflict resolution -> add " (1)" to differentiate
+            assert_eq!(peer.get_named_style("same"), Ok(bold()));
+            assert_eq!(peer.get_named_style("same (1)"), Ok(italic()));
+        }
         a.evaluate();
         b.evaluate();
         assert_eq!(b.workbook, a.workbook);
