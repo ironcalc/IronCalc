@@ -6,7 +6,6 @@
   width: fit-content;
   border-radius: 6px;
   background-color: var(--palette-grey-50);
-  overflow: hidden;
   outline: 1px solid var(--palette-grey-300);
   outline-offset: -1px;
 }
@@ -20,14 +19,11 @@
 .ic-toggle-button .ic-button--ghost:not(:disabled)[aria-pressed="true"] {
   background-color: var(--palette-common-white);
   box-shadow: 0 1px 2px var(--black-12);
-}
-
-.ic-toggle-button
-  .ic-button--ghost:not(:disabled, :focus-visible)[aria-pressed="true"] {
   border-color: var(--palette-grey-400);
 }
 
-.ic-toggle-button .ic-button:not([aria-pressed="true"]) {
+/* Focus opts out: opacity would dim the focus ring along with the button. */
+.ic-toggle-button .ic-button:not([aria-pressed="true"], :focus-visible) {
   opacity: 0.5;
 }
 
