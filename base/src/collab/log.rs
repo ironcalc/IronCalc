@@ -138,7 +138,7 @@ impl Default for Timestamp {
 }
 
 /// A last-write-wins register: a value tagged with the [`Timestamp`] of the write that produced it.
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]
 pub struct Lww<T> {
     pub timestamp: Timestamp,
     pub value: T,

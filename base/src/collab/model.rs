@@ -1,9 +1,9 @@
 use crate::collab::fractional_index::{FractionalIndex, FractionalKey, SESSION_SUFFIX_LEN};
 use crate::collab::hlc::Hlc;
-use crate::collab::log::{SessionId, Timestamp};
+use crate::collab::log::{Lww, SessionId, Timestamp};
 use crate::collab::patch::{
-    CfPropKind, ColPropKind, NamedStyle, NamedStyleId, Patch, RowPropKind, SheetPropKind,
-    WorkbookPropKind,
+    CfPropKind, ColPropKind, DefinedNameId, NamedStyle, NamedStyleId, Patch, RowPropKind, SheetId,
+    SheetPropKind, WorkbookPropKind,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
@@ -114,7 +114,7 @@ pub struct SheetRegisters {
     pub cf_order: Vec<FractionalKey>,
     /// Where a rule sits, for the rules that were ever moved. Position keys are CRDT-only state,
     /// so the value sits with its guard, as in [`WorkbookMeta::sheet_positions`].
-    pub cf_positions: HashMap<FractionalKey, (FractionalKey, Timestamp)>,
+    pub cf_positions: HashMap<FractionalKey, Lww<FractionalKey>>,
 }
 
 /// Workbook-wide registers: those outliving the sheet they talk about, and those no sheet owns.
@@ -123,14 +123,24 @@ pub struct WorkbookMeta {
     /// AddSheet/DeleteSheet LWW; entries survive deletion (resurrection guard).
     pub sheet_existence: HashMap<u32, Timestamp>,
     /// Tab-order register; the position key is CRDT-only state, so value sits with its guard.
-    pub sheet_positions: HashMap<u32, (FractionalKey, Timestamp)>,
+    pub sheet_positions: HashMap<u32, Lww<FractionalKey>>,
     /// Authored sheet names. `Worksheet::name` is the *display* name, derived from these and
     /// repaired for collisions, so the value sits with its guard.
-    pub sheet_names: HashMap<u32, (String, Timestamp)>,
+    pub sheet_names: HashMap<u32, Lww<String>>,
     pub props: HashMap<WorkbookPropKind, Timestamp>,
-    pub defined_names: HashMap<(Option<u32>, String), Timestamp>,
+    /// Defined names; entries survive deletion (resurrection guard).
+    pub defined_names: HashMap<DefinedNameId, DefinedNameState>,
     /// Named styles; entries survive deletion (resurrection guard).
     pub named_styles: HashMap<NamedStyleId, NamedStyleState>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
+pub struct DefinedNameState {
+    /// The authored scope and name. A scope move is address-shaped like a rename, so one register
+    /// carries both and a concurrent redefinition of the formula still survives.
+    pub name: Lww<(Option<SheetId>, String)>,
+    /// `None` is a deleted name: the entry and its address survive, so an undo can revive it.
+    pub formula: Lww<Option<String>>,
 }
 
 /// A named style's two registers. Both are CRDT-only state — the style table shows a *display* name
@@ -139,9 +149,9 @@ pub struct WorkbookMeta {
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct NamedStyleState {
     /// The authored name, which the display name is derived from and repaired for collisions.
-    pub name: (String, Timestamp),
+    pub name: Lww<String>,
     /// `None` is a deleted style: the entry and its name survive, so an undo can revive it.
-    pub definition: (Option<Box<NamedStyle>>, Timestamp),
+    pub definition: Lww<Option<Box<NamedStyle>>>,
 }
 
 /// A description of a continuous range of cells, described using stable identifiers, which can be

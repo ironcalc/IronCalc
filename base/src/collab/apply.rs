@@ -16,15 +16,15 @@ use std::hash::Hash;
 use crate::cf_types::ConditionalFormatting;
 use crate::collab::fractional_index::FractionalKey;
 use crate::collab::hlc::Hlc;
-use crate::collab::log::{Commit, Consumer, SessionId, Snapshot, Timestamp};
+use crate::collab::log::{Commit, Consumer, Lww, SessionId, Snapshot, Timestamp};
 use crate::collab::model::{
     CollabModel, SheetIndexes, SheetRegisters, Stable, StableCellAddress, StableRange,
 };
 use crate::collab::naming::NameRepair;
 use crate::collab::patch::{
-    CellInput, CfPropKind, CfProperty, ColPropKind, ColProperty, ColState, NamedStyleId,
-    NamedStyleProperty, Patch, RowPropKind, RowProperty, RowState, SheetContent, SheetId,
-    SheetProperty, WorkbookProperty,
+    CellInput, CfPropKind, CfProperty, ColPropKind, ColProperty, ColState, DefinedNameId,
+    DefinedNameProperty, NamedStyleId, NamedStyleProperty, Patch, RowPropKind, RowProperty,
+    RowState, SheetContent, SheetId, SheetProperty, WorkbookProperty,
 };
 use crate::collab::DynError;
 use crate::constants::{
@@ -109,6 +109,13 @@ pub(crate) const SHEET_NAMES: NameRepair = NameRepair {
 /// OOXML's 255.
 pub(crate) const STYLE_NAMES: NameRepair = NameRepair {
     case_insensitive: false,
+    max_len: 255,
+};
+
+/// Defined names are case-insensitively unique within a scope — every upstream lookup folds case,
+/// from `Parser::get_defined_name` to `is_valid_defined_name` — and capped at Excel's 255.
+pub(crate) const DEFINED_NAMES: NameRepair = NameRepair {
+    case_insensitive: true,
     max_len: 255,
 };
 
@@ -319,7 +326,7 @@ fn sort_cf(sheet: &mut Worksheet<Stable>) {
     let mut pairs: Vec<_> = order.drain(..).zip(rules.drain(..)).collect();
     //TODO: optimize?
     pairs.sort_by_cached_key(|(key, _)| {
-        let position = positions.get(key).map(|(p, _)| p).unwrap_or(key).clone();
+        let position = positions.get(key).map(|p| &p.value).unwrap_or(key).clone();
         (position, key.clone())
     });
     for (i, (key, mut cf)) in pairs.into_iter().enumerate() {
@@ -366,8 +373,8 @@ impl CollabModel<'_> {
         let positions = std::mem::take(&mut self.workbook.meta.sheet_positions);
         self.workbook.worksheets.sort_by(|a, b| {
             match (
-                positions.get(&a.sheet_id).map(|(key, _)| key),
-                positions.get(&b.sheet_id).map(|(key, _)| key),
+                positions.get(&a.sheet_id).map(|p| &p.value),
+                positions.get(&b.sheet_id).map(|p| &p.value),
             ) {
                 // A revived sheet's re-filed key can equal one minted into the gap it left.
                 (Some(x), Some(y)) => x.cmp(y).then_with(|| a.sheet_id.cmp(&b.sheet_id)),
@@ -382,11 +389,12 @@ impl CollabModel<'_> {
     /// Files a sheet's authored name, under the same last-write-wins arbitration as every other
     /// register. Both `AddSheet` and a rename write here; nobody writes the display name.
     fn file_sheet_name(&mut self, sheet: SheetId, name: &str, ts: &Timestamp) {
-        let names = &mut self.workbook.meta.sheet_names;
-        if names.get(&sheet).is_some_and(|(_, stored)| ts < stored) {
-            return;
-        }
-        names.insert(sheet, (name.to_string(), *ts));
+        self.workbook
+            .meta
+            .sheet_names
+            .entry(sheet)
+            .or_default()
+            .merge(name.to_string(), ts);
     }
 
     /// Derives every `Worksheet::name` from the authored names, repairing the collisions concurrent
@@ -404,7 +412,7 @@ impl CollabModel<'_> {
         let mut authored: Vec<(Timestamp, (SheetId, usize), String)> = Vec::new();
         for (i, sheet) in self.workbook.worksheets.iter().enumerate() {
             match self.workbook.meta.sheet_names.get(&sheet.sheet_id) {
-                Some((name, ts)) => authored.push((*ts, (sheet.sheet_id, i), name.clone())),
+                Some(lww) => authored.push((lww.timestamp, (sheet.sheet_id, i), lww.value.clone())),
                 // Every live sheet arrived as an `AddSheet`, which files the register.
                 None => debug_assert!(false, "sheet {} has no authored name", sheet.sheet_id),
             }
@@ -422,8 +430,8 @@ impl CollabModel<'_> {
             .meta
             .named_styles
             .iter()
-            .filter(|(_, state)| state.definition.0.is_some())
-            .map(|(id, state)| (state.name.1, *id, state.name.0.clone()))
+            .filter(|(_, state)| state.definition.value.is_some())
+            .map(|(id, state)| (state.name.timestamp, *id, state.name.value.clone()))
             .collect();
         let mut taken = STYLE_NAMES.taken(
             self.workbook
@@ -447,7 +455,7 @@ impl CollabModel<'_> {
                 .meta
                 .named_styles
                 .get(&id)
-                .and_then(|state| state.definition.0.clone())
+                .and_then(|state| state.definition.value.clone())
             else {
                 continue;
             };
@@ -466,8 +474,56 @@ impl CollabModel<'_> {
         }
     }
 
+    /// Every live defined name as `(id, scope, display name)`, ordered by id so two replicas that
+    /// saw the same writes hold byte-identical workbooks.
+    ///
+    /// Repair runs per scope bucket: uniqueness is per scope, so a global `total` and a
+    /// sheet-scoped `total` coexist and never rename each other.
+    pub(crate) fn defined_name_display(&self) -> Vec<(DefinedNameId, Option<SheetId>, String)> {
+        let mut buckets: HashMap<Option<SheetId>, Vec<(Timestamp, DefinedNameId, String)>> =
+            HashMap::new();
+        for (id, state) in &self.workbook.meta.defined_names {
+            if state.formula.value.is_some() {
+                let (scope, name) = &state.name.value;
+                buckets
+                    .entry(*scope)
+                    .or_default()
+                    .push((state.name.timestamp, *id, name.clone()));
+            }
+        }
+        let mut display: Vec<(DefinedNameId, Option<SheetId>, String)> = buckets
+            .into_iter()
+            .flat_map(|(scope, authored)| {
+                DEFINED_NAMES
+                    .assign(authored)
+                    .into_iter()
+                    .map(move |(id, name)| (id, scope, name))
+            })
+            .collect();
+        display.sort_by_key(|(id, ..)| *id);
+        display
+    }
+
+    /// Derives `Workbook::defined_names` from the registers, the way the style table is derived:
+    /// the live names, repaired first-write-wins within each scope.
+    fn normalize_defined_names(&mut self) {
+        let registers = &self.workbook.meta.defined_names;
+        let derived = self
+            .defined_name_display()
+            .into_iter()
+            .filter_map(|(id, sheet_id, name)| {
+                Some(DefinedName {
+                    name,
+                    formula: registers.get(&id)?.formula.value.clone()?,
+                    sheet_id,
+                })
+            })
+            .collect();
+        self.workbook.defined_names = derived;
+    }
+
     /// Re-derives what a commit invalidated. Display names come first: the parse tables resolve
-    /// sheets by them.
+    /// sheets and defined names by them.
     pub(crate) fn resync_derived(&mut self, patches: &[Patch]) {
         if touches_sheet_names(patches) {
             self.normalize_sheet_names();
@@ -477,6 +533,12 @@ impl CollabModel<'_> {
             .any(|patch| matches!(patch, Patch::SetNamedStyle { .. }))
         {
             self.normalize_named_styles();
+        }
+        if patches
+            .iter()
+            .any(|patch| matches!(patch, Patch::SetDefinedName { .. }))
+        {
+            self.normalize_defined_names();
         }
         self.resync_parsed();
     }
@@ -809,7 +871,7 @@ impl CollabModel<'_> {
                 self.workbook
                     .meta
                     .sheet_positions
-                    .insert(*id, (position.clone(), *ts));
+                    .insert(*id, Lww::new(position.clone(), *ts));
                 // Same register a rename writes: a redelivered add must not undo a later rename.
                 self.file_sheet_name(*id, name, ts);
                 if self.sheet_index(*id).is_none() {
@@ -858,14 +920,16 @@ impl CollabModel<'_> {
                 if let SheetProperty::Position(position) = property {
                     // Tab order outlives the sheet, so its guard rides in `sheet_positions` rather
                     // than the sheet's own registers.
-                    let stored = self.workbook.meta.sheet_positions.get(sheet);
-                    if stored.is_some_and(|(_, stored)| ts < stored) {
-                        return;
-                    }
-                    self.workbook
+                    if !self
+                        .workbook
                         .meta
                         .sheet_positions
-                        .insert(*sheet, (position.clone(), *ts));
+                        .entry(*sheet)
+                        .or_default()
+                        .merge(position.clone(), ts)
+                    {
+                        return;
+                    }
                     self.sort_sheets();
                     return;
                 }
@@ -902,32 +966,19 @@ impl CollabModel<'_> {
                     WorkbookProperty::Timezone(tz) => self.workbook.settings.tz = tz.clone(),
                 }
             }
-            Patch::SetDefinedName {
-                scope,
-                name,
-                formula,
-                ..
-            } => {
-                let register = (*scope, name.clone());
-                if !wins(&mut self.workbook.meta.defined_names, &register, ts) {
-                    return;
-                }
-                let names = &mut self.workbook.defined_names;
-                let at = names
-                    .iter()
-                    .position(|dn| &dn.name == name && dn.sheet_id == *scope);
-                match (formula, at) {
-                    (Some(formula), Some(at)) => names[at].formula = formula.clone(),
-                    (Some(formula), None) => names.push(DefinedName {
-                        name: name.clone(),
-                        formula: formula.clone(),
-                        sheet_id: *scope,
-                    }),
-                    // The register entry stays behind, so a concurrent write to it still resolves.
-                    (None, Some(at)) => {
-                        names.remove(at);
+            // `Workbook::defined_names` itself is derived from these registers by
+            // `normalize_defined_names`.
+            Patch::SetDefinedName { id, property, .. } => {
+                let state = self.workbook.meta.defined_names.entry(*id).or_default();
+                // Each value guards itself, and the one this patch does not carry keeps the guard
+                // it has — zero for an id first seen here, which any real write then beats.
+                match property {
+                    DefinedNameProperty::Name(address) => {
+                        state.name.merge(address.clone(), ts);
                     }
-                    (None, None) => {}
+                    DefinedNameProperty::Definition(formula) => {
+                        state.formula.merge(formula.clone(), ts);
+                    }
                 }
             }
             // The style table itself is derived from these registers by `normalize_named_styles`.
@@ -936,13 +987,12 @@ impl CollabModel<'_> {
                 // Each value guards itself, and the one this patch does not carry keeps the guard
                 // it has — zero for an id first seen here, which any real write then beats.
                 match property {
-                    NamedStyleProperty::Name(name) if state.name.1 <= *ts => {
-                        state.name = (name.clone(), *ts);
+                    NamedStyleProperty::Name(name) => {
+                        state.name.merge(name.clone(), ts);
                     }
-                    NamedStyleProperty::Definition(definition) if state.definition.1 <= *ts => {
-                        state.definition = (definition.clone(), *ts);
+                    NamedStyleProperty::Definition(definition) => {
+                        state.definition.merge(definition.clone(), ts);
                     }
-                    _ => {}
                 }
             }
             Patch::AddConditionalFormat {
@@ -997,15 +1047,16 @@ impl CollabModel<'_> {
                 let sheet = &mut self.workbook.worksheets[i];
                 if let CfProperty::Priority(position) = property {
                     // Order outlives the rule's other registers, so its guard rides with its value.
-                    match sheet.index.registers.cf_positions.get(key) {
-                        Some((_, stored)) if ts < stored => return, // outdated patch
-                        _ => { /* do nothing */ }
-                    }
-                    sheet
+                    if !sheet
                         .index
                         .registers
                         .cf_positions
-                        .insert(key.clone(), (position.clone(), *ts));
+                        .entry(key.clone())
+                        .or_default()
+                        .merge(position.clone(), ts)
+                    {
+                        return; // outdated patch
+                    }
                     sort_cf(sheet);
                     return;
                 }
@@ -1467,9 +1518,13 @@ mod test {
                     prev: None,
                 },
                 Patch::SetDefinedName {
-                    scope: None,
-                    name: "total".to_string(),
-                    formula: Some("Sheet1!$A$1".to_string()),
+                    id: 3,
+                    property: DefinedNameProperty::Name((None, "total".to_string())),
+                    prev: None,
+                },
+                Patch::SetDefinedName {
+                    id: 3,
+                    property: DefinedNameProperty::Definition(Some("Sheet1!$A$1".to_string())),
                     prev: None,
                 },
                 Patch::SetNamedStyle {
