@@ -101,7 +101,10 @@
         "confirm_button": "Oui, supprimer",
         "cancel_button": "Annuler"
       },
-      "default_language": "Langue par défaut"
+      "default_language": "Langue par défaut",
+      "theme": "Thème",
+      "theme_light": "Clair",
+      "theme_dark": "Sombre"
     },
     "help_menu": {
       "button": "Aide",

@@ -88,6 +88,20 @@ export function loadDefaultLocaleFromStorage(): string {
   return l;
 }
 
+export function saveDarkModeInStorage(isDark: boolean) {
+  localStorage.setItem("dark_mode", isDark ? "true" : "false");
+}
+
+export function loadDarkModeFromStorage(): boolean {
+  const stored = localStorage.getItem("dark_mode");
+  if (stored) {
+    return stored === "true";
+  }
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  saveDarkModeInStorage(isDark);
+  return isDark;
+}
+
 export function updateNameSelectedWorkbook(model: Model, newName: string) {
   const uuid = localStorage.getItem("selected");
   if (uuid) {

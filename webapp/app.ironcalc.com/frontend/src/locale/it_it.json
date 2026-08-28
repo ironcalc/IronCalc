@@ -101,7 +101,10 @@
         "confirm_button": "Sì, elimina",
         "cancel_button": "Annulla"
       },
-      "default_language": "Lingua predefinita"
+      "default_language": "Lingua predefinita",
+      "theme": "Tema",
+      "theme_light": "Chiaro",
+      "theme_dark": "Scuro"
     },
     "help_menu": {
       "button": "Aiuto",

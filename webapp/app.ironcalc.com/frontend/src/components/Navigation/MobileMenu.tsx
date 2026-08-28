@@ -14,6 +14,7 @@ import {
   Keyboard,
   Menu as MenuIcon,
   Plus,
+  Sun,
   Table2,
   Trash2,
 } from "lucide-react";
@@ -32,6 +33,11 @@ const LANGUAGES = [
   ["it-IT", "Italiano"],
 ] as const;
 
+const THEMES = [
+  [false, "file_bar.file_menu.theme_light"],
+  [true, "file_bar.file_menu.theme_dark"],
+] as const;
+
 interface MobileMenuProps {
   newModel: () => void;
   newModelFromTemplate: () => void;
@@ -39,6 +45,8 @@ interface MobileMenuProps {
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
   onLanguageChange: (language: string) => void;
+  isDarkMode: boolean;
+  onDarkModeChange: (isDark: boolean) => void;
 }
 
 export function MobileMenu(props: MobileMenuProps) {
@@ -118,6 +126,20 @@ export function MobileMenu(props: MobileMenuProps) {
           ))}
         >
           {t("file_bar.file_menu.default_language")}
+        </MenuItemWithSubmenu>
+        <MenuItemWithSubmenu
+          icon={<Sun />}
+          submenu={THEMES.map(([isDark, labelKey]) => (
+            <MenuItem
+              key={labelKey}
+              checked={props.isDarkMode === isDark}
+              onClick={() => props.onDarkModeChange(isDark)}
+            >
+              {t(labelKey)}
+            </MenuItem>
+          ))}
+        >
+          {t("file_bar.file_menu.theme")}
         </MenuItemWithSubmenu>
         <MenuDivider />
         <MenuItem
