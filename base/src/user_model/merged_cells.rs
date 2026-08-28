@@ -1,4 +1,5 @@
 use crate::expressions::types::Area;
+use crate::merged_cells::{merge_across_ranges, merge_down_ranges};
 use crate::types::{Cell, MergedCell};
 
 use super::{common::UserModel, history::Diff};
@@ -17,10 +18,83 @@ impl UserModel<'_> {
     /// See also:
     /// * [Model::merge_cells](crate::Model::merge_cells)
     pub fn merge_cells(&mut self, range: &Area) -> Result<(), String> {
-        let sheet = range.sheet;
+        self.merge_ranges(std::slice::from_ref(range), false)
+    }
+
+    /// Same as [UserModel::merge_cells] but the merged cell is also centered
+    /// horizontally ("merge & center"). Merging and centering form a single
+    /// undo step.
+    ///
+    /// See also:
+    /// * [Model::merge_cells_center](crate::Model::merge_cells_center)
+    pub fn merge_cells_center(&mut self, range: &Area) -> Result<(), String> {
+        self.merge_ranges(std::slice::from_ref(range), true)
+    }
+
+    /// Merges each row of `range` separately into a one-row-tall merged cell
+    /// ("merge across"), following the rules of [UserModel::merge_cells] row
+    /// by row. Every row is validated up front, so the operation is
+    /// all-or-nothing, and all the merges form a single undo step.
+    ///
+    /// See also:
+    /// * [Model::merge_cells_across](crate::Model::merge_cells_across)
+    pub fn merge_cells_across(&mut self, range: &Area) -> Result<(), String> {
+        self.merge_ranges(&merge_across_ranges(range)?, false)
+    }
+
+    /// Merges each column of `range` separately into a one-column-wide merged
+    /// cell ("merge down"), following the rules of [UserModel::merge_cells]
+    /// column by column. Every column is validated up front, so the operation
+    /// is all-or-nothing, and all the merges form a single undo step.
+    ///
+    /// See also:
+    /// * [Model::merge_cells_down](crate::Model::merge_cells_down)
+    pub fn merge_cells_down(&mut self, range: &Area) -> Result<(), String> {
+        self.merge_ranges(&merge_down_ranges(range)?, false)
+    }
+
+    // Merges every range of `ranges` (all on the same sheet), centering each
+    // horizontally when `center` is set, as a single undo step.
+    fn merge_ranges(&mut self, ranges: &[Area], center: bool) -> Result<(), String> {
+        let Some(first) = ranges.first() else {
+            return Ok(());
+        };
+        let sheet = first.sheet;
+        // Validate every range up front so a multi-range merge is
+        // all-or-nothing: if any range cannot be merged nothing changes.
+        for range in ranges {
+            self.model.check_merge(range)?;
+        }
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
 
-        let mut diff_list = self.covered_cells_clear_diffs(range)?;
+        let mut diff_list = Vec::new();
+        for range in ranges {
+            self.merge_range_collect_diffs(range, center, &mut diff_list)?;
+            self.snap_selection_to_merge(range);
+        }
+
+        let new_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        diff_list.push(Diff::SetMergedCells {
+            sheet,
+            old_value: old_merged_cells,
+            new_value: new_merged_cells,
+        });
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    // Merges `range` (plus, with `center`, the horizontal centering) and
+    // appends the undo diffs for everything that changed: contents, links and
+    // styles, but not the merged-cell list itself.
+    fn merge_range_collect_diffs(
+        &mut self,
+        range: &Area,
+        center: bool,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
+        let sheet = range.sheet;
+        diff_list.extend(self.covered_cells_clear_diffs(range)?);
 
         // Merging moves the content and link of the single covered cell with
         // content to the anchor: capture the anchor's state before so the
@@ -44,6 +118,9 @@ impl UserModel<'_> {
         }
 
         self.model.merge_cells(range)?;
+        if center {
+            self.model.center_merged_range(range)?;
+        }
 
         let worksheet = self.model.workbook.worksheet(sheet)?;
         let anchor_new_value = worksheet.cell(range.row, range.column).cloned();
@@ -86,12 +163,15 @@ impl UserModel<'_> {
                 }
             }
         }
+        Ok(())
+    }
 
-        // A covered cell can never stay selected: if the selected cell is now
-        // inside the merged range, snap the selection to the whole merged
-        // cell, anchored at its top-left corner. The scroll position and the
-        // selection are left alone on undo.
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
+    // A covered cell can never stay selected: if the selected cell is now
+    // inside the merged range, snap the selection to the whole merged
+    // cell, anchored at its top-left corner. The scroll position and the
+    // selection are left alone on undo.
+    fn snap_selection_to_merge(&mut self, range: &Area) {
+        if let Ok(worksheet) = self.model.workbook.worksheet_mut(range.sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
                 if view.row >= range.row
                     && view.row < range.row + range.height
@@ -111,16 +191,6 @@ impl UserModel<'_> {
                 }
             }
         }
-
-        let new_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
-        diff_list.push(Diff::SetMergedCells {
-            sheet,
-            old_value: old_merged_cells,
-            new_value: new_merged_cells,
-        });
-        self.push_diff_list(diff_list);
-        self.evaluate_if_not_paused();
-        Ok(())
     }
 
     /// Removes every merged cell that intersects `range`. The content of the
