@@ -205,7 +205,9 @@
     "error_merging_cells": "Impossible de fusionner les cellules",
     "error_merging_cells_content": "Une seule cellule de la sélection peut avoir du contenu.",
     "error_moving_columns": "Échec du déplacement des colonnes",
-    "error_moving_rows": "Échec du déplacement des lignes"
+    "error_moving_rows": "Échec du déplacement des lignes",
+    "error_paste": "Collage impossible",
+    "error_paste_merged": "La zone collée ne peut pas couvrir une partie d'une cellule fusionnée."
   },
   "formula_bar": {
     "manage_named_ranges": "Gérer les plages nommées"
