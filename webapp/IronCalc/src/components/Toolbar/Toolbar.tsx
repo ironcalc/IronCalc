@@ -475,14 +475,6 @@ function Toolbar(properties: ToolbarProperties) {
               icon={<Grid2X2 />}
             />
           </Tooltip>
-          <Tooltip title={t("toolbar.add_link")}>
-            <IconButton
-              icon={<Link2 />}
-              aria-label={t("toolbar.add_link")}
-              onClick={properties.onOpenLinkDialog}
-              disabled={!canEdit}
-            />
-          </Tooltip>
           <Tooltip title={t("toolbar.conditional_formatting")}>
             <IconButton
               icon={<Brush />}
@@ -605,6 +597,20 @@ function Toolbar(properties: ToolbarProperties) {
               pressed={properties.mergedCells}
               onClick={() => properties.onToggleMergeCells()}
               disabled={!canEdit || !properties.canMergeCells}
+            />
+          </Tooltip>
+        </div>
+
+        <div className="ic-toolbar-divider" />
+
+        {/* Links, checkboxes, dropdowns, etc */}
+        <div className="ic-toolbar-button-group">
+          <Tooltip title={t("toolbar.add_link")}>
+            <IconButton
+              icon={<Link2 />}
+              aria-label={t("toolbar.add_link")}
+              onClick={properties.onOpenLinkDialog}
+              disabled={!canEdit}
             />
           </Tooltip>
         </div>
