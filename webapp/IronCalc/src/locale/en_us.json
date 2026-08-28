@@ -429,6 +429,13 @@
     "increase_font_size": "Increase font size",
     "italic": "Italic",
     "merge_cells": "Merge cells",
+    "merge_menu": {
+      "merge": "Merge cells",
+      "merge_across": "Merge across",
+      "merge_center": "Merge & center",
+      "merge_down": "Merge down",
+      "unmerge": "Unmerge cells"
+    },
     "named_styles": "Cell styles",
     "percentage": "Format as percentage",
     "redo": "Redo",

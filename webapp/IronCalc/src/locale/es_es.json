@@ -429,6 +429,13 @@
     "increase_font_size": "Aumentar tamaño de fuente",
     "italic": "Cursiva",
     "merge_cells": "Combinar celdas",
+    "merge_menu": {
+      "merge": "Combinar celdas",
+      "merge_across": "Combinar horizontalmente",
+      "merge_center": "Combinar y centrar",
+      "merge_down": "Combinar verticalmente",
+      "unmerge": "Separar celdas"
+    },
     "named_styles": "Estilos de celda",
     "percentage": "Formato porcentaje",
     "redo": "Rehacer",
