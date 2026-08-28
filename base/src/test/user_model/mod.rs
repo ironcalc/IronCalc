@@ -2,6 +2,7 @@ mod test_add_delete_sheets;
 mod test_array_formulas;
 mod test_auto_link;
 mod test_autofill_columns;
+mod test_autofill_merged_cells;
 mod test_autofill_rows;
 mod test_batch_row_column_diff;
 mod test_border;
