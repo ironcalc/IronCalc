@@ -8,6 +8,7 @@ import type {
 } from "@ironcalc/wasm";
 import {
   AlignCenter,
+  AlignCenterHorizontal,
   AlignLeft,
   AlignRight,
   ArrowDownToLine,
@@ -17,6 +18,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Columns3,
   DecimalsArrowLeft,
   DecimalsArrowRight,
   DollarSign,
@@ -36,9 +38,11 @@ import {
   PoundSterling,
   Redo2,
   RemoveFormatting,
+  Rows3,
   Strikethrough,
   SwatchBook,
   TableCellsMerge,
+  TableCellsSplit,
   Type,
   Underline,
   Undo2,
@@ -58,9 +62,19 @@ import {
   increaseDecimalPlaces,
   NumberFormats,
 } from "../FormatMenu/formatUtil";
+import { Menu } from "../Menu/Menu";
+import { MenuDivider } from "../Menu/MenuDivider";
+import { MenuItem } from "../Menu/MenuItem";
 import ThemeMenu from "../ThemeMenu/ThemeMenu";
 import "./toolbar.css";
 import { Tooltip } from "../Tooltip/Tooltip";
+
+export type MergeCellsOperation =
+  | "merge"
+  | "merge_center"
+  | "merge_across"
+  | "merge_down"
+  | "unmerge";
 
 type ToolbarProperties = {
   canUndo: boolean;
@@ -93,11 +107,14 @@ type ToolbarProperties = {
   horizontalAlign: HorizontalAlignment;
   verticalAlign: VerticalAlignment;
   wrapText: boolean;
-  // true when the selection intersects at least one merged cell
-  mergedCells: boolean;
-  // true when the selection can be merged or unmerged
-  canMergeCells: boolean;
-  onToggleMergeCells: () => void;
+  // what the merge menu can do with the current selection
+  mergeCellsState: {
+    canMerge: boolean;
+    canMergeAcross: boolean;
+    canMergeDown: boolean;
+    canUnmerge: boolean;
+  };
+  onMergeCells: (operation: MergeCellsOperation) => void;
   canEdit: boolean;
   numFmt: string;
   showGridLines: boolean;
@@ -131,7 +148,7 @@ function Toolbar(properties: ToolbarProperties) {
 
   const { t } = useTranslation();
 
-  const { canEdit, currentTheme } = properties;
+  const { canEdit, currentTheme, mergeCellsState } = properties;
 
   useEffect(() => {
     setFontSizeInput(`${properties.fontSize}`);
@@ -590,15 +607,63 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-          <Tooltip title={t("toolbar.merge_cells")}>
-            <IconButton
+          <Menu
+            trigger={
+              <div className="ic-toolbar-menu-anchor">
+                <Tooltip title={t("toolbar.merge_cells")}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t("toolbar.merge_cells")}
+                    disabled={
+                      !canEdit ||
+                      !(mergeCellsState.canMerge || mergeCellsState.canUnmerge)
+                    }
+                    style={{ gap: 0, paddingLeft: 4, paddingRight: 2 }}
+                    startIcon={<TableCellsMerge />}
+                    endIcon={<ChevronDown size={12} />}
+                  />
+                </Tooltip>
+              </div>
+            }
+          >
+            <MenuItem
               icon={<TableCellsMerge />}
-              aria-label={t("toolbar.merge_cells")}
-              pressed={properties.mergedCells}
-              onClick={() => properties.onToggleMergeCells()}
-              disabled={!canEdit || !properties.canMergeCells}
-            />
-          </Tooltip>
+              disabled={!mergeCellsState.canMerge}
+              onClick={() => properties.onMergeCells("merge")}
+            >
+              {t("toolbar.merge_menu.merge")}
+            </MenuItem>
+            <MenuItem
+              icon={<AlignCenterHorizontal />}
+              disabled={!mergeCellsState.canMerge}
+              onClick={() => properties.onMergeCells("merge_center")}
+            >
+              {t("toolbar.merge_menu.merge_center")}
+            </MenuItem>
+            <MenuItem
+              icon={<Rows3 />}
+              disabled={!mergeCellsState.canMergeAcross}
+              onClick={() => properties.onMergeCells("merge_across")}
+            >
+              {t("toolbar.merge_menu.merge_across")}
+            </MenuItem>
+            <MenuItem
+              icon={<Columns3 />}
+              disabled={!mergeCellsState.canMergeDown}
+              onClick={() => properties.onMergeCells("merge_down")}
+            >
+              {t("toolbar.merge_menu.merge_down")}
+            </MenuItem>
+            <MenuDivider />
+            <MenuItem
+              icon={<TableCellsSplit />}
+              disabled={!mergeCellsState.canUnmerge}
+              onClick={() => properties.onMergeCells("unmerge")}
+            >
+              {t("toolbar.merge_menu.unmerge")}
+            </MenuItem>
+          </Menu>
         </div>
 
         <div className="ic-toolbar-divider" />

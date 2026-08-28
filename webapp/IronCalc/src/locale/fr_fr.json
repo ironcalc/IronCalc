@@ -429,6 +429,13 @@
     "increase_font_size": "Augmenter la taille de la police",
     "italic": "Italique",
     "merge_cells": "Fusionner les cellules",
+    "merge_menu": {
+      "merge": "Fusionner les cellules",
+      "merge_across": "Fusionner horizontalement",
+      "merge_center": "Fusionner et centrer",
+      "merge_down": "Fusionner verticalement",
+      "unmerge": "Annuler la fusion"
+    },
     "named_styles": "Styles de cellule",
     "percentage": "Formater pourcentage",
     "redo": "Rétablir",

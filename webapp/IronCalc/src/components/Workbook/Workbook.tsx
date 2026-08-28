@@ -20,7 +20,7 @@ import RightDrawer, {
   type DrawerType,
 } from "../RightDrawer/RightDrawer";
 import SheetTabBar from "../SheetTabBar";
-import Toolbar from "../Toolbar/Toolbar";
+import Toolbar, { type MergeCellsOperation } from "../Toolbar/Toolbar";
 import {
   getCellAddress,
   getEditorSize,
@@ -204,16 +204,28 @@ const Workbook = (props: {
       );
   };
 
-  // The button merges a selection of more than one cell and unmerges a
-  // selection that intersects merged cells. Full-row and full-column
-  // selections cannot be merged.
-  const onToggleMergeCells = () => {
+  // The menu merges a selection of more than one cell (as a single merged
+  // cell, centered, across or down) and unmerges a selection that intersects
+  // merged cells.
+  const onMergeCells = (operation: MergeCellsOperation) => {
     const area = getSelectedArea();
     try {
-      if (selectionIntersectsMergedCells()) {
-        model.unmergeCells(area);
-      } else {
-        model.mergeCells(area);
+      switch (operation) {
+        case "merge":
+          model.mergeCells(area);
+          break;
+        case "merge_center":
+          model.mergeCellsCenter(area);
+          break;
+        case "merge_across":
+          model.mergeCellsAcross(area);
+          break;
+        case "merge_down":
+          model.mergeCellsDown(area);
+          break;
+        case "unmerge":
+          model.unmergeCells(area);
+          break;
       }
     } catch (e) {
       if (`${e}`.includes("more than one cell has content")) {
@@ -227,12 +239,27 @@ const Workbook = (props: {
     setRedrawId((id) => id + 1);
   };
 
-  const canMergeCells = () => {
+  // Full-row and full-column selections can be neither merged nor unmerged.
+  const getMergeCellsState = () => {
     const area = getSelectedArea();
     if (area.width >= LAST_COLUMN || area.height >= LAST_ROW) {
-      return false;
+      return {
+        canMerge: false,
+        canMergeAcross: false,
+        canMergeDown: false,
+        canUnmerge: false,
+      };
     }
-    return area.width * area.height > 1 || selectionIntersectsMergedCells();
+    const canUnmerge = selectionIntersectsMergedCells();
+    const canMerge = !canUnmerge && area.width * area.height > 1;
+    return {
+      canMerge,
+      // merging across (down) merges each row (column) separately, so it
+      // needs more than one column (row)
+      canMergeAcross: canMerge && area.width > 1,
+      canMergeDown: canMerge && area.height > 1,
+      canUnmerge,
+    };
   };
 
   const onTextColorPicked = (color: Color) => {
@@ -937,9 +964,8 @@ const Workbook = (props: {
             style.alignment?.vertical ? style.alignment.vertical : "bottom"
           }
           wrapText={style.alignment?.wrap_text || false}
-          mergedCells={selectionIntersectsMergedCells()}
-          canMergeCells={canMergeCells()}
-          onToggleMergeCells={onToggleMergeCells}
+          mergeCellsState={getMergeCellsState()}
+          onMergeCells={onMergeCells}
           canEdit={true}
           numFmt={style.num_fmt}
           showGridLines={model.getShowGridLines(model.getSelectedSheet())}

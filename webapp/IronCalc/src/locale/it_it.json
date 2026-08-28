@@ -429,6 +429,13 @@
     "increase_font_size": "Aumenta dimensione carattere",
     "italic": "Corsivo",
     "merge_cells": "Unisci celle",
+    "merge_menu": {
+      "merge": "Unisci celle",
+      "merge_across": "Unisci orizzontalmente",
+      "merge_center": "Unisci e centra",
+      "merge_down": "Unisci verticalmente",
+      "unmerge": "Separa celle"
+    },
     "named_styles": "Stili di cella",
     "percentage": "Formato percentuale",
     "redo": "Ripeti",
