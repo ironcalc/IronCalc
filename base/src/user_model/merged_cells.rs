@@ -70,8 +70,8 @@ impl UserModel<'_> {
         let mut diff_list = Vec::new();
         for range in ranges {
             self.merge_range_collect_diffs(range, center, &mut diff_list)?;
-            self.snap_selection_to_merge(range);
         }
+        self.snap_selection_to_merged_area(ranges);
 
         let new_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         diff_list.push(Diff::SetMergedCells {
@@ -167,27 +167,43 @@ impl UserModel<'_> {
     }
 
     // A covered cell can never stay selected: if the selected cell is now
-    // inside the merged range, snap the selection to the whole merged
-    // cell, anchored at its top-left corner. The scroll position and the
+    // inside the merged area, select the whole area — all the merged cells of
+    // a multi-range merge ("across", "down") — with the top-left anchor as
+    // the selected cell and the bottom-right cell as the focus (the canonical
+    // anchor/focus pair for that range). The scroll position and the
     // selection are left alone on undo.
-    fn snap_selection_to_merge(&mut self, range: &Area) {
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(range.sheet) {
+    fn snap_selection_to_merged_area(&mut self, ranges: &[Area]) {
+        let Some(first) = ranges.first() else {
+            return;
+        };
+        let row = ranges.iter().map(|r| r.row).min().unwrap_or(first.row);
+        let column = ranges
+            .iter()
+            .map(|r| r.column)
+            .min()
+            .unwrap_or(first.column);
+        let last_row = ranges
+            .iter()
+            .map(|r| r.row + r.height - 1)
+            .max()
+            .unwrap_or(first.row);
+        let last_column = ranges
+            .iter()
+            .map(|r| r.column + r.width - 1)
+            .max()
+            .unwrap_or(first.column);
+        if let Ok(worksheet) = self.model.workbook.worksheet_mut(first.sheet) {
             if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                if view.row >= range.row
-                    && view.row < range.row + range.height
-                    && view.column >= range.column
-                    && view.column < range.column + range.width
+                if view.row >= row
+                    && view.row <= last_row
+                    && view.column >= column
+                    && view.column <= last_column
                 {
-                    view.row = range.row;
-                    view.column = range.column;
-                    view.range = [
-                        range.row,
-                        range.column,
-                        range.row + range.height - 1,
-                        range.column + range.width - 1,
-                    ];
-                    view.focus_row = range.row;
-                    view.focus_column = range.column;
+                    view.row = row;
+                    view.column = column;
+                    view.range = [row, column, last_row, last_column];
+                    view.focus_row = last_row;
+                    view.focus_column = last_column;
                 }
             }
         }

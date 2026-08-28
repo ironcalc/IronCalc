@@ -1192,15 +1192,30 @@ fn merge_across_replays_on_external_models() {
 }
 
 #[test]
-fn merge_across_snaps_the_selection_to_its_row_anchor() {
+fn merge_across_selects_the_whole_merged_area() {
     let mut model = new_empty_user_model();
     // select C3 and extend the selection to B2: C3 stays the selected cell
     model.set_selected_cell(3, 3).unwrap();
     model.on_area_selecting(2, 2).unwrap();
 
     model.merge_cells_across(&area(0, 2, 2, 2, 2)).unwrap();
-    // C3 is covered by the second row's merge: the selection snaps to B3
+    // the whole merged area stays selected (both row merges), with the
+    // top-left anchor B2 as the selected cell
     let view = model.get_selected_view();
-    assert_eq!((view.row, view.column), (3, 2));
-    assert_eq!(view.range, [3, 2, 3, 3]);
+    assert_eq!((view.row, view.column), (2, 2));
+    assert_eq!(view.range, [2, 2, 3, 3]);
+}
+
+#[test]
+fn merge_down_selects_the_whole_merged_area() {
+    let mut model = new_empty_user_model();
+    model.set_selected_cell(4, 3).unwrap();
+    model.on_area_selecting(2, 2).unwrap();
+
+    model.merge_cells_down(&area(0, 2, 2, 2, 3)).unwrap();
+    // the whole merged area stays selected (both column merges), with the
+    // top-left anchor B2 as the selected cell
+    let view = model.get_selected_view();
+    assert_eq!((view.row, view.column), (2, 2));
+    assert_eq!(view.range, [2, 2, 4, 3]);
 }
