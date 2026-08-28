@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     expressions::{
@@ -8,13 +8,274 @@ use crate::{
         utils::{is_valid_column_number, is_valid_row},
     },
     model::CellStructure,
+    types::MergedCell,
     user_model::sequence_detector::detect_progression,
     UserModel,
 };
 
 use crate::user_model::history::Diff;
 
+const PARTIAL_MERGE_ERROR: &str =
+    "Cannot auto-fill: a merged cell partially overlaps the fill area";
+const CUT_MERGE_ERROR: &str = "Cannot auto-fill: the fill size must fit whole merged cells";
+
+// How the merged cells of the sheet interact with a fill:
+// the merges of the source are tiled into the fill target, and the merges
+// already in the target are replaced by that pattern.
+struct MergedFillPlan {
+    // source cells covered by a merge (every cell of a source merge except
+    // its anchor): they hold no content, and neither do their tiled copies
+    covered_source: HashSet<(i32, i32)>,
+    // the tiled copies of the source merges, to create in the fill target
+    new_merges: Vec<MergedCell>,
+    // the merged cells of the sheet before the fill
+    old_merged_cells: Vec<MergedCell>,
+    // the merged cells after removing the ones replaced by the fill, before
+    // adding `new_merges`
+    merged_cells_after_removal: Vec<MergedCell>,
+}
+
+fn merge_is_contained(m: &MergedCell, row1: i32, column1: i32, row2: i32, column2: i32) -> bool {
+    m.row >= row1
+        && m.column >= column1
+        && m.row + m.height - 1 <= row2
+        && m.column + m.width - 1 <= column2
+}
+
 impl<'a> UserModel<'a> {
+    // Validates the fill of `target` from `source` (both closed rectangles
+    // `(first_row, first_column, last_row, last_column)` on `sheet`) against
+    // the merged cells of the sheet and returns the resulting plan:
+    //
+    // * A merge intersecting the source or the target but not fully contained
+    //   in it fails with [PARTIAL_MERGE_ERROR].
+    // * The source merges are tiled into the target with period the source
+    //   height (`by_rows`) or width. A tiled merge that would stick out of
+    //   the target fails with [CUT_MERGE_ERROR]: the fill can stop mid-tile,
+    //   but only where it cuts no merge.
+    // * Merges fully contained in the target are replaced by the tiled
+    //   pattern (they are dropped from `merged_cells_after_removal`).
+    fn plan_fill_merges(
+        &self,
+        sheet: u32,
+        source: (i32, i32, i32, i32),
+        target: (i32, i32, i32, i32),
+        by_rows: bool,
+    ) -> Result<MergedFillPlan, String> {
+        let (s_row1, s_column1, s_row2, s_column2) = source;
+        let (t_row1, t_column1, t_row2, t_column2) = target;
+        let merged_cells = &self.model.workbook.worksheet(sheet)?.merged_cells;
+
+        let mut source_merges = Vec::new();
+        let mut merged_cells_after_removal = Vec::new();
+        for m in merged_cells {
+            if m.intersects(
+                s_row1,
+                s_column1,
+                s_column2 - s_column1 + 1,
+                s_row2 - s_row1 + 1,
+            ) {
+                if !merge_is_contained(m, s_row1, s_column1, s_row2, s_column2) {
+                    return Err(PARTIAL_MERGE_ERROR.to_string());
+                }
+                source_merges.push(*m);
+                merged_cells_after_removal.push(*m);
+            } else if m.intersects(
+                t_row1,
+                t_column1,
+                t_column2 - t_column1 + 1,
+                t_row2 - t_row1 + 1,
+            ) {
+                if !merge_is_contained(m, t_row1, t_column1, t_row2, t_column2) {
+                    return Err(PARTIAL_MERGE_ERROR.to_string());
+                }
+                // fully contained in the fill target: replaced by the fill
+            } else {
+                merged_cells_after_removal.push(*m);
+            }
+        }
+
+        let mut covered_source = HashSet::new();
+        for m in &source_merges {
+            for row in m.row..m.row + m.height {
+                for column in m.column..m.column + m.width {
+                    if (row, column) != (m.row, m.column) {
+                        covered_source.insert((row, column));
+                    }
+                }
+            }
+        }
+
+        // Tile the source merges into the target. Tiles start at the target
+        // edge next to the source and repeat away from it.
+        let mut new_merges = Vec::new();
+        if !source_merges.is_empty() {
+            let mut tile_starts = Vec::new();
+            if by_rows {
+                let period = s_row2 - s_row1 + 1;
+                if t_row1 > s_row2 {
+                    let mut start = t_row1;
+                    while start <= t_row2 {
+                        tile_starts.push(start);
+                        start += period;
+                    }
+                } else {
+                    let mut start = s_row1 - period;
+                    while start + period > t_row1 {
+                        tile_starts.push(start);
+                        start -= period;
+                    }
+                }
+                for tile_start in tile_starts {
+                    for m in &source_merges {
+                        let first_row = tile_start + (m.row - s_row1);
+                        let last_row = first_row + m.height - 1;
+                        if last_row < t_row1 || first_row > t_row2 {
+                            continue;
+                        }
+                        if first_row < t_row1 || last_row > t_row2 {
+                            return Err(CUT_MERGE_ERROR.to_string());
+                        }
+                        new_merges.push(MergedCell {
+                            row: first_row,
+                            column: m.column,
+                            width: m.width,
+                            height: m.height,
+                        });
+                    }
+                }
+            } else {
+                let period = s_column2 - s_column1 + 1;
+                if t_column1 > s_column2 {
+                    let mut start = t_column1;
+                    while start <= t_column2 {
+                        tile_starts.push(start);
+                        start += period;
+                    }
+                } else {
+                    let mut start = s_column1 - period;
+                    while start + period > t_column1 {
+                        tile_starts.push(start);
+                        start -= period;
+                    }
+                }
+                for tile_start in tile_starts {
+                    for m in &source_merges {
+                        let first_column = tile_start + (m.column - s_column1);
+                        let last_column = first_column + m.width - 1;
+                        if last_column < t_column1 || first_column > t_column2 {
+                            continue;
+                        }
+                        if first_column < t_column1 || last_column > t_column2 {
+                            return Err(CUT_MERGE_ERROR.to_string());
+                        }
+                        new_merges.push(MergedCell {
+                            row: m.row,
+                            column: first_column,
+                            width: m.width,
+                            height: m.height,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(MergedFillPlan {
+            covered_source,
+            new_merges,
+            old_merged_cells: merged_cells.clone(),
+            merged_cells_after_removal,
+        })
+    }
+
+    // Removes the merges the fill target replaces, with its diff. Pushed
+    // before the cell diffs so a forward replay writes on unmerged cells.
+    fn apply_fill_merge_removal(
+        &mut self,
+        sheet: u32,
+        plan: &MergedFillPlan,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
+        if plan.merged_cells_after_removal != plan.old_merged_cells {
+            self.model.workbook.worksheet_mut(sheet)?.merged_cells =
+                plan.merged_cells_after_removal.clone();
+            diff_list.push(Diff::SetMergedCells {
+                sheet,
+                old_value: plan.old_merged_cells.clone(),
+                new_value: plan.merged_cells_after_removal.clone(),
+            });
+        }
+        Ok(())
+    }
+
+    // Creates the tiled merges in the fill target, with its diff. Pushed
+    // after the cell diffs so an undo unmerges first and can then restore the
+    // old content of the covered cells.
+    fn apply_fill_merge_creation(
+        &mut self,
+        sheet: u32,
+        plan: &MergedFillPlan,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
+        if !plan.new_merges.is_empty() {
+            let worksheet = self.model.workbook.worksheet_mut(sheet)?;
+            worksheet
+                .merged_cells
+                .extend(plan.new_merges.iter().copied());
+            diff_list.push(Diff::SetMergedCells {
+                sheet,
+                old_value: plan.merged_cells_after_removal.clone(),
+                new_value: worksheet.merged_cells.clone(),
+            });
+        }
+        Ok(())
+    }
+
+    // The fill target cell is covered by a tiled merge: it gets no value,
+    // only the style and (lack of) link of its source cell, and its old
+    // content is cleared. `source` and `target` are `(row, column)` pairs.
+    fn fill_covered_cell(
+        &mut self,
+        sheet: u32,
+        source: (i32, i32),
+        target: (i32, i32),
+        old_value: Option<crate::types::Cell>,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
+        let (source_row, source_column) = source;
+        let (row, column) = target;
+        let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
+        // Going through prepare_cell_for_user_input keeps dynamic array
+        // formulas consistent (an anchor spilling into the cell is reset)
+        self.model.prepare_cell_for_user_input(sheet, row, column)?;
+        let worksheet = self.model.workbook.worksheet_mut(sheet)?;
+        if worksheet.cell(row, column).is_some() {
+            worksheet.cell_clear_contents(row, column)?;
+        }
+        if old_value.is_some() {
+            diff_list.push(Diff::SetCellValue {
+                sheet,
+                row,
+                column,
+                new_value: "".to_string(),
+                old_value: Box::new(old_value),
+            });
+        }
+
+        let new_style = self
+            .model
+            .get_style_for_cell(sheet, source_row, source_column)?;
+        self.model.set_cell_style(sheet, row, column, &new_style)?;
+        diff_list.push(Diff::SetCellStyle {
+            sheet,
+            row,
+            column,
+            old_value: Box::new(old_style),
+            new_value: Box::new(new_style),
+        });
+
+        self.fill_cell_link(sheet, source_row, source_column, row, column, diff_list)
+    }
     /// Scans the fill target rectangle (`row_start..=row_end`, `col_start..=col_end`) for
     /// CSE array formulas and prepares them for overwriting:
     ///
@@ -121,20 +382,6 @@ impl<'a> UserModel<'a> {
             return Err(format!("Invalid row: '{to_row}'"));
         }
 
-        // Auto-filling over merged cells is not supported
-        let first_row = row1.min(to_row);
-        let fill_height = last_row.max(to_row) - first_row + 1;
-        if self
-            .model
-            .workbook
-            .worksheet(sheet)?
-            .merged_cells
-            .iter()
-            .any(|m| m.intersects(first_row, column1, width, fill_height))
-        {
-            return Err("Cannot auto-fill over merged cells".to_string());
-        }
-
         // anchor_row is the first row that repeats in each case.
         let anchor_row;
         let sign;
@@ -158,6 +405,18 @@ impl<'a> UserModel<'a> {
         // Fill target: rows in row_range, all source columns.
         let fill_row_start = if sign < 0 { to_row } else { last_row + 1 };
         let fill_row_end = if sign < 0 { row1 - 1 } else { to_row };
+
+        // The merged cells of the source are tiled into the fill target and
+        // replace the merges already there; a merge partially overlapping the
+        // source or the target, or cut by the fill boundary, is an error.
+        let plan = self.plan_fill_merges(
+            sheet,
+            (row1, column1, last_row, last_column),
+            (fill_row_start, column1, fill_row_end, last_column),
+            true,
+        )?;
+        self.apply_fill_merge_removal(sheet, &plan, &mut diff_list)?;
+
         let saved_cse = self.collect_and_clear_cse_in_fill_target(
             sheet,
             fill_row_start,
@@ -169,19 +428,28 @@ impl<'a> UserModel<'a> {
         for column in column1..=last_column {
             let mut index = 0;
             let locale = &self.model.locale;
+            // covered cells hold no content: the progression is detected over
+            // the rest and lands on the non-covered cells of the target
             let values = if sign < 0 {
                 (row1..=last_row)
                     .rev()
+                    .filter(|row| !plan.covered_source.contains(&(*row, column)))
                     .map(|row| self.get_cell_content(sheet, row, column))
                     .collect::<Result<Vec<_>, _>>()?
             } else {
                 (row1..=last_row)
+                    .filter(|row| !plan.covered_source.contains(&(*row, column)))
                     .map(|row| self.get_cell_content(sheet, row, column))
                     .collect::<Result<Vec<_>, _>>()?
             };
             let case_seed = self.get_cell_content(sheet, row1, column)?;
-            let possible_progression = detect_progression(&values, locale, &case_seed);
-            for (range_idx, row_ref) in row_range.iter().enumerate() {
+            let possible_progression = if values.is_empty() {
+                None
+            } else {
+                detect_progression(&values, locale, &case_seed)
+            };
+            let mut progression_idx = 0;
+            for row_ref in row_range.iter() {
                 let row = *row_ref;
 
                 let old_value = saved_cse.get(&(row, column)).cloned().unwrap_or_else(|| {
@@ -191,14 +459,29 @@ impl<'a> UserModel<'a> {
                         .ok()
                         .and_then(|ws| ws.cell(row, column).cloned())
                 });
-                let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
 
                 let source_row = anchor_row + index;
+
+                if plan.covered_source.contains(&(source_row, column)) {
+                    // the target cell is covered by a tiled merge
+                    self.fill_covered_cell(
+                        sheet,
+                        (source_row, column),
+                        (row, column),
+                        old_value,
+                        &mut diff_list,
+                    )?;
+                    index = (index + sign) % source_area.height;
+                    continue;
+                }
+
+                let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
                 let target_value;
 
                 // compute the new value and set it
                 if let Some(ref detected_progression) = possible_progression {
-                    target_value = detected_progression.next(range_idx);
+                    target_value = detected_progression.next(progression_idx);
+                    progression_idx += 1;
                 } else {
                     target_value = self
                         .model
@@ -233,6 +516,7 @@ impl<'a> UserModel<'a> {
                 index = (index + sign) % source_area.height;
             }
         }
+        self.apply_fill_merge_creation(sheet, &plan, &mut diff_list)?;
         self.push_diff_list(diff_list);
         self.evaluate();
         Ok(())
@@ -277,20 +561,6 @@ impl<'a> UserModel<'a> {
             return Err(format!("Invalid column: '{to_column}'"));
         }
 
-        // Auto-filling over merged cells is not supported
-        let first_column = column1.min(to_column);
-        let fill_width = last_column.max(to_column) - first_column + 1;
-        if self
-            .model
-            .workbook
-            .worksheet(sheet)?
-            .merged_cells
-            .iter()
-            .any(|m| m.intersects(row1, first_column, fill_width, height))
-        {
-            return Err("Cannot auto-fill over merged cells".to_string());
-        }
-
         // anchor_column is the first column that repeats in each case.
         let anchor_column;
         let sign;
@@ -314,6 +584,18 @@ impl<'a> UserModel<'a> {
         // Fill target: all source rows, columns in column_range.
         let fill_col_start = if sign < 0 { to_column } else { last_column + 1 };
         let fill_col_end = if sign < 0 { column1 - 1 } else { to_column };
+
+        // The merged cells of the source are tiled into the fill target and
+        // replace the merges already there; a merge partially overlapping the
+        // source or the target, or cut by the fill boundary, is an error.
+        let plan = self.plan_fill_merges(
+            sheet,
+            (row1, column1, last_row, last_column),
+            (row1, fill_col_start, last_row, fill_col_end),
+            false,
+        )?;
+        self.apply_fill_merge_removal(sheet, &plan, &mut diff_list)?;
+
         let saved_cse = self.collect_and_clear_cse_in_fill_target(
             sheet,
             row1,
@@ -325,19 +607,28 @@ impl<'a> UserModel<'a> {
         for row in row1..=last_row {
             let mut index = 0;
             let locale = &self.model.locale;
+            // covered cells hold no content: the progression is detected over
+            // the rest and lands on the non-covered cells of the target
             let values = if sign < 0 {
                 (column1..=last_column)
                     .rev()
+                    .filter(|column| !plan.covered_source.contains(&(row, *column)))
                     .map(|column| self.get_cell_content(sheet, row, column))
                     .collect::<Result<Vec<_>, _>>()?
             } else {
                 (column1..=last_column)
+                    .filter(|column| !plan.covered_source.contains(&(row, *column)))
                     .map(|column| self.get_cell_content(sheet, row, column))
                     .collect::<Result<Vec<_>, _>>()?
             };
             let case_seed = self.get_cell_content(sheet, row, column1)?;
-            let possible_progression = detect_progression(&values, locale, &case_seed);
-            for (range_idx, column_ref) in column_range.iter().enumerate() {
+            let possible_progression = if values.is_empty() {
+                None
+            } else {
+                detect_progression(&values, locale, &case_seed)
+            };
+            let mut progression_idx = 0;
+            for column_ref in column_range.iter() {
                 let column = *column_ref;
 
                 // Save value and style first
@@ -348,14 +639,29 @@ impl<'a> UserModel<'a> {
                         .ok()
                         .and_then(|ws| ws.cell(row, column).cloned())
                 });
-                let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
 
                 let source_column = anchor_column + index;
+
+                if plan.covered_source.contains(&(row, source_column)) {
+                    // the target cell is covered by a tiled merge
+                    self.fill_covered_cell(
+                        sheet,
+                        (row, source_column),
+                        (row, column),
+                        old_value,
+                        &mut diff_list,
+                    )?;
+                    index = (index + sign) % source_area.width;
+                    continue;
+                }
+
+                let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
                 let target_value;
 
                 // compute the new value and set it
                 if let Some(ref detected_progression) = possible_progression {
-                    target_value = detected_progression.next(range_idx);
+                    target_value = detected_progression.next(progression_idx);
+                    progression_idx += 1;
                 } else {
                     target_value = self
                         .model
@@ -392,6 +698,7 @@ impl<'a> UserModel<'a> {
                 index = (index + sign) % source_area.width;
             }
         }
+        self.apply_fill_merge_creation(sheet, &plan, &mut diff_list)?;
         self.push_diff_list(diff_list);
         self.evaluate();
         Ok(())
