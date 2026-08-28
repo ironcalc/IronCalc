@@ -35,6 +35,7 @@ export { ToggleButton } from "./components/ToggleButton/ToggleButton";
 export type { TooltipProperties } from "./components/Tooltip/Tooltip";
 export { Tooltip } from "./components/Tooltip/Tooltip";
 export type { IronCalcHandle } from "./IronCalc";
+export { darkThemeVariables } from "./theme";
 export { IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo, Model };
 
 export const init: typeof initWasm = async (module_or_path) => {

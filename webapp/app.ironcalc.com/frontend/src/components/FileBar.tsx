@@ -29,6 +29,8 @@ export function FileBar(properties: {
   setIsDrawerOpen: (open: boolean) => void;
   setLocalStorageId: (updater: (id: number) => number) => void;
   onLanguageChange: (language: string) => void;
+  isDarkMode: boolean;
+  onDarkModeChange: (isDark: boolean) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
@@ -82,6 +84,8 @@ export function FileBar(properties: {
           onModelUpload={properties.onModelUpload}
           onDelete={properties.onDelete}
           onLanguageChange={properties.onLanguageChange}
+          isDarkMode={properties.isDarkMode}
+          onDarkModeChange={properties.onDarkModeChange}
         />
       ) : (
         <div className="app-ic-file-bar-desktop-menu">
@@ -96,6 +100,8 @@ export function FileBar(properties: {
             onClose={closeMenus}
             onHover={() => openMenu && setOpenMenu("file")}
             onLanguageChange={properties.onLanguageChange}
+            isDarkMode={properties.isDarkMode}
+            onDarkModeChange={properties.onDarkModeChange}
           />
           <HelpMenu
             isOpen={openMenu === "help"}

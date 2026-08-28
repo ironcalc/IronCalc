@@ -101,7 +101,10 @@
         "confirm_button": "Yes, delete",
         "cancel_button": "Cancel"
       },
-      "default_language": "Default language"
+      "default_language": "Default language",
+      "theme": "Theme",
+      "theme_light": "Light",
+      "theme_dark": "Dark"
     },
     "help_menu": {
       "button": "Help",

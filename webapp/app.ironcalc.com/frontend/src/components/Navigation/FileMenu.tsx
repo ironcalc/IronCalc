@@ -5,7 +5,15 @@ import {
   MenuItem,
   MenuItemWithSubmenu,
 } from "@ironcalc/workbook";
-import { FileDown, FileUp, Globe, Plus, Table2, Trash2 } from "lucide-react";
+import {
+  FileDown,
+  FileUp,
+  Globe,
+  Plus,
+  Sun,
+  Table2,
+  Trash2,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
@@ -21,6 +29,11 @@ const LANGUAGES = [
   ["it-IT", "Italiano"],
 ] as const;
 
+const THEMES = [
+  [false, "file_bar.file_menu.theme_light"],
+  [true, "file_bar.file_menu.theme_dark"],
+] as const;
+
 export function FileMenu(props: {
   newModel: () => void;
   newModelFromTemplate: () => void;
@@ -28,6 +41,8 @@ export function FileMenu(props: {
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
   onLanguageChange: (language: string) => void;
+  isDarkMode: boolean;
+  onDarkModeChange: (isDark: boolean) => void;
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -114,6 +129,20 @@ export function FileMenu(props: {
           ))}
         >
           {t("file_bar.file_menu.default_language")}
+        </MenuItemWithSubmenu>
+        <MenuItemWithSubmenu
+          icon={<Sun />}
+          submenu={THEMES.map(([isDark, labelKey]) => (
+            <MenuItem
+              key={labelKey}
+              checked={props.isDarkMode === isDark}
+              onClick={() => props.onDarkModeChange(isDark)}
+            >
+              {t(labelKey)}
+            </MenuItem>
+          ))}
+        >
+          {t("file_bar.file_menu.theme")}
         </MenuItemWithSubmenu>
       </Menu>
 

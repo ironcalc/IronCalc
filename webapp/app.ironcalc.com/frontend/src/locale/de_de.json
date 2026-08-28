@@ -101,7 +101,10 @@
         "confirm_button": "Ja, löschen",
         "cancel_button": "Abbrechen"
       },
-      "default_language": "Standardsprache"
+      "default_language": "Standardsprache",
+      "theme": "Design",
+      "theme_light": "Hell",
+      "theme_dark": "Dunkel"
     },
     "help_menu": {
       "button": "Hilfe",
