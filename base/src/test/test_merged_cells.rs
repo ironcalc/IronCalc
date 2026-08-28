@@ -3,7 +3,10 @@
 use crate::expressions::types::Area;
 use crate::merged_cells::MergeStructure;
 use crate::test::util::new_empty_model;
-use crate::types::{Border, BorderItem, BorderStyle, Color, MergedCell, Style};
+use crate::types::{
+    Alignment, Border, BorderItem, BorderStyle, Color, HorizontalAlignment, MergedCell, Style,
+    VerticalAlignment,
+};
 
 fn area(sheet: u32, row: i32, column: i32, width: i32, height: i32) -> Area {
     Area {
@@ -760,4 +763,146 @@ fn move_rows_with_merges() {
     model.evaluate();
     assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(4, 2, 2, 2)]);
     assert_eq!(model._get_text("B4"), "5");
+}
+
+// ── Merge & center, merge across, merge down ─────────────────────────────────
+
+#[test]
+fn merge_center_centers_the_whole_range() {
+    let mut model = new_empty_model();
+    model._set("B2", "5");
+    model.evaluate();
+
+    model.merge_cells_center(&area(0, 2, 2, 2, 2)).unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 2, 2, 2)]);
+    assert_eq!(model._get_text("B2"), "5");
+    for cell in ["B2", "C2", "B3", "C3"] {
+        let reference = model._parse_reference(cell);
+        let style = model
+            .get_style_for_cell(0, reference.row, reference.column)
+            .unwrap();
+        assert_eq!(
+            style.alignment.unwrap_or_default().horizontal,
+            HorizontalAlignment::Center
+        );
+    }
+}
+
+#[test]
+fn merge_center_keeps_the_rest_of_the_alignment() {
+    let mut model = new_empty_model();
+    let style = Style {
+        alignment: Some(Alignment {
+            vertical: VerticalAlignment::Top,
+            wrap_text: true,
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    model.set_cell_style(0, 2, 2, &style).unwrap();
+
+    model.merge_cells_center(&area(0, 2, 2, 2, 2)).unwrap();
+    let alignment = model
+        .get_style_for_cell(0, 2, 2)
+        .unwrap()
+        .alignment
+        .unwrap();
+    assert_eq!(alignment.horizontal, HorizontalAlignment::Center);
+    assert_eq!(alignment.vertical, VerticalAlignment::Top);
+    assert!(alignment.wrap_text);
+}
+
+#[test]
+fn merge_across_merges_each_row() {
+    let mut model = new_empty_model();
+    model._set("C2", "top");
+    model._set("B4", "bottom");
+    model.evaluate();
+
+    // B2:C4 becomes three one-row merges
+    model.merge_cells_across(&area(0, 2, 2, 2, 3)).unwrap();
+    model.evaluate();
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        &[merged(2, 2, 2, 1), merged(3, 2, 2, 1), merged(4, 2, 2, 1)]
+    );
+    // each row's single content cell moved to its own anchor
+    assert_eq!(model._get_text("B2"), "top");
+    assert_eq!(model._get_text("C2"), "");
+    assert_eq!(model._get_text("B4"), "bottom");
+}
+
+#[test]
+fn merge_across_is_all_or_nothing() {
+    let mut model = new_empty_model();
+    // the second row has two cells with content: nothing must change
+    model._set("B3", "a");
+    model._set("C3", "b");
+    model.evaluate();
+
+    assert_eq!(
+        model.merge_cells_across(&area(0, 2, 2, 2, 3)),
+        Err("Cannot merge cells: more than one cell has content".to_string())
+    );
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model._get_text("B3"), "a");
+    assert_eq!(model._get_text("C3"), "b");
+}
+
+#[test]
+fn merge_across_a_single_column_is_rejected() {
+    let mut model = new_empty_model();
+    // each row of a one-column range would be a single cell
+    assert_eq!(
+        model.merge_cells_across(&area(0, 2, 2, 1, 3)),
+        Err("Cannot merge a single cell".to_string())
+    );
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+}
+
+#[test]
+fn merge_down_merges_each_column() {
+    let mut model = new_empty_model();
+    model._set("B3", "left");
+    model._set("C2", "right");
+    model.evaluate();
+
+    // B2:C4 becomes two one-column merges
+    model.merge_cells_down(&area(0, 2, 2, 2, 3)).unwrap();
+    model.evaluate();
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        &[merged(2, 2, 1, 3), merged(2, 3, 1, 3)]
+    );
+    assert_eq!(model._get_text("B2"), "left");
+    assert_eq!(model._get_text("B3"), "");
+    assert_eq!(model._get_text("C2"), "right");
+}
+
+#[test]
+fn merge_down_is_all_or_nothing() {
+    let mut model = new_empty_model();
+    // the second column has two cells with content: nothing must change
+    model._set("C2", "a");
+    model._set("C3", "b");
+    model.evaluate();
+
+    assert_eq!(
+        model.merge_cells_down(&area(0, 2, 2, 2, 3)),
+        Err("Cannot merge cells: more than one cell has content".to_string())
+    );
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model._get_text("C2"), "a");
+    assert_eq!(model._get_text("C3"), "b");
+}
+
+#[test]
+fn merge_down_a_single_row_is_rejected() {
+    let mut model = new_empty_model();
+    // each column of a one-row range would be a single cell
+    assert_eq!(
+        model.merge_cells_down(&area(0, 2, 2, 3, 1)),
+        Err("Cannot merge a single cell".to_string())
+    );
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
 }

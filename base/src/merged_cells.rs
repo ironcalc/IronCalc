@@ -3,7 +3,55 @@ use serde::{Deserialize, Serialize};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
 use crate::model::{CellStructure, Model};
-use crate::types::{Cell, MergedCell};
+use crate::types::{Alignment, Cell, HorizontalAlignment, MergedCell};
+
+// Splits `range` into the one-row-tall sub-ranges that "merge across" merges
+// separately.
+pub(crate) fn merge_across_ranges(range: &Area) -> Result<Vec<Area>, String> {
+    let Area {
+        sheet,
+        row,
+        column,
+        width,
+        height,
+    } = *range;
+    if row < 1 || column < 1 || width < 1 || height < 1 {
+        return Err("Invalid range".to_string());
+    }
+    Ok((row..row + height)
+        .map(|r| Area {
+            sheet,
+            row: r,
+            column,
+            width,
+            height: 1,
+        })
+        .collect())
+}
+
+// Splits `range` into the one-column-wide sub-ranges that "merge down" merges
+// separately.
+pub(crate) fn merge_down_ranges(range: &Area) -> Result<Vec<Area>, String> {
+    let Area {
+        sheet,
+        row,
+        column,
+        width,
+        height,
+    } = *range;
+    if row < 1 || column < 1 || width < 1 || height < 1 {
+        return Err("Invalid range".to_string());
+    }
+    Ok((column..column + width)
+        .map(|c| Area {
+            sheet,
+            row,
+            column: c,
+            width: 1,
+            height,
+        })
+        .collect())
+}
 
 /// Position of a cell relative to the merged cells of a worksheet
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -54,25 +102,7 @@ impl<'a> Model<'a> {
             height,
         } = *range;
         self.check_merge_range(range)?;
-        // Find the single cell with content, if any. Spill cells don't count:
-        // they hold values computed by an anchor outside the range, not
-        // content of their own (the spill is blocked and re-evaluated).
-        let worksheet = self.workbook.worksheet(sheet)?;
-        let mut content_cell = None;
-        for r in row..row + height {
-            for c in column..column + width {
-                if matches!(
-                    worksheet.cell(r, c),
-                    None | Some(Cell::EmptyCell { .. }) | Some(Cell::SpillCell { .. })
-                ) {
-                    continue;
-                }
-                if content_cell.is_some() {
-                    return Err("Cannot merge cells: more than one cell has content".to_string());
-                }
-                content_cell = Some((r, c));
-            }
-        }
+        let content_cell = self.merge_range_content_cell(range)?;
         // The merged cell takes the content and style of the single cell with
         // content; of the anchor if the whole range is empty.
         let (source_row, source_column) = content_cell.unwrap_or((row, column));
@@ -123,6 +153,107 @@ impl<'a> Model<'a> {
                     style.border.right = None;
                 }
                 if self.get_style_for_cell(sheet, r, c)? != style {
+                    self.set_cell_style(sheet, r, c, &style)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Same as [Model::merge_cells] but the merged cell is also centered
+    /// horizontally ("merge & center").
+    pub fn merge_cells_center(&mut self, range: &Area) -> Result<(), String> {
+        self.merge_cells(range)?;
+        self.center_merged_range(range)
+    }
+
+    /// Merges each row of `range` separately into a one-row-tall merged cell
+    /// ("merge across"), following the rules of [Model::merge_cells] row by
+    /// row. Every row is validated up front, so the operation is
+    /// all-or-nothing: if any row cannot be merged nothing changes.
+    pub fn merge_cells_across(&mut self, range: &Area) -> Result<(), String> {
+        let ranges = merge_across_ranges(range)?;
+        for range in &ranges {
+            self.check_merge(range)?;
+        }
+        for range in &ranges {
+            self.merge_cells(range)?;
+        }
+        Ok(())
+    }
+
+    /// Merges each column of `range` separately into a one-column-wide merged
+    /// cell ("merge down"), following the rules of [Model::merge_cells]
+    /// column by column. Every column is validated up front, so the operation
+    /// is all-or-nothing: if any column cannot be merged nothing changes.
+    pub fn merge_cells_down(&mut self, range: &Area) -> Result<(), String> {
+        let ranges = merge_down_ranges(range)?;
+        for range in &ranges {
+            self.check_merge(range)?;
+        }
+        for range in &ranges {
+            self.merge_cells(range)?;
+        }
+        Ok(())
+    }
+
+    // Full validation of merging `range` without touching the model: the
+    // shape checks of `check_merge_range` plus the single-content-cell rule.
+    // Lets a multi-range merge ("across", "down") be all-or-nothing.
+    pub(crate) fn check_merge(&self, range: &Area) -> Result<(), String> {
+        self.check_merge_range(range)?;
+        self.merge_range_content_cell(range)?;
+        Ok(())
+    }
+
+    // Finds the single cell of `range` with content, if any; merging is not
+    // allowed when more than one cell has content. Spill cells don't count:
+    // they hold values computed by an anchor outside the range, not content
+    // of their own (the spill is blocked and re-evaluated).
+    fn merge_range_content_cell(&self, range: &Area) -> Result<Option<(i32, i32)>, String> {
+        let Area {
+            sheet,
+            row,
+            column,
+            width,
+            height,
+        } = *range;
+        let worksheet = self.workbook.worksheet(sheet)?;
+        let mut content_cell = None;
+        for r in row..row + height {
+            for c in column..column + width {
+                if matches!(
+                    worksheet.cell(r, c),
+                    None | Some(Cell::EmptyCell { .. }) | Some(Cell::SpillCell { .. })
+                ) {
+                    continue;
+                }
+                if content_cell.is_some() {
+                    return Err("Cannot merge cells: more than one cell has content".to_string());
+                }
+                content_cell = Some((r, c));
+            }
+        }
+        Ok(content_cell)
+    }
+
+    // Sets horizontal center alignment on every cell of `range` (the style of
+    // a merged cell lives on all its cells alike). Used by "merge & center"
+    // right after the merge itself.
+    pub(crate) fn center_merged_range(&mut self, range: &Area) -> Result<(), String> {
+        let Area {
+            sheet,
+            row,
+            column,
+            width,
+            height,
+        } = *range;
+        for r in row..row + height {
+            for c in column..column + width {
+                let mut style = self.get_style_for_cell(sheet, r, c)?;
+                let alignment = style.alignment.get_or_insert_with(Alignment::default);
+                if alignment.horizontal != HorizontalAlignment::Center {
+                    alignment.horizontal = HorizontalAlignment::Center;
                     self.set_cell_style(sheet, r, c, &style)?;
                 }
             }

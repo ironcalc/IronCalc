@@ -5,7 +5,7 @@ use bitcode::decode;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
 use crate::test::user_model::util::new_empty_user_model;
-use crate::types::{BorderItem, BorderStyle, Color, Link, MergedCell};
+use crate::types::{BorderItem, BorderStyle, Color, HorizontalAlignment, Link, MergedCell};
 use crate::user_model::history::{Diff, QueueDiffs};
 use crate::UserModel;
 
@@ -937,4 +937,270 @@ fn merging_snaps_the_selection_to_the_anchor() {
     let view = model.get_selected_view();
     assert_eq!((view.row, view.column), (19, 7));
     assert_eq!(view.range, [19, 7, 20, 8]);
+}
+
+// ── Merge & center, merge across, merge down ─────────────────────────────────
+
+#[test]
+fn merge_center_undo_redo_is_a_single_step() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 2, 2, "5").unwrap();
+    model.flush_send_queue();
+
+    model.merge_cells_center(&area(0, 2, 2, 2, 2)).unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
+    for (row, column) in [(2, 2), (2, 3), (3, 2), (3, 3)] {
+        assert_eq!(
+            model
+                .get_cell_style(0, row, column)
+                .unwrap()
+                .alignment
+                .unwrap_or_default()
+                .horizontal,
+            HorizontalAlignment::Center
+        );
+    }
+    // merging and centering form a single history step...
+    let queue: Vec<QueueDiffs> = decode(&model.flush_send_queue()).unwrap();
+    assert_eq!(queue.len(), 1);
+
+    // ...so a single undo reverts both
+    model.undo().unwrap();
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model.get_cell_style(0, 2, 2).unwrap().alignment, None);
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("5".to_string()));
+
+    model.redo().unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
+    assert_eq!(
+        model
+            .get_cell_style(0, 2, 2)
+            .unwrap()
+            .alignment
+            .unwrap_or_default()
+            .horizontal,
+        HorizontalAlignment::Center
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("5".to_string()));
+}
+
+#[test]
+fn merge_center_replays_on_external_models() {
+    let mut model1 = new_empty_user_model();
+    let mut model2 = new_empty_user_model();
+
+    model1.merge_cells_center(&area(0, 2, 2, 2, 2)).unwrap();
+    model2
+        .apply_external_diffs(&model1.flush_send_queue())
+        .unwrap();
+    assert_eq!(
+        model2.get_merged_cells(0).unwrap(),
+        vec![merged(2, 2, 2, 2)]
+    );
+    assert_eq!(
+        model2
+            .get_cell_style(0, 3, 3)
+            .unwrap()
+            .alignment
+            .unwrap_or_default()
+            .horizontal,
+        HorizontalAlignment::Center
+    );
+}
+
+#[test]
+fn merge_across_undo_redo_is_a_single_step() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 2, 3, "top").unwrap();
+    model.set_user_input(0, 4, 2, "bottom").unwrap();
+    model.flush_send_queue();
+
+    // B2:C4 becomes three one-row merges
+    model.merge_cells_across(&area(0, 2, 2, 2, 3)).unwrap();
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        vec![merged(2, 2, 2, 1), merged(3, 2, 2, 1), merged(4, 2, 2, 1)]
+    );
+    // each row's single content cell moved to its own anchor
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 2),
+        Ok("top".to_string())
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 2, 3), Ok("".to_string()));
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 2),
+        Ok("bottom".to_string())
+    );
+    // the three merges form a single history step...
+    let queue: Vec<QueueDiffs> = decode(&model.flush_send_queue()).unwrap();
+    assert_eq!(queue.len(), 1);
+
+    // ...so a single undo reverts them all
+    model.undo().unwrap();
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 3),
+        Ok("top".to_string())
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("".to_string()));
+
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        vec![merged(2, 2, 2, 1), merged(3, 2, 2, 1), merged(4, 2, 2, 1)]
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 2),
+        Ok("top".to_string())
+    );
+}
+
+#[test]
+fn merge_across_is_all_or_nothing() {
+    let mut model = new_empty_user_model();
+    // the second row has two cells with content: the whole operation fails
+    model.set_user_input(0, 3, 2, "a").unwrap();
+    model.set_user_input(0, 3, 3, "b").unwrap();
+    model.flush_send_queue();
+
+    assert_eq!(
+        model.merge_cells_across(&area(0, 2, 2, 2, 3)),
+        Err("Cannot merge cells: more than one cell has content".to_string())
+    );
+    // no row was merged and the history is clean
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(model.get_formatted_cell_value(0, 3, 2), Ok("a".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 3, 3), Ok("b".to_string()));
+    let queue: Vec<QueueDiffs> = decode(&model.flush_send_queue()).unwrap();
+    assert!(queue.is_empty());
+}
+
+#[test]
+fn merge_across_a_single_column_fails() {
+    let mut model = new_empty_user_model();
+    // each row of a one-column range would be a single cell
+    assert_eq!(
+        model.merge_cells_across(&area(0, 2, 2, 1, 3)),
+        Err("Cannot merge a single cell".to_string())
+    );
+    assert!(!model.can_undo());
+}
+
+#[test]
+fn merge_down_undo_redo_is_a_single_step() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 3, 2, "left").unwrap();
+    model.set_user_input(0, 2, 3, "right").unwrap();
+    model.flush_send_queue();
+
+    // B2:C4 becomes two one-column merges
+    model.merge_cells_down(&area(0, 2, 2, 2, 3)).unwrap();
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        vec![merged(2, 2, 1, 3), merged(2, 3, 1, 3)]
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 2),
+        Ok("left".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 3),
+        Ok("right".to_string())
+    );
+    // the two merges form a single history step...
+    let queue: Vec<QueueDiffs> = decode(&model.flush_send_queue()).unwrap();
+    assert_eq!(queue.len(), 1);
+
+    // ...so a single undo reverts them all
+    model.undo().unwrap();
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(
+        model.get_formatted_cell_value(0, 3, 2),
+        Ok("left".to_string())
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2), Ok("".to_string()));
+
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_merged_cells(0).unwrap(),
+        vec![merged(2, 2, 1, 3), merged(2, 3, 1, 3)]
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 2),
+        Ok("left".to_string())
+    );
+}
+
+#[test]
+fn merge_down_is_all_or_nothing() {
+    let mut model = new_empty_user_model();
+    // the second column has two cells with content: the whole operation fails
+    model.set_user_input(0, 2, 3, "a").unwrap();
+    model.set_user_input(0, 3, 3, "b").unwrap();
+    model.flush_send_queue();
+
+    assert_eq!(
+        model.merge_cells_down(&area(0, 2, 2, 2, 3)),
+        Err("Cannot merge cells: more than one cell has content".to_string())
+    );
+    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    let queue: Vec<QueueDiffs> = decode(&model.flush_send_queue()).unwrap();
+    assert!(queue.is_empty());
+}
+
+#[test]
+fn merge_down_a_single_row_fails() {
+    let mut model = new_empty_user_model();
+    // each column of a one-row range would be a single cell
+    assert_eq!(
+        model.merge_cells_down(&area(0, 2, 2, 3, 1)),
+        Err("Cannot merge a single cell".to_string())
+    );
+    assert!(!model.can_undo());
+}
+
+#[test]
+fn merge_across_replays_on_external_models() {
+    let mut model1 = new_empty_user_model();
+    let mut model2 = new_empty_user_model();
+
+    model1.set_user_input(0, 2, 3, "hello").unwrap();
+    model1.merge_cells_across(&area(0, 2, 2, 2, 3)).unwrap();
+    model2
+        .apply_external_diffs(&model1.flush_send_queue())
+        .unwrap();
+    assert_eq!(
+        model2.get_merged_cells(0).unwrap(),
+        vec![merged(2, 2, 2, 1), merged(3, 2, 2, 1), merged(4, 2, 2, 1)]
+    );
+    assert_eq!(
+        model2.get_formatted_cell_value(0, 2, 2),
+        Ok("hello".to_string())
+    );
+    assert_eq!(model2.get_formatted_cell_value(0, 2, 3), Ok("".to_string()));
+
+    // the single-step undo also replays
+    model1.undo().unwrap();
+    model2
+        .apply_external_diffs(&model1.flush_send_queue())
+        .unwrap();
+    assert!(model2.get_merged_cells(0).unwrap().is_empty());
+    assert_eq!(
+        model2.get_formatted_cell_value(0, 2, 3),
+        Ok("hello".to_string())
+    );
+}
+
+#[test]
+fn merge_across_snaps_the_selection_to_its_row_anchor() {
+    let mut model = new_empty_user_model();
+    // select C3 and extend the selection to B2: C3 stays the selected cell
+    model.set_selected_cell(3, 3).unwrap();
+    model.on_area_selecting(2, 2).unwrap();
+
+    model.merge_cells_across(&area(0, 2, 2, 2, 2)).unwrap();
+    // C3 is covered by the second row's merge: the selection snaps to B3
+    let view = model.get_selected_view();
+    assert_eq!((view.row, view.column), (3, 2));
+    assert_eq!(view.range, [3, 2, 3, 3]);
 }
