@@ -192,6 +192,9 @@
     }
   },
   "error_dialog": {
+    "error_autofill": "Automatisches Ausfüllen nicht möglich",
+    "error_autofill_array": "Der Ausfüllbereich kann eine Matrixformel nicht teilweise abdecken.",
+    "error_autofill_merged": "Der Ausfüllbereich kann eine verbundene Zelle nicht teilweise abdecken.",
     "error_clipboard_paste": "Zugriff auf die Zwischenablage verweigert. Bitte erlauben Sie Zwischenablage-Berechtigungen in Ihrem Browser.",
     "error_deleting_cells": "Zellen konnten nicht gelöscht werden",
     "error_deleting_columns": "Spalten konnten nicht gelöscht werden",

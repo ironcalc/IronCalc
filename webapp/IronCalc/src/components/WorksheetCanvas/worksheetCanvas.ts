@@ -47,6 +47,9 @@ export interface CanvasSettings {
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
   onLinkHover?: (cell: LinkHoverCell | null) => void;
   onHideLinkTooltip?: () => void;
+  // Called with the engine error when an autofill (fill handle drag or
+  // double-click) is rejected
+  onAutofillError?: (message: string) => void;
   linkTooltipCell: LinkHoverCell | null;
   refresh: () => void;
 }
@@ -115,6 +118,8 @@ export default class WorksheetCanvas {
 
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
 
+  onAutofillError?: (message: string) => void;
+
   refresh: () => void;
 
   cells: TextProperties[];
@@ -167,6 +172,7 @@ export default class WorksheetCanvas {
 
     this.onColumnWidthChanges = options.onColumnWidthChanges;
     this.onRowHeightChanges = options.onRowHeightChanges;
+    this.onAutofillError = options.onAutofillError;
     this.resetHeaders();
     this.cellOutlineHandle = attachOutlineHandle(this);
 

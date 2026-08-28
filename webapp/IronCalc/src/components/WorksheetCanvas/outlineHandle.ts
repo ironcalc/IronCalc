@@ -1,3 +1,4 @@
+import { type FillDirection, snapFillExtent } from "../util";
 import { AreaType } from "../workbookState";
 import { LAST_COLUMN, LAST_ROW } from "./constants";
 import type WorksheetCanvas from "./worksheetCanvas";
@@ -31,8 +32,35 @@ export function attachOutlineHandle(
     }
     const { row, column } = cell;
     const {
+      sheet,
       range: [rowStart, columnStart, rowEnd, columnEnd],
     } = worksheet.model.getSelectedView();
+    // A fill whose boundary cuts a merged cell of the tiled selection is
+    // rejected by the engine: the drag snaps back to the nearest valid extent
+    // (which can be none at all).
+    const snap = (direction: FillDirection, extent: number): number =>
+      snapFillExtent(
+        worksheet.model.getMergedCells(sheet),
+        { rowStart, rowEnd, columnStart, columnEnd },
+        direction,
+        extent,
+      );
+    const extendTo = (area: {
+      type: AreaType;
+      rowStart: number;
+      rowEnd: number;
+      columnStart: number;
+      columnEnd: number;
+    }): void => {
+      worksheet.workbookState.setExtendToArea(area);
+      worksheet.renderSheet();
+    };
+    const clearExtendTo = (): void => {
+      if (worksheet.workbookState.getExtendToArea()) {
+        worksheet.workbookState.clearExtendToArea();
+        worksheet.renderSheet();
+      }
+    };
     // We are either extending by rows or by columns
     // And we could be doing it in the positive direction (downwards or right)
     // or the negative direction (upwards or left)
@@ -44,15 +72,18 @@ export function attachOutlineHandle(
         (column > columnEnd && column - columnEnd < row - rowEnd))
     ) {
       // rows downwards
-      const area = {
+      const extent = snap("rowsDown", row - rowEnd);
+      if (extent === 0) {
+        clearExtendTo();
+        return;
+      }
+      extendTo({
         type: AreaType.rowsDown,
         rowStart: rowEnd + 1,
-        rowEnd: row,
+        rowEnd: rowEnd + extent,
         columnStart,
         columnEnd,
-      };
-      worksheet.workbookState.setExtendToArea(area);
-      worksheet.renderSheet();
+      });
     } else if (
       row < rowStart &&
       ((column <= columnEnd && column >= columnStart) ||
@@ -60,15 +91,18 @@ export function attachOutlineHandle(
         (column > columnEnd && column - columnEnd < rowStart - row))
     ) {
       // rows upwards
-      const area = {
+      const extent = snap("rowsUp", rowStart - row);
+      if (extent === 0) {
+        clearExtendTo();
+        return;
+      }
+      extendTo({
         type: AreaType.rowsUp,
-        rowStart: row,
+        rowStart: rowStart - extent,
         rowEnd: rowStart,
         columnStart,
         columnEnd,
-      };
-      worksheet.workbookState.setExtendToArea(area);
-      worksheet.renderSheet();
+      });
     } else if (
       column > columnEnd &&
       ((row <= rowEnd && row >= rowStart) ||
@@ -76,15 +110,18 @@ export function attachOutlineHandle(
         (row > rowEnd && row - rowEnd < column - columnEnd))
     ) {
       // columns right
-      const area = {
+      const extent = snap("columnsRight", column - columnEnd);
+      if (extent === 0) {
+        clearExtendTo();
+        return;
+      }
+      extendTo({
         type: AreaType.columnsRight,
         rowStart,
         rowEnd,
         columnStart: columnEnd + 1,
-        columnEnd: column,
-      };
-      worksheet.workbookState.setExtendToArea(area);
-      worksheet.renderSheet();
+        columnEnd: columnEnd + extent,
+      });
     } else if (
       column < columnStart &&
       ((row <= rowEnd && row >= rowStart) ||
@@ -92,15 +129,18 @@ export function attachOutlineHandle(
         (row > rowEnd && row - rowEnd < columnStart - column))
     ) {
       // columns left
-      const area = {
+      const extent = snap("columnsLeft", columnStart - column);
+      if (extent === 0) {
+        clearExtendTo();
+        return;
+      }
+      extendTo({
         type: AreaType.columnsLeft,
         rowStart,
         rowEnd,
-        columnStart: column,
+        columnStart: columnStart - extent,
         columnEnd: columnStart,
-      };
-      worksheet.workbookState.setExtendToArea(area);
-      worksheet.renderSheet();
+      });
     }
   };
 
@@ -144,10 +184,9 @@ export function attachOutlineHandle(
           break;
         }
       }
-    } catch (_) {
-      // This could fail if, for instnace we are breaking an array formula
-      // Here we fail silently
-      // TODO: Could we shouw a message to the user?
+    } catch (error) {
+      // e.g. the fill would partially cover a merged cell or an array formula
+      worksheet.onAutofillError?.(`${error}`);
     }
     const selectedRowStart = Math.min(rowStart, extendedArea.rowStart);
     const selectedColumnStart = Math.min(columnStart, extendedArea.columnStart);
@@ -244,6 +283,16 @@ export function attachOutlineHandle(
       }
     }
 
+    // the fill boundary must not cut a merged cell of the tiled selection
+    lastUsedRow =
+      rowEnd +
+      snapFillExtent(
+        worksheet.model.getMergedCells(sheet),
+        { rowStart, rowEnd, columnStart, columnEnd },
+        "rowsDown",
+        lastUsedRow - rowEnd,
+      );
+
     if (lastUsedRow <= rowEnd) {
       return;
     }
@@ -256,7 +305,13 @@ export function attachOutlineHandle(
       height,
     };
 
-    worksheet.model.autoFillRows(area, lastUsedRow);
+    try {
+      worksheet.model.autoFillRows(area, lastUsedRow);
+    } catch (error) {
+      // e.g. the fill would partially cover a merged cell or an array formula
+      worksheet.onAutofillError?.(`${error}`);
+      return;
+    }
     worksheet.model.setSelectedRange(
       rowStart,
       columnStart,

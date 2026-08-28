@@ -192,6 +192,9 @@
     }
   },
   "error_dialog": {
+    "error_autofill": "Recopie impossible",
+    "error_autofill_array": "La zone de recopie ne peut pas couvrir une partie d'une formule matricielle.",
+    "error_autofill_merged": "La zone de recopie ne peut pas couvrir une partie d'une cellule fusionnée.",
     "error_clipboard_paste": "Accès au presse-papiers refusé. Veuillez autoriser les permissions du presse-papiers dans votre navigateur.",
     "error_deleting_cells": "Échec de la suppression des cellules",
     "error_deleting_columns": "Échec de la suppression des colonnes",
