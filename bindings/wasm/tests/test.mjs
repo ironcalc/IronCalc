@@ -284,3 +284,36 @@ test('Merged cells', () => {
     model.setUserInput(0, 3, 3, "42");
     assert.strictEqual(model.getFormattedCellValue(0, 3, 3), "42");
 });
+
+test('Merge cells variants', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+
+    // merge & center: merging and centering are a single undo step
+    model.setUserInput(0, 2, 2, "5");
+    model.mergeCellsCenter({ sheet: 0, row: 2, column: 2, width: 2, height: 2 });
+    assert.deepEqual(model.getMergedCells(0), [{ row: 2, column: 2, width: 2, height: 2 }]);
+    assert.strictEqual(model.getCellStyle(0, 2, 2).style.alignment.horizontal, "center");
+    model.undo();
+    assert.deepEqual(model.getMergedCells(0), []);
+    assert.strictEqual(model.getCellStyle(0, 2, 2).style.alignment, undefined);
+    model.undo();
+
+    // merge across: one merged cell per row, a single undo step
+    model.mergeCellsAcross({ sheet: 0, row: 2, column: 2, width: 2, height: 3 });
+    assert.deepEqual(model.getMergedCells(0), [
+        { row: 2, column: 2, width: 2, height: 1 },
+        { row: 3, column: 2, width: 2, height: 1 },
+        { row: 4, column: 2, width: 2, height: 1 },
+    ]);
+    model.undo();
+    assert.deepEqual(model.getMergedCells(0), []);
+
+    // merge down: one merged cell per column, a single undo step
+    model.mergeCellsDown({ sheet: 0, row: 2, column: 2, width: 2, height: 3 });
+    assert.deepEqual(model.getMergedCells(0), [
+        { row: 2, column: 2, width: 1, height: 3 },
+        { row: 2, column: 3, width: 1, height: 3 },
+    ]);
+    model.undo();
+    assert.deepEqual(model.getMergedCells(0), []);
+});

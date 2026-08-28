@@ -607,6 +607,36 @@ impl Model {
         self.model.merge_cells(&range).map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "mergeCellsCenter")]
+    pub fn merge_cells_center(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Area")] range: JsValue,
+    ) -> Result<(), JsError> {
+        let range: Area =
+            serde_wasm_bindgen::from_value(range).map_err(|e| to_js_error(e.to_string()))?;
+        self.model.merge_cells_center(&range).map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "mergeCellsAcross")]
+    pub fn merge_cells_across(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Area")] range: JsValue,
+    ) -> Result<(), JsError> {
+        let range: Area =
+            serde_wasm_bindgen::from_value(range).map_err(|e| to_js_error(e.to_string()))?;
+        self.model.merge_cells_across(&range).map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "mergeCellsDown")]
+    pub fn merge_cells_down(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Area")] range: JsValue,
+    ) -> Result<(), JsError> {
+        let range: Area =
+            serde_wasm_bindgen::from_value(range).map_err(|e| to_js_error(e.to_string()))?;
+        self.model.merge_cells_down(&range).map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "unmergeCells")]
     pub fn unmerge_cells(
         &mut self,
