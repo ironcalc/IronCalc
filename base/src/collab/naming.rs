@@ -85,14 +85,33 @@ impl NameRepair {
     }
 }
 
-/// A 64-bit id for `name`, so two replicas naming the same thing at the same moment write the same
-/// register. `salt` walks past a collision; `DefaultHasher` is not stable across Rust releases.
-pub(crate) fn stable_id(name: &str, salt: u32) -> u64 {
+/// A 64-bit id for the concatenation of `parts`, so two replicas naming the same thing at the same
+/// moment write the same register. `salt` walks past a collision; `DefaultHasher` is not stable
+/// across Rust releases.
+pub(crate) fn stable_id<const N: usize>(parts: [&[u8]; N]) -> u64 {
     // FNV-1a.
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for byte in name.bytes().chain(salt.to_le_bytes()) {
-        hash ^= u64::from(byte);
-        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    for bytes in parts {
+        for &byte in bytes {
+            hash ^= u64::from(byte);
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        }
     }
     hash
+}
+
+/// The identity of a defined name: its scope, then its case-folded name. Upstream matches defined
+/// names case-insensitively, so `total` and `Total` have to be one entity.
+pub(crate) fn defined_name_id(scope: Option<u32>, name: &str, salt: u32) -> u64 {
+    // Fixed width, so a global `x` and a sheet-scoped `x` never hash the same bytes.
+    let mut scope_bytes = [0u8; 5];
+    if let Some(sheet) = scope {
+        scope_bytes[0] = 1;
+        scope_bytes[1..].copy_from_slice(&sheet.to_be_bytes());
+    }
+    stable_id([
+        scope_bytes.as_ref(),
+        name.to_uppercase().as_ref(),
+        salt.to_le_bytes().as_ref(),
+    ])
 }

@@ -59,6 +59,10 @@ pub type SheetId = u32;
 /// same style concurrently write one register rather than two.
 pub type NamedStyleId = u64;
 
+/// Identifies a defined name. Hashed from the scope and case-folded name it was created under, so
+/// two peers creating the same name concurrently write one register rather than two.
+pub type DefinedNameId = u64;
+
 /// Version byte prefixing every [`encode_patches`] payload.
 pub const PATCH_FORMAT_VERSION: u8 = 1;
 
@@ -196,17 +200,15 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                     });
                 }
             }
-            Patch::SetDefinedName {
-                scope,
-                name,
-                formula,
-                prev,
-            } => out.push(Patch::SetDefinedName {
-                scope: *scope,
-                name: name.clone(),
-                formula: prev.clone(),
-                prev: formula.clone(),
-            }),
+            Patch::SetDefinedName { id, property, prev } => {
+                if let Some(previous) = prev {
+                    out.push(Patch::SetDefinedName {
+                        id: *id,
+                        property: previous.clone(),
+                        prev: Some(property.clone()),
+                    });
+                }
+            }
             Patch::SetNamedStyle { id, property, prev } => {
                 if let Some(previous) = prev {
                     out.push(Patch::SetNamedStyle {
@@ -625,17 +627,12 @@ pub enum Patch {
         prev: Option<WorkbookProperty>,
     },
 
-    // ---- Defined names (keyed by `(scope, name)`) ----
-    /// `formula: None` deletes the name. A rename fans out to two patches — a delete of the old name
-    /// and a write of the new one — so two peers renaming the same name concurrently end up with
-    /// both new names present.
     SetDefinedName {
-        scope: Option<SheetId>,
-        name: String,
-        formula: Option<String>,
+        id: DefinedNameId,
+        property: DefinedNameProperty,
 
         #[bitcode(skip)]
-        prev: Option<String>,
+        prev: Option<DefinedNameProperty>,
     },
 
     SetNamedStyle {
@@ -912,6 +909,34 @@ impl NamedStyleProperty {
         match self {
             NamedStyleProperty::Name(_) => NamedStylePropKind::Name,
             NamedStyleProperty::Definition(_) => NamedStylePropKind::Definition,
+        }
+    }
+}
+
+/// A property of a defined name. Each variant is a distinct register, so a concurrent rename and
+/// redefinition of the same name both survive.
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+pub enum DefinedNameProperty {
+    /// Where the name lives and what the author called it. A scope move is address-shaped like a
+    /// rename, so both ride one register. The name shown is derived from this and repaired for
+    /// collisions, exactly as a sheet's is.
+    Name((Option<SheetId>, String)),
+    /// `None` deletes the name. Its address register survives, so an undo can revive it.
+    Definition(Option<String>),
+}
+
+/// The register a [`DefinedNameProperty`] writes to, without its value.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
+pub enum DefinedNamePropKind {
+    Name,
+    Definition,
+}
+
+impl DefinedNameProperty {
+    pub fn kind(&self) -> DefinedNamePropKind {
+        match self {
+            DefinedNameProperty::Name(_) => DefinedNamePropKind::Name,
+            DefinedNameProperty::Definition(_) => DefinedNamePropKind::Definition,
         }
     }
 }
@@ -1217,9 +1242,13 @@ mod test {
                 prev: None,
             },
             Patch::SetDefinedName {
-                scope: Some(7),
-                name: "total".to_string(),
-                formula: Some("Sheet1!$A$1".to_string()),
+                id: 11,
+                property: DefinedNameProperty::Name((Some(7), "total".to_string())),
+                prev: None,
+            },
+            Patch::SetDefinedName {
+                id: 11,
+                property: DefinedNameProperty::Definition(Some("Sheet1!$A$1".to_string())),
                 prev: None,
             },
             Patch::SetNamedStyle {
@@ -1318,6 +1347,10 @@ mod test {
         assert_eq!(
             NamedStyleProperty::Name(String::new()).kind(),
             NamedStylePropKind::Name
+        );
+        assert_eq!(
+            DefinedNameProperty::Definition(None).kind(),
+            DefinedNamePropKind::Definition
         );
 
         // Commit ids ride the same wire.

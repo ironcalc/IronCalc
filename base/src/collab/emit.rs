@@ -12,12 +12,12 @@ use crate::collab::fractional_index::{CreateKeys, FractionalIndex, FractionalKey
 use crate::collab::hlc::Hlc;
 use crate::collab::log::Timestamp;
 use crate::collab::model::{CollabModel, LocalCommit, Stable, StableCellAddress, StableRange};
-use crate::collab::naming::stable_id;
+use crate::collab::naming::{defined_name_id, stable_id};
 use crate::collab::patch::{
     CellInput, CfProperty, ColPropKind, ColProperty, ColState, ColumnSnapshot,
-    ConditionalFormatState, NamedStyle, NamedStyleId, NamedStyleProperty, Patch, RowPropKind,
-    RowProperty, RowSnapshot, RowState, SheetContent, SheetId, SheetPropKind, SheetProperty,
-    SheetRestore, WorkbookPropKind, WorkbookProperty,
+    ConditionalFormatState, DefinedNameId, DefinedNameProperty, NamedStyle, NamedStyleId,
+    NamedStyleProperty, Patch, RowPropKind, RowProperty, RowSnapshot, RowState, SheetContent,
+    SheetId, SheetPropKind, SheetProperty, SheetRestore, WorkbookPropKind, WorkbookProperty,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
@@ -110,8 +110,7 @@ impl CollabModel<'_> {
 
     fn sheet_ordering_key(&self, at: usize) -> Option<&FractionalKey> {
         let sheet_id = &self.workbook.worksheets.get(at)?.sheet_id;
-        let (key, _) = self.workbook.meta.sheet_positions.get(sheet_id)?;
-        Some(key)
+        Some(&self.workbook.meta.sheet_positions.get(sheet_id)?.value)
     }
 
     /// A tab-order key landing a sheet at index `at`, between the sheets it comes to sit among.
@@ -254,7 +253,7 @@ impl CollabModel<'_> {
             .meta
             .sheet_names
             .get(&sheet)
-            .map(|(name, _)| name)
+            .map(|lww| &lww.value)
     }
 
     /// The sheet property `kind` currently holds, as the property a write would replace.
@@ -273,7 +272,7 @@ impl CollabModel<'_> {
                     .meta
                     .sheet_positions
                     .get(&sheet.sheet_id)?
-                    .0
+                    .value
                     .clone(),
             ),
         })
@@ -1194,14 +1193,9 @@ impl CollabModel<'_> {
     /// Re-emits every defined name whose formula `steps` change, folded in order.
     fn displace_defined_names(&mut self, steps: &[DisplaceData]) -> Vec<Patch> {
         let context = self.defined_name_context();
-        let names: Vec<(Option<SheetId>, String, String)> = self
-            .workbook
-            .defined_names
-            .iter()
-            .map(|dn| (dn.sheet_id, dn.name.clone(), dn.formula.clone()))
-            .collect();
+        let names = self.live_defined_names();
         let mut patches = Vec::new();
-        for (scope, name, formula) in names {
+        for (id, formula) in names {
             let body = formula.strip_prefix('=').unwrap_or(&formula).to_string();
             let mut displaced = body.clone();
             for step in steps {
@@ -1219,13 +1213,26 @@ impl CollabModel<'_> {
                 continue;
             }
             patches.push(Patch::SetDefinedName {
-                scope,
-                name,
-                formula: Some(displaced),
-                prev: Some(formula),
+                id,
+                property: DefinedNameProperty::Definition(Some(displaced)),
+                prev: Some(DefinedNameProperty::Definition(Some(formula))),
             });
         }
         patches
+    }
+
+    /// Every live defined name as `(id, formula)`, ordered by id so a commit does not depend on
+    /// the register map's iteration order.
+    fn live_defined_names(&self) -> Vec<(DefinedNameId, String)> {
+        let mut names: Vec<(DefinedNameId, String)> = self
+            .workbook
+            .meta
+            .defined_names
+            .iter()
+            .filter_map(|(id, state)| state.formula.value.clone().map(|f| (*id, f)))
+            .collect();
+        names.sort_by_key(|(id, _)| *id);
+        names
     }
 
     /// The keys `count` rows or columns inserted at ordinal `at` take, together with whatever had
@@ -1750,9 +1757,9 @@ impl CollabModel<'_> {
             self.authored_name(id).cloned(),
             self.workbook.meta.sheet_positions.get(&id),
         ) {
-            (Some(name), Some((position, _))) => Some(Box::new(SheetRestore {
+            (Some(name), Some(position)) => Some(Box::new(SheetRestore {
                 name,
-                position: position.clone(),
+                position: position.value.clone(),
                 content: Some(Box::new(self.sheet_content(i))),
             })),
             _ => None,
@@ -1837,14 +1844,19 @@ impl CollabModel<'_> {
                 continue;
             }
             copied.push(name.clone());
+            let new_id = self.new_defined_name_id(Some(id), &name);
             patches.push(Patch::SetDefinedName {
-                scope: Some(id),
-                name,
-                formula: Some(if had_equals {
+                id: new_id,
+                property: DefinedNameProperty::Definition(Some(if had_equals {
                     format!("={after}")
                 } else {
                     after
-                }),
+                })),
+                prev: Some(DefinedNameProperty::Definition(None)),
+            });
+            patches.push(Patch::SetDefinedName {
+                id: new_id,
+                property: DefinedNameProperty::Name((Some(id), name)),
                 prev: None,
             });
         }
@@ -1898,13 +1910,7 @@ impl CollabModel<'_> {
             });
         }
         let context = self.defined_name_context();
-        let names: Vec<(Option<SheetId>, String, String)> = self
-            .workbook
-            .defined_names
-            .iter()
-            .map(|dn| (dn.sheet_id, dn.name.clone(), dn.formula.clone()))
-            .collect();
-        for (scope, name, formula) in names {
+        for (id, formula) in self.live_defined_names() {
             let body = formula.strip_prefix('=').unwrap_or(&formula).to_string();
             let mut node = self.parse_internal_formula(&body, &context);
             rename_sheet_in_node(&mut node, sheet, new_name);
@@ -1913,10 +1919,9 @@ impl CollabModel<'_> {
                 continue;
             }
             patches.push(Patch::SetDefinedName {
-                scope,
-                name,
-                formula: Some(renamed),
-                prev: Some(formula),
+                id,
+                property: DefinedNameProperty::Definition(Some(renamed)),
+                prev: Some(DefinedNameProperty::Definition(Some(formula))),
             });
         }
         self.commit_local(patches);
@@ -1948,6 +1953,38 @@ impl CollabModel<'_> {
         }
     }
 
+    /// The id a name authored as `(scope, name)` takes: the hash of both, salted past any name
+    /// already live here — so creating one under a name a rename freed does not land on the
+    /// renamed name.
+    fn new_defined_name_id(&self, scope: Option<SheetId>, name: &str) -> DefinedNameId {
+        let live = |id: &DefinedNameId| {
+            self.workbook
+                .meta
+                .defined_names
+                .get(id)
+                .is_some_and(|state| state.formula.value.is_some())
+        };
+        (0..)
+            .map(|salt| defined_name_id(scope, name, salt))
+            .find(|id| !live(id))
+            .expect("a free salt")
+    }
+
+    /// The name showing `name` in `scope`, matched case-insensitively as every upstream lookup is.
+    fn defined_name_id_of(&self, scope: Option<SheetId>, name: &str) -> Option<DefinedNameId> {
+        let upper = name.to_uppercase();
+        self.defined_name_display()
+            .into_iter()
+            .find(|(_, s, display)| *s == scope && display.to_uppercase() == upper)
+            .map(|(id, ..)| id)
+    }
+
+    /// The formula `id` currently holds, `None` once it has been deleted.
+    fn formula_of(&self, id: DefinedNameId) -> Option<String> {
+        let state = self.workbook.meta.defined_names.get(&id)?;
+        state.formula.value.clone()
+    }
+
     /// Adds a defined name, global when `scope` is `None`.
     pub fn new_defined_name(
         &mut self,
@@ -1959,54 +1996,43 @@ impl CollabModel<'_> {
             return Err("Name: Invalid defined name".to_string());
         }
         let sheet_id = self.scope_id(scope)?;
-        let upper = name.to_uppercase();
-        if self
-            .workbook
-            .defined_names
-            .iter()
-            .any(|dn| dn.name.to_uppercase() == upper && dn.sheet_id == sheet_id)
-        {
+        if self.defined_name_id_of(sheet_id, name).is_some() {
             return Err("Name: Defined name already exists".to_string());
         }
         let context = self.defined_name_context();
         let formula = self.user_formula_to_internal(formula, &context)?;
-        self.commit_local(vec![Patch::SetDefinedName {
-            scope: sheet_id,
-            name: name.to_string(),
-            formula: Some(formula),
-            prev: None,
-        }]);
+        let id = self.new_defined_name_id(sheet_id, name);
+        self.commit_local(vec![
+            Patch::SetDefinedName {
+                id,
+                // Nothing was defined under this id, which is what undoing the create puts back.
+                property: DefinedNameProperty::Definition(Some(formula)),
+                prev: Some(DefinedNameProperty::Definition(None)),
+            },
+            Patch::SetDefinedName {
+                id,
+                property: DefinedNameProperty::Name((sheet_id, name.to_string())),
+                prev: None,
+            },
+        ]);
         Ok(())
     }
 
-    /// The stored `(name, scope, formula)` of the defined name `name` has in `scope`.
-    fn defined_name(&self, name: &str, scope: Option<SheetId>) -> Option<(String, String)> {
-        let upper = name.to_uppercase();
-        self.workbook
-            .defined_names
-            .iter()
-            .rev()
-            .find(|dn| dn.name.to_uppercase() == upper && dn.sheet_id == scope)
-            .map(|dn| (dn.name.clone(), dn.formula.clone()))
-    }
-
-    /// Deletes a defined name.
+    /// Deletes a defined name. The entry and its address survive, so an undo revives it.
     pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
         let sheet_id = self.scope_id(scope)?;
-        let Some((name, formula)) = self.defined_name(name, sheet_id) else {
+        let Some(id) = self.defined_name_id_of(sheet_id, name) else {
             return Err("Defined name not found".to_string());
         };
+        let prev = self.formula_of(id);
         self.commit_local(vec![Patch::SetDefinedName {
-            scope: sheet_id,
-            name,
-            formula: None,
-            prev: Some(formula),
+            id,
+            property: DefinedNameProperty::Definition(None),
+            prev: Some(DefinedNameProperty::Definition(prev)),
         }]);
         Ok(())
     }
 
-    /// Updates a defined name. A rename is a delete of the old register and a write of the new one,
-    /// so two peers renaming concurrently end up with both names.
     pub fn update_defined_name(
         &mut self,
         name: &str,
@@ -2021,23 +2047,28 @@ impl CollabModel<'_> {
         let sheet_id = self.scope_id(scope)?;
         let new_sheet_id = self.scope_id(new_scope)?;
         let renaming = name.to_uppercase() != new_name.to_uppercase() || scope != new_scope;
-        if renaming && self.defined_name(new_name, new_sheet_id).is_some() {
+        if renaming && self.defined_name_id_of(new_sheet_id, new_name).is_some() {
             return Err("Name: Defined name already exists".to_string());
         }
-        let Some((old_name, old_formula)) = self.defined_name(name, sheet_id) else {
+        let Some(id) = self.defined_name_id_of(sheet_id, name) else {
             return Err("Defined name not found".to_string());
         };
+        let old_formula = self.formula_of(id);
         let context = self.defined_name_context();
         let formula = self.user_formula_to_internal(new_formula, &context)?;
         let mut patches = Vec::new();
         if renaming {
+            let prev = self
+                .workbook
+                .meta
+                .defined_names
+                .get(&id)
+                .map(|state| DefinedNameProperty::Name(state.name.value.clone()));
             patches.push(Patch::SetDefinedName {
-                scope: sheet_id,
-                name: old_name,
-                formula: None,
-                prev: Some(old_formula.clone()),
+                id,
+                property: DefinedNameProperty::Name((new_sheet_id, new_name.to_string())),
+                prev,
             });
-            // Every formula naming it has to follow, or it would point at a name that is gone.
             for (j, id, _, _, at, f) in self.formula_cells() {
                 let Some(mut node) = self
                     .parsed_formulas
@@ -2062,13 +2093,17 @@ impl CollabModel<'_> {
                 });
             }
         }
-        patches.push(Patch::SetDefinedName {
-            scope: new_sheet_id,
-            name: new_name.to_string(),
-            formula: Some(formula),
-            prev: if !renaming { Some(old_formula) } else { None },
-        });
-        self.commit_local(patches);
+        if old_formula.as_ref() != Some(&formula) {
+            patches.push(Patch::SetDefinedName {
+                id,
+                property: DefinedNameProperty::Definition(Some(formula)),
+                prev: Some(DefinedNameProperty::Definition(old_formula)),
+            });
+        }
+        // An update that changed neither register is not an edit, so it authors no commit.
+        if !patches.is_empty() {
+            self.commit_local(patches);
+        }
         Ok(())
     }
 
@@ -2239,10 +2274,10 @@ impl CollabModel<'_> {
                 .meta
                 .named_styles
                 .get(id)
-                .is_some_and(|state| state.definition.0.is_some())
+                .is_some_and(|state| state.definition.value.is_some())
         };
-        (0..)
-            .map(|salt| stable_id(name, salt))
+        (0u32..)
+            .map(|salt| stable_id([name.as_bytes(), salt.to_le_bytes().as_ref()]))
             .find(|id| !live(id))
             .expect("a free salt")
     }
@@ -2342,7 +2377,7 @@ impl CollabModel<'_> {
 
     fn definition_of(&self, id: NamedStyleId) -> Option<Box<NamedStyle>> {
         let state = self.workbook.meta.named_styles.get(&id)?;
-        state.definition.0.clone()
+        state.definition.value.clone()
     }
 
     /// Repoints everything drawn with `old_xf` at `style`. Style *index* equality is the test, as in
@@ -3224,6 +3259,171 @@ mod test {
         assert_eq!(b.workbook, a.workbook);
     }
 
+    /// Ships each replica's pending commits to the other, then checks they converged.
+    fn exchange(a: &mut CollabModel<'_>, b: &mut CollabModel<'_>) {
+        let (from_a, from_b) = (a.flush(), b.flush());
+        deliver(a, 2, &from_b);
+        deliver(b, 1, &from_a);
+        a.evaluate();
+        b.evaluate();
+        assert_eq!(b.workbook, a.workbook);
+    }
+
+    #[test]
+    fn defined_name_identity() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.add_sheet("Other").unwrap();
+        a.set_user_input(0, 3, 1, "7".to_string()).unwrap(); // A3=7
+        let setup = a.flush();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+        let (sheet1_id, other_id) = (
+            a.workbook.worksheets[0].sheet_id,
+            a.workbook.worksheets[1].sheet_id,
+        );
+
+        // same name on both peers => same entity (case-insensitive)
+        a.new_defined_name("total", None, "Sheet1!$A$1").unwrap();
+        b.new_defined_name("Total", None, "Sheet1!$A$2").unwrap();
+        exchange(&mut a, &mut b);
+        assert_eq!(a.workbook.meta.defined_names.len(), 1);
+        // Both of the later commit's registers won, its spelling of the name included.
+        assert_eq!(
+            defined(&a),
+            [("Total".to_string(), None, "Sheet1!$A$2".to_string())]
+        );
+
+        // names are unique per scope
+        a.new_defined_name("total", Some(1), "Other!$A$1").unwrap();
+        exchange(&mut a, &mut b);
+        assert_eq!(
+            defined(&a),
+            [
+                ("Total".to_string(), None, "Sheet1!$A$2".to_string()),
+                (
+                    "total".to_string(),
+                    Some(other_id),
+                    "Other!$A$1".to_string()
+                ),
+            ]
+        );
+
+        // A renames, B changes definition -> both succeed (grand=Sheet1!$A$3)
+        a.update_defined_name("Total", None, "grand", None, "Sheet1!$A$2")
+            .unwrap();
+        b.update_defined_name("Total", None, "Total", None, "Sheet1!$A$3")
+            .unwrap();
+        exchange(&mut a, &mut b);
+        assert_eq!(a.workbook.meta.defined_names.len(), 2);
+        assert!(defined(&a).contains(&("grand".to_string(), None, "Sheet1!$A$3".to_string())));
+
+        // 2 peers, 2 different names for the same formula -> 2 different entities
+        a.new_defined_name("alpha", None, "Sheet1!$A$1").unwrap();
+        a.new_defined_name("beta", None, "Sheet1!$A$2").unwrap();
+        exchange(&mut a, &mut b);
+        // renamed 2 defined names to the same one should trigger name repair
+        a.update_defined_name("alpha", None, "merged", None, "Sheet1!$A$1")
+            .unwrap();
+        b.update_defined_name("beta", None, "merged", None, "Sheet1!$A$2")
+            .unwrap();
+        exchange(&mut a, &mut b);
+        for peer in [&a, &b] {
+            let names = defined(peer);
+            // name repair
+            assert!(names.contains(&("merged".to_string(), None, "Sheet1!$A$1".to_string())));
+            assert!(names.contains(&("merged (1)".to_string(), None, "Sheet1!$A$2".to_string())));
+        }
+
+        // 'alpha' was renamed in the past, reusing the name creates new entity
+        a.new_defined_name("alpha", None, "Other!$A$1").unwrap();
+        exchange(&mut a, &mut b);
+        assert_eq!(a.workbook.meta.defined_names.len(), 5);
+        let names = defined(&a);
+        assert!(names.contains(&("alpha".to_string(), None, "Other!$A$1".to_string())));
+        assert!(names.contains(&("merged".to_string(), None, "Sheet1!$A$1".to_string())));
+
+        a.update_defined_name("alpha", None, "alpha", Some(0), "Other!$A$1")
+            .unwrap();
+        b.update_defined_name("alpha", None, "alpha", None, "Sheet1!$A$9")
+            .unwrap();
+        exchange(&mut a, &mut b);
+        assert_eq!(a.workbook.meta.defined_names.len(), 5);
+        assert!(defined(&a).contains(&(
+            "alpha".to_string(),
+            Some(sheet1_id),
+            "Sheet1!$A$9".to_string()
+        )));
+
+        // delete keeps the entry, so the undo revives id, address and formula
+        let before = defined(&a);
+        a.delete_defined_name("merged", None).unwrap();
+        let gone = a.flush();
+        deliver(&mut b, 1, &gone);
+        let after_delete = defined(&a);
+        assert_eq!(after_delete.len(), before.len() - 1);
+        // Repair is derived, not authored: with the winner gone the loser stops being renumbered.
+        assert!(after_delete.contains(&("merged".to_string(), None, "Sheet1!$A$2".to_string())));
+        assert!(!after_delete.iter().any(|(name, ..)| name == "merged (1)"));
+        let undo: Vec<Patch> = gone
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+        exchange(&mut a, &mut b);
+        assert_eq!(defined(&a), before);
+        assert_eq!(a.workbook.meta.defined_names.len(), 5);
+
+        // ---- formulas still name a defined name by display text, so a rename rewrites them.
+        //      Pre-`Node<A: Position>` semantics, pinned as such ----
+        a.new_defined_name("rate", None, "Sheet1!$A$3").unwrap();
+        a.set_user_input(0, 1, 2, "=rate*2".to_string()).unwrap();
+        exchange(&mut a, &mut b);
+        assert_eq!(a.get_formatted_cell_value(0, 1, 2), Ok("14".to_string()));
+        a.update_defined_name("rate", None, "fee", None, "Sheet1!$A$3")
+            .unwrap();
+        exchange(&mut a, &mut b);
+        assert_eq!(a.get_cell_formula(0, 1, 2), Ok(Some("=fee*2".to_string())));
+        assert_eq!(b.get_formatted_cell_value(0, 1, 2), Ok("14".to_string()));
+
+        // an update that changes neither register produces no changes
+        a.update_defined_name("fee", None, "fee", None, "Sheet1!$A$3")
+            .unwrap();
+        assert!(a.flush().is_empty());
+
+        // upstream's validation, word for word
+        assert_eq!(
+            a.new_defined_name("1bad", None, "Sheet1!$A$1"),
+            Err("Name: Invalid defined name".to_string())
+        );
+        assert_eq!(
+            a.new_defined_name("FEE", None, "Sheet1!$A$1"),
+            Err("Name: Defined name already exists".to_string())
+        );
+        assert_eq!(
+            a.new_defined_name("x", Some(9), "Sheet1!$A$1"),
+            Err("Scope: Invalid sheet index".to_string())
+        );
+        assert_eq!(
+            a.delete_defined_name("nope", None),
+            Err("Defined name not found".to_string())
+        );
+        assert_eq!(
+            a.update_defined_name("nope", None, "y", None, "Sheet1!$A$1"),
+            Err("Defined name not found".to_string())
+        );
+        assert_eq!(
+            a.update_defined_name("fee", None, "1bad", None, "Sheet1!$A$1"),
+            Err("Name: Invalid defined name".to_string())
+        );
+        assert_eq!(
+            a.update_defined_name("fee", None, "alpha", Some(0), "Sheet1!$A$1"),
+            Err("Name: Defined name already exists".to_string())
+        );
+        assert!(a.flush().is_empty());
+    }
+
     /// Clearing a range: contents go, formatting stays or goes with them, and the coordinates the
     /// range names but the sheet does not hold are left alone — nothing is materialized.
     #[test]
@@ -3669,14 +3869,17 @@ mod test {
         assert_eq!(naming(&c), naming(&d));
     }
 
-    /// Every defined name, as `(name, scope, formula)`.
+    /// Every defined name, as `(name, scope, formula)`. Sorted: storage order is by identity hash,
+    /// which says nothing about the document.
     fn defined(model: &CollabModel<'_>) -> Vec<(String, Option<SheetId>, String)> {
-        model
+        let mut names: Vec<_> = model
             .workbook
             .defined_names
             .iter()
             .map(|dn| (dn.name.clone(), dn.sheet_id, dn.formula.clone()))
-            .collect()
+            .collect();
+        names.sort();
+        names
     }
 
     /// A copy carries the whole sheet: contents, formatting, sheet properties and the defined names
@@ -3756,22 +3959,22 @@ mod test {
         assert_eq!(
             defined(&a),
             [
-                (
-                    "loc".to_string(),
-                    Some(source_id),
-                    "Sheet1!$A$1".to_string()
-                ),
-                ("glob".to_string(), None, "Sheet1!$A$1".to_string()),
                 ("elsewhere".to_string(), None, "Other!$A$1".to_string()),
-                (
-                    "loc".to_string(),
-                    Some(copy_id),
-                    "'Sheet1 (1)'!$A$1".to_string()
-                ),
+                ("glob".to_string(), None, "Sheet1!$A$1".to_string()),
                 (
                     "glob".to_string(),
                     Some(copy_id),
                     "'Sheet1 (1)'!$A$1".to_string()
+                ),
+                (
+                    "loc".to_string(),
+                    Some(copy_id),
+                    "'Sheet1 (1)'!$A$1".to_string()
+                ),
+                (
+                    "loc".to_string(),
+                    Some(source_id),
+                    "Sheet1!$A$1".to_string()
                 ),
             ]
         );
@@ -3822,7 +4025,7 @@ mod test {
         a.new_defined_name("kept", Some(0), "Sheet1!$A$1").unwrap();
         a.evaluate();
         let data_id = a.workbook.worksheets[1].sheet_id;
-        let data_key = a.workbook.meta.sheet_positions[&data_id].0.clone();
+        let data_key = a.workbook.meta.sheet_positions[&data_id].value.clone();
         let before = projection(&a);
         let setup = a.flush();
 
@@ -3877,7 +4080,7 @@ mod test {
         a.insert_sheet("Filler", 1, None).unwrap();
         let filler_id = a.workbook.worksheets[1].sheet_id;
         // The gap re-mints the very key the dead sheet still holds: only the id separates them.
-        assert_eq!(a.workbook.meta.sheet_positions[&filler_id].0, data_key);
+        assert_eq!(a.workbook.meta.sheet_positions[&filler_id].value, data_key);
         let filled = a.flush();
         deliver(&mut a, 2, &grabbed);
         deliver(&mut b, 1, &filled);
