@@ -97,9 +97,7 @@ export function loadDarkModeFromStorage(): boolean {
   if (stored) {
     return stored === "true";
   }
-  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  saveDarkModeInStorage(isDark);
-  return isDark;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
 export function updateNameSelectedWorkbook(model: Model, newName: string) {
