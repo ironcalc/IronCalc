@@ -17,6 +17,7 @@
   font-weight: inherit;
   font-family: inherit;
   font-size: inherit;
+  color: var(--palette-common-black);
   background: transparent;
 }
 

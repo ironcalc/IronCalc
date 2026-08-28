@@ -70,6 +70,7 @@
   margin: 0;
   font-size: calc(var(--typography-font-size) + 2px);
   font-weight: 600;
+  color: var(--palette-common-black);
 }
 
 .app-ic-drawer-header-actions {
