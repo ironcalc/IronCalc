@@ -239,6 +239,18 @@ const Workbook = (props: {
     setRedrawId((id) => id + 1);
   };
 
+  // A rejected paste (e.g. it would partially cover a merged cell) gets a
+  // dialog; the merged-cell case is localized, the rest show the raw error.
+  const showPasteError = (error: unknown) => {
+    const message = `${error}`;
+    setAlertDialog({
+      title: t("error_dialog.error_paste"),
+      message: message.includes("merged cell")
+        ? t("error_dialog.error_paste_merged")
+        : message,
+    });
+  };
+
   // Full-row and full-column selections can be neither merged nor unmerged.
   const getMergeCellsState = () => {
     const area = getSelectedArea();
@@ -718,10 +730,7 @@ const Workbook = (props: {
             );
             setRedrawId((id) => id + 1);
           } catch (e) {
-            setAlertDialog({
-              title: t("error_dialog.error_deleting_cells"),
-              message: `${e}`,
-            });
+            showPasteError(e);
           }
         } else if (mimeType === "text/plain") {
           const {
@@ -741,10 +750,7 @@ const Workbook = (props: {
             model.pasteCsvText(range, value);
             setRedrawId((id) => id + 1);
           } catch (e) {
-            setAlertDialog({
-              title: t("error_dialog.error_deleting_cells"),
-              message: `${e}`,
-            });
+            showPasteError(e);
           }
         } else {
           // NOT IMPLEMENTED

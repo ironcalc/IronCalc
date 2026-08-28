@@ -205,7 +205,9 @@
     "error_merging_cells": "Cannot merge cells",
     "error_merging_cells_content": "Only one cell in the selection can have content.",
     "error_moving_columns": "Failed to move columns",
-    "error_moving_rows": "Failed to move rows"
+    "error_moving_rows": "Failed to move rows",
+    "error_paste": "Cannot paste",
+    "error_paste_merged": "The pasted area cannot cover part of a merged cell."
   },
   "formula_bar": {
     "manage_named_ranges": "Manage Named Ranges"

@@ -205,7 +205,9 @@
     "error_merging_cells": "Impossibile unire le celle",
     "error_merging_cells_content": "Solo una cella della selezione può avere contenuto.",
     "error_moving_columns": "Impossibile spostare le colonne",
-    "error_moving_rows": "Impossibile spostare le righe"
+    "error_moving_rows": "Impossibile spostare le righe",
+    "error_paste": "Impossibile incollare",
+    "error_paste_merged": "L'area incollata non può coprire parte di una cella unita."
   },
   "formula_bar": {
     "manage_named_ranges": "Gestisci intervalli denominati"

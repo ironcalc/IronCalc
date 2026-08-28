@@ -205,7 +205,9 @@
     "error_merging_cells": "Zellen können nicht verbunden werden",
     "error_merging_cells_content": "Nur eine Zelle der Auswahl darf Inhalt haben.",
     "error_moving_columns": "Spalten konnten nicht verschoben werden",
-    "error_moving_rows": "Zeilen konnten nicht verschoben werden"
+    "error_moving_rows": "Zeilen konnten nicht verschoben werden",
+    "error_paste": "Einfügen nicht möglich",
+    "error_paste_merged": "Der eingefügte Bereich kann eine verbundene Zelle nicht teilweise abdecken."
   },
   "formula_bar": {
     "manage_named_ranges": "Benannte Bereiche verwalten"

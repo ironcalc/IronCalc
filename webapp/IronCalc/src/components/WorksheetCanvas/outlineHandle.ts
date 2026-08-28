@@ -185,8 +185,12 @@ export function attachOutlineHandle(
         }
       }
     } catch (error) {
-      // e.g. the fill would partially cover a merged cell or an array formula
+      // e.g. the fill would partially cover a merged cell or an array formula:
+      // nothing was filled, so the selection stays put
       worksheet.onAutofillError?.(`${error}`);
+      worksheet.workbookState.clearExtendToArea();
+      worksheet.renderSheet();
+      return;
     }
     const selectedRowStart = Math.min(rowStart, extendedArea.rowStart);
     const selectedColumnStart = Math.min(columnStart, extendedArea.columnStart);
