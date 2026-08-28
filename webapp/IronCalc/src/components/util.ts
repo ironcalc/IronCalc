@@ -81,6 +81,83 @@ export function growRangeOverMergedCells(
   };
 }
 
+export type FillDirection =
+  | "rowsDown"
+  | "rowsUp"
+  | "columnsRight"
+  | "columnsLeft";
+
+/**
+ * Auto-filling tiles the merged cells of the selection into the fill target
+ * with period the selection height (filling by rows) or width (by columns),
+ * and the engine rejects a fill whose boundary would cut a tiled merge.
+ * Returns the largest extent <= `extent` whose boundary cuts no merge
+ * (possibly 0). The selection bounds must be normalized and, per the
+ * selection invariant, the selection fully contains every merge it touches.
+ */
+export function snapFillExtent(
+  mergedCells: MergedCell[],
+  selection: {
+    rowStart: number;
+    rowEnd: number;
+    columnStart: number;
+    columnEnd: number;
+  },
+  direction: FillDirection,
+  extent: number,
+): number {
+  if (extent <= 0) {
+    return 0;
+  }
+  const byRows = direction === "rowsDown" || direction === "rowsUp";
+  const period = byRows
+    ? selection.rowEnd - selection.rowStart + 1
+    : selection.columnEnd - selection.columnStart + 1;
+  // the merge spans along the fill axis, as 0-based offsets in the selection
+  const spans: [number, number][] = [];
+  for (const m of mergedCells) {
+    const lastRow = m.row + m.height - 1;
+    const lastColumn = m.column + m.width - 1;
+    const intersects =
+      m.row <= selection.rowEnd &&
+      lastRow >= selection.rowStart &&
+      m.column <= selection.columnEnd &&
+      lastColumn >= selection.columnStart;
+    if (!intersects) {
+      continue;
+    }
+    spans.push(
+      byRows
+        ? [m.row - selection.rowStart, lastRow - selection.rowStart]
+        : [
+            m.column - selection.columnStart,
+            lastColumn - selection.columnStart,
+          ],
+    );
+  }
+  if (spans.length === 0) {
+    return extent;
+  }
+  // With `filled` cells of the last tile filled, the fill boundary sits at
+  // pattern offset `filled` (filling away from the selection) or
+  // `period - filled` (filling towards the sheet start, where the last tile
+  // holds the tail of the pattern); a merge must not straddle it.
+  const towardStart = direction === "rowsUp" || direction === "columnsLeft";
+  const cutsAMerge = (filled: number): boolean => {
+    const boundary = towardStart ? period - filled : filled;
+    return spans.some(([start, end]) => start < boundary && end >= boundary);
+  };
+  let snapped = extent;
+  while (
+    snapped > 0 &&
+    snapped % period !== 0 &&
+    cutsAMerge(snapped % period)
+  ) {
+    snapped -= 1;
+  }
+  return snapped;
+}
+
 /**
  * Returns the size of the cell editor for a cell: the size of the cell itself,
  * or of the whole merged range if the cell is merged.

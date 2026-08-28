@@ -192,6 +192,9 @@
     }
   },
   "error_dialog": {
+    "error_autofill": "Cannot auto-fill",
+    "error_autofill_array": "The fill area cannot cover part of an array formula.",
+    "error_autofill_merged": "The fill area cannot cover part of a merged cell.",
     "error_clipboard_paste": "Clipboard access denied. Please allow clipboard permissions in your browser.",
     "error_deleting_cells": "Failed to delete cells",
     "error_deleting_columns": "Failed to delete columns",

@@ -86,6 +86,8 @@ const Worksheet = forwardRef(
     );
     const [columnWidthDialogOpen, setColumnWidthDialogOpen] = useState(false);
     const [columnWidthDefault, setColumnWidthDefault] = useState("");
+    // The raw engine error of a rejected autofill (localized when rendered)
+    const [autofillError, setAutofillError] = useState<string | null>(null);
     const [rowHeightDialogOpen, setRowHeightDialogOpen] = useState(false);
     const [rowHeightDefault, setRowHeightDefault] = useState("");
 
@@ -217,6 +219,15 @@ const Worksheet = forwardRef(
           }
         },
         onHideLinkTooltip: hideLinkTooltip,
+        onAutofillError: (message) => {
+          // the known rejections get a dialog; anything else stays silent
+          if (
+            message.includes("merged cell") ||
+            message.includes("array formula")
+          ) {
+            setAutofillError(message);
+          }
+        },
         linkTooltipCell,
         onRowHeightChanges(sheet, row, height) {
           if (height < 0) {
@@ -908,6 +919,16 @@ const Worksheet = forwardRef(
           onClose={() => setRowColErrorTitle(null)}
           title={rowColErrorTitle ?? ""}
           message={rowColErrorTitle ?? ""}
+        />
+        <Alert
+          open={autofillError !== null}
+          onClose={() => setAutofillError(null)}
+          title={t("error_dialog.error_autofill")}
+          message={
+            autofillError?.includes("merged cell")
+              ? t("error_dialog.error_autofill_merged")
+              : t("error_dialog.error_autofill_array")
+          }
         />
         <Prompt
           open={columnWidthDialogOpen}

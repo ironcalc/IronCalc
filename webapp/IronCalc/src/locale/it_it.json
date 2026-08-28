@@ -192,6 +192,9 @@
     }
   },
   "error_dialog": {
+    "error_autofill": "Riempimento automatico impossibile",
+    "error_autofill_array": "L'area di riempimento non può coprire parte di una formula matriciale.",
+    "error_autofill_merged": "L'area di riempimento non può coprire parte di una cella unita.",
     "error_clipboard_paste": "Accesso agli appunti negato. Consenti le autorizzazioni per gli appunti nel tuo browser.",
     "error_deleting_cells": "Impossibile eliminare le celle",
     "error_deleting_columns": "Impossibile eliminare le colonne",
