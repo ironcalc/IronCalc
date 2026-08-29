@@ -116,6 +116,7 @@ mod test_fn_transpose;
 mod test_fn_type;
 mod test_format_case;
 mod test_frozen_rows_and_columns;
+mod test_frozen_structural_edits;
 mod test_geomean;
 mod test_get_cell_content;
 mod test_implicit_intersection;

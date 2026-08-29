@@ -112,6 +112,7 @@ fn diff_order_delete_rows() {
             row,
             count,
             old_data,
+            ..
         } => {
             assert_eq!(*sheet, 0);
             assert_eq!(*row, 5);
@@ -188,6 +189,7 @@ fn delete_empty_rows() {
             row,
             count,
             old_data,
+            ..
         } => {
             assert_eq!(*sheet, 0);
             assert_eq!(*row, 5);
@@ -231,6 +233,7 @@ fn delete_mixed_empty_and_filled_rows() {
             row,
             count,
             old_data,
+            ..
         } => {
             assert_eq!(*sheet, 0);
             assert_eq!(*row, 5);
@@ -364,6 +367,7 @@ fn bulk_delete_rows_round_trip() {
             row,
             count,
             old_data,
+            ..
         } => {
             assert_eq!(*sheet, 0);
             assert_eq!(*row, 3);
@@ -431,6 +435,7 @@ fn bulk_delete_columns_round_trip() {
             column,
             count,
             old_data,
+            ..
         } => {
             assert_eq!(*sheet, 0);
             assert_eq!(*column, 3);
