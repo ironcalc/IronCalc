@@ -369,7 +369,7 @@ impl PyUserModel {
     // Sheets
 
     /// Adds a new sheet with an automatically generated name
-    pub fn new_sheet(&mut self) -> PyResult<()> {
+    pub fn new_sheet(&mut self) -> PyResult<(String, u32)> {
         self.model.new_sheet().map_err(to_py_err)
     }
 
