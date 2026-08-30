@@ -13,19 +13,26 @@ ifeq ($(PYTHON),)
   $(error No python found. Please install python.)
 endif
 
-all: deps
+all: wasm xlsx
+
+wasm: deps
 	wasm-pack build --target web --scope ironcalc --release
-	wasm-pack build --target web --scope ironcalc --release --out-dir pkg-xlsx -- --features xlsx
 	cp README.pkg.md pkg/README.md
-	cp README.pkg-xlsx.md pkg-xlsx/README.md
 	pnpm exec tsc types.ts --target esnext --module esnext
 	$(PYTHON) fix_types.py pkg
-	$(PYTHON) fix_types.py pkg-xlsx
 	$(PYTHON) fix_package.py pkg
-	$(PYTHON) fix_package.py pkg-xlsx @ironcalc/wasm-xlsx
 	rm -f types.js
 	node --test tests/test_package.mjs
+
+xlsx: deps
+	wasm-pack build --target web --scope ironcalc --release --out-dir pkg-xlsx -- --features xlsx
+	cp README.pkg-xlsx.md pkg-xlsx/README.md
+	pnpm exec tsc types.ts --target esnext --module esnext
+	$(PYTHON) fix_types.py pkg-xlsx
+	$(PYTHON) fix_package.py pkg-xlsx @ironcalc/wasm-xlsx
+	rm -f types.js
 	PKG_DIR=pkg-xlsx node --test tests/test_package.mjs
+
 
 # Installs the pinned JS tooling (typescript, typedoc) from pnpm-lock.yaml
 deps:
