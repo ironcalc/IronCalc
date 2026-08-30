@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { Model } from '../pkg-xlsx/wasm.js';
+import { Model } from '../pkg-nodejs-xlsx/wasm.js';
 
 const exampleXlsx = readFileSync(
     path.join(

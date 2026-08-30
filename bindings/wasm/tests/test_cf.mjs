@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { Model } from '../pkg/wasm.js';
+import { Model } from '../pkg-nodejs/wasm.js';
 
 const COLOR_SCALE = {
     type: 'ColorScale',
