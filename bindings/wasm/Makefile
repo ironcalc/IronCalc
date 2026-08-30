@@ -23,31 +23,33 @@ all: wasm xlsx
 
 wasm: pkg/.built-$(SRC_HASH)
 
-# `deps` is order-only (after the |): being .PHONY it would otherwise force
-# the stamp to rebuild on every run.
-pkg/.built-$(SRC_HASH): | deps
+# `deps` and `types.js` are order-only (after the |): `deps` is .PHONY and
+# would otherwise force the stamp to rebuild on every run, and types.js only
+# changes when types.ts does, which the hash already covers.
+pkg/.built-$(SRC_HASH): | deps types.js
 	wasm-pack build --target web --scope ironcalc --release
 	cp README.pkg.md pkg/README.md
-	pnpm exec tsc types.ts --target esnext --module esnext
 	$(PYTHON) fix_types.py pkg
 	$(PYTHON) fix_package.py pkg
-	rm -f types.js
 	node --test tests/test_package.mjs
 	rm -f pkg/.built-*
 	touch $@
 
 xlsx: pkg-xlsx/.built-$(SRC_HASH)
 
-pkg-xlsx/.built-$(SRC_HASH): | deps
+pkg-xlsx/.built-$(SRC_HASH): | deps types.js
 	wasm-pack build --target web --scope ironcalc --release --out-dir pkg-xlsx -- --features xlsx
 	cp README.pkg-xlsx.md pkg-xlsx/README.md
-	pnpm exec tsc types.ts --target esnext --module esnext
 	$(PYTHON) fix_types.py pkg-xlsx
 	$(PYTHON) fix_package.py pkg-xlsx @ironcalc/wasm-xlsx
-	rm -f types.js
 	PKG_DIR=pkg-xlsx node --test tests/test_package.mjs
 	rm -f pkg-xlsx/.built-*
 	touch $@
+
+# types.ts compiles to types.js, which fix_types.py prepends to the pkg's
+# wasm.js. One shared target so parallel `make -j` builds don't race on it.
+types.js: types.ts | deps
+	pnpm exec tsc types.ts --target esnext --module esnext
 
 # Installs the pinned JS tooling (typescript, typedoc) from pnpm-lock.yaml
 deps:
