@@ -25,8 +25,8 @@ test-rust:
 
 .PHONY: test-js
 test-js:
-	# Regrettably we need to build the wasm twice, once for the nodejs tests
-	# and a second one for the vitest.
+	# The nodejs test builds live in their own out-dirs, so the second `make`
+	# only rebuilds the web pkgs when sources changed (hash-stamp skip).
 	cd bindings/wasm/ && make tests && make
 	# Type checks need the built wasm pkg (and the built workbook for the apps),
 	# so they live here rather than in `lint`.
