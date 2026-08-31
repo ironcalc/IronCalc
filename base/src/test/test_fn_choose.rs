@@ -93,3 +93,34 @@ fn test_fn_choose_scalar_index_unaffected() {
     assert_eq!(model._get_text("C2"), "20");
     assert_eq!(model._get_text("C3"), "30");
 }
+
+// CHOOSE passes references through: a chosen range arm reaches a range consumer
+// whole (Excel: SUM(CHOOSE(2, A1:A5, B1:B5)) sums the chosen range).
+#[test]
+fn test_fn_choose_range_arm_flows_to_range_consumer() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("C1", "=SUM(CHOOSE(2, A1:A2, A1:A3))");
+    // CHOOSE as a range endpoint: A1:CHOOSE(2, A2, A3) -> A1:A3.
+    model._set("C2", "=SUM(A1:CHOOSE(2, A2, A3))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "60");
+    assert_eq!(model._get_text("C2"), "60");
+}
+
+// The legacy-import shape: `@` on the CHOOSE call intersects its result at the
+// consuming cell (Excel upgrades legacy `=CHOOSE(2,A1:A10,...)` to `=@CHOOSE(...)`).
+#[test]
+fn test_fn_choose_at_call_intersects_result() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("C2", "=@CHOOSE(1, A1:A3, 999)");
+    model.evaluate();
+    assert_eq!(model._get_text("C2"), "20");
+    // No spill: C3 stays empty.
+    assert_eq!(model._get_text("C3"), "");
+}

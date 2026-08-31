@@ -36,12 +36,13 @@ fn implicit_intersection() {
 
 #[test]
 fn implicit_intersection_operator() {
+    // @A:A in B1 intersects to A1, so FORMULATEXT acts on that single cell.
     let mut model = new_empty_model();
     model._set("A1", "=1 +  2");
     model._set("B1", "=FORMULATEXT(@A:A)");
     model.evaluate();
 
-    assert_eq!(model._get_text("B1"), *"#N/IMPL!");
+    assert_eq!(model._get_text("B1"), *"=1+2");
 }
 
 #[test]

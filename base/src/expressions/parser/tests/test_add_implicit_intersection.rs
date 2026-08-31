@@ -56,6 +56,15 @@ fn simple_test() {
         ("OR(A1:A10)", "OR(A1:A10)"),
         ("NOT(A1:A10)", "NOT(@A1:A10)"),
         ("IF(A1:A10,B1:B10,C1:C10)", "IF(@A1:A10,@B1:B10,@C1:C10)"),
+        // CHOOSE value args pass references through: no `@` on the arms. In a
+        // scalar position the whole call is wrapped instead; in a range
+        // position (e.g. inside SUM) nothing is wrapped.
+        ("CHOOSE(2,A1:A10,B1:B10)", "@CHOOSE(2,A1:A10,B1:B10)"),
+        (
+            "SUM(CHOOSE(2,A1:A10,B1:B10))",
+            "SUM(CHOOSE(2,A1:A10,B1:B10))",
+        ),
+        ("CHOOSE(2,A1,B1)", "CHOOSE(2,A1,B1)"),
         // Information
         // ("ISBLANK(A1:A10)", "ISBLANK(A1:A10)"),
         // ("ISERR(A1:A10)", "ISERR(A1:A10)"),

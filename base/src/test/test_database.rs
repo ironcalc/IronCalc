@@ -430,3 +430,35 @@ fn locale_wrong_format() {
     assert_eq!(model._get_text("B19"), *"624.49979984");
     assert_eq!(model._get_text("B20"), *"509.901951359");
 }
+
+// The database and criteria arguments go through `get_reference`, whose
+// fallback arm evaluates non-literal references (OFFSET, INDIRECT) in
+// reference context. The computed ranges must arrive whole.
+#[test]
+fn computed_database_and_criteria_references() {
+    let mut model = new_empty_model();
+    model._set("A1", "ID");
+    model._set("B1", "Amount");
+    model._set("A2", "1");
+    model._set("B2", "1200");
+    model._set("A3", "2");
+    model._set("B3", "900");
+    model._set("A4", "3");
+    model._set("B4", "2100");
+
+    model._set("A6", "Amount");
+    model._set("A7", ">1000");
+
+    // OFFSET(A1,0,0,4,2) -> A1:B4; INDIRECT("A6:A7") -> the criteria range.
+    model._set(
+        "D1",
+        "=DSUM(OFFSET(A1, 0, 0, 4, 2), B1, INDIRECT(\"A6:A7\"))",
+    );
+    model._set("D2", "=DCOUNT(OFFSET(A1, 0, 0, 4, 2), B1, A6:A7)");
+    model._set("D3", "=DMAX(OFFSET(A1, 0, 0, 4, 2), B1, A6:A7)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"3300");
+    assert_eq!(model._get_text("D2"), *"2");
+    assert_eq!(model._get_text("D3"), *"2100");
+}
