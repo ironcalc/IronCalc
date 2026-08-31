@@ -85,3 +85,24 @@ fn test_vlookup_array_sorted_largest_smaller() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "b");
 }
+
+#[test]
+fn test_vlookup_approximate_trailing_blanks() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("A4", "40");
+    model._set("A5", "50");
+    model._set("B1", "a");
+    model._set("B2", "b");
+    model._set("B3", "c");
+    model._set("B4", "d");
+    model._set("B5", "e");
+    // A6:A10 left blank
+    model._set("C1", "=VLOOKUP(35,A1:B10,2,TRUE)");
+    model._set("C2", "=VLOOKUP(5,A1:B10,2,TRUE)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "c");
+    assert_eq!(model._get_text("C2"), "#N/A");
+}
