@@ -338,7 +338,19 @@ impl<'a> Model<'a> {
                 automatic: _,
                 child,
             } => match self.evaluate_node_with_reference(child, cell) {
-                CalcResult::Range { left, right } => CalcResult::Range { left, right },
+                // In reference context `@` still intersects: the result is the
+                // intersected cell as a 1x1 reference (Excel: FORMULATEXT(@A:A)
+                // in B1 acts on A1; CHOOSE(1, @B1:B3) yields one cell).
+                CalcResult::Range { left, right } => {
+                    match implicit_intersection(&cell, &Range { left, right }) {
+                        Some(r) => CalcResult::Range { left: r, right: r },
+                        None => CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            format!("Error with Implicit Intersection in cell {cell:?}"),
+                        ),
+                    }
+                }
                 // The implicit intersection of a scalar is the scalar itself. The
                 // importer wraps any unknown-shaped function argument (e.g. a CHOOSE
                 // arm that is an IF(...) returning a value) in an automatic `@`; when

@@ -412,7 +412,9 @@ impl<'a> Model<'a> {
                 Ok(Range { left, right: left })
             }
             _ => {
-                let value = self.evaluate_node_in_context(node, cell);
+                // Reference context: an `@` node must yield the intersected 1x1
+                // reference (e.g. COLUMNS(@A1:C1) is 1), not the cell's value.
+                let value = self.evaluate_node_with_reference(node, cell);
                 if value.is_error() {
                     return Err(value);
                 }

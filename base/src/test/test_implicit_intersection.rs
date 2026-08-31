@@ -202,3 +202,48 @@ fn choose_arm_at_wrapped_scalar_cellref_flows_through() {
 
     assert_eq!(model._get_text("C1"), "10".to_string());
 }
+
+// --- `@` on a RANGE in reference context ---
+//
+// `@` intersects in reference context too: the `ImplicitIntersection` arm in
+// `evaluate_node_with_reference` (and `get_reference`) returns the intersected
+// single cell as a 1x1 Range, so reference consumers (CHOOSE, FORMULATEXT,
+// COLUMNS, ...) see one cell, matching Excel.
+
+#[test]
+fn at_range_in_reference_context_intersects() {
+    let mut model = new_empty_model();
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("B3", "3");
+    // CHOOSE evaluates the selected arm in reference context; @B1:B3 must
+    // intersect at the consuming cell A2 -> B2, so SUM gets a single cell.
+    model._set("A2", "=SUM(CHOOSE(1, @B1:B3))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A2"), "2".to_string());
+}
+
+#[test]
+fn formulatext_of_at_column_intersects() {
+    let mut model = new_empty_model();
+    model._set("A1", "=1+2");
+    // @A:A in B1 intersects to A1; FORMULATEXT must receive that single cell.
+    model._set("B1", "=FORMULATEXT(@A:A)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), "=1+2".to_string());
+}
+
+#[test]
+fn columns_of_at_range_intersects() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("C1", "3");
+    // @A1:C1 in B3 is column-aligned -> B1, a single cell.
+    model._set("B3", "=COLUMNS(@A1:C1)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("B3"), "1".to_string());
+}

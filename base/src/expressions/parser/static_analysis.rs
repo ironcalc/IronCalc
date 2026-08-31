@@ -947,6 +947,19 @@ fn args_signature_address(arg_count: usize) -> Vec<Signature> {
     vec![Signature::Scalar; arg_count]
 }
 
+fn args_signature_choose(arg_count: usize) -> Vec<Signature> {
+    // CHOOSE(index, value1, ...): the index is a scalar; the value arguments
+    // pass references through untouched (Excel: SUM(CHOOSE(2, A1:A5, B1:B5))
+    // sums the chosen range). In scalar context the implicit intersection is
+    // applied to the CHOOSE call itself, never to its arms.
+    if arg_count < 2 {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Vector; arg_count];
+    result[0] = Signature::Scalar;
+    result
+}
+
 fn args_signature_choosecols(arg_count: usize) -> Vec<Signature> {
     if arg_count < 2 {
         return vec![Signature::Error; arg_count];
@@ -1002,7 +1015,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Atan => args_signature_scalars(arg_count, 1, 0),
         Function::Atan2 => args_signature_scalars(arg_count, 2, 0),
         Function::Atanh => args_signature_scalars(arg_count, 1, 0),
-        Function::Choose => vec![Signature::Scalar; arg_count],
+        Function::Choose => args_signature_choose(arg_count),
         Function::Column => args_signature_row(arg_count),
         Function::Columns => args_signature_one_vector(arg_count),
         Function::Ln => args_signature_scalars(arg_count, 1, 0),
@@ -1653,7 +1666,13 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Atan => scalar_arguments(args),
         Function::Atan2 => scalar_arguments(args),
         Function::Atanh => scalar_arguments(args),
-        Function::Choose => scalar_arguments(args),
+        // CHOOSE is a reference function: with a range arm the call itself is
+        // reference-shaped, so legacy import wraps the whole CALL in `@`
+        // (Excel upgrades `=CHOOSE(2,A1:A10,B1:B10)` to `=@CHOOSE(...)`).
+        Function::Choose => match scalar_arguments(args) {
+            StaticResult::Array(n, m) => StaticResult::Range(n, m),
+            other => other,
+        },
         Function::Column => not_implemented(args),
         Function::Columns => not_implemented(args),
         Function::Cos => scalar_arguments(args),
