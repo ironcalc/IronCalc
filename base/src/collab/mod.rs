@@ -1,6 +1,7 @@
 pub mod apply;
 pub mod codec;
 pub mod emit;
+pub mod formula;
 pub mod fractional_index;
 pub mod fractional_key;
 pub mod hlc;
