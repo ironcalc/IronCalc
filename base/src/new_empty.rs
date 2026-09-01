@@ -125,7 +125,7 @@ impl<'a, A: Position> Model<'a, A> {
             };
             let mut parse_formula = Vec::new();
             for formula in shared_formulas {
-                let t = self.parser.parse(formula, &cell_reference);
+                let t = self.parser.parse(formula.as_ref(), &cell_reference);
                 let static_result = run_static_analysis_on_node(&t);
                 parse_formula.push((t, static_result));
             }

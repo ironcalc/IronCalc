@@ -374,6 +374,9 @@ pub trait Position: sealed::Sealed + Sized + Clone {
     type WorkbookMeta: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
     /// Replica-local model state, never serialized; `()` for [`Ordinal`].
     type Local: Default;
+    /// Storage form of a shared formula. Plain text until stable lowering lands.
+    // `AsRef<str>` is the temporary seam letting generic code read the text.
+    type Formula: AsRef<str> + Clone + PartialEq + std::fmt::Debug + Encode + bitcode::DecodeOwned;
 
     // Key ⇄ ordinal resolution. Ordinals are the 1-based `i32` the rest of the codebase uses;
     // `None` means the key names nothing in this index any more.
@@ -418,6 +421,7 @@ impl Position for Ordinal {
     type MergedCell = MergedCell;
     type WorkbookMeta = ();
     type Local = ();
+    type Formula = String;
 
     // The key *is* the ordinal, so resolution is the identity and there is nothing to bound-check.
     #[inline]
@@ -604,7 +608,7 @@ pub struct Worksheet<A: Position = Ordinal> {
     pub rows: Vec<Row<A>>,
     pub name: String,
     pub sheet_data: SheetData<A>,
-    pub shared_formulas: Vec<String>,
+    pub shared_formulas: Vec<A::Formula>,
     pub sheet_id: u32,
     pub state: SheetState,
     pub color: Color,

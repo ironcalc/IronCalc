@@ -45,6 +45,8 @@ impl Position for Stable {
     type MergedCell = StableRange;
     type WorkbookMeta = WorkbookMeta;
     type Local = CollabSession;
+    // Flips to `StableFormula` once formula bind/lower land.
+    type Formula = String;
 
     fn row_ordinal(idx: &SheetIndexes, key: &FractionalKey) -> Option<i32> {
         idx.rows.position_of(key).map(|p| p as i32 + 1)
