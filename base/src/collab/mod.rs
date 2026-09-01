@@ -1,4 +1,5 @@
 pub mod apply;
+pub mod bind;
 pub mod codec;
 pub mod emit;
 pub mod formula;

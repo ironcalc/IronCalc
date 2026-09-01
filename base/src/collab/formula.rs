@@ -7,6 +7,7 @@ use std::num::NonZeroUsize;
 
 use crate::collab::fractional_key::FractionalKey;
 use crate::collab::patch::{DefinedNameId, SheetId};
+use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::{self, OpCompare, OpProduct, OpSum, OpUnary};
 use crate::functions::Function;
 
@@ -19,8 +20,6 @@ pub enum StableSheetRef {
     /// Ref without explicit sheet prefix: resolves to the host cell's sheet.
     Current,
     Sheet(SheetId),
-    /// Sheet name that didn't resolve at bind time (e.g. `=Sheet2!C3` before Sheet2 exists).
-    Missing(String),
 }
 
 /// One axis (row or column) of a reference.
@@ -40,6 +39,30 @@ pub enum ArrayValue {
     String(String),
     Error(token::Error),
     Empty,
+}
+
+impl From<&ArrayNode> for ArrayValue {
+    fn from(value: &ArrayNode) -> Self {
+        match value {
+            ArrayNode::Boolean(v) => ArrayValue::Boolean(*v),
+            ArrayNode::Number(v) => ArrayValue::Number(*v),
+            ArrayNode::String(v) => ArrayValue::String(v.clone()),
+            ArrayNode::Error(v) => ArrayValue::Error(v.clone()),
+            ArrayNode::Empty => ArrayValue::Empty,
+        }
+    }
+}
+
+impl From<&ArrayValue> for ArrayNode {
+    fn from(value: &ArrayValue) -> Self {
+        match value {
+            ArrayValue::Boolean(v) => ArrayNode::Boolean(*v),
+            ArrayValue::Number(v) => ArrayNode::Number(*v),
+            ArrayValue::String(v) => ArrayNode::String(v.clone()),
+            ArrayValue::Error(v) => ArrayNode::Error(v.clone()),
+            ArrayValue::Empty => ArrayNode::Empty,
+        }
+    }
 }
 
 /// A `LAMBDA` parameter declaration.
@@ -352,9 +375,9 @@ mod tests {
                     argc: 1,
                 },
             ],
-            // =Gone!A1&"x" over an unresolved sheet name
+            // =Sheet2!A1&"x"
             vec![
-                cell(StableSheetRef::Missing("Gone".to_string()), 1, 1, false),
+                cell(StableSheetRef::Sheet(7), 1, 1, false),
                 StableToken::String("x".to_string()),
                 StableToken::OpConcatenate,
             ],
