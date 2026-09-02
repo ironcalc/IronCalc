@@ -919,6 +919,22 @@ impl CollabSession {
     pub(crate) fn assert_model_matches_shadow(&self, um: &UserModel, label: &str) {
         let resolver = DocResolver::from_projection(&self.shadow);
         let visible = self.shadow.visible_sheets();
+        // Sheet order and display names first (empty sheets would otherwise
+        // hide an order drift).
+        let expected_names = dedupe_names(&visible);
+        let model_names: Vec<String> = (0..um.model.workbook.worksheets.len() as u32)
+            .map(|s| {
+                um.model
+                    .workbook
+                    .worksheet(s)
+                    .map(|ws| ws.get_name())
+                    .unwrap_or_default()
+            })
+            .collect();
+        assert_eq!(
+            model_names, expected_names,
+            "{label}: model sheet order/names deviate from document"
+        );
         for (index, (sheet_id, sp)) in visible.iter().enumerate() {
             let sheet = index as u32;
             let rows = sp.axis_order(Axis::Rows);
@@ -1004,6 +1020,7 @@ impl CollabSession {
                 counter: &mut self.counter,
             };
             for entry in &queue {
+
                 match entry.r#type {
                     DiffType::Redo => {
                         for diff in &entry.list {
@@ -1208,6 +1225,11 @@ impl CollabSession {
         }
         debug_assert_eq!(working, new_ids, "sheet alignment failed");
         align_sheet_display_names(um, &display_names)?;
+        // Remote deletions can leave the selected sheet past the end.
+        let count = um.model.workbook.worksheets.len() as u32;
+        if um.get_selected_sheet() >= count {
+            um.set_selected_sheet(count.saturating_sub(1))?;
+        }
         // Frozen panes and per-sheet settings.
         for (index, (_, sp_new)) in new_sheets.iter().enumerate() {
             let sheet = index as u32;
@@ -2009,6 +2031,10 @@ impl Pass1<'_, '_> {
             .id_at(column as u32)
             .ok_or_else(|| format!("collab: column {column} out of range"))?;
         self.touched.cell_styles.insert((sheet_id, col_id, row_id));
+        // Defensive: the document follows whatever the engine does to the
+        // link of a restyled cell (the compare keeps this write-free when,
+        // as expected, nothing changed).
+        self.touched.cell_links.insert((sheet_id, col_id, row_id));
         self.touched.keep_rows.insert((sheet_id, row_id));
         self.touched.keep_cols.insert((sheet_id, col_id));
         Ok(())
@@ -2541,6 +2567,7 @@ impl Pass1<'_, '_> {
             self.client_id,
             *self.counter,
         );
+
         self.maps
             .meta
             .insert(&mut *self.txn, sheet_meta_key(id, "pos"), pos.as_str());
@@ -3738,7 +3765,7 @@ fn reconcile_sheet(
             content_written.insert(*key);
         }
         // Link deltas (an independent register per cell).
-        let mut link_keys: BTreeSet<(EntityId, EntityId)> = content_written;
+        let mut link_keys: BTreeSet<(EntityId, EntityId)> = content_written.clone();
         for key in sp_old.links.keys().chain(sp_new.links.keys()) {
             if sp_old.links.get(key) != sp_new.links.get(key) {
                 link_keys.insert(*key);
@@ -3746,6 +3773,39 @@ fn reconcile_sheet(
         }
         for key in link_keys {
             set_projected_cell_link(um, sheet, sheet_id, resolver, &key, sp_new.links.get(&key))?;
+        }
+        // The engine's input path also restyles on its own (URL → link
+        // style, dates → number format, quote prefix): after a content
+        // write the cell's style is re-derived from the document — its
+        // register, or the inherited row/column style when it has none.
+        for key in &content_written {
+            match sp_new.cell_styles.get(key) {
+                Some(hash) => {
+                    set_projected_cell_style(um, sheet, sheet_id, resolver, proj, key, Some(hash))?;
+                }
+                None => {
+                    let (col_id, row_id) = key;
+                    let (Some(rows), Some(cols)) =
+                        (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
+                    else {
+                        continue;
+                    };
+                    let (Some(row), Some(column)) =
+                        (rows.index_of(*row_id), cols.index_of(*col_id))
+                    else {
+                        continue;
+                    };
+                    reinherit_cell_styles(
+                        um,
+                        sheet,
+                        sheet_id,
+                        sp_new,
+                        resolver,
+                        proj,
+                        ReinheritScope::Cell(row as i32, column as i32),
+                    )?;
+                }
+            }
         }
         // Cell style deltas (an independent register per cell).
         let style_keys: BTreeSet<(EntityId, EntityId)> = sp_old
@@ -4300,6 +4360,7 @@ fn apply_row_props(
 enum ReinheritScope {
     Row(i32),
     Column(i32),
+    Cell(i32, i32),
     Sheet,
 }
 
@@ -4324,16 +4385,20 @@ fn reinherit_cell_styles(
     let ws = um.model.workbook.worksheet(sheet)?;
     let mut coords: Vec<(i32, i32)> = Vec::new();
     for (row, row_data) in &ws.sheet_data {
-        if let ReinheritScope::Row(target) = scope {
-            if *row != target {
+        match scope {
+            ReinheritScope::Row(target) | ReinheritScope::Cell(target, _) if *row != target => {
                 continue;
             }
+            _ => {}
         }
         for column in row_data.keys() {
-            if let ReinheritScope::Column(target) = scope {
-                if *column != target {
+            match scope {
+                ReinheritScope::Column(target) | ReinheritScope::Cell(_, target)
+                    if *column != target =>
+                {
                     continue;
                 }
+                _ => {}
             }
             coords.push((*row, *column));
         }
