@@ -16,7 +16,7 @@ use std::hash::Hash;
 use crate::cf_types::ConditionalFormatting;
 use crate::collab::bind::Host;
 use crate::collab::formula::StableFormula;
-use crate::collab::fractional_index::FractionalKey;
+use crate::collab::fractional_index::{FractionalIndex, FractionalKey};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Consumer, Lww, SessionId, Snapshot, Timestamp};
 use crate::collab::model::{
@@ -144,6 +144,19 @@ fn touches_sheet_names(patches: &[Patch]) -> bool {
                 }
         )
     })
+}
+
+/// Whether `keys` sit in the last `keys.len()` positions of `index` — an append that displaced no
+/// existing element, so no ordinal moved. Read after the insert has been applied, when every key is
+/// still active.
+///
+/// `keys` should always be in ascending order.
+fn is_append_only(index: &FractionalIndex, keys: &[FractionalKey]) -> bool {
+    debug_assert!(keys.is_sorted());
+    let Some(first) = keys.first() else {
+        return true;
+    };
+    keys.len() <= index.len() && index.position_of(first) == Some(index.len() - keys.len())
 }
 
 /// Index of `formula` in a sheet's shared formula table, appending it if new. Indices are assigned
@@ -547,9 +560,54 @@ impl CollabModel<'_> {
         {
             self.normalize_named_styles();
         }
-        //TODO: optimize resync
+
+        if self.is_content_only(patches)
+            && self.parsed_formulas.len() == self.workbook.worksheets.len()
+        {
+            self.lower_formulas_tail();
+            return;
+        }
         self.normalize_defined_names();
         self.resync_parsed();
+    }
+
+    /// Return `true` if none of the `patches` introduce changes that may trigger shift
+    /// in referenced cell positions.
+    pub(crate) fn is_content_only(&self, patches: &[Patch]) -> bool {
+        patches.iter().all(|patch| match patch {
+            Patch::SetCellValue { .. }
+            | Patch::SetArrayValue { .. }
+            | Patch::SetCellStyle { .. }
+            | Patch::SetRowProperty { .. }
+            | Patch::SetColumnSpan { .. }
+            | Patch::SetNamedStyle { .. }
+            | Patch::AddConditionalFormat { .. }
+            | Patch::DeleteConditionalFormat { .. }
+            | Patch::MoveConditionalFormats { .. }
+            | Patch::SetConditionalFormat { .. }
+            | Patch::SetMergedRange { .. }
+            | Patch::SetComment { .. } => true,
+            Patch::SetSheetProperty { property, .. } => matches!(
+                property,
+                SheetProperty::Color(_)
+                    | SheetProperty::State(_)
+                    | SheetProperty::ShowGridLines(_)
+                    | SheetProperty::FrozenRows(_)
+                    | SheetProperty::FrozenColumns(_)
+            ),
+            // The locale drives defined-name parsing; the theme drives nothing lowered.
+            Patch::SetWorkbookProperty { property, .. } => {
+                matches!(property, WorkbookProperty::Theme(_))
+            }
+            // A tail append displaces no ordinal — which is what materialize-on-bind mints.
+            Patch::InsertRows { sheet, keys } => self
+                .sheet_index(*sheet)
+                .is_some_and(|i| is_append_only(&self.workbook.worksheets[i].index.rows, keys)),
+            Patch::InsertColumns { sheet, keys } => self
+                .sheet_index(*sheet)
+                .is_some_and(|i| is_append_only(&self.workbook.worksheets[i].index.cols, keys)),
+            _ => false,
+        })
     }
 
     /// Rebuilds the parse tables a commit invalidated. They are derived from `shared_formulas` and
@@ -569,22 +627,31 @@ impl CollabModel<'_> {
     /// and `E1` both holding `=A1` share a binding — so the cached node cannot depend on a host.
     /// An entry whose sheet is gone has no node at all and lowers to `#REF!`.
     fn lower_formulas(&mut self) {
-        self.parsed_formulas = Vec::new();
+        self.parsed_formulas = self
+            .workbook
+            .worksheets
+            .iter()
+            .map(|_| Vec::new())
+            .collect();
+        self.lower_formulas_tail();
+    }
+
+    fn lower_formulas_tail(&mut self) {
         for i in 0..self.workbook.worksheets.len() {
+            let done = self.parsed_formulas[i].len();
+            if self.workbook.worksheets[i].shared_formulas.len() <= done {
+                continue;
+            }
             // Taken out and put back so the lowering, which reads the whole workbook, can borrow.
             let formulas = std::mem::take(&mut self.workbook.worksheets[i].shared_formulas);
-            let parsed = formulas
-                .iter()
-                .map(|formula| {
-                    let node = self
-                        .lower(formula, &Host::absolute(i as u32))
-                        .unwrap_or(Node::ErrorKind(token::Error::REF));
-                    let static_result = run_static_analysis_on_node(&node);
-                    (node, static_result)
-                })
-                .collect();
+            for formula in &formulas[done..] {
+                let node = self
+                    .lower(formula, &Host::absolute(i as u32))
+                    .unwrap_or(Node::ErrorKind(token::Error::REF));
+                let static_result = run_static_analysis_on_node(&node);
+                self.parsed_formulas[i].push((node, static_result));
+            }
             self.workbook.worksheets[i].shared_formulas = formulas;
-            self.parsed_formulas.push(parsed);
         }
     }
 
