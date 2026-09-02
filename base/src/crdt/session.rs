@@ -56,7 +56,7 @@ use super::formula::{
 use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
 use super::order::{original_position, unique_position, AxisOrder, ResolvedIndex};
 use super::projection::{
-    axis_key, cell_key, edge_key, keep_key, keep_prefix, name_key, parse_name_key,
+    axis_key, cell_key, edge_key, keep_key, keep_prefix, merge_value, name_key, parse_name_key,
     sheet_keep_key, sheet_keep_prefix, sheet_meta_key, Axis, Projection, SchemaMaps, SheetProj,
 };
 
@@ -1438,6 +1438,21 @@ fn bootstrap_sheet(
             EntityId::Original(*row as u32),
         );
         maps.links.insert(txn, key, yrs::Any::from(link_to_doc(link)));
+    }
+    for merge in &ws.merged_cells {
+        if merge.row < 1 || merge.column < 1 {
+            continue;
+        }
+        let key = cell_key(
+            sheet_id,
+            EntityId::Original(merge.column as u32),
+            EntityId::Original(merge.row as u32),
+        );
+        let value = merge_value(
+            EntityId::Original(merge.last_column() as u32),
+            EntityId::Original(merge.last_row() as u32),
+        );
+        maps.merges.insert(txn, key, value.as_str());
     }
     // Border edges (deterministic Original ids at bootstrap).
     for (row, column) in edge_marks {
