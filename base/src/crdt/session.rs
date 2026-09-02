@@ -1875,10 +1875,33 @@ impl Pass1<'_, '_> {
                 sheet, row, column, ..
             } => self.touch_cell_link(*sheet, *row, *column),
             // Merged cells: pass 2 re-syncs the sheet's merge registers from
-            // the post-batch model (works identically for do and undo).
-            Diff::SetMergedCells { sheet, .. } => {
+            // the post-batch model (works identically for do and undo). The
+            // corners of every merge the diff installs are keep-added, so a
+            // concurrent delete of a corner row/column loses (update-wins,
+            // like an edit): the rows come back and the merge stays whole
+            // instead of being masked by a dead corner.
+            Diff::SetMergedCells {
+                sheet,
+                old_value,
+                new_value,
+            } => {
                 let sheet_id = self.ctx.sheet_at(*sheet)?;
                 self.touched.merges.insert(sheet_id);
+                let installed = if invert { old_value } else { new_value };
+                let rows = self.ctx.order(sheet_id, Axis::Rows)?;
+                let cols = self.ctx.order(sheet_id, Axis::Columns)?;
+                for merge in installed {
+                    for row in [merge.row, merge.last_row()] {
+                        if let Some(id) = rows.id_at(row as u32) {
+                            self.touched.keep_rows.insert((sheet_id, id));
+                        }
+                    }
+                    for column in [merge.column, merge.last_column()] {
+                        if let Some(id) = cols.id_at(column as u32) {
+                            self.touched.keep_cols.insert((sheet_id, id));
+                        }
+                    }
+                }
                 Ok(())
             }
             Diff::UpdateDefinedName {

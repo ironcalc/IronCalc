@@ -2970,3 +2970,125 @@ fn concurrent_overlapping_merges_pick_a_deterministic_winner() {
     assert_eq!(merges_of(&a, 0), vec![]);
     assert_converged(&a, &b);
 }
+
+#[test]
+fn merge_vs_concurrent_corner_row_delete_keeps_the_merge_whole() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "seed").unwrap();
+    sync(&mut a, &mut b);
+
+    // The merge keep-adds its corner rows: B's concurrent delete of the
+    // last row loses (update-wins) and the row comes back on both.
+    a.um.merge_cells(&area(5, 2, 2, 3)).unwrap(); // B5:C7
+    b.um.set_user_input(0, 7, 5, "row7").unwrap();
+    b.um.delete_rows(0, 7, 1).unwrap();
+    sync(&mut a, &mut b);
+    for r in [&a, &b] {
+        assert_eq!(r.um.get_merged_cells(0).unwrap(), vec![merged(5, 2, 2, 3)]);
+    }
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn merge_vs_concurrent_inner_row_delete_shrinks_the_merge() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "seed").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.merge_cells(&area(5, 2, 2, 3)).unwrap(); // B5:C7
+    b.um.delete_rows(0, 6, 1).unwrap(); // an inner row: not a corner
+    sync(&mut a, &mut b);
+    for r in [&a, &b] {
+        assert_eq!(r.um.get_merged_cells(0).unwrap(), vec![merged(5, 2, 2, 2)]);
+    }
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn merge_vs_concurrent_row_move_through_it_converges() {
+    // Locally a move that would split a merge is refused; concurrently it
+    // can happen. The merge is "everything between its corner ranks", so
+    // it deterministically swallows the rows that landed inside.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    for row in 1..=10 {
+        a.um.set_user_input(0, row, 5, &format!("r{row}")).unwrap();
+    }
+    sync(&mut a, &mut b);
+
+    a.um.merge_cells(&area(5, 2, 2, 2)).unwrap(); // B5:C6
+    b.um.move_rows_action(0, 6, 1, 3).unwrap(); // row 6 → 9; 7..9 shift up
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![merged(5, 2, 2, 5)]);
+    assert_converged(&a, &b);
+
+    // And the other direction: a row moved into the merge from outside.
+    b.um.unmerge_cells(&area(5, 2, 1, 1)).unwrap();
+    sync(&mut a, &mut b);
+    a.um.merge_cells(&area(2, 2, 2, 2)).unwrap(); // B2:C3
+    b.um.move_rows_action(0, 8, 1, -5).unwrap(); // row 8 → 3
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 3)]);
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn unmerge_vs_concurrent_remerge_with_the_same_anchor_is_update_wins() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.merge_cells(&area(2, 2, 2, 2)).unwrap(); // B2:C3
+    sync(&mut a, &mut b);
+
+    a.um.unmerge_cells(&area(2, 2, 1, 1)).unwrap();
+    b.um.unmerge_cells(&area(2, 2, 1, 1)).unwrap();
+    b.um.merge_cells(&area(2, 2, 3, 3)).unwrap(); // B2:D4, same anchor
+    sync(&mut a, &mut b);
+    for r in [&a, &b] {
+        assert_eq!(r.um.get_merged_cells(0).unwrap(), vec![merged(2, 2, 3, 3)]);
+    }
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn concurrent_merges_with_the_same_anchor_are_lww() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "seed").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.merge_cells(&area(2, 2, 2, 2)).unwrap();
+    b.um.merge_cells(&area(2, 2, 4, 1)).unwrap();
+    sync(&mut a, &mut b);
+    let list = a.um.get_merged_cells(0).unwrap();
+    assert_eq!(list.len(), 1);
+    assert!(list == vec![merged(2, 2, 2, 2)] || list == vec![merged(2, 2, 4, 1)]);
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn spill_blocked_by_a_concurrent_remote_merge_converges() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "seed").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.set_user_input(0, 1, 1, "=SEQUENCE(3)").unwrap();
+    assert_eq!(a.um.get_formatted_cell_value(0, 3, 1), Ok("3".to_string()));
+    b.um.merge_cells(&area(2, 1, 2, 2)).unwrap(); // A2:B3 blocks the spill
+    sync(&mut a, &mut b);
+    for r in [&a, &b] {
+        assert_eq!(r.um.get_merged_cells(0).unwrap(), vec![merged(2, 1, 2, 2)]);
+        assert_eq!(r.um.get_formatted_cell_value(0, 1, 1), Ok("#SPILL!".to_string()));
+    }
+    assert_converged(&a, &b);
+
+    // Unmerging lets it spill again on both.
+    b.um.unmerge_cells(&area(2, 1, 1, 1)).unwrap();
+    sync(&mut a, &mut b);
+    for r in [&a, &b] {
+        assert_eq!(r.um.get_formatted_cell_value(0, 3, 1), Ok("3".to_string()));
+    }
+    assert_converged(&a, &b);
+}
