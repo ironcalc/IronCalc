@@ -45,7 +45,7 @@ use crate::cf_types::{CfRule, Cfvo, ConditionalFormatting};
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, ROW_HEIGHT_FACTOR,
 };
-use crate::types::{BorderItem, BorderStyle, Cell, Dxf};
+use crate::types::{BorderItem, BorderStyle, Cell, Dxf, Link};
 use crate::user_model::border_utils::is_max_border;
 use crate::user_model::history::{Diff, DiffType, QueueDiffs};
 use crate::UserModel;
@@ -735,6 +735,10 @@ struct Touched {
     /// `(sheet, column, row)` whose *style* must be re-read (independent of
     /// content: concurrent style and content edits both survive).
     cell_styles: BTreeSet<(EntityId, EntityId, EntityId)>,
+    /// `(sheet, column, row)` whose *link* must be re-read (independent
+    /// register; content ops mark it too since clearing a cell drops its
+    /// link — pass 2 skips the write when unchanged).
+    cell_links: BTreeSet<(EntityId, EntityId, EntityId)>,
     /// Re-sync the named-style definitions from the post-batch model.
     named_styles: bool,
     /// Sheets whose CF registers must be re-synced from the post-batch model
@@ -1096,6 +1100,7 @@ impl CollabSession {
             ws.sheet_data.clear();
             ws.rows.clear();
             ws.cols.clear();
+            ws.links.clear();
         }
         let resolver = DocResolver::from_projection(&self.shadow);
         apply_full_sheet(um, sheet, sheet_id, sp, &resolver, &self.shadow)?;
@@ -1423,6 +1428,17 @@ fn bootstrap_sheet(
         let hash = ensure_style_in_pool(txn, maps, &style);
         maps.cell_styles.insert(txn, key, hash.as_str());
     }
+    for ((row, column), link) in &ws.links {
+        if *row < 1 || *column < 1 {
+            continue;
+        }
+        let key = cell_key(
+            sheet_id,
+            EntityId::Original(*column as u32),
+            EntityId::Original(*row as u32),
+        );
+        maps.links.insert(txn, key, yrs::Any::from(link_to_doc(link)));
+    }
     // Border edges (deterministic Original ids at bootstrap).
     for (row, column) in edge_marks {
         for (axis, edge_column, edge_row, value) in
@@ -1510,22 +1526,34 @@ impl Pass1<'_, '_> {
                 height,
                 ..
             } => self.touch_rect(*sheet, *row, *column, *width, *height, true),
+            // Clears only change cells the document already has; their undo
+            // resurrects the recorded old cells, which the document may no
+            // longer have at all (the clear synced) — touch those explicitly.
             Diff::RangeClearContents {
                 sheet,
                 row,
                 column,
                 width,
                 height,
-                ..
-            } => self.touch_rect(*sheet, *row, *column, *width, *height, false),
+                old_value,
+            } => {
+                if invert {
+                    self.touch_restored_cells(*sheet, *row, *column, old_value, None)?;
+                }
+                self.touch_rect(*sheet, *row, *column, *width, *height, false)
+            }
             Diff::RangeClearAll {
                 sheet,
                 row,
                 column,
                 width,
                 height,
-                ..
+                old_value,
+                old_style,
             } => {
+                if invert {
+                    self.touch_restored_cells(*sheet, *row, *column, old_value, Some(old_style))?;
+                }
                 self.touch_rect(*sheet, *row, *column, *width, *height, false)?;
                 self.touch_rect_styles(*sheet, *row, *column, *width, *height)
             }
@@ -1804,12 +1832,11 @@ impl Pass1<'_, '_> {
                 self.touched.names = true;
                 Ok(())
             }
-            // TODO(collab): cell links are not part of the document schema
-            // yet, so they stay local to the replica that set them. The cell
-            // itself is touched so the surrounding registers stay coherent.
+            // Links: an independent per-cell register, read from the
+            // post-batch model like styles (works for do and undo alike).
             Diff::SetCellLink {
                 sheet, row, column, ..
-            } => self.touch_cell(*sheet, *row, *column),
+            } => self.touch_cell_link(*sheet, *row, *column),
             // TODO(collab): merged cells are not synced yet (left unsolved on
             // purpose after the rebase onto main). The merge list stays local
             // to the replica that changed it.
@@ -1850,6 +1877,9 @@ impl Pass1<'_, '_> {
         // restyle. Pass 2 skips the style write when it is unchanged, so the
         // style register stays independent for plain content edits.
         self.touched.cell_styles.insert((sheet_id, col_id, row_id));
+        // Clearing a cell's content also removes its link (and typing an
+        // URL auto-links it); the link register is compared before writing.
+        self.touched.cell_links.insert((sheet_id, col_id, row_id));
         self.touched.keep_rows.insert((sheet_id, row_id));
         self.touched.keep_cols.insert((sheet_id, col_id));
         Ok(())
@@ -1883,7 +1913,8 @@ impl Pass1<'_, '_> {
         let rows = self.ctx.order(sheet_id, Axis::Rows)?;
         let cols = self.ctx.order(sheet_id, Axis::Columns)?;
         let mut hits: Vec<(EntityId, EntityId)> = Vec::new();
-        for (col_id, row_id) in sp.cells.keys() {
+        // A link can sit on a content-less cell; a clear removes it too.
+        for (col_id, row_id) in sp.cells.keys().chain(sp.links.keys()) {
             let (Some(r), Some(c)) = (rows.index_of(*row_id), cols.index_of(*col_id)) else {
                 continue;
             };
@@ -1895,6 +1926,7 @@ impl Pass1<'_, '_> {
         for (col_id, row_id) in hits {
             self.touched.cells.insert((sheet_id, col_id, row_id));
             self.touched.cell_styles.insert((sheet_id, col_id, row_id));
+            self.touched.cell_links.insert((sheet_id, col_id, row_id));
             self.touched.keep_rows.insert((sheet_id, row_id));
             self.touched.keep_cols.insert((sheet_id, col_id));
         }
@@ -1914,6 +1946,56 @@ impl Pass1<'_, '_> {
             .id_at(column as u32)
             .ok_or_else(|| format!("collab: column {column} out of range"))?;
         self.touched.cell_styles.insert((sheet_id, col_id, row_id));
+        self.touched.keep_rows.insert((sheet_id, row_id));
+        self.touched.keep_cols.insert((sheet_id, col_id));
+        Ok(())
+    }
+
+    /// Marks the cells an undo of a range clear brings back: every recorded
+    /// old cell (content, style and link), plus every cell whose recorded
+    /// old style is not the default. Walks only what the diff already
+    /// stores, so it is bounded by the clear's own cost.
+    fn touch_restored_cells(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        old_value: &[Vec<Option<Cell>>],
+        old_style: Option<&Vec<Vec<Style>>>,
+    ) -> Result<(), String> {
+        for (r, cells) in old_value.iter().enumerate() {
+            for (c, cell) in cells.iter().enumerate() {
+                if cell.is_some() {
+                    self.touch_cell(sheet, row + r as i32, column + c as i32)?;
+                }
+            }
+        }
+        if let Some(old_style) = old_style {
+            let default_style = Style::default();
+            for (r, styles) in old_style.iter().enumerate() {
+                for (c, style) in styles.iter().enumerate() {
+                    if *style != default_style {
+                        self.touch_cell_style(sheet, row + r as i32, column + c as i32)?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn touch_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        let sheet_id = self.ctx.sheet_at(sheet)?;
+        let row_id = self
+            .ctx
+            .order(sheet_id, Axis::Rows)?
+            .id_at(row as u32)
+            .ok_or_else(|| format!("collab: row {row} out of range"))?;
+        let col_id = self
+            .ctx
+            .order(sheet_id, Axis::Columns)?
+            .id_at(column as u32)
+            .ok_or_else(|| format!("collab: column {column} out of range"))?;
+        self.touched.cell_links.insert((sheet_id, col_id, row_id));
         self.touched.keep_rows.insert((sheet_id, row_id));
         self.touched.keep_cols.insert((sheet_id, col_id));
         Ok(())
@@ -2599,6 +2681,20 @@ fn write_final_state(
         for (col_id, row_id) in edge_marks {
             sync_cell_edges(txn, maps, um, ctx, shadow, *sheet_id, col_id, row_id)?;
         }
+        for ((row, column), link) in &ws.links {
+            let (row_id, col_id) = (
+                EntityId::Original(*row as u32),
+                EntityId::Original(*column as u32),
+            );
+            if rows_order.index_of(row_id).is_none() || cols_order.index_of(col_id).is_none() {
+                continue;
+            }
+            maps.links.insert(
+                txn,
+                cell_key(*sheet_id, col_id, row_id),
+                yrs::Any::from(link_to_doc(link)),
+            );
+        }
         let row_styles: Vec<(EntityId, Style)> = ws
             .rows
             .iter()
@@ -2705,6 +2801,40 @@ fn write_final_state(
             }
         }
         sync_cell_edges(txn, maps, um, ctx, shadow, *sheet_id, *col_id, *row_id)?;
+    }
+
+    for (sheet_id, col_id, row_id) in &touched.cell_links {
+        let Some(sheet) = ctx.sheet_index(*sheet_id) else {
+            continue;
+        };
+        let (Some(row), Some(column)) = (
+            ctx.order(*sheet_id, Axis::Rows)?.index_of(*row_id),
+            ctx.order(*sheet_id, Axis::Columns)?.index_of(*col_id),
+        ) else {
+            continue;
+        };
+        let link = um.model.get_cell_link(sheet, row as i32, column as i32)?;
+        let key = cell_key(*sheet_id, *col_id, *row_id);
+        // Write only on change vs the pre-batch shadow: content edits mark
+        // links conservatively, and an unconditional rewrite would stomp a
+        // concurrent link edit.
+        let previous = shadow
+            .sheets
+            .get(sheet_id)
+            .and_then(|sp| sp.links.get(&(*col_id, *row_id)));
+        match link {
+            None => {
+                if previous.is_some() {
+                    maps.links.remove(txn, &key);
+                }
+            }
+            Some(link) => {
+                let bytes = link_to_doc(&link);
+                if previous != Some(&bytes) {
+                    maps.links.insert(txn, key, yrs::Any::from(bytes));
+                }
+            }
+        }
     }
 
     for (sheet_id, row_id) in &touched.row_props {
@@ -2826,6 +2956,7 @@ fn write_final_state(
     positive_sheets.extend(touched.sheet_meta.iter().copied());
     positive_sheets.extend(touched.full_sheets.iter().copied());
     positive_sheets.extend(touched.cell_styles.iter().map(|(s, _, _)| *s));
+    positive_sheets.extend(touched.cell_links.iter().map(|(s, _, _)| *s));
     positive_sheets.extend(touched.cf.iter().copied());
     for sheet_id in positive_sheets {
         if ctx.sheet_index(sheet_id).is_none() {
@@ -3445,11 +3576,16 @@ fn reconcile_sheet(
         // Cell deltas only: same coordinates on both sides. When any *other*
         // sheet changed structurally, id-form formulas here may render
         // differently (cross-sheet references), so they are re-set as well.
+        // Cells whose content was (re)written: the engine's input path
+        // auto-links URLs and a clear drops the link, so their links are
+        // re-derived from the document below whatever the register did.
+        let mut content_written: BTreeSet<(EntityId, EntityId)> = BTreeSet::new();
         for (key, new_value) in &sp_new.cells {
             let changed = sp_old.cells.get(key) != Some(new_value);
             let rerender = rerender_all && is_id_form(new_value);
             if changed || rerender {
                 set_projected_cell(um, sheet, sheet_id, resolver, key, new_value)?;
+                content_written.insert(*key);
             }
         }
         for key in sp_old.cells.keys() {
@@ -3457,6 +3593,17 @@ fn reconcile_sheet(
                 continue;
             }
             set_projected_cell(um, sheet, sheet_id, resolver, key, "")?;
+            content_written.insert(*key);
+        }
+        // Link deltas (an independent register per cell).
+        let mut link_keys: BTreeSet<(EntityId, EntityId)> = content_written;
+        for key in sp_old.links.keys().chain(sp_new.links.keys()) {
+            if sp_old.links.get(key) != sp_new.links.get(key) {
+                link_keys.insert(*key);
+            }
+        }
+        for key in link_keys {
+            set_projected_cell_link(um, sheet, sheet_id, resolver, &key, sp_new.links.get(&key))?;
         }
         // Cell style deltas (an independent register per cell).
         let style_keys: BTreeSet<(EntityId, EntityId)> = sp_old
@@ -3676,6 +3823,13 @@ fn apply_sheet_content(
     for (key, value) in &sp.cells {
         set_projected_cell(um, sheet, sheet_id, resolver, key, value)?;
     }
+    // Links are exactly the document's: the cell writes above may have
+    // auto-linked URLs (and the structural path leaves link-only cells
+    // behind at their old positions).
+    um.model.workbook.worksheet_mut(sheet)?.links.clear();
+    for (key, bytes) in &sp.links {
+        set_projected_cell_link(um, sheet, sheet_id, resolver, key, Some(bytes))?;
+    }
     for (key, hash) in &sp.cell_styles {
         set_projected_cell_style(um, sheet, sheet_id, resolver, proj, key, Some(hash))?;
     }
@@ -3767,6 +3921,40 @@ type CellBorderSides = (
     Option<BorderItem>,
     Option<BorderItem>,
 );
+
+/// Session encoding of a cell link: bitcode of `Link`.
+fn link_to_doc(link: &Link) -> Vec<u8> {
+    bitcode::encode(link)
+}
+
+fn link_from_doc(bytes: &[u8]) -> Result<Link, String> {
+    bitcode::decode(bytes).map_err(|e| format!("collab: corrupt link body: {e}"))
+}
+
+/// Installs (or removes, for `None`) the document's link on a model cell.
+fn set_projected_cell_link(
+    um: &mut UserModel,
+    sheet: u32,
+    sheet_id: EntityId,
+    resolver: &DocResolver,
+    key: &(EntityId, EntityId),
+    bytes: Option<&Vec<u8>>,
+) -> Result<(), String> {
+    let (col_id, row_id) = key;
+    let (Some(rows), Some(cols)) = (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
+    else {
+        return Err("collab: unknown sheet in resolver".to_string());
+    };
+    let (Some(row), Some(column)) = (rows.index_of(*row_id), cols.index_of(*col_id)) else {
+        return Ok(()); // masked
+    };
+    match bytes {
+        Some(bytes) => um
+            .model
+            .set_cell_link(sheet, row as i32, column as i32, link_from_doc(bytes)?),
+        None => um.model.delete_cell_link(sheet, row as i32, column as i32),
+    }
+}
 
 fn set_projected_cell_style(
     um: &mut UserModel,
