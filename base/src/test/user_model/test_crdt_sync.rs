@@ -95,6 +95,13 @@ fn assert_models_converged(a: &UserModel, b: &UserModel) {
             b.um.get_links_list(sheet).unwrap(),
             "links differ on sheet {sheet}"
         );
+        // Exact (ordered) compare: the list is canonical (the document's
+        // render) on every replica.
+        assert_eq!(
+            a.um.get_merged_cells(sheet).unwrap(),
+            b.um.get_merged_cells(sheet).unwrap(),
+            "merged cells differ on sheet {sheet}"
+        );
         for row in 1..=WINDOW_ROWS {
             for column in 1..=WINDOW_COLUMNS {
                 let content_a = a.um.get_cell_content(sheet, row, column).unwrap();
@@ -2785,4 +2792,181 @@ fn duplicated_sheet_pushes_its_merges() {
     sync(&mut a, &mut b);
     assert_eq!(merges_of(&b, 0), vec![((1, 1), (2, 1))]);
     assert_eq!(merges_of(&b, 1), vec![((1, 1), (2, 1))]);
+}
+
+fn area(row: i32, column: i32, width: i32, height: i32) -> crate::expressions::types::Area {
+    crate::expressions::types::Area {
+        sheet: 0,
+        row,
+        column,
+        width,
+        height,
+    }
+}
+
+fn merged(row: i32, column: i32, width: i32, height: i32) -> crate::types::MergedCell {
+    crate::types::MergedCell {
+        row,
+        column,
+        width,
+        height,
+    }
+}
+
+#[test]
+fn merge_syncs_to_remote_model() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 3, 3, "x").unwrap();
+    sync(&mut a, &mut b);
+    // The single content cell moves to the anchor.
+    a.um.merge_cells(&area(2, 2, 3, 2)).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_merged_cells(0).unwrap(), vec![merged(2, 2, 3, 2)]);
+    assert_eq!(b.um.get_cell_content(0, 2, 2), Ok("x".to_string()));
+    assert_eq!(b.um.get_cell_content(0, 3, 3), Ok("".to_string()));
+    assert_converged(&a, &b);
+
+    // A covered cell cannot be edited on the receiver either.
+    assert!(b.um.set_user_input(0, 3, 3, "y").is_err());
+
+    b.um.unmerge_cells(&area(3, 4, 1, 1)).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![]);
+    assert_converged(&a, &b);
+
+    b.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![merged(2, 2, 3, 2)]);
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn late_joiner_receives_merged_cells() {
+    let mut a = replica(1);
+    a.um.merge_cells(&area(2, 2, 3, 2)).unwrap();
+    a.um.merge_cells(&area(10, 1, 1, 4)).unwrap();
+
+    let mut b = replica(2);
+    let sv = b.session.state_vector();
+    let update = {
+        let _ = a.session.flush_local(&mut a.um).unwrap();
+        a.session.encode_state_since(&sv).unwrap()
+    };
+    b.session.apply_remote(&mut b.um, &update).unwrap();
+    assert_eq!(
+        b.um.get_merged_cells(0).unwrap(),
+        vec![merged(10, 1, 1, 4), merged(2, 2, 3, 2)]
+    );
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn remote_structural_ops_displace_merged_cells() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.merge_cells(&area(5, 2, 2, 2)).unwrap();
+    sync(&mut a, &mut b);
+
+    b.um.insert_rows(0, 1, 2).unwrap(); // above: shifts
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![merged(7, 2, 2, 2)]);
+    assert_converged(&a, &b);
+
+    b.um.insert_rows(0, 8, 1).unwrap(); // inside: grows
+    b.um.insert_columns(0, 3, 1).unwrap(); // inside: grows
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![merged(7, 2, 3, 3)]);
+    assert_converged(&a, &b);
+
+    b.um.delete_rows(0, 9, 1).unwrap(); // last row: clamps
+    b.um.delete_columns(0, 2, 1).unwrap(); // anchor column: clamps
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![merged(7, 2, 2, 2)]);
+    assert_converged(&a, &b);
+
+    b.um.move_rows_action(0, 7, 2, 3).unwrap(); // whole merge moves
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![merged(10, 2, 2, 2)]);
+    assert_converged(&a, &b);
+
+    b.um.delete_rows(0, 10, 2).unwrap(); // gone
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![]);
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn undo_of_remote_row_delete_restores_the_merge() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.merge_cells(&area(5, 2, 2, 2)).unwrap();
+    sync(&mut a, &mut b);
+    b.um.delete_rows(0, 4, 3).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![]);
+    assert_converged(&a, &b);
+
+    // Undo of a delete is document-authoritative (the sheet is repaired
+    // from the projection): the merge comes back with its rows.
+    b.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![merged(5, 2, 2, 2)]);
+    assert_eq!(b.um.get_merged_cells(0).unwrap(), vec![merged(5, 2, 2, 2)]);
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn concurrent_merge_and_edit_in_covered_cell_both_survive() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "seed").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.merge_cells(&area(2, 2, 2, 2)).unwrap();
+    b.um.set_user_input(0, 3, 3, "hidden").unwrap();
+    sync(&mut a, &mut b);
+    for r in [&a, &b] {
+        assert_eq!(r.um.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
+        assert_eq!(r.um.get_cell_content(0, 3, 3), Ok("hidden".to_string()));
+    }
+    assert_converged(&a, &b);
+
+    // Unmerging exposes the content again on both.
+    b.um.unmerge_cells(&area(2, 2, 1, 1)).unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    assert_eq!(a.um.get_cell_content(0, 3, 3), Ok("hidden".to_string()));
+}
+
+#[test]
+fn concurrent_overlapping_merges_pick_a_deterministic_winner() {
+    // Design-doc test 20: the loser is masked, not lost.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.merge_cells(&area(1, 1, 2, 2)).unwrap(); // A1:B2
+    b.um.merge_cells(&area(2, 2, 2, 2)).unwrap(); // B2:C3
+    sync(&mut a, &mut b);
+    for r in [&a, &b] {
+        assert_eq!(r.um.get_merged_cells(0).unwrap(), vec![merged(1, 1, 2, 2)]);
+    }
+    assert_converged(&a, &b);
+
+    // Unmerging the winner re-exposes the loser on every replica —
+    // including the one that unmerged (canonical form is installed when
+    // the local batch is translated, i.e. at flush).
+    b.um.unmerge_cells(&area(1, 1, 1, 1)).unwrap();
+    assert_eq!(b.um.get_merged_cells(0).unwrap(), vec![]);
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![merged(2, 2, 2, 2)]);
+    assert_converged(&a, &b);
+
+    // And the loser can be unmerged in turn, leaving nothing behind.
+    a.um.unmerge_cells(&area(3, 3, 1, 1)).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![]);
+    assert_eq!(b.um.get_merged_cells(0).unwrap(), vec![]);
+    assert_eq!(merges_of(&a, 0), vec![]);
+    assert_converged(&a, &b);
 }
