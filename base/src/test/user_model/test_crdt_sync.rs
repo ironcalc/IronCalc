@@ -2653,3 +2653,136 @@ fn bootstrap_writes_merged_cells_into_the_document() {
     let merges_b = &b.session.shadow_for_tests().sheets[&sheet_id].merges;
     assert_eq!(*merges_b, merges);
 }
+
+fn merges_of(r: &Replica, sheet: usize) -> Vec<((u32, u32), (u32, u32))> {
+    use crate::crdt::EntityId;
+    let shadow = r.session.shadow_for_tests();
+    let sheet_id = shadow.visible_sheets()[sheet].0;
+    let mut out = Vec::new();
+    for ((ac, ar), (bc, br)) in &shadow.sheets[&sheet_id].merges {
+        let o = |id: &EntityId| match id {
+            EntityId::Original(k) => *k,
+            EntityId::Inserted { .. } => u32::MAX,
+        };
+        out.push(((o(ac), o(ar)), (o(bc), o(br))));
+    }
+    out
+}
+
+#[test]
+fn merge_syncs_to_remote_document_and_undo_propagates() {
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 2, 2, "title").unwrap();
+    a.um
+        .merge_cells(&Area {
+            sheet: 0,
+            row: 2,
+            column: 2,
+            width: 3,
+            height: 2,
+        })
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![((2, 2), (4, 3))]);
+
+    a.um
+        .unmerge_cells(&Area {
+            sheet: 0,
+            row: 3,
+            column: 3,
+            width: 1,
+            height: 1,
+        })
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![]);
+
+    a.um.undo().unwrap(); // unmerge
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![((2, 2), (4, 3))]);
+    a.um.undo().unwrap(); // merge
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![]);
+    a.um.redo().unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![((2, 2), (4, 3))]);
+}
+
+#[test]
+fn merge_registers_follow_structural_ops_by_id() {
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um
+        .merge_cells(&Area {
+            sheet: 0,
+            row: 5,
+            column: 2,
+            width: 2,
+            height: 2,
+        })
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![((2, 5), (3, 6))]);
+
+    // Rows above shift the merge, rows inside grow it: same ids either way,
+    // so the register is untouched.
+    a.um.insert_rows(0, 1, 2).unwrap();
+    a.um.insert_rows(0, 8, 1).unwrap();
+    assert_eq!(
+        a.um.get_merged_cells(0).unwrap(),
+        vec![crate::types::MergedCell {
+            row: 7,
+            column: 2,
+            width: 2,
+            height: 3
+        }]
+    );
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![((2, 5), (3, 6))]);
+
+    // Deleting the last row clamps the merge onto the inserted row: the
+    // corner is re-anchored to that (inserted) id.
+    a.um.delete_rows(0, 9, 1).unwrap();
+    assert_eq!(
+        a.um.get_merged_cells(0).unwrap(),
+        vec![crate::types::MergedCell {
+            row: 7,
+            column: 2,
+            width: 2,
+            height: 2
+        }]
+    );
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![((2, 5), (3, u32::MAX))]);
+    assert_eq!(merges_of(&a, 0), merges_of(&b, 0));
+
+    // Deleting every row of the merge removes the register.
+    a.um.delete_rows(0, 7, 2).unwrap();
+    assert_eq!(a.um.get_merged_cells(0).unwrap(), vec![]);
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![]);
+}
+
+#[test]
+fn duplicated_sheet_pushes_its_merges() {
+    use crate::expressions::types::Area;
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um
+        .merge_cells(&Area {
+            sheet: 0,
+            row: 1,
+            column: 1,
+            width: 2,
+            height: 1,
+        })
+        .unwrap();
+    a.um.duplicate_sheet(0).unwrap();
+    assert_eq!(a.um.get_merged_cells(1).unwrap().len(), 1);
+    sync(&mut a, &mut b);
+    assert_eq!(merges_of(&b, 0), vec![((1, 1), (2, 1))]);
+    assert_eq!(merges_of(&b, 1), vec![((1, 1), (2, 1))]);
+}
