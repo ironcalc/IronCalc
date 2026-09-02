@@ -3,6 +3,7 @@
 //! Both walks are iterative with an explicit stack: formula depth is author-controlled, so
 //! recursing over a `Node` tree is a stack overflow waiting to happen.
 
+use std::collections::BTreeMap;
 use std::fmt;
 
 use crate::collab::formula::{
@@ -10,7 +11,8 @@ use crate::collab::formula::{
     StableToken,
 };
 use crate::collab::model::{CollabModel, SheetIndexes, Stable};
-use crate::collab::patch::{DefinedNameId, SheetId};
+use crate::collab::patch::{DefinedNameId, Patch, SheetId};
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::{ArrayNode, NamedVariable, Node};
 use crate::expressions::token;
 use crate::types::Position;
@@ -72,6 +74,52 @@ enum Step<'a> {
 /// evaluates as `#REF!`.
 const DEAD_AXIS: (bool, i32) = (true, 0);
 
+/// Rows and columns that sheets have not materialized yet (but they were referenced by formulas).
+/// Each `rows`/`cols` is a pair of (sheet-id, highest-referenced-row (or column)).
+#[derive(Debug, Default)]
+pub struct MintPlan {
+    rows: BTreeMap<u32, i32>,
+    cols: BTreeMap<u32, i32>,
+}
+
+impl MintPlan {
+    fn note(axis: &mut BTreeMap<u32, i32>, at: u32, ordinal: i32) {
+        let slot = axis.entry(at).or_default();
+        *slot = (*slot).max(ordinal);
+    }
+}
+
+/// Where a stream is lowered against: the cell whose offsets it resolves relative to, or — when
+/// `absolute` — no cell at all, every reference coming back as an ordinal.
+pub struct Host {
+    sheet: u32,
+    row: i32,
+    column: i32,
+    absolute: bool,
+}
+
+impl Host {
+    /// Relative cell address point of reference (using `$` for cell address).
+    pub fn relative(sheet: u32, row: i32, column: i32) -> Self {
+        Host {
+            sheet,
+            row,
+            column,
+            absolute: false,
+        }
+    }
+
+    /// Absolute cell address point of reference (e.g. `=A1`).
+    pub fn absolute(sheet: u32) -> Self {
+        Host {
+            sheet,
+            row: 1,
+            column: 1,
+            absolute: true,
+        }
+    }
+}
+
 impl CollabModel<'_> {
     /// The ordering context of worksheet `at`, if it is live.
     fn indexes(&self, at: u32) -> Option<&SheetIndexes> {
@@ -98,14 +146,15 @@ impl CollabModel<'_> {
 
     /// Binds a parsed formula authored in cell (`host_sheet`, `host_row`, `host_column`).
     ///
-    /// Every reference must resolve now: callers materialize the rows and columns a write needs
-    /// before binding it.
+    /// If formula refers to row/column that doesn't exist yet, it will be recorded in `plan` and
+    /// materialized later via [Patch::InsertRows]/[Patch::InsertColumns].
     pub fn bind_formula(
         &self,
         node: &Node,
         host_sheet: u32,
         host_row: i32,
         host_column: i32,
+        plan: &mut MintPlan,
     ) -> Result<StableFormula, BindError> {
         let mut work = vec![Step::Visit(node)];
         let mut tokens = Vec::new();
@@ -146,12 +195,41 @@ impl CollabModel<'_> {
                 }
                 Step::Emit(node) => node,
             };
-            tokens.push(self.bind_token(node, host_sheet, host_row, host_column)?);
+            tokens.push(self.bind_token(node, host_sheet, host_row, host_column, plan)?);
         }
         StableFormula::new(tokens).map_err(BindError::Invalid)
     }
 
-    /// The key naming the row/column at `ordinal` on sheet `at`, per axis.
+    /// The `InsertRows`/`InsertColumns` to create rows/columns required by formula bind.
+    pub(crate) fn mint_patches(&self, plan: &MintPlan) -> Vec<Patch> {
+        let mut patches = Vec::new();
+        for (&sheet_idx, &row_idx) in plan.rows.iter() {
+            let (Some(index), Some(sheet)) = (self.indexes(sheet_idx), self.sheet_id_at(sheet_idx))
+            else {
+                continue;
+            };
+            let keys = index.rows.plan_virtual(row_idx as usize);
+            if keys.is_empty() {
+                continue;
+            }
+            patches.push(Patch::InsertRows { sheet, keys });
+        }
+        for (&sheet_idx, &col_idx) in plan.cols.iter() {
+            let (Some(index), Some(sheet)) = (self.indexes(sheet_idx), self.sheet_id_at(sheet_idx))
+            else {
+                continue;
+            };
+            let keys = index.cols.plan_virtual(col_idx as usize);
+            if keys.is_empty() {
+                continue;
+            }
+            patches.push(Patch::InsertColumns { sheet, keys });
+        }
+        patches
+    }
+
+    /// The key naming the row/column at `ordinal` on sheet `at`, per axis. One on the grid that the
+    /// index has not reached yet is minted, exactly as a write to that cell would mint it.
     fn bind_axis(
         &self,
         at: u32,
@@ -159,18 +237,36 @@ impl CollabModel<'_> {
         absolute: bool,
         offset: i32,
         host: i32,
+        plan: &mut MintPlan,
     ) -> Result<StableAxisRef, BindError> {
         let index = self.indexes(at).ok_or(BindError::UnboundReference)?;
         let ordinal = if absolute { offset } else { host + offset };
-        let key = if is_row {
+        let stored = if is_row {
             Stable::row_at(index, ordinal)
         } else {
             Stable::col_at(index, ordinal)
         };
-        Ok(StableAxisRef {
-            key: key.ok_or(BindError::UnboundReference)?,
-            absolute,
-        })
+        let key = match stored {
+            Some(key) => key,
+            None => {
+                let (axis, limit, planned) = match is_row {
+                    true => (&mut plan.rows, LAST_ROW, &index.rows),
+                    false => (&mut plan.cols, LAST_COLUMN, &index.cols),
+                };
+                if ordinal > limit || ordinal < 1 {
+                    return Err(BindError::UnboundReference);
+                }
+                // Planning is deterministic, so the key an ordinal gets is the same however many
+                // times, and from however far, the axis is planned out to it.
+                let key = planned
+                    .plan_virtual(ordinal as usize)
+                    .pop()
+                    .ok_or(BindError::UnboundReference)?;
+                MintPlan::note(axis, at, ordinal);
+                key
+            }
+        };
+        Ok(StableAxisRef { key, absolute })
     }
 
     /// The sheet a reference targets: its position, and whether it keeps an explicit prefix.
@@ -199,6 +295,7 @@ impl CollabModel<'_> {
         host_sheet: u32,
         host_row: i32,
         host_column: i32,
+        plan: &mut MintPlan,
     ) -> Result<StableToken, BindError> {
         Ok(match node {
             Node::BooleanKind(value) => StableToken::Boolean(*value),
@@ -215,8 +312,15 @@ impl CollabModel<'_> {
                 let (sheet, at) = self.bind_sheet(sheet_name, *sheet_index, host_sheet)?;
                 StableToken::CellRef {
                     sheet,
-                    row: self.bind_axis(at, true, *absolute_row, *row, host_row)?,
-                    column: self.bind_axis(at, false, *absolute_column, *column, host_column)?,
+                    row: self.bind_axis(at, true, *absolute_row, *row, host_row, plan)?,
+                    column: self.bind_axis(
+                        at,
+                        false,
+                        *absolute_column,
+                        *column,
+                        host_column,
+                        plan,
+                    )?,
                 }
             }
             Node::RangeKind {
@@ -234,10 +338,24 @@ impl CollabModel<'_> {
                 let (sheet, at) = self.bind_sheet(sheet_name, *sheet_index, host_sheet)?;
                 StableToken::RangeRef {
                     sheet,
-                    row1: self.bind_axis(at, true, *absolute_row1, *row1, host_row)?,
-                    column1: self.bind_axis(at, false, *absolute_column1, *column1, host_column)?,
-                    row2: self.bind_axis(at, true, *absolute_row2, *row2, host_row)?,
-                    column2: self.bind_axis(at, false, *absolute_column2, *column2, host_column)?,
+                    row1: self.bind_axis(at, true, *absolute_row1, *row1, host_row, plan)?,
+                    column1: self.bind_axis(
+                        at,
+                        false,
+                        *absolute_column1,
+                        *column1,
+                        host_column,
+                        plan,
+                    )?,
+                    row2: self.bind_axis(at, true, *absolute_row2, *row2, host_row, plan)?,
+                    column2: self.bind_axis(
+                        at,
+                        false,
+                        *absolute_column2,
+                        *column2,
+                        host_column,
+                        plan,
+                    )?,
                 }
             }
             // Upstream keeps these and evaluates them to #REF!; a stable stream has no way to say
@@ -304,24 +422,18 @@ impl CollabModel<'_> {
         })
     }
 
-    /// Rebuilds the ordinal AST for a formula hosted in (`host_sheet`, `host_row`, `host_column`).
+    /// Rebuilds the ordinal AST for a formula, anchored as `host` says.
     ///
     /// References whose sheet or key no longer resolves come back as the `Wrong*` nodes upstream
     /// evaluates to `#REF!`: displacement happens here, not by rewriting stored formulas.
-    pub fn lower_formula(
-        &self,
-        formula: &StableFormula,
-        host_sheet: u32,
-        host_row: i32,
-        host_column: i32,
-    ) -> Result<Node, LowerError> {
+    pub fn lower(&self, formula: &StableFormula, host: &Host) -> Result<Node, LowerError> {
         StableFormula::validate(formula.tokens()).map_err(LowerError::Invalid)?;
-        if self.indexes(host_sheet).is_none() {
-            return Err(LowerError::UnknownHostSheet(host_sheet));
+        if self.indexes(host.sheet).is_none() {
+            return Err(LowerError::UnknownHostSheet(host.sheet));
         }
         let mut stack: Vec<Node> = Vec::new();
         for token in formula.tokens() {
-            let node = self.lower_token(token, &mut stack, host_sheet, host_row, host_column)?;
+            let node = self.lower_token(token, &mut stack, host)?;
             stack.push(node);
         }
         // The validator guarantees exactly one value is left.
@@ -375,7 +487,7 @@ impl CollabModel<'_> {
         at: u32,
         is_row: bool,
         axis: &StableAxisRef,
-        host: i32,
+        host: &Host,
     ) -> Option<(bool, i32)> {
         let index = self.indexes(at)?;
         let ordinal = if is_row {
@@ -383,9 +495,9 @@ impl CollabModel<'_> {
         } else {
             Stable::col_ordinal(index, &axis.key)?
         };
-        Some(match axis.absolute {
+        Some(match axis.absolute || host.absolute {
             true => (true, ordinal),
-            false => (false, ordinal - host),
+            false => (false, ordinal - if is_row { host.row } else { host.column }),
         })
     }
 
@@ -393,20 +505,18 @@ impl CollabModel<'_> {
         &self,
         token: &StableToken,
         stack: &mut Vec<Node>,
-        host_sheet: u32,
-        host_row: i32,
-        host_column: i32,
+        host: &Host,
     ) -> Result<Node, LowerError> {
         Ok(match token {
             StableToken::Boolean(value) => Node::BooleanKind(*value),
             StableToken::Number(value) => Node::NumberKind(*value),
             StableToken::String(value) => Node::StringKind(value.clone()),
             StableToken::CellRef { sheet, row, column } => {
-                let (name, at) = self.lower_sheet(sheet, host_sheet);
+                let (name, at) = self.lower_sheet(sheet, host.sheet);
                 let (r, c) = match at {
                     Some(at) => (
-                        self.lower_axis(at, true, row, host_row),
-                        self.lower_axis(at, false, column, host_column),
+                        self.lower_axis(at, true, row, host),
+                        self.lower_axis(at, false, column, host),
                     ),
                     None => (None, None),
                 };
@@ -441,13 +551,13 @@ impl CollabModel<'_> {
                 row2,
                 column2,
             } => {
-                let (name, at) = self.lower_sheet(sheet, host_sheet);
+                let (name, at) = self.lower_sheet(sheet, host.sheet);
                 let (r1, c1, r2, c2) = match at {
                     Some(at) => (
-                        self.lower_axis(at, true, row1, host_row),
-                        self.lower_axis(at, false, column1, host_column),
-                        self.lower_axis(at, true, row2, host_row),
-                        self.lower_axis(at, false, column2, host_column),
+                        self.lower_axis(at, true, row1, host),
+                        self.lower_axis(at, false, column1, host),
+                        self.lower_axis(at, true, row2, host),
+                        self.lower_axis(at, false, column2, host),
                     ),
                     None => (None, None, None, None),
                 };
@@ -601,22 +711,29 @@ impl CollabModel<'_> {
             None => Node::ErrorKind(token::Error::NAME),
         };
         // Only live names are listed, and a live name always has a formula.
-        let Some((_, scope, name)) = self
+        let Some((_, sheet_id, name)) = self
             .defined_name_display()
             .into_iter()
             .find(|(entry, ..)| *entry == id)
         else {
             return unknown();
         };
-        let scope = match scope {
+        let scope = match sheet_id {
             Some(sheet) => match self.position_of_sheet(sheet) {
                 Some(at) => Some(at),
                 None => return unknown(),
             },
             None => None,
         };
-        match self.formula_of(id) {
-            Some(formula) => Node::DefinedNameKind((name, scope, formula)),
+        // The body text is the projection `normalize_defined_names` already lowered, so lowering a
+        // name never re-lowers another name's stream.
+        match self
+            .workbook
+            .defined_names
+            .iter()
+            .find(|dn| dn.sheet_id == sheet_id && dn.name == name)
+        {
+            Some(dn) => Node::DefinedNameKind((name, scope, dn.formula.clone())),
             None => unknown(),
         }
     }
@@ -664,12 +781,25 @@ mod test {
         name[..end].to_string()
     }
 
+    /// Binds against a model whose grid is already materialized, so nothing needs minting.
+    fn bind(
+        model: &CollabModel<'_>,
+        node: &Node,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<StableFormula, BindError> {
+        model.bind_formula(node, sheet, row, column, &mut MintPlan::default())
+    }
+
     /// Bind, ship through bitcode, lower again.
     fn round_trip(model: &CollabModel<'_>, node: &Node, sheet: u32, row: i32, column: i32) -> Node {
-        let bound = model.bind_formula(node, sheet, row, column).unwrap();
+        let bound = bind(model, node, sheet, row, column).unwrap();
         let decoded: StableFormula = bitcode::decode(&bitcode::encode(&bound)).unwrap();
         assert_eq!(decoded, bound);
-        model.lower_formula(&decoded, sheet, row, column).unwrap()
+        model
+            .lower(&decoded, &Host::relative(sheet, row, column))
+            .unwrap()
     }
 
     /// Every token kind that a formula text can produce survives bind → bytes → lower unchanged,
@@ -712,7 +842,7 @@ mod test {
                     .set_user_input(0, host_row, host_column, text.to_string())
                     .unwrap();
                 let node = node_at(&model, 0, host_row, host_column);
-                let bound = model.bind_formula(&node, 0, host_row, host_column).unwrap();
+                let bound = bind(&model, &node, 0, host_row, host_column).unwrap();
                 seen.extend(bound.tokens().iter().map(kind_of));
                 let lowered = round_trip(&model, &node, 0, host_row, host_column);
                 assert_eq!(
@@ -777,10 +907,10 @@ mod test {
                 column: 1,
             }),
         };
-        let bound = model.bind_formula(&node, 0, 10, 2).unwrap();
+        let bound = bind(&model, &node, 0, 10, 2).unwrap();
 
         let refs = |model: &CollabModel<'_>, host_row: i32| match model
-            .lower_formula(&bound, 0, host_row, 2)
+            .lower(&bound, &Host::relative(0, host_row, 2))
             .unwrap()
         {
             Node::OpSumKind { left, right, .. } => (*left, *right),
@@ -838,13 +968,16 @@ mod test {
             row: 1,
             column: 1,
         };
-        let bound = model.bind_formula(&cross, 0, 1, 1).unwrap();
-        assert_eq!(model.lower_formula(&bound, 0, 1, 1).unwrap(), cross);
+        let bound = bind(&model, &cross, 0, 1, 1).unwrap();
+        assert_eq!(
+            model.lower(&bound, &Host::relative(0, 1, 1)).unwrap(),
+            cross
+        );
 
         model.flush();
         model.delete_sheet(1).unwrap();
         assert_eq!(
-            model.lower_formula(&bound, 0, 1, 1).unwrap(),
+            model.lower(&bound, &Host::relative(0, 1, 1)).unwrap(),
             Node::WrongReferenceKind {
                 sheet_name: Some("Sheet2".to_string()),
                 absolute_row: true,
@@ -861,7 +994,10 @@ mod test {
             .flat_map(|commit| invert_patches(&commit.patches))
             .collect();
         model.commit_local(undo);
-        assert_eq!(model.lower_formula(&bound, 0, 1, 1).unwrap(), cross);
+        assert_eq!(
+            model.lower(&bound, &Host::relative(0, 1, 1)).unwrap(),
+            cross
+        );
     }
 
     /// What has no stable form at all, and what is stored verbatim instead.
@@ -872,12 +1008,18 @@ mod test {
             .new_defined_name("MyName", None, "Sheet1!$A$1")
             .unwrap();
 
-        // A name the parser could not resolve to a sheet.
-        model
+        // A sheet name the parser could not resolve, which is what typing `=Nope!A1` parses to.
+        // Authoring one is now refused outright — upstream stores it and evaluates it to `#REF!`.
+        assert!(model
             .set_user_input(0, 1, 1, "=Nope!A1".to_string())
-            .unwrap();
-        let unknown_sheet = node_at(&model, 0, 1, 1);
-        assert!(matches!(unknown_sheet, Node::WrongReferenceKind { .. }));
+            .is_err());
+        let unknown_sheet = Node::WrongReferenceKind {
+            sheet_name: Some("Nope".to_string()),
+            absolute_row: true,
+            absolute_column: true,
+            row: 1,
+            column: 1,
+        };
 
         let relative = |row: i32, column: i32| Node::ReferenceKind {
             sheet_name: None,
@@ -892,14 +1034,16 @@ mod test {
             // Offsets landing off the grid, above it and past its end.
             (relative(-1, 0), BindError::UnboundReference),
             (relative(0, -1), BindError::UnboundReference),
-            (relative(1000, 0), BindError::UnboundReference),
+            // Past the grid itself, not merely past what the index has reached.
+            (relative(LAST_ROW, 0), BindError::UnboundReference),
+            (relative(0, LAST_COLUMN), BindError::UnboundReference),
             (
                 Node::DefinedNameKind(("Nope".to_string(), None, "=1".to_string())),
                 BindError::UnresolvedDefinedName("Nope".to_string()),
             ),
         ];
         for (node, expected) in cases {
-            assert_eq!(model.bind_formula(&node, 0, 1, 1).unwrap_err(), expected);
+            assert_eq!(bind(&model, &node, 0, 1, 1).unwrap_err(), expected);
         }
 
         // Unparseable text is the whole stream, and comes back exactly as it went in.
@@ -909,7 +1053,7 @@ mod test {
             position: 5,
             expecting: Vec::new(),
         };
-        let bound = model.bind_formula(&raw, 0, 1, 1).unwrap();
+        let bound = bind(&model, &raw, 0, 1, 1).unwrap();
         assert_eq!(
             bound.tokens(),
             [StableToken::RawText("=this is not a formula".to_string())]
@@ -922,10 +1066,10 @@ mod test {
         // A deleted defined name lowers to the node the parser builds for a name it never heard
         // of, which evaluates to #NAME?.
         let name = Node::DefinedNameKind(("MyName".to_string(), None, "=Sheet1!$A$1".to_string()));
-        let bound = model.bind_formula(&name, 0, 1, 1).unwrap();
+        let bound = bind(&model, &name, 0, 1, 1).unwrap();
         model.delete_defined_name("MyName", None).unwrap();
         assert_eq!(
-            model.lower_formula(&bound, 0, 1, 1).unwrap(),
+            model.lower(&bound, &Host::relative(0, 1, 1)).unwrap(),
             Node::NamedVariableKind {
                 name: "MyName".to_string(),
                 id: None,
@@ -934,7 +1078,7 @@ mod test {
         // An id no register ever held has not even a name left.
         let unknown = StableFormula::new(vec![StableToken::DefinedName(7)]).unwrap();
         assert_eq!(
-            model.lower_formula(&unknown, 0, 1, 1).unwrap(),
+            model.lower(&unknown, &Host::relative(0, 1, 1)).unwrap(),
             Node::ErrorKind(token::Error::NAME)
         );
     }
@@ -952,9 +1096,9 @@ mod test {
                 right: Box::new(node),
             };
         }
-        let bound = model.bind_formula(&node, 0, 1, 1).unwrap();
+        let bound = bind(&model, &node, 0, 1, 1).unwrap();
         assert_eq!(bound.tokens().len(), depth + 1);
-        let lowered = model.lower_formula(&bound, 0, 1, 1).unwrap();
+        let lowered = model.lower(&bound, &Host::relative(0, 1, 1)).unwrap();
         // Comparing or dropping the tree recurses, so it is walked and dismantled iteratively.
         let mut cursor = &lowered;
         let mut seen = 0;

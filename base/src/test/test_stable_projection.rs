@@ -102,7 +102,9 @@ pub(crate) fn stable_from_ordinal(ws: &Worksheet) -> Worksheet<Stable> {
             .collect(),
         name: ws.name.clone(),
         sheet_data,
-        shared_formulas: ws.shared_formulas.clone(),
+        // Not projectable: a stable formula is a bound token stream, and binding one needs the
+        // whole workbook, not a worksheet.
+        shared_formulas: Vec::new(),
         sheet_id: ws.sheet_id,
         state: ws.state.clone(),
         color: ws.color.clone(),
@@ -190,7 +192,9 @@ fn project(ws: &Worksheet<Stable>) -> Worksheet {
             .collect(),
         name: ws.name.clone(),
         sheet_data,
-        shared_formulas: ws.shared_formulas.clone(),
+        // Not projectable: a stable formula is a bound token stream, and binding one needs the
+        // whole workbook, not a worksheet.
+        shared_formulas: Vec::new(),
         sheet_id: ws.sheet_id,
         state: ws.state.clone(),
         color: ws.color.clone(),
@@ -286,7 +290,14 @@ fn projection_identity() {
     let ws = &model.workbook.worksheets[0];
 
     let stable = stable_from_ordinal(ws);
-    assert_eq!(project(&stable), *ws);
+    // Everything but the formula table, which does not project either way — see `stable_from_ordinal`.
+    assert_eq!(
+        project(&stable),
+        Worksheet {
+            shared_formulas: Vec::new(),
+            ..ws.clone()
+        }
+    );
 
     // The identity above must come from the mapping, not from the projection being a no-op: reorder
     // the rows on the stable side and every ordinal the projection reports has to follow.

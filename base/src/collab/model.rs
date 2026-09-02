@@ -1,14 +1,16 @@
+use crate::collab::bind::Host;
+use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::{FractionalIndex, FractionalKey, SESSION_SUFFIX_LEN};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Lww, SessionId, Timestamp};
 use crate::collab::patch::{
-    CfPropKind, ColPropKind, DefinedNameId, NamedStyle, NamedStyleId, Patch, RowPropKind, SheetId,
-    SheetPropKind, WorkbookPropKind,
+    CfPropKind, ColPropKind, DefinedNameBody, DefinedNameId, NamedStyle, NamedStyleId, Patch,
+    RowPropKind, SheetId, SheetPropKind, WorkbookPropKind,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
 };
-use crate::expressions::parser::Parser;
+use crate::expressions::parser::{Node, Parser};
 use crate::expressions::utils::{is_valid_column_number, is_valid_row};
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
@@ -45,8 +47,7 @@ impl Position for Stable {
     type MergedCell = StableRange;
     type WorkbookMeta = WorkbookMeta;
     type Local = CollabSession;
-    // Flips to `StableFormula` once formula bind/lower land.
-    type Formula = String;
+    type Formula = StableFormula;
 
     fn row_ordinal(idx: &SheetIndexes, key: &FractionalKey) -> Option<i32> {
         idx.rows.position_of(key).map(|p| p as i32 + 1)
@@ -84,6 +85,28 @@ impl Position for Stable {
 
     fn resolve_range(range: &StableRange, idx: &SheetIndexes) -> Option<(i32, i32, i32, i32)> {
         range.resolve(idx)
+    }
+
+    /// The cell's own stream, lowered against the cell: relative references come back as offsets
+    /// from it and keep the `$`-less spelling they were authored with. `parsed_formulas` cannot
+    /// serve this — it holds the all-absolute form the evaluator shares between hosts.
+    fn materialize_formula<'b>(
+        model: &'b CollabModel<'_>,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        index: i32,
+    ) -> Option<std::borrow::Cow<'b, Node>> {
+        let formula = model
+            .workbook
+            .worksheets
+            .get(sheet as usize)?
+            .shared_formulas
+            .get(index as usize)?;
+        model
+            .lower(formula, &Host::relative(sheet, row, column))
+            .ok()
+            .map(std::borrow::Cow::Owned)
     }
 }
 
@@ -142,7 +165,7 @@ pub struct DefinedNameState {
     /// carries both and a concurrent redefinition of the formula still survives.
     pub name: Lww<(Option<SheetId>, String)>,
     /// `None` is a deleted name: the entry and its address survive, so an undo can revive it.
-    pub formula: Lww<Option<String>>,
+    pub formula: Lww<Option<DefinedNameBody>>,
 }
 
 /// A named style's two registers. Both are CRDT-only state — the style table shows a *display* name
@@ -456,7 +479,6 @@ impl CollabModel<'_> {
 mod test {
     use super::*;
     use crate::cf_types::{CfRuleInput, ValueOperator};
-    use crate::test::test_stable_projection::stable_from_ordinal;
     use crate::types::{Cell, Color, Comment, Dxf, Fill, Row, SheetState, Worksheet};
 
     /// Explicit session suffixes: the default is all zeroes, which is the suffix reserved for
@@ -672,65 +694,47 @@ mod test {
         assert_eq!(head.resolve(&index), Some((1, 3)));
     }
 
-    /// The stable twin of an ordinal workbook: the same document, addressed by key.
-    fn stable_twin(model: &Model) -> Workbook<Stable> {
-        let wb = &model.workbook;
-        Workbook {
-            shared_strings: wb.shared_strings.clone(),
-            defined_names: wb.defined_names.clone(),
-            worksheets: wb.worksheets.iter().map(stable_from_ordinal).collect(),
-            styles: wb.styles.clone(),
-            name: wb.name.clone(),
-            settings: wb.settings.clone(),
-            metadata: wb.metadata.clone(),
-            tables: wb.tables.clone(),
-            views: wb.views.clone(),
-            theme: wb.theme.clone(),
-            meta: Default::default(),
-        }
-    }
-
-    /// The engine is the same engine: evaluating a workbook and its stable twin has to give the
-    /// same values and the same conditional formatting, cell for cell.
+    /// The engine is the same engine: the same edits made to an ordinal model and to a replica
+    /// have to give the same values and the same conditional formatting, cell for cell.
     #[test]
     fn stable_eval_matches_ordinal() {
         let mut ordinal = Model::new_empty("model", "en", "UTC", "en").unwrap();
-        ordinal.set_user_input(0, 1, 1, "10".to_string()).unwrap();
-        ordinal.set_user_input(0, 2, 1, "20".to_string()).unwrap();
-        ordinal.set_user_input(0, 3, 1, "text".to_string()).unwrap();
-        ordinal
-            .set_user_input(0, 1, 2, "=A1+A2".to_string())
-            .unwrap();
-        ordinal
-            .set_user_input(0, 2, 2, "=B1*2".to_string())
-            .unwrap();
-        ordinal
-            .set_user_input(0, 3, 2, "=CONCAT(A3, \"!\")".to_string())
-            .unwrap();
-        ordinal
-            .add_conditional_formatting(
-                0,
-                "A1:B3",
-                CfRuleInput::CellIs {
-                    operator: ValueOperator::GreaterThan,
-                    formula: "15".to_string(),
-                    formula2: None,
-                    format: Dxf {
-                        fill: Some(Fill {
-                            color: Color::Rgb("#FF0000".to_string()),
-                        }),
-                        ..Default::default()
-                    },
-                    stop_if_true: false,
-                },
-            )
-            .unwrap();
-        ordinal.evaluate();
-
         let mut stable = CollabModel::new(1);
-        stable.workbook = stable_twin(&ordinal);
-        // Parses and evaluates: no projection and no copy, the engine reads the stable storage.
-        stable.reset_parsed_structures();
+        stable.new_sheet();
+
+        let cf = CfRuleInput::CellIs {
+            operator: ValueOperator::GreaterThan,
+            formula: "15".to_string(),
+            formula2: None,
+            format: Dxf {
+                fill: Some(Fill {
+                    color: Color::Rgb("#FF0000".to_string()),
+                }),
+                ..Default::default()
+            },
+            stop_if_true: false,
+        };
+        for (row, column, value) in [
+            (1, 1, "10"),
+            (2, 1, "20"),
+            (3, 1, "text"),
+            (1, 2, "=A1+A2"),
+            (2, 2, "=B1*2"),
+            (3, 2, "=CONCAT(A3, \"!\")"),
+        ] {
+            ordinal
+                .set_user_input(0, row, column, value.to_string())
+                .unwrap();
+            stable
+                .set_user_input(0, row, column, value.to_string())
+                .unwrap();
+        }
+        ordinal
+            .add_conditional_formatting(0, "A1:B3", cf.clone())
+            .unwrap();
+        stable.add_conditional_formatting(0, "A1:B3", cf).unwrap();
+        ordinal.evaluate();
+        stable.evaluate();
 
         let cells = ordinal.get_all_cells();
         assert!(!cells.is_empty());
@@ -755,51 +759,38 @@ mod test {
         }
     }
 
-    /// Formulas are stored in R1C1 with a fixed parse anchor, so a row move needs no reparse: the
-    /// relative offsets resolve against wherever the formula cell now sits.
+    /// A reference names the row it points at, so a move needs no rewrite: both the target and the
+    /// cell holding the formula are found wherever they now sit.
     #[test]
     fn stable_eval_tracks_moves() {
-        let mut ordinal = Model::new_empty("model", "en", "UTC", "en").unwrap();
-        for (row, value) in [(1, "10"), (2, "20"), (3, "30"), (4, "40")] {
-            ordinal
-                .set_user_input(0, row, 1, value.to_string())
-                .unwrap();
-        }
-        // Two rows above its own: 20 now, whatever sits there after the move later.
-        ordinal.set_user_input(0, 4, 2, "=A2".to_string()).unwrap();
-
         let mut stable = CollabModel::new(1);
-        stable.workbook = stable_twin(&ordinal);
-        stable.reset_parsed_structures();
+        stable.new_sheet();
+        for (row, value) in [(1, "10"), (2, "20"), (3, "30"), (4, "40")] {
+            stable.set_user_input(0, row, 1, value.to_string()).unwrap();
+        }
+        // Two rows above its own: 20 now, and 20 still after the move below.
+        stable.set_user_input(0, 4, 2, "=A2".to_string()).unwrap();
+        stable.evaluate();
         assert_eq!(
             stable.get_formatted_cell_value(0, 4, 2),
             Ok("20".to_string())
         );
 
         // Second row to the end: the rows now read 10, 30, 40, 20 and the formula cell sits third.
-        stable.workbook.worksheets[0].index.rows.move_to(1..2, 4);
+        stable.move_rows_action(0, 2, 1, 2).unwrap();
         stable.evaluate();
 
-        assert_eq!(
-            stable.get_formatted_cell_value(0, 1, 1),
-            Ok("10".to_string())
-        );
-        assert_eq!(
-            stable.get_formatted_cell_value(0, 2, 1),
-            Ok("30".to_string())
-        );
-        assert_eq!(
-            stable.get_formatted_cell_value(0, 3, 1),
-            Ok("40".to_string())
-        );
-        assert_eq!(
-            stable.get_formatted_cell_value(0, 4, 1),
-            Ok("20".to_string())
-        );
-        // The formula moved with its row and its offset resolves against the new position.
+        for (row, value) in [(1, "10"), (2, "30"), (3, "40"), (4, "20")] {
+            assert_eq!(
+                stable.get_formatted_cell_value(0, row, 1),
+                Ok(value.to_string()),
+                "A{row}"
+            );
+        }
+        // The formula moved with its row and still names the cell it always named.
         assert_eq!(
             stable.get_formatted_cell_value(0, 3, 2),
-            Ok("10".to_string())
+            Ok("20".to_string())
         );
     }
 }

@@ -14,6 +14,8 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use crate::cf_types::ConditionalFormatting;
+use crate::collab::bind::Host;
+use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::FractionalKey;
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Consumer, Lww, SessionId, Snapshot, Timestamp};
@@ -30,6 +32,9 @@ use crate::collab::DynError;
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
 };
+use crate::expressions::parser::stringify::to_english_string;
+use crate::expressions::parser::{static_analysis::run_static_analysis_on_node, Node};
+use crate::expressions::token;
 use crate::types::{
     Cell, CellStyles, Col, DefinedName, FormulaValue, Row, SheetState, Style, Worksheet,
 };
@@ -142,12 +147,12 @@ fn touches_sheet_names(patches: &[Patch]) -> bool {
 }
 
 /// Index of `formula` in a sheet's shared formula table, appending it if new. Indices are assigned
-/// per replica, which is why patches carry the text.
-fn intern_formula(formulas: &mut Vec<String>, formula: &str) -> i32 {
+/// per replica, which is why patches carry the stream itself.
+fn intern_formula(formulas: &mut Vec<StableFormula>, formula: &StableFormula) -> i32 {
     match formulas.iter().position(|f| f == formula) {
         Some(index) => index as i32,
         None => {
-            formulas.push(formula.to_string());
+            formulas.push(formula.clone());
             formulas.len() as i32 - 1
         }
     }
@@ -507,18 +512,26 @@ impl CollabModel<'_> {
     /// Derives `Workbook::defined_names` from the registers, the way the style table is derived:
     /// the live names, repaired first-write-wins within each scope.
     fn normalize_defined_names(&mut self) {
-        let registers = &self.workbook.meta.defined_names;
-        let derived = self
-            .defined_name_display()
-            .into_iter()
-            .filter_map(|(id, sheet_id, name)| {
-                Some(DefinedName {
-                    name,
-                    formula: registers.get(&id)?.formula.value.clone()?,
-                    sheet_id,
-                })
-            })
-            .collect();
+        let context = self.defined_name_context();
+        let display = self.defined_name_display();
+        let mut derived = Vec::with_capacity(display.len());
+        for (id, sheet_id, name) in display {
+            let Some(body) = self.formula_of(id) else {
+                continue;
+            };
+            let Ok(node) = self.lower(&body.formula, &Host::relative(0, 1, 1)) else {
+                continue;
+            };
+            let text = to_english_string(&node, &context);
+            derived.push(DefinedName {
+                name,
+                formula: match body.equals {
+                    true => format!("={text}"),
+                    false => text,
+                },
+                sheet_id,
+            });
+        }
         self.workbook.defined_names = derived;
     }
 
@@ -534,12 +547,8 @@ impl CollabModel<'_> {
         {
             self.normalize_named_styles();
         }
-        if patches
-            .iter()
-            .any(|patch| matches!(patch, Patch::SetDefinedName { .. }))
-        {
-            self.normalize_defined_names();
-        }
+        //TODO: optimize resync
+        self.normalize_defined_names();
         self.resync_parsed();
     }
 
@@ -550,9 +559,33 @@ impl CollabModel<'_> {
         let defined_names = self.workbook.get_defined_names_with_scope();
         self.parser
             .set_worksheets_and_names(self.workbook.get_worksheet_names(), defined_names);
-        self.parsed_formulas = Vec::new();
-        self.parse_formulas();
+        self.lower_formulas();
         self.parse_defined_names();
+    }
+
+    /// The stable twin of [`Model::parse_formulas`]: every shared entry lowered once per sheet.
+    ///
+    /// The lowering is all-absolute, because one entry serves every cell that interned it — `D1`
+    /// and `E1` both holding `=A1` share a binding — so the cached node cannot depend on a host.
+    /// An entry whose sheet is gone has no node at all and lowers to `#REF!`.
+    fn lower_formulas(&mut self) {
+        self.parsed_formulas = Vec::new();
+        for i in 0..self.workbook.worksheets.len() {
+            // Taken out and put back so the lowering, which reads the whole workbook, can borrow.
+            let formulas = std::mem::take(&mut self.workbook.worksheets[i].shared_formulas);
+            let parsed = formulas
+                .iter()
+                .map(|formula| {
+                    let node = self
+                        .lower(formula, &Host::absolute(i as u32))
+                        .unwrap_or(Node::ErrorKind(token::Error::REF));
+                    let static_result = run_static_analysis_on_node(&node);
+                    (node, static_result)
+                })
+                .collect();
+            self.workbook.worksheets[i].shared_formulas = formulas;
+            self.parsed_formulas.push(parsed);
+        }
     }
 
     pub(crate) fn apply_patch(&mut self, patch: &Patch, ts: &Timestamp) {
@@ -1257,7 +1290,7 @@ mod test {
     use crate::cf_types::CfRule;
     use crate::collab::fractional_index::virtual_key;
     use crate::collab::log::{CommitId, SessionId};
-    use crate::collab::patch::NamedStyle;
+    use crate::collab::patch::{DefinedNameBody, NamedStyle};
     use crate::types::{Color, Comment, Position, Theme};
 
     /// A commit, kept so it can be delivered to more than one replica, in more than one order.
@@ -1383,6 +1416,7 @@ mod test {
         assert_eq!(model.workbook.worksheets[0].index.cols.len(), 3);
 
         // ---- cells: a literal, a string, a formula, and a clear ----
+        let formula = model.bind_text(0, 2, 1, "A1*2");
         let values = Rec::new(
             2,
             1,
@@ -1405,7 +1439,7 @@ mod test {
                 Patch::SetCellValue {
                     sheet: SHEET,
                     at: (rows[1].clone(), cols[0].clone()),
-                    value: Some(CellInput::Formula("A1*2".to_string())),
+                    value: Some(CellInput::Formula(formula)),
                     ts: None,
                     prev: Box::default(),
                 },
@@ -1444,8 +1478,12 @@ mod test {
                 v: FormulaValue::Unevaluated
             })
         );
-        // Interned, never parsed: parsing is derived state.
-        assert_eq!(model.workbook.worksheets[0].shared_formulas, ["A1*2"]);
+        // Interned once, and shown back as what was authored.
+        assert_eq!(model.workbook.worksheets[0].shared_formulas.len(), 1);
+        assert_eq!(
+            model.get_cell_formula(0, 2, 1),
+            Ok(Some("=A1*2".to_string()))
+        );
         // The last write of a commit is the one that stands, so the cell is gone.
         assert_eq!(cell(&model, &rows[2], &cols[0]), None);
 
@@ -1461,6 +1499,10 @@ mod test {
             cell_ref: (rows[1].clone(), cols[1].clone()),
         };
         let cf_key = minted(&[0x20], 1);
+        let name_body = DefinedNameBody {
+            formula: model.bind_text(0, 1, 1, "Sheet1!$A$1"),
+            equals: false,
+        };
         let rest = Rec::new(
             3,
             1,
@@ -1524,7 +1566,7 @@ mod test {
                 },
                 Patch::SetDefinedName {
                     id: 3,
-                    property: DefinedNameProperty::Definition(Some("Sheet1!$A$1".to_string())),
+                    property: DefinedNameProperty::Definition(Some(name_body)),
                     prev: None,
                 },
                 Patch::SetNamedStyle {
@@ -1594,7 +1636,8 @@ mod test {
         assert_eq!(sheet.conditional_formatting[0].priority, 1);
         assert_eq!(sheet.index.registers.cf_order, vec![cf_key.clone()]);
         assert_eq!(model.workbook.defined_names.len(), 1);
-        assert_eq!(model.workbook.defined_names[0].formula, "Sheet1!$A$1");
+        // The body is stored bound, so it shows the sheet's *current* name with nothing rewritten.
+        assert_eq!(model.workbook.defined_names[0].formula, "Renamed!$A$1");
         assert_eq!(model.workbook.settings.locale, "es");
         assert_eq!(model.workbook.theme.name, "Dark");
         let named = model

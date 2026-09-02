@@ -7,6 +7,8 @@ use std::{
 };
 
 use crate::constants::DEFAULT_ROW_HEIGHT;
+use crate::expressions::parser::Node;
+use crate::model::Model;
 use crate::{
     cf_types::ConditionalFormatting,
     constants::{LAST_COLUMN, LAST_ROW},
@@ -374,9 +376,9 @@ pub trait Position: sealed::Sealed + Sized + Clone {
     type WorkbookMeta: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
     /// Replica-local model state, never serialized; `()` for [`Ordinal`].
     type Local: Default;
-    /// Storage form of a shared formula. Plain text until stable lowering lands.
-    // `AsRef<str>` is the temporary seam letting generic code read the text.
-    type Formula: AsRef<str> + Clone + PartialEq + std::fmt::Debug + Encode + bitcode::DecodeOwned;
+    /// Storage form of a shared formula: R1C1 text under [`Ordinal`], a bound token stream under
+    /// [`Stable`](crate::collab::model::Stable).
+    type Formula: Clone + PartialEq + std::fmt::Debug + Encode + bitcode::DecodeOwned;
 
     // Key ⇄ ordinal resolution. Ordinals are the 1-based `i32` the rest of the codebase uses;
     // `None` means the key names nothing in this index any more.
@@ -402,6 +404,17 @@ pub trait Position: sealed::Sealed + Sized + Clone {
         merged: &Self::MergedCell,
         idx: &Self::SheetIndex,
     ) -> Option<(i32, i32, i32, i32)>;
+
+    /// The AST the formula interned at `index` on `sheet` is *shown* as:
+    /// 1. For [Ordinal] is pretty much identity function.
+    /// 2. For [Stable] is a lowered stable references to construct a specific node.
+    fn materialize_formula<'b>(
+        model: &'b Model<Self>,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        index: i32,
+    ) -> Option<std::borrow::Cow<'b, Node>>;
 }
 
 /// Positional addressing: rows and columns are 1-based indices.
@@ -461,6 +474,22 @@ impl Position for Ordinal {
 
     fn resolve_range(range: &RangeRef, _idx: &()) -> Option<(i32, i32, i32, i32)> {
         Some(range.resolve())
+    }
+
+    /// The stored node already carries offsets from wherever the formula sits, so it *is* the
+    /// display form.
+    fn materialize_formula<'b>(
+        model: &'b Model,
+        sheet: u32,
+        _row: i32,
+        _column: i32,
+        index: i32,
+    ) -> Option<std::borrow::Cow<'b, Node>> {
+        let (node, _) = model
+            .parsed_formulas
+            .get(sheet as usize)?
+            .get(index as usize)?;
+        Some(std::borrow::Cow::Borrowed(node))
     }
 }
 
