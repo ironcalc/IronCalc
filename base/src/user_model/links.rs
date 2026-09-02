@@ -39,6 +39,12 @@ impl UserModel<'_> {
         link: Link,
         label: Option<&str>,
     ) -> Result<(), String> {
+        // Validate before touching anything: the label goes through
+        // set_user_input, which rejects covered cells, and a failure half-way
+        // would leave a link in the model that no diff records.
+        if label.is_some() && self.model.workbook.worksheet(sheet)?.is_covered_cell(row, column) {
+            return Err("Cannot edit a cell that is part of a merged cell".to_string());
+        }
         let old_link = self.model.get_cell_link(sheet, row, column)?;
         let is_new_link = old_link.is_none();
         let mut diff_list = Vec::new();
