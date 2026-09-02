@@ -59,6 +59,7 @@ pub(crate) const MAP_NAMED_STYLES: &str = "named_styles";
 pub(crate) const MAP_CF: &str = "cf";
 pub(crate) const MAP_EDGES: &str = "edges";
 pub(crate) const MAP_LINKS: &str = "links";
+pub(crate) const MAP_MERGES: &str = "merges";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Axis {
@@ -100,6 +101,14 @@ pub(crate) struct SchemaMaps {
     /// the link when the content is cleared and that clear replicates as a
     /// register removal.
     pub links: MapRef,
+    /// Merged cells, keyed by their anchor (top-left) cell — same key as
+    /// `cells` — with the bottom-right corner ids as value (see
+    /// [`merge_value`]). Anchor ids are stable under structural ops, so a
+    /// merge follows its cells for free; two concurrent merges with the same
+    /// anchor are plain LWW on the key, overlapping ones with different
+    /// anchors converge in the document and are resolved by a deterministic
+    /// render-time fixup (the loser is masked, not lost).
+    pub merges: MapRef,
 }
 
 impl SchemaMaps {
@@ -119,6 +128,7 @@ impl SchemaMaps {
             cf: doc.get_or_insert_map(MAP_CF),
             edges: doc.get_or_insert_map(MAP_EDGES),
             links: doc.get_or_insert_map(MAP_LINKS),
+            merges: doc.get_or_insert_map(MAP_MERGES),
         }
     }
 
@@ -138,6 +148,16 @@ pub(crate) fn sheet_meta_key(sheet: EntityId, field: &str) -> String {
 
 pub(crate) fn cell_key(sheet: EntityId, column: EntityId, row: EntityId) -> String {
     format!("{}!{}:{}", sheet.encode(), column.encode(), row.encode())
+}
+
+/// Value of a merge register: the bottom-right corner as `<colId>:<rowId>`.
+pub(crate) fn merge_value(column: EntityId, row: EntityId) -> String {
+    format!("{}:{}", column.encode(), row.encode())
+}
+
+pub(crate) fn parse_merge_value(value: &str) -> Option<(EntityId, EntityId)> {
+    let (cid, rid) = value.split_once(':')?;
+    Some((EntityId::decode(cid)?, EntityId::decode(rid)?))
 }
 
 pub(crate) fn axis_key(sheet: EntityId, id: EntityId, field: &str) -> String {
@@ -285,6 +305,8 @@ pub(crate) struct SheetProj {
     pub h_edges: BTreeMap<(EntityId, EntityId), String>,
     /// Cell hyperlinks: `(column, row) → bitcode of Link`.
     pub links: BTreeMap<(EntityId, EntityId), Vec<u8>>,
+    /// Merged cells: anchor `(column, row)` → bottom-right `(column, row)`.
+    pub merges: BTreeMap<(EntityId, EntityId), (EntityId, EntityId)>,
 }
 
 impl SheetProj {
@@ -507,6 +529,30 @@ impl Projection {
             if let Out::Any(Any::Buffer(bytes)) = value {
                 proj.styles.insert(key.to_string(), bytes.to_vec());
             }
+        }
+
+        for (key, value) in maps.merges.iter(&txn) {
+            let Some((sid, rest)) = key.split_once('!') else {
+                continue;
+            };
+            let Some((cid, rid)) = rest.split_once(':') else {
+                continue;
+            };
+            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
+                EntityId::decode(sid),
+                EntityId::decode(cid),
+                EntityId::decode(rid),
+            ) else {
+                continue;
+            };
+            let Some(corner) = as_string(&value).as_deref().and_then(parse_merge_value) else {
+                continue;
+            };
+            proj.sheets
+                .entry(sheet_id)
+                .or_default()
+                .merges
+                .insert((col_id, row_id), corner);
         }
 
         for (key, value) in maps.links.iter(&txn) {
