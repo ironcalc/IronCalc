@@ -2603,3 +2603,53 @@ fn typed_url_auto_link_and_its_removal_replicate() {
     assert_eq!(b.um.get_cell_link(0, 2, 1).unwrap(), None);
     assert_converged(&a, &b);
 }
+
+// ---- merged cells ----
+
+#[test]
+fn bootstrap_writes_merged_cells_into_the_document() {
+    use crate::expressions::types::Area;
+    let mut um = UserModel::from_model(new_empty_model());
+    um.set_user_input(0, 2, 2, "title").unwrap();
+    um.merge_cells(&Area {
+        sheet: 0,
+        row: 2,
+        column: 2,
+        width: 3,
+        height: 2,
+    })
+    .unwrap();
+    um.merge_cells(&Area {
+        sheet: 0,
+        row: 10,
+        column: 1,
+        width: 1,
+        height: 4,
+    })
+    .unwrap();
+    let session = CollabSession::attach(&mut um, 1).unwrap();
+    let mut a = Replica { um, session };
+
+    let o = crate::crdt::EntityId::Original;
+    let expected: Vec<((u32, u32), (u32, u32))> = vec![((2, 2), (4, 3)), ((1, 10), (1, 13))];
+    let sheet_id = a.session.shadow_for_tests().visible_sheets()[0].0;
+    let merges = a.session.shadow_for_tests().sheets[&sheet_id]
+        .merges
+        .clone();
+    for ((ac, ar), (bc, br)) in &expected {
+        assert_eq!(merges.get(&(o(*ac), o(*ar))), Some(&(o(*bc), o(*br))));
+    }
+    assert_eq!(merges.len(), 2);
+
+    // A late joiner's projection carries them too (the model side of the
+    // merge register is wired in a later step).
+    let mut b = replica(2);
+    let sv = b.session.state_vector();
+    let update = {
+        let _ = a.session.flush_local(&mut a.um).unwrap();
+        a.session.encode_state_since(&sv).unwrap()
+    };
+    b.session.apply_remote(&mut b.um, &update).unwrap();
+    let merges_b = &b.session.shadow_for_tests().sheets[&sheet_id].merges;
+    assert_eq!(*merges_b, merges);
+}
