@@ -2361,6 +2361,95 @@ mod test {
         assert_eq!(b.workbook, a.workbook);
     }
 
+    /// Assert that every shared formula is parsed.
+    fn assert_parsed_covers_shared(model: &CollabModel<'_>) {
+        assert_eq!(model.parsed_formulas.len(), model.workbook.worksheets.len());
+        for (i, sheet) in model.workbook.worksheets.iter().enumerate() {
+            assert_eq!(
+                model.parsed_formulas[i].len(),
+                sheet.shared_formulas.len(),
+                "parse table of sheet {i}"
+            );
+        }
+    }
+
+    /// A content-only commit lowers only the entry it appends.
+    #[test]
+    fn content_only_keeps_old_formulas() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "10".to_string()).unwrap();
+        a.set_user_input(0, 2, 1, "=A1*2".to_string()).unwrap();
+        a.evaluate();
+        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("20".to_string()));
+
+        // Content-only: a cell write into an existing row, then one into a fresh one.
+        a.set_user_input(0, 1, 1, "5".to_string()).unwrap();
+        a.set_user_input(0, 30, 1, "=A1+1".to_string()).unwrap();
+        a.evaluate();
+
+        assert_eq!(a.get_formatted_cell_value(0, 30, 1), Ok("6".to_string()));
+        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("10".to_string()));
+        assert_parsed_covers_shared(&a);
+    }
+
+    /// The structural kinds all move something a lowered node embeds, so each must still resync.
+    #[test]
+    fn structural_commits_resync() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+        a.set_user_input(0, 2, 1, "7".to_string()).unwrap();
+        a.set_user_input(0, 1, 2, "=A2".to_string()).unwrap();
+        a.new_defined_name("total", None, "Sheet1!$A$2").unwrap();
+        a.set_user_input(1, 1, 1, "=Sheet1!A2".to_string()).unwrap();
+        a.set_user_input(1, 2, 1, "=total".to_string()).unwrap();
+        a.evaluate();
+        assert_eq!(a.get_formatted_cell_value(0, 1, 2), Ok("7".to_string()));
+        assert_eq!(a.get_formatted_cell_value(1, 2, 1), Ok("7".to_string()));
+
+        // A mid-sheet insert shifts what row 2 is: the reference follows the row, not the ordinal.
+        a.insert_rows(0, 2, 1).unwrap();
+        a.evaluate();
+        assert_eq!(a.get_cell_formula(0, 1, 2), Ok(Some("=A3".to_string())));
+        assert_eq!(a.get_formatted_cell_value(0, 1, 2), Ok("7".to_string()));
+
+        // A rename re-renders the cross-sheet reference.
+        a.rename_sheet_by_index(0, "Data").unwrap();
+        a.evaluate();
+        assert_eq!(
+            a.get_cell_formula(1, 1, 1),
+            Ok(Some("=Data!A3".to_string()))
+        );
+        assert_eq!(a.get_formatted_cell_value(1, 1, 1), Ok("7".to_string()));
+
+        // Redefining a name changes what the cells reading it evaluate to.
+        a.update_defined_name("total", None, "total", None, "Data!$A$1")
+            .unwrap();
+        a.evaluate();
+        assert_eq!(a.get_formatted_cell_value(1, 2, 1), Ok("1".to_string()));
+        assert_parsed_covers_shared(&a);
+    }
+
+    #[test]
+    fn remote_content_only_commit() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "10".to_string()).unwrap();
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &a.flush());
+
+        // remote (a) brings formula that needs to be evaluated even if it's content-only
+        a.set_user_input(0, 40, 1, "=A1*3".to_string()).unwrap();
+        deliver(&mut b, 1, &a.flush());
+        b.evaluate();
+
+        assert_eq!(b.get_formatted_cell_value(0, 40, 1), Ok("30".to_string()));
+        assert_parsed_covers_shared(&b);
+    }
+
     /// Sheet ids are minted per session, not per state: two replicas holding the same document and
     /// creating a sheet at the same time must keep both sheets, not race for one id.
     #[test]
