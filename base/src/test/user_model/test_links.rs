@@ -652,3 +652,23 @@ fn cross_sheet_cut_paste_moves_the_link() {
     assert_eq!(model.get_cell_link(0, 1, 1), Ok(Some(example_link())));
     assert_eq!(model.get_cell_link(1, 3, 3), Ok(None));
 }
+
+#[test]
+fn moving_rows_keeps_a_link_on_an_empty_cell() {
+    let mut model = UserModel::from_model(new_empty_model());
+    let link = Link::External {
+        target: "https://www.ironcalc.com/".to_string(),
+        tooltip: None,
+    };
+    model.set_cell_link(0, 19, 5, link.clone(), None).unwrap();
+    // Row 18 moves down by 2: rows 19 and 20 shift up by one.
+    model.move_rows_action(0, 18, 1, 2).unwrap();
+    assert_eq!(model.get_cell_link(0, 18, 5), Ok(Some(link.clone())));
+    assert_eq!(model.get_cell_link(0, 19, 5), Ok(None));
+
+    // And a link on the moved row itself travels with it.
+    model.set_cell_link(0, 3, 2, link.clone(), None).unwrap();
+    model.move_rows_action(0, 3, 1, 4).unwrap();
+    assert_eq!(model.get_cell_link(0, 7, 2), Ok(Some(link)));
+    assert_eq!(model.get_cell_link(0, 3, 2), Ok(None));
+}
