@@ -87,23 +87,23 @@ function CollabDialog(properties: {
           </div>
         </div>
         <div className="app-ic-collab-dialog-people">
-            {collaborators.map((collaborator) => (
-              <div
-                key={collaborator.clientId}
-                className="app-ic-collab-dialog-person"
+          {collaborators.map((collaborator) => (
+            <div
+              key={collaborator.clientId}
+              className="app-ic-collab-dialog-person"
+            >
+              <span
+                className="app-ic-collab-avatar"
+                style={{ backgroundColor: collaborator.color }}
               >
-                <span
-                  className="app-ic-collab-avatar"
-                  style={{ backgroundColor: collaborator.color }}
-                >
-                  {(collaborator.name[0] || "?").toUpperCase()}
-                </span>
-                <span className="app-ic-collab-dialog-person-name">
-                  {collaborator.name}
-                  {collaborator.isSelf && ` (${t("file_bar.collab.you")})`}
-                </span>
-              </div>
-            ))}
+                {(collaborator.name[0] || "?").toUpperCase()}
+              </span>
+              <span className="app-ic-collab-dialog-person-name">
+                {collaborator.name}
+                {collaborator.isSelf && ` (${t("file_bar.collab.you")})`}
+              </span>
+            </div>
+          ))}
         </div>
         <div className="app-ic-share-dialog-footer">
           <Radio />
