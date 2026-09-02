@@ -1,9 +1,7 @@
-use crate::calc_result::Range;
 use crate::cast::{calc_result_to_array_node, NumberOrArray};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::implicit_intersection::implicit_intersection;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -850,15 +848,8 @@ impl<'a> Model<'a> {
             return ArrayNode::Error(Error::VALUE);
         }
 
-        let value = match self.evaluate_node_with_reference(&args[index_num], cell) {
-            CalcResult::Range { left, right } => {
-                match implicit_intersection(&cell, &Range { left, right }) {
-                    Some(reference) => self.evaluate_cell(reference),
-                    None => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
-                }
-            }
-            other => other,
-        };
+        let result = self.evaluate_node_with_reference(&args[index_num], cell);
+        let value = self.implicit_intersection_to_value(result, cell);
         calc_result_to_array_node(value)
     }
 

@@ -390,44 +390,20 @@ impl<'a> Model<'a> {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
-        match node {
-            Node::ReferenceKind {
-                column,
-                absolute_column,
-                row,
-                absolute_row,
-                sheet_index,
-                sheet_name: _,
-            } => {
-                let left = CellReferenceIndex {
-                    sheet: *sheet_index,
-                    row: if *absolute_row { *row } else { *row + cell.row },
-                    column: if *absolute_column {
-                        *column
-                    } else {
-                        *column + cell.column
-                    },
-                };
-
-                Ok(Range { left, right: left })
-            }
-            _ => {
-                // Reference context: an `@` node must yield the intersected 1x1
-                // reference (e.g. COLUMNS(@A1:C1) is 1), not the cell's value.
-                let value = self.evaluate_node_with_reference(node, cell);
-                if value.is_error() {
-                    return Err(value);
-                }
-                if let CalcResult::Range { left, right } = value {
-                    Ok(Range { left, right })
-                } else {
-                    Err(CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Expected reference".to_string(),
-                    })
-                }
-            }
+        // Reference context: references stay references and an `@` node yields
+        // the intersected 1x1 reference (e.g. COLUMNS(@A1:C1) is 1).
+        let value = self.evaluate_node_with_reference(node, cell);
+        if value.is_error() {
+            return Err(value);
+        }
+        if let CalcResult::Range { left, right } = value {
+            Ok(Range { left, right })
+        } else {
+            Err(CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Expected reference".to_string(),
+            })
         }
     }
 }
