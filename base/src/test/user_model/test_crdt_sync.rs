@@ -37,6 +37,23 @@ fn sync(a: &mut Replica, b: &mut Replica) {
     if trace {
         a.session.assert_model_matches_shadow(&a.um, "replica A after apply");
         b.session.assert_model_matches_shadow(&b.um, "replica B after apply");
+        let names = |r: &Replica| -> Vec<String> {
+            (0..r.um.model.workbook.worksheets.len() as u32)
+                .map(|s| r.um.model.workbook.worksheet(s).unwrap().get_name())
+                .collect()
+        };
+        let shadow_names = |r: &Replica| -> Vec<String> {
+            r.session
+                .shadow_for_tests()
+                .visible_sheets()
+                .iter()
+                .map(|(id, sp)| format!("{}={}@{}", id.encode(), sp.name, sp.pos))
+                .collect()
+        };
+        if names(a) != names(b) {
+            eprintln!("A sheets {:?} shadow {:?}", names(a), shadow_names(a));
+            eprintln!("B sheets {:?} shadow {:?}", names(b), shadow_names(b));
+        }
         assert_converged(a, b);
     }
 }
@@ -550,6 +567,7 @@ fn undo_only_reverts_own_operation() {
     assert_eq!(a.um.get_cell_content(0, 2, 2), Ok("theirs".to_string()));
 }
 
+// CRDT_FUZZ_SEEDS=2000 cargo test -p ironcalc_base --offline --release -- randomized_convergence_fuzz randomized_peer_protocol_fuzz
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn randomized_convergence_fuzz() {
@@ -587,7 +605,7 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..23) {
+            match rng.gen_range(0..25) {
                 0..=3 => {
                     // Now and then an URL: the engine auto-links those.
                     let value = if rng.gen_ratio(1, 8) {
@@ -598,7 +616,8 @@ fn fuzz_round(seed: u64) {
                     if trace {
                         eprintln!("{step}: {who} set R{row}C{column} = {value}");
                     }
-                    replica.um.set_user_input(0, row, column, &value).unwrap();
+                    // Covered cells (merges) reject input.
+                    let _ = replica.um.set_user_input(0, row, column, &value);
                 }
                 4 => {
                     let target = rng.gen_range(1..=25);
@@ -615,10 +634,7 @@ fn fuzz_round(seed: u64) {
                     if trace {
                         eprintln!("{step}: {who} set R{row}C{column} = {formula}");
                     }
-                    replica
-                        .um
-                        .set_user_input(0, row, column, &formula)
-                        .unwrap();
+                    let _ = replica.um.set_user_input(0, row, column, &formula);
                 }
                 5 => {
                     let count = rng.gen_range(1..=2);
@@ -842,10 +858,10 @@ fn fuzz_round(seed: u64) {
                     if count > 2 {
                         let from = rng.gen_range(1..count);
                         let to = rng.gen_range(1..count);
+                        let result = replica.um.move_sheet(from, to);
                         if trace {
-                            eprintln!("{step}: {who} move_sheet {from} -> {to}");
+                            eprintln!("{step}: {who} move_sheet {from} -> {to} => {result:?}");
                         }
-                        let _ = replica.um.move_sheet(from, to);
                     }
                 }
                 21 => {
@@ -865,6 +881,39 @@ fn fuzz_round(seed: u64) {
                         }
                         let _ = replica.um.delete_cell_link(0, row, column);
                     }
+                }
+                22 => {
+                    use crate::expressions::types::Area;
+                    let (width, height) = match rng.gen_range(0..3) {
+                        0 => (rng.gen_range(2..=3), 1),
+                        1 => (1, rng.gen_range(2..=3)),
+                        _ => (rng.gen_range(2..=3), rng.gen_range(2..=3)),
+                    };
+                    if trace {
+                        eprintln!("{step}: {who} merge R{row}C{column} {height}x{width}");
+                    }
+                    // Rejections (overlap, array formula, two content cells)
+                    // are part of the game.
+                    let _ = replica.um.merge_cells(&Area {
+                        sheet: 0,
+                        row,
+                        column,
+                        width,
+                        height,
+                    });
+                }
+                23 => {
+                    use crate::expressions::types::Area;
+                    if trace {
+                        eprintln!("{step}: {who} unmerge at R{row}C{column}");
+                    }
+                    let _ = replica.um.unmerge_cells(&Area {
+                        sheet: 0,
+                        row,
+                        column,
+                        width: 1,
+                        height: 1,
+                    });
                 }
                 _ => {
                     if trace {
@@ -3090,5 +3139,60 @@ fn spill_blocked_by_a_concurrent_remote_merge_converges() {
     for r in [&a, &b] {
         assert_eq!(r.um.get_formatted_cell_value(0, 3, 1), Ok("3".to_string()));
     }
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn repeated_sheet_moves_keep_model_and_document_in_the_same_order() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.new_sheet().unwrap();
+    a.um.new_sheet().unwrap();
+    sync(&mut a, &mut b);
+    let names = |r: &Replica| -> Vec<String> {
+        (0..r.um.model.workbook.worksheets.len() as u32)
+            .map(|s| r.um.model.workbook.worksheet(s).unwrap().get_name())
+            .collect()
+    };
+    for i in 0..8 {
+        a.um.move_sheet(2, 1).unwrap();
+        sync(&mut a, &mut b);
+        assert_eq!(names(&a), names(&b), "diverged after move {i}");
+        let shadow: Vec<String> = a
+            .session
+            .shadow_for_tests()
+            .visible_sheets()
+            .iter()
+            .map(|(_, sp)| sp.name.clone())
+            .collect();
+        assert_eq!(names(&a), shadow, "model/doc order differ after move {i}");
+        assert_converged(&a, &b);
+    }
+}
+
+#[test]
+fn typed_url_style_vs_concurrent_border_on_the_same_cell_converges() {
+    // The receiver's input path applies the link style when it writes the
+    // URL; the document's register for that cell (LWW between the underline
+    // and the border-only register) decides, on every replica.
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "seed").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um.set_user_input(0, 5, 2, "https://ironcalc.com").unwrap();
+    b.um
+        .set_area_with_border(&area(5, 2, 1, 1), &border_area("thin", "All"))
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_converged(&a, &b);
+    // Whoever won the register, the border is on the cell on both.
+    assert!(a.um.get_cell_style(0, 5, 2).unwrap().border.top.is_some());
+
+    // Dates restyle too (number format).
+    a.um.set_user_input(0, 6, 2, "2024-03-01").unwrap();
+    b.um.update_range_style(&area(6, 2, 1, 1), "font.b", "true")
+        .unwrap();
+    sync(&mut a, &mut b);
     assert_converged(&a, &b);
 }
