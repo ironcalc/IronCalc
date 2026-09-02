@@ -80,3 +80,24 @@ test('collaboration: attach twice fails, unattached calls fail', () => {
     a.collabAttach(1);
     assert.throws(() => a.collabAttach(2));
 });
+
+test('collaboration: merged cells converge', () => {
+    const a = new Model('Workbook1', 'en', 'UTC', 'en');
+    const b = new Model('Workbook1', 'en', 'UTC', 'en');
+    a.collabAttach(1);
+    b.collabAttach(2);
+    connect(a, b);
+
+    a.setUserInput(0, 3, 3, "title");
+    deliver(a, b);
+    a.mergeCells({ sheet: 0, row: 2, column: 2, width: 3, height: 2 });
+    deliver(a, b);
+    assert.deepStrictEqual(b.getMergedCells(0), [{ row: 2, column: 2, width: 3, height: 2 }]);
+    // The single content cell moved to the anchor on both.
+    assert.strictEqual(b.getFormattedCellValue(0, 2, 2), "title");
+    assert.strictEqual(b.getFormattedCellValue(0, 3, 3), "");
+
+    b.unmergeCells({ sheet: 0, row: 3, column: 3, width: 1, height: 1 });
+    deliver(b, a);
+    assert.deepStrictEqual(a.getMergedCells(0), []);
+});
