@@ -3,6 +3,7 @@
 //! Both walks are iterative with an explicit stack: formula depth is author-controlled, so
 //! recursing over a `Node` tree is a stack overflow waiting to happen.
 
+use std::cell::OnceCell;
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -16,6 +17,9 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::{ArrayNode, NamedVariable, Node};
 use crate::expressions::token;
 use crate::types::Position;
+
+/// Per-`lower` scratch: the defined-name display list, built lazily and reused across tokens.
+type DisplayNameCache = OnceCell<Vec<(DefinedNameId, Option<SheetId>, String)>>;
 
 /// Why a `Node` has no stable form.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -432,8 +436,10 @@ impl CollabModel<'_> {
             return Err(LowerError::UnknownHostSheet(host.sheet));
         }
         let mut stack: Vec<Node> = Vec::new();
+        // Built at most once per call, and only if a `DefinedName` token asks for it.
+        let names = OnceCell::new();
         for token in formula.tokens() {
-            let node = self.lower_token(token, &mut stack, host)?;
+            let node = self.lower_token(token, &mut stack, host, &names)?;
             stack.push(node);
         }
         // The validator guarantees exactly one value is left.
@@ -506,6 +512,7 @@ impl CollabModel<'_> {
         token: &StableToken,
         stack: &mut Vec<Node>,
         host: &Host,
+        names: &DisplayNameCache,
     ) -> Result<Node, LowerError> {
         Ok(match token {
             StableToken::Boolean(value) => Node::BooleanKind(*value),
@@ -593,7 +600,7 @@ impl CollabModel<'_> {
                     }
                 }
             }
-            StableToken::DefinedName(id) => self.lower_defined_name(*id),
+            StableToken::DefinedName(id) => self.lower_defined_name(*id, names),
             StableToken::TableName(name) => Node::TableNameKind(name.clone()),
             StableToken::NamedVariable(name) => Node::NamedVariableKind {
                 name: name.clone(),
@@ -701,7 +708,7 @@ impl CollabModel<'_> {
 
     /// A live name lowers to its current display name and formula; a deleted one to the node the
     /// parser builds for a name it does not know, which evaluates to `#NAME?`.
-    fn lower_defined_name(&self, id: DefinedNameId) -> Node {
+    fn lower_defined_name(&self, id: DefinedNameId, names: &DisplayNameCache) -> Node {
         let unknown = || match self.workbook.meta.defined_names.get(&id) {
             Some(state) => Node::NamedVariableKind {
                 name: state.name.value.1.clone(),
@@ -711,13 +718,14 @@ impl CollabModel<'_> {
             None => Node::ErrorKind(token::Error::NAME),
         };
         // Only live names are listed, and a live name always has a formula.
-        let Some((_, sheet_id, name)) = self
-            .defined_name_display()
-            .into_iter()
+        let Some((_, sheet_id, name)) = names
+            .get_or_init(|| self.defined_name_display())
+            .iter()
             .find(|(entry, ..)| *entry == id)
         else {
             return unknown();
         };
+        let (sheet_id, name) = (*sheet_id, name.clone());
         let scope = match sheet_id {
             Some(sheet) => match self.position_of_sheet(sheet) {
                 Some(at) => Some(at),
