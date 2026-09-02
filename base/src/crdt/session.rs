@@ -45,7 +45,7 @@ use crate::cf_types::{CfRule, Cfvo, ConditionalFormatting};
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, ROW_HEIGHT_FACTOR,
 };
-use crate::types::{BorderItem, BorderStyle, Cell, Dxf, Link};
+use crate::types::{BorderItem, BorderStyle, Cell, Dxf, Link, MergedCell};
 use crate::user_model::border_utils::is_max_border;
 use crate::user_model::history::{Diff, DiffType, QueueDiffs};
 use crate::UserModel;
@@ -1083,6 +1083,22 @@ impl CollabSession {
         if !touched.cell_styles.is_empty() || touched.cf_all {
             canonicalize_borders(um, &self.shadow, &touched, touched.cf_all)?;
         }
+        // Canonical merge form: the model's list is the document's render
+        // (order, overlap fixup, masking). A local unmerge can re-expose a
+        // concurrent merge the fixup had masked, so the render must be
+        // installed here too, not only on reconcile.
+        if !touched.merges.is_empty() {
+            let resolver = DocResolver::from_projection(&self.shadow);
+            let mut changed = false;
+            for (index, (sheet_id, sp)) in self.shadow.visible_sheets().iter().enumerate() {
+                if touched.merges.contains(sheet_id) {
+                    changed |= install_merges(um, index as u32, *sheet_id, sp, &resolver)?;
+                }
+            }
+            if changed {
+                um.model.evaluate();
+            }
+        }
         Ok(())
     }
 
@@ -1106,6 +1122,7 @@ impl CollabSession {
             ws.rows.clear();
             ws.cols.clear();
             ws.links.clear();
+            ws.merged_cells.clear();
         }
         let resolver = DocResolver::from_projection(&self.shadow);
         apply_full_sheet(um, sheet, sheet_id, sp, &resolver, &self.shadow)?;
@@ -3328,8 +3345,24 @@ fn sync_merges(
         .get(&sheet_id)
         .map(|sp| &sp.merges)
         .unwrap_or(&empty);
+    // Only registers the model could see (rendered pre-batch) can be
+    // declared stale by the model's list. Masked ones — overlap losers, dead
+    // corners — are not the model's to remove: they stay and re-emerge when
+    // whatever masks them goes away.
+    // (A sheet that was not visible pre-batch — undelete, duplicate — had
+    // nothing rendered.)
+    let pre_batch = DocResolver::from_projection(shadow);
+    let visible: BTreeSet<(EntityId, EntityId)> = match shadow.sheets.get(&sheet_id) {
+        Some(sp) if pre_batch.rows.contains_key(&sheet_id) => {
+            render_merges(sp, &pre_batch, sheet_id)?
+                .into_iter()
+                .map(|(anchor, _)| anchor)
+                .collect()
+        }
+        _ => BTreeSet::new(),
+    };
     for anchor in current.keys() {
-        if !desired.contains_key(anchor) {
+        if visible.contains(anchor) && !desired.contains_key(anchor) {
             maps.merges.remove(txn, &cell_key(sheet_id, anchor.0, anchor.1));
         }
     }
@@ -3653,6 +3686,11 @@ fn reconcile_sheet(
     structural: bool,
     rerender_all: bool,
 ) -> Result<(), String> {
+    // Merged cells are installed last, from the document's render: the
+    // engine refuses content writes into covered cells, and a remote edit may
+    // well land under a local merge (concurrent merge ‖ edit — both survive,
+    // the content stays hidden until unmerged).
+    um.model.workbook.worksheet_mut(sheet)?.merged_cells.clear();
     if !structural {
         // Cell deltas only: same coordinates on both sides. When any *other*
         // sheet changed structurally, id-form formulas here may render
@@ -3830,6 +3868,7 @@ fn reconcile_sheet(
         if sp_old.cf != sp_new.cf || rerender_all {
             reconcile_cf_sheet(um, sheet, sheet_id, sp_new, resolver)?;
         }
+        install_merges(um, sheet, sheet_id, sp_new, resolver)?;
         return Ok(());
     }
 
@@ -3901,6 +3940,8 @@ fn apply_sheet_content(
     resolver: &DocResolver,
     proj: &Projection,
 ) -> Result<(), String> {
+    // Merged cells are cleared first and installed last (see reconcile_sheet).
+    um.model.workbook.worksheet_mut(sheet)?.merged_cells.clear();
     for (key, value) in &sp.cells {
         set_projected_cell(um, sheet, sheet_id, resolver, key, value)?;
     }
@@ -3954,7 +3995,87 @@ fn apply_sheet_content(
         ReinheritScope::Sheet,
     )?;
     reconcile_cf_sheet(um, sheet, sheet_id, sp, resolver)?;
+    install_merges(um, sheet, sheet_id, sp, resolver)?;
     Ok(())
+}
+
+fn merges_intersect(a: &MergedCell, b: &MergedCell) -> bool {
+    a.row <= b.last_row()
+        && b.row <= a.last_row()
+        && a.column <= b.last_column()
+        && b.column <= a.last_column()
+}
+
+/// A rendered merge: its register's anchor key and the engine rectangle.
+type RenderedMerge = ((EntityId, EntityId), MergedCell);
+
+/// Renders a sheet's merge registers into the engine's list — a pure
+/// function of the document, so every replica installs the same list:
+/// * a merge with a deleted corner is masked (it comes back if the row or
+///   column is resurrected);
+/// * corners a move dragged past each other are normalized;
+/// * registers reduced to a single cell are dropped;
+/// * overlapping merges (concurrent creation) are resolved in anchor-key
+///   order: the first wins, later ones that intersect an accepted merge are
+///   masked, not removed — they re-emerge if the winner is unmerged.
+fn render_merges(
+    sp: &SheetProj,
+    resolver: &DocResolver,
+    sheet_id: EntityId,
+) -> Result<Vec<RenderedMerge>, String> {
+    let (Some(rows), Some(cols)) = (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
+    else {
+        return Err("collab: unknown sheet in resolver".to_string());
+    };
+    let mut out: Vec<RenderedMerge> = Vec::new();
+    for (anchor, (corner_col, corner_row)) in &sp.merges {
+        let (anchor_col, anchor_row) = anchor;
+        let (Some(r1), Some(c1), Some(r2), Some(c2)) = (
+            rows.index_of(*anchor_row),
+            cols.index_of(*anchor_col),
+            rows.index_of(*corner_row),
+            cols.index_of(*corner_col),
+        ) else {
+            continue; // masked: a corner is currently deleted
+        };
+        let (row, last_row) = (r1.min(r2) as i32, r1.max(r2) as i32);
+        let (column, last_column) = (c1.min(c2) as i32, c1.max(c2) as i32);
+        let merge = MergedCell {
+            row,
+            column,
+            width: last_column - column + 1,
+            height: last_row - row + 1,
+        };
+        if merge.width == 1 && merge.height == 1 {
+            continue;
+        }
+        if out.iter().any(|(_, m)| merges_intersect(m, &merge)) {
+            continue; // masked by an earlier (in key order) overlapping merge
+        }
+        out.push((*anchor, merge));
+    }
+    Ok(out)
+}
+
+/// Installs the document's merges on the model sheet; returns whether the
+/// list changed.
+fn install_merges(
+    um: &mut UserModel,
+    sheet: u32,
+    sheet_id: EntityId,
+    sp: &SheetProj,
+    resolver: &DocResolver,
+) -> Result<bool, String> {
+    let rendered: Vec<MergedCell> = render_merges(sp, resolver, sheet_id)?
+        .into_iter()
+        .map(|(_, m)| m)
+        .collect();
+    let ws = um.model.workbook.worksheet_mut(sheet)?;
+    if ws.merged_cells == rendered {
+        return Ok(false);
+    }
+    ws.merged_cells = rendered;
+    Ok(true)
 }
 
 fn pool_style_opt(proj: &Projection, hash: Option<&str>) -> Result<Option<Style>, String> {
