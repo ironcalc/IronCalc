@@ -302,3 +302,22 @@ fn auto_links_are_sent_to_other_models() {
         Ok(Some(external("https://www.ironcalc.com/")))
     );
 }
+
+#[test]
+fn inserting_columns_moves_an_auto_linked_cell_without_duplicating_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model
+        .set_user_input(0, 5, 6, "https://www.ironcalc.com/")
+        .unwrap();
+    model.insert_columns(0, 1, 1).unwrap();
+    let links = model.get_links_list(0).unwrap();
+    assert_eq!(links.len(), 1, "{links:?}");
+    assert_eq!(links[0].row, 5);
+    assert_eq!(links[0].column, 7);
+
+    model.insert_rows(0, 1, 2).unwrap();
+    let links = model.get_links_list(0).unwrap();
+    assert_eq!(links.len(), 1, "{links:?}");
+    assert_eq!(links[0].row, 7);
+    assert_eq!(links[0].column, 7);
+}
