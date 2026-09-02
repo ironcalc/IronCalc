@@ -95,7 +95,9 @@ function randomUserName(): string {
   const firstName =
     RANDOM_USER_NAMES[Math.floor(Math.random() * RANDOM_USER_NAMES.length)];
   const lastName =
-    RANDOM_USER_LASTNAMES[Math.floor(Math.random() * RANDOM_USER_LASTNAMES.length)];
+    RANDOM_USER_LASTNAMES[
+      Math.floor(Math.random() * RANDOM_USER_LASTNAMES.length)
+    ];
   return `${firstName} ${lastName}`;
 }
 
