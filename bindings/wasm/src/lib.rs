@@ -163,6 +163,7 @@ impl Model {
             ironcalc_base::Model::from_workbook(workbook, language_id).map_err(to_js_error)?;
         Ok(Model {
             model: BaseModel::from_model(calc_model),
+            peer: None,
         })
     }
 
