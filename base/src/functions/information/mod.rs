@@ -164,37 +164,31 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        if let CalcResult::Range { left, right } = self.evaluate_node_with_reference(&args[0], cell)
-        {
-            if left.sheet != right.sheet {
-                return CalcResult::Error {
-                    error: Error::ERROR,
-                    origin: cell,
-                    message: "3D ranges not supported".to_string(),
-                };
-            }
-            if left.row != right.row && left.column != right.column {
-                // FIXME: Implicit intersection or dynamic arrays
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "argument must be a reference to a single cell".to_string(),
-                };
-            }
-            let is_formula = if let Ok(f) = self.get_cell_formula(left.sheet, left.row, left.column)
-            {
-                f.is_some()
-            } else {
-                false
-            };
-            CalcResult::Boolean(is_formula)
-        } else {
-            CalcResult::Error {
+        let (left, right) = match self.get_reference(&args[0], cell) {
+            Ok(range) => (range.left, range.right),
+            Err(error) => return error,
+        };
+        if left.sheet != right.sheet {
+            return CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell,
-                message: "Argument must be a reference".to_string(),
-            }
+                message: "3D ranges not supported".to_string(),
+            };
         }
+        if left.row != right.row && left.column != right.column {
+            // FIXME: Implicit intersection or dynamic arrays
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "argument must be a reference to a single cell".to_string(),
+            };
+        }
+        let is_formula = if let Ok(f) = self.get_cell_formula(left.sheet, left.row, left.column) {
+            f.is_some()
+        } else {
+            false
+        };
+        CalcResult::Boolean(is_formula)
     }
 
     pub(crate) fn fn_errortype(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -398,18 +392,10 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
         let reference = if arg_count == 2 {
-            match self.evaluate_node_with_reference(&args[1], cell) {
-                CalcResult::Range { left, right: _ } => {
-                    // we just take the left cell of the range
-                    left
-                }
-                _ => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Argument must be a reference".to_string(),
-                    }
-                }
+            match self.get_reference(&args[1], cell) {
+                // we just take the top-left cell of the reference
+                Ok(range) => range.left,
+                Err(error) => return error,
             }
         } else {
             CellReferenceIndex {
