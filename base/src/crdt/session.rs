@@ -739,6 +739,11 @@ struct Touched {
     /// register; content ops mark it too since clearing a cell drops its
     /// link — pass 2 skips the write when unchanged).
     cell_links: BTreeSet<(EntityId, EntityId, EntityId)>,
+    /// Sheets whose merge registers must be re-synced from the post-batch
+    /// model (set by `SetMergedCells` diffs — the engine also emits one on
+    /// every structural op that displaced a merge, so structural batches
+    /// need no extra hook; unchanged corner ids cost no writes).
+    merges: BTreeSet<EntityId>,
     /// Re-sync the named-style definitions from the post-batch model.
     named_styles: bool,
     /// Sheets whose CF registers must be re-synced from the post-batch model
@@ -1852,10 +1857,13 @@ impl Pass1<'_, '_> {
             Diff::SetCellLink {
                 sheet, row, column, ..
             } => self.touch_cell_link(*sheet, *row, *column),
-            // TODO(collab): merged cells are not synced yet (left unsolved on
-            // purpose after the rebase onto main). The merge list stays local
-            // to the replica that changed it.
-            Diff::SetMergedCells { .. } => Ok(()),
+            // Merged cells: pass 2 re-syncs the sheet's merge registers from
+            // the post-batch model (works identically for do and undo).
+            Diff::SetMergedCells { sheet, .. } => {
+                let sheet_id = self.ctx.sheet_at(*sheet)?;
+                self.touched.merges.insert(sheet_id);
+                Ok(())
+            }
             Diff::UpdateDefinedName {
                 name, new_name, ..
             } => {
@@ -2852,6 +2860,10 @@ fn write_final_state(
         }
     }
 
+    for sheet_id in touched.merges.iter().chain(touched.full_sheets.iter()) {
+        sync_merges(txn, maps, um, ctx, shadow, *sheet_id)?;
+    }
+
     for (sheet_id, row_id) in &touched.row_props {
         let Some(sheet) = ctx.sheet_index(*sheet_id) else {
             continue;
@@ -2972,6 +2984,7 @@ fn write_final_state(
     positive_sheets.extend(touched.full_sheets.iter().copied());
     positive_sheets.extend(touched.cell_styles.iter().map(|(s, _, _)| *s));
     positive_sheets.extend(touched.cell_links.iter().map(|(s, _, _)| *s));
+    positive_sheets.extend(touched.merges.iter().copied());
     positive_sheets.extend(touched.cf.iter().copied());
     for sheet_id in positive_sheets {
         if ctx.sheet_index(sheet_id).is_none() {
@@ -3287,6 +3300,59 @@ fn cf_order_from_shadow(shadow: &Projection, sheet_id: EntityId) -> Vec<(EntityI
 /// displacement diverges from the codec's range semantics (e.g. a deleted
 /// range corner leaves the sqref untouched), the model text is re-encoded and
 /// the document follows the engine. Returns whether anything was written.
+/// Compare-and-writes the merge registers of one sheet from the post-batch
+/// model: stale anchors are removed, changed corners rewritten, new merges
+/// added. Structural ops that only shifted a merge leave its ids untouched
+/// and cost nothing here; a delete that clamped a corner is re-anchored to
+/// the surviving id the engine's clamp landed on.
+fn sync_merges(
+    txn: &mut TransactionMut,
+    maps: &SchemaMaps,
+    um: &UserModel,
+    ctx: &OrderCtx,
+    shadow: &Projection,
+    sheet_id: EntityId,
+) -> Result<(), String> {
+    let Some(sheet) = ctx.sheet_index(sheet_id) else {
+        return Ok(()); // deleted later in the same batch
+    };
+    let rows = ctx.order(sheet_id, Axis::Rows)?;
+    let cols = ctx.order(sheet_id, Axis::Columns)?;
+    let mut desired: BTreeMap<(EntityId, EntityId), (EntityId, EntityId)> = BTreeMap::new();
+    for merge in um.model.get_merged_cells(sheet)? {
+        let (Some(row_id), Some(col_id), Some(last_row_id), Some(last_col_id)) = (
+            rows.id_at(merge.row as u32),
+            cols.id_at(merge.column as u32),
+            rows.id_at(merge.last_row() as u32),
+            cols.id_at(merge.last_column() as u32),
+        ) else {
+            return Err("collab: merged cell out of range".to_string());
+        };
+        desired.insert((col_id, row_id), (last_col_id, last_row_id));
+    }
+    let empty = BTreeMap::new();
+    let current = shadow
+        .sheets
+        .get(&sheet_id)
+        .map(|sp| &sp.merges)
+        .unwrap_or(&empty);
+    for anchor in current.keys() {
+        if !desired.contains_key(anchor) {
+            maps.merges.remove(txn, &cell_key(sheet_id, anchor.0, anchor.1));
+        }
+    }
+    for (anchor, corner) in &desired {
+        if current.get(anchor) != Some(corner) {
+            maps.merges.insert(
+                txn,
+                cell_key(sheet_id, anchor.0, anchor.1),
+                merge_value(corner.0, corner.1).as_str(),
+            );
+        }
+    }
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn sync_cf(
     txn: &mut TransactionMut,
