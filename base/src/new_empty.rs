@@ -106,41 +106,6 @@ impl<'a, A: Position> Model<'a, A> {
         }
     }
 
-    // This function parses all the internal formulas in all the worksheets
-    // (in the default language ("en") and locale ("en") and the RC format)
-    pub(crate) fn parse_formulas(&mut self) {
-        let locale = self.locale;
-        let language = self.language;
-
-        self.parser.set_locale(get_default_locale());
-        self.parser.set_language(get_default_language());
-        self.parser.set_lexer_mode(LexerMode::R1C1);
-        // The lookup of the shared formulas follows the parsed formulas: both
-        // are made from the lists of the sheets, here.
-        self.shared_formula_lookup.clear();
-        let worksheets = &self.workbook.worksheets;
-        for worksheet in worksheets {
-            let shared_formulas = &worksheet.shared_formulas;
-            self.shared_formula_lookup
-                .push(crate::model::build_shared_formula_lookup(shared_formulas));
-            let cell_reference = CellReferenceRC {
-                sheet: worksheet.get_name(),
-                row: 1,
-                column: 1,
-            };
-            let mut parse_formula = Vec::new();
-            for formula in shared_formulas {
-                let t = self.parser.parse(formula.as_ref(), &cell_reference);
-                let static_result = run_static_analysis_on_node(&t);
-                parse_formula.push((std::sync::Arc::new(t), static_result));
-            }
-            self.parsed_formulas.push(parse_formula);
-        }
-        self.parser.set_lexer_mode(LexerMode::A1);
-        self.parser.set_locale(locale);
-        self.parser.set_language(language);
-    }
-
     pub(crate) fn parse_defined_names(&mut self) {
         // Collect first to avoid borrow conflicts when calling self.parser below.
         let entries: Vec<(String, String, Option<u32>)> = self
@@ -219,6 +184,45 @@ impl<'a, A: Position> Model<'a, A> {
         }
         None
     }
+}
+
+/// Parsing the stored formulas: their storage form is per addressing scheme, so this is too — the
+/// stable twin lowers instead, in [`crate::collab::apply`].
+impl<'a> Model<'a> {
+    // This function parses all the internal formulas in all the worksheets
+    // (in the default language ("en") and locale ("en") and the RC format)
+    pub(crate) fn parse_formulas(&mut self) {
+        let locale = self.locale;
+        let language = self.language;
+
+        self.parser.set_locale(get_default_locale());
+        self.parser.set_language(get_default_language());
+        self.parser.set_lexer_mode(LexerMode::R1C1);
+        // The lookup of the shared formulas follows the parsed formulas: both
+        // are made from the lists of the sheets, here.
+        self.shared_formula_lookup.clear();
+        let worksheets = &self.workbook.worksheets;
+        for worksheet in worksheets {
+            let shared_formulas = &worksheet.shared_formulas;
+            self.shared_formula_lookup
+                .push(crate::model::build_shared_formula_lookup(shared_formulas));
+            let cell_reference = CellReferenceRC {
+                sheet: worksheet.get_name(),
+                row: 1,
+                column: 1,
+            };
+            let mut parse_formula = Vec::new();
+            for formula in shared_formulas {
+                let t = self.parser.parse(formula, &cell_reference);
+                let static_result = run_static_analysis_on_node(&t);
+                parse_formula.push((std::sync::Arc::new(t), static_result));
+            }
+            self.parsed_formulas.push(parse_formula);
+        }
+        self.parser.set_lexer_mode(LexerMode::A1);
+        self.parser.set_locale(locale);
+        self.parser.set_language(language);
+    }
 
     /// Reparses all formulas and defined names
     pub(crate) fn reset_parsed_structures(&mut self) {
@@ -231,9 +235,7 @@ impl<'a, A: Position> Model<'a, A> {
         self.parse_defined_names();
         self.evaluate();
     }
-}
 
-impl<'a> Model<'a> {
     /// Adds a sheet with a automatically generated name
     pub fn new_sheet(&mut self) -> (String, u32) {
         // First we find a name

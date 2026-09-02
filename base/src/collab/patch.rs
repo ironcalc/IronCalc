@@ -41,6 +41,7 @@
 //! decoder instead of erroring, so untrusted bytes must not reach [`decode_patches`] yet.
 
 use crate::cf_types::CfRule;
+use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::FractionalKey;
 use crate::collab::log::Timestamp;
 use crate::collab::model::{Stable, StableCellAddress, StableRange};
@@ -922,7 +923,15 @@ pub enum DefinedNameProperty {
     /// collisions, exactly as a sheet's is.
     Name((Option<SheetId>, String)),
     /// `None` deletes the name. Its address register survives, so an undo can revive it.
-    Definition(Option<String>),
+    Definition(Option<DefinedNameBody>),
+}
+
+/// What a defined name is defined as: the bound stream, and whether the author wrote the leading
+/// `=` that upstream keeps in the text it stores and shows back through `get_defined_name_list`.
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+pub struct DefinedNameBody {
+    pub formula: StableFormula,
+    pub equals: bool,
 }
 
 /// The register a [`DefinedNameProperty`] writes to, without its value.
@@ -1066,10 +1075,10 @@ pub enum CellInput {
     Boolean(bool),
     Text(String),
     Error(Error),
-    Formula(String),
+    Formula(StableFormula),
     /// The anchor of an array formula. The cells it spills into are derived, not stored.
     Array {
-        formula: String,
+        formula: StableFormula,
         range: StableRange,
         kind: ArrayKind,
     },
@@ -1079,8 +1088,14 @@ pub enum CellInput {
 mod test {
     #![allow(clippy::unwrap_used)]
     use super::*;
+    use crate::collab::formula::StableToken;
     use crate::collab::hlc::Hlc;
     use crate::collab::log::CommitId;
+
+    /// A one-token stream: these tests are about the wire format, not about what a formula says.
+    fn formula() -> StableFormula {
+        StableFormula::new(vec![StableToken::Number(3.5)]).expect("a literal is a formula")
+    }
 
     fn key(byte: u8) -> FractionalKey {
         FractionalKey::from([byte, 0, 0, 0, 0].as_slice())
@@ -1166,7 +1181,7 @@ mod test {
                 sheet: 7,
                 anchor: (key(1), key(3)),
                 value: Some(CellInput::Array {
-                    formula: "SEQUENCE(2)".to_string(),
+                    formula: formula(),
                     range: range(),
                     kind: ArrayKind::Dynamic,
                 }),
@@ -1248,7 +1263,10 @@ mod test {
             },
             Patch::SetDefinedName {
                 id: 11,
-                property: DefinedNameProperty::Definition(Some("Sheet1!$A$1".to_string())),
+                property: DefinedNameProperty::Definition(Some(DefinedNameBody {
+                    formula: formula(),
+                    equals: false,
+                })),
                 prev: None,
             },
             Patch::SetNamedStyle {

@@ -483,6 +483,22 @@ impl<'a, A: Position> Model<'a, A> {
         formula: &str,
         context: &CellReferenceRC,
     ) -> Result<String, String> {
+        let (node, had_equals) = self.user_formula_to_node(formula, context)?;
+        let english = to_english_string(&node, context);
+        Ok(if had_equals {
+            format!("={english}")
+        } else {
+            english
+        })
+    }
+
+    /// [`Self::user_formula_to_internal`] stopping at the AST, together with whether the author
+    /// wrote the leading `=` that the stored text keeps.
+    pub(crate) fn user_formula_to_node(
+        &mut self,
+        formula: &str,
+        context: &CellReferenceRC,
+    ) -> Result<(Node, bool), String> {
         let trimmed = formula.trim();
         let had_equals = trimmed.starts_with('=');
         let body = trimmed.strip_prefix('=').unwrap_or(trimmed);
@@ -495,12 +511,7 @@ impl<'a, A: Position> Model<'a, A> {
         if let Node::ParseErrorKind { .. } = node {
             return Err(format!("Invalid formula: '{formula}'"));
         }
-        let english = to_english_string(&node, context);
-        Ok(if had_equals {
-            format!("={english}")
-        } else {
-            english
-        })
+        Ok((node, had_equals))
     }
 
     /// Returns completion information for a formula being edited in a cell.
@@ -1870,8 +1881,10 @@ impl<'a, A: Position> Model<'a, A> {
                     self.language,
                 ),
                 Some(i) => {
-                    let (formula, _static_result) =
-                        &self.parsed_formulas[sheet as usize][i as usize];
+                    // Anchored at the cell it lives in, so its relative references keep their
+                    // offsets; the target only picks where those offsets are rendered from.
+                    let formula = &A::materialize_formula(self, sheet, row, column, i)
+                        .ok_or("missing formula")?;
                     let cell_ref = CellReferenceRC {
                         sheet: self.workbook.worksheets[sheet as usize].get_name(),
                         row: target_row,
@@ -1976,11 +1989,7 @@ impl<'a, A: Position> Model<'a, A> {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let (formula, _static_result) = &self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
+                    let formula = &A::materialize_formula(self, sheet, row, column, formula_index)
                         .ok_or("missing formula")?;
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
@@ -2012,11 +2021,7 @@ impl<'a, A: Position> Model<'a, A> {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let (formula, _static_result) = &self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
+                    let formula = &A::materialize_formula(self, sheet, row, column, formula_index)
                         .ok_or("missing formula")?;
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
@@ -2943,7 +2948,8 @@ impl<'a, A: Position> Model<'a, A> {
         };
         match cell.get_formula() {
             Some(formula_index) => {
-                let formula = &self.parsed_formulas[sheet as usize][formula_index as usize].0;
+                let formula = &A::materialize_formula(self, sheet, row, column, formula_index)
+                    .ok_or("missing formula")?;
                 let cell_ref = CellReferenceRC {
                     sheet: worksheet.get_name(),
                     row,

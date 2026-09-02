@@ -8,6 +8,9 @@
 
 use crate::cf_types::{CfRuleInput, ConditionalFormattingView};
 use crate::collab::apply::SHEET_NAMES;
+use crate::collab::bind::MintPlan;
+#[cfg(test)]
+use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::{CreateKeys, FractionalIndex, FractionalKey, KeyBuf};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::Timestamp;
@@ -15,17 +18,14 @@ use crate::collab::model::{CollabModel, LocalCommit, Stable, StableCellAddress, 
 use crate::collab::naming::{defined_name_id, stable_id};
 use crate::collab::patch::{
     CellInput, CfProperty, ColPropKind, ColProperty, ColState, ColumnSnapshot,
-    ConditionalFormatState, DefinedNameId, DefinedNameProperty, NamedStyle, NamedStyleId,
-    NamedStyleProperty, Patch, RowPropKind, RowProperty, RowSnapshot, RowState, SheetContent,
-    SheetId, SheetPropKind, SheetProperty, SheetRestore, WorkbookPropKind, WorkbookProperty,
+    ConditionalFormatState, DefinedNameBody, DefinedNameId, DefinedNameProperty, NamedStyle,
+    NamedStyleId, NamedStyleProperty, Patch, RowPropKind, RowProperty, RowSnapshot, RowState,
+    SheetContent, SheetId, SheetPropKind, SheetProperty, SheetRestore, WorkbookPropKind,
+    WorkbookProperty,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
     ROW_HEIGHT_FACTOR,
-};
-use crate::expressions::parser::stringify::{
-    rename_defined_name_in_node, rename_sheet_in_node, to_english_string, to_rc_format,
-    to_string_displaced, DisplaceData,
 };
 use crate::expressions::parser::Node;
 use crate::expressions::token::get_error_by_name;
@@ -65,9 +65,9 @@ impl CollabModel<'_> {
         std::mem::take(&mut self.local.pending)
     }
 
-    /// `(worksheet index, sheet id)`, erroring on an unknown sheet exactly as the ordinal model.
-    fn sheet_of(&self, sheet: u32) -> Result<(usize, SheetId), String> {
-        Ok((sheet as usize, self.workbook.worksheet(sheet)?.sheet_id))
+    /// The id of the sheet at index `sheet`.
+    fn sheet_of(&self, sheet: u32) -> Result<SheetId, String> {
+        Ok(self.workbook.worksheet(sheet)?.sheet_id)
     }
 
     /// A fresh sheet id, hashed from this replica's session and a slot past every id it has seen:
@@ -294,14 +294,11 @@ impl CollabModel<'_> {
                 .get(*si as usize)
                 .cloned() //TODO: we can do better than String::clone
                 .map(CellInput::Text),
-            Cell::CellFormula { f, .. } => {
-                let formula = sheet
-                    .shared_formulas
-                    .get(*f as usize)
-                    .cloned()
-                    .unwrap_or_default();
-                Some(CellInput::Formula(formula))
-            }
+            Cell::CellFormula { f, .. } => sheet
+                .shared_formulas
+                .get(*f as usize)
+                .cloned()
+                .map(CellInput::Formula),
             Cell::EmptyCell { .. } | Cell::ArrayFormula { .. } | Cell::SpillCell { .. } => None,
         }
     }
@@ -324,16 +321,30 @@ impl CollabModel<'_> {
         node
     }
 
+    /// A formula bound as if typed into (`sheet`, `row`, `column`).
+    #[cfg(test)]
+    pub(crate) fn bind_text(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+    ) -> StableFormula {
+        let node = self.parse_at(sheet as usize, row, column, formula);
+        self.bind_formula(&node, sheet, row, column, &mut MintPlan::default())
+            .expect("test formula binds")
+    }
+
     /// The authored contents `value` denotes and the style the ordinal path would leave behind:
     /// the same classification order — quote prefix, formula, number, boolean, error, text.
     fn classify_input(
         &mut self,
-        i: usize,
         sheet: u32,
         row: i32,
         column: i32,
         value: &str,
         mut style: Style,
+        plan: &mut MintPlan,
     ) -> Result<(Option<CellInput>, Style), String> {
         if value.is_empty() {
             return Ok((None, style));
@@ -345,12 +356,15 @@ impl CollabModel<'_> {
         style.quote_prefix = false;
         if let Some(formula) = self.formula_without_prefix(value) {
             let formula = formula.to_string();
-            let node = self.parse_at(i, row, column, &formula);
+            let node = self.parse_at(sheet as usize, row, column, &formula);
             let cell = CellReferenceIndex { sheet, row, column };
             if let Some(units) = self.compute_node_units(&node, &cell) {
                 style.num_fmt = units.get_num_fmt();
             }
-            return Ok((Some(CellInput::Formula(to_rc_format(&node))), style));
+            let bound = self
+                .bind_formula(&node, sheet, row, column, plan)
+                .map_err(|err| format!("Invalid formula: {err}"))?;
+            return Ok((Some(CellInput::Formula(bound)), style));
         }
         // The list of currencies is '$', '€' and the local currency
         let mut currencies = vec!["$", "€"];
@@ -390,7 +404,8 @@ impl CollabModel<'_> {
         input: Option<CellInput>,
         style: Style,
     ) -> Result<Vec<Patch>, String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         let (at, mut patches) = self.resolve_cell(i, id, row, column);
         match input {
             Some(input) => {
@@ -464,7 +479,8 @@ impl CollabModel<'_> {
         if !self.can_clear_range(area)? {
             return Err("Cannot clear the range because it contains array formulas".to_string());
         }
-        let (i, id) = self.sheet_of(area.sheet)?;
+        let id = self.sheet_of(area.sheet)?;
+        let i = area.sheet as usize;
         let sheet = &self.workbook.worksheets[i];
         let mut patches = Vec::new();
         for row in area.row..area.row + area.height {
@@ -486,7 +502,8 @@ impl CollabModel<'_> {
 
     /// Validates that `(sheet, row, column)` is addressable, as the ordinal writers do.
     fn check_cell(&self, sheet: u32, row: i32, column: i32) -> Result<usize, String> {
-        let (i, _) = self.sheet_of(sheet)?;
+        self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if !is_valid_row(row) || !is_valid_column_number(column) {
             return Err("Incorrect row or column".to_string());
         }
@@ -579,10 +596,13 @@ impl CollabModel<'_> {
         column: i32,
         value: String,
     ) -> Result<(), String> {
-        let i = self.check_cell(sheet, row, column)?;
+        self.check_cell(sheet, row, column)?;
         let style = self.get_style_for_cell(sheet, row, column)?;
-        let (input, style) = self.classify_input(i, sheet, row, column, &value, style)?;
-        let patches = self.write_patches(sheet, row, column, input, style)?;
+        let mut plan = MintPlan::default();
+        let (input, style) = self.classify_input(sheet, row, column, &value, style, &mut plan)?;
+        // Whatever the formula names has to exist before the write that names it.
+        let mut patches = self.mint_patches(&plan);
+        patches.extend(self.write_patches(sheet, row, column, input, style)?);
         self.commit_local(patches);
         Ok(())
     }
@@ -663,8 +683,18 @@ impl CollabModel<'_> {
         };
         let body = body.to_string();
         let node = self.parse_at(i, row, column, &body);
-        let input = Some(CellInput::Formula(to_rc_format(&node)));
-        let patches = self.write_patches(sheet, row, column, input, style)?;
+        let mut plan = MintPlan::default();
+        let bound = self
+            .bind_formula(&node, sheet, row, column, &mut plan)
+            .map_err(|err| format!("Invalid formula: {err}"))?;
+        let mut patches = self.mint_patches(&plan);
+        patches.extend(self.write_patches(
+            sheet,
+            row,
+            column,
+            Some(CellInput::Formula(bound)),
+            style,
+        )?);
         self.commit_local(patches);
         Ok(())
     }
@@ -672,7 +702,7 @@ impl CollabModel<'_> {
     /// Clears a cell's contents *and* its formatting.
     pub fn cell_clear_all(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
         let i = self.check_cell(sheet, row, column)?;
-        let (_, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
         let (at, mut patches) = self.resolve_cell(i, id, row, column);
         patches.extend(self.clear_patches(i, id, at, true));
         self.commit_local(patches);
@@ -709,7 +739,7 @@ impl CollabModel<'_> {
         style: &Style,
     ) -> Result<(), String> {
         let i = self.check_cell(sheet, row, column)?;
-        let (_, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
         let (at, mut patches) = self.resolve_cell(i, id, row, column);
         let prev = self.get_cell_style_or_none(sheet, row, column)?;
         patches.push(Patch::SetCellStyle {
@@ -749,7 +779,8 @@ impl CollabModel<'_> {
 
     /// Changes the height of a row.
     pub fn set_row_height(&mut self, sheet: u32, row: i32, height: f64) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if !is_valid_row(row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
@@ -772,7 +803,8 @@ impl CollabModel<'_> {
 
     /// Changes the hidden status of a row.
     pub fn set_row_hidden(&mut self, sheet: u32, row: i32, hidden: bool) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if !is_valid_row(row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
@@ -792,7 +824,8 @@ impl CollabModel<'_> {
 
     /// Sets the style of a whole row.
     pub fn set_row_style(&mut self, sheet: u32, row: i32, style: &Style) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if !is_valid_row(row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
@@ -812,7 +845,8 @@ impl CollabModel<'_> {
 
     /// Resets a row's style to the default, if it has one.
     pub fn delete_row_style(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         // No row validation, mirroring the ordinal model — which validates the column but not the row.
         let Some(key) = Stable::row_at(&self.workbook.worksheets[i].index, row) else {
             return Ok(());
@@ -839,7 +873,8 @@ impl CollabModel<'_> {
         column: i32,
         property: ColProperty,
     ) -> Result<Vec<Patch>, String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
         }
@@ -894,7 +929,8 @@ impl CollabModel<'_> {
 
     /// Resets a column's style to the default, if it has one.
     pub fn delete_column_style(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        let (i, _) = self.sheet_of(sheet)?;
+        self.sheet_of(sheet)?;
+        let i = sheet as usize;
         let Some(key) = Stable::col_at(&self.workbook.worksheets[i].index, column) else {
             return Ok(());
         };
@@ -909,7 +945,8 @@ impl CollabModel<'_> {
 
     /// Writes a sheet-scoped property, validating nothing beyond the sheet existing.
     fn commit_sheet_property(&mut self, sheet: u32, property: SheetProperty) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         let prev = self.sheet_prev(i, property.kind());
         self.commit_local(vec![Patch::SetSheetProperty {
             sheet: id,
@@ -963,7 +1000,8 @@ impl CollabModel<'_> {
         range: &RangeRef,
         merged: bool,
     ) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         let mut patches = Vec::new();
         let range = self.stable_range(i, id, range, &mut patches);
         let prev = self.workbook.worksheets[i]
@@ -989,7 +1027,7 @@ impl CollabModel<'_> {
         comment: Option<(String, String)>,
     ) -> Result<(), String> {
         let i = self.check_cell(sheet, row, column)?;
-        let (_, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
         let (at, mut patches) = self.resolve_cell(i, id, row, column);
         let prev = self.workbook.worksheets[i]
             .comments
@@ -1061,180 +1099,11 @@ impl CollabModel<'_> {
     }
 }
 
-/// Structural edits, and the formula rewriting they drag along.
+/// Structural edits.
 ///
-/// Rewriting happens on the author only: it turns into ordinary `SetCellValue`/`SetDefinedName`
-/// patches shipped in the same commit as the structural ones, so a replica receiving them applies
-/// patches and rewrites nothing.
+/// Nothing rewrites a formula any more: a bound reference names rows, columns and sheets by
+/// identity, so an insert, a delete or a move changes what it resolves to and never its storage.
 impl CollabModel<'_> {
-    /// Every formula cell as `(worksheet, sheet id, ordinal row, ordinal column, address, formula
-    /// index)`, in ordinal order so the patches a rewrite emits do not depend on hash iteration.
-    fn formula_cells(&self) -> Vec<(usize, SheetId, i32, i32, StableCellAddress, i32)> {
-        let mut cells = Vec::new();
-        for (i, ws) in self.workbook.worksheets.iter().enumerate() {
-            for (row_key, row_data) in &ws.sheet_data {
-                let Some(row) = Stable::row_ordinal(&ws.index, row_key) else {
-                    continue;
-                };
-                for (col_key, cell) in row_data {
-                    let (Some(column), Some(f)) =
-                        (Stable::col_ordinal(&ws.index, col_key), cell.get_formula())
-                    else {
-                        continue;
-                    };
-                    let at = (row_key.clone(), col_key.clone());
-                    cells.push((i, ws.sheet_id, row, column, at, f));
-                }
-            }
-        }
-        cells.sort_by_key(|(i, _, row, column, ..)| (*i, *row, *column));
-        cells
-    }
-
-    /// Re-emits every formula whose stored text a structural edit changes.
-    ///
-    /// Two anchors are in play, and both matter. The A1 text a formula *means* is rendered against
-    /// the anchor it sits at **now** — that is where its R1C1 offsets resolve, and what the
-    /// displacement is computed over. The result is then parsed back against the anchor it will sit
-    /// at **once the patches apply**, which `anchor` supplies and which drops the cells the edit
-    /// removes. Ordinal addressing gets the same two anchors by moving the cell first and
-    /// rewriting after; identity addressing has to name them.
-    fn displace_formulas(
-        &mut self,
-        displace: &DisplaceData,
-        anchor: impl Fn(usize, i32, i32) -> Option<(i32, i32)>,
-    ) -> Vec<Patch> {
-        let mut patches = Vec::new();
-        for (i, id, row, column, at, f) in self.formula_cells() {
-            let Some((moved_row, moved_column)) = anchor(i, row, column) else {
-                continue;
-            };
-            let Some(node) = self
-                .parsed_formulas
-                .get(i)
-                .and_then(|sheet| sheet.get(f as usize))
-                .map(|(node, _)| node.clone())
-            else {
-                continue;
-            };
-            let context = CellReferenceRC {
-                sheet: self.workbook.worksheets[i].get_name(),
-                row,
-                column,
-            };
-            let displaced =
-                to_string_displaced(&node, &context, displace, self.locale, self.language);
-            let parsed = self.parse_at(i, moved_row, moved_column, &displaced);
-            if let Some(patch) = self.formula_patch(i, id, at, f, to_rc_format(&parsed)) {
-                patches.push(patch);
-            }
-        }
-        patches
-    }
-
-    /// The patch re-emitting the formula at `at` as `formula`, `None` when the stored text already
-    /// says that.
-    fn formula_patch(
-        &self,
-        i: usize,
-        id: SheetId,
-        at: StableCellAddress,
-        f: i32,
-        formula: String,
-    ) -> Option<Patch> {
-        if self.workbook.worksheets[i].shared_formulas.get(f as usize) == Some(&formula) {
-            return None;
-        }
-        let prev = self.cell_input(i, &at);
-        Some(Patch::SetCellValue {
-            sheet: id,
-            at,
-            value: Some(CellInput::Formula(formula)),
-            ts: None,
-            prev: Box::new(prev),
-        })
-    }
-
-    /// [`Self::displace_formulas`] for a move, which upstream composes as one step per row or
-    /// column: each step displaces the references *and* carries the anchor along with the cells it
-    /// shifts, so the whole block is a fold over the steps.
-    fn displace_moves(&mut self, i: usize, steps: &[DisplaceData]) -> Vec<Patch> {
-        let mut patches = Vec::new();
-        for (j, id, row, column, at, f) in self.formula_cells() {
-            let Some(mut node) = self
-                .parsed_formulas
-                .get(j)
-                .and_then(|sheet| sheet.get(f as usize))
-                .map(|(node, _)| node.clone())
-            else {
-                continue;
-            };
-            let (mut row, mut column) = (row, column);
-            for step in steps {
-                let context = CellReferenceRC {
-                    sheet: self.workbook.worksheets[j].get_name(),
-                    row,
-                    column,
-                };
-                let displaced =
-                    to_string_displaced(&node, &context, step, self.locale, self.language);
-                if j == i {
-                    (row, column) = move_anchor(step, row, column);
-                }
-                node = self.parse_at(j, row, column, &displaced);
-            }
-            if let Some(patch) = self.formula_patch(j, id, at, f, to_rc_format(&node)) {
-                patches.push(patch);
-            }
-        }
-        patches
-    }
-
-    /// Re-emits every defined name whose formula `steps` change, folded in order.
-    fn displace_defined_names(&mut self, steps: &[DisplaceData]) -> Vec<Patch> {
-        let context = self.defined_name_context();
-        let names = self.live_defined_names();
-        let mut patches = Vec::new();
-        for (id, formula) in names {
-            let body = formula.strip_prefix('=').unwrap_or(&formula).to_string();
-            let mut displaced = body.clone();
-            for step in steps {
-                let node = self.parse_internal_formula(&displaced, &context);
-                // Defined names are stored in English (see `parse_internal_formula`).
-                displaced = to_string_displaced(
-                    &node,
-                    &context,
-                    step,
-                    get_default_locale(),
-                    get_default_language(),
-                );
-            }
-            if displaced == body {
-                continue;
-            }
-            patches.push(Patch::SetDefinedName {
-                id,
-                property: DefinedNameProperty::Definition(Some(displaced)),
-                prev: Some(DefinedNameProperty::Definition(Some(formula))),
-            });
-        }
-        patches
-    }
-
-    /// Every live defined name as `(id, formula)`, ordered by id so a commit does not depend on
-    /// the register map's iteration order.
-    fn live_defined_names(&self) -> Vec<(DefinedNameId, String)> {
-        let mut names: Vec<(DefinedNameId, String)> = self
-            .workbook
-            .meta
-            .defined_names
-            .iter()
-            .filter_map(|(id, state)| state.formula.value.clone().map(|f| (*id, f)))
-            .collect();
-        names.sort_by_key(|(id, _)| *id);
-        names
-    }
-
     /// The keys `count` rows or columns inserted at ordinal `at` take, together with whatever had
     /// to be materialized to reach that far. Empty when the axis has no room to name them.
     fn insert_keys(index: &FractionalIndex, at: i32, count: i32) -> Vec<FractionalKey> {
@@ -1436,7 +1305,7 @@ impl CollabModel<'_> {
                 .collect(),
             cell_values,
             cell_styles,
-            merge_cells: sheet.merge_cells.clone(),
+            merge_cells: sheet.merged_cells.clone(),
             comments: sheet.comments.clone(),
             // `cf_order` is kept aligned with the rules themselves, entry by entry.
             conditional_formatting: sheet
@@ -1460,7 +1329,8 @@ impl CollabModel<'_> {
 
     /// Inserts `row_count` rows above `row`, displacing the formulas that referenced across it.
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if row_count <= 0 {
             return Err("Cannot add a negative number of cells :)".to_string());
         }
@@ -1471,24 +1341,15 @@ impl CollabModel<'_> {
         if keys.is_empty() {
             return Err("Cannot insert rows there".to_string());
         }
-        let mut patches = vec![Patch::InsertRows { sheet: id, keys }];
-        let displace = DisplaceData::Row {
-            sheet,
-            row,
-            delta: row_count,
-        };
-        let moved = |s: usize, r: i32, c: i32| {
-            Some((if s == i && r >= row { r + row_count } else { r }, c))
-        };
-        patches.extend(self.displace_formulas(&displace, moved));
-        patches.extend(self.displace_defined_names(&[displace]));
+        let patches = vec![Patch::InsertRows { sheet: id, keys }];
         self.commit_local(patches);
         Ok(())
     }
 
     /// Deletes `row_count` rows starting at `row`, displacing the formulas that referenced them.
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if row_count <= 0 {
             return Err("Please use insert rows instead".to_string());
         }
@@ -1500,23 +1361,11 @@ impl CollabModel<'_> {
             .filter_map(|r| Stable::row_at(index, r))
             .collect();
         let prev = self.row_snapshots(i, &keys);
-        let mut patches = vec![Patch::DeleteRows {
+        let patches = vec![Patch::DeleteRows {
             sheet: id,
             keys,
             prev,
         }];
-        let displace = DisplaceData::Row {
-            sheet,
-            row,
-            delta: -row_count,
-        };
-        let moved = |s: usize, r: i32, c: i32| match () {
-            _ if s != i || r < row => Some((r, c)),
-            _ if r < row + row_count => None,
-            _ => Some((r - row_count, c)),
-        };
-        patches.extend(self.displace_formulas(&displace, moved));
-        patches.extend(self.displace_defined_names(&[displace]));
         self.commit_local(patches);
         Ok(())
     }
@@ -1528,7 +1377,8 @@ impl CollabModel<'_> {
         column: i32,
         column_count: i32,
     ) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if column_count <= 0 {
             return Err("Cannot add a negative number of cells :)".to_string());
         }
@@ -1543,24 +1393,7 @@ impl CollabModel<'_> {
         if keys.is_empty() {
             return Err("Cannot insert columns there".to_string());
         }
-        let mut patches = vec![Patch::InsertColumns { sheet: id, keys }];
-        let displace = DisplaceData::Column {
-            sheet,
-            column,
-            delta: column_count,
-        };
-        let moved = |s: usize, r: i32, c: i32| {
-            Some((
-                r,
-                if s == i && c >= column {
-                    c + column_count
-                } else {
-                    c
-                },
-            ))
-        };
-        patches.extend(self.displace_formulas(&displace, moved));
-        patches.extend(self.displace_defined_names(&[displace]));
+        let patches = vec![Patch::InsertColumns { sheet: id, keys }];
         self.commit_local(patches);
         Ok(())
     }
@@ -1572,7 +1405,8 @@ impl CollabModel<'_> {
         column: i32,
         column_count: i32,
     ) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if column_count <= 0 {
             return Err("Please use insert columns instead".to_string());
         }
@@ -1584,23 +1418,11 @@ impl CollabModel<'_> {
             .filter_map(|c| Stable::col_at(index, c))
             .collect();
         let prev = self.column_snapshots(i, &keys);
-        let mut patches = vec![Patch::DeleteColumns {
+        let patches = vec![Patch::DeleteColumns {
             sheet: id,
             keys,
             prev,
         }];
-        let displace = DisplaceData::Column {
-            sheet,
-            column,
-            delta: -column_count,
-        };
-        let moved = |s: usize, r: i32, c: i32| match () {
-            _ if s != i || c < column => Some((r, c)),
-            _ if c < column + column_count => None,
-            _ => Some((r, c - column_count)),
-        };
-        patches.extend(self.displace_formulas(&displace, moved));
-        patches.extend(self.displace_defined_names(&[displace]));
         self.commit_local(patches);
         Ok(())
     }
@@ -1641,7 +1463,8 @@ impl CollabModel<'_> {
         if !(1..=LAST_ROW).contains(&row) || !(1..=LAST_ROW).contains(&(row + row_count - 1)) {
             return Err("Initial row out of boundaries".to_string());
         }
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         let index = &self.workbook.worksheets[i].index.rows;
         let (source, dest) = Self::move_span(row, row_count, delta);
         // `plan_move` rebuilds this same tail internally, deterministically, to plan over it.
@@ -1664,13 +1487,6 @@ impl CollabModel<'_> {
             moves,
             prev,
         });
-        let steps = Self::move_steps(row, row_count, delta, |r| DisplaceData::RowMove {
-            sheet,
-            row: r,
-            delta,
-        });
-        patches.extend(self.displace_moves(i, &steps));
-        patches.extend(self.displace_defined_names(&steps));
         self.commit_local(patches);
         Ok(())
     }
@@ -1696,7 +1512,8 @@ impl CollabModel<'_> {
         {
             return Err("Initial column out of boundaries".to_string());
         }
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         let index = &self.workbook.worksheets[i].index.cols;
         let (source, dest) = Self::move_span(column, column_count, delta);
         // `plan_move` rebuilds this same tail internally, deterministically, to plan over it.
@@ -1719,31 +1536,8 @@ impl CollabModel<'_> {
             moves,
             prev,
         });
-        let steps = Self::move_steps(column, column_count, delta, |c| DisplaceData::ColumnMove {
-            sheet,
-            column: c,
-            delta,
-        });
-        patches.extend(self.displace_moves(i, &steps));
-        patches.extend(self.displace_defined_names(&steps));
         self.commit_local(patches);
         Ok(())
-    }
-
-    /// The single-element steps a block move is composed of, in the order upstream applies them:
-    /// from the far end of the block, so each step meets the ordinals the last one left.
-    fn move_steps(
-        first: i32,
-        count: i32,
-        delta: i32,
-        step: impl Fn(i32) -> DisplaceData,
-    ) -> Vec<DisplaceData> {
-        let range = first..first + count;
-        if delta > 0 {
-            range.rev().map(step).collect()
-        } else {
-            range.map(step).collect()
-        }
     }
 
     /// Deletes a sheet by index. Fails if it is the last one.
@@ -1751,7 +1545,8 @@ impl CollabModel<'_> {
         if self.workbook.worksheets.len() == 1 {
             return Err("Cannot delete only sheet".to_string());
         }
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         // The authored name and the filed key, so the undo revives the sheet as it was filed.
         let prev = match (
             self.authored_name(id).cloned(),
@@ -1778,7 +1573,8 @@ impl CollabModel<'_> {
     }
 
     pub fn duplicate_sheet(&mut self, source: u32) -> Result<(String, u32), String> {
-        let (i, source_id) = self.sheet_of(source)?;
+        let source_id = self.sheet_of(source)?;
+        let i = source as usize;
         // The repair pass names sheets; asking it here gives the copy the name it would keep
         // anyway. A peer authoring the same name concurrently falls through to that pass.
         let mut taken =
@@ -1787,28 +1583,12 @@ impl CollabModel<'_> {
         let id = self.new_sheet_id();
         let position = self.insert_position(i + 1)?;
 
-        // The cached nodes were parsed in the source's context, so an implicit reference already
-        // resolves to it — and, carrying no name, follows the copy once it hosts the formula.
-        let source_formulas = self.workbook.worksheets[i].shared_formulas.clone();
-        let retargeted: Vec<String> = self
-            .parsed_formulas
-            .get(i)
-            .into_iter()
-            .flatten()
-            .map(|(node, _)| {
-                let mut node = node.clone();
-                rename_sheet_in_node(&mut node, source, &new_name);
-                to_rc_format(&node)
-            })
-            .collect();
+        // The copy's keys are the source's, so an own-sheet reference keeps working as it is; only
+        // one naming the source *by id* has to be pointed at the copy instead.
         let mut content = self.sheet_content(i);
         for (_, input) in &mut content.cell_values {
             if let CellInput::Formula(formula) = input {
-                if let Some(k) = source_formulas.iter().position(|f| f == formula) {
-                    if let Some(text) = retargeted.get(k) {
-                        *formula = text.clone();
-                    }
-                }
+                formula.retarget_sheet(source_id, id);
             }
         }
         let mut patches = vec![Patch::AddSheet {
@@ -1820,38 +1600,30 @@ impl CollabModel<'_> {
 
         // Names local to the source are always copied; a global one only when it names the source.
         // Locals come first so that, with the de-dup below, they win over a global of the same name.
-        let mut names: Vec<(bool, String, String)> = self
-            .workbook
-            .defined_names
-            .iter()
-            .filter(|dn| dn.sheet_id == Some(source_id) || dn.sheet_id.is_none())
-            .map(|dn| (dn.sheet_id.is_none(), dn.name.clone(), dn.formula.clone()))
+        let mut names: Vec<(bool, String, DefinedNameBody)> = self
+            .defined_name_display()
+            .into_iter()
+            .filter(|(_, scope, _)| *scope == Some(source_id) || scope.is_none())
+            .filter_map(|(entry, scope, name)| {
+                Some((scope.is_none(), name, self.formula_of(entry)?))
+            })
             .collect();
         names.sort_by_key(|(is_global, _, _)| *is_global);
-        let context = self.defined_name_context();
         let mut copied: Vec<String> = Vec::new();
-        for (is_global, name, formula) in names {
+        for (is_global, name, mut body) in names {
             if copied.iter().any(|n| n.eq_ignore_ascii_case(&name)) {
                 continue;
             }
-            let had_equals = formula.trim_start().starts_with('=');
-            let body = formula.strip_prefix('=').unwrap_or(&formula).to_string();
-            let mut node = self.parse_internal_formula(&body, &context);
-            let before = to_english_string(&node, &context);
-            rename_sheet_in_node(&mut node, source, &new_name);
-            let after = to_english_string(&node, &context);
-            if is_global && before == after {
+            // The retarget must run for every copied name, not only when the result is inspected.
+            let changed = body.formula.retarget_sheet(source_id, id);
+            if is_global && !changed {
                 continue;
             }
             copied.push(name.clone());
             let new_id = self.new_defined_name_id(Some(id), &name);
             patches.push(Patch::SetDefinedName {
                 id: new_id,
-                property: DefinedNameProperty::Definition(Some(if had_equals {
-                    format!("={after}")
-                } else {
-                    after
-                })),
+                property: DefinedNameProperty::Definition(Some(body)),
                 prev: Some(DefinedNameProperty::Definition(None)),
             });
             patches.push(Patch::SetDefinedName {
@@ -1866,9 +1638,10 @@ impl CollabModel<'_> {
         Ok((new_name, at))
     }
 
-    /// Renames a sheet, rewriting every formula and defined name that named it.
+    /// Renames a sheet. Formulas naming it follow by themselves.
     pub fn rename_sheet_by_index(&mut self, sheet: u32, new_name: &str) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         if !is_valid_sheet_name(new_name) {
             return Err(format!("Invalid name for a sheet: '{new_name}'."));
         }
@@ -1879,51 +1652,13 @@ impl CollabModel<'_> {
             return Err(format!("Sheet already exists: '{new_name}'."));
         }
         let prev = self.sheet_prev(i, SheetPropKind::Name);
-        let mut patches = vec![Patch::SetSheetProperty {
+        let patches = vec![Patch::SetSheetProperty {
             sheet: id,
             property: SheetProperty::Name(new_name.to_string()),
             prev,
         }];
-        // Stored formulas are R1C1 and position-independent, so a rename is a rewrite of the text
-        // alone — no anchor is involved.
-        for (j, id, _, _, at, f) in self.formula_cells() {
-            let Some(mut node) = self
-                .parsed_formulas
-                .get(j)
-                .and_then(|s| s.get(f as usize))
-                .map(|(node, _)| node.clone())
-            else {
-                continue;
-            };
-            rename_sheet_in_node(&mut node, sheet, new_name);
-            let renamed = to_rc_format(&node);
-            if self.workbook.worksheets[j].shared_formulas.get(f as usize) == Some(&renamed) {
-                continue;
-            }
-            let prev = self.cell_input(j, &at);
-            patches.push(Patch::SetCellValue {
-                sheet: id,
-                at,
-                value: Some(CellInput::Formula(renamed)),
-                ts: None,
-                prev: Box::new(prev),
-            });
-        }
-        let context = self.defined_name_context();
-        for (id, formula) in self.live_defined_names() {
-            let body = formula.strip_prefix('=').unwrap_or(&formula).to_string();
-            let mut node = self.parse_internal_formula(&body, &context);
-            rename_sheet_in_node(&mut node, sheet, new_name);
-            let renamed = to_english_string(&node, &context);
-            if renamed == body {
-                continue;
-            }
-            patches.push(Patch::SetDefinedName {
-                id,
-                property: DefinedNameProperty::Definition(Some(renamed)),
-                prev: Some(DefinedNameProperty::Definition(Some(formula))),
-            });
-        }
+        // Nothing else to write: a bound reference names the sheet by id, so it renders under the
+        // new name the moment the register does.
         self.commit_local(patches);
         self.evaluate();
         Ok(())
@@ -1983,10 +1718,27 @@ impl CollabModel<'_> {
             .map(|(id, ..)| id)
     }
 
-    /// The formula `id` currently holds, `None` once it has been deleted.
-    pub(crate) fn formula_of(&self, id: DefinedNameId) -> Option<String> {
+    /// The body `id` currently holds, `None` once it has been deleted.
+    pub(crate) fn formula_of(&self, id: DefinedNameId) -> Option<DefinedNameBody> {
         let state = self.workbook.meta.defined_names.get(&id)?;
         state.formula.value.clone()
+    }
+
+    /// Parses a defined-name body as the user typed it and binds it against the name context —
+    /// which is also what a `Current` sheet reference inside it resolves to.
+    fn bind_defined_name(
+        &mut self,
+        formula: &str,
+        plan: &mut MintPlan,
+    ) -> Result<DefinedNameBody, String> {
+        let context = self.defined_name_context();
+        let (node, equals) = self.user_formula_to_node(formula, &context)?;
+        // The context is the first worksheet's A1, so that is the host — and what a reference
+        // carrying no sheet prefix binds to.
+        let formula = self
+            .bind_formula(&node, 0, 1, 1, plan)
+            .map_err(|err| format!("Invalid formula: {err}"))?;
+        Ok(DefinedNameBody { formula, equals })
     }
 
     /// Adds a defined name, global when `scope` is `None`.
@@ -2003,10 +1755,11 @@ impl CollabModel<'_> {
         if self.defined_name_id_of(sheet_id, name).is_some() {
             return Err("Name: Defined name already exists".to_string());
         }
-        let context = self.defined_name_context();
-        let formula = self.user_formula_to_internal(formula, &context)?;
+        let mut plan = MintPlan::default();
+        let formula = self.bind_defined_name(formula, &mut plan)?;
         let id = self.new_defined_name_id(sheet_id, name);
-        self.commit_local(vec![
+        let mut patches = self.mint_patches(&plan);
+        patches.extend([
             Patch::SetDefinedName {
                 id,
                 // Nothing was defined under this id, which is what undoing the create puts back.
@@ -2019,6 +1772,7 @@ impl CollabModel<'_> {
                 prev: None,
             },
         ]);
+        self.commit_local(patches);
         Ok(())
     }
 
@@ -2058,9 +1812,9 @@ impl CollabModel<'_> {
             return Err("Defined name not found".to_string());
         };
         let old_formula = self.formula_of(id);
-        let context = self.defined_name_context();
-        let formula = self.user_formula_to_internal(new_formula, &context)?;
-        let mut patches = Vec::new();
+        let mut plan = MintPlan::default();
+        let formula = self.bind_defined_name(new_formula, &mut plan)?;
+        let mut patches = self.mint_patches(&plan);
         if renaming {
             let prev = self
                 .workbook
@@ -2073,29 +1827,7 @@ impl CollabModel<'_> {
                 property: DefinedNameProperty::Name((new_sheet_id, new_name.to_string())),
                 prev,
             });
-            for (j, id, _, _, at, f) in self.formula_cells() {
-                let Some(mut node) = self
-                    .parsed_formulas
-                    .get(j)
-                    .and_then(|s| s.get(f as usize))
-                    .map(|(node, _)| node.clone())
-                else {
-                    continue;
-                };
-                rename_defined_name_in_node(&mut node, name, scope, new_name);
-                let renamed = to_rc_format(&node);
-                if self.workbook.worksheets[j].shared_formulas.get(f as usize) == Some(&renamed) {
-                    continue;
-                }
-                let prev = self.cell_input(j, &at);
-                patches.push(Patch::SetCellValue {
-                    sheet: id,
-                    at,
-                    value: Some(CellInput::Formula(renamed)),
-                    ts: None,
-                    prev: Box::new(prev),
-                });
-            }
+            // Nothing else to write: a bound formula names the entry by id, not by text.
         }
         if old_formula.as_ref() != Some(&formula) {
             patches.push(Patch::SetDefinedName {
@@ -2119,7 +1851,8 @@ impl CollabModel<'_> {
         range: &str,
         rule: CfRuleInput,
     ) -> Result<u32, String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         let ordinal = RangeRef::parse_sqref(range);
         if ordinal.is_empty() {
             return Err(format!("Invalid conditional formatting range: '{range}'"));
@@ -2158,7 +1891,8 @@ impl CollabModel<'_> {
         sheet: u32,
         index: usize,
     ) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         let ws = &self.workbook.worksheets[i];
         let Some(key) = ws.index.registers.cf_order.get(index).cloned() else {
             return Err(format!(
@@ -2189,7 +1923,8 @@ impl CollabModel<'_> {
         new_range: &str,
         new_rule: CfRuleInput,
     ) -> Result<(), String> {
-        let (i, id) = self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
         let ordinal = RangeRef::parse_sqref(new_range);
         if ordinal.is_empty() {
             return Err(format!(
@@ -2435,35 +2170,6 @@ impl CollabModel<'_> {
             }
         }
         patches
-    }
-}
-
-/// Where one move step lands the ordinal `at`, `pivot` being the element it moves: the mapping
-/// [`to_string_displaced`] applies to references, and the one the cells themselves follow.
-fn move_shift(at: i32, pivot: i32, delta: i32) -> i32 {
-    if at == pivot {
-        at + delta
-    } else if delta > 0 && at > pivot && at <= pivot + delta {
-        at - 1
-    } else if delta < 0 && at < pivot && at >= pivot + delta {
-        at + 1
-    } else {
-        at
-    }
-}
-
-/// [`move_shift`] over the anchor of a cell, along whichever axis `step` moves.
-fn move_anchor(step: &DisplaceData, row: i32, column: i32) -> (i32, i32) {
-    match step {
-        DisplaceData::RowMove {
-            row: pivot, delta, ..
-        } => (move_shift(row, *pivot, *delta), column),
-        DisplaceData::ColumnMove {
-            column: pivot,
-            delta,
-            ..
-        } => (row, move_shift(column, *pivot, *delta)),
-        _ => (row, column),
     }
 }
 
@@ -3952,8 +3658,8 @@ mod test {
         assert_eq!(a.get_cell_style_or_none(1, 1, 1), Ok(Some(style)));
         assert_eq!(a.get_row_height(1, 2), Ok(42.0));
         assert_eq!(
-            a.workbook.worksheets[1].merge_cells,
-            a.workbook.worksheets[0].merge_cells
+            a.workbook.worksheets[1].merged_cells,
+            a.workbook.worksheets[0].merged_cells
         );
 
         // Upstream's naming rules: the local name is copied as a local of the copy, the global one
@@ -4185,18 +3891,149 @@ mod test {
         assert_eq!(b.workbook, a.workbook);
     }
 
+    /// Divergence from ordinal, by design: a reference has to bind to something, so naming a sheet
+    /// that is not there is refused at write time rather than stored and evaluated to `#REF!`.
     #[test]
-    fn new_sheet_reevaluates_stale_refs() {
+    fn formula_naming_an_absent_sheet_is_refused() {
         let mut a = CollabModel::new(1);
         a.new_sheet();
         a.set_user_input(0, 1, 1, "7".to_string()).unwrap();
+        assert!(a.set_user_input(0, 2, 1, "=Sheet2!C3".to_string()).is_err());
+        a.evaluate();
+        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("".to_string()));
+
+        // Once the sheet is there the same input binds and evaluates.
+        a.new_sheet();
         a.set_user_input(0, 2, 1, "=Sheet2!C3".to_string()).unwrap();
         a.evaluate();
-        // No sheet named Sheet2 yet: the reference is broken, as upstream agrees.
-        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("#REF!".to_string()));
-
-        // Creating "Sheet2" resolves the reference: `new_sheet` re-evaluated, as upstream's does.
-        a.new_sheet();
         assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("0".to_string()));
+    }
+
+    /// Two cells at different positions can author the identical binding — same keys, same
+    /// relative flags — so they intern one entry.
+    #[test]
+    fn shared_binding_serves_every_host() {
+        let mut model = CollabModel::new(1);
+        model.new_sheet();
+        model.set_user_input(0, 1, 1, "5".to_string()).unwrap();
+        model.set_user_input(0, 1, 4, "=A1".to_string()).unwrap();
+        model.set_user_input(0, 1, 5, "=A1".to_string()).unwrap();
+        model.evaluate();
+        // One entry, because both cells bound to the same key with the same flags.
+        assert_eq!(model.workbook.worksheets[0].shared_formulas.len(), 1);
+        assert_eq!(model.get_formatted_cell_value(0, 1, 4), Ok("5".to_string()));
+        assert_eq!(model.get_formatted_cell_value(0, 1, 5), Ok("5".to_string()));
+
+        // A row above everything: the target and both hosts slide down together.
+        model.insert_rows(0, 1, 1).unwrap();
+        model.evaluate();
+        assert_eq!(model.get_formatted_cell_value(0, 2, 4), Ok("5".to_string()));
+        assert_eq!(model.get_formatted_cell_value(0, 2, 5), Ok("5".to_string()));
+        assert_eq!(model.get_cell_formula(0, 2, 4), Ok(Some("=A2".to_string())));
+    }
+
+    /// The `$` flags are display metadata the binding carries: a relative reference is shown
+    /// relative, an absolute one with its dollars, whatever the evaluator is handed.
+    #[test]
+    fn display_keeps_the_dollars_it_was_given() {
+        let mut model = CollabModel::new(1);
+        model.new_sheet();
+        model.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+        model.set_user_input(0, 3, 2, "=A1".to_string()).unwrap();
+        model.set_user_input(0, 4, 2, "=$A$1".to_string()).unwrap();
+        model
+            .set_user_input(0, 5, 2, "=SUM($A1:A$1)".to_string())
+            .unwrap();
+        assert_eq!(model.get_cell_formula(0, 3, 2), Ok(Some("=A1".to_string())));
+        assert_eq!(
+            model.get_cell_formula(0, 4, 2),
+            Ok(Some("=$A$1".to_string()))
+        );
+        assert_eq!(
+            model.get_cell_formula(0, 5, 2),
+            Ok(Some("=SUM($A1:A$1)".to_string()))
+        );
+    }
+
+    /// A rename writes one register and nothing else. A peer that bound `=Sheet1!A1` before the
+    /// rename landed still points at the same sheet, and shows it under its new name.
+    #[test]
+    fn rename_needs_no_formula_rewrite() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "7".to_string()).unwrap();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &a.flush());
+
+        // Concurrent: `a` renames the sheet, `b` writes a formula naming it by its old name.
+        a.rename_sheet_by_index(0, "Data").unwrap();
+        b.set_user_input(1, 1, 1, "=Sheet1!A1".to_string()).unwrap();
+        let (from_a, from_b) = (a.flush(), b.flush());
+        deliver(&mut b, 1, &from_a);
+        deliver(&mut a, 2, &from_b);
+        a.evaluate();
+        b.evaluate();
+
+        assert_eq!(a.workbook, b.workbook);
+        for model in [&a, &b] {
+            assert_eq!(model.workbook.worksheets[0].name, "Data");
+            assert_eq!(
+                model.get_cell_formula(1, 1, 1),
+                Ok(Some("=Data!A1".to_string()))
+            );
+            assert_eq!(model.get_formatted_cell_value(1, 1, 1), Ok("7".to_string()));
+        }
+    }
+
+    /// A defined name's body is bound too, so it follows a sheet rename with no rewrite — the
+    /// text `get_defined_name_list` shows is a projection of the binding, not stored state.
+    #[test]
+    fn defined_name_body_follows_a_rename() {
+        let mut model = CollabModel::new(1);
+        model.new_sheet();
+        model.set_user_input(0, 1, 1, "42".to_string()).unwrap();
+        model
+            .new_defined_name("MyName", None, "Sheet1!$A$1")
+            .unwrap();
+        model
+            .set_user_input(0, 5, 5, "=MyName".to_string())
+            .unwrap();
+        model.evaluate();
+        assert_eq!(
+            model.get_formatted_cell_value(0, 5, 5),
+            Ok("42".to_string())
+        );
+
+        model.rename_sheet_by_index(0, "Data").unwrap();
+        model.evaluate();
+        assert_eq!(
+            model.get_defined_name_list(),
+            vec![("MyName".to_string(), None, "Data!$A$1".to_string())]
+        );
+        assert_eq!(
+            model.get_formatted_cell_value(0, 5, 5),
+            Ok("42".to_string())
+        );
+    }
+
+    /// Divergence from upstream, by design: a reference that cannot be bound is refused at write
+    /// time instead of being stored and evaluated to `#REF!`.
+    #[test]
+    fn unbindable_input_is_refused() {
+        let mut model = CollabModel::new(1);
+        model.new_sheet();
+        assert!(model
+            .set_user_input(0, 1, 1, "=NoSuchSheet!A1".to_string())
+            .is_err());
+        assert!(model
+            .update_cell_with_formula(0, 1, 1, "=NoSuchSheet!A1".to_string())
+            .is_err());
+        assert!(model
+            .new_defined_name("Nope", None, "NoSuchSheet!$A$1")
+            .is_err());
+        // Nothing was written, and nothing was committed.
+        assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("".to_string()));
+        assert!(model.workbook.defined_names.is_empty());
     }
 }

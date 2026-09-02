@@ -227,6 +227,24 @@ impl StableFormula {
         &self.0
     }
 
+    /// Points every reference naming `source` at `target` instead, returning whether anything
+    /// changed. A reference with no sheet prefix stays as it is. Swapping a sheet ref is
+    /// one-for-one, so a valid stream stays one.
+    pub(crate) fn retarget_sheet(&mut self, source: SheetId, target: SheetId) -> bool {
+        let mut changed = false;
+        for token in &mut self.0 {
+            let sheet = match token {
+                StableToken::CellRef { sheet, .. } | StableToken::RangeRef { sheet, .. } => sheet,
+                _ => continue,
+            };
+            if *sheet == StableSheetRef::Sheet(source) {
+                *sheet = StableSheetRef::Sheet(target);
+                changed = true;
+            }
+        }
+        changed
+    }
+
     /// Single stack-simulation pass. Consumers rebuilding a tree from a validated stream must do so
     /// iteratively too: the nesting depth comes from the payload, so recursion is a stack overflow.
     pub fn validate(tokens: &[StableToken]) -> Result<(), FormulaError> {
