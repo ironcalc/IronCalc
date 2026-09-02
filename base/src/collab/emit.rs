@@ -205,6 +205,21 @@ impl CollabModel<'_> {
         StableRange { rows, cols }
     }
 
+    /// [`Self::stable_range`] without minting: `None` when a corner is not materialized, and so
+    /// names nothing the document could already hold.
+    fn resolved_range(&self, i: usize, range: &RangeRef) -> Option<StableRange> {
+        let index = &self.workbook.worksheets[i].index;
+        let rows = match range.rows {
+            Some((a, b)) => Some((Stable::row_at(index, a)?, Stable::row_at(index, b)?)),
+            None => None,
+        };
+        let cols = match range.cols {
+            Some((a, b)) => Some((Stable::col_at(index, a)?, Stable::col_at(index, b)?)),
+            None => None,
+        };
+        Some(StableRange { rows, cols })
+    }
+
     /// The row register's current value for `kind`, as the property a write would replace. A row
     /// with no record holds the defaults, which is what undoing a first write has to put back.
     fn row_prev(&self, i: usize, key: &FractionalKey, kind: RowPropKind) -> Option<RowProperty> {
@@ -740,17 +755,22 @@ impl CollabModel<'_> {
     ) -> Result<(), String> {
         let i = self.check_cell(sheet, row, column)?;
         let id = self.sheet_of(sheet)?;
-        let (at, mut patches) = self.resolve_cell(i, id, row, column);
         let prev = self.get_cell_style_or_none(sheet, row, column)?;
-        patches.push(Patch::SetCellStyle {
-            sheet: id,
-            at,
-            style: Some(Box::new(style.clone())),
-            ts: None,
-            prev: Box::new(prev),
-        });
-        self.commit_local(patches);
-        Ok(())
+        match prev {
+            Some(prev) if &prev == style => Ok(()), // nothing changed
+            prev => {
+                let (at, mut patches) = self.resolve_cell(i, id, row, column);
+                patches.push(Patch::SetCellStyle {
+                    sheet: id,
+                    at,
+                    style: Some(Box::new(style.clone())),
+                    ts: None,
+                    prev: Box::new(prev),
+                });
+                self.commit_local(patches);
+                Ok(())
+            }
+        }
     }
 
     /// Sets the named style `style_name` on a cell. Named styles are a local table, so the patch
@@ -1002,12 +1022,19 @@ impl CollabModel<'_> {
     ) -> Result<(), String> {
         let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
+        // The current state, resolved without minting: a corner the index does not hold cannot be
+        // part of a stored merge, so the range is simply not merged.
+        let prev = match self.resolved_range(i, range) {
+            Some(r) => self.workbook.worksheets[i].merged_cells.contains(&r),
+            _ => false,
+        };
+        // Merging what is already merged, or unmerging what is not, changes nothing: emit nothing,
+        // and — having checked before resolving — mint nothing.
+        if merged == prev {
+            return Ok(());
+        }
         let mut patches = Vec::new();
         let range = self.stable_range(i, id, range, &mut patches);
-        let prev = self.workbook.worksheets[i]
-            .merged_cells
-            .iter()
-            .any(|r| r == &range);
         patches.push(Patch::SetMergedRange {
             sheet: id,
             range,
@@ -1028,12 +1055,30 @@ impl CollabModel<'_> {
     ) -> Result<(), String> {
         let i = self.check_cell(sheet, row, column)?;
         let id = self.sheet_of(sheet)?;
+        // What the cell holds now, without minting: an unmaterialized cell holds no comment.
+        let w = &self.workbook.worksheets[i];
+        let prev = match Stable::row_at(&w.index, row).zip(Stable::col_at(&w.index, column)) {
+            Some(cell_ref) => w
+                .comments
+                .iter()
+                .find(move |c| c.cell_ref == cell_ref)
+                .cloned(),
+            _ => None,
+        };
+        // Writing back the comment the cell already has — or removing one it does not have —
+        // changes nothing, so it emits nothing and mints nothing. `author_id` is not compared: a
+        // locally authored comment carries none.
+        let unchanged = match (&comment, &prev) {
+            (None, None) => true,
+            (Some((text, author_name)), Some(p)) => {
+                &p.text == text && &p.author_name == author_name
+            }
+            _ => false,
+        };
+        if unchanged {
+            return Ok(());
+        }
         let (at, mut patches) = self.resolve_cell(i, id, row, column);
-        let prev = self.workbook.worksheets[i]
-            .comments
-            .iter()
-            .find(|c| c.cell_ref == at)
-            .cloned();
         let comment = comment.map(|(text, author_name)| Comment::<Stable> {
             text,
             author_name,
@@ -1360,6 +1405,9 @@ impl CollabModel<'_> {
         let keys: Vec<FractionalKey> = (row..row + row_count)
             .filter_map(|r| Stable::row_at(index, r))
             .collect();
+        if keys.is_empty() {
+            return Ok(());
+        }
         let prev = self.row_snapshots(i, &keys);
         let patches = vec![Patch::DeleteRows {
             sheet: id,
@@ -1417,6 +1465,9 @@ impl CollabModel<'_> {
         let keys: Vec<FractionalKey> = (column..column + column_count)
             .filter_map(|c| Stable::col_at(index, c))
             .collect();
+        if keys.is_empty() {
+            return Ok(());
+        }
         let prev = self.column_snapshots(i, &keys);
         let patches = vec![Patch::DeleteColumns {
             sheet: id,
@@ -1650,6 +1701,11 @@ impl CollabModel<'_> {
             .is_some_and(|found| found != sheet)
         {
             return Err(format!("Sheet already exists: '{new_name}'."));
+        }
+        if let Some(name) = self.authored_name(id) {
+            if name == new_name {
+                return Ok(()); // name hasn't changed
+            }
         }
         let prev = self.sheet_prev(i, SheetPropKind::Name);
         let patches = vec![Patch::SetSheetProperty {
@@ -4035,5 +4091,134 @@ mod test {
         // Nothing was written, and nothing was committed.
         assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("".to_string()));
         assert!(model.workbook.defined_names.is_empty());
+    }
+
+    #[test]
+    fn redundant_style_emits_nothing() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.flush();
+        a.set_cell_style(0, 1, 1, &bold()).unwrap();
+        assert_eq!(a.flush().len(), 1);
+
+        a.set_cell_style(0, 1, 1, &bold()).unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        a.set_cell_style(0, 2, 2, &bold()).unwrap();
+        a.flush();
+        a.copy_cell_style((0, 1, 1), (0, 2, 2)).unwrap();
+        assert!(a.flush().is_empty());
+        // A different style still emits.
+        a.set_cell_style(0, 1, 1, &italic()).unwrap();
+        assert_eq!(a.flush().len(), 1);
+        assert_eq!(a.get_cell_style_or_none(0, 1, 1), Ok(Some(italic())));
+    }
+
+    #[test]
+    fn redundant_merge_emits_nothing() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.flush();
+        let range = RangeRef::parse_a1("A1:B2").unwrap();
+        a.set_merged_range(0, &range, true).unwrap();
+        assert_eq!(a.flush().len(), 1);
+
+        a.set_merged_range(0, &range, true).unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        // range outside materialized window of cells, no patch is produced
+        let other = RangeRef::parse_a1("D4:E5").unwrap();
+        let (rows, cols) = (
+            a.workbook.worksheets[0].index.rows.len(),
+            a.workbook.worksheets[0].index.cols.len(),
+        );
+        a.set_merged_range(0, &other, false).unwrap();
+        assert!(a.flush().is_empty());
+        // Unmaterialized corners stayed unmaterialized: the skipped patch minted no keys.
+        assert_eq!(a.workbook.worksheets[0].index.rows.len(), rows);
+        assert_eq!(a.workbook.worksheets[0].index.cols.len(), cols);
+
+        // Unmerging what is merged still emits, once.
+        a.set_merged_range(0, &range, false).unwrap();
+        assert_eq!(a.flush().len(), 1);
+        assert!(a.workbook.worksheets[0].merged_cells.is_empty());
+        a.set_merged_range(0, &range, false).unwrap();
+        assert!(a.flush().is_empty());
+    }
+
+    #[test]
+    fn redundant_comment_emits_nothing() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.flush();
+        a.set_comment(0, 1, 1, Some(("note".into(), "me".into())))
+            .unwrap();
+        assert_eq!(a.flush().len(), 1);
+
+        a.set_comment(0, 1, 1, Some(("note".into(), "me".into())))
+            .unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        // No comment there to remove — on a materialized cell, and on one that does not exist.
+        let (rows, cols) = (
+            a.workbook.worksheets[0].index.rows.len(),
+            a.workbook.worksheets[0].index.cols.len(),
+        );
+        a.set_comment(0, 1, 2, None).unwrap();
+        a.set_comment(0, 40, 40, None).unwrap();
+        assert!(a.flush().is_empty());
+        assert_eq!(a.workbook.worksheets[0].index.rows.len(), rows);
+        assert_eq!(a.workbook.worksheets[0].index.cols.len(), cols);
+
+        // Different text, and then the removal, both change something.
+        a.set_comment(0, 1, 1, Some(("other".into(), "me".into())))
+            .unwrap();
+        assert_eq!(a.flush().len(), 1);
+        a.set_comment(0, 1, 1, None).unwrap();
+        assert_eq!(a.flush().len(), 1);
+        assert!(a.workbook.worksheets[0].comments.is_empty());
+    }
+
+    #[test]
+    fn redundant_rename_emits_nothing() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.flush();
+        a.rename_sheet_by_index(0, "Data").unwrap();
+        assert_eq!(a.flush().len(), 1);
+
+        a.rename_sheet_by_index(0, "Data").unwrap();
+        assert!(a.flush().is_empty()); // redundant
+        assert_eq!(a.workbook.worksheets[0].get_name(), "Data");
+
+        // Validation is unchanged, and still runs first.
+        a.new_sheet();
+        assert!(a.rename_sheet_by_index(1, "Data").is_err());
+        assert!(a.rename_sheet_by_index(0, "[").is_err());
+        // Renaming a sheet to its own name is a no-op, not a collision error.
+        a.flush();
+        let own_name = a.workbook.worksheets[1].get_name();
+        a.rename_sheet_by_index(1, &own_name).unwrap();
+        assert!(a.flush().is_empty());
+    }
+
+    #[test]
+    fn deleting_unmaterialized_rows_emits_nothing() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+        a.flush();
+
+        a.delete_rows(0, 50, 3).unwrap();
+        a.delete_columns(0, 50, 3).unwrap();
+        assert!(a.flush().is_empty());
+
+        // A range that does hold materialized ordinals still commits.
+        a.delete_rows(0, 1, 3).unwrap();
+        assert_eq!(a.flush().len(), 1);
+
+        // Validation is unchanged.
+        assert!(a.delete_rows(0, 1, 0).is_err());
+        assert!(a.delete_columns(0, 1, 0).is_err());
     }
 }
