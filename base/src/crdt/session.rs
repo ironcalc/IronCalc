@@ -3292,14 +3292,6 @@ fn cf_order_from_shadow(shadow: &Projection, sheet_id: EntityId) -> Vec<(EntityI
     }
 }
 
-/// Pass 2 for conditional formatting: makes the document's CF registers for
-/// the given sheets match the post-batch model. Compare-and-write keeps this
-/// free of doc writes when id-form entries already render to the model state
-/// (the common case under structural edits — ids track the displacement), so
-/// concurrent remote CF edits are not stomped; where the engine's CF
-/// displacement diverges from the codec's range semantics (e.g. a deleted
-/// range corner leaves the sqref untouched), the model text is re-encoded and
-/// the document follows the engine. Returns whether anything was written.
 /// Compare-and-writes the merge registers of one sheet from the post-batch
 /// model: stale anchors are removed, changed corners rewritten, new merges
 /// added. Structural ops that only shifted a merge leave its ids untouched
@@ -3353,6 +3345,14 @@ fn sync_merges(
     Ok(())
 }
 
+/// Pass 2 for conditional formatting: makes the document's CF registers for
+/// the given sheets match the post-batch model. Compare-and-write keeps this
+/// free of doc writes when id-form entries already render to the model state
+/// (the common case under structural edits — ids track the displacement), so
+/// concurrent remote CF edits are not stomped; where the engine's CF
+/// displacement diverges from the codec's range semantics (e.g. a deleted
+/// range corner leaves the sqref untouched), the model text is re-encoded and
+/// the document follows the engine. Returns whether anything was written.
 #[allow(clippy::too_many_arguments)]
 fn sync_cf(
     txn: &mut TransactionMut,
