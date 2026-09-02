@@ -672,3 +672,66 @@ fn moving_rows_keeps_a_link_on_an_empty_cell() {
     assert_eq!(model.get_cell_link(0, 7, 2), Ok(Some(link)));
     assert_eq!(model.get_cell_link(0, 3, 2), Ok(None));
 }
+
+#[test]
+fn setting_a_link_with_a_label_on_a_covered_cell_fails_without_side_effects() {
+    let mut model = UserModel::from_model(new_empty_model());
+    model.merge_cells(&Area {
+        sheet: 0,
+        row: 2,
+        column: 2,
+        width: 2,
+        height: 2,
+    })
+    .unwrap();
+    let link = Link::External {
+        target: "https://www.ironcalc.com/".to_string(),
+        tooltip: None,
+    };
+    // C3 is covered: the label cannot be written, so nothing must change.
+    assert!(model.set_cell_link(0, 3, 3, link, Some("label")).is_err());
+    assert_eq!(model.get_cell_link(0, 3, 3), Ok(None));
+    assert_eq!(model.get_cell_content(0, 3, 3), Ok("".to_string()));
+    // and the history is untouched: the only undo step is the merge
+    model.undo().unwrap();
+    assert_eq!(model.get_merged_cells(0).unwrap(), vec![]);
+    assert!(model.undo().is_err() || model.get_merged_cells(0).unwrap().is_empty());
+}
+
+#[test]
+fn undoing_a_style_change_on_an_empty_linked_cell_keeps_the_link() {
+    let mut model = UserModel::from_model(new_empty_model());
+    let link = Link::External {
+        target: "https://www.ironcalc.com/".to_string(),
+        tooltip: None,
+    };
+    // A link on a cell without content (the link style makes it a styled
+    // empty cell); then a style change whose undo has no previous explicit
+    // style to restore on a neighbouring empty cell.
+    model.set_cell_link(0, 5, 5, link.clone(), None).unwrap();
+    let area = Area {
+        sheet: 0,
+        row: 5,
+        column: 5,
+        width: 2,
+        height: 1,
+    };
+    model.update_range_style(&area, "font.b", "true").unwrap();
+    assert!(model.get_cell_style(0, 5, 5).unwrap().font.b);
+    model.undo().unwrap();
+    assert!(!model.get_cell_style(0, 5, 5).unwrap().font.b);
+    assert_eq!(model.get_cell_link(0, 5, 5), Ok(Some(link.clone())));
+
+    // The same when the linked cell itself had no explicit style at all.
+    model
+        .model
+        .workbook
+        .worksheet_mut(0)
+        .unwrap()
+        .remove_cell(5, 5)
+        .unwrap();
+    assert_eq!(model.get_cell_link(0, 5, 5), Ok(Some(link.clone())));
+    model.update_range_style(&area, "font.i", "true").unwrap();
+    model.undo().unwrap();
+    assert_eq!(model.get_cell_link(0, 5, 5), Ok(Some(link)));
+}
