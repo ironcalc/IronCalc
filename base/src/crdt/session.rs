@@ -1804,6 +1804,16 @@ impl Pass1<'_, '_> {
                 self.touched.names = true;
                 Ok(())
             }
+            // TODO(collab): cell links are not part of the document schema
+            // yet, so they stay local to the replica that set them. The cell
+            // itself is touched so the surrounding registers stay coherent.
+            Diff::SetCellLink {
+                sheet, row, column, ..
+            } => self.touch_cell(*sheet, *row, *column),
+            // TODO(collab): merged cells are not synced yet (left unsolved on
+            // purpose after the rebase onto main). The merge list stays local
+            // to the replica that changed it.
+            Diff::SetMergedCells { .. } => Ok(()),
             Diff::UpdateDefinedName {
                 name, new_name, ..
             } => {
