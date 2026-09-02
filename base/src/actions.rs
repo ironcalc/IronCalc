@@ -10,7 +10,7 @@ use crate::expressions::utils;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
-use crate::types::{ArrayKind, Cell, Link, MergedCell, Worksheet};
+use crate::types::{ArrayKind, Cell, MergedCell, Worksheet};
 
 /// Applies `map` to the (row, column) key of every link in the worksheet, so
 /// that links follow their cells when rows or columns are inserted, deleted or
@@ -614,6 +614,9 @@ impl<'a> Model<'a> {
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
+        // Links are remapped at the end as well: the cell moves auto-link URL
+        // values at their new position, which would leave a duplicate link.
+        let links = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.links);
         let worksheet = self.workbook.worksheet(sheet)?;
         let all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
         for row in all_rows {
@@ -629,7 +632,9 @@ impl<'a> Model<'a> {
         }
 
         // Links move with their cells
-        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        worksheet.links = links;
+        displace_links(worksheet, |r, c| {
             if c >= column {
                 Some((r, c + column_count))
             } else {
@@ -730,6 +735,9 @@ impl<'a> Model<'a> {
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
+        // Links are remapped at the end as well: the cell moves auto-link URL
+        // values at their new position, which would leave a duplicate link.
+        let links = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.links);
         // first column being deleted
         let column_start = column;
         // last column being deleted
@@ -754,7 +762,9 @@ impl<'a> Model<'a> {
             }
         }
         // Links move with their cells; the links of the deleted columns are removed
-        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        worksheet.links = links;
+        displace_links(worksheet, |r, c| {
             if c < column_start {
                 Some((r, c))
             } else if c <= column_end {
@@ -1003,6 +1013,9 @@ impl<'a> Model<'a> {
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
+        // Links are remapped at the end as well: the cell moves auto-link URL
+        // values at their new position, which would leave a duplicate link.
+        let links = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.links);
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
         let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
@@ -1037,7 +1050,9 @@ impl<'a> Model<'a> {
         self.workbook.worksheets[sheet as usize].rows = new_rows;
 
         // Links move with their cells
-        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        worksheet.links = links;
+        displace_links(worksheet, |r, c| {
             if r >= row {
                 Some((r + row_count, c))
             } else {
@@ -1104,6 +1119,9 @@ impl<'a> Model<'a> {
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
+        // Links are remapped at the end as well: the cell moves auto-link URL
+        // values at their new position, which would leave a duplicate link.
+        let links = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.links);
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
         let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
@@ -1142,7 +1160,9 @@ impl<'a> Model<'a> {
         self.workbook.worksheets[sheet as usize].rows = new_rows;
 
         // Links move with their cells; the links of the deleted rows are removed
-        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        worksheet.links = links;
+        displace_links(worksheet, |r, c| {
             if r < row {
                 Some((r, c))
             } else if r < row + row_count {
@@ -1193,28 +1213,11 @@ impl<'a> Model<'a> {
     fn move_column_unchecked(&mut self, sheet: u32, column: i32, delta: i32) -> Result<(), String> {
         let target_column = column + delta;
 
-        // Links move with their cells: take the moved column's links out and
-        // shift the links of the columns in between. The moved links are
-        // re-attached at the end, after the cells have been rebuilt (rebuilding
-        // goes through `set_user_input`, which could auto-link URL-like values).
-        let worksheet = self.workbook.worksheet_mut(sheet)?;
-        let moved_links: Vec<(i32, Link)> = worksheet
-            .links
-            .iter()
-            .filter(|(&(_, c), _)| c == column)
-            .map(|(&(r, _), link)| (r, link.clone()))
-            .collect();
-        displace_links(worksheet, |r, c| {
-            if c == column {
-                None
-            } else if delta > 0 && c > column && c <= target_column {
-                Some((r, c - 1))
-            } else if delta < 0 && c >= target_column && c < column {
-                Some((r, c + 1))
-            } else {
-                Some((r, c))
-            }
-        });
+        // Links are remapped at the end, after the cells have been rebuilt:
+        // the rebuild goes through `set_user_input`, which auto-links URL-like
+        // values and drops the link of a cell it clears (moving an empty
+        // styled cell writes an empty value).
+        let links = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.links);
 
         let original_refs = self
             .workbook
@@ -1327,12 +1330,22 @@ impl<'a> Model<'a> {
             .worksheet_mut(sheet)?
             .set_column_width_and_style(target_column, width, hidden, style)?;
 
-        // Re-attach the moved links, discarding any link the rebuild auto-created
+        // Links move with their cells: the moved column's to its target, the
+        // columns in between shift by one. Whatever the rebuild auto-linked is
+        // discarded.
         let worksheet = self.workbook.worksheet_mut(sheet)?;
-        worksheet.links.retain(|&(_, c), _| c != target_column);
-        for (r, link) in moved_links {
-            worksheet.links.insert((r, target_column), link);
-        }
+        worksheet.links = links;
+        displace_links(worksheet, |r, c| {
+            if c == column {
+                Some((r, target_column))
+            } else if delta > 0 && c > column && c <= target_column {
+                Some((r, c - 1))
+            } else if delta < 0 && c >= target_column && c < column {
+                Some((r, c + 1))
+            } else {
+                Some((r, c))
+            }
+        });
 
         let disp = DisplaceData::ColumnMove {
             sheet,
@@ -1348,28 +1361,11 @@ impl<'a> Model<'a> {
     fn move_row_unchecked(&mut self, sheet: u32, row: i32, delta: i32) -> Result<(), String> {
         let target_row = row + delta;
 
-        // Links move with their cells: take the moved row's links out and shift
-        // the links of the rows in between. The moved links are re-attached at
-        // the end, after the cells have been rebuilt (rebuilding goes through
-        // `set_user_input`, which could auto-link URL-like values).
-        let worksheet = self.workbook.worksheet_mut(sheet)?;
-        let moved_links: Vec<(i32, Link)> = worksheet
-            .links
-            .iter()
-            .filter(|(&(r, _), _)| r == row)
-            .map(|(&(_, c), link)| (c, link.clone()))
-            .collect();
-        displace_links(worksheet, |r, c| {
-            if r == row {
-                None
-            } else if delta > 0 && r > row && r <= target_row {
-                Some((r - 1, c))
-            } else if delta < 0 && r >= target_row && r < row {
-                Some((r + 1, c))
-            } else {
-                Some((r, c))
-            }
-        });
+        // Links are remapped at the end, after the cells have been rebuilt:
+        // the rebuild goes through `set_user_input`, which auto-links URL-like
+        // values and drops the link of a cell it clears (moving an empty
+        // styled cell writes an empty value).
+        let links = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.links);
 
         let original_cols = self.get_columns_for_row(sheet, row, false)?;
         let mut original_cells = Vec::new();
@@ -1477,12 +1473,22 @@ impl<'a> Model<'a> {
         }
         worksheet.rows = new_rows;
 
-        // Re-attach the moved links, discarding any link the rebuild auto-created
+        // Links move with their cells: the moved row's to its target, the rows
+        // in between shift by one. Whatever the rebuild auto-linked is
+        // discarded.
         let worksheet = self.workbook.worksheet_mut(sheet)?;
-        worksheet.links.retain(|&(r, _), _| r != target_row);
-        for (c, link) in moved_links {
-            worksheet.links.insert((target_row, c), link);
-        }
+        worksheet.links = links;
+        displace_links(worksheet, |r, c| {
+            if r == row {
+                Some((target_row, c))
+            } else if delta > 0 && r > row && r <= target_row {
+                Some((r - 1, c))
+            } else if delta < 0 && r >= target_row && r < row {
+                Some((r + 1, c))
+            } else {
+                Some((r, c))
+            }
+        });
 
         let disp = DisplaceData::RowMove { sheet, row, delta };
         self.displace_cells(&disp)?;
