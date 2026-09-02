@@ -58,6 +58,7 @@ pub(crate) const MAP_CELL_STYLES: &str = "cell_styles";
 pub(crate) const MAP_NAMED_STYLES: &str = "named_styles";
 pub(crate) const MAP_CF: &str = "cf";
 pub(crate) const MAP_EDGES: &str = "edges";
+pub(crate) const MAP_LINKS: &str = "links";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Axis {
@@ -93,6 +94,12 @@ pub(crate) struct SchemaMaps {
     /// `BorderItem`. One identity per line dissolves the shared-edge
     /// conflict between adjacent cells' styles by construction.
     pub edges: MapRef,
+    /// Cell hyperlinks: same key as `cells` → bitcode of `Link`. An
+    /// independent LWW register per cell (like `cell_styles`), so a link
+    /// survives a concurrent content edit of its cell; the engine removes
+    /// the link when the content is cleared and that clear replicates as a
+    /// register removal.
+    pub links: MapRef,
 }
 
 impl SchemaMaps {
@@ -111,6 +118,7 @@ impl SchemaMaps {
             named_styles: doc.get_or_insert_map(MAP_NAMED_STYLES),
             cf: doc.get_or_insert_map(MAP_CF),
             edges: doc.get_or_insert_map(MAP_EDGES),
+            links: doc.get_or_insert_map(MAP_LINKS),
         }
     }
 
@@ -275,6 +283,8 @@ pub(crate) struct SheetProj {
     /// Horizontal border edges: `(col_id, row_id) → encoded BorderItem`, the
     /// line **on top of** `row_id` at `col_id`.
     pub h_edges: BTreeMap<(EntityId, EntityId), String>,
+    /// Cell hyperlinks: `(column, row) → bitcode of Link`.
+    pub links: BTreeMap<(EntityId, EntityId), Vec<u8>>,
 }
 
 impl SheetProj {
@@ -496,6 +506,29 @@ impl Projection {
         for (key, value) in maps.styles.iter(&txn) {
             if let Out::Any(Any::Buffer(bytes)) = value {
                 proj.styles.insert(key.to_string(), bytes.to_vec());
+            }
+        }
+
+        for (key, value) in maps.links.iter(&txn) {
+            let Some((sid, rest)) = key.split_once('!') else {
+                continue;
+            };
+            let Some((cid, rid)) = rest.split_once(':') else {
+                continue;
+            };
+            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
+                EntityId::decode(sid),
+                EntityId::decode(cid),
+                EntityId::decode(rid),
+            ) else {
+                continue;
+            };
+            if let Out::Any(Any::Buffer(bytes)) = value {
+                proj.sheets
+                    .entry(sheet_id)
+                    .or_default()
+                    .links
+                    .insert((col_id, row_id), bytes.to_vec());
             }
         }
 

@@ -9,7 +9,7 @@
 use crate::cf_types::{CfRule, CfRuleInput, ValueOperator};
 use crate::crdt::CollabSession;
 use crate::test::util::new_empty_model;
-use crate::types::{Color, Dxf, DxfFont};
+use crate::types::{Color, Dxf, DxfFont, Link};
 use crate::UserModel;
 
 struct Replica {
@@ -89,6 +89,11 @@ fn assert_models_converged(a: &UserModel, b: &UserModel) {
             cf_snapshot(a.um, sheet),
             cf_snapshot(b.um, sheet),
             "conditional formatting differs on sheet {sheet}"
+        );
+        assert_eq!(
+            a.um.get_links_list(sheet).unwrap(),
+            b.um.get_links_list(sheet).unwrap(),
+            "links differ on sheet {sheet}"
         );
         for row in 1..=WINDOW_ROWS {
             for column in 1..=WINDOW_COLUMNS {
@@ -575,9 +580,14 @@ fn fuzz_round(seed: u64) {
             let replica = if on_a { &mut a } else { &mut b };
             let row = rng.gen_range(1..=25);
             let column = rng.gen_range(1..=8);
-            match rng.gen_range(0..22) {
+            match rng.gen_range(0..23) {
                 0..=3 => {
-                    let value = format!("v{}", rng.gen::<u16>());
+                    // Now and then an URL: the engine auto-links those.
+                    let value = if rng.gen_ratio(1, 8) {
+                        format!("https://f{}.example", rng.gen::<u8>())
+                    } else {
+                        format!("v{}", rng.gen::<u16>())
+                    };
                     if trace {
                         eprintln!("{step}: {who} set R{row}C{column} = {value}");
                     }
@@ -829,6 +839,24 @@ fn fuzz_round(seed: u64) {
                             eprintln!("{step}: {who} move_sheet {from} -> {to}");
                         }
                         let _ = replica.um.move_sheet(from, to);
+                    }
+                }
+                21 => {
+                    if rng.gen_bool(0.7) {
+                        let link = Link::External {
+                            target: format!("https://l{}.example", rng.gen::<u8>()),
+                            tooltip: None,
+                        };
+                        let label = if rng.gen_bool(0.3) { Some("link") } else { None };
+                        if trace {
+                            eprintln!("{step}: {who} set link R{row}C{column} label={label:?}");
+                        }
+                        let _ = replica.um.set_cell_link(0, row, column, link, label);
+                    } else {
+                        if trace {
+                            eprintln!("{step}: {who} delete link R{row}C{column}");
+                        }
+                        let _ = replica.um.delete_cell_link(0, row, column);
                     }
                 }
                 _ => {
@@ -2361,3 +2389,217 @@ fn randomized_peer_protocol_fuzz() {
     }
 }
 
+
+// ---- cell links ----
+
+fn external_link(target: &str) -> Link {
+    Link::External {
+        target: target.to_string(),
+        tooltip: None,
+    }
+}
+
+#[test]
+fn link_syncs_to_remote_and_undo_propagates() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 3, 2, "IronCalc").unwrap();
+    a.um
+        .set_cell_link(0, 3, 2, external_link("https://ironcalc.com"), None)
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(
+        b.um.get_cell_link(0, 3, 2).unwrap(),
+        Some(external_link("https://ironcalc.com"))
+    );
+    // The link style (underline) rides the style register.
+    assert!(b.um.get_cell_style(0, 3, 2).unwrap().font.u);
+    assert_converged(&a, &b);
+
+    // Replace, then delete, then undo everything back.
+    a.um
+        .set_cell_link(0, 3, 2, external_link("https://docs.ironcalc.com"), None)
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(
+        b.um.get_cell_link(0, 3, 2).unwrap(),
+        Some(external_link("https://docs.ironcalc.com"))
+    );
+    a.um.delete_cell_link(0, 3, 2).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_cell_link(0, 3, 2).unwrap(), None);
+    assert_converged(&a, &b);
+
+    a.um.undo().unwrap(); // delete
+    a.um.undo().unwrap(); // replace
+    sync(&mut a, &mut b);
+    assert_eq!(
+        b.um.get_cell_link(0, 3, 2).unwrap(),
+        Some(external_link("https://ironcalc.com"))
+    );
+    a.um.undo().unwrap(); // first set
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_cell_link(0, 3, 2).unwrap(), None);
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn late_joiner_receives_links() {
+    let mut a = replica(1);
+    a.um
+        .set_cell_link(0, 2, 2, external_link("https://a.example"), Some("A"))
+        .unwrap();
+    // A link on a cell without content.
+    a.um
+        .set_cell_link(0, 5, 1, external_link("mailto:x@y.z"), None)
+        .unwrap();
+
+    let mut b = replica(2);
+    let sv = b.session.state_vector();
+    let update = {
+        let _ = a.session.flush_local(&mut a.um).unwrap();
+        a.session.encode_state_since(&sv).unwrap()
+    };
+    b.session.apply_remote(&mut b.um, &update).unwrap();
+
+    assert_eq!(b.um.get_cell_content(0, 2, 2), Ok("A".to_string()));
+    assert_eq!(
+        b.um.get_cell_link(0, 2, 2).unwrap(),
+        Some(external_link("https://a.example"))
+    );
+    assert_eq!(
+        b.um.get_cell_link(0, 5, 1).unwrap(),
+        Some(external_link("mailto:x@y.z"))
+    );
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn link_survives_concurrent_content_edit() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "before").unwrap();
+    sync(&mut a, &mut b);
+
+    // Independent registers: both intentions survive.
+    a.um
+        .set_cell_link(0, 1, 1, external_link("https://a.example"), None)
+        .unwrap();
+    b.um.set_user_input(0, 1, 1, "after").unwrap();
+    sync(&mut a, &mut b);
+
+    for r in [&a, &b] {
+        assert_eq!(r.um.get_cell_content(0, 1, 1), Ok("after".to_string()));
+        assert_eq!(
+            r.um.get_cell_link(0, 1, 1).unwrap(),
+            Some(external_link("https://a.example"))
+        );
+    }
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn clearing_content_removes_link_on_remote() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um
+        .set_cell_link(0, 2, 3, external_link("https://a.example"), Some("A"))
+        .unwrap();
+    a.um
+        .set_cell_link(0, 4, 3, external_link("https://b.example"), Some("B"))
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert!(b.um.get_cell_link(0, 2, 3).unwrap().is_some());
+
+    // Typing an empty value drops the link; so does a range clear.
+    a.um.set_user_input(0, 2, 3, "").unwrap();
+    a.um
+        .range_clear_contents(&crate::expressions::types::Area {
+            sheet: 0,
+            row: 4,
+            column: 1,
+            width: 5,
+            height: 1,
+        })
+        .unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(b.um.get_cell_link(0, 2, 3).unwrap(), None);
+    assert_eq!(b.um.get_cell_link(0, 4, 3).unwrap(), None);
+    assert_converged(&a, &b);
+
+    // Undo restores content and link together.
+    a.um.undo().unwrap();
+    a.um.undo().unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(
+        b.um.get_cell_link(0, 2, 3).unwrap(),
+        Some(external_link("https://a.example"))
+    );
+    assert_eq!(
+        b.um.get_cell_link(0, 4, 3).unwrap(),
+        Some(external_link("https://b.example"))
+    );
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn link_follows_concurrent_row_insert() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 5, 1, "x").unwrap();
+    sync(&mut a, &mut b);
+
+    a.um
+        .set_cell_link(0, 5, 1, external_link("https://a.example"), None)
+        .unwrap();
+    b.um.insert_rows(0, 1, 2).unwrap();
+    sync(&mut a, &mut b);
+
+    for r in [&a, &b] {
+        assert_eq!(r.um.get_cell_link(0, 5, 1).unwrap(), None);
+        assert_eq!(
+            r.um.get_cell_link(0, 7, 1).unwrap(),
+            Some(external_link("https://a.example"))
+        );
+    }
+    assert_converged(&a, &b);
+
+    // And the remote structural rebuild keeps link-only cells in place.
+    a.um
+        .set_cell_link(0, 10, 4, external_link("https://c.example"), None)
+        .unwrap();
+    sync(&mut a, &mut b);
+    b.um.delete_rows(0, 1, 1).unwrap();
+    sync(&mut a, &mut b);
+    for r in [&a, &b] {
+        assert_eq!(
+            r.um.get_cell_link(0, 9, 4).unwrap(),
+            Some(external_link("https://c.example"))
+        );
+        assert_eq!(r.um.get_cell_link(0, 10, 4).unwrap(), None);
+    }
+    assert_converged(&a, &b);
+}
+
+#[test]
+fn typed_url_auto_link_and_its_removal_replicate() {
+    let mut a = replica(1);
+    let mut b = replica(2);
+    a.um.set_user_input(0, 1, 1, "https://ironcalc.com").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(
+        b.um.get_cell_link(0, 1, 1).unwrap(),
+        Some(external_link("https://ironcalc.com"))
+    );
+    assert_converged(&a, &b);
+
+    // Two batches delivered in one update: the URL text (which the
+    // receiver's input path auto-links) and the removal of that link. The
+    // receiver must end without a link, like the originator.
+    a.um.set_user_input(0, 2, 1, "https://example.com").unwrap();
+    a.um.delete_cell_link(0, 2, 1).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.um.get_cell_link(0, 2, 1).unwrap(), None);
+    assert_eq!(b.um.get_cell_link(0, 2, 1).unwrap(), None);
+    assert_converged(&a, &b);
+}
