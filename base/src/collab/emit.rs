@@ -2393,6 +2393,77 @@ mod test {
         assert_parsed_covers_shared(&a);
     }
 
+    /// The gate on `resync_derived`, counted: content-only commits must never take the full path,
+    /// structural ones always must — locally and on the remote side.
+    #[test]
+    fn full_resync_gate_is_counted() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "10".to_string()).unwrap();
+        a.set_user_input(0, 2, 1, "=A1*2".to_string()).unwrap();
+        a.evaluate();
+
+        // A second replica, caught up on the setup, to watch the same gate on `Consumer::apply`.
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &a.flush());
+
+        // Content-only: nothing here may reach the full path.
+        let before = a.local.full_resyncs;
+        let style = Style {
+            quote_prefix: true,
+            ..Default::default()
+        };
+        a.set_user_input(0, 1, 1, "5".to_string()).unwrap();
+        // A fresh far row mints tail keys — not affecting prior formulas
+        a.set_user_input(0, 60, 1, "=A1+1".to_string()).unwrap();
+        a.set_cell_style(0, 1, 1, &style).unwrap();
+        a.set_merged_range(0, &RangeRef::parse_a1("A1:A2").unwrap(), true)
+            .unwrap();
+        a.set_comment(0, 1, 1, Some(("note".to_string(), "me".to_string())))
+            .unwrap();
+        assert_eq!(a.local.full_resyncs, before);
+
+        // And the document is still honest: the fresh formula evaluates, every formula is parsed.
+        a.evaluate();
+        assert_eq!(a.get_formatted_cell_value(0, 60, 1), Ok("6".to_string()));
+        assert_parsed_covers_shared(&a);
+
+        // The same commits, delivered: the remote side must not take the full path either.
+        let content = a.flush();
+        assert!(!content.is_empty());
+        let before = b.local.full_resyncs;
+        deliver(&mut b, 1, &content);
+        assert_eq!(b.local.full_resyncs, before);
+        b.evaluate();
+        assert_eq!(b.get_formatted_cell_value(0, 60, 1), Ok("6".to_string()));
+        assert_parsed_covers_shared(&b);
+
+        // Structural: each of these makes one commit, and each must trigger re-evaluation
+        macro_rules! bumps {
+            ($what:literal, $call:expr) => {{
+                let before = a.local.full_resyncs;
+                $call;
+                assert_eq!(a.local.full_resyncs, before + 1, $what);
+            }};
+        }
+        bumps!("insert_rows", a.insert_rows(0, 1, 1).unwrap());
+        bumps!("delete_rows", a.delete_rows(0, 1, 1).unwrap());
+        bumps!("rename_sheet", a.rename_sheet_by_index(0, "Data").unwrap());
+        bumps!("new_sheet", a.new_sheet());
+        bumps!(
+            "new_defined_name",
+            a.new_defined_name("total", None, "Data!$A$1").unwrap()
+        );
+        assert_parsed_covers_shared(&a);
+
+        // Delivered, they take the full path on the remote side too: one per commit.
+        let structural = a.flush();
+        assert_eq!(structural.len(), 5);
+        let before = b.local.full_resyncs;
+        deliver(&mut b, 1, &structural);
+        assert_eq!(b.local.full_resyncs, before + 5);
+    }
+
     /// The structural kinds all move something a lowered node embeds, so each must still resync.
     #[test]
     fn structural_commits_resync() {

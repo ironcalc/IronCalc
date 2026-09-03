@@ -565,10 +565,14 @@ impl CollabModel<'_> {
             && self.parsed_formulas.len() == self.workbook.worksheets.len()
         {
             self.lower_formulas_tail();
-            return;
+        } else {
+            #[cfg(test)]
+            {
+                self.local.full_resyncs += 1;
+            }
+            self.normalize_defined_names();
+            self.resync_parsed();
         }
-        self.normalize_defined_names();
-        self.resync_parsed();
     }
 
     /// Return `true` if none of the `patches` introduce changes that may trigger shift
