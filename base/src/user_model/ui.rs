@@ -22,7 +22,7 @@ pub struct SelectedView {
     pub left_column: i32,
 }
 
-// The representation-independent view state: selection and window geometry.
+// The representation-independent view state: selection, window geometry, navigation and scroll.
 impl<'a, A: Position> UserModel<'a, A> {
     // Returns the anchor of the merged cell containing (row, column), or the
     // cell itself if it is not merged.
@@ -386,10 +386,7 @@ impl<'a, A: Position> UserModel<'a, A> {
         };
         Err("View not found".to_string())
     }
-}
 
-// Ordinal-only until the width/height/hidden accessors go generic: navigation and scroll.
-impl<'a> UserModel<'a> {
     // The UI renders every row and column at a whole number of pixels
     // (the canvas rounds each size before drawing), so all the scroll and
     // visibility arithmetic in this module must accumulate the rounded
@@ -454,15 +451,13 @@ impl<'a> UserModel<'a> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
         // Stepping starts at the far edge of the focus' merged cell, so a
         // single keystroke crosses the whole merged range
-        let focus_merge = worksheet
-            .merged_cell_containing(focus_row, focus_column)
-            .cloned();
+        let focus_merge = worksheet.merged_range_containing(focus_row, focus_column);
 
         let mut new_focus_row = focus_row;
         let mut new_focus_column = focus_column;
         match key {
             "ArrowRight" => {
-                let edge = focus_merge.map_or(focus_column, |m| m.last_column());
+                let edge = focus_merge.map_or(focus_column, |(_, _, _, last_column)| last_column);
                 let mut new_column = edge + 1;
                 while new_column < LAST_COLUMN && worksheet.is_column_hidden(new_column)? {
                     new_column += 1;
@@ -486,7 +481,7 @@ impl<'a> UserModel<'a> {
                 new_focus_column = new_column;
             }
             "ArrowLeft" => {
-                let edge = focus_merge.map_or(focus_column, |m| m.column);
+                let edge = focus_merge.map_or(focus_column, |(_, first_column, _, _)| first_column);
                 let mut new_column = edge - 1;
                 while new_column > 1 && worksheet.is_column_hidden(new_column)? {
                     new_column -= 1;
@@ -501,7 +496,7 @@ impl<'a> UserModel<'a> {
                 new_focus_column = new_column;
             }
             "ArrowUp" => {
-                let edge = focus_merge.map_or(focus_row, |m| m.row);
+                let edge = focus_merge.map_or(focus_row, |(first_row, _, _, _)| first_row);
                 let mut new_row = edge - 1;
                 while new_row > 1 && worksheet.is_row_hidden(new_row)? {
                     new_row -= 1;
@@ -516,7 +511,7 @@ impl<'a> UserModel<'a> {
                 new_focus_row = new_row;
             }
             "ArrowDown" => {
-                let edge = focus_merge.map_or(focus_row, |m| m.last_row());
+                let edge = focus_merge.map_or(focus_row, |(_, _, last_row, _)| last_row);
                 let mut new_row = edge + 1;
                 while new_row < LAST_ROW && worksheet.is_row_hidden(new_row)? {
                     new_row += 1;
@@ -576,8 +571,8 @@ impl<'a> UserModel<'a> {
         };
         // Leaving a merged cell starts past its last column
         let row = view.row;
-        let mut new_column = match worksheet.merged_cell_containing(row, view.column) {
-            Some(m) => m.last_column() + 1,
+        let mut new_column = match worksheet.merged_range_containing(row, view.column) {
+            Some((_, _, _, last_column)) => last_column + 1,
             None => view.column + 1,
         };
         while new_column <= LAST_COLUMN
@@ -634,8 +629,8 @@ impl<'a> UserModel<'a> {
         };
         // Leaving a merged cell starts before its first column
         let row = view.row;
-        let mut new_column = match worksheet.merged_cell_containing(row, view.column) {
-            Some(m) => m.column - 1,
+        let mut new_column = match worksheet.merged_range_containing(row, view.column) {
+            Some((_, first_column, _, _)) => first_column - 1,
             None => view.column - 1,
         };
         while new_column >= 1
@@ -686,8 +681,8 @@ impl<'a> UserModel<'a> {
         };
         // Leaving a merged cell starts above its first row
         let column = view.column;
-        let mut new_row = match worksheet.merged_cell_containing(view.row, column) {
-            Some(m) => m.row - 1,
+        let mut new_row = match worksheet.merged_range_containing(view.row, column) {
+            Some((first_row, _, _, _)) => first_row - 1,
             None => view.row - 1,
         };
         while new_row >= 1
@@ -739,8 +734,8 @@ impl<'a> UserModel<'a> {
         };
         // Leaving a merged cell starts below its last row
         let column = view.column;
-        let mut new_row = match worksheet.merged_cell_containing(view.row, column) {
-            Some(m) => m.last_row() + 1,
+        let mut new_row = match worksheet.merged_range_containing(view.row, column) {
+            Some((_, _, last_row, _)) => last_row + 1,
             None => view.row + 1,
         };
         while new_row <= LAST_ROW

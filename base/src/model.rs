@@ -1280,11 +1280,6 @@ impl<'a> Model<'a> {
         self.evaluate_conditional_formatting();
     }
 
-    /// Returns the Theme
-    pub fn get_theme(&self) -> Theme {
-        self.workbook.theme.clone()
-    }
-
     /// Makes the grid lines in the sheet visible (`true`) or hidden (`false`)
     pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<(), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
@@ -3415,20 +3410,6 @@ impl<'a> Model<'a> {
         bitcode::encode(&self.workbook)
     }
 
-    /// Returns data about the worksheets
-    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
-        self.workbook
-            .worksheets
-            .iter()
-            .map(|worksheet| SheetProperties {
-                name: worksheet.get_name(),
-                state: worksheet.state.to_string(),
-                color: worksheet.color.clone(),
-                sheet_id: worksheet.sheet_id,
-            })
-            .collect()
-    }
-
     /// Returns markup representation of the given `sheet`.
     pub fn get_sheet_markup(&self, sheet: u32) -> Result<String, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
@@ -3455,24 +3436,6 @@ impl<'a> Model<'a> {
         }
 
         Ok(rows.join("\n"))
-    }
-
-    /// Returns the number of frozen rows in `sheet`
-    pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
-        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
-            Ok(worksheet.frozen_rows)
-        } else {
-            Err("Invalid sheet".to_string())
-        }
-    }
-
-    /// Return the number of frozen columns in `sheet`
-    pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
-        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
-            Ok(worksheet.frozen_columns)
-        } else {
-            Err("Invalid sheet".to_string())
-        }
     }
 
     /// Sets the number of frozen rows to `frozen_rows` in the workbook.
@@ -3509,12 +3472,6 @@ impl<'a> Model<'a> {
         }
     }
 
-    /// Returns the width of a column
-    #[inline]
-    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
-        self.workbook.worksheet(sheet)?.get_column_width(column)
-    }
-
     /// Sets the width of a column
     #[inline]
     pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> Result<(), String> {
@@ -3542,24 +3499,6 @@ impl<'a> Model<'a> {
         self.workbook
             .worksheet_mut(sheet)?
             .set_row_hidden(row, hidden)
-    }
-
-    /// Returns whether a column is hidden
-    #[inline]
-    pub fn is_column_hidden(&self, sheet: u32, column: i32) -> Result<bool, String> {
-        self.workbook.worksheet(sheet)?.is_column_hidden(column)
-    }
-
-    /// Returns whether a row is hidden
-    #[inline]
-    pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
-        self.workbook.worksheet(sheet)?.is_row_hidden(row)
-    }
-
-    /// Returns the height of a row
-    #[inline]
-    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
-        self.workbook.worksheet(sheet)?.row_height(row)
     }
 
     /// Sets the height of a row
@@ -3596,24 +3535,67 @@ impl<'a> Model<'a> {
 
 /// Reads and evaluation: everything here runs on any addressing scheme.
 impl<'a, A: Position> Model<'a, A> {
-    /// The context used to parse/stringify defined-name formulas. Defined names
-    /// have no natural anchor cell, so we use the first worksheet's A1.
-    pub(crate) fn defined_name_context(&self) -> CellReferenceRC {
-        CellReferenceRC {
-            sheet: self
-                .workbook
-                .worksheets
-                .first()
-                .map(|ws| ws.get_name())
-                .unwrap_or_else(|| "Sheet1".to_string()),
-            row: 1,
-            column: 1,
+    /// Returns data about the worksheets
+    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
+        self.workbook
+            .worksheets
+            .iter()
+            .map(|worksheet| SheetProperties {
+                name: worksheet.get_name(),
+                state: worksheet.state.to_string(),
+                color: worksheet.color.clone(),
+                sheet_id: worksheet.sheet_id,
+            })
+            .collect()
+    }
+
+    /// Returns the number of frozen rows in `sheet`
+    pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
+        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
+            Ok(worksheet.frozen_rows)
+        } else {
+            Err("Invalid sheet".to_string())
         }
     }
-}
 
-/// Document mutation and construction: ordinal addressing only.
-impl<'a> Model<'a> {
+    /// Return the number of frozen columns in `sheet`
+    pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
+        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
+            Ok(worksheet.frozen_columns)
+        } else {
+            Err("Invalid sheet".to_string())
+        }
+    }
+
+    /// Returns the width of a column
+    #[inline]
+    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
+        self.workbook.worksheet(sheet)?.get_column_width(column)
+    }
+
+    /// Returns whether a column is hidden
+    #[inline]
+    pub fn is_column_hidden(&self, sheet: u32, column: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_column_hidden(column)
+    }
+
+    /// Returns whether a row is hidden
+    #[inline]
+    pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_row_hidden(row)
+    }
+
+    /// Returns the height of a row
+    #[inline]
+    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
+        self.workbook.worksheet(sheet)?.row_height(row)
+    }
+
+    /// Returns the Theme
+    pub fn get_theme(&self) -> Theme {
+        self.workbook.theme.clone()
+    }
+
     /// Validates if a defined name can be created
     pub fn is_valid_defined_name(
         &mut self,
@@ -3677,6 +3659,24 @@ impl<'a> Model<'a> {
         Ok(sheet_id)
     }
 
+    /// The context used to parse/stringify defined-name formulas. Defined names
+    /// have no natural anchor cell, so we use the first worksheet's A1.
+    pub(crate) fn defined_name_context(&self) -> CellReferenceRC {
+        CellReferenceRC {
+            sheet: self
+                .workbook
+                .worksheets
+                .first()
+                .map(|ws| ws.get_name())
+                .unwrap_or_else(|| "Sheet1".to_string()),
+            row: 1,
+            column: 1,
+        }
+    }
+}
+
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Delete defined name of name and scope
     pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
         let name_upper = name.to_uppercase();

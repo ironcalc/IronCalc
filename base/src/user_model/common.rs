@@ -182,6 +182,23 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
     Ok(style)
 }
 
+/// The columns row `row` currently holds a cell in, left to right. A key the index no longer
+/// addresses names no position, and is skipped.
+fn row_columns<A: Position>(worksheet: &crate::types::Worksheet<A>, row: i32) -> Vec<i32> {
+    let Some(row_key) = A::row_at(&worksheet.index, row) else {
+        return Vec::new();
+    };
+    let Some(row_data) = worksheet.sheet_data.get(&row_key) else {
+        return Vec::new();
+    };
+    let mut columns: Vec<i32> = row_data
+        .keys()
+        .filter_map(|key| A::col_ordinal(&worksheet.index, key))
+        .collect();
+    columns.sort_unstable();
+    columns
+}
+
 /// # A wrapper around [`Model`] for a spreadsheet end user.
 /// UserModel is a wrapper around Model with undo/redo history, _diffs_, automatic evaluation and view management.
 ///
@@ -1389,42 +1406,6 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
-    /// Gets the height of a row
-    ///
-    /// See also:
-    /// * [Model::get_row_height]
-    #[inline]
-    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
-        self.model.get_row_height(sheet, row)
-    }
-
-    /// Gets the width of a column
-    ///
-    /// See also:
-    /// * [Model::get_column_width]
-    #[inline]
-    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
-        self.model.get_column_width(sheet, column)
-    }
-
-    /// Returns the number of frozen rows in the sheet
-    ///
-    /// See also:
-    /// * [Model::get_frozen_rows_count()]
-    #[inline]
-    pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
-        self.model.get_frozen_rows_count(sheet)
-    }
-
-    /// Returns the number of frozen columns in the sheet
-    ///
-    /// See also:
-    /// * [Model::get_frozen_columns_count()]
-    #[inline]
-    pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
-        self.model.get_frozen_columns_count(sheet)
-    }
-
     /// Sets the number of frozen rows in sheet
     ///
     /// See also:
@@ -1682,15 +1663,6 @@ impl<'a> UserModel<'a> {
         self.push_diff_list(diff_list);
         Ok(())
     }
-    /// Returns information about the sheets
-    ///
-    /// See also:
-    /// * [Model::get_worksheets_properties]
-    #[inline]
-    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
-        self.model.get_worksheets_properties()
-    }
-
     /// Sets the name of a workbook
     pub fn set_name(&mut self, name: &str) {
         let old_value = self.model.workbook.name.clone();
@@ -1702,14 +1674,6 @@ impl<'a> UserModel<'a> {
             new_value: name.to_string(),
         }]);
         self.model.workbook.name = name.to_string();
-    }
-    /// Pauses automatic evaluation.
-    ///
-    /// See also:
-    /// * [UserModel::evaluate]
-    /// * [UserModel::resume_evaluation]
-    pub fn pause_evaluation(&mut self) {
-        self.pause_evaluation = true;
     }
 
     /// Sets the workbook theme.
@@ -1723,10 +1687,6 @@ impl<'a> UserModel<'a> {
         }]);
     }
 
-    /// Returns the current workbook theme.
-    pub fn get_theme(&self) -> Theme {
-        self.model.get_theme()
-    }
     /// Set the gid lines in the worksheet to visible (`true`) or hidden (`false`)
     pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<(), String> {
         let old_value = self.model.workbook.worksheet(sheet)?.show_grid_lines;
@@ -1738,65 +1698,6 @@ impl<'a> UserModel<'a> {
             old_value,
         }]);
         Ok(())
-    }
-    /// Returns the largest column in the row less than a column whose cell has a non empty value.
-    /// If there are none it returns `None`.
-    /// This is useful when rendering a part of a worksheet to know which cells spill over
-    pub fn get_last_non_empty_in_row_before_column(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<Option<i32>, String> {
-        let worksheet = self.model.workbook.worksheet(sheet)?;
-        let data = worksheet.sheet_data.get(&row);
-        if let Some(row_data) = data {
-            let mut last_column = None;
-            let mut columns: Vec<i32> = row_data.keys().copied().collect();
-            columns.sort_unstable();
-            for col in columns {
-                if col < column {
-                    if let Some(cell) = worksheet.cell(row, col) {
-                        if matches!(cell, Cell::EmptyCell { .. }) {
-                            continue;
-                        }
-                    }
-                    last_column = Some(col);
-                }
-            }
-            Ok(last_column)
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Returns the smallest column in the row larger than "column" whose cell has a non empty value.
-    /// If there are none it returns `None`.
-    /// This is useful when rendering a part of a worksheet to know which cells spill over
-    pub fn get_first_non_empty_in_row_after_column(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<Option<i32>, String> {
-        let worksheet = self.model.workbook.worksheet(sheet)?;
-        let data = worksheet.sheet_data.get(&row);
-        if let Some(row_data) = data {
-            let mut columns: Vec<i32> = row_data.keys().copied().collect();
-            // We sort the keys to ensure we are going from left to right
-            columns.sort_unstable();
-            for col in columns {
-                if col > column {
-                    if let Some(cell) = worksheet.cell(row, col) {
-                        if matches!(cell, Cell::EmptyCell { .. }) {
-                            continue;
-                        }
-                    }
-                    return Ok(Some(col));
-                }
-            }
-        }
-        Ok(None)
     }
     /// Sets an array formula in the given range.
     pub fn set_user_array_formula(
@@ -1908,16 +1809,6 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
-    /// validates a new defined name
-    pub fn is_valid_defined_name(
-        &mut self,
-        name: &str,
-        scope: Option<u32>,
-        formula: &str,
-    ) -> Result<Option<u32>, String> {
-        self.model.is_valid_defined_name(name, scope, formula)
-    }
-
     /// Sets the timezone for the model
     pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
         let diff_list = vec![Diff::SetTimezone {
@@ -1979,6 +1870,113 @@ impl<'a> UserModel<'a> {
 
 // The representation-independent surface, shared by the ordinal and collab models.
 impl<'a, A: Position> UserModel<'a, A> {
+    /// Gets the height of a row
+    ///
+    /// See also:
+    /// * [Model::get_row_height]
+    #[inline]
+    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
+        self.model.get_row_height(sheet, row)
+    }
+
+    /// Gets the width of a column
+    ///
+    /// See also:
+    /// * [Model::get_column_width]
+    #[inline]
+    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
+        self.model.get_column_width(sheet, column)
+    }
+
+    /// Returns the number of frozen rows in the sheet
+    ///
+    /// See also:
+    /// * [Model::get_frozen_rows_count()]
+    #[inline]
+    pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
+        self.model.get_frozen_rows_count(sheet)
+    }
+
+    /// Returns the number of frozen columns in the sheet
+    ///
+    /// See also:
+    /// * [Model::get_frozen_columns_count()]
+    #[inline]
+    pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
+        self.model.get_frozen_columns_count(sheet)
+    }
+
+    /// Returns information about the sheets
+    ///
+    /// See also:
+    /// * [Model::get_worksheets_properties]
+    #[inline]
+    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
+        self.model.get_worksheets_properties()
+    }
+
+    /// Returns the current workbook theme.
+    pub fn get_theme(&self) -> Theme {
+        self.model.get_theme()
+    }
+
+    /// validates a new defined name
+    pub fn is_valid_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<Option<u32>, String> {
+        self.model.is_valid_defined_name(name, scope, formula)
+    }
+
+    /// Returns the largest column in the row less than a column whose cell has a non empty value.
+    /// If there are none it returns `None`.
+    /// This is useful when rendering a part of a worksheet to know which cells spill over
+    pub fn get_last_non_empty_in_row_before_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, String> {
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let mut last_column = None;
+        for col in row_columns::<A>(worksheet, row) {
+            if col < column {
+                if let Some(cell) = worksheet.cell(row, col) {
+                    if matches!(cell, Cell::EmptyCell { .. }) {
+                        continue;
+                    }
+                }
+                last_column = Some(col);
+            }
+        }
+        Ok(last_column)
+    }
+
+    /// Returns the smallest column in the row larger than "column" whose cell has a non empty value.
+    /// If there are none it returns `None`.
+    /// This is useful when rendering a part of a worksheet to know which cells spill over
+    pub fn get_first_non_empty_in_row_after_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, String> {
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        for col in row_columns::<A>(worksheet, row) {
+            if col > column {
+                if let Some(cell) = worksheet.cell(row, col) {
+                    if matches!(cell, Cell::EmptyCell { .. }) {
+                        continue;
+                    }
+                }
+                return Ok(Some(col));
+            }
+        }
+        Ok(None)
+    }
+
     /// Creates a user model from an existing model
     pub fn from_model(model: Model<'a, A>) -> UserModel<'a, A> {
         UserModel {
@@ -1996,6 +1994,15 @@ impl<'a, A: Position> UserModel<'a, A> {
     /// Returns the workbook name
     pub fn get_name(&self) -> String {
         self.model.workbook.name.clone()
+    }
+
+    /// Pauses automatic evaluation.
+    ///
+    /// See also:
+    /// * [UserModel::evaluate]
+    /// * [UserModel::resume_evaluation]
+    pub fn pause_evaluation(&mut self) {
+        self.pause_evaluation = true;
     }
 
     /// Resumes automatic evaluation.
@@ -2318,6 +2325,406 @@ impl<'a, A: Position> UserModel<'a, A> {
     /// Gets the formatting settings for the model
     pub fn get_fmt_settings(&self) -> FmtSettings {
         self.model.get_fmt_settings()
+    }
+}
+
+/// The collaborative surface: the same calls as the ordinal wrapper, delegating to the
+/// patch-emitting mutators. Undo/redo capture lands in a later round.
+#[cfg(feature = "collab")]
+impl<'a> UserModel<'a, crate::collab::model::Stable> {
+    /// Sets the name of a workbook. Local only: the name is not replicated.
+    pub fn set_name(&mut self, name: &str) {
+        self.model.workbook.name = name.to_string();
+    }
+
+    /// Set the input in a cell
+    pub fn set_user_input(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+    ) -> Result<(), String> {
+        if !is_valid_column_number(column) {
+            return Err("Invalid column".to_string());
+        }
+        if !is_valid_row(row) {
+            return Err("Invalid row".to_string());
+        }
+        self.model
+            .set_user_input(sheet, row, column, value.to_string())?;
+        self.evaluate_if_not_paused();
+        // The auto-fit the ordinal wrapper does, as its own commit.
+        let style = self.model.get_style_for_cell(sheet, row, column)?;
+        let line_count = value.split('\n').count() as f64;
+        let row_height = self.model.get_row_height(sheet, row)?;
+        let font_size = style.font.sz as f64;
+        let cell_height = (line_count - 1.0) * font_size * 1.5 + 8.0 + font_size;
+        if cell_height > row_height {
+            self.model.set_row_height(sheet, row, cell_height)?;
+        }
+        Ok(())
+    }
+
+    /// Adds new sheet
+    pub fn new_sheet(&mut self) -> Result<(), String> {
+        let (_name, index) = self.model.new_sheet();
+        self.set_selected_sheet(index)
+    }
+
+    /// Duplicates a sheet by index, placing the copy right after it and selecting it.
+    pub fn duplicate_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        let (_name, new_index) = self.model.duplicate_sheet(sheet)?;
+        self.set_selected_sheet(new_index)
+    }
+
+    /// Deletes sheet by index
+    pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        self.model.workbook.worksheet(sheet)?;
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        // If we are deleting the last sheet we need to change the selected sheet
+        if sheet == sheet_count - 1 && sheet_count > 1 {
+            if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+                view.sheet = sheet_count - 2;
+            };
+        }
+        self.model.delete_sheet(sheet)
+    }
+
+    /// Renames a sheet by index
+    pub fn rename_sheet(&mut self, sheet: u32, new_name: &str) -> Result<(), String> {
+        if self.model.workbook.worksheet(sheet)?.name == new_name {
+            return Ok(());
+        }
+        self.model.rename_sheet_by_index(sheet, new_name)
+    }
+
+    /// Hides sheet by index
+    pub fn hide_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        for index in 1..sheet_count {
+            let sheet_index = (sheet + index) % sheet_count;
+            if self.model.workbook.worksheet(sheet_index)?.state == SheetState::Visible {
+                if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+                    view.sheet = sheet_index;
+                };
+                break;
+            }
+        }
+        self.model.set_sheet_state(sheet, SheetState::Hidden)
+    }
+
+    /// Un hides sheet by index
+    pub fn unhide_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        self.model.set_sheet_state(sheet, SheetState::Visible)
+    }
+
+    /// Sets sheet color
+    pub fn set_sheet_color(&mut self, sheet: u32, color: &Color) -> Result<(), String> {
+        self.model.set_sheet_color(sheet, color)
+    }
+
+    /// Set the gid lines in the worksheet to visible (`true`) or hidden (`false`)
+    pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<(), String> {
+        self.model.set_show_grid_lines(sheet, show_grid_lines)
+    }
+
+    /// Removes cells contents and style
+    pub fn range_clear_all(&mut self, range: &Area) -> Result<(), String> {
+        self.model.range_clear_all(range)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Deletes the content in cells, but keeps the style
+    pub fn range_clear_contents(&mut self, range: &Area) -> Result<(), String> {
+        self.model.range_clear_contents(range)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Removes cells styles and formatting, but keeps the content
+    pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
+        self.model.range_clear_formatting(range)
+    }
+
+    /// Inserts `row_count` blank rows starting at `row`
+    pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        self.model.insert_rows(sheet, row, row_count)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Inserts `column_count` blank columns starting at `column`
+    pub fn insert_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), String> {
+        self.model.insert_columns(sheet, column, column_count)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Deletes `row_count` rows starting at `row`
+    pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        self.model.delete_rows(sheet, row, row_count)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Deletes `column_count` columns starting at `column`
+    pub fn delete_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), String> {
+        self.model.delete_columns(sheet, column, column_count)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Moves a column horizontally and adjusts formulas
+    pub fn move_columns_action(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        if delta == 0 || column_count <= 0 {
+            return Ok(());
+        }
+        // Adjust delta to skip hidden columns in the landing zone
+        let mut new_delta = delta;
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        if delta > 0 {
+            for col in column + column_count..=column + column_count + delta {
+                if worksheet.is_column_hidden(col)? {
+                    new_delta += 1;
+                }
+            }
+        } else {
+            for col in column + delta..column {
+                if worksheet.is_column_hidden(col)? {
+                    new_delta -= 1;
+                }
+            }
+        }
+        self.model
+            .move_columns_action(sheet, column, column_count, new_delta)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Moves a group of rows vertically and adjusts formulas
+    pub fn move_rows_action(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        row_count: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        if delta == 0 || row_count <= 0 {
+            return Ok(());
+        }
+        let mut new_delta = delta;
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        if delta > 0 {
+            for r in row + row_count..=row + row_count + delta {
+                if worksheet.is_row_hidden(r)? {
+                    new_delta += 1;
+                }
+            }
+        } else {
+            for r in row + delta..row {
+                if worksheet.is_row_hidden(r)? {
+                    new_delta -= 1;
+                }
+            }
+        }
+        self.model
+            .move_rows_action(sheet, row, row_count, new_delta)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Sets the width of a group of columns in a single commit
+    pub fn set_columns_width(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        width: f64,
+    ) -> Result<(), String> {
+        self.model
+            .set_columns_width(sheet, column_start, column_end, width)
+    }
+
+    /// Sets the hidden state of a range of columns in a single commit
+    pub fn set_columns_hidden(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        self.model
+            .set_columns_hidden(sheet, column_start, column_end, hidden)
+    }
+
+    /// Sets the hidden state of a range of rows in a single commit
+    pub fn set_rows_hidden(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        self.model
+            .set_rows_hidden(sheet, row_start, row_end, hidden)
+    }
+
+    /// Sets the height of a range of rows in a single commit
+    pub fn set_rows_height(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        height: f64,
+    ) -> Result<(), String> {
+        self.model
+            .set_rows_height(sheet, row_start, row_end, height)
+    }
+
+    /// Sets the number of frozen rows in sheet
+    pub fn set_frozen_rows_count(&mut self, sheet: u32, frozen_rows: i32) -> Result<(), String> {
+        self.model.set_frozen_rows(sheet, frozen_rows)
+    }
+
+    /// Sets the number of frozen columns in sheet
+    pub fn set_frozen_columns_count(
+        &mut self,
+        sheet: u32,
+        frozen_columns: i32,
+    ) -> Result<(), String> {
+        self.model.set_frozen_columns(sheet, frozen_columns)
+    }
+
+    /// Sets the workbook theme.
+    pub fn set_theme(&mut self, theme: Theme) {
+        self.model.set_theme(theme);
+    }
+
+    /// Sets the timezone for the model
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
+        self.model.set_timezone(timezone)
+    }
+
+    /// Sets the locale for the model
+    pub fn set_locale(&mut self, locale: &str) -> Result<(), String> {
+        self.model.set_locale(locale)
+    }
+
+    /// Create a new defined name
+    pub fn new_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<(), String> {
+        self.model.new_defined_name(name, scope, formula)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Delete an existing defined name
+    pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
+        self.model.delete_defined_name(name, scope)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Updates a defined name
+    pub fn update_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        new_name: &str,
+        new_scope: Option<u32>,
+        new_formula: &str,
+    ) -> Result<(), String> {
+        self.model
+            .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Returns the list of all named style names.
+    pub fn get_named_style_list(&self) -> Vec<String> {
+        self.model.get_named_style_list()
+    }
+
+    /// Returns the `Style` associated with the named style.
+    pub fn get_named_style(&self, name: &str) -> Result<Style, String> {
+        self.model.get_named_style(name)
+    }
+
+    /// Creates a new named style. Fails if a style with that name already exists.
+    pub fn create_named_style(&mut self, name: &str, style: &Style) -> Result<(), String> {
+        self.model.create_named_style(name, style)
+    }
+
+    /// Deletes a named style. Cells that used this style keep their formatting.
+    pub fn delete_named_style(&mut self, name: &str) -> Result<(), String> {
+        self.model.delete_named_style(name)
+    }
+
+    /// Updates the formatting and optionally the name of a named style.
+    pub fn update_named_style(
+        &mut self,
+        name: &str,
+        new_name: &str,
+        style: &Style,
+    ) -> Result<(), String> {
+        self.model.update_named_style(name, new_name, style)?;
+        Ok(())
+    }
+
+    /// Adds a new CF rule to `sheet`.
+    pub fn add_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        range: &str,
+        rule: crate::cf_types::CfRuleInput,
+    ) -> Result<(), String> {
+        self.model.add_conditional_formatting(sheet, range, rule)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Removes the CF rule at `index` from `sheet`.
+    pub fn delete_conditional_formatting(&mut self, sheet: u32, index: u32) -> Result<(), String> {
+        self.model
+            .delete_conditional_formatting(sheet, index as usize)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Replaces the range and rule of the CF entry at `index` on `sheet`.
+    pub fn update_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        index: u32,
+        new_range: &str,
+        new_rule: crate::cf_types::CfRuleInput,
+    ) -> Result<(), String> {
+        self.model
+            .update_conditional_formatting(sheet, index as usize, new_range, new_rule)?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 }
 

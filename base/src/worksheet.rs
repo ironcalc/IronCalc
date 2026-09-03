@@ -49,6 +49,15 @@ impl<A: Position> Worksheet<A> {
             .filter_map(|m| A::resolve_merged(m, &self.index))
     }
 
+    /// The anchor (top-left cell) of the merged range containing `(row, column)`, or the cell
+    /// itself when it is not merged.
+    pub fn merge_anchor(&self, row: i32, column: i32) -> (i32, i32) {
+        match self.merged_range_containing(row, column) {
+            Some((first_row, first_column, _, _)) => (first_row, first_column),
+            None => (row, column),
+        }
+    }
+
     pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
         let r = A::row_at(&self.index, row)?;
         let c = A::col_at(&self.index, column)?;
@@ -469,15 +478,6 @@ impl Worksheet {
         }
     }
 
-    /// Returns the anchor of the merged cell containing (row, column),
-    /// or (row, column) itself if the cell is not merged
-    pub fn merge_anchor(&self, row: i32, column: i32) -> (i32, i32) {
-        match self.merged_cell_containing(row, column) {
-            Some(m) => (m.row, m.column),
-            None => (row, column),
-        }
-    }
-
     pub fn set_frozen_rows(&mut self, frozen_rows: i32) -> Result<(), String> {
         if frozen_rows < 0 {
             return Err("Frozen rows cannot be negative".to_string());
@@ -653,29 +653,6 @@ impl Worksheet {
         Ok(())
     }
 
-    /// Return the width of a column in pixels
-    pub fn get_column_width(&self, column: i32) -> Result<f64, String> {
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
-        }
-
-        let cols = &self.cols;
-        for col in cols {
-            let min = col.min;
-            let max = col.max;
-            if column >= min && column <= max {
-                if col.hidden {
-                    return Ok(0.0);
-                }
-                if col.custom_width {
-                    return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
-                }
-                break;
-            }
-        }
-        Ok(constants::DEFAULT_COLUMN_WIDTH)
-    }
-
     /// Return the actual width of a column in pixels, ignoring hidden status
     pub fn get_actual_column_width(&self, column: i32) -> Result<f64, String> {
         if !is_valid_column_number(column) {
@@ -694,37 +671,6 @@ impl Worksheet {
             }
         }
         Ok(constants::DEFAULT_COLUMN_WIDTH)
-    }
-
-    /// Returns true if the column is hidden
-    pub fn is_column_hidden(&self, column: i32) -> Result<bool, String> {
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
-        }
-
-        let cols = &self.cols;
-        for col in cols {
-            let min = col.min;
-            let max = col.max;
-            if column >= min && column <= max {
-                return Ok(col.hidden);
-            }
-        }
-        Ok(false)
-    }
-
-    /// Returns if a row is hidden
-    pub fn is_row_hidden(&self, row: i32) -> Result<bool, String> {
-        if !is_valid_row(row) {
-            return Err(format!("Row number '{row}' is not valid."));
-        }
-        let rows = &self.rows;
-        for r in rows {
-            if r.r == row {
-                return Ok(r.hidden);
-            }
-        }
-        Ok(false)
     }
 
     /// Returns the column style index if present
@@ -775,27 +721,29 @@ impl Worksheet {
         }
         Ok(())
     }
-
-    /// Returns the height of a row in pixels
-    pub fn row_height(&self, row: i32) -> Result<f64, String> {
-        if !is_valid_row(row) {
-            return Err(format!("Row number '{row}' is not valid."));
-        }
-
-        let rows = &self.rows;
-        for r in rows {
-            if r.r == row {
-                if r.hidden {
-                    return Ok(0.0);
-                }
-                return Ok(r.height * constants::ROW_HEIGHT_FACTOR);
-            }
-        }
-        Ok(constants::DEFAULT_ROW_HEIGHT)
-    }
 }
 
 impl<A: Position> Worksheet<A> {
+    /// Return the width of a column in pixels
+    pub fn get_column_width(&self, column: i32) -> Result<f64, String> {
+        A::column_width(self, column)
+    }
+
+    /// Returns true if the column is hidden
+    pub fn is_column_hidden(&self, column: i32) -> Result<bool, String> {
+        A::is_column_hidden(self, column)
+    }
+
+    /// Returns the height of a row in pixels
+    pub fn row_height(&self, row: i32) -> Result<f64, String> {
+        A::row_height(self, row)
+    }
+
+    /// Returns if a row is hidden
+    pub fn is_row_hidden(&self, row: i32) -> Result<bool, String> {
+        A::is_row_hidden(self, row)
+    }
+
     // Returns:
     // - If it is an anchor for a dynamic array => full range
     // - If it is an anchor for an array formula => full range
@@ -872,9 +820,6 @@ impl<A: Position> Worksheet<A> {
             _ => Ok(CellStructure::SingleCell),
         }
     }
-}
-
-impl Worksheet {
     /// It provides convenient method for user navigation in the spreadsheet by jumping to edges.
     /// Spreadsheet engines usually allow this method of navigation by using CTRL+arrows.
     /// Behaviour summary:
@@ -895,12 +840,12 @@ impl Worksheet {
 
         // A merged cell behaves as a single cell: stepping out of it starts at
         // its far edge in the direction of travel.
-        let start_cell = match self.merged_cell_containing(row, column) {
-            Some(m) => match direction {
-                NavigationDirection::Left => (row, m.column),
-                NavigationDirection::Right => (row, m.last_column()),
-                NavigationDirection::Up => (m.row, column),
-                NavigationDirection::Down => (m.last_row(), column),
+        let start_cell = match self.merged_range_containing(row, column) {
+            Some((first_row, first_column, last_row, last_column)) => match direction {
+                NavigationDirection::Left => (row, first_column),
+                NavigationDirection::Right => (row, last_column),
+                NavigationDirection::Up => (first_row, column),
+                NavigationDirection::Down => (last_row, column),
             },
             None => (row, column),
         };

@@ -2088,16 +2088,19 @@ mod test {
         }
         assert_eq!(a.workbook, b.workbook);
 
-        // The newest span covering a position wins it, per position and per property kind.
-        let widths: Vec<f64> = (1..=5).map(|c| a.get_column_width(0, c).unwrap()).collect();
-        assert_eq!(widths[0], widths[2]);
-        assert_ne!(widths[0], widths[1]);
-        assert_eq!(widths[4], DEFAULT_COLUMN_WIDTH);
+        // The newest span covering a position wins it, per position and per property kind. Columns
+        // 1..4 are hidden — which a width read reports as 0 — so the register is what has to be
+        // compared to see which span won the width.
+        let width = |m: &CollabModel, column: i32| {
+            m.workbook.worksheets[0]
+                .covering_col(column, ColPropKind::Width)
+                .map(|col| col.width)
+        };
+        assert_eq!(width(&a, 1), width(&a, 3));
+        assert_ne!(width(&a, 1), width(&a, 2));
+        assert_eq!(a.get_column_width(0, 5).unwrap(), DEFAULT_COLUMN_WIDTH);
         for column in 1..=5 {
-            assert_eq!(
-                a.get_column_width(0, column).unwrap(),
-                b.get_column_width(0, column).unwrap()
-            );
+            assert_eq!(width(&a, column), width(&b, column));
             assert_eq!(
                 a.is_column_hidden(0, column).unwrap(),
                 b.is_column_hidden(0, column).unwrap()

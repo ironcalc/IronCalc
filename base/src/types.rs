@@ -6,7 +6,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::constants::DEFAULT_ROW_HEIGHT;
+use crate::constants::{COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
 use crate::expressions::parser::Node;
 use crate::model::Model;
 use crate::user_model::OrdinalUserState;
@@ -16,7 +16,8 @@ use crate::{
     expressions::{
         token::Error,
         utils::{
-            column_to_number, is_valid_column, is_valid_row, number_to_column, parse_reference_a1,
+            column_to_number, is_valid_column, is_valid_column_number, is_valid_row,
+            number_to_column, parse_reference_a1,
         },
     },
     ROW_HEIGHT_FACTOR,
@@ -409,6 +410,13 @@ pub trait Position: sealed::Sealed + Sized + Clone {
         idx: &Self::SheetIndex,
     ) -> Option<(i32, i32, i32, i32)>;
 
+    // Row/column metrics. Genuinely per-representation: [`Ordinal`] reads the ranged `Col`/`Row`
+    // records by index, stable addressing resolves a key and its covering spans.
+    fn column_width(sheet: &Worksheet<Self>, column: i32) -> Result<f64, String>;
+    fn is_column_hidden(sheet: &Worksheet<Self>, column: i32) -> Result<bool, String>;
+    fn row_height(sheet: &Worksheet<Self>, row: i32) -> Result<f64, String>;
+    fn is_row_hidden(sheet: &Worksheet<Self>, row: i32) -> Result<bool, String>;
+
     /// The AST the formula interned at `index` on `sheet` is *shown* as:
     /// 1. For [Ordinal] is pretty much identity function.
     /// 2. For [Stable] is a lowered stable references to construct a specific node.
@@ -479,6 +487,63 @@ impl Position for Ordinal {
 
     fn resolve_range(range: &RangeRef, _idx: &()) -> Option<(i32, i32, i32, i32)> {
         Some(range.resolve())
+    }
+
+    fn column_width(sheet: &Worksheet, column: i32) -> Result<f64, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        for col in &sheet.cols {
+            if column >= col.min && column <= col.max {
+                if col.hidden {
+                    return Ok(0.0);
+                }
+                if col.custom_width {
+                    return Ok(col.width * COLUMN_WIDTH_FACTOR);
+                }
+                break;
+            }
+        }
+        Ok(DEFAULT_COLUMN_WIDTH)
+    }
+
+    fn is_column_hidden(sheet: &Worksheet, column: i32) -> Result<bool, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        for col in &sheet.cols {
+            if column >= col.min && column <= col.max {
+                return Ok(col.hidden);
+            }
+        }
+        Ok(false)
+    }
+
+    fn row_height(sheet: &Worksheet, row: i32) -> Result<f64, String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        for r in &sheet.rows {
+            if r.r == row {
+                if r.hidden {
+                    return Ok(0.0);
+                }
+                return Ok(r.height * ROW_HEIGHT_FACTOR);
+            }
+        }
+        Ok(DEFAULT_ROW_HEIGHT)
+    }
+
+    fn is_row_hidden(sheet: &Worksheet, row: i32) -> Result<bool, String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        for r in &sheet.rows {
+            if r.r == row {
+                return Ok(r.hidden);
+            }
+        }
+        Ok(false)
     }
 
     /// The stored node already carries offsets from wherever the formula sits, so it *is* the

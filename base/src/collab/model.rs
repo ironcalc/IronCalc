@@ -88,6 +88,46 @@ impl Position for Stable {
         range.resolve(idx)
     }
 
+    fn column_width(sheet: &Worksheet<Stable>, column: i32) -> Result<f64, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        if Self::is_column_hidden(sheet, column)? {
+            return Ok(0.0);
+        }
+        Ok(match sheet.covering_col(column, ColPropKind::Width) {
+            Some(col) => col.width * COLUMN_WIDTH_FACTOR,
+            None => DEFAULT_COLUMN_WIDTH,
+        })
+    }
+
+    fn is_column_hidden(sheet: &Worksheet<Stable>, column: i32) -> Result<bool, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        Ok(sheet
+            .covering_col(column, ColPropKind::Hidden)
+            .is_some_and(|col| col.hidden))
+    }
+
+    fn row_height(sheet: &Worksheet<Stable>, row: i32) -> Result<f64, String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        Ok(match sheet.row_record(row) {
+            Some(record) if record.hidden => 0.0,
+            Some(record) => record.height * ROW_HEIGHT_FACTOR,
+            None => DEFAULT_ROW_HEIGHT,
+        })
+    }
+
+    fn is_row_hidden(sheet: &Worksheet<Stable>, row: i32) -> Result<bool, String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        Ok(sheet.row_record(row).is_some_and(|record| record.hidden))
+    }
+
     /// The cell's own stream, lowered against the cell: relative references come back as offsets
     /// from it and keep the `$`-less spelling they were authored with. `parsed_formulas` cannot
     /// serve this — it holds the all-absolute form the evaluator shares between hosts.
@@ -300,25 +340,6 @@ impl Worksheet<Stable> {
         best.map(|(_, col)| col)
     }
 
-    pub fn get_column_width(&self, column: i32) -> Result<f64, String> {
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
-        }
-        Ok(match self.covering_col(column, ColPropKind::Width) {
-            Some(col) => col.width * COLUMN_WIDTH_FACTOR,
-            None => DEFAULT_COLUMN_WIDTH,
-        })
-    }
-
-    pub fn is_column_hidden(&self, column: i32) -> Result<bool, String> {
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
-        }
-        Ok(self
-            .covering_col(column, ColPropKind::Hidden)
-            .is_some_and(|col| col.hidden))
-    }
-
     pub fn get_column_style(&self, column: i32) -> Result<Option<i32>, String> {
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
@@ -333,23 +354,6 @@ impl Worksheet<Stable> {
         let key = Stable::row_at(&self.index, row)?;
         self.rows.iter().find(|r| r.r == key)
     }
-
-    pub fn row_height(&self, row: i32) -> Result<f64, String> {
-        if !is_valid_row(row) {
-            return Err(format!("Row number '{row}' is not valid."));
-        }
-        Ok(match self.row_record(row) {
-            Some(record) => record.height * ROW_HEIGHT_FACTOR,
-            None => DEFAULT_ROW_HEIGHT,
-        })
-    }
-
-    pub fn is_row_hidden(&self, row: i32) -> Result<bool, String> {
-        if !is_valid_row(row) {
-            return Err(format!("Row number '{row}' is not valid."));
-        }
-        Ok(self.row_record(row).is_some_and(|record| record.hidden))
-    }
 }
 
 /// A collaborative model: the evaluation engine running directly on stably addressed storage.
@@ -358,27 +362,11 @@ pub type CollabModel<'a> = Model<'a, Stable>;
 /// Reads that stable addressing has to answer for itself, because a column property is a span
 /// register rather than a record per column.
 impl CollabModel<'_> {
-    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
-        self.workbook.worksheet(sheet)?.get_column_width(column)
-    }
-
-    pub fn is_column_hidden(&self, sheet: u32, column: i32) -> Result<bool, String> {
-        self.workbook.worksheet(sheet)?.is_column_hidden(column)
-    }
-
     pub fn get_column_style(&self, sheet: u32, column: i32) -> Result<Option<Style>, String> {
         match self.workbook.worksheet(sheet)?.get_column_style(column)? {
             Some(index) => self.workbook.styles.get_style(index).map(Some),
             None => Ok(None),
         }
-    }
-
-    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
-        self.workbook.worksheet(sheet)?.row_height(row)
-    }
-
-    pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
-        self.workbook.worksheet(sheet)?.is_row_hidden(row)
     }
 }
 
