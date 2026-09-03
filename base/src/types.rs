@@ -9,6 +9,7 @@ use std::{
 use crate::constants::DEFAULT_ROW_HEIGHT;
 use crate::expressions::parser::Node;
 use crate::model::Model;
+use crate::user_model::OrdinalUserState;
 use crate::{
     cf_types::ConditionalFormatting,
     constants::{LAST_COLUMN, LAST_ROW},
@@ -376,6 +377,9 @@ pub trait Position: sealed::Sealed + Sized + Clone {
     type WorkbookMeta: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
     /// Replica-local model state, never serialized; `()` for [`Ordinal`].
     type Local: Default;
+    /// Replica-local state of the [`UserModel`](crate::UserModel) wrapper: undo/redo and whatever
+    /// else the wrapper keeps outside the workbook.
+    type UserState: Default;
     /// Storage form of a shared formula: R1C1 text under [`Ordinal`], a bound token stream under
     /// [`Stable`](crate::collab::model::Stable).
     type Formula: Clone + PartialEq + std::fmt::Debug + Encode + bitcode::DecodeOwned;
@@ -434,6 +438,7 @@ impl Position for Ordinal {
     type MergedCell = MergedCell;
     type WorkbookMeta = ();
     type Local = ();
+    type UserState = OrdinalUserState;
     type Formula = String;
 
     // The key *is* the ordinal, so resolution is the identity and there is nothing to bound-check.

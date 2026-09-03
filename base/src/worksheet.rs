@@ -41,6 +41,14 @@ impl<A: Position> Worksheet<A> {
         })
     }
 
+    /// The ordinal rectangles `(row1, column1, row2, column2)` of every merged range the index
+    /// currently resolves.
+    pub fn merged_ranges(&self) -> impl Iterator<Item = (i32, i32, i32, i32)> + '_ {
+        self.merged_cells
+            .iter()
+            .filter_map(|m| A::resolve_merged(m, &self.index))
+    }
+
     pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
         let r = A::row_at(&self.index, row)?;
         let c = A::col_at(&self.index, column)?;
