@@ -15,6 +15,7 @@ mod ui;
 mod undo_redo;
 
 pub use common::UserModel;
+pub use history::OrdinalUserState;
 
 // Only the `user_model` test corpus names it, and that is ordinal-only.
 #[cfg(all(test, not(feature = "collab-test")))]

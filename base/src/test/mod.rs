@@ -8,6 +8,8 @@ mod test_cell_clear_contents;
 mod test_circular_references;
 #[cfg(feature = "collab")]
 mod test_collab_oracle;
+#[cfg(feature = "collab")]
+mod test_collab_user_model;
 mod test_column_width;
 mod test_criteria;
 mod test_database;
