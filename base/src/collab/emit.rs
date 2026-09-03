@@ -38,7 +38,7 @@ use crate::language::get_default_language;
 use crate::locale::{get_default_locale, get_locale};
 use crate::new_empty::is_valid_sheet_name;
 use crate::types::{
-    Cell, Color, Comment, Dxf, Position, RangeRef, SheetProperties, SheetState, Style, Theme,
+    Cell, Col, Color, Comment, Dxf, Position, RangeRef, SheetProperties, SheetState, Style, Theme,
 };
 use crate::tz::Tz;
 use crate::utils as common;
@@ -221,12 +221,21 @@ impl CollabModel<'_> {
     }
 
     /// The row register's current value for `kind`, as the property a write would replace. A row
-    /// with no record holds the defaults, which is what undoing a first write has to put back.
-    fn row_prev(&self, i: usize, key: &FractionalKey, kind: RowPropKind) -> Option<RowProperty> {
-        let record = self.workbook.worksheets[i]
-            .rows
-            .iter()
-            .find(|r| &r.r == key);
+    /// with no record — or no key at all, being unmaterialized — holds the defaults, which is what
+    /// undoing a first write has to put back.
+    fn row_prev(
+        &self,
+        i: usize,
+        key: Option<&FractionalKey>,
+        kind: RowPropKind,
+    ) -> Option<RowProperty> {
+        let record = match key {
+            None => None,
+            Some(key) => self.workbook.worksheets[i]
+                .rows
+                .iter()
+                .find(|r| &r.r == key),
+        };
         Some(match kind {
             RowPropKind::Style => RowProperty::Style(
                 record
@@ -248,7 +257,18 @@ impl CollabModel<'_> {
             .cols
             .iter()
             .find(|c| &c.min == key && &c.max == key);
-        Some(match kind {
+        Some(self.col_property(record, kind))
+    }
+
+    /// [`Self::col_prev`] as the column reads on screen.
+    fn col_effective(&self, i: usize, column: i32, kind: ColPropKind) -> ColProperty {
+        let record = self.workbook.worksheets[i].covering_col(column, kind);
+        self.col_property(record, kind)
+    }
+
+    /// The `kind` property a column record holds; no record means the defaults.
+    fn col_property(&self, record: Option<&Col<Stable>>, kind: ColPropKind) -> ColProperty {
+        match kind {
             ColPropKind::Style => ColProperty::Style(
                 record
                     .and_then(|c| c.style)
@@ -259,7 +279,7 @@ impl CollabModel<'_> {
                 record.map_or(DEFAULT_COLUMN_WIDTH / COLUMN_WIDTH_FACTOR, |c| c.width),
             ),
             ColPropKind::Hidden => ColProperty::Hidden(record.is_some_and(|c| c.hidden)),
-        })
+        }
     }
 
     /// The name written to a sheet's name register, which its display name is derived from.
@@ -807,13 +827,19 @@ impl CollabModel<'_> {
         if height < 0.0 {
             return Err(format!("Can not set a negative height: {height}"));
         }
+        let property = RowProperty::Height(height / ROW_HEIGHT_FACTOR);
+
+        let at = Stable::row_at(&self.workbook.worksheets[i].index, row);
+        let prev = match self.row_prev(i, at.as_ref(), RowPropKind::Height) {
+            Some(prev) if prev == property => return Ok(()), // identity modification
+            prev => prev,
+        };
         let mut patches = Vec::new();
         let key = self.row_key(i, id, row, &mut patches);
-        let prev = self.row_prev(i, &key, RowPropKind::Height);
         patches.push(Patch::SetRowProperty {
             sheet: id,
             row: key,
-            property: RowProperty::Height(height / ROW_HEIGHT_FACTOR),
+            property,
             ts: None,
             prev,
         });
@@ -828,13 +854,18 @@ impl CollabModel<'_> {
         if !is_valid_row(row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
+        let property = RowProperty::Hidden(hidden);
+        let at = Stable::row_at(&self.workbook.worksheets[i].index, row);
+        let prev = match self.row_prev(i, at.as_ref(), RowPropKind::Hidden) {
+            Some(prev) if prev == property => return Ok(()), // identity change
+            prev => prev,
+        };
         let mut patches = Vec::new();
         let key = self.row_key(i, id, row, &mut patches);
-        let prev = self.row_prev(i, &key, RowPropKind::Hidden);
         patches.push(Patch::SetRowProperty {
             sheet: id,
             row: key,
-            property: RowProperty::Hidden(hidden),
+            property,
             ts: None,
             prev,
         });
@@ -851,7 +882,7 @@ impl CollabModel<'_> {
         }
         let mut patches = Vec::new();
         let key = self.row_key(i, id, row, &mut patches);
-        let prev = self.row_prev(i, &key, RowPropKind::Style);
+        let prev = self.row_prev(i, Some(&key), RowPropKind::Style);
         patches.push(Patch::SetRowProperty {
             sheet: id,
             row: key,
@@ -871,7 +902,7 @@ impl CollabModel<'_> {
         let Some(key) = Stable::row_at(&self.workbook.worksheets[i].index, row) else {
             return Ok(());
         };
-        let prev = self.row_prev(i, &key, RowPropKind::Style);
+        let prev = self.row_prev(i, Some(&key), RowPropKind::Style);
         if !matches!(prev, Some(RowProperty::Style(Some(_)))) {
             return Ok(());
         }
@@ -885,18 +916,22 @@ impl CollabModel<'_> {
         Ok(())
     }
 
-    /// The patch a single-column property write emits. v1 writes points, never spans: see the
-    /// shattering paragraph in [`patch`](crate::collab::patch).
-    fn column_patches(
-        &self,
+    /// Writes a single-column property. v1 writes points, never spans: see the shattering
+    /// paragraph in [`patch`](crate::collab::patch).
+    fn commit_column_property(
+        &mut self,
         sheet: u32,
         column: i32,
         property: ColProperty,
-    ) -> Result<Vec<Patch>, String> {
+    ) -> Result<(), String> {
         let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
+        }
+        let curr = self.col_effective(i, column, property.kind());
+        if curr == property {
+            return Ok(());
         }
         let mut patches = Vec::new();
         let key = self.col_key(i, id, column, &mut patches);
@@ -908,7 +943,8 @@ impl CollabModel<'_> {
             ts: None,
             prev,
         });
-        Ok(patches)
+        self.commit_local(patches);
+        Ok(())
     }
 
     /// Changes the width of a column.
@@ -917,9 +953,7 @@ impl CollabModel<'_> {
             return Err(format!("Can not set a negative width: {width}"));
         }
         let property = ColProperty::Width(width / COLUMN_WIDTH_FACTOR);
-        let patches = self.column_patches(sheet, column, property)?;
-        self.commit_local(patches);
-        Ok(())
+        self.commit_column_property(sheet, column, property)
     }
 
     /// Changes the hidden status of a column.
@@ -929,9 +963,7 @@ impl CollabModel<'_> {
         column: i32,
         hidden: bool,
     ) -> Result<(), String> {
-        let patches = self.column_patches(sheet, column, ColProperty::Hidden(hidden))?;
-        self.commit_local(patches);
-        Ok(())
+        self.commit_column_property(sheet, column, ColProperty::Hidden(hidden))
     }
 
     /// Sets the style of a whole column.
@@ -942,9 +974,7 @@ impl CollabModel<'_> {
         style: &Style,
     ) -> Result<(), String> {
         let property = ColProperty::Style(Some(Box::new(style.clone())));
-        let patches = self.column_patches(sheet, column, property)?;
-        self.commit_local(patches);
-        Ok(())
+        self.commit_column_property(sheet, column, property)
     }
 
     /// Resets a column's style to the default, if it has one.
@@ -958,16 +988,17 @@ impl CollabModel<'_> {
         if !matches!(prev, Some(ColProperty::Style(Some(_)))) {
             return Ok(());
         }
-        let patches = self.column_patches(sheet, column, ColProperty::Style(None))?;
-        self.commit_local(patches);
-        Ok(())
+        self.commit_column_property(sheet, column, ColProperty::Style(None))
     }
 
     /// Writes a sheet-scoped property, validating nothing beyond the sheet existing.
     fn commit_sheet_property(&mut self, sheet: u32, property: SheetProperty) -> Result<(), String> {
         let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
-        let prev = self.sheet_prev(i, property.kind());
+        let prev = match self.sheet_prev(i, property.kind()) {
+            Some(prev) if prev == property => return Ok(()), // identity change
+            prev => prev,
+        };
         self.commit_local(vec![Patch::SetSheetProperty {
             sheet: id,
             property,
@@ -1108,6 +1139,9 @@ impl CollabModel<'_> {
                 WorkbookProperty::Timezone(self.workbook.settings.tz.clone())
             }
         };
+        if prev == property {
+            return; // nothing changed
+        }
         self.commit_local(vec![Patch::SetWorkbookProperty {
             property,
             prev: Some(prev),
@@ -4476,5 +4510,159 @@ mod test {
         // Validation is unchanged.
         assert!(a.delete_rows(0, 1, 0).is_err());
         assert!(a.delete_columns(0, 1, 0).is_err());
+    }
+
+    #[test]
+    fn redundant_row_property_emits_nothing() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+        a.flush();
+
+        a.set_row_height(0, 1, 40.0).unwrap();
+        assert_eq!(a.flush().len(), 1);
+        a.set_row_height(0, 1, 40.0).unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        a.set_row_hidden(0, 1, true).unwrap();
+        assert_eq!(a.flush().len(), 1);
+        a.set_row_hidden(0, 1, true).unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        // An unmaterialized row already holds the defaults, so writing them mints no key.
+        let rows = a.workbook.worksheets[0].index.rows.len();
+        a.set_row_height(0, 40, DEFAULT_ROW_HEIGHT).unwrap();
+        a.set_row_hidden(0, 40, false).unwrap();
+        assert!(a.flush().is_empty());
+        assert_eq!(a.workbook.worksheets[0].index.rows.len(), rows);
+
+        // Validation is unchanged, and still runs first.
+        assert!(a.set_row_height(0, 1, -1.0).is_err());
+        assert!(a.set_row_hidden(0, 0, true).is_err());
+
+        // Different values still emit.
+        a.set_row_height(0, 1, 60.0).unwrap();
+        a.set_row_hidden(0, 1, false).unwrap();
+        assert_eq!(a.flush().len(), 2);
+        assert_eq!(a.get_row_height(0, 1), Ok(60.0));
+        assert_eq!(a.is_row_hidden(0, 1), Ok(false));
+    }
+
+    #[test]
+    fn redundant_column_property_emits_nothing() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+        a.flush();
+
+        a.set_column_width(0, 1, 120.0).unwrap();
+        assert_eq!(a.flush().len(), 1);
+        a.set_column_width(0, 1, 120.0).unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        a.set_column_hidden(0, 1, true).unwrap();
+        assert_eq!(a.flush().len(), 1);
+        a.set_column_hidden(0, 1, true).unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        // An unmaterialized column already holds the defaults, so writing them mints no key.
+        let cols = a.workbook.worksheets[0].index.cols.len();
+        a.set_column_width(0, 30, DEFAULT_COLUMN_WIDTH).unwrap();
+        a.set_column_hidden(0, 30, false).unwrap();
+        assert!(a.flush().is_empty());
+        assert_eq!(a.workbook.worksheets[0].index.cols.len(), cols);
+
+        // Validation is unchanged, and still runs first.
+        assert!(a.set_column_width(0, 1, -1.0).is_err());
+        assert!(a.set_column_hidden(0, 0, true).is_err());
+
+        // Different values still emit.
+        a.set_column_width(0, 1, 200.0).unwrap();
+        a.set_column_hidden(0, 1, false).unwrap();
+        assert_eq!(a.flush().len(), 2);
+        assert_eq!(a.get_column_width(0, 1), Ok(200.0));
+        assert_eq!(a.is_column_hidden(0, 1), Ok(false));
+    }
+
+    #[test]
+    fn redundant_sheet_property_emits_nothing() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.flush();
+        let red = Color::Rgb("#FF0000".to_string());
+        a.set_sheet_color(0, &red).unwrap();
+        assert_eq!(a.flush().len(), 1);
+        a.set_sheet_color(0, &red).unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        a.set_show_grid_lines(0, false).unwrap();
+        a.set_frozen_rows(0, 2).unwrap();
+        assert_eq!(a.flush().len(), 2);
+        a.set_show_grid_lines(0, false).unwrap();
+        a.set_frozen_rows(0, 2).unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        // The values the sheet already has, never written by anyone.
+        a.set_frozen_columns(0, 0).unwrap();
+        a.set_sheet_state(0, SheetState::Visible).unwrap();
+        assert!(a.flush().is_empty());
+
+        // Validation is unchanged, and still runs first.
+        assert!(a.set_frozen_rows(0, -1).is_err());
+        assert!(a.set_frozen_columns(0, -1).is_err());
+
+        // A different value still emits.
+        a.set_frozen_rows(0, 3).unwrap();
+        assert_eq!(a.flush().len(), 1);
+        assert_eq!(a.workbook.worksheets[0].frozen_rows, 3);
+    }
+
+    #[test]
+    fn redundant_workbook_property_emits_nothing() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.flush();
+        a.set_locale("en-GB").unwrap();
+        a.set_timezone("Europe/Berlin").unwrap();
+        assert_eq!(a.flush().len(), 2);
+        a.set_locale("en-GB").unwrap();
+        a.set_timezone("Europe/Berlin").unwrap();
+        assert!(a.flush().is_empty()); // redundant
+
+        // The theme the workbook already has.
+        let theme = a.workbook.theme.clone();
+        a.set_theme(theme);
+        assert!(a.flush().is_empty());
+
+        // Validation is unchanged, and still runs first.
+        assert!(a.set_locale("nope").is_err());
+        assert!(a.set_timezone("Nowhere/Nothing").is_err());
+
+        // A different value still emits.
+        a.set_locale("es").unwrap();
+        assert_eq!(a.flush().len(), 1);
+        assert_eq!(a.workbook.settings.locale, "es");
+    }
+
+    #[test]
+    fn redundant_height_loses_to_a_concurrent_edit() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_row_height(0, 1, 40.0).unwrap();
+        let setup = a.flush();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        b.set_row_height(0, 1, 80.0).unwrap();
+        a.set_row_height(0, 1, 40.0).unwrap(); // redundant, and later than B's write
+        let (from_a, from_b) = (a.flush(), b.flush());
+        assert!(from_a.is_empty());
+        deliver(&mut b, 1, &from_a);
+        deliver(&mut a, 2, &from_b);
+
+        for m in [&a, &b] {
+            assert_eq!(m.get_row_height(0, 1), Ok(80.0));
+        }
+        assert_eq!(b.workbook, a.workbook);
     }
 }

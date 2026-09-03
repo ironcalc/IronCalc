@@ -273,7 +273,7 @@ impl Worksheet<Stable> {
     /// The column record that owns property `kind` at ordinal `column`: of the spans covering it,
     /// the one whose register was written last. Only concurrency makes them overlap; a record with
     /// no register entry for `kind` never wrote it and does not compete.
-    fn covering_col(&self, column: i32, kind: ColPropKind) -> Option<&Col<Stable>> {
+    pub(crate) fn covering_col(&self, column: i32, kind: ColPropKind) -> Option<&Col<Stable>> {
         let mut best: Option<(&Timestamp, &Col<Stable>)> = None;
         for col in &self.cols {
             match col.resolve(&self.index) {
