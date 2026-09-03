@@ -37,9 +37,7 @@ use crate::formatter::lexer::is_likely_date_number_format;
 use crate::language::get_default_language;
 use crate::locale::{get_default_locale, get_locale};
 use crate::new_empty::is_valid_sheet_name;
-use crate::types::{
-    Cell, Col, Color, Comment, Dxf, Position, RangeRef, SheetProperties, SheetState, Style, Theme,
-};
+use crate::types::{Cell, Col, Color, Comment, Dxf, Position, RangeRef, SheetState, Style, Theme};
 use crate::tz::Tz;
 use crate::utils as common;
 use std::collections::hash_map::DefaultHasher;
@@ -164,6 +162,60 @@ impl CollabModel<'_> {
                 key
             }
         }
+    }
+
+    /// Keys for rows `start..=end`, appending the one `InsertRows` materializing whatever the
+    /// index does not hold yet. Planned in one go, so a span reaching past the sheet mints each
+    /// missing row exactly once.
+    fn row_keys(
+        &self,
+        i: usize,
+        id: SheetId,
+        start: i32,
+        end: i32,
+        patches: &mut Vec<Patch>,
+    ) -> Vec<FractionalKey> {
+        let index = &self.workbook.worksheets[i].index;
+        let len = index.rows.len() as i32;
+        let minted = index.rows.plan_virtual(end.max(0) as usize);
+        if !minted.is_empty() {
+            patches.push(Patch::InsertRows {
+                sheet: id,
+                keys: minted.clone(),
+            });
+        }
+        (start..=end)
+            .map(|row| match Stable::row_at(index, row) {
+                Some(key) => key,
+                None => minted[(row - len - 1) as usize].clone(),
+            })
+            .collect()
+    }
+
+    /// [`Self::row_keys`] for columns.
+    fn col_keys(
+        &self,
+        i: usize,
+        id: SheetId,
+        start: i32,
+        end: i32,
+        patches: &mut Vec<Patch>,
+    ) -> Vec<FractionalKey> {
+        let index = &self.workbook.worksheets[i].index;
+        let len = index.cols.len() as i32;
+        let minted = index.cols.plan_virtual(end.max(0) as usize);
+        if !minted.is_empty() {
+            patches.push(Patch::InsertColumns {
+                sheet: id,
+                keys: minted.clone(),
+            });
+        }
+        (start..=end)
+            .map(|column| match Stable::col_at(index, column) {
+                Some(key) => key,
+                None => minted[(column - len - 1) as usize].clone(),
+            })
+            .collect()
     }
 
     /// Keys for `(row, column)` on worksheet `i`. If row/column IDs have to be created (via virtual
@@ -765,6 +817,90 @@ impl CollabModel<'_> {
         Ok(())
     }
 
+    /// Removes the style of every materialized cell in the range but keeps the content. A
+    /// whole-column or whole-row range also clears the column's or row's own style, as upstream
+    /// does.
+    ///
+    /// A coordinate that holds nothing is left alone, where upstream materializes a
+    /// default-styled cell for it.
+    pub fn range_clear_formatting(&mut self, area: &Area) -> Result<(), String> {
+        let id = self.sheet_of(area.sheet)?;
+        let i = area.sheet as usize;
+        let mut patches = Vec::new();
+        let entire_column = area.row == 1 && area.height == LAST_ROW;
+        let entire_row = area.column == 1 && area.width == LAST_COLUMN;
+        if entire_column {
+            for column in area.column..area.column + area.width {
+                let index = &self.workbook.worksheets[i].index;
+                let Some(key) = Stable::col_at(index, column) else {
+                    continue;
+                };
+                let prev = self.col_prev(i, &key, ColPropKind::Style);
+                if matches!(prev, Some(ColProperty::Style(Some(_)))) {
+                    patches.push(Patch::SetColumnSpan {
+                        sheet: id,
+                        span: (key.clone(), key),
+                        property: ColProperty::Style(None),
+                        ts: None,
+                        prev,
+                    });
+                }
+            }
+        } else if entire_row {
+            for row in area.row..area.row + area.height {
+                let index = &self.workbook.worksheets[i].index;
+                let Some(key) = Stable::row_at(index, row) else {
+                    continue;
+                };
+                let prev = self.row_prev(i, Some(&key), RowPropKind::Style);
+                if matches!(prev, Some(RowProperty::Style(Some(_)))) {
+                    patches.push(Patch::SetRowProperty {
+                        sheet: id,
+                        row: key,
+                        property: RowProperty::Style(None),
+                        ts: None,
+                        prev,
+                    });
+                }
+            }
+        }
+        // Only the cells that exist: a whole-column range covers the sheet, not the grid.
+        let sheet = &self.workbook.worksheets[i];
+        let mut cells: Vec<StableCellAddress> = Vec::new();
+        for (row_key, row_data) in &sheet.sheet_data {
+            match Stable::row_ordinal(&sheet.index, row_key) {
+                Some(row) if (area.row..area.row + area.height).contains(&row) => {}
+                _ => continue,
+            }
+            for column_key in row_data.keys() {
+                match Stable::col_ordinal(&sheet.index, column_key) {
+                    Some(column) if (area.column..area.column + area.width).contains(&column) => {}
+                    _ => continue,
+                }
+                cells.push((row_key.clone(), column_key.clone()));
+            }
+        }
+        // `sheet_data` is a hash map: sort, so the commit does not depend on its iteration.
+        cells.sort();
+        for at in cells {
+            let prev = self.cell_style_at(i, &at);
+            if prev.is_none() {
+                continue; // nothing to clear
+            }
+            patches.push(Patch::SetCellStyle {
+                sheet: id,
+                at,
+                style: None,
+                ts: None,
+                prev: Box::new(prev),
+            });
+        }
+        if !patches.is_empty() {
+            self.commit_local(patches);
+        }
+        Ok(())
+    }
+
     /// Sets the style of a cell.
     pub fn set_cell_style(
         &mut self,
@@ -989,6 +1125,145 @@ impl CollabModel<'_> {
             return Ok(());
         }
         self.commit_column_property(sheet, column, ColProperty::Style(None))
+    }
+
+    /// One commit writing `property` to every row in `start..=end`. Rows already holding it are
+    /// skipped; if that leaves nothing to write, nothing is committed.
+    fn commit_row_span(
+        &mut self,
+        sheet: u32,
+        start: i32,
+        end: i32,
+        property: RowProperty,
+    ) -> Result<(), String> {
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
+        for row in [start, end] {
+            if !is_valid_row(row) {
+                return Err(format!("Row number '{row}' is not valid."));
+            }
+        }
+        let mut patches = Vec::new();
+        let keys = self.row_keys(i, id, start, end, &mut patches);
+        let mut writes = Vec::new();
+        for key in keys {
+            let prev = match self.row_prev(i, Some(&key), property.kind()) {
+                Some(prev) if prev == property => continue, // identity modification
+                prev => prev,
+            };
+            writes.push(Patch::SetRowProperty {
+                sheet: id,
+                row: key,
+                property: property.clone(),
+                ts: None,
+                prev,
+            });
+        }
+        if writes.is_empty() {
+            return Ok(());
+        }
+        patches.extend(writes);
+        self.commit_local(patches);
+        Ok(())
+    }
+
+    /// [`Self::commit_row_span`] for columns. v1 writes points, never spans.
+    fn commit_col_span(
+        &mut self,
+        sheet: u32,
+        start: i32,
+        end: i32,
+        property: ColProperty,
+    ) -> Result<(), String> {
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
+        for column in [start, end] {
+            if !is_valid_column_number(column) {
+                return Err(format!("Column number '{column}' is not valid."));
+            }
+        }
+        let mut patches = Vec::new();
+        let keys = self.col_keys(i, id, start, end, &mut patches);
+        let mut writes = Vec::new();
+        for (offset, key) in keys.into_iter().enumerate() {
+            if self.col_effective(i, start + offset as i32, property.kind()) == property {
+                continue; // identity modification
+            }
+            let prev = self.col_prev(i, &key, property.kind());
+            writes.push(Patch::SetColumnSpan {
+                sheet: id,
+                span: (key.clone(), key),
+                property: property.clone(),
+                ts: None,
+                prev,
+            });
+        }
+        if writes.is_empty() {
+            return Ok(());
+        }
+        patches.extend(writes);
+        self.commit_local(patches);
+        Ok(())
+    }
+
+    /// Changes the height of every row in `row_start..=row_end`, in one commit.
+    pub fn set_rows_height(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        height: f64,
+    ) -> Result<(), String> {
+        if height < 0.0 {
+            return Err(format!("Can not set a negative height: {height}"));
+        }
+        self.commit_row_span(
+            sheet,
+            row_start,
+            row_end,
+            RowProperty::Height(height / ROW_HEIGHT_FACTOR),
+        )
+    }
+
+    /// Changes the hidden status of every row in `row_start..=row_end`, in one commit.
+    pub fn set_rows_hidden(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        self.commit_row_span(sheet, row_start, row_end, RowProperty::Hidden(hidden))
+    }
+
+    /// Changes the width of every column in `column_start..=column_end`, in one commit.
+    pub fn set_columns_width(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        width: f64,
+    ) -> Result<(), String> {
+        if width < 0.0 {
+            return Err(format!("Can not set a negative width: {width}"));
+        }
+        self.commit_col_span(
+            sheet,
+            column_start,
+            column_end,
+            ColProperty::Width(width / COLUMN_WIDTH_FACTOR),
+        )
+    }
+
+    /// Changes the hidden status of every column in `column_start..=column_end`, in one commit.
+    pub fn set_columns_hidden(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        self.commit_col_span(sheet, column_start, column_end, ColProperty::Hidden(hidden))
     }
 
     /// Writes a sheet-scoped property, validating nothing beyond the sheet existing.
@@ -2062,27 +2337,6 @@ impl CollabModel<'_> {
 /// Reads the ordinal model answers from plain worksheet fields, which stable addressing answers
 /// the same way.
 impl CollabModel<'_> {
-    pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
-        Ok(self.workbook.worksheet(sheet)?.frozen_rows)
-    }
-
-    pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
-        Ok(self.workbook.worksheet(sheet)?.frozen_columns)
-    }
-
-    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
-        self.workbook
-            .worksheets
-            .iter()
-            .map(|worksheet| SheetProperties {
-                name: worksheet.get_name(),
-                state: worksheet.state.to_string(),
-                color: worksheet.color.clone(),
-                sheet_id: worksheet.sheet_id,
-            })
-            .collect()
-    }
-
     pub fn get_named_style(&self, name: &str) -> Result<Style, String> {
         self.workbook.styles.get_style_by_name(name)
     }
