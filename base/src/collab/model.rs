@@ -391,6 +391,9 @@ pub struct CollabSession {
     pub session: SessionId,
     /// Commits produced locally and not yet handed to the log.
     pub pending: Vec<LocalCommit>,
+    /// How many commits took the full (structural) `resync_derived` path.
+    #[cfg(test)]
+    pub(crate) full_resyncs: u64,
 }
 
 impl CollabModel<'static> {
@@ -451,7 +454,7 @@ impl CollabModel<'static> {
             links: HashMap::new(),
             local: CollabSession {
                 session,
-                pending: Vec::new(),
+                ..Default::default()
             },
         }
     }
