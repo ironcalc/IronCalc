@@ -2695,6 +2695,102 @@ mod test {
         assert_eq!(b.workbook, a.workbook);
     }
 
+    #[test]
+    fn concurrent_tail_move() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        for row in 1..=3 {
+            a.set_user_input(0, row, 1, format!("{row}")).unwrap(); // A1:A3=1..3
+        }
+        let setup = a.flush();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        // Row 6 is past the last materialized row on both replicas.
+        // - A: moves it up one
+        // - B: on the stale view, writes into a row that move materializes
+        //      and moves row 1 down past it.
+        a.move_rows_action(0, 6, 1, -1).unwrap(); // 6 -> 5
+        b.set_user_input(0, 5, 1, "b".to_string()).unwrap(); // A5=b
+        b.move_rows_action(0, 1, 1, 1).unwrap(); // 1 -> 2
+
+        let (from_a, from_b) = (a.flush(), b.flush());
+        // The same commits on two fresh replicas, delivered in opposite orders.
+        let mut ab = CollabModel::new(3);
+        let mut ba = CollabModel::new(4);
+        deliver(&mut ab, 1, &setup);
+        deliver(&mut ab, 1, &from_a);
+        deliver(&mut ab, 2, &from_b);
+        deliver(&mut ba, 1, &setup);
+        deliver(&mut ba, 2, &from_b);
+        deliver(&mut ba, 1, &from_a);
+        deliver(&mut b, 1, &from_a);
+        deliver(&mut a, 2, &from_b);
+        for m in [&mut a, &mut b, &mut ab, &mut ba] {
+            m.evaluate();
+        }
+
+        // Row 6 landed between the two rows the commit minted, so it reads at 5; B's write went to
+        // the row it named, which the move pushed down one; row 1 followed B's move to row 2.
+        for m in [&a, &b, &ab, &ba] {
+            // B moved row 1 -> 2: so A1 and A2 are swapped in places
+            assert_eq!(m.get_formatted_cell_value(0, 1, 1), Ok("2".to_string())); // A1=2
+            assert_eq!(m.get_formatted_cell_value(0, 2, 1), Ok("1".to_string())); // A2=1
+
+            assert_eq!(m.get_formatted_cell_value(0, 3, 1), Ok("3".to_string())); // A3=3
+
+            // B written A5=b, but A moved row 6 -> 5, so A5 is also swapped with A6
+            assert_eq!(m.get_formatted_cell_value(0, 6, 1), Ok("b".to_string())); // A6=b
+            assert_eq!(m.workbook.worksheets[0].index.rows.len(), 6);
+        }
+        assert_eq!(b.workbook, a.workbook);
+        assert_eq!(ab.workbook, a.workbook);
+        assert_eq!(ba.workbook, a.workbook);
+
+        // Redelivery of the move commit to a replica that already has it is a no-op.
+        let settled = projection(&b);
+        deliver(&mut b, 1, &from_a);
+        b.evaluate();
+        assert_eq!(projection(&b), settled);
+        assert_eq!(b.workbook, a.workbook);
+    }
+
+    #[test]
+    fn undo_tail_move() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        for row in 1..=3 {
+            a.set_user_input(0, row, 1, format!("{row}")).unwrap(); //A1:A3=1..3
+        }
+        a.flush();
+        let before = projection(&a);
+        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 3); // total rows: 3
+
+        a.move_rows_action(0, 6, 1, -1).unwrap(); // row 6 -> 5
+        let moved = a.flush();
+        let after = projection(&a);
+        assert_ne!(after, before);
+        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 6); // total rows: 6 (after move)
+
+        let invert = |commits: &[LocalCommit]| -> Vec<Patch> {
+            commits
+                .iter()
+                .rev()
+                .flat_map(|commit| invert_patches(&commit.patches))
+                .collect()
+        };
+        a.commit_local(invert(&moved));
+        let undone = a.flush();
+        assert_eq!(projection(&a), before);
+        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 3); // total rows: 3 (after undo)
+
+        // Redo is the inverse of the inverse.
+        a.commit_local(invert(&undone));
+        a.flush();
+        assert_eq!(projection(&a), after);
+        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 6); // total rows: 6 (after redo)
+    }
+
     /// What a replica shows, which is what an undo has to restore: contents and formatting by
     /// ordinal position, plus the sheet and workbook fields. Deliberately not the CRDT
     /// bookkeeping — guards, tombstones and the append-only intern tables only move forward.

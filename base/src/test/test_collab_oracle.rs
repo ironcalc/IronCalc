@@ -4,6 +4,7 @@
 //! and on a [`CollabModel`] has to leave both showing the same values and the same formula texts.
 
 use crate::collab::model::CollabModel;
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::model::Model;
 
 /// The pair the scenarios drive. Both start with a single `Sheet1`.
@@ -274,4 +275,38 @@ fn broken_range_endpoint_value() {
         ordinal.starts_with('#') && stable.starts_with('#'),
         "both must error at sheet 0 row 1 column 4: ordinal {ordinal:?}, stable {stable:?}"
     );
+}
+
+#[test]
+fn tail_moves() {
+    let (mut o, mut c) = pair();
+    for row in 1..=5 {
+        set(&mut o, &mut c, 0, row, 1, &format!("{row}")); // A1:A5=1..5
+    }
+    set(&mut o, &mut c, 0, 3, 2, "=SUM(A1:A2)"); // B3=SUM(A1:A2)
+    set(&mut o, &mut c, 0, 4, 2, "=SUM(A3:A5)"); // B4=SUM(A3:A5)
+    set(&mut o, &mut c, 0, 5, 2, "=A2*10"); // B5=A2*10
+    let sheets = [0];
+    compare(&o, &c, &sheets, 16, 5, "seed");
+
+    // A block of materialized rows landing past the tail.
+    assert!(o.move_rows_action(0, 1, 2, 10).is_ok());
+    assert!(c.move_rows_action(0, 1, 2, 10).is_ok());
+    o.evaluate();
+    c.evaluate();
+    compare(&o, &c, &sheets, 16, 5, "move_rows past the tail");
+
+    // The very last column: source, destination and everything between are unmaterialized.
+    assert!(o.move_columns_action(0, LAST_COLUMN, 1, -1).is_ok());
+    assert!(c.move_columns_action(0, LAST_COLUMN, 1, -1).is_ok());
+    o.evaluate();
+    c.evaluate();
+    compare(&o, &c, &sheets, 16, 5, "move_columns at the last column");
+
+    // The same shape on rows.
+    assert!(o.move_rows_action(0, LAST_ROW, 1, -1).is_ok());
+    assert!(c.move_rows_action(0, LAST_ROW, 1, -1).is_ok());
+    o.evaluate();
+    c.evaluate();
+    compare(&o, &c, &sheets, 16, 5, "move_rows at the last row");
 }

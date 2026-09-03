@@ -281,9 +281,10 @@ impl FractionalIndex {
         }
         let len = end - start;
 
-        // we precompute virtual key position for potential lower & upper bounds since it's cheap
+        // we precompute virtual key position for potential lower & upper bounds since it's cheap.
+        // Tail index `i >= l` stands for ordinal `from + (i - l + 1)`: `dest - 1` for lo, `dest` for hi.
         let lo_position = (2 * (from + (dest.saturating_sub(l)) as u32)).to_be_bytes();
-        let hi_position = (2 * (from + (dest.saturating_sub(l + 1)) as u32)).to_be_bytes();
+        let hi_position = (2 * (from + ((dest + 1).saturating_sub(l)) as u32)).to_be_bytes();
 
         let lo: &[u8] = if dest > 0 {
             match self.active.get(dest - 1) {
@@ -753,8 +754,7 @@ impl FractionalIndex {
     /// Last write wins conflict resolution.
     /// If timestamps are equal: remove > move (highest key wins) > insert.
     fn wins(a: (&Entry, bool), b: (&Entry, bool)) -> bool {
-        (a.0.modified_at, a.0.moved.is_empty(), &a.0.moved, !a.1)
-            > (b.0.modified_at, b.0.moved.is_empty(), &b.0.moved, !b.1)
+        (a.0.modified_at, Self::rank(a), &a.0.moved) > (b.0.modified_at, Self::rank(b), &b.0.moved)
     }
 
     /// Whether `e` speaks for nobody: its element's register names another position. An active
@@ -766,6 +766,15 @@ impl FractionalIndex {
         match moved.binary_search_by_key(&identity, |o| &o.key) {
             Ok(h) => moved[h].moved() != Some(&e.key), // origin in moved points to different dest
             Err(_) => active.binary_search_by_key(&identity, |o| &o.key).is_ok(), // origin is in active
+        }
+    }
+
+    /// Last write wins tie-breaker: insert < move < remove.
+    fn rank((e, active): (&Entry, bool)) -> u8 {
+        match (e.moved.is_empty(), active) {
+            (true, true) => 0,  // insert
+            (false, _) => 1,    // move
+            (true, false) => 2, // remove
         }
     }
 
