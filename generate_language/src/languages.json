@@ -515,7 +515,8 @@
       "multinomial": "MULTINOMIAL",
       "seriessum": "SERIESSUM",
       "sumproduct": "SUMPRODUCT",
-      "percentof": "PERCENTOF"
+      "percentof": "PERCENTOF",
+      "encodeurl": "ENCODEURL"
     }
   },
   "it": {
@@ -1034,7 +1035,8 @@
       "multinomial": "MULTINOMIALE",
       "seriessum": "SOMMA.SERIE",
       "sumproduct": "MATR.SOMMA.PRODOTTO",
-      "percentof": "PERCENTUALE.DI"
+      "percentof": "PERCENTUALE.DI",
+      "encodeurl": "CODIFICA.URL"
     }
   },
   "fr": {
@@ -1553,7 +1555,8 @@
       "multinomial": "MULTINOMIALE",
       "seriessum": "SOMME.SERIE",
       "sumproduct": "SOMMEPROD",
-      "percentof": "POURCENTDE"
+      "percentof": "POURCENTDE",
+      "encodeurl": "URLENCODAGE"
     }
   },
   "de": {
@@ -2072,7 +2075,8 @@
       "multinomial": "MULTINOMIAL",
       "seriessum": "POTENZREIHE",
       "sumproduct": "SUMMENPRODUKT",
-      "percentof": "PROZENTVON"
+      "percentof": "PROZENTVON",
+      "encodeurl": "URLCODIEREN"
     }
   },
   "es": {
@@ -2591,7 +2595,8 @@
       "multinomial": "MULTINOMIAL",
       "seriessum": "SUMA.SERIE",
       "sumproduct": "SUMAPRODUCTO",
-      "percentof": "PORCENTAJEDE"
+      "percentof": "PORCENTAJEDE",
+      "encodeurl": "URLCODIF"
     }
   }
 }

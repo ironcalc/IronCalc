@@ -226,6 +226,7 @@ pub enum Function {
     Asc,
     Arraytotext,
     Dollar,
+    Encodeurl,
     Findb,
     Fixed,
     Leftb,
@@ -776,6 +777,7 @@ impl_function_lookup! {
     asc         => Asc,
     arraytotext => Arraytotext,
     dollar      => Dollar,
+    encodeurl   => Encodeurl,
     findb       => Findb,
     fixed       => Fixed,
     leftb       => Leftb,
@@ -1300,6 +1302,7 @@ impl Function {
             Function::Asc => functions.asc.clone(),
             Function::Arraytotext => functions.arraytotext.clone(),
             Function::Dollar => functions.dollar.clone(),
+            Function::Encodeurl => functions.encodeurl.clone(),
             Function::Findb => functions.findb.clone(),
             Function::Fixed => functions.fixed.clone(),
             Function::Leftb => functions.leftb.clone(),
@@ -1611,7 +1614,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 495> {
+    pub fn into_iter() -> IntoIter<Function, 496> {
         [
             Function::And,
             Function::False,
@@ -1759,6 +1762,7 @@ impl Function {
             Function::Asc,
             Function::Arraytotext,
             Function::Dollar,
+            Function::Encodeurl,
             Function::Findb,
             Function::Fixed,
             Function::Leftb,
@@ -2162,6 +2166,7 @@ impl Function {
             Function::Unichar => "_xlfn.UNICHAR".to_string(),
             Function::Numbervalue => "_xlfn.NUMBERVALUE".to_string(),
             Function::Arraytotext => "_xlfn.ARRAYTOTEXT".to_string(),
+            Function::Encodeurl => "_xlfn.ENCODEURL".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),
@@ -2418,6 +2423,7 @@ impl<'a> Model<'a> {
             Function::Asc => self.fn_asc(args, cell),
             Function::Arraytotext => self.fn_arraytotext(args, cell),
             Function::Dollar => self.fn_dollar(args, cell),
+            Function::Encodeurl => self.fn_encodeurl(args, cell),
             Function::Findb => self.fn_findb(args, cell),
             Function::Fixed => self.fn_fixed(args, cell),
             Function::Leftb => self.fn_leftb(args, cell),

@@ -27,6 +27,7 @@ mod test_fn_count;
 mod test_fn_datevalue_datedif;
 mod test_fn_day;
 mod test_fn_depreciation;
+mod test_fn_encodeurl;
 mod test_fn_exact;
 mod test_fn_financial;
 mod test_fn_financial_simple;
