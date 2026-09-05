@@ -1,7 +1,7 @@
 use crate::{
     calc_result::CalcResult,
     expressions::{
-        parser::{parse_range, Node},
+        parser::{parse_range, ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
@@ -182,11 +182,30 @@ impl<'a> Model<'a> {
                             }
                         }
                         CalcResult::EmptyCell | CalcResult::EmptyArg => result.push(0.0),
-                        CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                        CalcResult::Array(array) => {
+                            for row in array {
+                                for value in row {
+                                    match value {
+                                        ArrayNode::Number(value) => result.push(value),
+                                        ArrayNode::Error(error) => {
+                                            return Err(CalcResult::Error {
+                                                error,
+                                                origin: cell,
+                                                message: "Error in array".to_string(),
+                                            })
+                                        }
+                                        _ => {
+                                            // We ignore booleans and strings
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        CalcResult::Lambda(_) => {
                             return Err(CalcResult::Error {
-                                error: Error::NIMPL,
+                                error: Error::VALUE,
                                 origin: cell,
-                                message: "Arrays not supported yet".to_string(),
+                                message: "Unexpected lambda".to_string(),
                             })
                         }
                     }
@@ -433,11 +452,20 @@ impl<'a> Model<'a> {
                         | CalcResult::Number(_)
                         | CalcResult::Boolean(_)
                         | CalcResult::Error { .. } => counta += 1,
-                        CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                        CalcResult::Array(array) => {
+                            for row in array {
+                                for value in row {
+                                    if !matches!(value, ArrayNode::Empty) {
+                                        counta += 1;
+                                    }
+                                }
+                            }
+                        }
+                        CalcResult::Lambda(_) => {
                             return CalcResult::Error {
-                                error: Error::NIMPL,
+                                error: Error::VALUE,
                                 origin: cell,
-                                message: "Arrays not supported yet".to_string(),
+                                message: "Unexpected lambda".to_string(),
                             }
                         }
                     }
@@ -513,6 +541,15 @@ impl<'a> Model<'a> {
                         }
                         // This hasn't been tested
                         CalcResult::Number(_) => count += 1,
+                        CalcResult::Array(array) => {
+                            for row in array {
+                                for value in row {
+                                    if matches!(value, ArrayNode::Number(_)) {
+                                        count += 1;
+                                    }
+                                }
+                            }
+                        }
                         _ => {}
                     }
                 }

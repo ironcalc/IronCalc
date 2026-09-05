@@ -66,3 +66,19 @@ fn test_fn_count_minimal() {
     // There are 3 blank cells B4, B5 and B3 that contains the empty string
     assert_eq!(model._get_text("A3"), *"3");
 }
+
+#[test]
+fn test_count_over_arrays() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("A4", "4");
+    model._set("B1", "=COUNT(1+A1:A4)");
+    model._set("B2", "=COUNT({1,2,\"x\",TRUE})");
+    model._set("B3", "=COUNTA({1,2,\"x\",TRUE})");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "4");
+    assert_eq!(model._get_text("B2"), "2");
+    assert_eq!(model._get_text("B3"), "4");
+}

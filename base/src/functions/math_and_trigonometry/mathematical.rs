@@ -578,6 +578,28 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for value in row {
+                            match value {
+                                ArrayNode::Number(value) => {
+                                    seen_value = true;
+                                    result *= value;
+                                }
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::Error {
+                                        error,
+                                        origin: cell,
+                                        message: "Error in array".to_string(),
+                                    }
+                                }
+                                _ => {
+                                    // We ignore booleans and strings
+                                }
+                            }
+                        }
+                    }
+                }
                 error @ CalcResult::Error { .. } => return error,
                 calc_result => {
                     seen_value = true;
