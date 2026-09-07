@@ -388,6 +388,10 @@ pub struct CollabSession {
     pub session: SessionId,
     /// Commits produced locally and not yet handed to the log.
     pub pending: Vec<LocalCommit>,
+    /// When applying a redo operation, row/column insertion could look like tail append, which
+    /// would potentially skip formula lowering, when in fact it should be evaluated. This field
+    /// prevents that.
+    pub(crate) revived: bool,
     /// How many commits took the full (structural) `resync_derived` path.
     #[cfg(test)]
     pub(crate) full_resyncs: u64,

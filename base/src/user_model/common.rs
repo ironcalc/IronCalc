@@ -2328,13 +2328,115 @@ impl<'a, A: Position> UserModel<'a, A> {
     }
 }
 
+/// One commit on the wire: what [`Commit`](crate::collab::log::Commit) carries, owned. The commit
+/// id is the framework's business, so it is not shipped: the receiver mints one per batch slot.
+#[cfg(feature = "collab")]
+#[derive(bitcode::Encode, bitcode::Decode)]
+struct WireCommit {
+    session: crate::collab::log::SessionId,
+    hlc: crate::collab::hlc::Hlc,
+    patches: Vec<crate::collab::patch::Patch>,
+}
+
 /// The collaborative surface: the same calls as the ordinal wrapper, delegating to the
-/// patch-emitting mutators. Undo/redo capture lands in a later round.
+/// patch-emitting mutators. Every mutator runs through [`tracked`](Self::tracked), which turns the
+/// commits it emitted into one undo step.
 #[cfg(feature = "collab")]
 impl<'a> UserModel<'a, crate::collab::model::Stable> {
     /// Sets the name of a workbook. Local only: the name is not replicated.
     pub fn set_name(&mut self, name: &str) {
         self.model.workbook.name = name.to_string();
+    }
+
+    /// Runs one user action and records the commits it emitted as a single undo step, newest last.
+    /// An action that failed or changed nothing records nothing.
+    fn tracked<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T, String>) -> Result<T, String> {
+        let from = self.model.local.pending.len();
+        let out = f(self)?;
+        let step: Vec<crate::collab::patch::Patch> = self.model.local.pending[from..]
+            .iter()
+            .flat_map(|commit| commit.patches.iter().cloned())
+            .collect();
+        if !step.is_empty() {
+            self.state.undo_stack.push(step);
+            self.state.redo_stack.clear();
+        }
+        Ok(out)
+    }
+
+    /// Undoes the last local action and evaluates the model if needed.
+    pub fn undo(&mut self) -> Result<(), String> {
+        if let Some(step) = self.state.undo_stack.pop() {
+            self.model
+                .commit_local(crate::collab::patch::invert_patches(&step));
+            self.state.redo_stack.push(step);
+            self.evaluate_if_not_paused();
+        }
+        Ok(())
+    }
+
+    /// Redoes the last undone action, by committing its patches again under a fresh stamp.
+    pub fn redo(&mut self) -> Result<(), String> {
+        if let Some(step) = self.state.redo_stack.pop() {
+            self.model.commit_local(step.clone());
+            self.state.undo_stack.push(step);
+            self.evaluate_if_not_paused();
+        }
+        Ok(())
+    }
+
+    /// Returns true if there are items to be undone
+    pub fn can_undo(&self) -> bool {
+        !self.state.undo_stack.is_empty()
+    }
+
+    /// Returns true if there are items to be redone
+    pub fn can_redo(&self) -> bool {
+        !self.state.redo_stack.is_empty()
+    }
+
+    /// Returns the commits produced locally since the last call, encoded for transport.
+    ///
+    /// See also:
+    /// * [UserModel::apply_external_diffs]
+    pub fn flush_send_queue(&mut self) -> Vec<u8> {
+        let session = self.model.local.session;
+        let commits: Vec<WireCommit> = self
+            .model
+            .flush()
+            .into_iter()
+            .map(|commit| WireCommit {
+                session,
+                hlc: commit.hlc,
+                patches: commit.patches,
+            })
+            .collect();
+        bitcode::encode(&commits)
+    }
+
+    /// Applies commits authored by other replicas. They are somebody else's history, so they never
+    /// touch our undo stacks.
+    ///
+    /// See also:
+    /// * [UserModel::flush_send_queue]
+    pub fn apply_external_diffs(&mut self, diff_list_str: &[u8]) -> Result<(), String> {
+        use crate::collab::log::{Commit, CommitId, Consumer};
+        // Malformed bytes can panic inside the bitcode decoder; hardening it is deferred.
+        let commits: Vec<WireCommit> =
+            bitcode::decode(diff_list_str).map_err(|_| "Error parsing diff list".to_string())?;
+        for (index, commit) in commits.iter().enumerate() {
+            let id = CommitId::from([index as u8].as_slice());
+            self.model
+                .apply(Commit {
+                    id: &id,
+                    session: &commit.session,
+                    hlc: commit.hlc,
+                    patches: &commit.patches,
+                })
+                .map_err(|e| e.to_string())?;
+        }
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Set the input in a cell
@@ -2351,31 +2453,37 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         if !is_valid_row(row) {
             return Err("Invalid row".to_string());
         }
-        self.model
-            .set_user_input(sheet, row, column, value.to_string())?;
-        self.evaluate_if_not_paused();
-        // The auto-fit the ordinal wrapper does, as its own commit.
-        let style = self.model.get_style_for_cell(sheet, row, column)?;
-        let line_count = value.split('\n').count() as f64;
-        let row_height = self.model.get_row_height(sheet, row)?;
-        let font_size = style.font.sz as f64;
-        let cell_height = (line_count - 1.0) * font_size * 1.5 + 8.0 + font_size;
-        if cell_height > row_height {
-            self.model.set_row_height(sheet, row, cell_height)?;
-        }
-        Ok(())
+        self.tracked(|s| {
+            s.model
+                .set_user_input(sheet, row, column, value.to_string())?;
+            s.evaluate_if_not_paused();
+            // The auto-fit the ordinal wrapper does, as its own commit.
+            let style = s.model.get_style_for_cell(sheet, row, column)?;
+            let line_count = value.split('\n').count() as f64;
+            let row_height = s.model.get_row_height(sheet, row)?;
+            let font_size = style.font.sz as f64;
+            let cell_height = (line_count - 1.0) * font_size * 1.5 + 8.0 + font_size;
+            if cell_height > row_height {
+                s.model.set_row_height(sheet, row, cell_height)?;
+            }
+            Ok(())
+        })
     }
 
     /// Adds new sheet
     pub fn new_sheet(&mut self) -> Result<(), String> {
-        let (_name, index) = self.model.new_sheet();
-        self.set_selected_sheet(index)
+        self.tracked(|s| {
+            let (_name, index) = s.model.new_sheet();
+            s.set_selected_sheet(index)
+        })
     }
 
     /// Duplicates a sheet by index, placing the copy right after it and selecting it.
     pub fn duplicate_sheet(&mut self, sheet: u32) -> Result<(), String> {
-        let (_name, new_index) = self.model.duplicate_sheet(sheet)?;
-        self.set_selected_sheet(new_index)
+        self.tracked(|s| {
+            let (_name, new_index) = s.model.duplicate_sheet(sheet)?;
+            s.set_selected_sheet(new_index)
+        })
     }
 
     /// Deletes sheet by index
@@ -2388,7 +2496,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
                 view.sheet = sheet_count - 2;
             };
         }
-        self.model.delete_sheet(sheet)
+        self.tracked(|s| s.model.delete_sheet(sheet))
     }
 
     /// Renames a sheet by index
@@ -2396,7 +2504,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         if self.model.workbook.worksheet(sheet)?.name == new_name {
             return Ok(());
         }
-        self.model.rename_sheet_by_index(sheet, new_name)
+        self.tracked(|s| s.model.rename_sheet_by_index(sheet, new_name))
     }
 
     /// Hides sheet by index
@@ -2411,46 +2519,46 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
                 break;
             }
         }
-        self.model.set_sheet_state(sheet, SheetState::Hidden)
+        self.tracked(|s| s.model.set_sheet_state(sheet, SheetState::Hidden))
     }
 
     /// Un hides sheet by index
     pub fn unhide_sheet(&mut self, sheet: u32) -> Result<(), String> {
-        self.model.set_sheet_state(sheet, SheetState::Visible)
+        self.tracked(|s| s.model.set_sheet_state(sheet, SheetState::Visible))
     }
 
     /// Sets sheet color
     pub fn set_sheet_color(&mut self, sheet: u32, color: &Color) -> Result<(), String> {
-        self.model.set_sheet_color(sheet, color)
+        self.tracked(|s| s.model.set_sheet_color(sheet, color))
     }
 
     /// Set the gid lines in the worksheet to visible (`true`) or hidden (`false`)
     pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<(), String> {
-        self.model.set_show_grid_lines(sheet, show_grid_lines)
+        self.tracked(|s| s.model.set_show_grid_lines(sheet, show_grid_lines))
     }
 
     /// Removes cells contents and style
     pub fn range_clear_all(&mut self, range: &Area) -> Result<(), String> {
-        self.model.range_clear_all(range)?;
+        self.tracked(|s| s.model.range_clear_all(range))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
 
     /// Deletes the content in cells, but keeps the style
     pub fn range_clear_contents(&mut self, range: &Area) -> Result<(), String> {
-        self.model.range_clear_contents(range)?;
+        self.tracked(|s| s.model.range_clear_contents(range))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
 
     /// Removes cells styles and formatting, but keeps the content
     pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
-        self.model.range_clear_formatting(range)
+        self.tracked(|s| s.model.range_clear_formatting(range))
     }
 
     /// Inserts `row_count` blank rows starting at `row`
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
-        self.model.insert_rows(sheet, row, row_count)?;
+        self.tracked(|s| s.model.insert_rows(sheet, row, row_count))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2462,14 +2570,14 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         column: i32,
         column_count: i32,
     ) -> Result<(), String> {
-        self.model.insert_columns(sheet, column, column_count)?;
+        self.tracked(|s| s.model.insert_columns(sheet, column, column_count))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
 
     /// Deletes `row_count` rows starting at `row`
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
-        self.model.delete_rows(sheet, row, row_count)?;
+        self.tracked(|s| s.model.delete_rows(sheet, row, row_count))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2481,7 +2589,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         column: i32,
         column_count: i32,
     ) -> Result<(), String> {
-        self.model.delete_columns(sheet, column, column_count)?;
+        self.tracked(|s| s.model.delete_columns(sheet, column, column_count))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2513,8 +2621,10 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
                 }
             }
         }
-        self.model
-            .move_columns_action(sheet, column, column_count, new_delta)?;
+        self.tracked(|s| {
+            s.model
+                .move_columns_action(sheet, column, column_count, new_delta)
+        })?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2545,8 +2655,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
                 }
             }
         }
-        self.model
-            .move_rows_action(sheet, row, row_count, new_delta)?;
+        self.tracked(|s| s.model.move_rows_action(sheet, row, row_count, new_delta))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2559,8 +2668,10 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         column_end: i32,
         width: f64,
     ) -> Result<(), String> {
-        self.model
-            .set_columns_width(sheet, column_start, column_end, width)
+        self.tracked(|s| {
+            s.model
+                .set_columns_width(sheet, column_start, column_end, width)
+        })
     }
 
     /// Sets the hidden state of a range of columns in a single commit
@@ -2571,8 +2682,10 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         column_end: i32,
         hidden: bool,
     ) -> Result<(), String> {
-        self.model
-            .set_columns_hidden(sheet, column_start, column_end, hidden)
+        self.tracked(|s| {
+            s.model
+                .set_columns_hidden(sheet, column_start, column_end, hidden)
+        })
     }
 
     /// Sets the hidden state of a range of rows in a single commit
@@ -2583,8 +2696,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         row_end: i32,
         hidden: bool,
     ) -> Result<(), String> {
-        self.model
-            .set_rows_hidden(sheet, row_start, row_end, hidden)
+        self.tracked(|s| s.model.set_rows_hidden(sheet, row_start, row_end, hidden))
     }
 
     /// Sets the height of a range of rows in a single commit
@@ -2595,13 +2707,12 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         row_end: i32,
         height: f64,
     ) -> Result<(), String> {
-        self.model
-            .set_rows_height(sheet, row_start, row_end, height)
+        self.tracked(|s| s.model.set_rows_height(sheet, row_start, row_end, height))
     }
 
     /// Sets the number of frozen rows in sheet
     pub fn set_frozen_rows_count(&mut self, sheet: u32, frozen_rows: i32) -> Result<(), String> {
-        self.model.set_frozen_rows(sheet, frozen_rows)
+        self.tracked(|s| s.model.set_frozen_rows(sheet, frozen_rows))
     }
 
     /// Sets the number of frozen columns in sheet
@@ -2610,22 +2721,25 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         sheet: u32,
         frozen_columns: i32,
     ) -> Result<(), String> {
-        self.model.set_frozen_columns(sheet, frozen_columns)
+        self.tracked(|s| s.model.set_frozen_columns(sheet, frozen_columns))
     }
 
     /// Sets the workbook theme.
     pub fn set_theme(&mut self, theme: Theme) {
-        self.model.set_theme(theme);
+        let _ = self.tracked(|s| {
+            s.model.set_theme(theme);
+            Ok(())
+        });
     }
 
     /// Sets the timezone for the model
     pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
-        self.model.set_timezone(timezone)
+        self.tracked(|s| s.model.set_timezone(timezone))
     }
 
     /// Sets the locale for the model
     pub fn set_locale(&mut self, locale: &str) -> Result<(), String> {
-        self.model.set_locale(locale)
+        self.tracked(|s| s.model.set_locale(locale))
     }
 
     /// Create a new defined name
@@ -2635,14 +2749,14 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         scope: Option<u32>,
         formula: &str,
     ) -> Result<(), String> {
-        self.model.new_defined_name(name, scope, formula)?;
+        self.tracked(|s| s.model.new_defined_name(name, scope, formula))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
 
     /// Delete an existing defined name
     pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
-        self.model.delete_defined_name(name, scope)?;
+        self.tracked(|s| s.model.delete_defined_name(name, scope))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2656,8 +2770,10 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         new_scope: Option<u32>,
         new_formula: &str,
     ) -> Result<(), String> {
-        self.model
-            .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
+        self.tracked(|s| {
+            s.model
+                .update_defined_name(name, scope, new_name, new_scope, new_formula)
+        })?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2674,12 +2790,12 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
 
     /// Creates a new named style. Fails if a style with that name already exists.
     pub fn create_named_style(&mut self, name: &str, style: &Style) -> Result<(), String> {
-        self.model.create_named_style(name, style)
+        self.tracked(|s| s.model.create_named_style(name, style))
     }
 
     /// Deletes a named style. Cells that used this style keep their formatting.
     pub fn delete_named_style(&mut self, name: &str) -> Result<(), String> {
-        self.model.delete_named_style(name)
+        self.tracked(|s| s.model.delete_named_style(name))
     }
 
     /// Updates the formatting and optionally the name of a named style.
@@ -2689,7 +2805,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         new_name: &str,
         style: &Style,
     ) -> Result<(), String> {
-        self.model.update_named_style(name, new_name, style)?;
+        self.tracked(|s| s.model.update_named_style(name, new_name, style))?;
         Ok(())
     }
 
@@ -2700,15 +2816,14 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         range: &str,
         rule: crate::cf_types::CfRuleInput,
     ) -> Result<(), String> {
-        self.model.add_conditional_formatting(sheet, range, rule)?;
+        self.tracked(|s| s.model.add_conditional_formatting(sheet, range, rule))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
 
     /// Removes the CF rule at `index` from `sheet`.
     pub fn delete_conditional_formatting(&mut self, sheet: u32, index: u32) -> Result<(), String> {
-        self.model
-            .delete_conditional_formatting(sheet, index as usize)?;
+        self.tracked(|s| s.model.delete_conditional_formatting(sheet, index as usize))?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2721,8 +2836,10 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         new_range: &str,
         new_rule: crate::cf_types::CfRuleInput,
     ) -> Result<(), String> {
-        self.model
-            .update_conditional_formatting(sheet, index as usize, new_range, new_rule)?;
+        self.tracked(|s| {
+            s.model
+                .update_conditional_formatting(sheet, index as usize, new_range, new_rule)
+        })?;
         self.evaluate_if_not_paused();
         Ok(())
     }
