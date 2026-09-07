@@ -2726,8 +2726,8 @@ macro_rules! unsupported {
     };
 }
 
-/// What every stub above returns.
-const UNSUPPORTED: &str = "unsupported in collab mode";
+/// What every stub above returns. Shared with the `UserModel<Stable>` stubs.
+pub(crate) const UNSUPPORTED: &str = "unsupported in collab mode";
 
 unsupported! { &self
     get_sheet_markup(sheet: u32) -> String;

@@ -2843,6 +2843,145 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         self.evaluate_if_not_paused();
         Ok(())
     }
+
+    /// Raises the priority of the CF rule at `index` on `sheet`.
+    pub fn raise_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<(), String> {
+        self.model
+            .raise_conditional_formatting_priority(sheet, index as usize)
+    }
+
+    /// Lowers the priority of the CF rule at `index` on `sheet`.
+    pub fn lower_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<(), String> {
+        self.model
+            .lower_conditional_formatting_priority(sheet, index as usize)
+    }
+
+    /// Returns all CF rules for `sheet`.
+    pub fn get_conditional_formatting_list(
+        &self,
+        sheet: u32,
+    ) -> Result<Vec<crate::cf_types::ConditionalFormattingView>, String> {
+        self.model.get_conditional_formatting_list(sheet)
+    }
+
+    /// Returns the differential format (Dxf) for the CF rule at `index` on `sheet`.
+    pub fn get_dxf_for_conditional_formatting(
+        &self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<Option<crate::types::Dxf>, String> {
+        self.model
+            .get_dxf_for_conditional_formatting(sheet, index as usize)
+    }
+
+    /// Sets the language for the model
+    pub fn set_language(&mut self, language: &str) -> Result<(), String> {
+        self.model.set_language(language)
+    }
+
+    /// Sets an array formula in the given range.
+    pub fn set_user_array_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+        formula: &str,
+    ) -> Result<(), String> {
+        self.model
+            .set_user_array_formula(sheet, row, column, width, height, formula)
+    }
+
+    /// Returns all Excel built-in named styles as `(name, Style)` pairs.
+    pub fn get_builtin_named_styles(&self) -> Vec<(String, Style)> {
+        crate::builtin_styles::builtin_named_styles()
+    }
+
+    /// Applies a named style (custom or built-in) to the current selection.
+    /// A built-in that is not in the workbook yet is created first.
+    pub fn on_apply_named_style(&mut self, name: &str) -> Result<(), String> {
+        let view = self.get_selected_view();
+        let sheet = view.sheet;
+        let [row_start, column_start, row_end, column_end] = view.range;
+        self.tracked(|s| {
+            if s.model
+                .workbook
+                .styles
+                .get_style_index_by_name(name)
+                .is_err()
+            {
+                let style = crate::builtin_styles::get_builtin_style(name)
+                    .ok_or_else(|| format!("Named style '{name}' not found"))?;
+                s.model.create_named_style(name, &style)?;
+            }
+            for row in row_start..=row_end {
+                for column in column_start..=column_end {
+                    s.model.set_cell_style_by_name(sheet, row, column, name)?;
+                }
+            }
+            Ok(())
+        })
+    }
+
+    // Calls the collab representation does not answer. They change nothing and emit nothing.
+
+    /// Unsupported in collab mode.
+    pub fn copy_to_clipboard(&self) -> Result<super::clipboard::Clipboard, String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn paste_from_clipboard(
+        &mut self,
+        _source_sheet: u32,
+        _source_range: super::clipboard::ClipboardTuple,
+        _clipboard: &super::clipboard::ClipboardData,
+        _is_cut: bool,
+    ) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn paste_csv_string(&mut self, _area: &Area, _csv: &str) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn auto_fill_rows(&mut self, _source_area: &Area, _to_row: i32) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn auto_fill_columns(
+        &mut self,
+        _source_area: &Area,
+        _to_column: i32,
+    ) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn set_area_with_border(
+        &mut self,
+        _range: &Area,
+        _border_area: &BorderArea,
+    ) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn on_paste_styles(&mut self, _styles: &[Vec<Style>]) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
 }
 
 /// Construction and persistence, which only make sense for a model that owns its locale.
