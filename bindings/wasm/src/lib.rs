@@ -4,6 +4,8 @@ use wasm_bindgen::{
     JsValue,
 };
 
+#[cfg(not(feature = "collab"))]
+use ironcalc_base::types::Link;
 use ironcalc_base::{
     cf_types::CfRuleInput,
     colors,
@@ -12,10 +14,18 @@ use ironcalc_base::{
         types::Area,
         utils::{column_to_number, number_to_column, quote_name as quote_name_ic},
     },
-    types::{CellType, Color, Link, Style, StyleIncludes},
+    types::{CellType, Color, Position, Style, StyleIncludes},
     worksheet::NavigationDirection,
-    BorderArea, ClipboardData, UserModel as BaseModel,
+    BorderArea, ClipboardData, UserModel,
 };
+
+/// The addressing scheme, and so the model instantiation, wrapped by these bindings.
+#[cfg(not(feature = "collab"))]
+type Pos = ironcalc_base::types::Ordinal;
+#[cfg(feature = "collab")]
+type Pos = ironcalc_base::collab::model::Stable;
+
+type BaseModel = UserModel<'static, Pos>;
 
 fn to_js_error(error: String) -> JsError {
     JsError::new(&error.to_string())
@@ -109,17 +119,20 @@ impl From<ironcalc_base::FmtSettings> for FmtSettings {
     }
 }
 
+// The collaborative model owns its locale, so only the ordinal constructors need this.
+#[cfg(not(feature = "collab"))]
 fn leak_str(s: &str) -> &'static str {
     Box::leak(s.to_owned().into_boxed_str())
 }
 
 #[wasm_bindgen]
 pub struct Model {
-    model: BaseModel<'static>,
+    model: BaseModel,
 }
 
 #[wasm_bindgen]
 impl Model {
+    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(constructor)]
     pub fn new(
         name: &str,
@@ -136,6 +149,22 @@ impl Model {
         Ok(Model { model })
     }
 
+    /// Collaborative models are bound to a replica session id.
+    #[cfg(feature = "collab")]
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+        session: u32,
+    ) -> Result<Model, JsError> {
+        let model = BaseModel::new_empty_with_session(name, locale, timezone, language_id, session)
+            .map_err(to_js_error)?;
+        Ok(Model { model })
+    }
+
+    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "fromBytes")]
     pub fn from_bytes(bytes: &[u8], language_id: &str) -> Result<Model, JsError> {
         let language_id = leak_str(language_id);
@@ -143,9 +172,17 @@ impl Model {
         Ok(Model { model })
     }
 
+    #[cfg(feature = "collab")]
+    #[wasm_bindgen(js_name = "fromBytes")]
+    pub fn from_bytes(bytes: &[u8], session: u32) -> Result<Model, JsError> {
+        let model = BaseModel::from_bytes_with_session(bytes, session).map_err(to_js_error)?;
+        Ok(Model { model })
+    }
+
     /// Loads a workbook from the bytes of an xlsx file.
     /// Only available in `@ironcalc/wasm-xlsx`.
-    #[cfg(feature = "xlsx")]
+    /// Not available with `collab`: the import produces an ordinal model.
+    #[cfg(all(feature = "xlsx", not(feature = "collab")))]
     #[wasm_bindgen(js_name = "fromXlsx")]
     pub fn from_xlsx(
         bytes: &[u8],
@@ -555,31 +592,44 @@ impl Model {
     // This two are only used when we want to compute the automatic width of a column or height of a row
     #[wasm_bindgen(js_name = "getRowsWithData")]
     pub fn get_rows_with_data(&self, sheet: u32, column: i32) -> Result<Vec<i32>, JsError> {
-        let sheet_data = &self
+        let worksheet = self
             .model
             .get_model()
             .workbook
             .worksheet(sheet)
-            .map_err(to_js_error)?
-            .sheet_data;
-        Ok(sheet_data
+            .map_err(to_js_error)?;
+        // Keys are ordinals under `Ordinal` and stable keys under `Stable`, so go through the index.
+        let Some(column) = Pos::col_at(&worksheet.index, column) else {
+            return Ok(vec![]);
+        };
+        Ok(worksheet
+            .sheet_data
             .iter()
             .filter(|(_, data)| data.contains_key(&column))
-            .map(|(row, _)| *row)
+            .filter_map(|(row, _)| Pos::row_ordinal(&worksheet.index, row))
             .collect())
     }
 
     #[wasm_bindgen(js_name = "getColumnsWithData")]
     pub fn get_columns_with_data(&self, sheet: u32, row: i32) -> Result<Vec<i32>, JsError> {
-        Ok(self
+        let worksheet = self
             .model
             .get_model()
             .workbook
             .worksheet(sheet)
-            .map_err(to_js_error)?
+            .map_err(to_js_error)?;
+        let Some(row) = Pos::row_at(&worksheet.index, row) else {
+            return Ok(vec![]);
+        };
+        Ok(worksheet
             .sheet_data
             .get(&row)
-            .map(|row_data| row_data.keys().copied().collect())
+            .map(|row_data| {
+                row_data
+                    .keys()
+                    .filter_map(|column| Pos::col_ordinal(&worksheet.index, column))
+                    .collect()
+            })
             .unwrap_or_default())
     }
 
@@ -779,6 +829,8 @@ impl Model {
     }
 
     /// Returns the link attached to the cell or undefined if there isn't one.
+    // Hyperlinks are not replicated yet: the collaborative model has no link API.
+    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "getCellLink", unchecked_return_type = "Link | undefined")]
     pub fn get_cell_link(&self, sheet: u32, row: i32, column: i32) -> Result<JsValue, JsError> {
         let link = self
@@ -792,6 +844,7 @@ impl Model {
     /// If `label` is given it becomes the content of the cell (the displayed text).
     /// A new link also applies the link style (underline + theme hyperlink color)
     /// to the cell. The whole operation is a single undo step.
+    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "setCellLink")]
     pub fn set_cell_link(
         &mut self,
@@ -809,6 +862,7 @@ impl Model {
     }
 
     /// Removes the link attached to the cell. It is not an error if the cell has no link.
+    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "deleteCellLink")]
     pub fn delete_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), JsError> {
         self.model
@@ -817,6 +871,8 @@ impl Model {
     }
 
     /// Returns all the links in the worksheet sorted by (row, column).
+    // Hyperlinks are not replicated yet: the collaborative model has no link API.
+    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "getLinks", unchecked_return_type = "CellLink[]")]
     pub fn get_links(&self, sheet: u32) -> Result<JsValue, JsError> {
         let links = self.model.get_links_list(sheet).map_err(to_js_error)?;
@@ -990,7 +1046,8 @@ impl Model {
 
     /// Serializes the workbook to xlsx bytes.
     /// Only available in `@ironcalc/wasm-xlsx`.
-    #[cfg(feature = "xlsx")]
+    /// Not available with `collab`: the export reads an ordinal model.
+    #[cfg(all(feature = "xlsx", not(feature = "collab")))]
     #[wasm_bindgen(js_name = "toXlsx")]
     pub fn to_xlsx(&self) -> Result<Vec<u8>, JsError> {
         let writer = std::io::Cursor::new(Vec::new());
@@ -1386,6 +1443,8 @@ impl Model {
         self.model.on_apply_named_style(name).map_err(to_js_error)
     }
 
+    // Sheet reordering is not exposed by the collaborative model yet.
+    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "moveSheet")]
     pub fn move_sheet(&mut self, sheet: u32, new_index: u32) -> Result<(), JsError> {
         self.model.move_sheet(sheet, new_index).map_err(to_js_error)
