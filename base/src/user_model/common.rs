@@ -95,7 +95,11 @@ fn vertical(value: &str) -> Result<VerticalAlignment, String> {
     }
 }
 
-fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Style, String> {
+pub(crate) fn update_style(
+    old_value: &Style,
+    style_path: &str,
+    value: &str,
+) -> Result<Style, String> {
     let mut style = old_value.clone();
     match style_path {
         "font.b" => {
@@ -2531,6 +2535,16 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
     /// Removes cells styles and formatting, but keeps the content
     pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
         self.tracked(|s| s.model.range_clear_formatting(range))
+    }
+
+    /// Updates the range with a cell style.
+    pub fn update_range_style(
+        &mut self,
+        range: &Area,
+        style_path: &str,
+        value: &str,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.update_range_style(range, style_path, value))
     }
 
     /// Inserts `row_count` blank rows starting at `row`

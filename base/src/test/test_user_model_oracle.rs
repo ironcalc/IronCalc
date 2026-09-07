@@ -449,3 +449,68 @@ fn default_sheet_is_concurrently_editable() {
     b.apply_external_diffs(&a.flush_send_queue()).unwrap();
     assert_eq!(b.get_formatted_cell_value(0, 3, 1).unwrap(), "leftright");
 }
+
+#[test]
+fn update_range_style_matches_ordinal() {
+    use crate::constants::{LAST_COLUMN, LAST_ROW};
+    use crate::expressions::types::Area;
+
+    let (mut o, mut c) = pair();
+    for (row, column, text) in [(1, 1, "a"), (2, 2, "7"), (4, 2, "=1+1")] {
+        o.set_user_input(0, row, column, text).unwrap();
+        c.set_user_input(0, row, column, text).unwrap();
+    }
+
+    // A rectangle over cells with and without a value.
+    let rect = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 2,
+        height: 3,
+    };
+    both!(
+        o,
+        c,
+        update_range_style(&rect, "font.b", "true"),
+        "bold rect"
+    );
+
+    // The same style again changes nothing, so it is not committed.
+    let pending = c.get_model().local.pending.len();
+    c.update_range_style(&rect, "font.b", "true").unwrap();
+    assert_eq!(c.get_model().local.pending.len(), pending);
+
+    // A full row, which the full column below then crosses.
+    let row_3 = Area {
+        sheet: 0,
+        row: 3,
+        column: 1,
+        width: LAST_COLUMN,
+        height: 1,
+    };
+    both!(
+        o,
+        c,
+        update_range_style(&row_3, "fill.color", "#333444"),
+        "fill row 3"
+    );
+
+    // A full column crossing the styled row.
+    let column_b = Area {
+        sheet: 0,
+        row: 1,
+        column: 2,
+        width: 1,
+        height: LAST_ROW,
+    };
+    both!(
+        o,
+        c,
+        update_range_style(&column_b, "font.i", "true"),
+        "italic column B"
+    );
+
+    undo_both(&mut o, &mut c, "undo italic column B");
+    redo_both(&mut o, &mut c, "redo italic column B");
+}
