@@ -45,14 +45,14 @@ pub const SNAPSHOT_FORMAT_VERSION: u8 = 1;
 impl Consumer for CollabModel<'_> {
     type Error = DynError;
 
-    fn apply(&mut self, commit: Commit<'_>) -> Result<(), Self::Error> {
+    fn apply(&mut self, commit: &Commit) -> Result<(), Self::Error> {
         // Receive rule: this commit's stamp is a watermark for our own clock.
         Hlc::sync(commit.hlc);
         let ts = commit.timestamp();
-        for patch in commit.patches {
+        for patch in &commit.patches {
             self.apply_patch(patch, &ts);
         }
-        self.resync_derived(commit.patches);
+        self.resync_derived(&commit.patches);
         Ok(())
     }
 }
@@ -1370,37 +1370,17 @@ mod test {
     use super::*;
     use crate::cf_types::CfRule;
     use crate::collab::fractional_index::virtual_key;
-    use crate::collab::log::{CommitId, SessionId};
     use crate::collab::patch::{DefinedNameBody, NamedStyle};
     use crate::types::{Color, Comment, Position, Theme};
 
-    /// A commit, kept so it can be delivered to more than one replica, in more than one order.
-    struct Rec {
-        id: CommitId,
-        session: SessionId,
-        hlc: Hlc,
-        patches: Vec<Patch>,
+    /// Method-syntax delivery, chainable straight off [`rec`].
+    trait Deliver {
+        fn deliver(&self, model: &mut CollabModel<'_>);
     }
 
-    impl Rec {
-        fn new(id: u8, session: SessionId, hlc: Hlc, patches: Vec<Patch>) -> Rec {
-            Rec {
-                id: CommitId::from([id].as_slice()),
-                session,
-                hlc,
-                patches,
-            }
-        }
-
+    impl Deliver for Commit {
         fn deliver(&self, model: &mut CollabModel<'_>) {
-            model
-                .apply(Commit {
-                    id: &self.id,
-                    session: &self.session,
-                    hlc: self.hlc,
-                    patches: &self.patches,
-                })
-                .unwrap();
+            model.apply(self).unwrap();
         }
     }
 
@@ -1458,9 +1438,8 @@ mod test {
     }
 
     /// A sheet with three rows and three columns, as commit 1.
-    fn genesis(rows: &[FractionalKey], cols: &[FractionalKey]) -> Rec {
-        Rec::new(
-            1,
+    fn genesis(rows: &[FractionalKey], cols: &[FractionalKey]) -> Commit {
+        Commit::new(
             1,
             Hlc::now(),
             vec![
@@ -1498,8 +1477,7 @@ mod test {
 
         // ---- cells: a literal, a string, a formula, and a clear ----
         let formula = model.bind_text(0, 2, 1, "A1*2");
-        let values = Rec::new(
-            2,
+        let values = Commit::new(
             1,
             Hlc::now(),
             vec![
@@ -1584,8 +1562,7 @@ mod test {
             formula: model.bind_text(0, 1, 1, "Sheet1!$A$1"),
             equals: false,
         };
-        let rest = Rec::new(
-            3,
+        let rest = Commit::new(
             1,
             Hlc::now(),
             vec![
@@ -1737,8 +1714,7 @@ mod test {
         assert_eq!(model.workbook, before);
 
         // ---- a write stamped below the guard is ignored ----
-        Rec::new(
-            4,
+        Commit::new(
             1,
             Hlc::new(1),
             vec![
@@ -1768,8 +1744,7 @@ mod test {
 
         // ---- a patch for a sheet nobody has is a no-op, not an error ----
         let before = model.workbook.clone();
-        Rec::new(
-            5,
+        Commit::new(
             1,
             Hlc::now(),
             vec![Patch::SetCellValue {
@@ -1803,12 +1778,11 @@ mod test {
                 });
             }
         }
-        log.push(Rec::new(2, 1, Hlc::now(), patches));
+        log.push(Commit::new(1, Hlc::now(), patches));
 
         // A move is a pair: the identity that moves, and the destination its author minted.
         let dest = minted(&[0x00, 0x09], 1);
-        log.push(Rec::new(
-            3,
+        log.push(Commit::new(
             1,
             Hlc::now(),
             vec![Patch::MoveRows {
@@ -1817,8 +1791,7 @@ mod test {
                 prev: vec![],
             }],
         ));
-        log.push(Rec::new(
-            4,
+        log.push(Commit::new(
             1,
             Hlc::now(),
             vec![
@@ -1873,8 +1846,7 @@ mod test {
 
         // The whole scenario is stamped from the fixed past base, so the commits below keep their
         // relative order while none of them touches the process-global clock.
-        let root = Rec::new(
-            1,
+        let root = Commit::new(
             1,
             PAST,
             vec![
@@ -1911,8 +1883,7 @@ mod test {
 
         // Everything below is concurrent: same parent, stamps inside one wall millisecond, so only
         // the HLC counter and the session tiebreak separate them.
-        let from_a = Rec::new(
-            2,
+        let from_a = Commit::new(
             1,
             same_ms(1),
             vec![
@@ -1944,8 +1915,7 @@ mod test {
                 },
             ],
         );
-        let from_b = Rec::new(
-            3,
+        let from_b = Commit::new(
             2,
             same_ms(1),
             vec![
@@ -1976,8 +1946,7 @@ mod test {
 
         // A third concurrent write, one HLC step further: the counter alone puts it above both,
         // low session id notwithstanding.
-        let later = Rec::new(
-            4,
+        let later = Commit::new(
             1,
             same_ms(2),
             vec![Patch::SetSheetProperty {
@@ -2031,10 +2000,9 @@ mod test {
         let cols: Vec<FractionalKey> = (1..=5).map(virtual_key).collect();
         let (first, second) = (minted(&[0x20], 1), minted(&[0x30], 1));
 
-        let root = Rec::new(1, 1, PAST, genesis(&rows, &cols).patches);
+        let root = Commit::new(1, PAST, genesis(&rows, &cols).patches);
         // A wide span from one replica, a narrower one from another, one HLC step later.
-        let wide = Rec::new(
-            2,
+        let wide = Commit::new(
             1,
             same_ms(1),
             vec![
@@ -2066,8 +2034,7 @@ mod test {
                 },
             ],
         );
-        let narrow = Rec::new(
-            3,
+        let narrow = Commit::new(
             2,
             same_ms(2),
             vec![
@@ -2142,8 +2109,7 @@ mod test {
         let cols: Vec<FractionalKey> = (1..=2).map(virtual_key).collect();
         let mut model = CollabModel::new(1);
         genesis(&rows, &cols).deliver(&mut model);
-        Rec::new(
-            2,
+        Commit::new(
             1,
             Hlc::now(),
             vec![
@@ -2175,8 +2141,7 @@ mod test {
         );
 
         // ...and it carries on from there.
-        let next = Rec::new(
-            3,
+        let next = Commit::new(
             3,
             Hlc::now(),
             vec![Patch::SetCellValue {

@@ -1090,7 +1090,6 @@ mod test {
     use super::*;
     use crate::collab::formula::StableToken;
     use crate::collab::hlc::Hlc;
-    use crate::collab::log::CommitId;
 
     /// A one-token stream: these tests are about the wire format, not about what a formula says.
     fn formula() -> StableFormula {
@@ -1370,13 +1369,5 @@ mod test {
             DefinedNameProperty::Definition(None).kind(),
             DefinedNamePropKind::Definition
         );
-
-        // Commit ids ride the same wire.
-        let id = CommitId::from([1u8, 2, 3, 4, 5, 6, 7, 8, 9].as_slice());
-        let decoded: CommitId = bitcode::decode(&bitcode::encode(&id)).unwrap();
-        assert_eq!(decoded, id);
-        assert_eq!(&*decoded, &[1u8, 2, 3, 4, 5, 6, 7, 8, 9]);
-        let empty: CommitId = bitcode::decode(&bitcode::encode(&CommitId::default())).unwrap();
-        assert_eq!(empty, CommitId::default());
     }
 }
