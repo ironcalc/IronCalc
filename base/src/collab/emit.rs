@@ -13,8 +13,8 @@ use crate::collab::bind::MintPlan;
 use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::{CreateKeys, FractionalIndex, FractionalKey, KeyBuf};
 use crate::collab::hlc::Hlc;
-use crate::collab::log::Timestamp;
-use crate::collab::model::{CollabModel, LocalCommit, Stable, StableCellAddress, StableRange};
+use crate::collab::log::{Commit, Timestamp};
+use crate::collab::model::{CollabModel, Stable, StableCellAddress, StableRange};
 use crate::collab::naming::{defined_name_id, stable_id};
 use crate::collab::patch::{
     CellInput, CfProperty, ColPropKind, ColProperty, ColState, ColumnSnapshot,
@@ -55,11 +55,15 @@ impl CollabModel<'_> {
             self.apply_patch(patch, &ts);
         }
         self.resync_derived(&patches);
-        self.local.pending.push(LocalCommit { hlc, patches });
+        self.local.pending.push(Commit {
+            session: self.local.session,
+            hlc,
+            patches,
+        });
     }
 
     /// Takes the commits produced since the last call, for the framework to transport.
-    pub fn flush(&mut self) -> Vec<LocalCommit> {
+    pub fn flush(&mut self) -> Vec<Commit> {
         std::mem::take(&mut self.local.pending)
     }
 
@@ -2562,21 +2566,15 @@ unsupported! { &mut self
 mod test {
     #![allow(clippy::unwrap_used)]
     use super::*;
-    use crate::collab::log::{Commit, CommitId, Consumer, SessionId};
+    use crate::collab::log::{Consumer, SessionId};
     use crate::collab::patch::invert_patches;
 
-    /// Replays what a framework would transport: each [`LocalCommit`] as one commit, carrying the
-    /// stamp its author minted.
-    fn deliver(model: &mut CollabModel<'_>, session: SessionId, commits: &[LocalCommit]) {
-        for (i, commit) in commits.iter().enumerate() {
-            model
-                .apply(Commit {
-                    id: &CommitId::from([i as u8].as_slice()),
-                    session: &session,
-                    hlc: commit.hlc,
-                    patches: &commit.patches,
-                })
-                .unwrap();
+    /// Replays what a framework would transport: each flushed [`Commit`] delivered as it stands.
+    /// `session` is who the test believes authored them, checked against each commit.
+    fn deliver(model: &mut CollabModel<'_>, session: SessionId, commits: &[Commit]) {
+        for commit in commits {
+            assert_eq!(commit.session, session, "commit from an unexpected author");
+            model.apply(commit).unwrap();
         }
     }
 
@@ -3060,7 +3058,7 @@ mod test {
         assert_ne!(after, before);
         assert_eq!(a.workbook.worksheets[0].index.rows.len(), 6); // total rows: 6 (after move)
 
-        let invert = |commits: &[LocalCommit]| -> Vec<Patch> {
+        let invert = |commits: &[Commit]| -> Vec<Patch> {
             commits
                 .iter()
                 .rev()
@@ -3348,7 +3346,7 @@ mod test {
     }
 
     /// How many patches of one kind a commit carries.
-    fn count(commit: &LocalCommit, kind: fn(&Patch) -> bool) -> usize {
+    fn count(commit: &Commit, kind: fn(&Patch) -> bool) -> usize {
         commit.patches.iter().filter(|p| kind(p)).count()
     }
 
@@ -4024,7 +4022,7 @@ mod test {
     }
 
     /// The id of the sheet a single-`AddSheet` commit created.
-    fn added_id(commits: &[LocalCommit]) -> SheetId {
+    fn added_id(commits: &[Commit]) -> SheetId {
         match commits.first().and_then(|c| c.patches.first()) {
             Some(Patch::AddSheet { id, .. }) => *id,
             other => panic!("expected an AddSheet, got {other:?}"),

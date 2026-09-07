@@ -1,8 +1,7 @@
 use crate::collab::bind::Host;
 use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::{FractionalIndex, FractionalKey, SESSION_SUFFIX_LEN};
-use crate::collab::hlc::Hlc;
-use crate::collab::log::{Lww, SessionId, Timestamp};
+use crate::collab::log::{Commit, Lww, SessionId, Timestamp};
 use crate::collab::patch::{
     CfPropKind, ColPropKind, DefinedNameBody, DefinedNameId, NamedStyle, NamedStyleId, Patch,
     RowPropKind, SheetId, SheetPropKind, WorkbookPropKind,
@@ -370,24 +369,13 @@ impl CollabModel<'_> {
     }
 }
 
-/// One mutator call's worth of patches, stamped once and already applied locally.
-///
-/// Contract with the hosting framework: it transports each of these as a single commit, carrying
-/// `hlc` unchanged as [`Commit::hlc`](crate::collab::log::Commit::hlc). Anything else and the
-/// author's register timestamps stop matching its peers'.
-#[derive(Debug)]
-pub struct LocalCommit {
-    pub hlc: Hlc,
-    pub patches: Vec<Patch>,
-}
-
 /// The replica-local half of a [`CollabModel`]: who we are, and what we have not shipped yet.
 #[derive(Debug, Default)]
 pub struct CollabSession {
     /// This replica's identity: the suffix of every [`FractionalKey`] it mints.
     pub session: SessionId,
     /// Commits produced locally and not yet handed to the log.
-    pub pending: Vec<LocalCommit>,
+    pub pending: Vec<Commit>,
     /// When applying a redo operation, row/column insertion could look like tail append, which
     /// would potentially skip formula lowering, when in fact it should be evaluated. This field
     /// prevents that.

@@ -8,8 +8,8 @@
 //!
 //! The framework guarantees:
 //!
-//! - each [`CommitId`] is delivered to [`Consumer::apply`] **at most once** — deduplication is the
-//!   log's responsibility, not ours,
+//! - each commit — identified by its `(session, hlc)` pair — is delivered to [`Consumer::apply`]
+//!   **at most once** — deduplication is the log's responsibility, not ours,
 //! - commits arrive in **causal order**: every parent is applied before its children,
 //! - commits are **append-only and immutable**; a delivered commit is never retracted or rewritten
 //!   (an undo is a new commit carrying the inverse patches),
@@ -27,11 +27,7 @@
 
 use crate::collab::hlc::Hlc;
 use crate::collab::patch::Patch;
-use bitcode::__private::{Buffer, Decoder, Encoder, View};
 use bitcode::{Decode, Encode};
-use smallvec::SmallVec;
-use std::num::NonZeroUsize;
-use std::ops::Deref;
 
 /// Identifies a replica.
 ///
@@ -44,72 +40,6 @@ use std::ops::Deref;
 /// [`FractionalKey`](crate::collab::fractional_index::FractionalKey), so one identity orders both
 /// concurrent register writes and concurrent inserts.
 pub type SessionId = u32;
-
-/// Identifies a commit. Opaque to us — we compare and store it, never interpret it. Short ids stay
-/// inline, so carrying one costs no allocation.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
-pub struct CommitId(SmallVec<[u8; 8]>);
-
-impl From<&[u8]> for CommitId {
-    fn from(bytes: &[u8]) -> Self {
-        CommitId(SmallVec::from_slice(bytes))
-    }
-}
-
-impl Deref for CommitId {
-    type Target = [u8];
-
-    fn deref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-/// bitcode coders delegating to the byte-slice ones — hand-rolled for the same reason as
-/// [`FractionalKeyEncoder`](crate::collab::fractional_key::FractionalKeyEncoder).
-#[derive(Default)]
-pub struct CommitIdEncoder(<[u8] as Encode>::Encoder);
-
-impl Buffer for CommitIdEncoder {
-    fn collect_into(&mut self, out: &mut Vec<u8>) {
-        self.0.collect_into(out);
-    }
-
-    fn reserve(&mut self, additional: NonZeroUsize) {
-        self.0.reserve(additional);
-    }
-}
-
-impl Encoder<CommitId> for CommitIdEncoder {
-    #[inline]
-    fn encode(&mut self, t: &CommitId) {
-        Encoder::<[u8]>::encode(&mut self.0, t);
-    }
-}
-
-impl Encode for CommitId {
-    type Encoder = CommitIdEncoder;
-}
-
-#[derive(Default)]
-pub struct CommitIdDecoder<'a>(<Vec<u8> as Decode<'a>>::Decoder);
-
-impl<'a> View<'a> for CommitIdDecoder<'a> {
-    fn populate(&mut self, input: &mut &'a [u8], length: usize) -> bitcode::__private::Result<()> {
-        self.0.populate(input, length)
-    }
-}
-
-impl<'a> Decoder<'a, CommitId> for CommitIdDecoder<'a> {
-    #[inline]
-    fn decode(&mut self) -> CommitId {
-        let bytes: Vec<u8> = self.0.decode();
-        CommitId::from(bytes.as_slice())
-    }
-}
-
-impl<'a> Decode<'a> for CommitId {
-    type Decoder = CommitIdDecoder<'a>;
-}
 
 /// Arbitrates between writes to the same register.
 ///
@@ -167,21 +97,30 @@ impl<T> Lww<T> {
 }
 
 /// A unit of work in the log: one or more [`Patch`]es committed together, applied atomically.
-pub struct Commit<'a> {
-    /// Unique identifier of this commit.
-    pub id: &'a CommitId,
+/// `(session, hlc)` identifies a commit globally: an author mints one strictly increasing stamp per
+/// commit, so the pair can never collide.
+#[derive(Debug, Encode, Decode)]
+pub struct Commit {
     /// Replica that authored it.
-    pub session: &'a SessionId,
+    pub session: SessionId,
     /// The stamp its author minted for it, above every stamp that author had seen.
     pub hlc: Hlc,
     /// Patches to apply, in order.
-    pub patches: &'a [Patch],
+    pub patches: Vec<Patch>,
 }
 
-impl Commit<'_> {
+impl Commit {
+    pub fn new(session: SessionId, hlc: Hlc, patches: Vec<Patch>) -> Self {
+        Commit {
+            session,
+            hlc,
+            patches,
+        }
+    }
+
     /// The [`Timestamp`] every register written by this commit is tagged with.
     pub fn timestamp(&self) -> Timestamp {
-        Timestamp::new(self.hlc, *self.session)
+        Timestamp::new(self.hlc, self.session)
     }
 }
 
@@ -190,7 +129,7 @@ pub trait Consumer {
     type Error;
 
     /// Apply a single commit. See the module documentation for the guarantees this must uphold.
-    fn apply(&mut self, commit: Commit<'_>) -> Result<(), Self::Error>;
+    fn apply(&mut self, commit: &Commit) -> Result<(), Self::Error>;
 }
 
 /// Implemented by consumers whose materialized state can be persisted, so that a framework can

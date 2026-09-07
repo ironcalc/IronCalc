@@ -2328,16 +2328,6 @@ impl<'a, A: Position> UserModel<'a, A> {
     }
 }
 
-/// One commit on the wire: what [`Commit`](crate::collab::log::Commit) carries, owned. The commit
-/// id is the framework's business, so it is not shipped: the receiver mints one per batch slot.
-#[cfg(feature = "collab")]
-#[derive(bitcode::Encode, bitcode::Decode)]
-struct WireCommit {
-    session: crate::collab::log::SessionId,
-    hlc: crate::collab::hlc::Hlc,
-    patches: Vec<crate::collab::patch::Patch>,
-}
-
 /// The collaborative surface: the same calls as the ordinal wrapper, delegating to the
 /// patch-emitting mutators. Every mutator runs through [`tracked`](Self::tracked), which turns the
 /// commits it emitted into one undo step.
@@ -2400,18 +2390,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
     /// See also:
     /// * [UserModel::apply_external_diffs]
     pub fn flush_send_queue(&mut self) -> Vec<u8> {
-        let session = self.model.local.session;
-        let commits: Vec<WireCommit> = self
-            .model
-            .flush()
-            .into_iter()
-            .map(|commit| WireCommit {
-                session,
-                hlc: commit.hlc,
-                patches: commit.patches,
-            })
-            .collect();
-        bitcode::encode(&commits)
+        bitcode::encode(&self.model.flush())
     }
 
     /// Applies commits authored by other replicas. They are somebody else's history, so they never
@@ -2420,20 +2399,12 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
     /// See also:
     /// * [UserModel::flush_send_queue]
     pub fn apply_external_diffs(&mut self, diff_list_str: &[u8]) -> Result<(), String> {
-        use crate::collab::log::{Commit, CommitId, Consumer};
+        use crate::collab::log::{Commit, Consumer};
         // Malformed bytes can panic inside the bitcode decoder; hardening it is deferred.
-        let commits: Vec<WireCommit> =
+        let commits: Vec<Commit> =
             bitcode::decode(diff_list_str).map_err(|_| "Error parsing diff list".to_string())?;
-        for (index, commit) in commits.iter().enumerate() {
-            let id = CommitId::from([index as u8].as_slice());
-            self.model
-                .apply(Commit {
-                    id: &id,
-                    session: &commit.session,
-                    hlc: commit.hlc,
-                    patches: &commit.patches,
-                })
-                .map_err(|e| e.to_string())?;
+        for commit in &commits {
+            self.model.apply(commit).map_err(|e| e.to_string())?;
         }
         self.evaluate_if_not_paused();
         Ok(())
