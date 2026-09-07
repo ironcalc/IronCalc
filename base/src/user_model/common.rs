@@ -2819,7 +2819,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
 /// Construction and persistence, which only make sense for a model that owns its locale.
 #[cfg(feature = "collab")]
 impl UserModel<'static, crate::collab::model::Stable> {
-    /// Creates the workbook on the replica that *originates* it
+    /// Creates a workbook holding a default sheet with the static ID.
     pub fn new_empty_with_session(
         name: &str,
         locale_id: &str,
@@ -2850,7 +2850,8 @@ impl UserModel<'static, crate::collab::model::Stable> {
             language,
         );
 
-        model.new_sheet();
+        let sheet_name = format!("{}1", model.get_sheet_name());
+        model.insert_sheet(&sheet_name, 0, Some(crate::collab::emit::DEFAULT_SHEET_ID))?;
         Ok(UserModel::from_model(model))
     }
 

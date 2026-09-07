@@ -43,6 +43,8 @@ use crate::utils as common;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+pub(crate) const DEFAULT_SHEET_ID: SheetId = 1;
+
 impl CollabModel<'_> {
     /// Applies `patches` as one commit and queues it for the log.
     ///

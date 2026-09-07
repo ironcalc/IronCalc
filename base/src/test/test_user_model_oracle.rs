@@ -389,3 +389,30 @@ fn snapshot_round_trips_into_a_working_replica() {
     let key = <Stable as crate::types::Position>::row_at(&sheet.index, 1).unwrap();
     assert_eq!(key.split().1, 2u32.to_be_bytes());
 }
+
+#[test]
+fn default_sheet_is_concurrently_editable() {
+    let mut a = UserModel::new_empty_with_session("book", "en", "UTC", "en", 1).unwrap();
+    let mut b = UserModel::new_empty_with_session("book", "en", "UTC", "en", 2).unwrap();
+
+    // both peers edit cells of the same sheet
+    a.set_user_input(0, 1, 1, "left").unwrap();
+    b.set_user_input(0, 2, 1, "right").unwrap();
+
+    let from_a = a.flush_send_queue();
+    let from_b = b.flush_send_queue();
+    a.apply_external_diffs(&from_b).unwrap();
+    b.apply_external_diffs(&from_a).unwrap();
+
+    // after sync, only 1 sheet (default one) should exist
+    assert_eq!(a.get_worksheets_properties().len(), 1);
+    for (row, expected) in [(1, "left"), (2, "right")] {
+        assert_eq!(a.get_formatted_cell_value(0, row, 1).unwrap(), expected);
+        assert_eq!(b.get_formatted_cell_value(0, row, 1).unwrap(), expected);
+    }
+
+    // formula written after the merge sees both halves.
+    a.set_user_input(0, 3, 1, "=CONCAT(A1, A2)").unwrap();
+    b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+    assert_eq!(b.get_formatted_cell_value(0, 3, 1).unwrap(), "leftright");
+}
