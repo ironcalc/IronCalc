@@ -39,6 +39,7 @@ use crate::locale::{get_default_locale, get_locale};
 use crate::new_empty::is_valid_sheet_name;
 use crate::types::{Cell, Col, Color, Comment, Dxf, Position, RangeRef, SheetState, Style, Theme};
 use crate::tz::Tz;
+use crate::user_model::update_style;
 use crate::utils as common;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -903,6 +904,177 @@ impl CollabModel<'_> {
         }
         if !patches.is_empty() {
             self.commit_local(patches);
+        }
+        Ok(())
+    }
+
+    /// The patch styling the cell at `at` with `style_path` = `value`, applied on top of the style
+    /// the cell reads with today. A cell already storing the resulting style gets no patch.
+    fn style_cell_write(
+        &self,
+        i: usize,
+        id: SheetId,
+        at: StableCellAddress,
+        cell: (i32, i32),
+        style: (&str, &str),
+        writes: &mut Vec<Patch>,
+    ) -> Result<(), String> {
+        let (row, column) = cell;
+        let old = self.get_style_for_cell(i as u32, row, column)?;
+        let new = update_style(&old, style.0, style.1)?;
+        let prev = self.cell_style_at(i, &at);
+        if prev.as_ref() == Some(&new) {
+            return Ok(()); // nothing changed
+        }
+        writes.push(Patch::SetCellStyle {
+            sheet: id,
+            at,
+            style: Some(Box::new(new)),
+            ts: None,
+            prev: Box::new(prev),
+        });
+        Ok(())
+    }
+
+    pub fn update_range_style(
+        &mut self,
+        area: &Area,
+        style_path: &str,
+        value: &str,
+    ) -> Result<(), String> {
+        let id = self.sheet_of(area.sheet)?;
+        let i = area.sheet as usize;
+        // Keys that have to exist first, kept apart from the writes so a no-op mints nothing.
+        let mut mints = Vec::new();
+        let mut writes = Vec::new();
+        let entire_column = area.row == 1 && area.height == LAST_ROW;
+        let entire_row = area.column == 1 && area.width == LAST_COLUMN;
+        if entire_column {
+            let sheet = &self.workbook.worksheets[i];
+            let styled_rows: Vec<i32> = sheet
+                .rows
+                .iter()
+                .filter_map(|r| Stable::row_ordinal(&sheet.index, &r.r))
+                .collect();
+            for column in area.column..area.column + area.width {
+                let old = self.get_column_style(area.sheet, column)?;
+                let style =
+                    update_style(old.as_ref().unwrap_or(&Style::default()), style_path, value)?;
+                let col_key = self.col_key(i, id, column, &mut mints);
+                let property = ColProperty::Style(Some(Box::new(style)));
+                if self.col_effective(i, column, ColPropKind::Style) != property {
+                    let prev = self.col_prev(i, &col_key, ColPropKind::Style);
+                    writes.push(Patch::SetColumnSpan {
+                        sheet: id,
+                        span: (col_key.clone(), col_key.clone()),
+                        property,
+                        ts: None,
+                        prev,
+                    });
+                }
+                // The cells the column actually holds, plus the ones sitting on a styled row.
+                let sheet = &self.workbook.worksheets[i];
+                let mut rows = styled_rows.clone();
+                for (row_key, row_data) in &sheet.sheet_data {
+                    if row_data.contains_key(&col_key) {
+                        if let Some(row) = Stable::row_ordinal(&sheet.index, row_key) {
+                            rows.push(row);
+                        }
+                    }
+                }
+                // `sheet_data` is a hash map: sort, so the commit does not depend on its iteration.
+                rows.sort();
+                rows.dedup();
+                for row in rows {
+                    let Some(row_key) = Stable::row_at(&self.workbook.worksheets[i].index, row)
+                    else {
+                        continue;
+                    };
+                    let at = (row_key, col_key.clone());
+                    self.style_cell_write(
+                        i,
+                        id,
+                        at,
+                        (row, column),
+                        (style_path, value),
+                        &mut writes,
+                    )?;
+                }
+            }
+        } else if entire_row {
+            let sheet = &self.workbook.worksheets[i];
+            let mut styled_columns: Vec<i32> = Vec::new();
+            for col in &sheet.cols {
+                let (Some(min), Some(max)) = (
+                    Stable::col_ordinal(&sheet.index, &col.min),
+                    Stable::col_ordinal(&sheet.index, &col.max),
+                ) else {
+                    continue;
+                };
+                styled_columns.extend(min..=max);
+            }
+            for row in area.row..area.row + area.height {
+                let row_key = self.row_key(i, id, row, &mut mints);
+                // The cells the row actually holds, plus the ones sitting on a styled column.
+                let sheet = &self.workbook.worksheets[i];
+                let mut columns = styled_columns.clone();
+                if let Some(row_data) = sheet.sheet_data.get(&row_key) {
+                    for col_key in row_data.keys() {
+                        if let Some(column) = Stable::col_ordinal(&sheet.index, col_key) {
+                            columns.push(column);
+                        }
+                    }
+                }
+                columns.sort();
+                columns.dedup();
+                for column in columns {
+                    let Some(col_key) = Stable::col_at(&self.workbook.worksheets[i].index, column)
+                    else {
+                        continue;
+                    };
+                    let at = (row_key.clone(), col_key);
+                    self.style_cell_write(
+                        i,
+                        id,
+                        at,
+                        (row, column),
+                        (style_path, value),
+                        &mut writes,
+                    )?;
+                }
+                // The row's own style goes last, as upstream does.
+                let prev = self.row_prev(i, Some(&row_key), RowPropKind::Style);
+                let old = match &prev {
+                    Some(RowProperty::Style(style)) => style.as_deref(),
+                    _ => None,
+                };
+                let style = update_style(old.unwrap_or(&Style::default()), style_path, value)?;
+                let property = RowProperty::Style(Some(Box::new(style)));
+                if prev.as_ref() != Some(&property) {
+                    writes.push(Patch::SetRowProperty {
+                        sheet: id,
+                        row: row_key,
+                        property,
+                        ts: None,
+                        prev,
+                    });
+                }
+            }
+        } else if area.height > 0 && area.width > 0 {
+            // Every cell of the rectangle, materialized as upstream materializes it.
+            let rows = self.row_keys(i, id, area.row, area.row + area.height - 1, &mut mints);
+            let cols = self.col_keys(i, id, area.column, area.column + area.width - 1, &mut mints);
+            for (r, row_key) in rows.iter().enumerate() {
+                for (c, col_key) in cols.iter().enumerate() {
+                    let cell = (area.row + r as i32, area.column + c as i32);
+                    let at = (row_key.clone(), col_key.clone());
+                    self.style_cell_write(i, id, at, cell, (style_path, value), &mut writes)?;
+                }
+            }
+        }
+        if !writes.is_empty() {
+            mints.extend(writes);
+            self.commit_local(mints);
         }
         Ok(())
     }

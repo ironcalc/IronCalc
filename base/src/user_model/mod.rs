@@ -14,6 +14,7 @@ mod sequence_detector;
 mod ui;
 mod undo_redo;
 
+pub(crate) use common::update_style;
 pub use common::UserModel;
 pub use history::OrdinalUserState;
 
