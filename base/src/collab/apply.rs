@@ -561,7 +561,11 @@ impl CollabModel<'_> {
             self.normalize_named_styles();
         }
 
-        if self.is_content_only(patches)
+        // A revival (an insert re-applied over its own delete, e.g. redo) looks like a tail append,
+        // but formulas lowered while the key was dead hold stale `#REF!` nodes.
+        let revived = std::mem::take(&mut self.local.revived);
+        if !revived
+            && self.is_content_only(patches)
             && self.parsed_formulas.len() == self.workbook.worksheets.len()
         {
             self.lower_formulas_tail();
@@ -749,7 +753,10 @@ impl CollabModel<'_> {
                 };
                 let index = &mut self.workbook.worksheets[i].index;
                 for key in keys {
-                    index.rows.insert_key_at(key.clone(), ts.hlc);
+                    let seen = index.rows.seen(key);
+                    if index.rows.insert_key_at(key.clone(), ts.hlc).is_some() && seen {
+                        self.local.revived = true;
+                    }
                 }
             }
             Patch::InsertColumns { sheet, keys } => {
@@ -758,7 +765,10 @@ impl CollabModel<'_> {
                 };
                 let index = &mut self.workbook.worksheets[i].index;
                 for key in keys {
-                    index.cols.insert_key_at(key.clone(), ts.hlc);
+                    let seen = index.cols.seen(key);
+                    if index.cols.insert_key_at(key.clone(), ts.hlc).is_some() && seen {
+                        self.local.revived = true;
+                    }
                 }
             }
             Patch::DeleteRows { sheet, keys, .. } => {
