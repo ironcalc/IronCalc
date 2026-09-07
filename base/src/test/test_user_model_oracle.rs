@@ -1,43 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
-use std::collections::HashMap;
-
 use crate::collab::model::{CollabModel, Stable};
-use crate::constants::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH};
-use crate::types::{Ordinal, WorkbookView, WorksheetView};
+use crate::types::Ordinal;
 use crate::UserModel;
 
 fn pair() -> (UserModel<'static, Ordinal>, UserModel<'static, Stable>) {
     let ordinal = UserModel::new_empty("model", "en", "UTC", "en").unwrap();
-    let mut model = CollabModel::new(1);
-    model.new_sheet();
-    seed_views(&mut model);
-    (ordinal, UserModel::from_model(model))
-}
-
-fn seed_views(model: &mut CollabModel<'_>) {
-    model.workbook.views.insert(
-        0,
-        WorkbookView {
-            sheet: 0,
-            window_width: DEFAULT_WINDOW_WIDTH,
-            window_height: DEFAULT_WINDOW_HEIGHT,
-        },
-    );
-    for worksheet in &mut model.workbook.worksheets {
-        worksheet.views = HashMap::from([(
-            0,
-            WorksheetView {
-                row: 1,
-                column: 1,
-                range: [1, 1, 1, 1],
-                focus_row: 1,
-                focus_column: 1,
-                top_row: 1,
-                left_column: 1,
-            },
-        )]);
-    }
+    let stable = UserModel::new_empty_with_session("model", "en", "UTC", "en", 1).unwrap();
+    (ordinal, stable)
 }
 
 /// Compares everything the two wrappers are expected to answer identically over `rows` × `cols`.
@@ -320,10 +290,7 @@ fn undo_redo_matches_ordinal() {
 
 #[test]
 fn redo_relowers_formulas_on_revived_rows() {
-    let mut model = CollabModel::new(1);
-    model.new_sheet();
-    seed_views(&mut model);
-    let mut c = UserModel::from_model(model);
+    let mut c = UserModel::new_empty_with_session("model", "en", "UTC", "en", 1).unwrap();
 
     c.set_user_input(0, 5, 1, "7").unwrap(); // A5=7
     c.set_user_input(0, 1, 2, "=A5").unwrap(); // B1=A5
@@ -379,4 +346,46 @@ fn peers_converge_through_the_wire() {
         b.get_formatted_cell_value(0, 1, 1)
     );
     assert_eq!(a.get_model().workbook, b.get_model().workbook);
+}
+
+#[test]
+fn snapshot_round_trips_into_a_working_replica() {
+    let mut author = UserModel::new_empty_with_session("book", "en", "UTC", "en", 1).unwrap();
+    author.set_user_input(0, 1, 1, "7").unwrap(); // A1=7
+    author.set_user_input(0, 1, 2, "=A1").unwrap(); // B1=A1
+    author.set_rows_height(0, 1, 1, 42.0).unwrap();
+    author.rename_sheet(0, "Data").unwrap();
+    // Nobody was listening: the author's own state is complete without the queue.
+    author.flush_send_queue();
+
+    let mut restored = UserModel::<Stable>::from_bytes_with_session(&author.to_bytes(), 2).unwrap();
+    assert_eq!(restored.get_formatted_cell_value(0, 1, 2).unwrap(), "7");
+    assert_eq!(restored.get_row_height(0, 1).unwrap(), 42.0);
+    assert_eq!(restored.get_worksheets_properties()[0].name, "Data");
+    // Views are local state, absent from the payload, so the restore seeds them.
+    restored.set_selected_cell(3, 2).unwrap();
+    assert_eq!(restored.get_selected_cell(), (0, 3, 2));
+
+    restored.insert_rows(0, 1, 1).unwrap();
+    restored.set_user_input(0, 1, 1, "99").unwrap();
+    author
+        .apply_external_diffs(&restored.flush_send_queue())
+        .unwrap();
+
+    for row in 1..=3 {
+        for col in 1..=2 {
+            assert_eq!(
+                author.get_formatted_cell_value(0, row, col).unwrap(),
+                restored.get_formatted_cell_value(0, row, col).unwrap(),
+                "value at ({row}, {col})"
+            );
+        }
+    }
+    assert_eq!(author.get_formatted_cell_value(0, 1, 1).unwrap(), "99");
+    assert_eq!(author.get_formatted_cell_value(0, 2, 2).unwrap(), "7");
+
+    // The restoring replica mints under its own session, never the author's.
+    let sheet = &restored.get_model().workbook.worksheets[0];
+    let key = <Stable as crate::types::Position>::row_at(&sheet.index, 1).unwrap();
+    assert_eq!(key.split().1, 2u32.to_be_bytes());
 }

@@ -2816,6 +2816,62 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
     }
 }
 
+/// Construction and persistence, which only make sense for a model that owns its locale.
+#[cfg(feature = "collab")]
+impl UserModel<'static, crate::collab::model::Stable> {
+    /// Creates the workbook on the replica that *originates* it
+    pub fn new_empty_with_session(
+        name: &str,
+        locale_id: &str,
+        timezone: &str,
+        language_id: &str,
+        session: crate::collab::log::SessionId,
+    ) -> Result<UserModel<'static, crate::collab::model::Stable>, String> {
+        let tz = crate::tz::Tz::parse(timezone)?;
+        let locale = crate::locale::get_locale(locale_id)
+            .map_err(|_| format!("Invalid locale: {locale_id}"))?;
+        let language = crate::language::get_language(language_id)
+            .map_err(|_| format!("Invalid language: {language_id}"))?;
+
+        let mut model = crate::collab::model::CollabModel::new(session);
+        // Construction-time configuration, not replicated state: a joining replica gets these
+        // from the snapshot it restores.
+        model.workbook.name = name.to_string();
+        model.workbook.settings.tz = timezone.to_string();
+        model.workbook.settings.locale = locale_id.to_string();
+        model.tz = tz;
+        model.locale = locale;
+        model.language = language;
+        model.parser = crate::expressions::parser::Parser::new(
+            vec![],
+            vec![],
+            HashMap::new(),
+            locale,
+            language,
+        );
+
+        model.new_sheet();
+        Ok(UserModel::from_model(model))
+    }
+
+    /// Returns the internal representation of a model.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        use crate::collab::log::Snapshot;
+        self.model.encode()
+    }
+
+    /// Restores a model from [`to_bytes`](Self::to_bytes).
+    pub fn from_bytes_with_session(
+        bytes: &[u8],
+        session: crate::collab::log::SessionId,
+    ) -> Result<UserModel<'static, crate::collab::model::Stable>, String> {
+        use crate::collab::log::Snapshot;
+        let model =
+            crate::collab::model::CollabModel::decode(bytes, session).map_err(|e| e.to_string())?;
+        Ok(UserModel::from_model(model))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{

@@ -7,7 +7,8 @@ use crate::collab::patch::{
     RowPropKind, SheetId, SheetPropKind, WorkbookPropKind,
 };
 use crate::constants::{
-    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
+    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, DEFAULT_WINDOW_HEIGHT,
+    DEFAULT_WINDOW_WIDTH, ROW_HEIGHT_FACTOR,
 };
 use crate::expressions::parser::{Node, Parser};
 use crate::expressions::utils::{is_valid_column_number, is_valid_row};
@@ -17,7 +18,7 @@ use crate::model::Model;
 use crate::new_empty::{APPLICATION, APP_VERSION, IRONCALC_USER};
 use crate::types::{
     sealed::Sealed, CellAddr, Col, Metadata, Position, RangeRef, Row, Style, Workbook,
-    WorkbookSettings, Worksheet,
+    WorkbookSettings, WorkbookView, Worksheet, WorksheetView,
 };
 use crate::tz::Tz;
 use bitcode::{Decode, Encode};
@@ -385,6 +386,34 @@ pub struct CollabSession {
     pub(crate) full_resyncs: u64,
 }
 
+/// The single default viewport a fresh workbook is opened with, matching [`Model::new_empty`].
+pub(crate) fn default_workbook_views() -> HashMap<u32, WorkbookView> {
+    HashMap::from([(
+        0,
+        WorkbookView {
+            sheet: 0,
+            window_width: DEFAULT_WINDOW_WIDTH,
+            window_height: DEFAULT_WINDOW_HEIGHT,
+        },
+    )])
+}
+
+/// A new sheet's viewport state for that same default view.
+pub(crate) fn default_worksheet_views() -> HashMap<u32, WorksheetView> {
+    HashMap::from([(
+        0,
+        WorksheetView {
+            row: 1,
+            column: 1,
+            range: [1, 1, 1, 1],
+            focus_row: 1,
+            focus_column: 1,
+            top_row: 1,
+            left_column: 1,
+        },
+    )])
+}
+
 impl CollabModel<'static> {
     /// An empty replica: a workbook with **no sheets at all**, since every sheet arrives as a
     /// [`Patch::AddSheet`](crate::collab::patch::Patch::AddSheet) like any other write.
@@ -417,8 +446,9 @@ impl CollabModel<'static> {
                 last_modified: String::new(),
             },
             tables: HashMap::new(),
-            // Viewports are local UI state and never travel in a snapshot.
-            views: HashMap::new(),
+            // Viewports are local UI state and never travel in a snapshot: seeded here, and again
+            // after decoding one.
+            views: default_workbook_views(),
             theme: Default::default(),
             meta: Default::default(),
         };
