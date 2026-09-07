@@ -831,6 +831,7 @@ pub enum WorkbookProperty {
     Theme(Box<Theme>),
     Locale(String),
     Timezone(String),
+    Name(String),
 }
 
 /// The register a [`WorkbookProperty`] writes to, without its value.
@@ -839,6 +840,7 @@ pub enum WorkbookPropKind {
     Theme,
     Locale,
     Timezone,
+    Name,
 }
 
 impl WorkbookProperty {
@@ -847,6 +849,7 @@ impl WorkbookProperty {
             WorkbookProperty::Theme(_) => WorkbookPropKind::Theme,
             WorkbookProperty::Locale(_) => WorkbookPropKind::Locale,
             WorkbookProperty::Timezone(_) => WorkbookPropKind::Timezone,
+            WorkbookProperty::Name(_) => WorkbookPropKind::Name,
         }
     }
 }

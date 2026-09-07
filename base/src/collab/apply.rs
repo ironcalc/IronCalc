@@ -607,9 +607,12 @@ impl CollabModel<'_> {
                     | SheetProperty::FrozenRows(_)
                     | SheetProperty::FrozenColumns(_)
             ),
-            // The locale drives defined-name parsing; the theme drives nothing lowered.
+            // The locale drives defined-name parsing; the theme and the name drive nothing lowered.
             Patch::SetWorkbookProperty { property, .. } => {
-                matches!(property, WorkbookProperty::Theme(_))
+                matches!(
+                    property,
+                    WorkbookProperty::Theme(_) | WorkbookProperty::Name(_)
+                )
             }
             // A tail append displaces no ordinal — which is what materialize-on-bind mints.
             Patch::InsertRows { sheet, keys } => self
@@ -1082,6 +1085,7 @@ impl CollabModel<'_> {
                         self.workbook.settings.locale = locale.clone()
                     }
                     WorkbookProperty::Timezone(tz) => self.workbook.settings.tz = tz.clone(),
+                    WorkbookProperty::Name(name) => self.workbook.name = name.clone(),
                 }
             }
             // `Workbook::defined_names` itself is derived from these registers by

@@ -291,6 +291,12 @@ impl<'a> UserModel<'a> {
     pub fn to_bytes(&self) -> Vec<u8> {
         self.model.to_bytes()
     }
+
+    /// Sets the name of a workbook
+    pub fn set_name(&mut self, name: &str) {
+        self.model.workbook.name = name.to_string();
+    }
+
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
     ///
     /// See also:
@@ -2699,6 +2705,15 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
     pub fn set_theme(&mut self, theme: Theme) {
         let _ = self.tracked(|s| {
             s.model.set_theme(theme);
+            Ok(())
+        });
+    }
+
+    /// Sets the name of a workbook
+    pub fn set_name(&mut self, name: &str) {
+        // The emitter cannot fail, so there is no error to report.
+        let _ = self.tracked(|s| {
+            s.model.set_name(name);
             Ok(())
         });
     }

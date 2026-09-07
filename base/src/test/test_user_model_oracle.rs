@@ -391,6 +391,39 @@ fn snapshot_round_trips_into_a_working_replica() {
 }
 
 #[test]
+fn workbook_name_replicates() {
+    let (mut ordinal, mut stable) = pair();
+    let mut peer = UserModel::new_empty_with_session("model", "en", "UTC", "en", 2).unwrap();
+    assert_eq!(stable.get_name(), ordinal.get_name());
+
+    ordinal.set_name("renamed");
+    stable.set_name("renamed");
+    assert_eq!(stable.get_name(), ordinal.get_name());
+
+    // a second replica learns the name off the wire
+    peer.apply_external_diffs(&stable.flush_send_queue())
+        .unwrap();
+    assert_eq!(peer.get_name(), "renamed");
+
+    // undo restores the previous name, redo puts it back
+    stable.undo().unwrap();
+    assert_eq!(stable.get_name(), "model");
+    stable.redo().unwrap();
+    assert_eq!(stable.get_name(), "renamed");
+
+    peer.apply_external_diffs(&stable.flush_send_queue())
+        .unwrap();
+    assert_eq!(peer.get_name(), "renamed");
+
+    // writing the name it already has emits nothing and records no undo step
+    let pending = stable.get_model().local.pending.len();
+    let can_undo = stable.can_undo();
+    stable.set_name("renamed");
+    assert_eq!(stable.get_model().local.pending.len(), pending);
+    assert_eq!(stable.can_undo(), can_undo);
+}
+
+#[test]
 fn default_sheet_is_concurrently_editable() {
     let mut a = UserModel::new_empty_with_session("book", "en", "UTC", "en", 1).unwrap();
     let mut b = UserModel::new_empty_with_session("book", "en", "UTC", "en", 2).unwrap();
