@@ -20,7 +20,8 @@ use crate::collab::fractional_index::{FractionalIndex, FractionalKey};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Consumer, Lww, SessionId, Snapshot, Timestamp};
 use crate::collab::model::{
-    CollabModel, SheetIndexes, SheetRegisters, Stable, StableCellAddress, StableRange,
+    default_workbook_views, default_worksheet_views, CollabModel, SheetIndexes, SheetRegisters,
+    Stable, StableCellAddress, StableRange,
 };
 use crate::collab::naming::NameRepair;
 use crate::collab::patch::{
@@ -77,9 +78,12 @@ impl Snapshot for CollabModel<'static> {
         model.workbook = bitcode::decode(workbook)?;
         // The suffix is never in the payload — see `FractionalIndex::decode`.
         let suffix = model.suffix();
+        // Views were not encoded either: the restoring replica opens on the defaults.
+        model.workbook.views = default_workbook_views();
         for sheet in &mut model.workbook.worksheets {
             sheet.index.rows.suffix = suffix;
             sheet.index.cols.suffix = suffix;
+            sheet.views = default_worksheet_views();
         }
         for (index, text) in model.workbook.shared_strings.iter().enumerate() {
             model.shared_strings.insert(text.clone(), index);
@@ -1003,7 +1007,7 @@ impl CollabModel<'_> {
                         comments: vec![],
                         frozen_rows: 0,
                         frozen_columns: 0,
-                        views: HashMap::new(),
+                        views: default_worksheet_views(),
                         show_grid_lines: true,
                         conditional_formatting: vec![],
                         links: HashMap::new(),

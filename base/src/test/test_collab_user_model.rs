@@ -14,9 +14,8 @@ fn stable_user_model_reads_and_selects() {
     let mut user_model = UserModel::<Stable>::from_model(model);
     assert_eq!(user_model.get_formatted_cell_value(0, 1, 1).unwrap(), "2");
 
-    // A collaborative workbook has no views yet (seeding lands in a later round), so the view
-    // methods are no-ops that report the default view.
+    // Every replica seeds the default view, so selection is live local state.
     user_model.set_selected_cell(2, 3).unwrap();
     assert_eq!(user_model.get_selected_sheet(), 0);
-    assert_eq!(user_model.get_selected_cell(), (0, 1, 1));
+    assert_eq!(user_model.get_selected_cell(), (0, 2, 3));
 }
