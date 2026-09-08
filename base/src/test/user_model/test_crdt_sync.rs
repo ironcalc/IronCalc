@@ -567,7 +567,105 @@ fn undo_only_reverts_own_operation() {
     assert_eq!(a.um.get_cell_content(0, 2, 2), Ok("theirs".to_string()));
 }
 
-// CRDT_FUZZ_SEEDS=2000 cargo test -p ironcalc_base --offline --release -- randomized_convergence_fuzz randomized_peer_protocol_fuzz
+/***
+## The fuzzer
+
+### What it is
+
+It is a seeded, deterministic two-replica convergence test: it drives two
+collaborating workbooks through a random sequence of edits with random sync
+points, and checks at the end that they agree on everything.
+
+One round:
+
+1. **Two replicas**, A and B — each a `UserModel` attached to its own
+   `CollabSession` — start from the same empty workbook.
+2. **120 steps.** Each step picks a replica at random and one op from a
+   vocabulary of about 25:
+   - values, formulas (now and then an URL — the engine auto-links those)
+   - insert / delete rows and columns, row heights, row moves
+   - defined names (create / update / delete)
+   - new / delete / rename / move sheets
+   - cell styles, borders, theme
+   - conditional formatting: add / delete / raise / lower / update
+   - set / delete link
+   - merge / unmerge
+   - undo
+
+   Ops the engine rejects (typing into a covered cell, an overlapping merge,
+   an out-of-range move) are simply ignored: concurrency comes from the two
+   replicas editing between syncs, not from every op succeeding.
+3. **Random syncs.** After each step, with probability 1/6, the replicas
+   exchange every pending update in both directions.
+4. **Two final syncs, then two assertions:**
+   - the two projections of the document are byte-identical
+     (a failure here is an *outbound* bug);
+   - the models converged: sheet names and order, defined names, theme, named
+     styles, conditional formatting, links, merged cells, then contents,
+     evaluated values and styles over a 40×15 window, row heights and column
+     widths.
+
+Because the RNG is seeded, a failing seed replays the exact same op sequence
+every time. The normal test suite runs five fixed seeds; the stress runs are
+opt-in through environment variables.
+
+There is a sibling, `randomized_peer_protocol_fuzz`, that does the same thing
+through `SyncPeer` byte frames — the actual y-sync protocol the relay server
+speaks — instead of raw session updates.
+
+### How to run it
+
+```bash
+# the five default seeds (part of the normal suite)
+cargo test -p ironcalc_base -- randomized_convergence_fuzz
+
+# stress: seeds 1..=2000 in release, both fuzzers (about a minute)
+CRDT_FUZZ_SEEDS=2000 cargo test -p ironcalc_base --release -- \
+    randomized_convergence_fuzz randomized_peer_protocol_fuzz
+
+# reproduce one seed with a full trace (debug build, on purpose)
+CRDT_FUZZ_ONLY=1910 CRDT_FUZZ_TRACE=1 cargo test -p ironcalc_base -- \
+    randomized_convergence_fuzz 2>&1 | less
+```
+
+| Variable | Effect |
+|---|---|
+| `CRDT_FUZZ_SEEDS=n` | run seeds `1..=n` instead of the five defaults |
+| `CRDT_FUZZ_ONLY=seed` | run exactly one seed (`randomized_convergence_fuzz` only) |
+| `CRDT_FUZZ_TRACE=1` | print every op and turn every sync into a checkpoint (see below) |
+
+### Reading a failure
+
+With `CRDT_FUZZ_TRACE=1`:
+
+- every op is printed as `step: replica op` (e.g. `119: A move_sheet 2 -> 1 => Ok(())`),
+  and every sync as `step: sync`;
+- after every flush and apply, each model is asserted to match its own
+  projection of the document (cells, and sheet order and names);
+- after every sync, full convergence is asserted.
+
+So the panic lands at the **first divergent sync**, and the ops between the
+previous `N: sync` line and the panic are the suspects. In the assertion
+output `left` is replica A and `right` is replica B. When the sheet orders
+differ, both replicas' model order and document order (with positions) are
+printed just before the assertion.
+
+Run traces in **debug**, not release: the ordering code's `debug_assert`s
+only fire there, and that is often the fastest diagnosis. A traced round costs
+about 0.7 s per seed, so 200 traced seeds take a few minutes:
+
+```bash
+CRDT_FUZZ_SEEDS=200 CRDT_FUZZ_TRACE=1 cargo test -p ironcalc_base -- randomized_convergence_fuzz
+```
+
+### Caveat
+
+A seed number only means something for a given version of the test. Adding an
+op to the vocabulary — or any extra random draw — shifts every seed's
+sequence, so a seed that failed today will tell a different story once the
+vocabulary changes again. Record the *lesson* (and a targeted test), not the
+seed.
+***/
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn randomized_convergence_fuzz() {
