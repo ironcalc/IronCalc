@@ -52,8 +52,10 @@ const Workbook = (props: {
   workbookState: WorkbookState;
   /** When false, the toolbar is hidden, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
+  /** Bump to repaint after a remote update. */
+  revision?: number;
 }) => {
-  const { model, workbookState, canEdit = true } = props;
+  const { model, workbookState, canEdit = true, revision } = props;
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const worksheetRef = useRef<{
@@ -64,6 +66,11 @@ const Workbook = (props: {
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `revision` is only a redraw trigger
+  useEffect(() => {
+    setRedrawId((id) => id + 1);
+  }, [revision]);
 
   const [alertDialog, setAlertDialog] = useState<{
     title: string;
@@ -574,10 +581,14 @@ const Workbook = (props: {
   });
 
   useEffect(() => {
-    if (!rootRef.current) {
+    const root = rootRef.current;
+    if (!root) {
       return;
     }
-    if (!workbookState.getEditingCell()) {
+    const active = document.activeElement;
+    const elsewhere =
+      active && active !== document.body && !root.contains(active);
+    if (!workbookState.getEditingCell() && !elsewhere) {
       focusWorkbook();
     }
   });
