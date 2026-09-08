@@ -162,3 +162,187 @@ fn spill_range_operator_on_itself_is_circular() {
 
     assert_eq!(model._get_text("C1"), "#CIRC!");
 }
+
+// ── 5.4: cycles through a spill area ────────────────────────────────────────
+
+//         ║    A     |       B        |
+// ════════╬══════════╪════════════════╪
+//    1    ║ =B2+2    | =SEQUENCE(A1)  |
+// ────────╫──────────┼────────────────┼
+//    2    ║          |                |
+// ────────╫──────────┼────────────────┼
+//
+// B1's shape depends on A1, and A1 reads B1's spill area: a cycle. Before
+// retraction this settled on B1 = SEQUENCE(2) with A1 = 4, an inconsistent but
+// stable state. The anchor now reports #CIRC! and does not spill.
+#[test]
+fn spill_cycle_through_reader_is_circular() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=B2+2");
+    model._set("B1", "=SEQUENCE(A1)");
+
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#CIRC!");
+    assert_eq!(model._get_text("B2"), "");
+    assert_eq!(model._get_text("A1"), "2");
+
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#CIRC!");
+    assert_eq!(model._get_text("B2"), "");
+    assert_eq!(model._get_text("A1"), "2");
+}
+
+// ── 5.6: two dynamic arrays contending for the same cells ───────────────────
+
+//         ║       A        |       B        |
+// ════════╬════════════════╪════════════════╪
+//    1    ║                | =SEQUENCE(3)   |
+// ────────╫────────────────┼────────────────┼
+//    2    ║ =SEQUENCE(1,2) |                |
+// ────────╫────────────────┼────────────────┼
+//    3    ║                |                |
+// ────────╫────────────────┼────────────────┼
+//
+// B1 (B1:B3) and A2 (A2:B2) both want B2. The anchor that comes first in
+// natural order, B1, wins and A2 gets #SPILL!.
+#[test]
+fn spill_contention_earlier_anchor_wins() {
+    let mut model = new_empty_model();
+
+    model._set("B1", "=SEQUENCE(3)");
+    model._set("A2", "=SEQUENCE(1,2)");
+
+    for _ in 0..2 {
+        model.evaluate();
+        assert_eq!(model._get_text("B1"), "1");
+        assert_eq!(model._get_text("B2"), "2");
+        assert_eq!(model._get_text("B3"), "3");
+        assert_eq!(model._get_text("A2"), "#SPILL!");
+    }
+}
+
+//         ║       A        |       B        |
+// ════════╬════════════════╪════════════════╪
+//    1    ║ =SEQUENCE(A2)  | =SEQUENCE(3)   |
+// ────────╫────────────────┼────────────────┼
+//    2    ║ =SEQUENCE(1,2) |                |
+// ────────╫────────────────┼────────────────┼
+//
+// Same contention, but A1 (evaluated first) pulls A2 in before B1 runs, so A2
+// spills into B2 first. B1 still wins: it takes B2 over, A2 is retracted and
+// re-evaluates to #SPILL!, and A1, which read A2, follows.
+#[test]
+fn spill_contention_is_independent_of_evaluation_order() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=SEQUENCE(A2)");
+    model._set("A2", "=SEQUENCE(1,2)");
+    model._set("B1", "=SEQUENCE(3)");
+
+    for _ in 0..2 {
+        model.evaluate();
+        assert_eq!(model._get_text("B1"), "1");
+        assert_eq!(model._get_text("B2"), "2");
+        assert_eq!(model._get_text("B3"), "3");
+        assert_eq!(model._get_text("A2"), "#SPILL!");
+        assert_eq!(model._get_text("A1"), "#SPILL!");
+    }
+}
+
+// ── Dependents see what the anchor stored ───────────────────────────────────
+
+//         ║       A        |    B    |      C       |
+// ════════╬════════════════╪═════════╪══════════════╪
+//    1    ║ =SEQUENCE(B1)  | =C1+1   | =SEQUENCE(3) |
+// ────────╫────────────────┼─────────┼──────────────┼
+//    2    ║                |         |      7       |
+// ────────╫────────────────┼─────────┼──────────────┼
+//
+// C1 is blocked by C2 and stores #SPILL!. B1 triggers C1's evaluation and used
+// to receive the first element of the array (1) instead of the stored error.
+#[test]
+fn dependent_of_blocked_spill_sees_the_error() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=SEQUENCE(B1)");
+    model._set("B1", "=C1+1");
+    model._set("C1", "=SEQUENCE(3)");
+    model._set("C2", "7");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("C1"), "#SPILL!");
+    assert_eq!(model._get_text("B1"), "#SPILL!");
+    assert_eq!(model._get_text("A1"), "#SPILL!");
+}
+
+// ── Cycle members all report #CIRC! ─────────────────────────────────────────
+
+//         ║       C        |
+// ════════╬════════════════╪
+//    1    ║ =C4:C6         |
+//    2    ║ 1              |
+//    4    ║ =SEQUENCE(C1)  |
+//
+// C1 and C4 form a cycle. Entering it from C1 used to give C4 = #CIRC! and
+// C1 = #SPILL! (its blocked spill replaced the error), entering it from C4
+// gave both #SPILL!. Retraction changes entry points, so every member of a
+// cycle now reports #CIRC!.
+#[test]
+fn every_member_of_a_cycle_reports_circ() {
+    let mut model = new_empty_model();
+
+    model._set("C1", "=C4:C6");
+    model._set("C2", "1");
+    model._set("C4", "=SEQUENCE(C1)");
+
+    for _ in 0..2 {
+        model.evaluate();
+        assert_eq!(model._get_text("C1"), "#CIRC!");
+        assert_eq!(model._get_text("C4"), "#CIRC!");
+    }
+}
+
+// The same rule applied to a scalar cycle: IFERROR does not hide it.
+#[test]
+fn iferror_does_not_hide_a_cycle() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=IFERROR(B1,0)");
+    model._set("B1", "=A1");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#CIRC!");
+    assert_eq!(model._get_text("B1"), "#CIRC!");
+}
+
+// ── Stale read edges of a retracted cell are ignored ────────────────────────
+
+//         ║       B        |    C     |      E       |
+// ════════╬════════════════╪══════════╪══════════════╪
+//    2    ║ =SEQUENCE(C5)  |          |              |
+//    4    ║                | =E5:E7   | =SEQUENCE(3) |
+//
+// B2 reads C5 while empty, is retracted when C4 spills, and C4 is retracted
+// when E4 spills. When B2 re-evaluates it reads C5 through the stale spill
+// cell, which evaluates C4 on B2's behalf. B2's old edge "read C5" must not
+// make that write look like a cycle.
+#[test]
+fn retracted_reader_of_forwarded_spill_is_not_a_cycle() {
+    let mut model = new_empty_model();
+
+    model._set("B2", "=SEQUENCE(C5)");
+    model._set("C4", "=E5:E7");
+    model._set("E4", "=SEQUENCE(3)");
+
+    for _ in 0..2 {
+        model.evaluate();
+        assert_eq!(model._get_text("C4"), "2");
+        assert_eq!(model._get_text("C5"), "3");
+        assert_eq!(model._get_text("B2"), "1");
+        assert_eq!(model._get_text("B3"), "2");
+        assert_eq!(model._get_text("B4"), "3");
+    }
+}

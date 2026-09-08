@@ -1,6 +1,6 @@
 use chrono::DateTime;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     calc_result::Range,
@@ -695,11 +695,11 @@ impl<'a> Model<'a> {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
-            spill_cells: Vec::new(),
-            support: HashMap::new(),
             eval_stack: Vec::new(),
             readers: HashMap::new(),
+            generations: HashMap::new(),
             retracted: Vec::new(),
+            circular: HashSet::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
         };
