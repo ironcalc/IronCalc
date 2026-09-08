@@ -335,13 +335,22 @@ fn from_a1_to_rc(
     Ok(to_rc_format(&t))
 }
 
-fn get_formula_index(formula: &str, shared_formulas: &[String]) -> Option<i32> {
-    for (index, f) in shared_formulas.iter().enumerate() {
-        if f == formula {
-            return Some(index as i32);
-        }
+/// The index of a formula among the shared formulas of the sheet being read,
+/// adding it to them if it is new. `lookup` maps each formula to its index, so
+/// that a sheet with many different formulas is not searched from the start
+/// for every one of them; placeholders are not in it.
+fn find_or_add_formula(
+    formula: String,
+    shared_formulas: &mut Vec<String>,
+    lookup: &mut HashMap<String, i32>,
+) -> i32 {
+    if let Some(index) = lookup.get(&formula) {
+        return *index;
     }
-    None
+    let index = shared_formulas.len() as i32;
+    lookup.insert(formula.clone(), index);
+    shared_formulas.push(formula);
+    index
 }
 
 enum CellArrayKind {
@@ -874,6 +883,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         .first_child()
         .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
     let mut shared_formulas = Vec::new();
+    // Where each of them is, see `find_or_add_formula`
+    let mut formula_lookup: HashMap<String, i32> = HashMap::new();
 
     let dimension = load_dimension(ws);
 
@@ -1115,23 +1126,28 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                                 )?;
                                 match index_map.get(&si) {
                                     Some(index) => {
-                                        // The index for that formula already exists meaning we bumped into a daughter cell first
-                                        // TODO: Worth assert the content is a placeholder?
+                                        // The index for that formula already exists meaning we bumped into a daughter cell first:
+                                        // it holds a placeholder, which the formula replaces. (Inserting
+                                        // it there instead would move every formula after it, and the
+                                        // cells that already point at them would point at the wrong one.)
                                         formula_index = *index;
-                                        shared_formulas.insert(formula_index as usize, formula);
+                                        formula_lookup
+                                            .entry(formula.clone())
+                                            .or_insert(formula_index);
+                                        if let Some(slot) =
+                                            shared_formulas.get_mut(formula_index as usize)
+                                        {
+                                            *slot = formula;
+                                        }
                                     }
                                     None => {
                                         // We haven't met any of the daughter cells
-                                        match get_formula_index(&formula, &shared_formulas) {
-                                            // The formula is already present, use that index
-                                            Some(index) => {
-                                                formula_index = index;
-                                            }
-                                            None => {
-                                                shared_formulas.push(formula);
-                                                formula_index = shared_formulas.len() as i32 - 1;
-                                            }
-                                        };
+                                        // If the formula is already present that index is used
+                                        formula_index = find_or_add_formula(
+                                            formula,
+                                            &mut shared_formulas,
+                                            &mut formula_lookup,
+                                        );
                                         index_map.insert(si, formula_index);
                                     }
                                 }
@@ -1204,13 +1220,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                             true,
                         )?;
 
-                        match get_formula_index(&formula, &shared_formulas) {
-                            Some(index) => formula_index = index,
-                            None => {
-                                shared_formulas.push(formula);
-                                formula_index = shared_formulas.len() as i32 - 1;
-                            }
-                        }
+                        formula_index =
+                            find_or_add_formula(formula, &mut shared_formulas, &mut formula_lookup);
                     }
                     "normal" => {
                         // Its a cell with a simple formula
@@ -1225,13 +1236,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                             false,
                         )?;
 
-                        match get_formula_index(&formula, &shared_formulas) {
-                            Some(index) => formula_index = index,
-                            None => {
-                                shared_formulas.push(formula);
-                                formula_index = shared_formulas.len() as i32 - 1;
-                            }
-                        }
+                        formula_index =
+                            find_or_add_formula(formula, &mut shared_formulas, &mut formula_lookup);
                     }
                     "hint-volatile" => {}
                     _ => {
@@ -1258,7 +1264,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             data_row.insert(column_index, cell);
         }
         if let Some(row_index) = row_index {
-            sheet_data.insert(row_index, data_row);
+            sheet_data.set_row(row_index, data_row);
         } else {
             return Err(XlsxError::Xml(
                 "Row without a row index (r attribute)".to_string(),
@@ -1277,7 +1283,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                 if row == merged_cell.row && column == merged_cell.column {
                     continue;
                 }
-                if let Some(cell) = sheet_data.get_mut(&row).and_then(|r| r.get_mut(&column)) {
+                if let Some(cell) = sheet_data.cell_mut(row, column) {
                     *cell = Cell::EmptyCell {
                         s: cell.get_style(),
                     };

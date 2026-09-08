@@ -192,9 +192,7 @@ impl<'a> UserModel<'a> {
                 .workbook
                 .worksheet(sheet)?
                 .sheet_data
-                .get(&row)
-                .map(|row_data| row_data.keys().copied().collect())
-                .unwrap_or_default();
+                .columns_in_row(row);
             for column in columns {
                 self.update_single_cell_border(
                     border_area,
@@ -227,14 +225,7 @@ impl<'a> UserModel<'a> {
         let mut diff_list = Vec::new();
         // We need all the rows in the column to update the style
         // NB: This is too much, this is all the rows that have values
-        let data_rows: Vec<i32> = self
-            .model
-            .workbook
-            .worksheet(sheet)?
-            .sheet_data
-            .keys()
-            .copied()
-            .collect();
+        let data_rows: Vec<i32> = self.model.workbook.worksheet(sheet)?.sheet_data.rows();
         let styled_rows = &self.model.workbook.worksheet(sheet)?.rows.clone();
         for column in first_column..=last_column {
             let old_value = self.model.get_column_style(sheet, column)?;
@@ -303,15 +294,19 @@ impl<'a> UserModel<'a> {
             }
             // We need to go through each non empty cell in the column
             for &row in &data_rows {
-                if let Some(data_row) = self.model.workbook.worksheet(sheet)?.sheet_data.get(&row) {
-                    if data_row.get(&column).is_some() {
-                        self.update_single_cell_border(
-                            border_area,
-                            (sheet, row, column),
-                            (1, first_column, LAST_ROW, last_column),
-                            &mut diff_list,
-                        )?;
-                    }
+                if self
+                    .model
+                    .workbook
+                    .worksheet(sheet)?
+                    .cell(row, column)
+                    .is_some()
+                {
+                    self.update_single_cell_border(
+                        border_area,
+                        (sheet, row, column),
+                        (1, first_column, LAST_ROW, last_column),
+                        &mut diff_list,
+                    )?;
                 }
             }
 

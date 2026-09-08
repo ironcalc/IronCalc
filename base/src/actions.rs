@@ -466,16 +466,11 @@ impl<'a> Model<'a> {
         descending: bool,
     ) -> Result<Vec<i32>, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
-        if let Some(row_data) = worksheet.sheet_data.get(&row) {
-            let mut columns: Vec<i32> = row_data.keys().copied().collect();
-            columns.sort_unstable();
-            if descending {
-                columns.reverse();
-            }
-            Ok(columns)
-        } else {
-            Ok(vec![])
+        let mut columns = worksheet.sheet_data.columns_in_row(row);
+        if descending {
+            columns.reverse();
         }
+        Ok(columns)
     }
 
     /// Moves the contents of cell (source_row, source_column) to (target_row, target_column).
@@ -503,14 +498,14 @@ impl<'a> Model<'a> {
             .worksheet(sheet)?
             .cell(source_row, source_column)
         {
-            Some(c) => c,
+            Some(c) => c.clone(),
             None => return Ok(()),
         };
         let style = source_cell.get_style();
 
         let mut array = None;
 
-        match source_cell {
+        match &source_cell {
             Cell::EmptyCell { .. }
             | Cell::BooleanCell { .. }
             | Cell::NumberCell { .. }
@@ -519,11 +514,24 @@ impl<'a> Model<'a> {
             | Cell::CellFormula { .. } => {
                 // This is a regular cell, we can just move it.
             }
-            Cell::SpillCell { .. } => {
-                // This the spill of an array formula. Because dynamic arrays spills have been deleted
-                // We delete the spill
+            Cell::SpillCell { a, .. } => {
+                // A cell of a CSE array is moved together with its anchor, whether
+                // the anchor has already been relocated (this is then a cell of the
+                // array at its new place) or is still to come: leave it alone.
+                // Anything else is the stale spill of a dynamic array (those have
+                // been reset by the caller): drop it.
                 let worksheet = self.workbook.worksheet_mut(sheet)?;
-                worksheet.remove_cell(source_row, source_column)?;
+                let live_cse = matches!(
+                    worksheet.cell(a.0, a.1),
+                    Some(Cell::ArrayFormula { r: (width, height), kind: ArrayKind::Cse, .. })
+                        if source_row >= a.0
+                            && source_row < a.0 + height
+                            && source_column >= a.1
+                            && source_column < a.1 + width
+                );
+                if !live_cse {
+                    worksheet.remove_cell(source_row, source_column)?;
+                }
                 return Ok(());
             }
             Cell::ArrayFormula {
@@ -556,7 +564,17 @@ impl<'a> Model<'a> {
             });
 
         if let Some((width, height)) = array {
-            // We are moving an array formula, we need to move the whole range
+            // We are moving an array formula, we need to move the whole range.
+            // Its cells are removed first: the new area may overlap the old one,
+            // and `set_user_array_formula` refuses to cover an array formula.
+            let worksheet = self.workbook.worksheet_mut(sheet)?;
+            for r in source_row..source_row + height {
+                for c in source_column..source_column + width {
+                    if worksheet.cell(r, c).is_some() {
+                        worksheet.remove_cell(r, c)?;
+                    }
+                }
+            }
             self.set_user_array_formula(
                 sheet,
                 target_row,
@@ -573,8 +591,12 @@ impl<'a> Model<'a> {
         // copy style
         worksheet.set_cell_style(target_row, target_column, style)?;
 
-        // delete source cell content and style
-        worksheet.remove_cell(source_row, source_column)?;
+        // delete source cell content and style (an array's cells are gone
+        // already, and the source position may now hold a cell of the array
+        // at its new place)
+        if array.is_none() {
+            worksheet.remove_cell(source_row, source_column)?;
+        }
         Ok(())
     }
 
@@ -615,7 +637,7 @@ impl<'a> Model<'a> {
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
         let worksheet = self.workbook.worksheet(sheet)?;
-        let all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
+        let all_rows = worksheet.sheet_data.rows();
         for row in all_rows {
             let sorted_columns = self.get_columns_for_row(sheet, row, true)?;
             for col in sorted_columns {
@@ -737,9 +759,7 @@ impl<'a> Model<'a> {
 
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
-        let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
-        // We do not need to do that, but it is safer to eliminate sources of randomness in the algorithm
-        all_rows.sort_unstable();
+        let all_rows = worksheet.sheet_data.rows();
 
         for r in all_rows {
             let columns: Vec<i32> = self.get_columns_for_row(sheet, r, false)?;
@@ -869,8 +889,8 @@ impl<'a> Model<'a> {
             let worksheet = self.workbook.worksheet(sheet)?;
             worksheet
                 .sheet_data
-                .iter()
-                .flat_map(|(r, row_data)| row_data.keys().map(move |c| (*r, *c)))
+                .cells()
+                .map(|(r, c, _)| (r, c))
                 .collect()
         };
         for (r, c) in cell_coords {
@@ -899,8 +919,8 @@ impl<'a> Model<'a> {
             let worksheet = self.workbook.worksheet(sheet)?;
             worksheet
                 .sheet_data
-                .iter()
-                .flat_map(|(r, row_data)| row_data.keys().map(move |c| (*r, *c)))
+                .cells()
+                .map(|(r, c, _)| (r, c))
                 .collect()
         };
         for (r, c) in cell_coords {
@@ -924,8 +944,8 @@ impl<'a> Model<'a> {
             let worksheet = self.workbook.worksheet(sheet)?;
             worksheet
                 .sheet_data
-                .iter()
-                .flat_map(|(r, row_data)| row_data.keys().map(move |c| (*r, *c)))
+                .cells()
+                .map(|(r, c, _)| (r, c))
                 .collect()
         };
         for (r, c) in cell_coords {
@@ -956,8 +976,8 @@ impl<'a> Model<'a> {
             let worksheet = self.workbook.worksheet(sheet)?;
             worksheet
                 .sheet_data
-                .iter()
-                .flat_map(|(r, row_data)| row_data.keys().map(move |c| (*r, *c)))
+                .cells()
+                .map(|(r, c, _)| (r, c))
                 .collect()
         };
         for (r, c) in cell_coords {
@@ -1005,8 +1025,7 @@ impl<'a> Model<'a> {
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
-        let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
-        all_rows.sort_unstable();
+        let mut all_rows = worksheet.sheet_data.rows();
         all_rows.reverse();
         for r in all_rows {
             if r >= row {
@@ -1106,8 +1125,7 @@ impl<'a> Model<'a> {
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
-        let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
-        all_rows.sort_unstable();
+        let all_rows = worksheet.sheet_data.rows();
 
         for r in all_rows {
             if r >= row {
@@ -1120,7 +1138,7 @@ impl<'a> Model<'a> {
                     }
                 } else {
                     // remove all cells in row
-                    self.workbook.worksheet_mut(sheet)?.sheet_data.remove(&r);
+                    self.workbook.worksheet_mut(sheet)?.sheet_data.remove_row(r);
                 }
             }
         }
@@ -1533,8 +1551,8 @@ impl<'a> Model<'a> {
             let worksheet = self.workbook.worksheet(sheet)?;
             worksheet
                 .sheet_data
-                .iter()
-                .flat_map(|(r, row_data)| row_data.keys().map(move |c| (*r, *c)))
+                .cells()
+                .map(|(r, c, _)| (r, c))
                 .collect()
         };
 
@@ -1612,8 +1630,8 @@ impl<'a> Model<'a> {
             let worksheet = self.workbook.worksheet(sheet)?;
             worksheet
                 .sheet_data
-                .iter()
-                .flat_map(|(r, row_data)| row_data.keys().map(move |c| (*r, *c)))
+                .cells()
+                .map(|(r, c, _)| (r, c))
                 .collect()
         };
 

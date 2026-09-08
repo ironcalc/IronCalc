@@ -873,14 +873,7 @@ impl<'a> UserModel<'a> {
             old_value: Box::new(old_value),
         });
 
-        let data_rows: Vec<i32> = self
-            .model
-            .workbook
-            .worksheet(sheet)?
-            .sheet_data
-            .keys()
-            .copied()
-            .collect();
+        let data_rows: Vec<i32> = self.model.workbook.worksheet(sheet)?.sheet_data.rows();
         let styled_rows = &self.model.workbook.worksheet(sheet)?.rows.clone();
 
         // Delete the formatting in all non empty cells
@@ -966,9 +959,7 @@ impl<'a> UserModel<'a> {
             .workbook
             .worksheet(sheet)?
             .sheet_data
-            .get(&row)
-            .map(|row_data| row_data.keys().copied().collect())
-            .unwrap_or_default();
+            .columns_in_row(row);
         for column in columns {
             if let Some(old_style) = self.model.get_cell_style_or_none(sheet, row, column)? {
                 // We can always assume that style with style_index 0 exists and it is the default
@@ -1139,20 +1130,19 @@ impl<'a> UserModel<'a> {
             }
             // SpillCells are transient; save their style as EmptyCell so undo can
             // restore the style index, letting evaluate() recreate the SpillCell correctly.
-            let data = match worksheet.sheet_data.get(&r) {
-                Some(s) => s
-                    .iter()
-                    .map(|(k, v)| {
-                        let cell = if let Cell::SpillCell { s, .. } = v {
-                            Cell::EmptyCell { s: *s }
-                        } else {
-                            v.clone()
-                        };
-                        (*k, cell)
-                    })
-                    .collect(),
-                None => HashMap::new(),
-            };
+            let data = worksheet
+                .sheet_data
+                .cells_in_row(r)
+                .into_iter()
+                .map(|(k, v)| {
+                    let cell = if let Cell::SpillCell { s, .. } = v {
+                        Cell::EmptyCell { s: *s }
+                    } else {
+                        v.clone()
+                    };
+                    (k, cell)
+                })
+                .collect();
             old_data.push(RowData {
                 row: row_data,
                 data,
@@ -1221,14 +1211,14 @@ impl<'a> UserModel<'a> {
             // SpillCells are transient; save their style as EmptyCell so undo can
             // restore the style index, letting evaluate() recreate the SpillCell correctly.
             let mut data = HashMap::new();
-            for (row_idx, row_data) in &worksheet.sheet_data {
-                if let Some(cell) = row_data.get(&c) {
+            for row_idx in worksheet.sheet_data.rows() {
+                if let Some(cell) = worksheet.cell(row_idx, c) {
                     let saved = if let Cell::SpillCell { s, .. } = cell {
                         Cell::EmptyCell { s: *s }
                     } else {
                         cell.clone()
                     };
-                    data.insert(*row_idx, saved);
+                    data.insert(row_idx, saved);
                 }
             }
 
@@ -1694,14 +1684,7 @@ impl<'a> UserModel<'a> {
             let styled_rows = &self.model.workbook.worksheet(sheet)?.rows.clone();
             // We need all the rows in the column to update the style
             // NB: This is too much, this is all the rows that have values
-            let data_rows: Vec<i32> = self
-                .model
-                .workbook
-                .worksheet(sheet)?
-                .sheet_data
-                .keys()
-                .copied()
-                .collect();
+            let data_rows: Vec<i32> = self.model.workbook.worksheet(sheet)?.sheet_data.rows();
             for column in range.column..range.column + range.width {
                 // we set the style of the full column
                 let old_style = self.model.get_column_style(sheet, column)?;
@@ -1734,20 +1717,22 @@ impl<'a> UserModel<'a> {
                 // Update style in all cells that have different styles
                 // FIXME: We need a better way to transverse of cells in a column
                 for &row in &data_rows {
-                    if let Some(data_row) =
-                        self.model.workbook.worksheet(sheet)?.sheet_data.get(&row)
+                    if self
+                        .model
+                        .workbook
+                        .worksheet(sheet)?
+                        .cell(row, column)
+                        .is_some()
                     {
-                        if data_row.get(&column).is_some() {
-                            // If the cell has non empty content it will always have some style
-                            self.update_single_cell_style(
-                                sheet,
-                                row,
-                                column,
-                                style_path,
-                                value,
-                                &mut diff_list,
-                            )?;
-                        }
+                        // If the cell has non empty content it will always have some style
+                        self.update_single_cell_style(
+                            sheet,
+                            row,
+                            column,
+                            style_path,
+                            value,
+                            &mut diff_list,
+                        )?;
                     }
                 }
             }
@@ -1761,9 +1746,7 @@ impl<'a> UserModel<'a> {
                     .workbook
                     .worksheet(sheet)?
                     .sheet_data
-                    .get(&row)
-                    .map(|row_data| row_data.keys().copied().collect())
-                    .unwrap_or_default();
+                    .columns_in_row(row);
                 for column in columns {
                     self.update_single_cell_style(
                         sheet,
@@ -2018,25 +2001,17 @@ impl<'a> UserModel<'a> {
         column: i32,
     ) -> Result<Option<i32>, String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
-        let data = worksheet.sheet_data.get(&row);
-        if let Some(row_data) = data {
-            let mut last_column = None;
-            let mut columns: Vec<i32> = row_data.keys().copied().collect();
-            columns.sort_unstable();
-            for col in columns {
-                if col < column {
-                    if let Some(cell) = worksheet.cell(row, col) {
-                        if matches!(cell, Cell::EmptyCell { .. }) {
-                            continue;
-                        }
-                    }
-                    last_column = Some(col);
+        let mut last_column = None;
+        // From left to right
+        for (col, cell) in worksheet.sheet_data.cells_in_row(row) {
+            if col < column {
+                if matches!(cell, Cell::EmptyCell { .. }) {
+                    continue;
                 }
+                last_column = Some(col);
             }
-            Ok(last_column)
-        } else {
-            Ok(None)
         }
+        Ok(last_column)
     }
 
     /// Returns the smallest column in the row larger than "column" whose cell has a non empty value.
@@ -2049,20 +2024,13 @@ impl<'a> UserModel<'a> {
         column: i32,
     ) -> Result<Option<i32>, String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
-        let data = worksheet.sheet_data.get(&row);
-        if let Some(row_data) = data {
-            let mut columns: Vec<i32> = row_data.keys().copied().collect();
-            // We sort the keys to ensure we are going from left to right
-            columns.sort_unstable();
-            for col in columns {
-                if col > column {
-                    if let Some(cell) = worksheet.cell(row, col) {
-                        if matches!(cell, Cell::EmptyCell { .. }) {
-                            continue;
-                        }
-                    }
-                    return Ok(Some(col));
+        // From left to right
+        for (col, cell) in worksheet.sheet_data.cells_in_row(row) {
+            if col > column {
+                if matches!(cell, Cell::EmptyCell { .. }) {
+                    continue;
                 }
+                return Ok(Some(col));
             }
         }
         Ok(None)

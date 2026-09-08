@@ -563,9 +563,9 @@ impl Model {
             .map_err(to_js_error)?
             .sheet_data;
         Ok(sheet_data
-            .iter()
-            .filter(|(_, data)| data.contains_key(&column))
-            .map(|(row, _)| *row)
+            .rows()
+            .into_iter()
+            .filter(|row| sheet_data.cell(*row, column).is_some())
             .collect())
     }
 
@@ -578,9 +578,7 @@ impl Model {
             .worksheet(sheet)
             .map_err(to_js_error)?
             .sheet_data
-            .get(&row)
-            .map(|row_data| row_data.keys().copied().collect())
-            .unwrap_or_default())
+            .columns_in_row(row))
     }
 
     #[wasm_bindgen(js_name = "updateRangeStyle")]

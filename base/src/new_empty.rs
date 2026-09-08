@@ -97,9 +97,14 @@ impl<'a> Model<'a> {
         self.parser.set_locale(get_default_locale());
         self.parser.set_language(get_default_language());
         self.parser.set_lexer_mode(LexerMode::R1C1);
+        // The lookup of the shared formulas follows the parsed formulas: both
+        // are made from the lists of the sheets, here.
+        self.shared_formula_lookup.clear();
         let worksheets = &self.workbook.worksheets;
         for worksheet in worksheets {
             let shared_formulas = &worksheet.shared_formulas;
+            self.shared_formula_lookup
+                .push(crate::model::build_shared_formula_lookup(shared_formulas));
             let cell_reference = CellReferenceRC {
                 sheet: worksheet.get_name(),
                 row: 1,
@@ -109,7 +114,7 @@ impl<'a> Model<'a> {
             for formula in shared_formulas {
                 let t = self.parser.parse(formula, &cell_reference);
                 let static_result = run_static_analysis_on_node(&t);
-                parse_formula.push((t, static_result));
+                parse_formula.push((std::sync::Arc::new(t), static_result));
             }
             self.parsed_formulas.push(parse_formula);
         }
@@ -678,15 +683,14 @@ impl<'a> Model<'a> {
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
         let parser = Parser::new(worksheet_names, vec![], HashMap::new(), locale, language);
-        let cells = HashMap::new();
 
         let mut model = Model {
             workbook,
             shared_strings: HashMap::new(),
             parsed_formulas,
+            shared_formula_lookup: Vec::new(),
             parsed_defined_names: HashMap::new(),
             parser,
-            cells,
             locale,
             language,
             tz,
@@ -695,8 +699,7 @@ impl<'a> Model<'a> {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
-            spill_cells: Vec::new(),
-            support: HashMap::new(),
+            evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
         };

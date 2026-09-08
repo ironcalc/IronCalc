@@ -4,8 +4,6 @@ use crate::expressions::utils::{is_valid_column_number, is_valid_row};
 use crate::model::CellStructure;
 use crate::{expressions::token::Error, types::*};
 
-use std::collections::HashMap;
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct WorksheetDimension {
     pub min_row: i32,
@@ -36,11 +34,11 @@ impl Worksheet {
     }
 
     pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
-        self.sheet_data.get(&row)?.get(&column)
+        self.sheet_data.cell(row, column)
     }
 
     pub(crate) fn cell_mut(&mut self, row: i32, column: i32) -> Option<&mut Cell> {
-        self.sheet_data.get_mut(&row)?.get_mut(&column)
+        self.sheet_data.cell_mut(row, column)
     }
 
     pub(crate) fn update_cell(
@@ -54,21 +52,7 @@ impl Worksheet {
             return Err("Incorrect row or column".to_string());
         }
 
-        match self.sheet_data.get_mut(&row) {
-            Some(column_data) => match column_data.get(&column) {
-                Some(_cell) => {
-                    column_data.insert(column, new_cell);
-                }
-                None => {
-                    column_data.insert(column, new_cell);
-                }
-            },
-            None => {
-                let mut column_data = HashMap::new();
-                column_data.insert(column, new_cell);
-                self.sheet_data.insert(row, column_data);
-            }
-        }
+        self.sheet_data.set_cell(row, column, new_cell);
         Ok(())
     }
 
@@ -95,11 +79,8 @@ impl Worksheet {
     }
 
     pub fn get_style(&self, row: i32, column: i32) -> i32 {
-        match self.sheet_data.get(&row) {
-            Some(column_data) => match column_data.get(&column) {
-                Some(cell) => cell.get_style(),
-                None => self.get_row_column_style(row, column),
-            },
+        match self.sheet_data.cell(row, column) {
+            Some(cell) => cell.get_style(),
             None => self.get_row_column_style(row, column),
         }
     }
@@ -653,11 +634,11 @@ impl Worksheet {
             return Err(format!("Column number '{column}' is not valid."));
         }
 
-        for row in self.sheet_data.keys() {
-            if self.cell(*row, column).is_some() {
+        for row in self.sheet_data.rows() {
+            if self.cell(row, column).is_some() {
                 column_cell_references.push(CellReferenceIndex {
                     sheet: self.sheet_id,
-                    row: *row,
+                    row,
                     column,
                 });
             }
@@ -666,12 +647,7 @@ impl Worksheet {
     }
 
     pub(crate) fn remove_cell(&mut self, row: i32, column: i32) -> Result<(), String> {
-        if let Some(row_data) = self.sheet_data.get_mut(&row) {
-            row_data.remove(&column);
-            if row_data.is_empty() {
-                self.sheet_data.remove(&row);
-            }
-        }
+        self.sheet_data.remove_cell(row, column);
         Ok(())
     }
 
@@ -708,23 +684,17 @@ impl Worksheet {
         let mut row_range: Option<(i32, i32)> = None;
         let mut column_range: Option<(i32, i32)> = None;
 
-        for (row_index, columns) in &self.sheet_data {
+        for (row_index, column_index, _) in self.sheet_data.cells() {
             row_range = if let Some((current_min, current_max)) = row_range {
-                Some((current_min.min(*row_index), current_max.max(*row_index)))
+                Some((current_min.min(row_index), current_max.max(row_index)))
             } else {
-                Some((*row_index, *row_index))
+                Some((row_index, row_index))
             };
-
-            for column_index in columns.keys() {
-                column_range = if let Some((current_min, current_max)) = column_range {
-                    Some((
-                        current_min.min(*column_index),
-                        current_max.max(*column_index),
-                    ))
-                } else {
-                    Some((*column_index, *column_index))
-                }
-            }
+            column_range = if let Some((current_min, current_max)) = column_range {
+                Some((current_min.min(column_index), current_max.max(column_index)))
+            } else {
+                Some((column_index, column_index))
+            };
         }
 
         let dimension = if let Some((min_row, max_row)) = row_range {
@@ -757,14 +727,9 @@ impl Worksheet {
             return Err("Row or column is outside valid range.".to_string());
         }
 
-        let is_empty = if let Some(data_row) = self.sheet_data.get(&row) {
-            if let Some(cell) = data_row.get(&column) {
-                matches!(cell, Cell::EmptyCell { .. })
-            } else {
-                true
-            }
-        } else {
-            true
+        let is_empty = match self.sheet_data.cell(row, column) {
+            Some(cell) => matches!(cell, Cell::EmptyCell { .. }),
+            None => true,
         };
 
         Ok(is_empty)
