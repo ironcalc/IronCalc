@@ -90,3 +90,23 @@ fn invalid_inputs() {
     assert_eq!(model._get_text("B7"), *"#NUM!");
     assert_eq!(model._get_text("B8"), *"#NUM!");
 }
+
+// ── whole-column range and a spill beyond the used area ─────────────────────
+
+// A whole-column range is clipped to the sheet's used area before it is
+// walked. Inside an anchor, the column may be spilled on demand during the
+// walk, past the bound the walk was clipped to. The skipped part is on
+// record, so the spill restarts the pass and the second run sees it all.
+#[test]
+fn whole_column_sees_a_spill_beyond_the_used_area() {
+    let cases = [("GCD(D:D)", "1"), ("LCM(D:D)", "60")];
+    for (formula, expected) in cases {
+        let mut model = new_empty_model();
+        model._set("A1", &format!("=SEQUENCE(1,1,{formula})"));
+        model._set("C1", "=SEQUENCE(3,1,10)");
+        model._set("D1", "=SEQUENCE(5)");
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), expected, "{formula}");
+        assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
+    }
+}

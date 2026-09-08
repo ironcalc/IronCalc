@@ -161,7 +161,7 @@ fn get_formula_attribute(
 
 pub(crate) fn get_worksheet_xml(
     worksheet: &Worksheet,
-    parsed_formulas: &[(Node, StaticResult)],
+    parsed_formulas: &[(std::sync::Arc<Node>, StaticResult)],
     dimension: &str,
     is_sheet_selected: bool,
 ) -> String {
@@ -199,10 +199,10 @@ pub(crate) fn get_worksheet_xml(
         row_style_dict.insert(row.r, row.clone());
     }
 
-    for (row_index, row_data) in worksheet.sheet_data.iter().sorted_by_key(|x| x.0) {
+    for row_index in worksheet.sheet_data.rows() {
         let mut row_data_str: Vec<String> = vec![];
-        for (column_index, cell) in row_data.iter().sorted_by_key(|x| x.0) {
-            let column_name = number_to_column(*column_index).unwrap();
+        for (column_index, cell) in worksheet.sheet_data.cells_in_row(row_index) {
+            let column_name = number_to_column(column_index).unwrap();
             let cell_name = format!("{column_name}{row_index}");
             match cell {
                 Cell::EmptyCell { s } => {
@@ -284,8 +284,8 @@ pub(crate) fn get_worksheet_xml(
                     let style = get_cell_style_attribute(*s);
                     let formula = get_formula_attribute(
                         worksheet.get_name(),
-                        *row_index,
-                        *column_index,
+                        row_index,
+                        column_index,
                         &parsed_formulas[*f as usize].0,
                     );
                     let b = i32::from(*v);
@@ -305,8 +305,8 @@ pub(crate) fn get_worksheet_xml(
                     // </c>
                     let formula = get_formula_attribute(
                         worksheet.get_name(),
-                        *row_index,
-                        *column_index,
+                        row_index,
+                        column_index,
                         &parsed_formulas[*f as usize].0,
                     );
                     let style = get_cell_style_attribute(*s);
@@ -325,8 +325,8 @@ pub(crate) fn get_worksheet_xml(
                     // </c>
                     let formula = get_formula_attribute(
                         worksheet.get_name(),
-                        *row_index,
-                        *column_index,
+                        row_index,
+                        column_index,
                         &parsed_formulas[*f as usize].0,
                     );
                     let style = get_cell_style_attribute(*s);
@@ -346,8 +346,8 @@ pub(crate) fn get_worksheet_xml(
                     // </c>
                     let formula = get_formula_attribute(
                         worksheet.get_name(),
-                        *row_index,
-                        *column_index,
+                        row_index,
+                        column_index,
                         &parsed_formulas[*f as usize].0,
                     );
                     let style = get_cell_style_attribute(*s);
@@ -392,12 +392,12 @@ pub(crate) fn get_worksheet_xml(
                     };
                     let formula = get_formula_attribute(
                         worksheet.get_name(),
-                        *row_index,
-                        *column_index,
+                        row_index,
+                        column_index,
                         &node.0,
                     );
                     let style = get_cell_style_attribute(*s);
-                    let range = match get_range_str(*row_index, *column_index, r.0, r.1) {
+                    let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
                         None => continue,
                     };
@@ -432,12 +432,12 @@ pub(crate) fn get_worksheet_xml(
                     };
                     let formula = get_formula_attribute(
                         worksheet.get_name(),
-                        *row_index,
-                        *column_index,
+                        row_index,
+                        column_index,
                         &node.0,
                     );
                     let style = get_cell_style_attribute(*s);
-                    let range = match get_range_str(*row_index, *column_index, r.0, r.1) {
+                    let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
                         None => continue,
                     };
@@ -471,12 +471,12 @@ pub(crate) fn get_worksheet_xml(
                     };
                     let formula = get_formula_attribute(
                         worksheet.get_name(),
-                        *row_index,
-                        *column_index,
+                        row_index,
+                        column_index,
                         &node.0,
                     );
                     let style = get_cell_style_attribute(*s);
-                    let range = match get_range_str(*row_index, *column_index, r.0, r.1) {
+                    let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
                         None => continue,
                     };
@@ -511,12 +511,12 @@ pub(crate) fn get_worksheet_xml(
                     };
                     let formula = get_formula_attribute(
                         worksheet.get_name(),
-                        *row_index,
-                        *column_index,
+                        row_index,
+                        column_index,
                         &node.0,
                     );
                     let style = get_cell_style_attribute(*s);
-                    let range = match get_range_str(*row_index, *column_index, r.0, r.1) {
+                    let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
                         None => continue,
                     };
@@ -531,7 +531,7 @@ pub(crate) fn get_worksheet_xml(
                 }
             }
         }
-        let row_style_str = match row_style_dict.get(row_index) {
+        let row_style_str = match row_style_dict.get(&row_index) {
             Some(row_style) => {
                 let hidden_str = if row_style.hidden {
                     r#" hidden="1""#

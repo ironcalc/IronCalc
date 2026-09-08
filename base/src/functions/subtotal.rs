@@ -80,14 +80,7 @@ impl<'a> Model<'a> {
 
     // FIXME(TD): This is too much
     fn cell_is_subtotal(&self, sheet_index: u32, row: i32, column: i32) -> bool {
-        let row_data = match self.workbook.worksheets[sheet_index as usize]
-            .sheet_data
-            .get(&row)
-        {
-            Some(r) => r,
-            None => return false,
-        };
-        let cell = match row_data.get(&column) {
+        let cell = match self.workbook.worksheets[sheet_index as usize].cell(row, column) {
             Some(c) => c,
             None => {
                 return false;
@@ -96,7 +89,7 @@ impl<'a> Model<'a> {
 
         match cell.get_formula() {
             Some(f) => {
-                let node = &self.parsed_formulas[sheet_index as usize][f as usize].0;
+                let node: &Node = &self.parsed_formulas[sheet_index as usize][f as usize].0;
                 matches!(
                     node,
                     Node::FunctionKind {

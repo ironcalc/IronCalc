@@ -13,8 +13,8 @@ use crate::{
 fn check_no_borders(model: &UserModel) {
     let workbook = &model.model.workbook;
     for ws in &workbook.worksheets {
-        for data_row in ws.sheet_data.values() {
-            for cell in data_row.values() {
+        for (_, _, cell) in ws.sheet_data.cells() {
+            {
                 let style_index = cell.get_style();
                 let style = workbook.styles.get_style(style_index).unwrap();
                 assert_eq!(
@@ -40,8 +40,8 @@ fn check_borders(model: &UserModel) {
     let workbook = &model.model.workbook;
     for (sheet_index, ws) in workbook.worksheets.iter().enumerate() {
         let sheet = sheet_index as u32;
-        for (&row, data_row) in &ws.sheet_data {
-            for (&column, cell) in data_row {
+        for (row, column, cell) in ws.sheet_data.cells() {
+            {
                 let style_index = cell.get_style();
                 let style = workbook.styles.get_style(style_index).unwrap();
                 // Top border:

@@ -66,3 +66,26 @@ fn test_fn_count_minimal() {
     // There are 3 blank cells B4, B5 and B3 that contains the empty string
     assert_eq!(model._get_text("A3"), *"3");
 }
+
+// ── whole-column range and a spill beyond the used area ─────────────────────
+
+// A whole-column range is clipped to the sheet's used area before it is
+// walked. Inside an anchor, the column may be spilled on demand during the
+// walk, past the bound the walk was clipped to. The skipped part is on
+// record, so the spill restarts the pass and the second run sees it all.
+#[test]
+fn test_fn_countif_whole_column_sees_a_spill_beyond_the_used_area() {
+    let cases = [
+        ("COUNTIF(D:D,\">2\")", "3"),
+        ("COUNTIFS(D:D,\">2\",D:D,\"<5\")", "2"),
+    ];
+    for (formula, expected) in cases {
+        let mut model = new_empty_model();
+        model._set("A1", &format!("=SEQUENCE(1,1,{formula})"));
+        model._set("C1", "=SEQUENCE(3,1,10)");
+        model._set("D1", "=SEQUENCE(5)");
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), expected, "{formula}");
+        assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
+    }
+}

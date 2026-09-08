@@ -280,7 +280,7 @@ pub struct Worksheet {
 
 /// Internal representation of Excel's sheet_data
 /// It is row first and because of this all of our API's should be row first
-pub type SheetData = HashMap<i32, HashMap<i32, Cell>>;
+pub use crate::sheet_data::SheetData;
 
 // ECMA-376-1:2016 section 18.3.1.73
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]

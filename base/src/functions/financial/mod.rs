@@ -830,29 +830,12 @@ impl<'a> Model<'a> {
                     let mut row2 = right.row;
                     let column1 = left.column;
                     let mut column2 = right.column;
-                    if row1 == 1 && row2 == LAST_ROW {
-                        row2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_row,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_column,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
+                    match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
+                        Ok((r, c)) => {
+                            row2 = r;
+                            column2 = c;
+                        }
+                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {

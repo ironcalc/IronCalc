@@ -51,13 +51,13 @@ fn cell_is_always_dynamic() {
     model._set("B2", "=CELL(\"contents\", A2)");
     model.evaluate();
 
-    let b1_cell = model.workbook.worksheets[0].sheet_data[&1][&2].clone();
+    let b1_cell = model.workbook.worksheets[0].cell(1, 2).unwrap().clone();
     assert!(matches!(
         b1_cell,
         Cell::ArrayFormula { kind: ArrayKind::Dynamic, v: FormulaValue::Text(ref v), .. } if v == "$A$1"
     ));
 
-    let b2_cell = model.workbook.worksheets[0].sheet_data[&2][&2].clone();
+    let b2_cell = model.workbook.worksheets[0].cell(2, 2).unwrap().clone();
     assert!(matches!(
         b2_cell,
         Cell::ArrayFormula { kind: ArrayKind::Dynamic, v: FormulaValue::Number(v), .. } if v == 0.0
