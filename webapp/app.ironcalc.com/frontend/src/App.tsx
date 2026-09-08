@@ -110,7 +110,7 @@ function App() {
 
       if (collabRoom) {
         // Collaborative session: the room document is authoritative, so we
-        // start from a blank workbook (empty name included — the real name
+        // start from a blank workbook (empty name included, the real name
         // arrives with the sync) and let the handshake fill it in.
         const collabModel = createModelWithSafeTimezone("");
         const provider = new CollabProvider(
