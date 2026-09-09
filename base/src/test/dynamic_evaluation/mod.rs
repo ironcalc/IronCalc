@@ -1,3 +1,4 @@
+pub(crate) mod oracle;
 mod test_bug_hunt;
 mod test_evaluation_order;
 mod test_history_independence;

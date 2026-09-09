@@ -11,6 +11,9 @@
 //    order gives the same sheet.
 // 3. Nothing is left `Unevaluated`.
 //
+// 4. Consistency: every formula, re-run against the final sheet, gives its
+//    stored value (see `oracle`).
+//
 // Volatile functions are deliberately excluded (they break 1 by design).
 
 use crate::test::util::new_empty_model;
@@ -162,21 +165,24 @@ fn random_sheets_are_order_independent_fixed_points() {
         let mut model = build(&cells);
         model.evaluate();
         let first = snapshot(&model);
+        let mut inconsistencies = super::oracle::violations(&mut model);
         model.evaluate();
         let second = snapshot(&model);
 
         let mut other = build(&shuffled(&cells, seed));
         other.evaluate();
         let other_first = snapshot(&other);
+        inconsistencies.extend(super::oracle::violations(&mut other));
 
         let unevaluated = first.iter().any(|l| l.ends_with("UNEVALUATED"));
-        if first != second || first != other_first || unevaluated {
+        if first != second || first != other_first || unevaluated || !inconsistencies.is_empty() {
             failures.push(format!(
-                "seed {seed}\n{}\nfirst evaluation:\n  {}\nsecond evaluation:\n  {}\nshuffled insertion:\n  {}",
+                "seed {seed}\n{}\nfirst evaluation:\n  {}\nsecond evaluation:\n  {}\nshuffled insertion:\n  {}\ninconsistencies:\n  {}",
                 describe(&cells),
                 first.join("\n  "),
                 second.join("\n  "),
                 other_first.join("\n  "),
+                inconsistencies.join("\n  "),
             ));
         }
     }

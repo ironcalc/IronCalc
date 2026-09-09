@@ -1045,7 +1045,7 @@ impl<'a> Model<'a> {
                             stale
                         }
                         Err(members) => {
-                            self.retract_cycle_members(&members);
+                            self.retract_cycle_members(cell_reference, &members);
                             return self.set_cells_with_result(
                                 cell_reference,
                                 cell,
@@ -3244,7 +3244,11 @@ impl<'a> Model<'a> {
     /// re-evaluate to `#CIRC!`, exactly as the members of a cycle closed by the
     /// scalar recursion do (see `mark_cycle`). Their other readers are
     /// retracted normally since their inputs change.
-    fn retract_cycle_members(&mut self, members: &[CellReferenceIndex]) {
+    fn retract_cycle_members(
+        &mut self,
+        anchor: CellReferenceIndex,
+        members: &[CellReferenceIndex],
+    ) {
         let mut dependents = Vec::new();
         let mut visited = HashSet::new();
         for member in members {
@@ -3261,8 +3265,16 @@ impl<'a> Model<'a> {
             if !visited.insert(key) {
                 continue;
             }
-            if !matches!(self.cells.get(&key), Some(CellState::Evaluated)) {
-                continue;
+            match self.cells.get(&key) {
+                Some(CellState::Evaluated) => {}
+                // A running reader has already consumed a member's old value
+                // and cannot be retracted now: it is redone when it finishes.
+                // The anchor itself is stored as #CIRC! by the caller.
+                Some(CellState::Evaluating) if current != anchor => {
+                    self.retract_when_done.insert(key);
+                    continue;
+                }
+                _ => continue,
             }
             dependents.push(current);
             pending.extend(self.live_readers(key));

@@ -13,8 +13,10 @@
 // previous evaluation.
 //
 // One thing legitimately survives: which of two contending spills got there
-// first (evaluation.md, 6.5). When either state shows a #SPILL!, only the
-// fixed-point properties are checked.
+// first (evaluation.md, 4.5). When either state shows a #SPILL!, only the
+// fixed-point properties are checked. The consistency oracle (`oracle`) is
+// checked on every state regardless: every formula re-run against the final
+// sheet must give its stored value.
 
 use crate::test::util::new_empty_model;
 use crate::Model;
@@ -253,6 +255,7 @@ fn edit_histories_end_in_the_same_state_as_a_fresh_model() {
             }
         }
         let history = snapshot(&model.model);
+        let mut inconsistencies = super::oracle::violations(&mut model.model);
 
         // The user model already evaluated after the last edit; one more
         // evaluation must not change anything.
@@ -262,6 +265,7 @@ fn edit_histories_end_in_the_same_state_as_a_fresh_model() {
         let mut expected = fresh(&contents);
         expected.evaluate();
         let fresh_once = snapshot(&expected);
+        inconsistencies.extend(super::oracle::violations(&mut expected));
         expected.evaluate();
         let fresh_twice = snapshot(&expected);
 
@@ -270,14 +274,19 @@ fn edit_histories_end_in_the_same_state_as_a_fresh_model() {
             .chain(fresh_once.iter())
             .any(|l| l.ends_with("#SPILL!"));
         let same_end_state = contention || history == fresh_once;
-        if !same_end_state || history != history_again || fresh_once != fresh_twice {
+        if !same_end_state
+            || history != history_again
+            || fresh_once != fresh_twice
+            || !inconsistencies.is_empty()
+        {
             failures.push(format!(
-                "seed {seed}\n{}\nafter the edits:\n  {}\nafter one more evaluation:\n  {}\nfresh model:\n  {}\nfresh model evaluated twice:\n  {}",
+                "seed {seed}\n{}\nafter the edits:\n  {}\nafter one more evaluation:\n  {}\nfresh model:\n  {}\nfresh model evaluated twice:\n  {}\ninconsistencies:\n  {}",
                 describe(&edits, &accepted),
                 history.join("\n  "),
                 history_again.join("\n  "),
                 fresh_once.join("\n  "),
                 fresh_twice.join("\n  "),
+                inconsistencies.join("\n  "),
             ));
         }
     }
