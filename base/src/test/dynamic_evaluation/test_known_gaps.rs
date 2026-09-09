@@ -174,7 +174,7 @@ fn spill_range_operator_on_itself_is_circular() {
 //
 // B1's shape depends on A1, and A1 reads B1's spill area: a cycle. Before
 // retraction this settled on B1 = SEQUENCE(2) with A1 = 4, an inconsistent but
-// stable state. The anchor now reports #CIRC! and does not spill.
+// stable state. Both members now report #CIRC! and nothing spills.
 #[test]
 fn spill_cycle_through_reader_is_circular() {
     let mut model = new_empty_model();
@@ -182,15 +182,12 @@ fn spill_cycle_through_reader_is_circular() {
     model._set("A1", "=B2+2");
     model._set("B1", "=SEQUENCE(A1)");
 
-    model.evaluate();
-    assert_eq!(model._get_text("B1"), "#CIRC!");
-    assert_eq!(model._get_text("B2"), "");
-    assert_eq!(model._get_text("A1"), "2");
-
-    model.evaluate();
-    assert_eq!(model._get_text("B1"), "#CIRC!");
-    assert_eq!(model._get_text("B2"), "");
-    assert_eq!(model._get_text("A1"), "2");
+    for _ in 0..2 {
+        model.evaluate();
+        assert_eq!(model._get_text("B1"), "#CIRC!");
+        assert_eq!(model._get_text("B2"), "");
+        assert_eq!(model._get_text("A1"), "#CIRC!");
+    }
 }
 
 // ── 5.6: two dynamic arrays contending for the same cells ───────────────────
@@ -204,10 +201,11 @@ fn spill_cycle_through_reader_is_circular() {
 //    3    ║                |                |
 // ────────╫────────────────┼────────────────┼
 //
-// B1 (B1:B3) and A2 (A2:B2) both want B2. The anchor that comes first in
-// natural order, B1, wins and A2 gets #SPILL!.
+// B1 (B1:B3) and A2 (A2:B2) both want B2. On a fresh sheet neither has
+// spilled yet, so the first to evaluate wins: anchors run in natural order,
+// B1 spills and A2 gets #SPILL!. The result is then kept on every evaluation.
 #[test]
-fn spill_contention_earlier_anchor_wins() {
+fn spill_contention_on_a_fresh_sheet_goes_to_the_first_anchor() {
     let mut model = new_empty_model();
 
     model._set("B1", "=SEQUENCE(3)");
@@ -230,10 +228,10 @@ fn spill_contention_earlier_anchor_wins() {
 // ────────╫────────────────┼────────────────┼
 //
 // Same contention, but A1 (evaluated first) pulls A2 in before B1 runs, so A2
-// spills into B2 first. B1 still wins: it takes B2 over, A2 is retracted and
-// re-evaluates to #SPILL!, and A1, which read A2, follows.
+// spills into B2 first. The spill that exists keeps its cells: B1 finds B2
+// occupied and gets #SPILL!, whatever the two anchors' positions.
 #[test]
-fn spill_contention_is_independent_of_evaluation_order() {
+fn spill_contention_existing_spill_keeps_its_cells() {
     let mut model = new_empty_model();
 
     model._set("A1", "=SEQUENCE(A2)");
@@ -242,11 +240,11 @@ fn spill_contention_is_independent_of_evaluation_order() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("B1"), "1");
+        assert_eq!(model._get_text("A2"), "1");
         assert_eq!(model._get_text("B2"), "2");
-        assert_eq!(model._get_text("B3"), "3");
-        assert_eq!(model._get_text("A2"), "#SPILL!");
-        assert_eq!(model._get_text("A1"), "#SPILL!");
+        assert_eq!(model._get_text("B1"), "#SPILL!");
+        assert_eq!(model._get_text("B3"), "");
+        assert_eq!(model._get_text("A1"), "1");
     }
 }
 

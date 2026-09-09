@@ -164,9 +164,9 @@ fn cse_array_reading_future_dynamic_spill_is_retracted() {
 //    2    ║ {=7}    | {=7}    |   <- A2:B2 overlaps B1:B2 at B2
 //
 // Placing a CSE array whose area overlaps another CSE array's area must be
-// refused, as writing into a CSE cell is. `set_user_array_formula` prepares
-// only the anchor position, so with the anchor outside the other area the
-// second array is accepted and overwrites B2.
+// refused, as writing into a CSE cell is. `set_user_array_formula` used to
+// prepare only the anchor position, so with the anchor outside the other area
+// the second array was accepted and overwrote B2.
 #[test]
 fn cse_over_another_cse_area_is_refused() {
     let mut model = new_empty_model();
@@ -184,9 +184,9 @@ fn cse_over_another_cse_area_is_refused() {
 //    5    ║ {=5}    | =SEQUENCE(2) |   <- B5:C5 covers the anchor C5
 //    6    ║         |              |
 //
-// Same cause: covering a dynamic anchor with a CSE area does not clear the
-// anchor's spill, so C6 survives as an orphan spill cell pointing at a cell
-// that is no longer an anchor.
+// Same cause: covering a dynamic anchor with a CSE area did not clear the
+// anchor's spill, so C6 survived as an orphan spill cell pointing at a cell
+// that was no longer an anchor.
 #[test]
 fn cse_over_dynamic_anchor_clears_its_spill() {
     let mut model = new_empty_model();
@@ -424,10 +424,11 @@ fn earlier_reader_of_contended_cell_sees_winner() {
 //    1    ║ =SEQUENCE(1,1,A2+B2)| =SEQUENCE(3) |
 //    2    ║ =SEQUENCE(1,2)      |              |
 //
-// A1 pulls A2 in first, so A2 spills into B2 and A1 reads the loser's B2.
-// When B1 takes B2 over, both A2 and A1 must be redone.
+// A1 pulls A2 in first, so A2 spills into B2 and A1 reads it. B1, which
+// runs later, finds B2 occupied: the existing spill keeps its cells and B1
+// gets #SPILL!, even though B1 comes first in the sheet.
 #[test]
-fn reader_of_taken_over_cell_is_retracted() {
+fn existing_spill_blocks_an_anchor_earlier_in_the_sheet() {
     let mut model = new_empty_model();
     model._set("A1", "=SEQUENCE(1,1,A2+B2)");
     model._set("B1", "=SEQUENCE(3)");
@@ -435,16 +436,20 @@ fn reader_of_taken_over_cell_is_retracted() {
 
     for _ in 0..2 {
         model.evaluate();
+        assert_eq!(model._get_text("A2"), "1");
         assert_eq!(model._get_text("B2"), "2");
-        assert_eq!(model._get_text("A2"), "#SPILL!");
-        assert_eq!(model._get_text("A1"), "#SPILL!");
+        assert_eq!(model._get_text("A1"), "3");
+        assert_eq!(model._get_text("B1"), "#SPILL!");
     }
 }
 
-// Contention appears and disappears as an input changes between passes.
-// Each state must match a fresh model with the same contents.
+// Contention appears as an input changes between passes. The spill that
+// exists (A2:C2) keeps its cells: C1, which now wants C1:C3, gets #SPILL!
+// and A2 is untouched, even though C1 comes first in the sheet. A fresh
+// model with the same contents resolves the other way, since C1 evaluates
+// before A2 there: history is kept on purpose (evaluation.md, 6.5).
 #[test]
-fn contention_toggled_by_input_between_passes() {
+fn contention_toggled_by_input_keeps_the_existing_spill() {
     let build = |a5: &str| {
         let mut model = new_empty_model();
         model._set("A5", a5);
@@ -453,34 +458,29 @@ fn contention_toggled_by_input_between_passes() {
         model._set("D1", "=SUM(A2:C2)");
         model
     };
-    let snapshot = |model: &Model| {
-        ["A2", "B2", "C2", "C1", "C3", "D1"]
-            .iter()
-            .map(|c| model._get_text(c))
-            .collect::<Vec<_>>()
-    };
 
     let mut model = build("1");
     model.evaluate();
-    let mut fresh = build("1");
-    fresh.evaluate();
-    assert_eq!(snapshot(&model), snapshot(&fresh));
+    assert_eq!(model._get_text("C2"), "3");
     assert_eq!(model._get_text("D1"), "6");
 
     model._set("A5", "3");
-    model.evaluate();
-    let mut fresh = build("3");
-    fresh.evaluate();
-    assert_eq!(snapshot(&model), snapshot(&fresh));
-    assert_eq!(model._get_text("A2"), "#SPILL!");
-    assert_eq!(model._get_text("C2"), "2");
+    for _ in 0..2 {
+        model.evaluate();
+        assert_eq!(model._get_text("C1"), "#SPILL!");
+        assert_eq!(model._get_text("C2"), "3");
+        assert_eq!(model._get_text("D1"), "6");
+    }
 
     model._set("A5", "1");
     model.evaluate();
-    let mut fresh = build("1");
-    fresh.evaluate();
-    assert_eq!(snapshot(&model), snapshot(&fresh));
+    assert_eq!(model._get_text("C1"), "1");
     assert_eq!(model._get_text("D1"), "6");
+
+    let mut fresh = build("3");
+    fresh.evaluate();
+    assert_eq!(fresh._get_text("C2"), "2");
+    assert_eq!(fresh._get_text("A2"), "#SPILL!");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -590,7 +590,7 @@ fn cross_sheet_spill_cycle_is_circular() {
     for _ in 0..2 {
         model.evaluate();
         assert_eq!(model._get_text("Sheet2!B1"), "#CIRC!");
-        assert_eq!(model._get_text("A1"), "2");
+        assert_eq!(model._get_text("A1"), "#CIRC!");
     }
 }
 
@@ -735,14 +735,14 @@ fn snapshot(model: &Model, cells: &[&str]) -> Vec<String> {
 //    3    ║                | =D2:D4  | =D4+1   |
 //    4    ║ =SEQUENCE(1,3) |         |         |
 //
-// C3 (earlier) and B4 (later) contend for C4. C3 reads D3, D3 reads D4, and
-// D4 is B4's spill cell: a cycle through contention, but only if B4 has
-// spilled by the time D3 runs. Entering B4 first makes the edge exist, so
-// C3's takeover is reported as #CIRC!; a fresh model runs C3 first, B4 is
-// simply blocked, and no cycle is ever seen. Two self-consistent fixed points
-// for one sheet.
+// C3 and B4 contend for C4, and C3 reads D3, which reads B4's spill cell D4.
+// With a takeover rule this was a cycle that only existed if B4 had spilled
+// first. With the existing-spill rule there is no takeover: entering B4 first,
+// B4 keeps C4 and C3 simply gets #SPILL!; on a fresh sheet C3 runs first and
+// B4 is the one blocked. Both are fixed points, and which one holds is the
+// sheet's history, as in Excel.
 #[test]
-fn contention_cycle_verdict_should_not_depend_on_history() {
+fn contention_with_a_dependency_keeps_history() {
     let cells = ["B4", "C4", "D4", "C3", "C5", "D3"];
 
     let mut history = new_empty_model();
@@ -754,11 +754,8 @@ fn contention_cycle_verdict_should_not_depend_on_history() {
     history.evaluate();
     let after_history = snapshot(&history, &cells);
     history.evaluate();
-    assert_eq!(
-        after_history,
-        snapshot(&history, &cells),
-        "history is not a fixed point"
-    );
+    assert_eq!(after_history, snapshot(&history, &cells));
+    assert_eq!(after_history, ["1", "2", "3", "#SPILL!", "", "4"]);
 
     let mut fresh = new_empty_model();
     fresh._set("B4", "=SEQUENCE(1,3)");
@@ -767,13 +764,8 @@ fn contention_cycle_verdict_should_not_depend_on_history() {
     fresh.evaluate();
     let after_fresh = snapshot(&fresh, &cells);
     fresh.evaluate();
-    assert_eq!(
-        after_fresh,
-        snapshot(&fresh, &cells),
-        "fresh is not a fixed point"
-    );
-
-    assert_eq!(after_history, after_fresh);
+    assert_eq!(after_fresh, snapshot(&fresh, &cells));
+    assert_eq!(after_fresh, ["#SPILL!", "1", "", "0", "0", "1"]);
 }
 
 //         ║       C        |    D    |
@@ -815,4 +807,57 @@ fn cycle_verdict_should_not_depend_on_stale_spill_cells() {
     let after_fresh = snapshot(&fresh, &cells);
 
     assert_eq!(after_history, after_fresh);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Structural changes around CSE arrays
+// ═══════════════════════════════════════════════════════════════════════════
+
+// A 2x3 CSE array at B3:C5 is shifted by row and column operations. Every
+// cell of the array must follow, and nothing must be left behind.
+#[test]
+fn cse_array_survives_row_and_column_shifts() {
+    let mut model = new_empty_model();
+    model.set_user_array_formula(0, 3, 2, 2, 3, "=5").unwrap();
+    model.evaluate();
+
+    // Insert a row above: the array moves to B4:C6.
+    model.insert_rows(0, 1, 1).unwrap();
+    model.evaluate();
+    for cell in ["B4", "C4", "B5", "C5", "B6", "C6"] {
+        assert_eq!(model._get_text(cell), "5", "{cell} after insert row");
+    }
+    for cell in ["B3", "C3", "B7", "C7"] {
+        assert_eq!(model._get_text(cell), "", "{cell} after insert row");
+    }
+
+    // Delete a row above: back to B3:C5.
+    model.delete_rows(0, 1, 1).unwrap();
+    model.evaluate();
+    for cell in ["B3", "C3", "B4", "C4", "B5", "C5"] {
+        assert_eq!(model._get_text(cell), "5", "{cell} after delete row");
+    }
+    for cell in ["B6", "C6"] {
+        assert_eq!(model._get_text(cell), "", "{cell} after delete row");
+    }
+
+    // Insert a column at the anchor column: the array moves to C3:D5.
+    model.insert_columns(0, 2, 1).unwrap();
+    model.evaluate();
+    for cell in ["C3", "D3", "C4", "D4", "C5", "D5"] {
+        assert_eq!(model._get_text(cell), "5", "{cell} after insert column");
+    }
+    for cell in ["B3", "B4", "B5", "E3"] {
+        assert_eq!(model._get_text(cell), "", "{cell} after insert column");
+    }
+
+    // Delete a column before: back to B3:C5.
+    model.delete_columns(0, 1, 1).unwrap();
+    model.evaluate();
+    for cell in ["B3", "C3", "B4", "C4", "B5", "C5"] {
+        assert_eq!(model._get_text(cell), "5", "{cell} after delete column");
+    }
+    for cell in ["D3", "D4", "D5"] {
+        assert_eq!(model._get_text(cell), "", "{cell} after delete column");
+    }
 }
