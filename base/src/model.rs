@@ -1532,12 +1532,21 @@ impl<'a> Model<'a> {
                 column: a.1,
                 row: a.0,
             };
-            // evaluate the anchor and discard the result
-            let _ = self.evaluate_cell(anchor_cell_reference);
+            let anchor_key = (cell_reference.sheet, a.0, a.1);
+            let anchor_is_evaluating =
+                matches!(self.cells.get(&anchor_key), Some(CellState::Evaluating));
+            let anchor_result = self.evaluate_cell(anchor_cell_reference);
             // The read is recorded only now: recording it before evaluating the
             // anchor would make the anchor's write look like a cycle through the
             // very reader whose read triggered it.
             self.record_read(cell_reference);
+            if anchor_is_evaluating {
+                // The anchor is being evaluated on behalf of this very read:
+                // whatever the spill cell holds is stale, and the read closes a
+                // cycle (evaluate_cell has just marked it). Only reachable for
+                // CSE areas; a dynamic anchor clears its cells before evaluating.
+                return anchor_result;
+            }
             // refetch the cell after evaluating the spill reference
             let cell = match self.fetch_cell(cell_reference) {
                 Some(c) => c,
@@ -2596,7 +2605,11 @@ impl<'a> Model<'a> {
                     let style = self.workbook.styles.get_style(new_style_index)?;
                     self.set_cell_style(sheet, row, column, &style)?;
                 }
-                // Update the "spill" area with placeholders
+                // Fill the area with spill cells pointing at the anchor. Their
+                // placeholder value is never observed: reading a spill cell
+                // evaluates its anchor first, which rewrites them. (Plain
+                // placeholder cells would be constants, so a reader that ran
+                // before the anchor would keep a stale value.)
                 for r in row..row + height {
                     for c in column..column + width {
                         if r == row && c == column {
@@ -2613,8 +2626,15 @@ impl<'a> Model<'a> {
                                 .styles
                                 .get_style_without_quote_prefix(new_style_index_spill)?;
                         }
-
-                        self.set_cell_with_string(sheet, r, c, "", new_style_index_spill)?;
+                        self.workbook.worksheet_mut(sheet)?.update_cell(
+                            r,
+                            c,
+                            Cell::SpillCell {
+                                s: new_style_index_spill,
+                                a: (row, column),
+                                v: SpillValue::Text(String::new()),
+                            },
+                        )?;
                     }
                 }
                 return Ok(());
