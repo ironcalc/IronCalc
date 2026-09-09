@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::panic)]
 
 // A battery of tests aimed at the evaluation algorithm of evaluation.md,
 // section 6. Each test targets one angle from which stale values, false
