@@ -566,9 +566,10 @@ fn mutual_area_dependency_is_a_fixed_point() {
 //    4    ║ =D3:D5  | =SEQUENCE(D3)  |
 //    5    ║         |                |
 //
-// A4 reads D3 (= 2) and then D4, whose spill closes the cycle D3 → D5 → D4.
-// D3 is marked #CIRC! and redone, and A4, still running with D3's old value,
-// must be redone too. Found by the consistency oracle.
+// A4 reads D3 (= 2) and then D4, whose spill would close the cycle
+// D3 → D5 → D4. D4 reports #CIRC! and does not spill; D3 and A4 keep the
+// values they computed with an empty D5, which the final sheet holds. Found
+// by the consistency oracle, which must stay clean.
 #[test]
 fn running_reader_of_a_cycle_member_is_redone() {
     let mut model = new_empty_model();
@@ -578,9 +579,9 @@ fn running_reader_of_a_cycle_member_is_redone() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("D3"), "#CIRC!");
+        assert_eq!(model._get_text("D3"), "2");
         assert_eq!(model._get_text("D4"), "#CIRC!");
-        assert_eq!(model._get_text("A4"), "#CIRC!");
+        assert_eq!(model._get_text("A4"), "2");
         assert_eq!(model._get_text("A5"), "#CIRC!");
         assert_eq!(model._get_text("A6"), "0");
         assert_eq!(super::oracle::violations(&mut model), Vec::<String>::new());
@@ -640,7 +641,7 @@ fn cross_sheet_spill_cycle_is_circular() {
     for _ in 0..2 {
         model.evaluate();
         assert_eq!(model._get_text("Sheet2!B1"), "#CIRC!");
-        assert_eq!(model._get_text("A1"), "#CIRC!");
+        assert_eq!(model._get_text("A1"), "2");
     }
 }
 
@@ -825,13 +826,13 @@ fn contention_with_a_dependency_keeps_history() {
 //    4    ║ =D4*2          |         |
 //
 // D2 and C4 form a cycle (D2 reads C4, C4 reads D4 which D2 writes). When D2
-// still has spill cells from the previous evaluation, C1 pulls C4 in, C4
-// reads D4 through the stale cell, D2 is evaluated on C4's behalf and closes
-// the loop scalar-style: C4 and D2 are both marked #CIRC!. Without the stale
-// cells the loop is caught by D2's write barrier, which marks D2 only and
-// leaves C4 = 0. The state right after the edit is not even a fixed point.
+// still has spill cells from a previous evaluation, C1 pulls C4 in, C4 reads
+// D4 through the stale cell, D2 is evaluated on C4's behalf and the loop
+// closes on the stack. On a fresh sheet the loop is caught by D2's write
+// barrier instead. Both paths must blame the anchor only: D2 = #CIRC!, C4
+// keeps 0 (D4 is empty in the final sheet), C1 = SEQUENCE(0) = #CALC!.
 #[test]
-fn cycle_verdict_should_not_depend_on_stale_spill_cells() {
+fn cycle_blame_does_not_depend_on_stale_spill_cells() {
     let cells = ["C1", "C4", "D2", "D3", "D4"];
 
     let mut history = new_empty_model();
@@ -842,12 +843,13 @@ fn cycle_verdict_should_not_depend_on_stale_spill_cells() {
     history._set("C4", "=D4*2");
     history.evaluate();
     let after_history = snapshot(&history, &cells);
-    history.evaluate();
     assert_eq!(
-        after_history,
-        snapshot(&history, &cells),
-        "history is not a fixed point"
+        super::oracle::violations(&mut history),
+        Vec::<String>::new()
     );
+    history.evaluate();
+    assert_eq!(after_history, snapshot(&history, &cells));
+    assert_eq!(after_history, ["#CALC!", "0", "#CIRC!", "", ""]);
 
     let mut fresh = new_empty_model();
     fresh._set("D2", "=C2:C4");
@@ -855,8 +857,10 @@ fn cycle_verdict_should_not_depend_on_stale_spill_cells() {
     fresh._set("C4", "=D4*2");
     fresh.evaluate();
     let after_fresh = snapshot(&fresh, &cells);
-
-    assert_eq!(after_history, after_fresh);
+    assert_eq!(super::oracle::violations(&mut fresh), Vec::<String>::new());
+    fresh.evaluate();
+    assert_eq!(after_fresh, snapshot(&fresh, &cells));
+    assert_eq!(after_fresh, ["#CALC!", "0", "#CIRC!", "", ""]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

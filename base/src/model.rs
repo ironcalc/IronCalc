@@ -92,6 +92,9 @@ pub(crate) enum CellStructure {
     },
 }
 
+/// `(sheet, row, column)`: the key of a cell in the evaluation bookkeeping.
+pub(crate) type CellKey = (u32, i32, i32);
+
 /// A cell might be evaluated or being evaluated
 #[derive(Clone)]
 pub(crate) enum CellState {
@@ -212,28 +215,36 @@ pub struct Model<'a> {
     /// Cells currently being evaluated, innermost last. The top of the stack is
     /// the cell on whose behalf any read happening right now is performed.
     pub(crate) eval_stack: Vec<CellReferenceIndex>,
-    /// Reverse dependency index for the current evaluation: for every position
-    /// read through `evaluate_cell`, the cells that read it, each tagged with
-    /// the generation of the reader at the time of the read. Reads of constant
-    /// cells are not recorded since a constant cannot change within a pass.
-    pub(crate) readers: HashMap<(u32, i32, i32), Vec<(CellReferenceIndex, u32)>>,
-    /// How many times each cell has started an evaluation in this pass. A read
-    /// edge whose generation is older than its reader's current generation was
-    /// made by a superseded (retracted) evaluation and is ignored.
-    pub(crate) generations: HashMap<(u32, i32, i32), u32>,
-    /// Cells whose result was retracted (see `retract`) and that must be
-    /// re-evaluated before the pass ends.
-    pub(crate) retracted: Vec<CellReferenceIndex>,
-    /// Cells currently being evaluated whose result must be retracted as soon
-    /// as they finish: a spill written on their behalf covered a position they
-    /// had already read in this evaluation. The flag propagates to the parent
-    /// evaluation, which is about to consume the stale result.
-    pub(crate) retract_when_done: HashSet<(u32, i32, i32)>,
-    /// Cells found to be part of a circular reference in this pass. Their result
-    /// is `#CIRC!` whatever their formula does with the error, so that every
-    /// member of a cycle reports it, not only the one where the recursion
-    /// happened to close the loop.
+    /// Dependency graph of the current pass, forward direction: the positions
+    /// each formula cell read in its current or last run. A cell's edges are
+    /// dropped every time it starts a run, so the graph always describes
+    /// exactly the last run of every cell.
+    pub(crate) reads: HashMap<CellKey, Vec<CellKey>>,
+    /// The same graph, reverse direction: the cells that read each position.
+    /// Reads of constant cells are not recorded since a constant cannot change
+    /// within a pass.
+    pub(crate) readers: HashMap<CellKey, HashSet<CellKey>>,
+    /// Cells still running whose current run read a position that a spill has
+    /// written since; they start over once their formula returns.
+    pub(crate) aborted: HashSet<(u32, i32, i32)>,
+    /// Cells found to be on a cycle in this pass. They store `#CIRC!` whatever
+    /// their formula does with the error, so that every member of a cycle
+    /// reports it whichever cell the recursion happened to close it on.
     pub(crate) circular: HashSet<(u32, i32, i32)>,
+    /// Evaluated cells invalidated by a spill write, to be re-evaluated before
+    /// the pass ends (a no-op if they were already redone on demand).
+    pub(crate) pending: Vec<CellReferenceIndex>,
+    /// Runs started per cell in this pass. A cell that starts more runs than
+    /// `run_cap` is on a cycle the write barrier could not see and is `#CIRC!`.
+    pub(crate) runs: HashMap<CellKey, u32>,
+    /// Set by `evaluate()` from the number of dynamic anchors. Unlimited outside
+    /// a pass: cells are also evaluated on demand at load time (conditional
+    /// formatting) and by helpers such as `evaluate_formula`.
+    pub(crate) run_cap: u32,
+    /// Dynamic anchors currently running because one of their spill cells was
+    /// read (a forwarded read). A cycle closed while such an anchor is on the
+    /// stack passes through its area, and the blame goes to the anchor only.
+    pub(crate) forwarded: HashSet<(u32, i32, i32)>,
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
     /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
@@ -1028,35 +1039,27 @@ impl<'a> Model<'a> {
                             }
                         }
                     }
-                    // Cells that read the area before it was written hold stale results
-                    // and are retracted once the area is written (or, if they are still
-                    // running, as soon as they finish). If the walk comes back to this
-                    // anchor, its inputs depend on its own output: a circular reference.
-                    let stale = match self.stale_readers_of_spill(
-                        cell_reference,
-                        array_width,
-                        array_height,
-                    ) {
-                        Ok((stale, still_evaluating)) => {
-                            for cell in still_evaluating {
-                                self.retract_when_done
-                                    .insert((cell.sheet, cell.row, cell.column));
-                            }
-                            stale
-                        }
-                        Err(members) => {
-                            self.retract_cycle_members(cell_reference, &members);
-                            return self.set_cells_with_result(
+                    // Everything that read a position of the area (transitively) holds
+                    // a stale result. Finished cells are invalidated once the area is
+                    // written; running ones are aborted and start over. If the walk
+                    // comes back to this anchor, its inputs depend on its own output:
+                    // a circular reference, and nothing is written.
+                    let (stale, running, cycle) =
+                        self.stale_readers(cell_reference, array_width, array_height);
+                    if cycle {
+                        return self.set_cells_with_result(
+                            cell_reference,
+                            cell,
+                            &CalcResult::new_error(
+                                Error::CIRC,
                                 cell_reference,
-                                cell,
-                                &CalcResult::new_error(
-                                    Error::CIRC,
-                                    cell_reference,
-                                    "Circular reference through a spill area".to_string(),
-                                ),
-                            );
-                        }
-                    };
+                                "Circular reference through a spill area".to_string(),
+                            ),
+                        );
+                    }
+                    for key in running {
+                        self.aborted.insert(key);
+                    }
                     let worksheet = &mut self.workbook.worksheets[sheet as usize];
                     // Dynamic formula: spill the array into adjacent cells.
                     // Cells are created on demand via update_cell since they may not exist yet.
@@ -1083,7 +1086,7 @@ impl<'a> Model<'a> {
                         }
                     }
                     // Write barrier.
-                    self.retract(stale);
+                    self.invalidate(stale);
                     return Ok(());
                 }
                 Some((false, (original_width, original_height))) => {
@@ -1508,7 +1511,11 @@ impl<'a> Model<'a> {
             let anchor_key = (cell_reference.sheet, a.0, a.1);
             let anchor_is_evaluating =
                 matches!(self.cells.get(&anchor_key), Some(CellState::Evaluating));
+            let newly_forwarded = self.forwarded.insert(anchor_key);
             let anchor_result = self.evaluate_cell(anchor_cell_reference);
+            if newly_forwarded {
+                self.forwarded.remove(&anchor_key);
+            }
             // The read is recorded only now: recording it before evaluating the
             // anchor would make the anchor's write look like a cycle through the
             // very reader whose read triggered it.
@@ -1560,97 +1567,100 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
-                // Clear the pre-existing spill area of a dynamic formula before re-evaluating.
-                // This must happen after the CellState check so that a recursive call from a
-                // spill cell does not wipe out spill cells that were just written.
-                if let Err(e) = self.clear_own_spill_cells(cell_reference, &original_cell) {
-                    return CalcResult::new_error(Error::ERROR, cell_reference, e);
-                }
-                // mark cell as being evaluated
-                self.cells.insert(key, CellState::Evaluating);
-                *self.generations.entry(key).or_insert(0) += 1;
-                self.eval_stack.push(cell_reference);
-                let (node, _static_result) =
-                    &self.parsed_formulas[cell_reference.sheet as usize][f as usize];
-                let result = self.evaluate_node_in_context(&node.clone(), cell_reference);
+                loop {
+                    // Start a run. A cell that keeps being redone is on a cycle
+                    // the write barrier cannot see; the cap turns it into #CIRC!.
+                    let runs = self.runs.entry(key).or_insert(0);
+                    *runs += 1;
+                    if *runs > self.run_cap {
+                        self.circular.insert(key);
+                    }
+                    // The graph describes this run only.
+                    self.drop_edges(key);
+                    // Clear the pre-existing spill area of a dynamic formula. This
+                    // happens after the CellState check so that a recursive call
+                    // from a spill cell does not wipe out cells just written.
+                    if let Err(e) = self.clear_own_spill_cells(cell_reference, &original_cell) {
+                        return CalcResult::new_error(Error::ERROR, cell_reference, e);
+                    }
+                    self.cells.insert(key, CellState::Evaluating);
+                    self.eval_stack.push(cell_reference);
+                    let (node, _static_result) =
+                        &self.parsed_formulas[cell_reference.sheet as usize][f as usize];
+                    let result = self.evaluate_node_in_context(&node.clone(), cell_reference);
 
-                // At this point a range needs to be transformed into an array
-                let result = if let CalcResult::Range { left, right } = result {
-                    if left.sheet == right.sheet
-                        && left.row == right.row
-                        && left.column == right.column
-                    {
-                        // it is a single cell range, we can just return the value of the cell
-                        self.evaluate_cell(left)
-                    } else {
-                        let array_height = right.row - left.row + 1;
-                        let array_width = right.column - left.column + 1;
-                        let last_row = cell_reference.row + array_height - 1;
-                        let last_col = cell_reference.column + array_width - 1;
-                        if last_row > LAST_ROW || last_col > LAST_COLUMN {
-                            CalcResult::new_error(
-                                Error::SPILL,
-                                cell_reference,
-                                "Spill would exceed worksheet bounds".to_string(),
-                            )
+                    // At this point a range needs to be transformed into an array
+                    let result = if let CalcResult::Range { left, right } = result {
+                        if left.sheet == right.sheet
+                            && left.row == right.row
+                            && left.column == right.column
+                        {
+                            // it is a single cell range, we can just return the value of the cell
+                            self.evaluate_cell(left)
                         } else {
-                            let array = self.evaluate_range(left, right);
-                            CalcResult::Array(array)
+                            let array_height = right.row - left.row + 1;
+                            let array_width = right.column - left.column + 1;
+                            let last_row = cell_reference.row + array_height - 1;
+                            let last_col = cell_reference.column + array_width - 1;
+                            if last_row > LAST_ROW || last_col > LAST_COLUMN {
+                                CalcResult::new_error(
+                                    Error::SPILL,
+                                    cell_reference,
+                                    "Spill would exceed worksheet bounds".to_string(),
+                                )
+                            } else {
+                                let array = self.evaluate_range(left, right);
+                                CalcResult::Array(array)
+                            }
                         }
+                    } else if matches!(result, CalcResult::Lambda(_)) {
+                        CalcResult::new_error(
+                            Error::CALC,
+                            cell_reference,
+                            "A LAMBDA was returned but not called".to_string(),
+                        )
+                    } else {
+                        result
+                    };
+                    // Every read performed on behalf of this run has happened by now.
+                    self.eval_stack.pop();
+
+                    if self.aborted.remove(&key) {
+                        // A spill written during this run covered a position the run
+                        // had already read: the result is worthless, start over. The
+                        // re-run finds the spill cells and forwards to their anchor,
+                        // which is evaluated by now.
+                        continue;
                     }
-                } else if matches!(result, CalcResult::Lambda(_)) {
-                    CalcResult::new_error(
-                        Error::CALC,
-                        cell_reference,
-                        "A LAMBDA was returned but not called".to_string(),
-                    )
-                } else {
-                    result
-                };
-                // Every read performed on behalf of this cell has happened by now.
-                self.eval_stack.pop();
-                let result = if self.circular.contains(&key) {
-                    CalcResult::new_error(
-                        Error::CIRC,
-                        cell_reference,
-                        "Circular reference detected".to_string(),
-                    )
-                } else {
-                    result
-                };
 
-                if let Err(e) = self.set_cells_with_result(cell_reference, &original_cell, &result)
-                {
+                    let result = if self.circular.contains(&key) {
+                        CalcResult::new_error(
+                            Error::CIRC,
+                            cell_reference,
+                            "Circular reference detected".to_string(),
+                        )
+                    } else {
+                        result
+                    };
+
+                    if let Err(e) =
+                        self.set_cells_with_result(cell_reference, &original_cell, &result)
+                    {
+                        self.cells.insert(key, CellState::Evaluated);
+                        // TODO: I _think_ this can never happen. Maybe we should  refactor things in a way that this is apparent
+                        return CalcResult::new_error(Error::ERROR, cell_reference, e);
+                    };
                     self.cells.insert(key, CellState::Evaluated);
-                    // TODO: I _think_ this can never happen. Maybe we should  refactor things in a way that this is apparent
-                    return CalcResult::new_error(Error::ERROR, cell_reference, e);
-                };
 
-                if self.retract_when_done.remove(&key) {
-                    // A spill written during this evaluation covered a position this
-                    // cell had already read: the result just stored is stale. Retract
-                    // it (it is re-evaluated before the pass ends) and flag the parent,
-                    // which is about to consume the stale value.
-                    self.cells.remove(&key);
-                    self.circular.remove(&key);
-                    self.retracted.push(cell_reference);
-                    if let Some(parent) = self.eval_stack.last() {
-                        self.retract_when_done
-                            .insert((parent.sheet, parent.row, parent.column));
-                    }
-                } else {
-                    // mark cell as evaluated
-                    self.cells.insert(key, CellState::Evaluated);
-                }
-
-                // Return what was actually written so that a dependent evaluated in
-                // this pass observes the same value it would read later from the sheet:
-                // the first element of a spilled array, the coerced value of a 1x1
-                // array, or the error (#SPILL!, #CIRC!, #CALC!, ...) the result was
-                // turned into.
-                match self.fetch_cell(cell_reference) {
-                    Some(cell) => self.get_cell_value(cell, cell_reference),
-                    None => CalcResult::EmptyCell,
+                    // Return what was actually written so that a dependent evaluated in
+                    // this pass observes the same value it would read later from the
+                    // sheet: the first element of a spilled array, the coerced value of
+                    // a 1x1 array, or the error (#SPILL!, #CIRC!, #CALC!, ...) the
+                    // result was turned into.
+                    return match self.fetch_cell(cell_reference) {
+                        Some(cell) => self.get_cell_value(cell, cell_reference),
+                        None => CalcResult::EmptyCell,
+                    };
                 }
             }
             None => self.get_cell_value(&original_cell, cell_reference),
@@ -1766,11 +1776,14 @@ impl<'a> Model<'a> {
             lambdas: HashMap::new(),
             last_lambda_id: 0,
             eval_stack: Vec::new(),
+            reads: HashMap::new(),
             readers: HashMap::new(),
-            generations: HashMap::new(),
-            retracted: Vec::new(),
-            retract_when_done: HashSet::new(),
+            aborted: HashSet::new(),
             circular: HashSet::new(),
+            pending: Vec::new(),
+            runs: HashMap::new(),
+            run_cap: u32::MAX,
+            forwarded: HashSet::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
         };
@@ -3104,232 +3117,180 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
-    /// Marks every cell on the evaluation stack from `from` (inclusive) to the top
-    /// as part of a circular reference: `from` is being evaluated and something
-    /// evaluated on its behalf depends on it. If `from` is not on the stack (an
-    /// anchor detecting a cycle through its own spill area after popping itself)
-    /// nothing is marked; the caller reports the error on the anchor directly.
+    /// A cycle was closed: `from` is being evaluated and something evaluated on
+    /// its behalf read it. The cells on the stack from `from` to the top are the
+    /// loop. If the loop passes through the spill area of a dynamic anchor (the
+    /// anchor is on the segment because one of its spill cells was read), the
+    /// blame goes to those anchors only, as it does when the write barrier
+    /// closes a loop; they store `#CIRC!` and do not spill, and the readers of
+    /// the area keep values consistent with the empty area. Otherwise every
+    /// cell of the loop is marked. If `from` is not on the stack nothing is
+    /// marked; the caller reports the error itself.
     fn mark_cycle(&mut self, from: CellReferenceIndex) {
-        if let Some(start) = self.eval_stack.iter().rposition(|c| *c == from) {
-            for cell in &self.eval_stack[start..] {
-                self.circular.insert((cell.sheet, cell.row, cell.column));
-            }
+        let Some(start) = self.eval_stack.iter().rposition(|c| *c == from) else {
+            return;
+        };
+        let segment: Vec<(u32, i32, i32)> = self.eval_stack[start..]
+            .iter()
+            .map(|c| (c.sheet, c.row, c.column))
+            .collect();
+        let through_areas: Vec<(u32, i32, i32)> = segment
+            .iter()
+            .copied()
+            .filter(|key| self.forwarded.contains(key))
+            .collect();
+        let blamed = if through_areas.is_empty() {
+            segment
+        } else {
+            through_areas
+        };
+        for key in blamed {
+            self.circular.insert(key);
         }
     }
 
     /// Records that the cell currently being evaluated (top of `eval_stack`)
-    /// read `position`. Reads performed by the driver (empty stack) are not
-    /// dependencies of anything.
+    /// read `position`, in both directions of the graph. Reads performed by the
+    /// driver (empty stack) are not dependencies of anything.
     fn record_read(&mut self, position: CellReferenceIndex) {
         let Some(&reader) = self.eval_stack.last() else {
             return;
         };
-        let generation = self.generation_of(reader);
-        let entry = self
-            .readers
-            .entry((position.sheet, position.row, position.column))
-            .or_default();
+        let reader_key = (reader.sheet, reader.row, reader.column);
+        let position_key = (position.sheet, position.row, position.column);
+        let entry = self.reads.entry(reader_key).or_default();
         // A formula usually reads the same cell several times in a row
         // (e.g. `A1*A1`): skip the duplicate.
-        if entry.last() != Some(&(reader, generation)) {
-            entry.push((reader, generation));
+        if entry.last() != Some(&position_key) {
+            entry.push(position_key);
+        }
+        self.readers
+            .entry(position_key)
+            .or_default()
+            .insert(reader_key);
+    }
+
+    /// Removes every edge of `cell`'s previous run, so that the graph only ever
+    /// describes its current one.
+    fn drop_edges(&mut self, cell: (u32, i32, i32)) {
+        if let Some(positions) = self.reads.remove(&cell) {
+            for position in positions {
+                if let Some(set) = self.readers.get_mut(&position) {
+                    set.remove(&cell);
+                }
+            }
         }
     }
 
-    fn generation_of(&self, cell: CellReferenceIndex) -> u32 {
-        self.generations
-            .get(&(cell.sheet, cell.row, cell.column))
-            .copied()
-            .unwrap_or(0)
-    }
-
-    /// The cells that read `position` in their current evaluation. Edges left by
-    /// a retracted evaluation of a reader are skipped.
-    fn live_readers(&self, position: (u32, i32, i32)) -> Vec<CellReferenceIndex> {
-        match self.readers.get(&position) {
-            Some(readers) => readers
-                .iter()
-                .filter(|(reader, generation)| self.generation_of(*reader) == *generation)
-                .map(|(reader, _)| *reader)
-                .collect(),
-            None => Vec::new(),
-        }
-    }
-
-    /// Collects the cells whose result becomes stale when the dynamic anchor at
-    /// `anchor` writes a `width` x `height` area: every cell that read one of the
-    /// positions of the area (the anchor itself excluded: reading it evaluates it,
-    /// so nobody can have seen it stale) and, transitively, every cell that read
-    /// any of those.
+    /// Walks the readers of every position of the `width` x `height` area the
+    /// dynamic anchor at `anchor` is about to write (the anchor itself excluded:
+    /// reading it evaluates it, so nobody can have seen it stale), and
+    /// transitively the readers of those readers.
     ///
-    /// Returns `Err(path)` when the walk reaches the anchor itself: its inputs
-    /// read its own spill area, a circular reference. `path` lists the cells the
-    /// walk went through from the area to the anchor (excluded), in read order:
-    /// the members of the loop, all in state `Evaluated`.
-    ///
-    /// The walk can also reach other cells in state `Evaluating`. Those are on the
-    /// evaluation stack below the anchor: they read a position of the area earlier
-    /// in their current evaluation, and the anchor is now being evaluated on their
-    /// behalf (typically they went on to read the anchor, or one of its stale
-    /// spill cells). That is not a cycle, since the anchor does not depend on
-    /// them, but their result is stale. They cannot be retracted while running, so
-    /// they are returned separately to be retracted when they finish.
-    fn stale_readers_of_spill(
+    /// Returns the cells met in state `Evaluated` (stale, to be invalidated), the
+    /// cells met in state `Evaluating` other than the anchor (running readers,
+    /// to be aborted: they read the area earlier in their current run and the
+    /// anchor is being evaluated on their behalf, which is not a cycle), and
+    /// whether the walk came back to the anchor itself (its inputs read its own
+    /// area: a circular reference).
+    fn stale_readers(
         &self,
         anchor: CellReferenceIndex,
         width: i32,
         height: i32,
-    ) -> Result<(Vec<CellReferenceIndex>, Vec<CellReferenceIndex>), Vec<CellReferenceIndex>> {
-        let mut pending: Vec<CellReferenceIndex> = Vec::new();
-        // Who pushed whom, to recover the loop when the walk closes on the anchor.
-        let mut parents: HashMap<(u32, i32, i32), CellReferenceIndex> = HashMap::new();
+    ) -> (Vec<CellReferenceIndex>, Vec<(u32, i32, i32)>, bool) {
+        let anchor_key = (anchor.sheet, anchor.row, anchor.column);
+        let mut pending: Vec<(u32, i32, i32)> = Vec::new();
         for r in anchor.row..anchor.row + height {
             for c in anchor.column..anchor.column + width {
-                if r == anchor.row && c == anchor.column {
+                if (r, c) == (anchor.row, anchor.column) {
                     continue;
                 }
-                pending.extend(self.live_readers((anchor.sheet, r, c)));
+                if let Some(set) = self.readers.get(&(anchor.sheet, r, c)) {
+                    pending.extend(set.iter().copied());
+                }
             }
         }
         let mut stale = Vec::new();
-        let mut still_evaluating = Vec::new();
+        let mut running = Vec::new();
+        let mut cycle = false;
         let mut visited = HashSet::new();
-        while let Some(current) = pending.pop() {
-            let key = (current.sheet, current.row, current.column);
+        while let Some(key) = pending.pop() {
             if !visited.insert(key) {
                 continue;
             }
             match self.cells.get(&key) {
-                Some(CellState::Evaluated) => {}
-                Some(CellState::Evaluating) => {
-                    if current == anchor {
-                        let mut path = Vec::new();
-                        let mut cursor = parents.get(&key).copied();
-                        while let Some(member) = cursor {
-                            if path.contains(&member) {
-                                break;
-                            }
-                            path.push(member);
-                            cursor = parents
-                                .get(&(member.sheet, member.row, member.column))
-                                .copied();
-                        }
-                        path.reverse();
-                        return Err(path);
+                Some(CellState::Evaluated) => {
+                    stale.push(CellReferenceIndex {
+                        sheet: key.0,
+                        row: key.1,
+                        column: key.2,
+                    });
+                    if let Some(set) = self.readers.get(&key) {
+                        pending.extend(set.iter().copied());
                     }
-                    // Its readers are its ancestors on the stack; they are flagged
-                    // when it finishes, so there is nothing to expand here.
-                    still_evaluating.push(current);
-                    continue;
                 }
-                // Not evaluated yet, or already retracted: nothing to undo.
-                None => continue,
-            }
-            stale.push(current);
-            for reader in self.live_readers(key) {
-                // A cell that reads itself (`B3 = SUM(B2:E4)`) is its own reader;
-                // such an edge must not become a parent link.
-                if reader != current {
-                    parents
-                        .entry((reader.sheet, reader.row, reader.column))
-                        .or_insert(current);
+                Some(CellState::Evaluating) => {
+                    if key == anchor_key {
+                        cycle = true;
+                    } else {
+                        // Its readers are its ancestors on the stack; they get the
+                        // fresh value when it re-runs, so nothing to expand.
+                        running.push(key);
+                    }
                 }
-                pending.push(reader);
+                // Not evaluated yet, or already invalidated: nothing to undo.
+                None => {}
             }
         }
-        Ok((stale, still_evaluating))
+        (stale, running, cycle)
     }
 
-    /// Retracts the members of a cycle found by the write barrier so that they
-    /// re-evaluate to `#CIRC!`, exactly as the members of a cycle closed by the
-    /// scalar recursion do (see `mark_cycle`). Their other readers are
-    /// retracted normally since their inputs change.
-    fn retract_cycle_members(
-        &mut self,
-        anchor: CellReferenceIndex,
-        members: &[CellReferenceIndex],
-    ) {
-        let mut dependents = Vec::new();
-        let mut visited = HashSet::new();
-        for member in members {
-            let key = (member.sheet, member.row, member.column);
-            self.circular.insert(key);
-            visited.insert(key);
-        }
-        let mut pending: Vec<CellReferenceIndex> = members
-            .iter()
-            .flat_map(|m| self.live_readers((m.sheet, m.row, m.column)))
-            .collect();
-        while let Some(current) = pending.pop() {
-            let key = (current.sheet, current.row, current.column);
-            if !visited.insert(key) {
-                continue;
-            }
-            match self.cells.get(&key) {
-                Some(CellState::Evaluated) => {}
-                // A running reader has already consumed a member's old value
-                // and cannot be retracted now: it is redone when it finishes.
-                // The anchor itself is stored as #CIRC! by the caller.
-                Some(CellState::Evaluating) if current != anchor => {
-                    self.retract_when_done.insert(key);
-                    continue;
-                }
-                _ => continue,
-            }
-            dependents.push(current);
-            pending.extend(self.live_readers(key));
-        }
-        for member in members {
-            let key = (member.sheet, member.row, member.column);
-            self.cells.remove(&key);
-            self.retracted.push(*member);
-        }
-        self.retract(dependents);
-    }
-
-    /// Retracts the results of `cells`: they are removed from the `cells` map so
-    /// they are re-evaluated the next time their value is requested, or at the end
-    /// of the pass (see [Model::evaluate]). The sheet is left untouched: a
-    /// retracted dynamic anchor keeps its spill cells, which redirect any read to
-    /// the anchor and therefore trigger its re-evaluation.
-    fn retract(&mut self, cells: Vec<CellReferenceIndex>) {
+    /// Throws away the results of `cells`: they become `Unevaluated` and are
+    /// re-evaluated the next time their value is requested, or by the driver
+    /// before the pass ends. The sheet is left untouched: an invalidated dynamic
+    /// anchor keeps its spill cells, which forward any read to the anchor and
+    /// therefore trigger its re-evaluation.
+    fn invalidate(&mut self, cells: Vec<CellReferenceIndex>) {
         for cell in cells {
             let key = (cell.sheet, cell.row, cell.column);
             self.cells.remove(&key);
             self.circular.remove(&key);
-            self.retracted.push(cell);
+            self.pending.push(cell);
         }
     }
 
-    /// Evaluates every formula in the workbook.
+    /// Evaluates every formula in the workbook (see `cold-evaluation.md`).
     ///
-    /// The core is a demand-driven recursion ([Model::evaluate_cell]) that evaluates
-    /// the dependencies of a cell as it meets them, and detects cycles by marking
-    /// cells as `Evaluating`. Dynamic arrays complicate this because they write
-    /// cells other than their own: a cell that read one of those positions earlier
-    /// in the pass holds a stale result. Every read is therefore recorded in
-    /// `readers`, and writing a spill area retracts (transitively) every cell that
-    /// read it, so that any evaluation order gives the same result.
+    /// Three ideas: a dependency graph built while evaluating (`reads`,
+    /// `readers`), demand-driven recursion ([Model::evaluate_cell]) that detects
+    /// cycles with the `Evaluating` state, and invalidation when a spill area is
+    /// written ([Model::stale_readers]): whatever read the area is redone, so the
+    /// result does not depend on the order of evaluation.
     ///
-    /// 1. Dynamic anchors are evaluated first, in natural order. This is only a
-    ///    heuristic that keeps retractions rare.
+    /// 1. Dynamic anchors are evaluated first, in natural order. A heuristic
+    ///    that keeps invalidations rare; it does not affect the result.
     /// 2. Every cell is visited in natural order.
-    /// 3. Cells retracted after the sweep had passed them are re-evaluated, in
-    ///    rounds, until nothing is pending.
+    /// 3. Cells invalidated after the sweep had passed them are re-evaluated
+    ///    until none is pending. This terminates because every run is counted
+    ///    and a cell that exceeds `run_cap` runs is reported as `#CIRC!`.
     pub fn evaluate(&mut self) {
         self.cells.clear();
         self.eval_stack.clear();
+        self.reads.clear();
         self.readers.clear();
-        self.generations.clear();
-        self.retracted.clear();
-        self.retract_when_done.clear();
+        self.aborted.clear();
         self.circular.clear();
+        self.pending.clear();
+        self.runs.clear();
+        self.forwarded.clear();
         // dynamic links (HYPERLINK) are rebuilt on every evaluation
         self.links.clear();
         self.clear_variable_stack();
         self.clear_lambdas();
 
         let anchors = self.collect_dynamic_anchors();
+        self.run_cap = anchors.len() as u32 + 2;
         for anchor in &anchors {
             self.evaluate_cell(*anchor);
         }
@@ -3342,41 +3303,9 @@ impl<'a> Model<'a> {
             });
         }
 
-        // Cycles through spill areas are reported as #CIRC! when the spill is
-        // written, so each round advances one link of an anchor-to-anchor chain
-        // and the number of rounds is bounded by the number of anchors. The bound
-        // is a safety net only.
-        let max_rounds = anchors.len() + 2;
-        let mut rounds = 0;
-        while !self.retracted.is_empty() && rounds < max_rounds {
-            let batch = std::mem::take(&mut self.retracted);
-            for cell in batch {
-                // no-op if the cell was already re-evaluated on demand
-                self.evaluate_cell(cell);
-            }
-            rounds += 1;
-        }
-        // Anything still pending is caught in a cycle the write barrier did not
-        // detect (or hit a bug in the retraction logic). Report it as such rather
-        // than leaving stale values behind.
-        let leftover = std::mem::take(&mut self.retracted);
-        for cell in leftover {
-            let key = (cell.sheet, cell.row, cell.column);
-            if self.cells.contains_key(&key) {
-                // re-evaluated on demand after it was queued
-                continue;
-            }
-            let Some(original_cell) = self.fetch_cell(cell).cloned() else {
-                continue;
-            };
-            if original_cell.get_formula().is_none() {
-                continue;
-            }
-            let _ = self.clear_own_spill_cells(cell, &original_cell);
-            let error =
-                CalcResult::new_error(Error::CIRC, cell, "Circular reference detected".to_string());
-            let _ = self.set_cells_with_result(cell, &original_cell, &error);
-            self.cells.insert(key, CellState::Evaluated);
+        while let Some(cell) = self.pending.pop() {
+            // no-op if the cell was already re-evaluated on demand
+            self.evaluate_cell(cell);
         }
         self.evaluate_conditional_formatting();
     }

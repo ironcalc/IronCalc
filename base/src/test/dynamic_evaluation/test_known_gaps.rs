@@ -174,7 +174,8 @@ fn spill_range_operator_on_itself_is_circular() {
 //
 // B1's shape depends on A1, and A1 reads B1's spill area: a cycle. Before
 // retraction this settled on B1 = SEQUENCE(2) with A1 = 4, an inconsistent but
-// stable state. Both members now report #CIRC! and nothing spills.
+// stable state. The anchor reports #CIRC! and does not spill; A1 keeps the
+// value it computed with an empty B2, which is what the final sheet holds.
 #[test]
 fn spill_cycle_through_reader_is_circular() {
     let mut model = new_empty_model();
@@ -186,7 +187,7 @@ fn spill_cycle_through_reader_is_circular() {
         model.evaluate();
         assert_eq!(model._get_text("B1"), "#CIRC!");
         assert_eq!(model._get_text("B2"), "");
-        assert_eq!(model._get_text("A1"), "#CIRC!");
+        assert_eq!(model._get_text("A1"), "2");
     }
 }
 
