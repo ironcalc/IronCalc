@@ -1581,45 +1581,8 @@ impl<'a> Model<'a> {
                 // Clear the pre-existing spill area of a dynamic formula before re-evaluating.
                 // This must happen after the CellState check so that a recursive call from a
                 // spill cell does not wipe out spill cells that were just written.
-                if let Cell::ArrayFormula {
-                    r,
-                    kind: ArrayKind::Dynamic,
-                    ..
-                } = &original_cell
-                {
-                    let (width, height) = *r;
-                    let ws = match self.workbook.worksheet_mut(cell_reference.sheet) {
-                        Ok(ws) => ws,
-                        Err(_) => {
-                            return CalcResult::new_error(
-                                Error::ERROR,
-                                cell_reference,
-                                "Invalid sheet".to_string(),
-                            )
-                        }
-                    };
-                    for r in cell_reference.row..cell_reference.row + height {
-                        for c in cell_reference.column..cell_reference.column + width {
-                            if r == cell_reference.row && c == cell_reference.column {
-                                continue;
-                            }
-                            // Only clear cells that are spill cells belonging to this anchor.
-                            // Non-SpillCell content must remain
-                            // so they can block the spill on re-evaluation.
-                            let is_own_spill = ws
-                                .sheet_data
-                                .get(&r)
-                                .and_then(|row_data| row_data.get(&c))
-                                .map(|cell| {
-                                    matches!(cell, Cell::SpillCell { a, .. }
-                                        if *a == (cell_reference.row, cell_reference.column))
-                                })
-                                .unwrap_or(false);
-                            if is_own_spill {
-                                let _ = ws.cell_clear_contents(r, c);
-                            }
-                        }
-                    }
+                if let Err(e) = self.clear_own_spill_cells(cell_reference, &original_cell) {
+                    return CalcResult::new_error(Error::ERROR, cell_reference, e);
                 }
                 // mark cell as being evaluated
                 self.cells.insert(key, CellState::Evaluating);
@@ -3076,6 +3039,50 @@ impl<'a> Model<'a> {
         anchors
     }
 
+    /// Removes the spill cells of the dynamic anchor `cell` at `cell_reference`
+    /// (its stored `r` says where they are). Cells with any other content are
+    /// kept so they can block the spill when it is written again. A no-op for
+    /// anything but a dynamic anchor.
+    fn clear_own_spill_cells(
+        &mut self,
+        cell_reference: CellReferenceIndex,
+        cell: &Cell,
+    ) -> Result<(), String> {
+        let Cell::ArrayFormula {
+            r,
+            kind: ArrayKind::Dynamic,
+            ..
+        } = cell
+        else {
+            return Ok(());
+        };
+        let (width, height) = *r;
+        let ws = self
+            .workbook
+            .worksheet_mut(cell_reference.sheet)
+            .map_err(|_| "Invalid sheet".to_string())?;
+        for r in cell_reference.row..cell_reference.row + height {
+            for c in cell_reference.column..cell_reference.column + width {
+                if r == cell_reference.row && c == cell_reference.column {
+                    continue;
+                }
+                let is_own_spill = ws
+                    .sheet_data
+                    .get(&r)
+                    .and_then(|row_data| row_data.get(&c))
+                    .map(|cell| {
+                        matches!(cell, Cell::SpillCell { a, .. }
+                            if *a == (cell_reference.row, cell_reference.column))
+                    })
+                    .unwrap_or(false);
+                if is_own_spill {
+                    let _ = ws.cell_clear_contents(r, c);
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Marks every cell on the evaluation stack from `from` (inclusive) to the top
     /// as part of a circular reference: `from` is being evaluated and something
     /// evaluated on its behalf depends on it. If `from` is not on the stack (an
@@ -3257,11 +3264,28 @@ impl<'a> Model<'a> {
             }
             rounds += 1;
         }
-        debug_assert!(
-            self.retracted.is_empty(),
-            "evaluation did not converge: {:?}",
-            self.retracted
-        );
+        // Anything still pending is caught in a cycle the write barrier did not
+        // detect (or hit a bug in the retraction logic). Report it as such rather
+        // than leaving stale values behind.
+        let leftover = std::mem::take(&mut self.retracted);
+        for cell in leftover {
+            let key = (cell.sheet, cell.row, cell.column);
+            if self.cells.contains_key(&key) {
+                // re-evaluated on demand after it was queued
+                continue;
+            }
+            let Some(original_cell) = self.fetch_cell(cell).cloned() else {
+                continue;
+            };
+            if original_cell.get_formula().is_none() {
+                continue;
+            }
+            let _ = self.clear_own_spill_cells(cell, &original_cell);
+            let error =
+                CalcResult::new_error(Error::CIRC, cell, "Circular reference detected".to_string());
+            let _ = self.set_cells_with_result(cell, &original_cell, &error);
+            self.cells.insert(key, CellState::Evaluated);
+        }
         self.evaluate_conditional_formatting();
     }
 
