@@ -259,17 +259,40 @@ fn indirect_into_future_spill_area() {
 }
 
 // Not an ordering issue, but found on the way: a reference returned by
-// INDIRECT is not dereferenced inside a function argument that wants a number,
-// even through arithmetic (`SEQUENCE(INDIRECT("C3")*1)` is #N/IMPL! too).
-// `=INDIRECT("C3")*2` as a whole formula and `SUM(INDIRECT("C3"))` work.
+// INDIRECT used to give #N/IMPL! inside a function argument that wants a
+// number, even through arithmetic. It is now dereferenced like a value: a
+// single cell gives its value, a larger range is intersected with the row or
+// column of the formula, as in Excel's scalar context.
 #[test]
 fn sequence_of_indirect_reference() {
     let mut model = new_empty_model();
     model._set("C1", "=SEQUENCE(3)");
     model._set("A1", "=SEQUENCE(INDIRECT(\"C3\"))");
+    model._set("B1", "=SEQUENCE(INDIRECT(\"C3\")*1)");
 
     model.evaluate();
     assert_eq!(model._get_text("A3"), "3");
+    assert_eq!(model._get_text("B3"), "3");
+}
+
+#[test]
+fn indirect_range_in_scalar_argument_intersects_with_the_row() {
+    let mut model = new_empty_model();
+    model._set("C1", "=SEQUENCE(3)");
+    // Row 3 of C1:C3 is C3 = 3.
+    model._set("A3", "=SEQUENCE(INDIRECT(\"C1:C3\"))");
+    // Row 1 is outside C2:C3 and column A is outside column C: no intersection.
+    model._set("E1", "=SEQUENCE(INDIRECT(\"C2:C3\"))");
+    // The string and boolean casts dereference too.
+    model._set("E2", "=LEN(INDIRECT(\"C2\"))");
+    model._set("E3", "=IF(INDIRECT(\"C3\"),\"yes\",\"no\")");
+
+    model.evaluate();
+    assert_eq!(model._get_text("A3"), "1");
+    assert_eq!(model._get_text("A5"), "3");
+    assert_eq!(model._get_text("E1"), "#VALUE!");
+    assert_eq!(model._get_text("E2"), "1");
+    assert_eq!(model._get_text("E3"), "yes");
 }
 
 #[test]
