@@ -346,3 +346,32 @@ fn retracted_reader_of_forwarded_spill_is_not_a_cycle() {
         assert_eq!(model._get_text("B4"), "3");
     }
 }
+
+// ── Reading a spill position before its anchor is not a cycle ───────────────
+
+//         ║        A         |       B        |
+// ════════╬══════════════════╪════════════════╪
+//    1    ║ =SEQUENCE(B2+B1) | =SEQUENCE(3)   |
+//    2    ║                  |                |
+//    3    ║                  |                |
+//
+// A1 runs first (earlier anchor), reads B2 while it is still empty, then reads
+// B1, which spills B2 on A1's behalf. B1 does not depend on A1, so this is not
+// a cycle: A1 simply holds a stale read and is redone once it finishes.
+#[test]
+fn reading_spill_position_before_its_anchor_is_not_a_cycle() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=SEQUENCE(B2+B1)");
+    model._set("B1", "=SEQUENCE(3)");
+
+    for _ in 0..2 {
+        model.evaluate();
+        assert_eq!(model._get_text("B1"), "1");
+        assert_eq!(model._get_text("B2"), "2");
+        assert_eq!(model._get_text("B3"), "3");
+        assert_eq!(model._get_text("A1"), "1");
+        assert_eq!(model._get_text("A2"), "2");
+        assert_eq!(model._get_text("A3"), "3");
+    }
+}

@@ -224,6 +224,11 @@ pub struct Model<'a> {
     /// Cells whose result was retracted (see `retract`) and that must be
     /// re-evaluated before the pass ends.
     pub(crate) retracted: Vec<CellReferenceIndex>,
+    /// Cells currently being evaluated whose result must be retracted as soon
+    /// as they finish: a spill written on their behalf covered a position they
+    /// had already read in this evaluation. The flag propagates to the parent
+    /// evaluation, which is about to consume the stale result.
+    pub(crate) retract_when_done: HashSet<(u32, i32, i32)>,
     /// Cells found to be part of a circular reference in this pass. Their result
     /// is `#CIRC!` whatever their formula does with the error, so that every
     /// member of a cycle reports it, not only the one where the recursion
@@ -1048,18 +1053,23 @@ impl<'a> Model<'a> {
                         }
                     }
                     // Cells that read the area before it was written hold stale results
-                    // and are retracted once the area is written. If one of them is
-                    // still being evaluated, this anchor is being evaluated on its behalf
-                    // while it depends on this anchor's output: a circular reference.
+                    // and are retracted once the area is written (or, if they are still
+                    // running, as soon as they finish). If the walk comes back to this
+                    // anchor, its inputs depend on its own output: a circular reference.
                     let stale = match self.stale_readers_of_spill(
                         cell_reference,
                         array_width,
                         array_height,
                         &losing_anchors,
                     ) {
-                        Ok(stale) => stale,
-                        Err(evaluating) => {
-                            self.mark_cycle(evaluating);
+                        Ok((stale, still_evaluating)) => {
+                            for cell in still_evaluating {
+                                self.retract_when_done
+                                    .insert((cell.sheet, cell.row, cell.column));
+                            }
+                            stale
+                        }
+                        Err(()) => {
                             return self.set_cells_with_result(
                                 cell_reference,
                                 cell,
@@ -1671,8 +1681,22 @@ impl<'a> Model<'a> {
                     return CalcResult::new_error(Error::ERROR, cell_reference, e);
                 };
 
-                // mark cell as evaluated
-                self.cells.insert(key, CellState::Evaluated);
+                if self.retract_when_done.remove(&key) {
+                    // A spill written during this evaluation covered a position this
+                    // cell had already read: the result just stored is stale. Retract
+                    // it (it is re-evaluated before the pass ends) and flag the parent,
+                    // which is about to consume the stale value.
+                    self.cells.remove(&key);
+                    self.circular.remove(&key);
+                    self.retracted.push(cell_reference);
+                    if let Some(parent) = self.eval_stack.last() {
+                        self.retract_when_done
+                            .insert((parent.sheet, parent.row, parent.column));
+                    }
+                } else {
+                    // mark cell as evaluated
+                    self.cells.insert(key, CellState::Evaluated);
+                }
 
                 // Return what was actually written so that a dependent evaluated in
                 // this pass observes the same value it would read later from the sheet:
@@ -1800,6 +1824,7 @@ impl<'a> Model<'a> {
             readers: HashMap::new(),
             generations: HashMap::new(),
             retracted: Vec::new(),
+            retract_when_done: HashSet::new(),
             circular: HashSet::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
@@ -3109,17 +3134,23 @@ impl<'a> Model<'a> {
     /// so nobody can have seen it stale), the `losing_anchors` whose spill cells
     /// are being taken over, and, transitively, every cell that read any of those.
     ///
-    /// Returns `Err(cell)` when the walk reaches a cell that is currently being
-    /// evaluated. Such a cell is on the evaluation stack below the anchor, so the
-    /// anchor is being evaluated on its behalf while it depends on the anchor's
-    /// output: a circular reference through the spill area.
+    /// Returns `Err(())` when the walk reaches the anchor itself: its inputs read
+    /// its own spill area, a circular reference.
+    ///
+    /// The walk can also reach other cells in state `Evaluating`. Those are on the
+    /// evaluation stack below the anchor: they read a position of the area earlier
+    /// in their current evaluation, and the anchor is now being evaluated on their
+    /// behalf (typically they went on to read the anchor, or one of its stale
+    /// spill cells). That is not a cycle, since the anchor does not depend on
+    /// them, but their result is stale. They cannot be retracted while running, so
+    /// they are returned separately to be retracted when they finish.
     fn stale_readers_of_spill(
         &self,
         anchor: CellReferenceIndex,
         width: i32,
         height: i32,
         losing_anchors: &[CellReferenceIndex],
-    ) -> Result<Vec<CellReferenceIndex>, CellReferenceIndex> {
+    ) -> Result<(Vec<CellReferenceIndex>, Vec<CellReferenceIndex>), ()> {
         let mut pending: Vec<CellReferenceIndex> = losing_anchors.to_vec();
         for r in anchor.row..anchor.row + height {
             for c in anchor.column..anchor.column + width {
@@ -3130,6 +3161,7 @@ impl<'a> Model<'a> {
             }
         }
         let mut stale = Vec::new();
+        let mut still_evaluating = Vec::new();
         let mut visited = HashSet::new();
         while let Some(current) = pending.pop() {
             let key = (current.sheet, current.row, current.column);
@@ -3138,14 +3170,22 @@ impl<'a> Model<'a> {
             }
             match self.cells.get(&key) {
                 Some(CellState::Evaluated) => {}
-                Some(CellState::Evaluating) => return Err(current),
+                Some(CellState::Evaluating) => {
+                    if current == anchor {
+                        return Err(());
+                    }
+                    // Its readers are its ancestors on the stack; they are flagged
+                    // when it finishes, so there is nothing to expand here.
+                    still_evaluating.push(current);
+                    continue;
+                }
                 // Not evaluated yet, or already retracted: nothing to undo.
                 None => continue,
             }
             stale.push(current);
             pending.extend(self.live_readers(key));
         }
-        Ok(stale)
+        Ok((stale, still_evaluating))
     }
 
     /// Retracts the results of `cells`: they are removed from the `cells` map so
@@ -3183,6 +3223,7 @@ impl<'a> Model<'a> {
         self.readers.clear();
         self.generations.clear();
         self.retracted.clear();
+        self.retract_when_done.clear();
         self.circular.clear();
         // dynamic links (HYPERLINK) are rebuilt on every evaluation
         self.links.clear();

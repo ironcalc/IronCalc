@@ -699,6 +699,7 @@ impl<'a> Model<'a> {
             readers: HashMap::new(),
             generations: HashMap::new(),
             retracted: Vec::new(),
+            retract_when_done: HashSet::new(),
             circular: HashSet::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),

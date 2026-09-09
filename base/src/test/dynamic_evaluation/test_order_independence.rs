@@ -54,7 +54,7 @@ fn random_ref(rng: &mut Rng) -> String {
 }
 
 fn random_content(rng: &mut Rng) -> String {
-    match rng.below(12) {
+    match rng.below(15) {
         0 | 1 => format!("{}", 1 + rng.below(4)),
         2 => format!("={}+1", random_ref(rng)),
         3 => format!("={}*2", random_ref(rng)),
@@ -72,7 +72,16 @@ fn random_content(rng: &mut Rng) -> String {
         8 => format!("={}#", random_ref(rng)),
         9 => format!("=SUM({}#)", random_ref(rng)),
         10 => format!("=SUM(OFFSET({},1,0,2,1))", random_ref(rng)),
-        _ => format!("=SUM(OFFSET({},0,1,1,2))", random_ref(rng)),
+        11 => format!("=SUM(OFFSET({},0,1,1,2))", random_ref(rng)),
+        // Two references in an arbitrary order: a spill position may be read
+        // before the anchor that writes it.
+        12 => format!("={}+{}", random_ref(rng), random_ref(rng)),
+        13 => format!("=SEQUENCE({}+{})", random_ref(rng), random_ref(rng)),
+        _ => {
+            let r = random_ref(rng);
+            let r2 = random_ref(rng);
+            format!("=SUM({r}:{r2})+{}", random_ref(rng))
+        }
     }
 }
 
