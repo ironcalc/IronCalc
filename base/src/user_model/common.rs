@@ -2780,22 +2780,21 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
 
     /// Creates a new named style. Fails if a style with that name already exists.
     ///
-    /// A replicated named style includes every formatting category, so `includes` is accepted
-    /// for API parity with the ordinal model and otherwise ignored.
+    /// A replicated named style includes every formatting category, so `includes` is only
+    /// accepted for API parity with the ordinal model.
     pub fn create_named_style(
         &mut self,
         name: &str,
         style: &Style,
-        _includes: StyleIncludes,
+        includes: StyleIncludes,
     ) -> Result<(), String> {
-        self.tracked(|s| s.model.create_named_style(name, style))
+        self.tracked(|s| s.model.create_named_style(name, style, includes))
     }
 
     /// Returns which formatting categories the named style includes: all of them, for a
     /// replicated style.
     pub fn get_named_style_includes(&self, name: &str) -> Result<StyleIncludes, String> {
-        self.model.get_named_style(name)?;
-        Ok(StyleIncludes::default())
+        self.model.get_named_style_includes(name)
     }
 
     /// Deletes a named style. Cells that used this style keep their formatting.
@@ -2804,15 +2803,15 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
     }
 
     /// Updates the formatting and optionally the name of a named style.
-    /// `includes` is accepted for API parity and ignored (see [`Self::create_named_style`]).
+    /// `includes` is only accepted for API parity (see [`Self::create_named_style`]).
     pub fn update_named_style(
         &mut self,
         name: &str,
         new_name: &str,
         style: &Style,
-        _includes: StyleIncludes,
+        includes: StyleIncludes,
     ) -> Result<(), String> {
-        self.tracked(|s| s.model.update_named_style(name, new_name, style))?;
+        self.tracked(|s| s.model.update_named_style(name, new_name, style, includes))?;
         Ok(())
     }
 
@@ -2924,10 +2923,9 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         let [row_start, column_start, row_end, column_end] = view.range;
         self.tracked(|s| {
             if s.model.workbook.styles.get_xf_id_by_name(name).is_err() {
-                // Replicated named styles include every category, so the includes are dropped.
-                let (style, _) = crate::builtin_styles::get_builtin_style(name)
+                let (style, includes) = crate::builtin_styles::get_builtin_style(name)
                     .ok_or_else(|| format!("Named style '{name}' not found"))?;
-                s.model.create_named_style(name, &style)?;
+                s.model.create_named_style(name, &style, includes)?;
             }
             for row in row_start..=row_end {
                 for column in column_start..=column_end {

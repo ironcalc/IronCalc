@@ -37,7 +37,9 @@ use crate::formatter::lexer::is_likely_date_number_format;
 use crate::language::get_default_language;
 use crate::locale::{get_default_locale, get_locale};
 use crate::new_empty::is_valid_sheet_name;
-use crate::types::{Cell, Col, Color, Comment, Dxf, Position, RangeRef, SheetState, Style, Theme};
+use crate::types::{
+    Cell, Col, Color, Comment, Dxf, Position, RangeRef, SheetState, Style, StyleIncludes, Theme,
+};
 use crate::tz::Tz;
 use crate::user_model::update_style;
 use crate::utils as common;
@@ -1116,7 +1118,9 @@ impl CollabModel<'_> {
         column: i32,
         style_name: &str,
     ) -> Result<(), String> {
-        let style = self.workbook.styles.get_style_by_name(style_name)?;
+        let mut style = self.workbook.styles.get_style_by_name(style_name)?;
+        // A quote prefix is the cell's own state, never the style's: applying a name keeps it.
+        style.quote_prefix = self.get_style_for_cell(sheet, row, column)?.quote_prefix;
         self.set_cell_style(sheet, row, column, &style)
     }
 
@@ -2559,7 +2563,15 @@ impl CollabModel<'_> {
     }
 
     /// Creates a named style. Fails if a style already shows that name.
-    pub fn create_named_style(&mut self, name: &str, style: &Style) -> Result<(), String> {
+    ///
+    /// A replicated named style includes every formatting category, so `includes` is accepted
+    /// for parity with the ordinal model and otherwise ignored.
+    pub fn create_named_style(
+        &mut self,
+        name: &str,
+        style: &Style,
+        _includes: StyleIncludes,
+    ) -> Result<(), String> {
         if self.workbook.styles.get_xf_id_by_name(name).is_ok() {
             return Err("A style with that name already exists".to_string());
         }
@@ -2598,13 +2610,21 @@ impl CollabModel<'_> {
         Ok(())
     }
 
+    /// Which formatting categories the named style includes: all of them, for a replicated style.
+    pub fn get_named_style_includes(&self, name: &str) -> Result<StyleIncludes, String> {
+        self.workbook.styles.get_style_by_name(name)?;
+        Ok(StyleIncludes::default())
+    }
+
     /// Updates a named style's formatting and, when `new_name` differs, its name. Everything drawn
-    /// with the old style follows in the same commit.
+    /// with the old style follows in the same commit. `includes` is accepted for parity and
+    /// ignored (see [`Self::create_named_style`]).
     pub fn update_named_style(
         &mut self,
         name: &str,
         new_name: &str,
         style: &Style,
+        _includes: StyleIncludes,
     ) -> Result<(), String> {
         if self.workbook.styles.is_builtin_style(name) {
             return Err(format!("Cannot modify built-in style '{name}'"));
@@ -3617,11 +3637,12 @@ mod test {
         let mut wire = a.flush();
 
         // create, apply, read back
-        a.create_named_style("bold", &bold()).unwrap();
+        a.create_named_style("bold", &bold(), StyleIncludes::default())
+            .unwrap();
         assert_eq!(a.get_named_style("bold"), Ok(bold()));
         assert_eq!(a.get_named_style_list(), ["normal", "bold"]);
         assert_eq!(
-            a.create_named_style("bold", &italic()),
+            a.create_named_style("bold", &italic(), StyleIncludes::default()),
             Err("A style with that name already exists".to_string())
         );
         a.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
@@ -3634,7 +3655,8 @@ mod test {
         // modify named style
         let mut bolder = bold();
         bolder.font.i = true;
-        a.update_named_style("bold", "bold", &bolder).unwrap();
+        a.update_named_style("bold", "bold", &bolder, StyleIncludes::default())
+            .unwrap();
         assert_eq!(a.get_named_style("bold"), Ok(bolder.clone()));
         // The cell, the row, the column — and the hand-styled cell: style index equality is the
         // test (see `restyle_patches`), unlike upstream, which only moves cells parented to the style.
@@ -3647,9 +3669,11 @@ mod test {
         }
 
         // rename to 'strong': now 'bold' should be free to be reused
-        a.update_named_style("bold", "strong", &bolder).unwrap();
+        a.update_named_style("bold", "strong", &bolder, StyleIncludes::default())
+            .unwrap();
         assert_eq!(a.get_named_style_list(), ["normal", "strong"]);
-        a.create_named_style("bold", &italic()).unwrap();
+        a.create_named_style("bold", &italic(), StyleIncludes::default())
+            .unwrap();
         assert_eq!(a.get_named_style("bold"), Ok(italic()));
         assert_eq!(a.get_named_style("strong"), Ok(bolder.clone()));
         // Two registers, not one: the second "bold" salted its way past the live id.
@@ -3675,16 +3699,19 @@ mod test {
             "can't delete built-in style"
         );
         assert!(
-            a.update_named_style("normal", "plain", &bold()).is_err(),
+            a.update_named_style("normal", "plain", &bold(), StyleIncludes::default())
+                .is_err(),
             "can't modify built-in styles"
         );
         assert!(a.delete_named_style("nope").is_err(), "style missing");
         assert!(
-            a.update_named_style("nope", "x", &bold()).is_err(),
+            a.update_named_style("nope", "x", &bold(), StyleIncludes::default())
+                .is_err(),
             "style missing"
         );
         assert!(
-            a.update_named_style("bold", "strong", &italic()).is_err(),
+            a.update_named_style("bold", "strong", &italic(), StyleIncludes::default())
+                .is_err(),
             "rename to existing"
         );
         assert!(a.flush().is_empty());
@@ -3696,8 +3723,10 @@ mod test {
         assert_eq!(b.workbook, a.workbook);
 
         // two peers creating the same style give it the same id
-        a.create_named_style("shared", &bold()).unwrap();
-        b.create_named_style("shared", &italic()).unwrap();
+        a.create_named_style("shared", &bold(), StyleIncludes::default())
+            .unwrap();
+        b.create_named_style("shared", &italic(), StyleIncludes::default())
+            .unwrap();
         let (from_a, from_b) = (a.flush(), b.flush());
         deliver(&mut a, 2, &from_b);
         deliver(&mut b, 1, &from_a);
@@ -3717,9 +3746,10 @@ mod test {
         assert_eq!(b.workbook, a.workbook);
 
         // two peers rename the same style and update separate properties
-        a.update_named_style("shared", "renamed", &italic())
+        a.update_named_style("shared", "renamed", &italic(), StyleIncludes::default())
             .unwrap();
-        b.update_named_style("shared", "shared", &bold()).unwrap();
+        b.update_named_style("shared", "shared", &bold(), StyleIncludes::default())
+            .unwrap();
         let (from_a, from_b) = (a.flush(), b.flush());
         deliver(&mut a, 2, &from_b);
         deliver(&mut b, 1, &from_a);
@@ -3732,8 +3762,10 @@ mod test {
         assert_eq!(b.workbook, a.workbook);
 
         // two peers rename different styles to the same name
-        a.update_named_style("renamed", "same", &bold()).unwrap();
-        b.update_named_style("bold", "same", &italic()).unwrap();
+        a.update_named_style("renamed", "same", &bold(), StyleIncludes::default())
+            .unwrap();
+        b.update_named_style("bold", "same", &italic(), StyleIncludes::default())
+            .unwrap();
         let (from_a, from_b) = (a.flush(), b.flush());
         deliver(&mut a, 2, &from_b);
         deliver(&mut b, 1, &from_a);

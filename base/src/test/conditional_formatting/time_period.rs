@@ -309,7 +309,7 @@ fn between_rule(period: PeriodType, date1: &str, date2: &str) -> CfRuleInput {
     }
 }
 
-fn set_between_test_dates(model: &mut crate::Model<'static>) {
+fn set_between_test_dates(model: &mut TestModel<'static>) {
     set_formula(model, 1, "=DATE(2025,4,23)"); // before the interval
     set_formula(model, 2, "=DATE(2025,4,25)"); // left endpoint
     set_formula(model, 3, "=DATE(2025,4,27)"); // inside
@@ -318,7 +318,7 @@ fn set_between_test_dates(model: &mut crate::Model<'static>) {
     model.evaluate();
 }
 
-fn assert_between_highlights(model: &crate::Model<'static>, negated: bool) {
+fn assert_between_highlights(model: &TestModel<'static>, negated: bool) {
     for (row, inside) in [(1, false), (2, true), (3, true), (4, true), (5, false)] {
         assert_eq!(
             is_red(model, row),
