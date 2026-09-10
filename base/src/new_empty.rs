@@ -1,6 +1,6 @@
 use chrono::DateTime;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::{
     calc_result::Range,
@@ -678,7 +678,6 @@ impl<'a> Model<'a> {
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
         let parser = Parser::new(worksheet_names, vec![], HashMap::new(), locale, language);
-        let cells = HashMap::new();
 
         let mut model = Model {
             workbook,
@@ -686,7 +685,6 @@ impl<'a> Model<'a> {
             parsed_formulas,
             parsed_defined_names: HashMap::new(),
             parser,
-            cells,
             locale,
             language,
             tz,
@@ -695,15 +693,7 @@ impl<'a> Model<'a> {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
-            eval_stack: Vec::new(),
-            reads: HashMap::new(),
-            readers: HashMap::new(),
-            aborted: HashSet::new(),
-            circular: HashSet::new(),
-            pending: Vec::new(),
-            runs: HashMap::new(),
-            run_cap: u32::MAX,
-            forwarded: HashSet::new(),
+            evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
         };

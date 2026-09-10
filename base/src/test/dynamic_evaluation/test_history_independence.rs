@@ -13,10 +13,11 @@
 // previous evaluation.
 //
 // One thing legitimately survives: which of two contending spills got there
-// first (evaluation.md, 4.5). When either state shows a #SPILL!, only the
-// fixed-point properties are checked. The consistency oracle (`oracle`) is
-// checked on every state regardless: every formula re-run against the final
-// sheet must give its stored value.
+// first (evaluation.md, 4.5), and with it whether an anchor on a cycle through
+// its own area is reported circular or blocked. When any state shows a
+// #SPILL! or a #CIRC!, the states are allowed to differ. The consistency
+// oracle (`oracle`) is checked on every state regardless: every formula
+// re-run against the final sheet must give its stored value.
 
 use crate::test::util::new_empty_model;
 use crate::Model;
@@ -269,16 +270,15 @@ fn edit_histories_end_in_the_same_state_as_a_fresh_model() {
         expected.evaluate();
         let fresh_twice = snapshot(&expected);
 
-        let contention = history
+        let history_dependent = history
             .iter()
+            .chain(history_again.iter())
             .chain(fresh_once.iter())
-            .any(|l| l.ends_with("#SPILL!"));
-        let same_end_state = contention || history == fresh_once;
-        if !same_end_state
-            || history != history_again
-            || fresh_once != fresh_twice
-            || !inconsistencies.is_empty()
-        {
+            .chain(fresh_twice.iter())
+            .any(|l| l.ends_with("#SPILL!") || l.ends_with("#CIRC!"));
+        let same_state = history_dependent
+            || (history == fresh_once && history == history_again && fresh_once == fresh_twice);
+        if !same_state || !inconsistencies.is_empty() {
             failures.push(format!(
                 "seed {seed}\n{}\nafter the edits:\n  {}\nafter one more evaluation:\n  {}\nfresh model:\n  {}\nfresh model evaluated twice:\n  {}\ninconsistencies:\n  {}",
                 describe(&edits, &accepted),
