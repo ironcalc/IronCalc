@@ -11,11 +11,15 @@
 //!   in the pass read the wrong thing. So the pass records what formulas saw
 //!   at the positions they read, and when an anchor is about to contradict a
 //!   record, the pass is **abandoned and started again with that anchor
-//!   first**. An anchor that contradicts a record while it is already first
-//!   can only have been contradicted by its own inputs: it is circular.
+//!   first**. An anchor whose own inputs read its area is contradicted by
+//!   itself wherever it sits: it is circular.
 //! * Spill cells left by a previous evaluation are never read as values
 //!   before their anchor has run in the current pass; they still block other
-//!   arrays, which is how the array that spilled first keeps its cells.
+//!   arrays, which is how the array that spilled first keeps its cells. The
+//!   one thing they cannot do is stand in for the anchor's output: when an
+//!   anchor gives them up and only its own inputs were blocked by them, they
+//!   were history, not a dependency. They are dropped for the rest of the
+//!   evaluation and the pass starts again without them.
 //!
 //! The order of the anchors survives across evaluations, so a sheet that
 //! needed restarts once evaluates in a single pass afterwards.
@@ -71,7 +75,7 @@ pub(crate) struct SeenRecord {
 
 /// Why the current pass is abandoned. In every case the anchor is moved to the
 /// front of the evaluation order and the pass starts again.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub(crate) enum Restart {
     /// A spill cell of this anchor was read before the anchor had run.
     StaleRead(CellReferenceIndex),
@@ -81,14 +85,20 @@ pub(crate) enum Restart {
     /// What this anchor is about to write contradicts only reads made on its
     /// own behalf: its inputs depend on its own output. It is circular.
     SelfContradiction(CellReferenceIndex),
+    /// The spill cells this anchor is giving up, left by a previous
+    /// evaluation, blocked an array evaluated on its own behalf and nothing
+    /// else. The anchor's inputs depended on its history, not on its output:
+    /// the cells are dropped for the rest of the evaluation.
+    StaleCells(CellReferenceIndex, Vec<CellKey>),
 }
 
 impl Restart {
-    fn anchor(self) -> CellReferenceIndex {
+    fn anchor(&self) -> CellReferenceIndex {
         match self {
             Restart::StaleRead(anchor)
             | Restart::Conflict(anchor)
-            | Restart::SelfContradiction(anchor) => anchor,
+            | Restart::SelfContradiction(anchor)
+            | Restart::StaleCells(anchor, _) => *anchor,
         }
     }
 }
@@ -103,14 +113,23 @@ impl Restart {
 /// marked. And between two changes of the circular set every order is
 /// distinct, so the restarts are finite; a budget of `n² + 2` guards against a
 /// mistake in that reasoning by marking the restarting anchor once spent.
+///
+/// The sheet the passes start from changes only when stale spill cells are
+/// dropped (`Restart::StaleCells`). That happens at most once per stale cell,
+/// and the log starts afresh each time, as it does when the circular set
+/// changes.
 struct RestartLog {
     /// Anchors marked circular so far; passed to every pass.
     circular: Vec<CellKey>,
-    /// The orders seen since the circular set last changed.
+    /// The orders seen since the circular set or the starting sheet last
+    /// changed.
     orders_seen: Vec<Vec<CellReferenceIndex>>,
     /// The anchor moved to the front to go from each seen order to the next.
     moves: Vec<CellReferenceIndex>,
+    /// Every restart of this evaluation.
     restarts: u32,
+    /// The restarts that count against the budget: all but the stale-cell ones.
+    spent: u32,
     budget: u32,
 }
 
@@ -122,17 +141,25 @@ impl RestartLog {
             orders_seen: vec![initial_order.to_vec()],
             moves: Vec::new(),
             restarts: 0,
+            spent: 0,
             budget: anchors * anchors + 2,
         }
     }
 
     /// Records a restart whose anchor has just been moved to the front, giving
     /// `order`, and marks whatever it proves circular.
-    fn record(&mut self, restart: Restart, order: &[CellReferenceIndex]) {
+    fn record(&mut self, restart: &Restart, order: &[CellReferenceIndex]) {
+        self.restarts += 1;
+        if let Restart::StaleCells(..) = restart {
+            // The starting sheet changed: what a pass does changed with it.
+            self.orders_seen = vec![order.to_vec()];
+            self.moves.clear();
+            return;
+        }
         let anchor = restart.anchor();
         self.moves.push(anchor);
         let mut newly_circular = Vec::new();
-        if matches!(restart, Restart::SelfContradiction(_)) || self.restarts >= self.budget {
+        if matches!(restart, Restart::SelfContradiction(_)) || self.spent >= self.budget {
             newly_circular.push(anchor);
         } else if let Some(first_seen) = self.orders_seen.iter().position(|seen| seen == order) {
             newly_circular.extend(self.moves[first_seen..].iter().copied());
@@ -149,7 +176,7 @@ impl RestartLog {
             self.orders_seen = vec![order.to_vec()];
             self.moves.clear();
         }
-        self.restarts += 1;
+        self.spent += 1;
     }
 }
 
@@ -189,22 +216,28 @@ impl<'a> Model<'a> {
     ///
     /// Runs passes until one completes without a restart. A restart moves the
     /// anchor that caused it to the front of the anchor order; `RestartLog`
-    /// decides whether it also marks anchors circular. A marked anchor never
-    /// restarts again: it stores `#CIRC!` and keeps no spill cells, so there is
-    /// nothing of it to read or to contradict. Every other restart moves an
-    /// anchor forward without repeating an order, so the loop ends.
+    /// decides whether it also marks anchors circular. A marked anchor stores
+    /// `#CIRC!` and keeps no spill cells, so there is nothing of it to read or
+    /// to contradict once its stale cells are gone. Every other restart moves
+    /// an anchor forward without repeating an order, or drops stale cells,
+    /// which happens at most once per cell, so the loop ends.
     pub fn evaluate(&mut self) {
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
-        let spills_before = self.dynamic_spills();
+        // The only change to that sheet within an evaluation is the dropping
+        // of stale spill cells an anchor gave up.
+        let mut spills_before = self.dynamic_spills();
         let mut log = RestartLog::new(&self.evaluation.anchor_order);
         while let Some(restart) = self.run_pass(&log.circular) {
+            if let Restart::StaleCells(_, cells) = &restart {
+                spills_before.retain(|(position, _)| !cells.contains(&key(*position)));
+            }
             self.restore_dynamic_spills(&spills_before);
             let anchor = restart.anchor();
             self.evaluation.anchor_order.retain(|a| *a != anchor);
             self.evaluation.anchor_order.insert(0, anchor);
-            log.record(restart, &self.evaluation.anchor_order);
+            log.record(&restart, &self.evaluation.anchor_order);
         }
         self.evaluation.restarts_in_last_evaluation = log.restarts;
         self.evaluate_conditional_formatting();
@@ -325,7 +358,7 @@ impl<'a> Model<'a> {
         for cell in anchors.into_iter().chain(everything) {
             self.evaluate_cell(cell);
             if self.evaluation.restart.is_some() {
-                restart = self.evaluation.restart;
+                restart = self.evaluation.restart.take();
                 break;
             }
         }
@@ -543,7 +576,8 @@ impl<'a> Model<'a> {
     /// contradict what a formula read earlier in this pass. If so, the pass is
     /// abandoned so that it can start again with the anchor first, and `true`
     /// is returned: the anchor must not write anything. When every contradicted
-    /// read was made on the anchor's own behalf, the anchor is circular.
+    /// read was made on the anchor's own behalf, the anchor is circular, unless
+    /// only the removals contradict: then the cells were stale, and they go.
     pub(crate) fn spill_contradicts_a_read(
         &mut self,
         anchor: CellReferenceIndex,
@@ -554,23 +588,27 @@ impl<'a> Model<'a> {
             return false;
         }
         let seen = &self.evaluation.seen;
-        let contradicted_roots: Vec<CellReferenceIndex> = writes
+        let contradicted_by_writes: Vec<CellReferenceIndex> = writes
             .iter()
             .filter_map(|p| seen.get(p).and_then(|record| record.empty))
-            .chain(
-                clears
-                    .iter()
-                    .filter_map(|p| seen.get(p).and_then(|record| record.occupied)),
-            )
             .collect();
-        if contradicted_roots.is_empty() {
+        let contradicted_by_clears: Vec<CellReferenceIndex> = clears
+            .iter()
+            .filter_map(|p| seen.get(p).and_then(|record| record.occupied))
+            .collect();
+        if contradicted_by_writes.is_empty() && contradicted_by_clears.is_empty() {
             return false;
         }
-        let only_own_reads = contradicted_roots.iter().all(|root| *root == anchor);
-        self.evaluation.restart = Some(if only_own_reads {
-            Restart::SelfContradiction(anchor)
-        } else {
+        let only_own_reads = contradicted_by_writes
+            .iter()
+            .chain(&contradicted_by_clears)
+            .all(|root| *root == anchor);
+        self.evaluation.restart = Some(if !only_own_reads {
             Restart::Conflict(anchor)
+        } else if contradicted_by_writes.is_empty() {
+            Restart::StaleCells(anchor, clears.to_vec())
+        } else {
+            Restart::SelfContradiction(anchor)
         });
         true
     }

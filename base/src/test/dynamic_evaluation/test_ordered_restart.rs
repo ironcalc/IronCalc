@@ -307,9 +307,16 @@ fn evaluating_outside_a_pass_reads_spill_cells_through_their_anchor() {
 // reads C1, which is blocked by those very leftovers. B2 shrinks to a scalar
 // and removes C2 and C3. Both records of C2 and C3 must be kept: the read as
 // empty (root B2) and the blocked scan (also root B2, since C1 ran on B2's
-// behalf). The removal then contradicts the scan on B2's own behalf: B2 is
-// circular, and C1 spills on the next pass. With a single record per position
-// the scan was lost and C1 stayed #SPILL! over a free area.
+// behalf). With a single record per position the scan was lost and C1 stayed
+// #SPILL! over a free area.
+//
+// The removal contradicts only the scan, and the scan was blocked by cells
+// B2 no longer wants: those cells are history, not an input of B2. They are
+// dropped for the rest of the evaluation and the pass restarts. B2 then reads
+// C2 and C3 as empty while C1, evaluated on demand, spills into them: a
+// conflict that moves C1 first. The third pass is the fresh sheet's: C1
+// spills, B2 = 7. Before this rule B2 was marked circular, and the same sheet
+// gave 7 on the next evaluation, once the leftovers were gone.
 #[test]
 fn a_blocking_cell_read_as_empty_before_the_scan_keeps_both_records() {
     let mut model = new_empty_model();
@@ -327,9 +334,66 @@ fn a_blocking_cell_read_as_empty_before_the_scan_keeps_both_records() {
     model.evaluate();
     let violations = crate::test::dynamic_evaluation::oracle::violations(&mut model);
     assert!(violations.is_empty(), "{violations:?}");
-    assert_eq!(model._get_text("B2"), "#CIRC!");
+    assert_eq!(model._get_text("B2"), "7");
     assert_eq!(model._get_text("C1"), "1");
     assert_eq!(model._get_text("C3"), "3");
+    assert_eq!(restarts(&model), 2);
+    assert_eq!(anchor_order(&model), ["C1", "B2"]);
+
+    // The verdict is a fact about the sheet: the next evaluation agrees, and
+    // so does a fresh model with the same contents.
+    model.evaluate();
+    assert_eq!(model._get_text("B2"), "7");
+    assert_eq!(restarts(&model), 0);
+
+    let mut fresh = new_empty_model();
+    fresh._set("A1", "0");
+    fresh._set(
+        "B2",
+        "=IF(A1=1,SEQUENCE(2,2),IF(AND(C2=\"\",C3=\"\"),IF(ISERROR(C1),5,6),7))",
+    );
+    fresh._set("C1", "=SEQUENCE(3)");
+    fresh.evaluate();
+    assert_eq!(fresh._get_text("B2"), "7");
+    assert_eq!(fresh._get_text("C3"), "3");
+}
+
+//         ║   A   |                 B                  |       C        |
+// ════════╬═══════╪════════════════════════════════════╪════════════════╪
+//    1    ║ 1     |                                    | =SEQUENCE(3)   |
+//    2    ║       | =IF(A1=1,SEQUENCE(2,2),IF(ISERROR(C1),5,SEQUENCE(2,2))) |
+//
+// The same history, but once C1 spills B2 wants its old area back. There is
+// no sheet in which B2 keeps it: with B2 spilled, C1 is blocked and B2 is the
+// scalar 5. B2's leftovers go when B2 shrinks, C1 takes the cells, and B2 is
+// blocked by C1's spill, which is what a fresh sheet gives. Nothing is
+// circular: B2's inputs never depend on B2's output, only on its history.
+#[test]
+fn a_shrunk_anchor_does_not_get_its_leftovers_back() {
+    let formula = "=IF(A1=1,SEQUENCE(2,2),IF(ISERROR(C1),5,SEQUENCE(2,2)))";
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B2", formula);
+    model.evaluate();
+    assert_eq!(model._get_text("C3"), "4");
+
+    model._set("A1", "0");
+    model._set("C1", "=SEQUENCE(3)");
+    model.evaluate();
+    let violations = crate::test::dynamic_evaluation::oracle::violations(&mut model);
+    assert!(violations.is_empty(), "{violations:?}");
+    assert_eq!(model._get_text("B2"), "#SPILL!");
+    assert_eq!(model._get_text("C1"), "1");
+    assert_eq!(model._get_text("C3"), "3");
+    assert_eq!(model._get_text("B3"), "");
     assert_eq!(restarts(&model), 1);
-    assert_eq!(anchor_order(&model), ["B2", "C1"]);
+
+    let mut fresh = new_empty_model();
+    fresh._set("A1", "0");
+    fresh._set("B2", formula);
+    fresh._set("C1", "=SEQUENCE(3)");
+    fresh.evaluate();
+    assert_eq!(fresh._get_text("B2"), "#SPILL!");
+    assert_eq!(fresh._get_text("C3"), "3");
+    assert_eq!(restarts(&fresh), 0);
 }

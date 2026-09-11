@@ -1,0 +1,19 @@
+name = "IronCalcEval"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["IronCalcEval"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+weak.linter.style.header = false
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.34.0-rc2"
+
+[[lean_lib]]
+name = "IronCalcEval"
