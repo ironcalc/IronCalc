@@ -310,3 +310,36 @@ fn tail_moves() {
     c.evaluate();
     compare(&o, &c, &sheets, 16, 5, "move_rows at the last row");
 }
+
+#[test]
+fn sheet_move_matches_ordinal() {
+    let (mut o, mut c) = pair();
+    for _ in 0..2 {
+        o.new_sheet();
+        c.new_sheet();
+    }
+    for (sheet, row, col, value) in [
+        (0, 1, 1, "1"),
+        (1, 1, 1, "2"),
+        (2, 1, 1, "3"),
+        (0, 2, 1, "=Sheet2!A1+Sheet3!A1"),
+        (2, 2, 1, "=Sheet1!A1*10+Sheet2!A1"),
+    ] {
+        set(&mut o, &mut c, sheet, row, col, value);
+    }
+    let sheets = [0, 1, 2];
+    compare(&o, &c, &sheets, 3, 2, "seed");
+
+    // References key off the sheet, not its index, so they must survive the reorder.
+    o.move_sheet(0, 2).unwrap();
+    c.move_sheet(0, 2).unwrap();
+    o.evaluate();
+    c.evaluate();
+    compare(&o, &c, &sheets, 3, 2, "move_sheet(0, 2)");
+
+    o.move_sheet(2, 1).unwrap();
+    c.move_sheet(2, 1).unwrap();
+    o.evaluate();
+    c.evaluate();
+    compare(&o, &c, &sheets, 3, 2, "move_sheet(2, 1)");
+}

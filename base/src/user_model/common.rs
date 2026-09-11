@@ -2478,6 +2478,24 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         self.tracked(|s| s.model.rename_sheet_by_index(sheet, new_name))
     }
 
+    /// Moves the worksheet at `sheet_index` to `new_index`, the selection following the sheet.
+    pub fn move_sheet(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        if sheet_index >= sheet_count {
+            return Err(format!("Invalid sheet index {sheet_index}"));
+        }
+        if new_index >= sheet_count {
+            return Err(format!("Invalid target index {new_index}"));
+        }
+        if sheet_index == new_index {
+            return Ok(());
+        }
+        let selected = self.get_selected_sheet();
+        self.tracked(|s| s.model.move_sheet(sheet_index, new_index))?;
+        // Selection is view state, so it stays outside the undo step.
+        self.set_selected_sheet(selected_sheet_after_move(selected, sheet_index, new_index))
+    }
+
     /// Hides sheet by index
     pub fn hide_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let sheet_count = self.model.workbook.worksheets.len() as u32;

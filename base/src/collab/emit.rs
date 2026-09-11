@@ -131,7 +131,17 @@ impl CollabModel<'_> {
             .checked_sub(1)
             .and_then(|below| self.sheet_ordering_key(below))
             .unwrap_or(&nil);
-        let no_room = || format!("No room for a sheet at index {at}");
+        self.position_between(lo, hi)
+            .map_err(|_| format!("No room for a sheet at index {at}"))
+    }
+
+    /// A tab-order key strictly between `lo` and `hi`; NULL on either side is that open end.
+    fn position_between(
+        &self,
+        lo: &FractionalKey,
+        hi: &FractionalKey,
+    ) -> Result<FractionalKey, String> {
+        let no_room = || "No room between the sheets".to_string();
         let (mut buf, _) = CreateKeys::plan(lo.position(), hi.position(), 1).ok_or_else(no_room)?;
         buf.extend_from_slice(&self.suffix());
         FractionalKey::try_from_bytes(&buf).map_err(|_| no_room())
@@ -725,6 +735,32 @@ impl CollabModel<'_> {
         }]);
         self.evaluate();
         Ok(())
+    }
+
+    /// Moves the sheet at `sheet_index` so it sits at `new_index`.
+    pub fn move_sheet(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
+        let sheet_count = self.workbook.worksheets.len() as u32;
+        if sheet_index >= sheet_count {
+            return Err("Sheet index too large".to_string());
+        }
+        if new_index >= sheet_count {
+            return Err("Target sheet index too large".to_string());
+        }
+        if sheet_index == new_index {
+            return Ok(());
+        }
+        let nil = FractionalKey::NULL;
+        // The neighbours in the order without the moved sheet.
+        let others: Vec<&FractionalKey> = (0..sheet_count as usize)
+            .filter(|&i| i != sheet_index as usize)
+            .map(|i| self.sheet_ordering_key(i).unwrap_or(&nil))
+            .collect();
+        let lo = (new_index as usize)
+            .checked_sub(1)
+            .map_or(&nil, |i| others[i]);
+        let hi = others.get(new_index as usize).copied().unwrap_or(&nil);
+        let position = self.position_between(lo, hi)?;
+        self.commit_sheet_property(sheet_index, SheetProperty::Position(position))
     }
 
     /// Sets a cell as if a user had typed `value` into it.
@@ -4453,6 +4489,68 @@ mod test {
         assert!(names(&a).contains(&"FromB".to_string()));
         assert_eq!(names(&b), names(&a));
         assert_eq!(b.workbook, a.workbook);
+    }
+
+    #[test]
+    fn move_sheet_converges() {
+        let mut a = CollabModel::new(1);
+        for _ in 0..4 {
+            a.new_sheet();
+        }
+        assert_eq!(names(&a), ["Sheet1", "Sheet2", "Sheet3", "Sheet4"]);
+        let setup = a.flush();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        // Different sheets moved concurrently: each write lands on its own register.
+        a.move_sheet(0, 3).unwrap(); // Sheet1 to the end
+        b.move_sheet(3, 0).unwrap(); // Sheet4 to the front
+        let (moved, from_b) = (a.flush(), b.flush());
+        deliver(&mut b, 1, &moved);
+        deliver(&mut a, 2, &from_b);
+        assert_eq!(names(&a), ["Sheet4", "Sheet2", "Sheet3", "Sheet1"]);
+        assert_eq!(names(&b), names(&a));
+
+        // The same sheet from both sides: the later stamp wins, on both replicas.
+        a.move_sheet(1, 3).unwrap(); // Sheet2 to the end
+        b.move_sheet(1, 0).unwrap(); // Sheet2 to the front, later in program order
+        let (from_a, from_b) = (a.flush(), b.flush());
+        deliver(&mut b, 1, &from_a);
+        deliver(&mut a, 2, &from_b);
+        assert_eq!(names(&a), ["Sheet2", "Sheet4", "Sheet3", "Sheet1"]);
+        assert_eq!(names(&b), names(&a));
+
+        // Undoing A's first move restores Sheet1's original key.
+        let undo: Vec<Patch> = moved
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+        deliver(&mut b, 1, &a.flush());
+        assert_eq!(names(&a), ["Sheet2", "Sheet4", "Sheet1", "Sheet3"]);
+        assert_eq!(names(&b), names(&a));
+
+        // A move and an insert aiming at the same gap: no claim on which wins, only that they agree.
+        a.move_sheet(3, 1).unwrap();
+        b.insert_sheet("New", 1, None).unwrap();
+        let (from_a, from_b) = (a.flush(), b.flush());
+        deliver(&mut b, 1, &from_a);
+        deliver(&mut a, 2, &from_b);
+        assert_eq!(names(&a), names(&b));
+        assert_eq!(
+            a.workbook.meta.sheet_positions,
+            b.workbook.meta.sheet_positions
+        );
+
+        // A move to the index it already sits at writes nothing; a bad index is an error.
+        a.move_sheet(1, 1).unwrap();
+        assert!(a.flush().is_empty());
+        assert_eq!(a.move_sheet(9, 0), Err("Sheet index too large".to_string()));
+        assert_eq!(
+            a.move_sheet(0, 9),
+            Err("Target sheet index too large".to_string())
+        );
     }
 
     /// The sheet each display name ended up on. Equality of this across replicas is the real

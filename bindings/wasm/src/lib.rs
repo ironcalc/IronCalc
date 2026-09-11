@@ -1443,8 +1443,6 @@ impl Model {
         self.model.on_apply_named_style(name).map_err(to_js_error)
     }
 
-    // Sheet reordering is not exposed by the collaborative model yet.
-    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "moveSheet")]
     pub fn move_sheet(&mut self, sheet: u32, new_index: u32) -> Result<(), JsError> {
         self.model.move_sheet(sheet, new_index).map_err(to_js_error)
