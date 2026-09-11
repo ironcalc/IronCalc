@@ -25,9 +25,9 @@ use crate::collab::model::{
 };
 use crate::collab::naming::NameRepair;
 use crate::collab::patch::{
-    CellInput, CfPropKind, CfProperty, ColPropKind, ColProperty, ColState, DefinedNameId,
-    DefinedNameProperty, NamedStyleId, NamedStyleProperty, Patch, RowPropKind, RowProperty,
-    RowState, SheetContent, SheetId, SheetProperty, StylePropKind, StyleProperty, WorkbookProperty,
+    CellInput, CfPropKind, CfProperty, ColState, DefinedNameId, DefinedNameProperty, NamedStyleId,
+    NamedStyleProperty, Patch, PropKind, Property, RowState, SheetContent, SheetId, SheetProperty,
+    WorkbookProperty,
 };
 use crate::collab::DynError;
 use crate::constants::{
@@ -111,10 +111,10 @@ fn wins<K: Clone + Eq + Hash>(
 /// Filters out given `props` against the provided timestamp, returning only the more recent ones.
 fn winning<'p, K: Clone + Eq + Hash>(
     registers: &mut HashMap<K, Timestamp>,
-    key: impl Fn(StylePropKind) -> K,
-    props: &'p [StyleProperty],
+    key: impl Fn(PropKind) -> K,
+    props: &'p [Property],
     ts: &Timestamp,
-) -> Vec<&'p StyleProperty> {
+) -> Vec<&'p Property> {
     props
         .iter()
         .filter(|p| wins(registers, &key(p.kind()), ts))
@@ -131,28 +131,30 @@ fn canonical(mut style: Style) -> Style {
 }
 
 /// `own` with `props` written into it, interned. Index 0 is the default style.
-fn overlay(styles: &mut Styles, own: i32, props: &[&StyleProperty]) -> i32 {
+fn overlay(styles: &mut Styles, own: i32, props: &[&Property]) -> i32 {
     let mut style = styles.get_style(own).unwrap_or_default();
     for p in props {
-        p.write(&mut style);
+        p.write_into(&mut style);
     }
     styles.get_style_index_or_create(&canonical(style))
 }
 
 /// `own` reduced to the attributes `kept` admits, the rest at their defaults, interned.
-fn survivors(styles: &mut Styles, own: i32, kept: impl Fn(StylePropKind) -> bool) -> i32 {
+fn filter_styles(styles: &mut Styles, own: i32, kept: impl Fn(PropKind) -> bool) -> i32 {
     let source = styles.get_style(own).unwrap_or_default();
     let mut style = Style::default();
-    for k in StylePropKind::ALL.into_iter().filter(|k| kept(*k)) {
-        StyleProperty::read(&source, k).write(&mut style);
+    for k in PropKind::STYLE.into_iter().filter(|k| kept(*k)) {
+        if let Some(p) = Property::read(&source, k) {
+            p.write_into(&mut style);
+        }
     }
     styles.get_style_index_or_create(&canonical(style))
 }
 
 /// The registers a seeded `style` has to guard: only the attributes it sets. A default attribute
 /// has no entry, as on a row nobody ever formatted, so a seed of a million plain rows costs nothing.
-fn set_kinds(style: &Style) -> impl Iterator<Item = StylePropKind> {
-    StyleProperty::diff(&Style::default(), style)
+fn set_kinds(style: &Style) -> impl Iterator<Item = PropKind> {
+    Property::diff(&Style::default(), style)
         .0
         .into_iter()
         .map(|p| p.kind())
@@ -324,12 +326,12 @@ fn keep_cell(
             .get(&(address.clone(), k))
             .is_some_and(|s| s.hlc > at)
     };
-    let any_style = StylePropKind::ALL.into_iter().any(kept);
+    let any_style = PropKind::STYLE.into_iter().any(kept);
     if newer_value && !any_style {
         cell.set_style(0);
     }
     if any_style {
-        cell.set_style(survivors(styles, cell.get_style(), kept));
+        cell.set_style(filter_styles(styles, cell.get_style(), kept));
         if !newer_value {
             *cell = Cell::EmptyCell {
                 s: cell.get_style(),
@@ -648,8 +650,6 @@ impl CollabModel<'_> {
             Patch::SetCellValue { .. }
             | Patch::SetArrayValue { .. }
             | Patch::SetCellStyle { .. }
-            | Patch::SetRowStyle { .. }
-            | Patch::SetColumnStyle { .. }
             | Patch::SetRowProperty { .. }
             | Patch::SetColumnSpan { .. }
             | Patch::SetNamedStyle { .. }
@@ -818,69 +818,6 @@ impl CollabModel<'_> {
                     }
                 }
             }
-            Patch::SetRowStyle {
-                sheet,
-                row,
-                props,
-                ts: at_ts,
-                ..
-            } => {
-                let Some(i) = self.sheet_index(*sheet) else {
-                    return;
-                };
-                let ts = at_ts.as_ref().unwrap_or(ts);
-                let index = &mut self.workbook.worksheets[i].index;
-                let row_deleted = if let Some(t) = index.rows.removed_at(row) {
-                    t >= ts.hlc
-                } else {
-                    false
-                };
-                let won = winning(
-                    &mut index.registers.row_styles,
-                    |k| (row.clone(), k),
-                    props,
-                    ts,
-                );
-                if row_deleted || won.is_empty() {
-                    return;
-                }
-                let own = self.workbook.worksheets[i]
-                    .rows
-                    .iter()
-                    .find(|r| &r.r == row)
-                    .filter(|r| r.custom_format)
-                    .map_or(0, |r| r.s);
-                let s = overlay(&mut self.workbook.styles, own, &won);
-                let record = row_record(&mut self.workbook.worksheets[i], row);
-                record.s = s;
-                record.custom_format = s != 0;
-            }
-            Patch::SetColumnStyle {
-                sheet,
-                span,
-                props,
-                ts: at_ts,
-                ..
-            } => {
-                let Some(i) = self.sheet_index(*sheet) else {
-                    return;
-                };
-                let ts = at_ts.as_ref().unwrap_or(ts);
-                let registers = &mut self.workbook.worksheets[i].index.registers;
-                let won = winning(&mut registers.col_styles, |k| (span.clone(), k), props, ts);
-                if won.is_empty() {
-                    return;
-                }
-                let own = self.workbook.worksheets[i]
-                    .cols
-                    .iter()
-                    .find(|c| (&c.min, &c.max) == (&span.0, &span.1))
-                    .and_then(|c| c.style)
-                    .unwrap_or(0);
-                let s = overlay(&mut self.workbook.styles, own, &won);
-                let record = col_record(&mut self.workbook.worksheets[i], span);
-                record.style = (s != 0).then_some(s);
-            }
             Patch::InsertRows { sheet, keys } => {
                 let Some(i) = self.sheet_index(*sheet) else {
                     return;
@@ -932,21 +869,15 @@ impl CollabModel<'_> {
                             .get(&(key.clone(), kind))
                             .is_some_and(|guard| guard.hlc > ts.hlc)
                     };
-                    let kept_style = |kind| {
-                        registers
-                            .row_styles
-                            .get(&(key.clone(), kind))
-                            .is_some_and(|guard| guard.hlc > ts.hlc)
-                    };
                     if let Ok(at) = sheet.rows.binary_search_by(|row| row.r.cmp(key)) {
                         let row = &mut sheet.rows[at];
-                        row.s = survivors(styles, row.s, kept_style);
+                        row.s = filter_styles(styles, row.s, kept);
                         row.custom_format = row.s != 0;
-                        if !kept(RowPropKind::Height) {
+                        if !kept(PropKind::Height) {
                             row.height = DEFAULT_ROW_HEIGHT / ROW_HEIGHT_FACTOR;
                             row.custom_height = false;
                         }
-                        if !kept(RowPropKind::Hidden) {
+                        if !kept(PropKind::Hidden) {
                             row.hidden = false;
                         }
                         if row.is_empty() {
@@ -1001,7 +932,7 @@ impl CollabModel<'_> {
             Patch::SetRowProperty {
                 sheet,
                 row,
-                property,
+                props,
                 ts: at_ts,
                 ..
             } => {
@@ -1016,28 +947,36 @@ impl CollabModel<'_> {
                 } else {
                     false
                 };
-                if row_deleted
-                    || !wins(
-                        &mut index.registers.rows,
-                        &(row.clone(), property.kind()),
-                        ts,
-                    )
-                {
+                let won = winning(&mut index.registers.rows, |k| (row.clone(), k), props, ts);
+                if row_deleted || won.is_empty() {
                     return;
                 }
+                let own = self.workbook.worksheets[i]
+                    .rows
+                    .iter()
+                    .find(|r| &r.r == row)
+                    .filter(|r| r.custom_format)
+                    .map_or(0, |r| r.s);
+                let s = overlay(&mut self.workbook.styles, own, &won);
                 let record = row_record(&mut self.workbook.worksheets[i], row);
-                match property {
-                    RowProperty::Height(height) => {
-                        record.height = *height;
-                        record.custom_height = true;
+                record.s = s;
+                record.custom_format = s != 0;
+                // A row has no width; the kinds it does not own are simply skipped.
+                for property in won {
+                    match property {
+                        Property::Height(height) => {
+                            record.height = *height;
+                            record.custom_height = true;
+                        }
+                        Property::Hidden(hidden) => record.hidden = *hidden,
+                        _ => {}
                     }
-                    RowProperty::Hidden(hidden) => record.hidden = *hidden,
                 }
             }
             Patch::SetColumnSpan {
                 sheet,
                 span,
-                property,
+                props,
                 ts: at_ts,
                 ..
             } => {
@@ -1046,20 +985,29 @@ impl CollabModel<'_> {
                 };
                 let ts = at_ts.as_ref().unwrap_or(ts);
                 let registers = &mut self.workbook.worksheets[i].index.registers;
-                if !wins(
-                    &mut registers.col_spans,
-                    &(span.clone(), property.kind()),
-                    ts,
-                ) {
+                let won = winning(&mut registers.col_spans, |k| (span.clone(), k), props, ts);
+                if won.is_empty() {
                     return;
                 }
+                let own = self.workbook.worksheets[i]
+                    .cols
+                    .iter()
+                    .find(|c| (&c.min, &c.max) == (&span.0, &span.1))
+                    .and_then(|c| c.style)
+                    .unwrap_or(0);
+                let s = overlay(&mut self.workbook.styles, own, &won);
                 let record = col_record(&mut self.workbook.worksheets[i], span);
-                match property {
-                    ColProperty::Width(width) => {
-                        record.width = *width;
-                        record.custom_width = true;
+                record.style = (s != 0).then_some(s);
+                // A column has no height; the kinds it does not own are simply skipped.
+                for property in won {
+                    match property {
+                        Property::Width(width) => {
+                            record.width = *width;
+                            record.custom_width = true;
+                        }
+                        Property::Hidden(hidden) => record.hidden = *hidden,
+                        _ => {}
                     }
-                    ColProperty::Hidden(hidden) => record.hidden = *hidden,
                 }
             }
             Patch::SetMergedRange {
@@ -1462,15 +1410,18 @@ impl CollabModel<'_> {
             None => 0,
         };
         let sheet = &mut self.workbook.worksheets[i];
-        for kind in [RowPropKind::Height, RowPropKind::Hidden] {
-            sheet.index.registers.rows.insert((key.clone(), kind), *ts);
+        // Only the registers the seed actually sets: a default height is not a write, so a snapshot
+        // never restores one as custom.
+        if state.custom_height {
+            sheet.index.registers.rows.insert((key.clone(), PropKind::Height), *ts);
         }
-        for kind in state.style.iter().flat_map(|style| set_kinds(style)) {
-            sheet
-                .index
-                .registers
-                .row_styles
-                .insert((key.clone(), kind), *ts);
+        if state.hidden {
+            sheet.index.registers.rows.insert((key.clone(), PropKind::Hidden), *ts);
+        }
+        if let Some(style) = &state.style {
+            for kind in set_kinds(style) {
+                sheet.index.registers.rows.insert((key.clone(), kind), *ts);
+            }
         }
         sheet.rows.push(Row {
             r: key.clone(),
@@ -1491,19 +1442,16 @@ impl CollabModel<'_> {
     ) {
         let style = state.style.as_ref().map(|style| self.intern_style(style));
         let sheet = &mut self.workbook.worksheets[i];
-        for kind in [ColPropKind::Width, ColPropKind::Hidden] {
-            sheet
-                .index
-                .registers
-                .col_spans
-                .insert((span.clone(), kind), *ts);
+        if state.custom_width {
+            sheet.index.registers.col_spans.insert((span.clone(), PropKind::Width), *ts);
         }
-        for kind in state.style.iter().flat_map(|style| set_kinds(style)) {
-            sheet
-                .index
-                .registers
-                .col_styles
-                .insert((span.clone(), kind), *ts);
+        if state.hidden {
+            sheet.index.registers.col_spans.insert((span.clone(), PropKind::Hidden), *ts);
+        }
+        if let Some(style) = &state.style {
+            for kind in set_kinds(style) {
+                sheet.index.registers.col_spans.insert((span.clone(), kind), *ts);
+            }
         }
         sheet.cols.push(Col {
             min: span.0.clone(),
@@ -1721,31 +1669,31 @@ mod test {
                 Patch::SetCellStyle {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[0].clone()),
-                    props: vec![StyleProperty::QuotePrefix(true)],
+                    props: vec![Property::QuotePrefix(true)],
                     ts: None,
                     prev: Vec::new(),
                 },
                 Patch::SetRowProperty {
                     sheet: SHEET,
                     row: rows[0].clone(),
-                    property: RowProperty::Height(33.0),
+                    props: vec![Property::Height(33.0)],
                     ts: None,
-                    prev: None,
+                    prev: Vec::new(),
                 },
                 Patch::SetColumnSpan {
                     sheet: SHEET,
                     span: (cols[0].clone(), cols[1].clone()),
-                    property: ColProperty::Width(120.0),
+                    props: vec![Property::Width(120.0)],
                     ts: None,
-                    prev: None,
+                    prev: Vec::new(),
                 },
                 // The whole-sheet span: the register `(NULL, NULL)` names and ordinal code cannot.
                 Patch::SetColumnSpan {
                     sheet: SHEET,
                     span: (FractionalKey::NULL, FractionalKey::NULL),
-                    property: ColProperty::Hidden(true),
+                    props: vec![Property::Hidden(true)],
                     ts: None,
-                    prev: None,
+                    prev: Vec::new(),
                 },
                 Patch::SetSheetProperty {
                     sheet: SHEET,
@@ -2161,16 +2109,16 @@ mod test {
                 Patch::SetColumnSpan {
                     sheet: SHEET,
                     span: (cols[0].clone(), cols[3].clone()),
-                    property: ColProperty::Width(10.0),
+                    props: vec![Property::Width(10.0)],
                     ts: None,
-                    prev: None,
+                    prev: Vec::new(),
                 },
                 Patch::SetColumnSpan {
                     sheet: SHEET,
                     span: (cols[0].clone(), cols[3].clone()),
-                    property: ColProperty::Hidden(true),
+                    props: vec![Property::Hidden(true)],
                     ts: None,
-                    prev: None,
+                    prev: Vec::new(),
                 },
                 Patch::AddConditionalFormat {
                     sheet: SHEET,
@@ -2193,9 +2141,9 @@ mod test {
                 Patch::SetColumnSpan {
                     sheet: SHEET,
                     span: (cols[1].clone(), cols[1].clone()),
-                    property: ColProperty::Width(20.0),
+                    props: vec![Property::Width(20.0)],
                     ts: None,
-                    prev: None,
+                    prev: Vec::new(),
                 },
                 // The second rule takes a position below the first one's identity key.
                 Patch::SetConditionalFormat {
@@ -2222,7 +2170,7 @@ mod test {
         // compared to see which span won the width.
         let width = |m: &CollabModel, column: i32| {
             m.workbook.worksheets[0]
-                .covering_col(column, ColPropKind::Width)
+                .covering_col(column, PropKind::Width)
                 .map(|col| col.width)
         };
         assert_eq!(width(&a, 1), width(&a, 3));
@@ -2275,7 +2223,7 @@ mod test {
                 Patch::SetCellStyle {
                     sheet: SHEET,
                     at: (rows[0].clone(), cols[0].clone()),
-                    props: vec![StyleProperty::QuotePrefix(true)],
+                    props: vec![Property::QuotePrefix(true)],
                     ts: None,
                     prev: Vec::new(),
                 },

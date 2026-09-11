@@ -137,40 +137,6 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                     });
                 }
             }
-            Patch::SetRowStyle {
-                sheet,
-                row,
-                props,
-                prev,
-                ..
-            } => {
-                if !prev.is_empty() {
-                    out.push(Patch::SetRowStyle {
-                        sheet: *sheet,
-                        row: row.clone(),
-                        props: prev.clone(),
-                        ts: None,
-                        prev: props.clone(),
-                    });
-                }
-            }
-            Patch::SetColumnStyle {
-                sheet,
-                span,
-                props,
-                prev,
-                ..
-            } => {
-                if !prev.is_empty() {
-                    out.push(Patch::SetColumnStyle {
-                        sheet: *sheet,
-                        span: span.clone(),
-                        props: prev.clone(),
-                        ts: None,
-                        prev: props.clone(),
-                    });
-                }
-            }
             Patch::InsertRows { sheet, keys } => out.push(Patch::DeleteRows {
                 sheet: *sheet,
                 keys: keys.clone(),
@@ -179,10 +145,9 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                     .map(|k| RowSnapshot {
                         key: k.clone(),
                         state: RowState::default(),
-                        style: Vec::new(),
+                        props: Vec::new(),
                         cell_values: Vec::new(),
                         cell_styles: Vec::new(),
-                        prop_ts: Vec::new(),
                     })
                     .collect(),
             }),
@@ -194,36 +159,43 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                     .map(|k| ColumnSnapshot {
                         key: k.clone(),
                         state: ColState::default(),
-                        style: Vec::new(),
+                        props: Vec::new(),
                         cell_values: Vec::new(),
                         cell_styles: Vec::new(),
-                        prop_ts: Vec::new(),
                     })
                     .collect(),
             }),
             Patch::SetRowProperty {
-                sheet, row, prev, ..
+                sheet,
+                row,
+                props,
+                prev,
+                ..
             } => {
-                if let Some(property) = prev {
+                if !prev.is_empty() {
                     out.push(Patch::SetRowProperty {
                         sheet: *sheet,
                         row: row.clone(),
-                        property: property.clone(),
+                        props: prev.clone(),
                         ts: None,
-                        prev: None,
+                        prev: props.clone(),
                     });
                 }
             }
             Patch::SetColumnSpan {
-                sheet, span, prev, ..
+                sheet,
+                span,
+                props,
+                prev,
+                ..
             } => {
-                if let Some(property) = prev {
+                if !prev.is_empty() {
                     out.push(Patch::SetColumnSpan {
                         sheet: *sheet,
                         span: span.clone(),
-                        property: property.clone(),
+                        props: prev.clone(),
                         ts: None,
-                        prev: None,
+                        prev: props.clone(),
                     });
                 }
             }
@@ -323,40 +295,13 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                     keys: keys.clone(),
                 });
                 for snap in prev {
-                    let state = &snap.state;
-                    let ts = |kind| {
-                        Some(
-                            snap.prop_ts
-                                .iter()
-                                .find_map(|(k, ts)| if *k == kind { Some(*ts) } else { None })
-                                .unwrap_or_default(), // zero timestamp so it loses over any more recent
-                        )
-                    };
-                    for (props, at) in &snap.style {
-                        out.push(Patch::SetRowStyle {
+                    for (props, at) in &snap.props {
+                        out.push(Patch::SetRowProperty {
                             sheet: *sheet,
                             row: snap.key.clone(),
                             props: props.clone(),
                             ts: Some(*at),
                             prev: Vec::new(),
-                        });
-                    }
-                    if state.custom_height {
-                        out.push(Patch::SetRowProperty {
-                            sheet: *sheet,
-                            row: snap.key.clone(),
-                            property: RowProperty::Height(state.height),
-                            ts: ts(RowPropKind::Height),
-                            prev: None,
-                        });
-                    }
-                    if state.hidden {
-                        out.push(Patch::SetRowProperty {
-                            sheet: *sheet,
-                            row: snap.key.clone(),
-                            property: RowProperty::Hidden(true),
-                            ts: ts(RowPropKind::Hidden),
-                            prev: None,
                         });
                     }
                 }
@@ -392,41 +337,14 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                     keys: keys.clone(),
                 });
                 for snap in prev {
-                    let state = &snap.state;
                     let span = (snap.key.clone(), snap.key.clone());
-                    let ts = |kind| {
-                        Some(
-                            snap.prop_ts
-                                .iter()
-                                .find_map(|(k, ts)| if *k == kind { Some(*ts) } else { None })
-                                .unwrap_or_default(), // zero timestamp so it loses over any more recent
-                        )
-                    };
-                    for (props, at) in &snap.style {
-                        out.push(Patch::SetColumnStyle {
+                    for (props, at) in &snap.props {
+                        out.push(Patch::SetColumnSpan {
                             sheet: *sheet,
                             span: span.clone(),
                             props: props.clone(),
                             ts: Some(*at),
                             prev: Vec::new(),
-                        });
-                    }
-                    if state.custom_width {
-                        out.push(Patch::SetColumnSpan {
-                            sheet: *sheet,
-                            span: span.clone(),
-                            property: ColProperty::Width(state.width),
-                            ts: ts(ColPropKind::Width),
-                            prev: None,
-                        });
-                    }
-                    if state.hidden {
-                        out.push(Patch::SetColumnSpan {
-                            sheet: *sheet,
-                            span,
-                            property: ColProperty::Hidden(true),
-                            ts: ts(ColPropKind::Hidden),
-                            prev: None,
                         });
                     }
                 }
@@ -546,14 +464,14 @@ pub enum Patch {
     SetCellStyle {
         sheet: SheetId,
         at: StableCellAddress,
-        props: Vec<StyleProperty>,
+        props: Vec<Property>,
 
         /// See [`Patch::SetCellValue`]'s `ts`.
         ts: Option<Timestamp>,
 
         /// What each register in `props` held before, same order. Undo data; empty from a peer.
         #[bitcode(skip)]
-        prev: Vec<StyleProperty>,
+        prev: Vec<Property>,
     },
 
     // ---- Rows ----
@@ -580,17 +498,18 @@ pub enum Patch {
         #[bitcode(skip)]
         prev: Vec<FractionalKey>,
     },
+    /// The listed properties of the row. `Width` does not apply to a row and is ignored.
     SetRowProperty {
         sheet: SheetId,
         row: FractionalKey,
-        property: RowProperty,
+        props: Vec<Property>,
 
         /// See [`Patch::SetCellValue`]'s `ts`.
         ts: Option<Timestamp>,
 
-        /// Same discriminant as `property`, holding the value it replaced.
+        /// What each register in `props` held before, same order. Undo data; empty from a peer.
         #[bitcode(skip)]
-        prev: Option<RowProperty>,
+        prev: Vec<Property>,
     },
 
     // ---- Columns ----
@@ -624,14 +543,14 @@ pub enum Patch {
     SetColumnSpan {
         sheet: SheetId,
         span: (FractionalKey, FractionalKey),
-        property: ColProperty,
+        props: Vec<Property>,
 
         /// See [`Patch::SetCellValue`]'s `ts`.
         ts: Option<Timestamp>,
 
-        /// Same discriminant as `property`, holding the value it replaced.
+        /// What each register in `props` held before, same order. Undo data; empty from a peer.
         #[bitcode(skip)]
-        prev: Option<ColProperty>,
+        prev: Vec<Property>,
     },
 
     // ---- Sheets ----
@@ -743,27 +662,6 @@ pub enum Patch {
         #[bitcode(skip)]
         prev: Option<Comment<Stable>>,
     },
-
-    /// [`Patch::SetCellStyle`] for a row's own style.
-    SetRowStyle {
-        sheet: SheetId,
-        row: FractionalKey,
-        props: Vec<StyleProperty>,
-        ts: Option<Timestamp>,
-
-        #[bitcode(skip)]
-        prev: Vec<StyleProperty>,
-    },
-    /// [`Patch::SetCellStyle`] for a column span's style. See [`Patch::SetColumnSpan`] for spans.
-    SetColumnStyle {
-        sheet: SheetId,
-        span: (FractionalKey, FractionalKey),
-        props: Vec<StyleProperty>,
-        ts: Option<Timestamp>,
-
-        #[bitcode(skip)]
-        prev: Vec<StyleProperty>,
-    },
 }
 
 impl Patch {
@@ -788,9 +686,7 @@ impl Patch {
             | Patch::MoveConditionalFormats { sheet, .. }
             | Patch::SetConditionalFormat { sheet, .. }
             | Patch::SetMergedRange { sheet, .. }
-            | Patch::SetComment { sheet, .. }
-            | Patch::SetRowStyle { sheet, .. }
-            | Patch::SetColumnStyle { sheet, .. } => Some(*sheet),
+            | Patch::SetComment { sheet, .. } => Some(*sheet),
             // `SetDefinedName`'s scope is a name scope, not a place a write lands.
             Patch::AddSheet { .. }
             | Patch::DeleteSheet { .. }
@@ -801,56 +697,12 @@ impl Patch {
     }
 }
 
-/// A property of a single row. Each variant is a distinct register.
+/// A property of a row, a column span or a cell.
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
-pub enum RowProperty {
+pub enum Property {
     Height(f64),
-    Hidden(bool),
-}
-
-/// The register a [`RowProperty`] writes to, without its value.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
-pub enum RowPropKind {
-    Height,
-    Hidden,
-}
-
-impl RowProperty {
-    pub fn kind(&self) -> RowPropKind {
-        match self {
-            RowProperty::Height(_) => RowPropKind::Height,
-            RowProperty::Hidden(_) => RowPropKind::Hidden,
-        }
-    }
-}
-
-/// A property of a single column. Each variant is a distinct register.
-#[derive(Clone, Debug, PartialEq, Encode, Decode)]
-pub enum ColProperty {
     Width(f64),
     Hidden(bool),
-}
-
-/// The register a [`ColProperty`] writes to, without its value.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
-pub enum ColPropKind {
-    Width,
-    Hidden,
-}
-
-impl ColProperty {
-    pub fn kind(&self) -> ColPropKind {
-        match self {
-            ColProperty::Width(_) => ColPropKind::Width,
-            ColProperty::Hidden(_) => ColPropKind::Hidden,
-        }
-    }
-}
-
-/// One formatting attribute. Each variant is a distinct register, so concurrent edits to different
-/// attributes of one cell, row or column both survive; only writes to the same attribute contend.
-#[derive(Clone, Debug, PartialEq, Encode, Decode)]
-pub enum StyleProperty {
     NumFmt(String),
     QuotePrefix(bool),
     FontBold(bool),
@@ -875,9 +727,12 @@ pub enum StyleProperty {
     WrapText(bool),
 }
 
-/// The register a [`StyleProperty`] writes to, without its value.
+/// The register a [`Property`] writes to, without its value.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
-pub enum StylePropKind {
+pub enum PropKind {
+    Height,
+    Width,
+    Hidden,
     NumFmt,
     QuotePrefix,
     FontBold,
@@ -902,132 +757,160 @@ pub enum StylePropKind {
     WrapText,
 }
 
-impl StylePropKind {
-    pub const ALL: [StylePropKind; 22] = [
-        StylePropKind::NumFmt,
-        StylePropKind::QuotePrefix,
-        StylePropKind::FontBold,
-        StylePropKind::FontItalic,
-        StylePropKind::FontUnderline,
-        StylePropKind::FontStrike,
-        StylePropKind::FontSize,
-        StylePropKind::FontColor,
-        StylePropKind::FontName,
-        StylePropKind::FontFamily,
-        StylePropKind::FontScheme,
-        StylePropKind::FillColor,
-        StylePropKind::BorderLeft,
-        StylePropKind::BorderRight,
-        StylePropKind::BorderTop,
-        StylePropKind::BorderBottom,
-        StylePropKind::BorderDiagonal,
-        StylePropKind::DiagonalUp,
-        StylePropKind::DiagonalDown,
-        StylePropKind::AlignHorizontal,
-        StylePropKind::AlignVertical,
-        StylePropKind::WrapText,
+impl PropKind {
+    /// Every kind.
+    pub const ALL: [PropKind; 25] = [
+        PropKind::Height,
+        PropKind::Width,
+        PropKind::Hidden,
+        PropKind::NumFmt,
+        PropKind::QuotePrefix,
+        PropKind::FontBold,
+        PropKind::FontItalic,
+        PropKind::FontUnderline,
+        PropKind::FontStrike,
+        PropKind::FontSize,
+        PropKind::FontColor,
+        PropKind::FontName,
+        PropKind::FontFamily,
+        PropKind::FontScheme,
+        PropKind::FillColor,
+        PropKind::BorderLeft,
+        PropKind::BorderRight,
+        PropKind::BorderTop,
+        PropKind::BorderBottom,
+        PropKind::BorderDiagonal,
+        PropKind::DiagonalUp,
+        PropKind::DiagonalDown,
+        PropKind::AlignHorizontal,
+        PropKind::AlignVertical,
+        PropKind::WrapText,
+    ];
+
+    /// The formatting kinds: what a [`Style`] holds.
+    pub const STYLE: [PropKind; 22] = [
+        PropKind::NumFmt,
+        PropKind::QuotePrefix,
+        PropKind::FontBold,
+        PropKind::FontItalic,
+        PropKind::FontUnderline,
+        PropKind::FontStrike,
+        PropKind::FontSize,
+        PropKind::FontColor,
+        PropKind::FontName,
+        PropKind::FontFamily,
+        PropKind::FontScheme,
+        PropKind::FillColor,
+        PropKind::BorderLeft,
+        PropKind::BorderRight,
+        PropKind::BorderTop,
+        PropKind::BorderBottom,
+        PropKind::BorderDiagonal,
+        PropKind::DiagonalUp,
+        PropKind::DiagonalDown,
+        PropKind::AlignHorizontal,
+        PropKind::AlignVertical,
+        PropKind::WrapText,
     ];
 }
 
-impl StyleProperty {
-    pub fn kind(&self) -> StylePropKind {
+impl Property {
+    pub fn kind(&self) -> PropKind {
         match self {
-            StyleProperty::NumFmt(_) => StylePropKind::NumFmt,
-            StyleProperty::QuotePrefix(_) => StylePropKind::QuotePrefix,
-            StyleProperty::FontBold(_) => StylePropKind::FontBold,
-            StyleProperty::FontItalic(_) => StylePropKind::FontItalic,
-            StyleProperty::FontUnderline(_) => StylePropKind::FontUnderline,
-            StyleProperty::FontStrike(_) => StylePropKind::FontStrike,
-            StyleProperty::FontSize(_) => StylePropKind::FontSize,
-            StyleProperty::FontColor(_) => StylePropKind::FontColor,
-            StyleProperty::FontName(_) => StylePropKind::FontName,
-            StyleProperty::FontFamily(_) => StylePropKind::FontFamily,
-            StyleProperty::FontScheme(_) => StylePropKind::FontScheme,
-            StyleProperty::FillColor(_) => StylePropKind::FillColor,
-            StyleProperty::BorderLeft(_) => StylePropKind::BorderLeft,
-            StyleProperty::BorderRight(_) => StylePropKind::BorderRight,
-            StyleProperty::BorderTop(_) => StylePropKind::BorderTop,
-            StyleProperty::BorderBottom(_) => StylePropKind::BorderBottom,
-            StyleProperty::BorderDiagonal(_) => StylePropKind::BorderDiagonal,
-            StyleProperty::DiagonalUp(_) => StylePropKind::DiagonalUp,
-            StyleProperty::DiagonalDown(_) => StylePropKind::DiagonalDown,
-            StyleProperty::AlignHorizontal(_) => StylePropKind::AlignHorizontal,
-            StyleProperty::AlignVertical(_) => StylePropKind::AlignVertical,
-            StyleProperty::WrapText(_) => StylePropKind::WrapText,
+            Property::Height(_) => PropKind::Height,
+            Property::Width(_) => PropKind::Width,
+            Property::Hidden(_) => PropKind::Hidden,
+            Property::NumFmt(_) => PropKind::NumFmt,
+            Property::QuotePrefix(_) => PropKind::QuotePrefix,
+            Property::FontBold(_) => PropKind::FontBold,
+            Property::FontItalic(_) => PropKind::FontItalic,
+            Property::FontUnderline(_) => PropKind::FontUnderline,
+            Property::FontStrike(_) => PropKind::FontStrike,
+            Property::FontSize(_) => PropKind::FontSize,
+            Property::FontColor(_) => PropKind::FontColor,
+            Property::FontName(_) => PropKind::FontName,
+            Property::FontFamily(_) => PropKind::FontFamily,
+            Property::FontScheme(_) => PropKind::FontScheme,
+            Property::FillColor(_) => PropKind::FillColor,
+            Property::BorderLeft(_) => PropKind::BorderLeft,
+            Property::BorderRight(_) => PropKind::BorderRight,
+            Property::BorderTop(_) => PropKind::BorderTop,
+            Property::BorderBottom(_) => PropKind::BorderBottom,
+            Property::BorderDiagonal(_) => PropKind::BorderDiagonal,
+            Property::DiagonalUp(_) => PropKind::DiagonalUp,
+            Property::DiagonalDown(_) => PropKind::DiagonalDown,
+            Property::AlignHorizontal(_) => PropKind::AlignHorizontal,
+            Property::AlignVertical(_) => PropKind::AlignVertical,
+            Property::WrapText(_) => PropKind::WrapText,
         }
     }
 
-    /// The value `style` holds for `kind`. An absent alignment reads as its defaults, which is what
-    /// a style without one draws with.
-    pub fn read(style: &Style, kind: StylePropKind) -> StyleProperty {
+    /// What `style` holds for `kind`; `None` for a layout kind, which is not formatting.
+    pub fn read(style: &Style, kind: PropKind) -> Option<Property> {
         let alignment = style.alignment.clone().unwrap_or_default();
-        match kind {
-            StylePropKind::NumFmt => StyleProperty::NumFmt(style.num_fmt.clone()),
-            StylePropKind::QuotePrefix => StyleProperty::QuotePrefix(style.quote_prefix),
-            StylePropKind::FontBold => StyleProperty::FontBold(style.font.b),
-            StylePropKind::FontItalic => StyleProperty::FontItalic(style.font.i),
-            StylePropKind::FontUnderline => StyleProperty::FontUnderline(style.font.u),
-            StylePropKind::FontStrike => StyleProperty::FontStrike(style.font.strike),
-            StylePropKind::FontSize => StyleProperty::FontSize(style.font.sz),
-            StylePropKind::FontColor => StyleProperty::FontColor(style.font.color.clone()),
-            StylePropKind::FontName => StyleProperty::FontName(style.font.name.clone()),
-            StylePropKind::FontFamily => StyleProperty::FontFamily(style.font.family),
-            StylePropKind::FontScheme => StyleProperty::FontScheme(style.font.scheme.clone()),
-            StylePropKind::FillColor => StyleProperty::FillColor(style.fill.color.clone()),
-            StylePropKind::BorderLeft => StyleProperty::BorderLeft(style.border.left.clone()),
-            StylePropKind::BorderRight => StyleProperty::BorderRight(style.border.right.clone()),
-            StylePropKind::BorderTop => StyleProperty::BorderTop(style.border.top.clone()),
-            StylePropKind::BorderBottom => StyleProperty::BorderBottom(style.border.bottom.clone()),
-            StylePropKind::BorderDiagonal => {
-                StyleProperty::BorderDiagonal(style.border.diagonal.clone())
-            }
-            StylePropKind::DiagonalUp => StyleProperty::DiagonalUp(style.border.diagonal_up),
-            StylePropKind::DiagonalDown => StyleProperty::DiagonalDown(style.border.diagonal_down),
-            StylePropKind::AlignHorizontal => {
-                StyleProperty::AlignHorizontal(alignment.horizontal.clone())
-            }
-            StylePropKind::AlignVertical => {
-                StyleProperty::AlignVertical(alignment.vertical.clone())
-            }
-            StylePropKind::WrapText => StyleProperty::WrapText(alignment.wrap_text),
-        }
+        Some(match kind {
+            PropKind::Height | PropKind::Width | PropKind::Hidden => return None,
+            PropKind::NumFmt => Property::NumFmt(style.num_fmt.clone()),
+            PropKind::QuotePrefix => Property::QuotePrefix(style.quote_prefix),
+            PropKind::FontBold => Property::FontBold(style.font.b),
+            PropKind::FontItalic => Property::FontItalic(style.font.i),
+            PropKind::FontUnderline => Property::FontUnderline(style.font.u),
+            PropKind::FontStrike => Property::FontStrike(style.font.strike),
+            PropKind::FontSize => Property::FontSize(style.font.sz),
+            PropKind::FontColor => Property::FontColor(style.font.color.clone()),
+            PropKind::FontName => Property::FontName(style.font.name.clone()),
+            PropKind::FontFamily => Property::FontFamily(style.font.family),
+            PropKind::FontScheme => Property::FontScheme(style.font.scheme.clone()),
+            PropKind::FillColor => Property::FillColor(style.fill.color.clone()),
+            PropKind::BorderLeft => Property::BorderLeft(style.border.left.clone()),
+            PropKind::BorderRight => Property::BorderRight(style.border.right.clone()),
+            PropKind::BorderTop => Property::BorderTop(style.border.top.clone()),
+            PropKind::BorderBottom => Property::BorderBottom(style.border.bottom.clone()),
+            PropKind::BorderDiagonal => Property::BorderDiagonal(style.border.diagonal.clone()),
+            PropKind::DiagonalUp => Property::DiagonalUp(style.border.diagonal_up),
+            PropKind::DiagonalDown => Property::DiagonalDown(style.border.diagonal_down),
+            PropKind::AlignHorizontal => Property::AlignHorizontal(alignment.horizontal.clone()),
+            PropKind::AlignVertical => Property::AlignVertical(alignment.vertical.clone()),
+            PropKind::WrapText => Property::WrapText(alignment.wrap_text),
+        })
     }
 
-    /// Writes this value into `style`.
-    pub fn write(&self, style: &mut Style) {
+    /// Writes a formatting value into `style`.
+    pub fn write_into(&self, style: &mut Style) {
         match self {
-            StyleProperty::NumFmt(v) => style.num_fmt = v.clone(),
-            StyleProperty::QuotePrefix(v) => style.quote_prefix = *v,
-            StyleProperty::FontBold(v) => style.font.b = *v,
-            StyleProperty::FontItalic(v) => style.font.i = *v,
-            StyleProperty::FontUnderline(v) => style.font.u = *v,
-            StyleProperty::FontStrike(v) => style.font.strike = *v,
-            StyleProperty::FontSize(v) => style.font.sz = *v,
-            StyleProperty::FontColor(v) => style.font.color = v.clone(),
-            StyleProperty::FontName(v) => style.font.name = v.clone(),
-            StyleProperty::FontFamily(v) => style.font.family = *v,
-            StyleProperty::FontScheme(v) => style.font.scheme = v.clone(),
-            StyleProperty::FillColor(v) => style.fill.color = v.clone(),
-            StyleProperty::BorderLeft(v) => style.border.left = v.clone(),
-            StyleProperty::BorderRight(v) => style.border.right = v.clone(),
-            StyleProperty::BorderTop(v) => style.border.top = v.clone(),
-            StyleProperty::BorderBottom(v) => style.border.bottom = v.clone(),
-            StyleProperty::BorderDiagonal(v) => style.border.diagonal = v.clone(),
-            StyleProperty::DiagonalUp(v) => style.border.diagonal_up = *v,
-            StyleProperty::DiagonalDown(v) => style.border.diagonal_down = *v,
-            StyleProperty::AlignHorizontal(v) => {
+            Property::Height(_) | Property::Width(_) | Property::Hidden(_) => {}
+            Property::NumFmt(v) => style.num_fmt = v.clone(),
+            Property::QuotePrefix(v) => style.quote_prefix = *v,
+            Property::FontBold(v) => style.font.b = *v,
+            Property::FontItalic(v) => style.font.i = *v,
+            Property::FontUnderline(v) => style.font.u = *v,
+            Property::FontStrike(v) => style.font.strike = *v,
+            Property::FontSize(v) => style.font.sz = *v,
+            Property::FontColor(v) => style.font.color = v.clone(),
+            Property::FontName(v) => style.font.name = v.clone(),
+            Property::FontFamily(v) => style.font.family = *v,
+            Property::FontScheme(v) => style.font.scheme = v.clone(),
+            Property::FillColor(v) => style.fill.color = v.clone(),
+            Property::BorderLeft(v) => style.border.left = v.clone(),
+            Property::BorderRight(v) => style.border.right = v.clone(),
+            Property::BorderTop(v) => style.border.top = v.clone(),
+            Property::BorderBottom(v) => style.border.bottom = v.clone(),
+            Property::BorderDiagonal(v) => style.border.diagonal = v.clone(),
+            Property::DiagonalUp(v) => style.border.diagonal_up = *v,
+            Property::DiagonalDown(v) => style.border.diagonal_down = *v,
+            Property::AlignHorizontal(v) => {
                 style
                     .alignment
                     .get_or_insert_with(Default::default)
                     .horizontal = v.clone()
             }
-            StyleProperty::AlignVertical(v) => {
+            Property::AlignVertical(v) => {
                 style
                     .alignment
                     .get_or_insert_with(Default::default)
                     .vertical = v.clone()
             }
-            StyleProperty::WrapText(v) => {
+            Property::WrapText(v) => {
                 style
                     .alignment
                     .get_or_insert_with(Default::default)
@@ -1036,21 +919,25 @@ impl StyleProperty {
         }
     }
 
-    /// Every attribute of `style`, in [`StylePropKind::ALL`] order.
-    pub fn all(style: &Style) -> Vec<StyleProperty> {
-        StylePropKind::ALL
+    /// Every formatting attribute of `style`, in [`PropKind::STYLE`] order.
+    pub fn all(style: &Style) -> Vec<Property> {
+        PropKind::STYLE
             .into_iter()
-            .map(|kind| StyleProperty::read(style, kind))
+            .filter_map(|kind| Property::read(style, kind))
             .collect()
     }
 
-    /// `(new, old)` split into two lists, for every attribute where `new` differs from `old`.
-    pub fn diff(old: &Style, new: &Style) -> (Vec<StyleProperty>, Vec<StyleProperty>) {
+    /// `(new, old)` split into two lists, for every formatting attribute
+    /// (and only for formatting attributes) where they differ.
+    pub fn diff(old: &Style, new: &Style) -> (Vec<Property>, Vec<Property>) {
         let mut props = Vec::new();
         let mut prev = Vec::new();
-        for kind in StylePropKind::ALL {
-            let before = StyleProperty::read(old, kind);
-            let after = StyleProperty::read(new, kind);
+        for kind in PropKind::STYLE {
+            let (Some(before), Some(after)) =
+                (Property::read(old, kind), Property::read(new, kind))
+            else {
+                continue;
+            };
             if before != after {
                 props.push(after);
                 prev.push(before);
@@ -1316,14 +1203,12 @@ impl Default for ColState {
 pub struct RowSnapshot {
     pub key: FractionalKey,
     pub state: RowState,
-    /// The row's own style, grouped by the stamp its attributes were written at.
-    pub style: Vec<(Vec<StyleProperty>, Timestamp)>,
+    /// The row's own properties, grouped by the stamp they were written at.
+    pub props: Vec<(Vec<Property>, Timestamp)>,
     /// Keyed by column.
     pub cell_values: Vec<(FractionalKey, CellInput, Timestamp)>,
-    /// Keyed by column, grouped by stamp as [`RowSnapshot::style`] is.
-    pub cell_styles: Vec<(FractionalKey, Vec<StyleProperty>, Timestamp)>,
-    /// Only the property kinds that had a register entry.
-    pub prop_ts: Vec<(RowPropKind, Timestamp)>,
+    /// Keyed by column, grouped by stamp as [`RowSnapshot::props`] is.
+    pub cell_styles: Vec<(FractionalKey, Vec<Property>, Timestamp)>,
 }
 
 /// Everything a [`Patch::DeleteColumns`] removed, so that undo can put it back. Local-only undo
@@ -1332,14 +1217,12 @@ pub struct RowSnapshot {
 pub struct ColumnSnapshot {
     pub key: FractionalKey,
     pub state: ColState,
-    /// The column's own style, grouped by the stamp its attributes were written at.
-    pub style: Vec<(Vec<StyleProperty>, Timestamp)>,
+    /// The column's own properties, grouped by the stamp they were written at.
+    pub props: Vec<(Vec<Property>, Timestamp)>,
     /// Keyed by row.
     pub cell_values: Vec<(FractionalKey, CellInput, Timestamp)>,
-    /// Keyed by row, grouped by stamp as [`ColumnSnapshot::style`] is.
-    pub cell_styles: Vec<(FractionalKey, Vec<StyleProperty>, Timestamp)>,
-    /// Only the property kinds that had a register entry.
-    pub prop_ts: Vec<(ColPropKind, Timestamp)>,
+    /// Keyed by row, grouped by stamp as [`ColumnSnapshot::props`] is.
+    pub cell_styles: Vec<(FractionalKey, Vec<Property>, Timestamp)>,
 }
 
 /// The contents of a cell as authored, never as evaluated.
@@ -1470,7 +1353,7 @@ mod test {
             Patch::SetCellStyle {
                 sheet: 7,
                 at: (key(1), key(3)),
-                props: vec![StyleProperty::FontBold(true)],
+                props: vec![Property::FontBold(true)],
                 ts: None,
                 prev: Vec::new(),
             },
@@ -1491,10 +1374,10 @@ mod test {
             Patch::SetRowProperty {
                 sheet: 7,
                 row: key(1),
-                property: RowProperty::Height(33.0),
+                props: vec![Property::Height(33.0)],
                 // A restore's stamp travels: it is not `#[bitcode(skip)]` undo data.
                 ts: Some(Timestamp::new(Hlc::new(42), 3)),
-                prev: None,
+                prev: Vec::new(),
             },
             Patch::InsertColumns {
                 sheet: 7,
@@ -1513,21 +1396,21 @@ mod test {
             Patch::SetColumnSpan {
                 sheet: 7,
                 span: (FractionalKey::NULL, FractionalKey::NULL),
-                property: ColProperty::Width(77.0),
-                ts: None,
-                prev: None,
-            },
-            Patch::SetRowStyle {
-                sheet: 7,
-                row: key(1),
-                props: vec![StyleProperty::NumFmt("0.00".to_string())],
+                props: vec![Property::Width(77.0)],
                 ts: None,
                 prev: Vec::new(),
             },
-            Patch::SetColumnStyle {
+            Patch::SetRowProperty {
+                sheet: 7,
+                row: key(1),
+                props: vec![Property::NumFmt("0.00".to_string())],
+                ts: None,
+                prev: Vec::new(),
+            },
+            Patch::SetColumnSpan {
                 sheet: 7,
                 span: (key(3), key(4)),
-                props: StyleProperty::all(&Style::default()),
+                props: Property::all(&Style::default()),
                 ts: None,
                 prev: Vec::new(),
             },
@@ -1624,16 +1507,16 @@ mod test {
         let local = vec![Patch::SetRowProperty {
             sheet: 7,
             row: key(1),
-            property: RowProperty::Hidden(true),
+            props: vec![Property::Hidden(true)],
             ts: None,
-            prev: Some(RowProperty::Hidden(false)),
+            prev: vec![Property::Hidden(false)],
         }];
         let decoded = decode_patches(&encode_patches(&local).unwrap()).unwrap();
         assert_ne!(decoded, local);
         match &decoded[0] {
-            Patch::SetRowProperty { property, prev, .. } => {
-                assert_eq!(property, &RowProperty::Hidden(true));
-                assert_eq!(prev, &None);
+            Patch::SetRowProperty { props, prev, .. } => {
+                assert_eq!(props, &vec![Property::Hidden(true)]);
+                assert_eq!(prev, &Vec::new());
             }
             other => panic!("wrong variant: {other:?}"),
         }
@@ -1645,12 +1528,9 @@ mod test {
         assert!(decode_patches(&[]).is_err());
 
         // Every property enum reports the register it writes to.
-        assert_eq!(RowProperty::Height(1.0).kind(), RowPropKind::Height);
-        assert_eq!(ColProperty::Hidden(true).kind(), ColPropKind::Hidden);
-        assert_eq!(
-            StyleProperty::FontBold(true).kind(),
-            StylePropKind::FontBold
-        );
+        assert_eq!(Property::Height(1.0).kind(), PropKind::Height);
+        assert_eq!(Property::Hidden(true).kind(), PropKind::Hidden);
+        assert_eq!(Property::FontBold(true).kind(), PropKind::FontBold);
         assert_eq!(
             SheetProperty::Position(key(1)).kind(),
             SheetPropKind::Position
