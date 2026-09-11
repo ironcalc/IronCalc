@@ -3,8 +3,8 @@ use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::{FractionalIndex, FractionalKey, SESSION_SUFFIX_LEN};
 use crate::collab::log::{Commit, Lww, SessionId, Timestamp};
 use crate::collab::patch::{
-    CfPropKind, ColPropKind, DefinedNameBody, DefinedNameId, NamedStyle, NamedStyleId, Patch,
-    RowPropKind, SheetId, SheetPropKind, StylePropKind, WorkbookPropKind,
+    CfPropKind, DefinedNameBody, DefinedNameId, NamedStyle, NamedStyleId, Patch, PropKind, SheetId,
+    SheetPropKind, WorkbookPropKind,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, DEFAULT_WINDOW_HEIGHT,
@@ -95,7 +95,7 @@ impl Position for Stable {
         if Self::is_column_hidden(sheet, column)? {
             return Ok(0.0);
         }
-        Ok(match sheet.covering_col(column, ColPropKind::Width) {
+        Ok(match sheet.covering_col(column, PropKind::Width) {
             Some(col) => col.width * COLUMN_WIDTH_FACTOR,
             None => DEFAULT_COLUMN_WIDTH,
         })
@@ -106,7 +106,7 @@ impl Position for Stable {
             return Err(format!("Column number '{column}' is not valid."));
         }
         Ok(sheet
-            .covering_col(column, ColPropKind::Hidden)
+            .covering_col(column, PropKind::Hidden)
             .is_some_and(|col| col.hidden))
     }
 
@@ -176,12 +176,10 @@ pub struct SheetIndexes {
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct SheetRegisters {
     pub cell_values: HashMap<StableCellAddress, Timestamp>,
-    pub cell_styles: HashMap<(StableCellAddress, StylePropKind), Timestamp>,
+    pub cell_styles: HashMap<(StableCellAddress, PropKind), Timestamp>,
     pub arrays: HashMap<StableCellAddress, Timestamp>,
-    pub rows: HashMap<(FractionalKey, RowPropKind), Timestamp>,
-    pub row_styles: HashMap<(FractionalKey, StylePropKind), Timestamp>,
-    pub col_spans: HashMap<((FractionalKey, FractionalKey), ColPropKind), Timestamp>,
-    pub col_styles: HashMap<((FractionalKey, FractionalKey), StylePropKind), Timestamp>,
+    pub rows: HashMap<(FractionalKey, PropKind), Timestamp>,
+    pub col_spans: HashMap<((FractionalKey, FractionalKey), PropKind), Timestamp>,
     pub props: HashMap<SheetPropKind, Timestamp>,
     pub merges: HashMap<StableRange, Timestamp>,
     pub comments: HashMap<StableCellAddress, Timestamp>,
@@ -324,7 +322,7 @@ impl Worksheet<Stable> {
     /// The column record that owns property `kind` at ordinal `column`: of the spans covering it,
     /// the one whose register was written last. Only concurrency makes them overlap; a record with
     /// no register entry for `kind` never wrote it and does not compete.
-    pub(crate) fn covering_col(&self, column: i32, kind: ColPropKind) -> Option<&Col<Stable>> {
+    pub(crate) fn covering_col(&self, column: i32, kind: PropKind) -> Option<&Col<Stable>> {
         let mut best: Option<(&Timestamp, &Col<Stable>)> = None;
         for col in &self.cols {
             match col.resolve(&self.index) {
@@ -352,9 +350,9 @@ impl Worksheet<Stable> {
                 _ => continue,
             }
             let span = (col.min.clone(), col.max.clone());
-            let Some(ts) = StylePropKind::ALL
+            let Some(ts) = PropKind::STYLE
                 .into_iter()
-                .filter_map(|kind| self.index.registers.col_styles.get(&(span.clone(), kind)))
+                .filter_map(|kind| self.index.registers.col_spans.get(&(span.clone(), kind)))
                 .max()
             else {
                 continue;

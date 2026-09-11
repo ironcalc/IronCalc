@@ -17,11 +17,10 @@ use crate::collab::log::{Commit, Timestamp};
 use crate::collab::model::{CollabModel, Stable, StableCellAddress, StableRange};
 use crate::collab::naming::{defined_name_id, stable_id};
 use crate::collab::patch::{
-    CellInput, CfProperty, ColPropKind, ColProperty, ColState, ColumnSnapshot,
-    ConditionalFormatState, DefinedNameBody, DefinedNameId, DefinedNameProperty, NamedStyle,
-    NamedStyleId, NamedStyleProperty, Patch, RowPropKind, RowProperty, RowSnapshot, RowState,
-    SheetContent, SheetId, SheetPropKind, SheetProperty, SheetRestore, StylePropKind,
-    StyleProperty, WorkbookPropKind, WorkbookProperty,
+    CellInput, CfProperty, ColState, ColumnSnapshot, ConditionalFormatState, DefinedNameBody,
+    DefinedNameId, DefinedNameProperty, NamedStyle, NamedStyleId, NamedStyleProperty, Patch,
+    PropKind, Property, RowSnapshot, RowState, SheetContent, SheetId, SheetPropKind, SheetProperty,
+    SheetRestore, WorkbookPropKind, WorkbookProperty,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
@@ -284,12 +283,12 @@ impl CollabModel<'_> {
     /// The row register's current value for `kind`, as the property a write would replace. A row
     /// with no record — or no key at all, being unmaterialized — holds the defaults, which is what
     /// undoing a first write has to put back.
-    fn row_prev(
+    fn row_property(
         &self,
         i: usize,
         key: Option<&FractionalKey>,
-        kind: RowPropKind,
-    ) -> Option<RowProperty> {
+        kind: PropKind,
+    ) -> Option<Property> {
         let record = match key {
             None => None,
             Some(key) => self.workbook.worksheets[i]
@@ -297,37 +296,51 @@ impl CollabModel<'_> {
                 .iter()
                 .find(|r| &r.r == key),
         };
-        Some(match kind {
-            RowPropKind::Height => RowProperty::Height(
+        match kind {
+            PropKind::Height => Some(Property::Height(
                 record.map_or(DEFAULT_ROW_HEIGHT / ROW_HEIGHT_FACTOR, |r| r.height),
-            ),
-            RowPropKind::Hidden => RowProperty::Hidden(record.is_some_and(|r| r.hidden)),
-        })
+            )),
+            PropKind::Hidden => Some(Property::Hidden(record.is_some_and(|r| r.hidden))),
+            // Formatting reads off the row's own style.
+            kind => {
+                let own = key
+                    .map(|key| self.row_own_style(i, key))
+                    .unwrap_or_default();
+                Property::read(&own, kind)
+            }
+        }
     }
 
-    /// [`Self::row_prev`] for the column span `(key, key)`. Wider spans covering the same column
-    /// are not consulted: a point write replaces only the point register.
-    fn col_prev(&self, i: usize, key: &FractionalKey, kind: ColPropKind) -> Option<ColProperty> {
+    /// [`Self::row_property`] for the column span `(key, key)`. Wider spans covering the same
+    /// column are not consulted: a point write replaces only the point register.
+    fn col_prev(&self, i: usize, key: &FractionalKey, kind: PropKind) -> Option<Property> {
         let record = self.workbook.worksheets[i]
             .cols
             .iter()
             .find(|c| &c.min == key && &c.max == key);
-        Some(self.col_property(record, kind))
+        self.col_property(record, kind)
     }
 
     /// [`Self::col_prev`] as the column reads on screen.
-    fn col_effective(&self, i: usize, column: i32, kind: ColPropKind) -> ColProperty {
+    fn col_effective(&self, i: usize, column: i32, kind: PropKind) -> Option<Property> {
         let record = self.workbook.worksheets[i].covering_col(column, kind);
         self.col_property(record, kind)
     }
 
     /// The `kind` property a column record holds; no record means the defaults.
-    fn col_property(&self, record: Option<&Col<Stable>>, kind: ColPropKind) -> ColProperty {
+    fn col_property(&self, record: Option<&Col<Stable>>, kind: PropKind) -> Option<Property> {
         match kind {
-            ColPropKind::Width => ColProperty::Width(
+            PropKind::Width => Some(Property::Width(
                 record.map_or(DEFAULT_COLUMN_WIDTH / COLUMN_WIDTH_FACTOR, |c| c.width),
-            ),
-            ColPropKind::Hidden => ColProperty::Hidden(record.is_some_and(|c| c.hidden)),
+            )),
+            PropKind::Hidden => Some(Property::Hidden(record.is_some_and(|c| c.hidden))),
+            kind => {
+                let own = record
+                    .and_then(|c| c.style)
+                    .and_then(|s| self.workbook.styles.get_style(s).ok())
+                    .unwrap_or_default();
+                Property::read(&own, kind)
+            }
         }
     }
 
@@ -555,7 +568,7 @@ impl CollabModel<'_> {
         style: &Style,
     ) -> Option<Patch> {
         let own = self.cell_style_at(i, &at).unwrap_or_default();
-        let (props, prev) = StyleProperty::diff(&own, style);
+        let (props, prev) = Property::diff(&own, style);
         (!props.is_empty()).then(|| Patch::SetCellStyle {
             sheet: id,
             at,
@@ -590,9 +603,9 @@ impl CollabModel<'_> {
             Patch::SetCellStyle {
                 sheet: id,
                 at,
-                props: StyleProperty::all(&target),
+                props: Property::all(&target),
                 ts: None,
-                prev: StyleProperty::all(&stored),
+                prev: Property::all(&stored),
             },
         ]
     }
@@ -880,12 +893,12 @@ impl CollabModel<'_> {
                     .any(|c| c.min == key && c.max == key && c.style.is_some());
                 let own = self.col_own_style(i, &key);
                 if styled {
-                    patches.push(Patch::SetColumnStyle {
+                    patches.push(Patch::SetColumnSpan {
                         sheet: id,
                         span: (key.clone(), key),
-                        props: StyleProperty::all(&Style::default()),
+                        props: Property::all(&Style::default()),
                         ts: None,
-                        prev: StyleProperty::all(&own),
+                        prev: Property::all(&own),
                     });
                 }
             }
@@ -901,12 +914,12 @@ impl CollabModel<'_> {
                     .any(|r| r.r == key && r.custom_format);
                 let own = self.row_own_style(i, &key);
                 if styled {
-                    patches.push(Patch::SetRowStyle {
+                    patches.push(Patch::SetRowProperty {
                         sheet: id,
                         row: key,
-                        props: StyleProperty::all(&Style::default()),
+                        props: Property::all(&Style::default()),
                         ts: None,
-                        prev: StyleProperty::all(&own),
+                        prev: Property::all(&own),
                     });
                 }
             }
@@ -936,9 +949,9 @@ impl CollabModel<'_> {
             patches.push(Patch::SetCellStyle {
                 sheet: id,
                 at,
-                props: StyleProperty::all(&Style::default()),
+                props: Property::all(&Style::default()),
                 ts: None,
-                prev: StyleProperty::all(&prev),
+                prev: Property::all(&prev),
             });
         }
         if !patches.is_empty() {
@@ -991,9 +1004,9 @@ impl CollabModel<'_> {
                     .unwrap_or_default();
                 let new = update_style(&old, style_path, value)?;
                 let col_key = self.col_key(i, id, column, &mut mints);
-                let (props, prev) = StyleProperty::diff(&old, &new);
+                let (props, prev) = Property::diff(&old, &new);
                 if !props.is_empty() {
-                    writes.push(Patch::SetColumnStyle {
+                    writes.push(Patch::SetColumnSpan {
                         sheet: id,
                         span: (col_key.clone(), col_key.clone()),
                         props,
@@ -1074,9 +1087,9 @@ impl CollabModel<'_> {
                 // The row's own style goes last, as upstream does.
                 let old = self.row_own_style(i, &row_key);
                 let new = update_style(&old, style_path, value)?;
-                let (props, prev) = StyleProperty::diff(&old, &new);
+                let (props, prev) = Property::diff(&old, &new);
                 if !props.is_empty() {
-                    writes.push(Patch::SetRowStyle {
+                    writes.push(Patch::SetRowProperty {
                         sheet: id,
                         row: row_key,
                         props,
@@ -1159,21 +1172,21 @@ impl CollabModel<'_> {
         if height < 0.0 {
             return Err(format!("Can not set a negative height: {height}"));
         }
-        let property = RowProperty::Height(height / ROW_HEIGHT_FACTOR);
+        let property = Property::Height(height / ROW_HEIGHT_FACTOR);
 
         let at = Stable::row_at(&self.workbook.worksheets[i].index, row);
-        let prev = match self.row_prev(i, at.as_ref(), RowPropKind::Height) {
-            Some(prev) if prev == property => return Ok(()), // identity modification
-            prev => prev,
-        };
+        let prev = self.row_property(i, at.as_ref(), PropKind::Height);
+        if prev.as_ref() == Some(&property) {
+            return Ok(()); // identity modification
+        }
         let mut patches = Vec::new();
         let key = self.row_key(i, id, row, &mut patches);
         patches.push(Patch::SetRowProperty {
             sheet: id,
             row: key,
-            property,
+            props: vec![property],
             ts: None,
-            prev,
+            prev: prev.into_iter().collect(),
         });
         self.commit_local(patches);
         Ok(())
@@ -1186,20 +1199,20 @@ impl CollabModel<'_> {
         if !is_valid_row(row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
-        let property = RowProperty::Hidden(hidden);
+        let property = Property::Hidden(hidden);
         let at = Stable::row_at(&self.workbook.worksheets[i].index, row);
-        let prev = match self.row_prev(i, at.as_ref(), RowPropKind::Hidden) {
-            Some(prev) if prev == property => return Ok(()), // identity change
-            prev => prev,
-        };
+        let prev = self.row_property(i, at.as_ref(), PropKind::Hidden);
+        if prev.as_ref() == Some(&property) {
+            return Ok(()); // identity change
+        }
         let mut patches = Vec::new();
         let key = self.row_key(i, id, row, &mut patches);
         patches.push(Patch::SetRowProperty {
             sheet: id,
             row: key,
-            property,
+            props: vec![property],
             ts: None,
-            prev,
+            prev: prev.into_iter().collect(),
         });
         self.commit_local(patches);
         Ok(())
@@ -1215,8 +1228,8 @@ impl CollabModel<'_> {
         let mut patches = Vec::new();
         let key = self.row_key(i, id, row, &mut patches);
         let old = self.row_own_style(i, &key);
-        let (props, prev) = StyleProperty::diff(&old, style);
-        patches.push(Patch::SetRowStyle {
+        let (props, prev) = Property::diff(&old, style);
+        patches.push(Patch::SetRowProperty {
             sheet: id,
             row: key,
             props,
@@ -1243,12 +1256,12 @@ impl CollabModel<'_> {
             return Ok(());
         }
         let own = self.row_own_style(i, &key);
-        self.commit_local(vec![Patch::SetRowStyle {
+        self.commit_local(vec![Patch::SetRowProperty {
             sheet: id,
             row: key,
-            props: StyleProperty::all(&Style::default()),
+            props: Property::all(&Style::default()),
             ts: None,
-            prev: StyleProperty::all(&own),
+            prev: Property::all(&own),
         }]);
         Ok(())
     }
@@ -1259,15 +1272,14 @@ impl CollabModel<'_> {
         &mut self,
         sheet: u32,
         column: i32,
-        property: ColProperty,
+        property: Property,
     ) -> Result<(), String> {
         let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
         }
-        let curr = self.col_effective(i, column, property.kind());
-        if curr == property {
+        if self.col_effective(i, column, property.kind()).as_ref() == Some(&property) {
             return Ok(());
         }
         let mut patches = Vec::new();
@@ -1276,9 +1288,9 @@ impl CollabModel<'_> {
         patches.push(Patch::SetColumnSpan {
             sheet: id,
             span: (key.clone(), key),
-            property,
+            props: vec![property],
             ts: None,
-            prev,
+            prev: prev.into_iter().collect(),
         });
         self.commit_local(patches);
         Ok(())
@@ -1289,7 +1301,7 @@ impl CollabModel<'_> {
         if width < 0.0 {
             return Err(format!("Can not set a negative width: {width}"));
         }
-        let property = ColProperty::Width(width / COLUMN_WIDTH_FACTOR);
+        let property = Property::Width(width / COLUMN_WIDTH_FACTOR);
         self.commit_column_property(sheet, column, property)
     }
 
@@ -1300,7 +1312,7 @@ impl CollabModel<'_> {
         column: i32,
         hidden: bool,
     ) -> Result<(), String> {
-        self.commit_column_property(sheet, column, ColProperty::Hidden(hidden))
+        self.commit_column_property(sheet, column, Property::Hidden(hidden))
     }
 
     /// Sets the style of a whole column.
@@ -1318,11 +1330,11 @@ impl CollabModel<'_> {
         let mut patches = Vec::new();
         let key = self.col_key(i, id, column, &mut patches);
         let old = self.col_own_style(i, &key);
-        let (props, prev) = StyleProperty::diff(&old, style);
+        let (props, prev) = Property::diff(&old, style);
         if props.is_empty() {
             return Ok(());
         }
-        patches.push(Patch::SetColumnStyle {
+        patches.push(Patch::SetColumnSpan {
             sheet: id,
             span: (key.clone(), key),
             props,
@@ -1348,12 +1360,12 @@ impl CollabModel<'_> {
             return Ok(());
         }
         let own = self.col_own_style(i, &key);
-        self.commit_local(vec![Patch::SetColumnStyle {
+        self.commit_local(vec![Patch::SetColumnSpan {
             sheet: id,
             span: (key.clone(), key),
-            props: StyleProperty::all(&Style::default()),
+            props: Property::all(&Style::default()),
             ts: None,
-            prev: StyleProperty::all(&own),
+            prev: Property::all(&own),
         }]);
         Ok(())
     }
@@ -1365,7 +1377,7 @@ impl CollabModel<'_> {
         sheet: u32,
         start: i32,
         end: i32,
-        property: RowProperty,
+        property: Property,
     ) -> Result<(), String> {
         let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
@@ -1378,16 +1390,16 @@ impl CollabModel<'_> {
         let keys = self.row_keys(i, id, start, end, &mut patches);
         let mut writes = Vec::new();
         for key in keys {
-            let prev = match self.row_prev(i, Some(&key), property.kind()) {
-                Some(prev) if prev == property => continue, // identity modification
-                prev => prev,
-            };
+            let prev = self.row_property(i, Some(&key), property.kind());
+            if prev.as_ref() == Some(&property) {
+                continue; // identity modification
+            }
             writes.push(Patch::SetRowProperty {
                 sheet: id,
                 row: key,
-                property: property.clone(),
+                props: vec![property.clone()],
                 ts: None,
-                prev,
+                prev: prev.into_iter().collect(),
             });
         }
         if writes.is_empty() {
@@ -1404,7 +1416,7 @@ impl CollabModel<'_> {
         sheet: u32,
         start: i32,
         end: i32,
-        property: ColProperty,
+        property: Property,
     ) -> Result<(), String> {
         let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
@@ -1417,16 +1429,20 @@ impl CollabModel<'_> {
         let keys = self.col_keys(i, id, start, end, &mut patches);
         let mut writes = Vec::new();
         for (offset, key) in keys.into_iter().enumerate() {
-            if self.col_effective(i, start + offset as i32, property.kind()) == property {
+            if self
+                .col_effective(i, start + offset as i32, property.kind())
+                .as_ref()
+                == Some(&property)
+            {
                 continue; // identity modification
             }
             let prev = self.col_prev(i, &key, property.kind());
             writes.push(Patch::SetColumnSpan {
                 sheet: id,
                 span: (key.clone(), key),
-                property: property.clone(),
+                props: vec![property.clone()],
                 ts: None,
-                prev,
+                prev: prev.into_iter().collect(),
             });
         }
         if writes.is_empty() {
@@ -1452,7 +1468,7 @@ impl CollabModel<'_> {
             sheet,
             row_start,
             row_end,
-            RowProperty::Height(height / ROW_HEIGHT_FACTOR),
+            Property::Height(height / ROW_HEIGHT_FACTOR),
         )
     }
 
@@ -1464,7 +1480,7 @@ impl CollabModel<'_> {
         row_end: i32,
         hidden: bool,
     ) -> Result<(), String> {
-        self.commit_row_span(sheet, row_start, row_end, RowProperty::Hidden(hidden))
+        self.commit_row_span(sheet, row_start, row_end, Property::Hidden(hidden))
     }
 
     /// Changes the width of every column in `column_start..=column_end`, in one commit.
@@ -1482,7 +1498,7 @@ impl CollabModel<'_> {
             sheet,
             column_start,
             column_end,
-            ColProperty::Width(width / COLUMN_WIDTH_FACTOR),
+            Property::Width(width / COLUMN_WIDTH_FACTOR),
         )
     }
 
@@ -1494,7 +1510,7 @@ impl CollabModel<'_> {
         column_end: i32,
         hidden: bool,
     ) -> Result<(), String> {
-        self.commit_col_span(sheet, column_start, column_end, ColProperty::Hidden(hidden))
+        self.commit_col_span(sheet, column_start, column_end, Property::Hidden(hidden))
     }
 
     /// Writes a sheet-scoped property, validating nothing beyond the sheet existing.
@@ -1690,21 +1706,20 @@ impl CollabModel<'_> {
     }
 }
 
-/// `style`'s attributes grouped by the stamp their register `key` holds, oldest first. Attributes
-/// with no register entry are at their default and need no restoring.
+/// The properties `read` answers for, grouped by the stamp their register `key` holds, oldest
+/// first. A kind with no register entry is at its default and needs no restoring, and so is one
+/// `read` has no value for.
 fn stamped<K: Eq + std::hash::Hash>(
     registers: &std::collections::HashMap<K, Timestamp>,
-    key: impl Fn(StylePropKind) -> K,
-    style: &Style,
-) -> Vec<(Vec<StyleProperty>, Timestamp)> {
-    let mut groups: std::collections::BTreeMap<Timestamp, Vec<StyleProperty>> = Default::default();
-    for k in StylePropKind::ALL {
-        if let Some(ts) = registers.get(&key(k)) {
-            groups
-                .entry(*ts)
-                .or_default()
-                .push(StyleProperty::read(style, k));
-        }
+    key: impl Fn(PropKind) -> K,
+    read: impl Fn(PropKind) -> Option<Property>,
+) -> Vec<(Vec<Property>, Timestamp)> {
+    let mut groups: std::collections::BTreeMap<Timestamp, Vec<Property>> = Default::default();
+    for k in PropKind::ALL {
+        let (Some(ts), Some(property)) = (registers.get(&key(k)), read(k)) else {
+            continue;
+        };
+        groups.entry(*ts).or_default().push(property);
     }
     groups.into_iter().map(|(ts, props)| (props, ts)).collect()
 }
@@ -1757,24 +1772,17 @@ impl CollabModel<'_> {
                             ((key.clone(), col.clone()), col.clone(), cell.get_style())
                         }),
                 );
-                let style = match &state.style {
-                    Some(own) => stamped(&registers.row_styles, |k| (key.clone(), k), own),
-                    None => Vec::new(),
-                };
-                let prop_ts = [RowPropKind::Height, RowPropKind::Hidden]
-                    .into_iter()
-                    .filter_map(|kind| {
-                        let ts = registers.rows.get(&(key.clone(), kind))?;
-                        Some((kind, *ts))
-                    })
-                    .collect();
+                let props = stamped(
+                    &registers.rows,
+                    |k| (key.clone(), k),
+                    |k| self.row_property(i, Some(key), k),
+                );
                 RowSnapshot {
                     key: key.clone(),
                     state,
-                    style,
+                    props,
                     cell_values,
                     cell_styles,
-                    prop_ts,
                 }
             })
             .collect()
@@ -1807,24 +1815,17 @@ impl CollabModel<'_> {
                     }),
                 );
                 let span = (key.clone(), key.clone());
-                let style = match &state.style {
-                    Some(own) => stamped(&registers.col_styles, |k| (span.clone(), k), own),
-                    None => Vec::new(),
-                };
-                let prop_ts = [ColPropKind::Width, ColPropKind::Hidden]
-                    .into_iter()
-                    .filter_map(|kind| {
-                        let ts = registers.col_spans.get(&(span.clone(), kind))?;
-                        Some((kind, *ts))
-                    })
-                    .collect();
+                let props = stamped(
+                    &registers.col_spans,
+                    |k| (span.clone(), k),
+                    |k| self.col_property(col, k),
+                );
                 ColumnSnapshot {
                     key: key.clone(),
                     state,
-                    style,
+                    props,
                     cell_values,
                     cell_styles,
-                    prop_ts,
                 }
             })
             .collect()
@@ -1839,7 +1840,7 @@ impl CollabModel<'_> {
         cells: impl Iterator<Item = (StableCellAddress, FractionalKey, i32)>,
     ) -> (
         Vec<(FractionalKey, CellInput, Timestamp)>,
-        Vec<(FractionalKey, Vec<StyleProperty>, Timestamp)>,
+        Vec<(FractionalKey, Vec<Property>, Timestamp)>,
     ) {
         let registers = &self.workbook.worksheets[i].index.registers;
         let mut values = Vec::new();
@@ -1854,8 +1855,11 @@ impl CollabModel<'_> {
             if style != 0 {
                 if let Ok(style) = self.workbook.styles.get_style(style) {
                     // One entry per stamp: attributes written together travel together.
-                    for (props, ts) in stamped(&registers.cell_styles, |k| (at.clone(), k), &style)
-                    {
+                    for (props, ts) in stamped(
+                        &registers.cell_styles,
+                        |k| (at.clone(), k),
+                        |k| Property::read(&style, k),
+                    ) {
                         styles.push((key.clone(), props, ts));
                     }
                 }
@@ -2752,7 +2756,7 @@ impl CollabModel<'_> {
     /// the ordinal model: a cell styled the same way by hand moves with the named style.
     fn restyle_patches(&self, old_xf: i32, style: &Style) -> Vec<Patch> {
         let prev = self.workbook.styles.get_style(old_xf).unwrap_or_default();
-        let (props, prev) = (StyleProperty::all(style), StyleProperty::all(&prev));
+        let (props, prev) = (Property::all(style), Property::all(&prev));
         let mut patches = Vec::new();
         for sheet in &self.workbook.worksheets {
             let id = sheet.sheet_id;
@@ -2781,7 +2785,7 @@ impl CollabModel<'_> {
                 .iter()
                 .filter(|r| r.custom_format && r.s == old_xf)
             {
-                patches.push(Patch::SetRowStyle {
+                patches.push(Patch::SetRowProperty {
                     sheet: id,
                     row: row.r.clone(),
                     props: props.clone(),
@@ -2790,7 +2794,7 @@ impl CollabModel<'_> {
                 });
             }
             for col in sheet.cols.iter().filter(|c| c.style == Some(old_xf)) {
-                patches.push(Patch::SetColumnStyle {
+                patches.push(Patch::SetColumnSpan {
                     sheet: id,
                     span: (col.min.clone(), col.max.clone()),
                     props: props.clone(),
