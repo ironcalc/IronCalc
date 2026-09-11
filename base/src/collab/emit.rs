@@ -20,8 +20,8 @@ use crate::collab::patch::{
     CellInput, CfProperty, ColPropKind, ColProperty, ColState, ColumnSnapshot,
     ConditionalFormatState, DefinedNameBody, DefinedNameId, DefinedNameProperty, NamedStyle,
     NamedStyleId, NamedStyleProperty, Patch, RowPropKind, RowProperty, RowSnapshot, RowState,
-    SheetContent, SheetId, SheetPropKind, SheetProperty, SheetRestore, WorkbookPropKind,
-    WorkbookProperty,
+    SheetContent, SheetId, SheetPropKind, SheetProperty, SheetRestore, StylePropKind,
+    StyleProperty, WorkbookPropKind, WorkbookProperty,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
@@ -298,12 +298,6 @@ impl CollabModel<'_> {
                 .find(|r| &r.r == key),
         };
         Some(match kind {
-            RowPropKind::Style => RowProperty::Style(
-                record
-                    .filter(|r| r.custom_format)
-                    .and_then(|r| self.workbook.styles.get_style(r.s).ok())
-                    .map(Box::new),
-            ),
             RowPropKind::Height => RowProperty::Height(
                 record.map_or(DEFAULT_ROW_HEIGHT / ROW_HEIGHT_FACTOR, |r| r.height),
             ),
@@ -330,12 +324,6 @@ impl CollabModel<'_> {
     /// The `kind` property a column record holds; no record means the defaults.
     fn col_property(&self, record: Option<&Col<Stable>>, kind: ColPropKind) -> ColProperty {
         match kind {
-            ColPropKind::Style => ColProperty::Style(
-                record
-                    .and_then(|c| c.style)
-                    .and_then(|s| self.workbook.styles.get_style(s).ok())
-                    .map(Box::new),
-            ),
             ColPropKind::Width => ColProperty::Width(
                 record.map_or(DEFAULT_COLUMN_WIDTH / COLUMN_WIDTH_FACTOR, |c| c.width),
             ),
@@ -513,16 +501,7 @@ impl CollabModel<'_> {
                     ts: None,
                     prev: Box::new(prev),
                 });
-                let stored = self.get_cell_style_or_none(sheet, row, column)?;
-                if Some(&style) != stored.as_ref() {
-                    patches.push(Patch::SetCellStyle {
-                        sheet: id,
-                        at,
-                        style: Some(Box::new(style)),
-                        ts: None,
-                        prev: Box::new(stored),
-                    });
-                }
+                patches.extend(self.style_patch(i, id, at, &style));
                 Ok(patches)
             }
             None => {
@@ -541,6 +520,51 @@ impl CollabModel<'_> {
         self.workbook.styles.get_style(cell.get_style()).ok()
     }
 
+    /// The row's own style, the defaults when it holds none.
+    fn row_own_style(&self, i: usize, key: &FractionalKey) -> Style {
+        self.workbook.worksheets[i]
+            .rows
+            .iter()
+            .find(|r| &r.r == key)
+            .filter(|r| r.custom_format)
+            .and_then(|r| self.workbook.styles.get_style(r.s).ok())
+            .unwrap_or_default()
+    }
+
+    /// The style of the column span `(key, key)`, the defaults when it holds none. Wider spans
+    /// covering the same column are not consulted: a point write replaces only the point register.
+    fn col_own_style(&self, i: usize, key: &FractionalKey) -> Style {
+        self.workbook.worksheets[i]
+            .cols
+            .iter()
+            .find(|c| &c.min == key && &c.max == key)
+            .and_then(|c| c.style)
+            .and_then(|s| self.workbook.styles.get_style(s).ok())
+            .unwrap_or_default()
+    }
+
+    /// The patch moving cell `at`'s own formatting to `style`, listing only the attributes that
+    /// differ; `None` when it already holds it. A cell without a style of its own starts from the
+    /// default, so formatting it inherits from its row or column is written into the cell, as under
+    /// ordinal addressing.
+    fn style_patch(
+        &self,
+        i: usize,
+        id: SheetId,
+        at: StableCellAddress,
+        style: &Style,
+    ) -> Option<Patch> {
+        let own = self.cell_style_at(i, &at).unwrap_or_default();
+        let (props, prev) = StyleProperty::diff(&own, style);
+        (!props.is_empty()).then(|| Patch::SetCellStyle {
+            sheet: id,
+            at,
+            props,
+            ts: None,
+            prev,
+        })
+    }
+
     /// The patches clearing the cell at `at`: the value tombstone, and the style either written
     /// back (the value write takes the cell with it) or cleared alongside it when `all`.
     ///
@@ -548,7 +572,13 @@ impl CollabModel<'_> {
     /// make a concurrent older write to the cell lose whichever order it arrives in.
     fn clear_patches(&self, i: usize, id: SheetId, at: StableCellAddress, all: bool) -> Vec<Patch> {
         let prev = self.cell_input(i, &at);
-        let stored = self.cell_style_at(i, &at);
+        let stored = self.cell_style_at(i, &at).unwrap_or_default();
+        // A clear stamps every attribute, as it stamped the whole register.
+        let target = if all {
+            Style::default()
+        } else {
+            stored.clone()
+        };
         vec![
             Patch::SetCellValue {
                 sheet: id,
@@ -560,9 +590,9 @@ impl CollabModel<'_> {
             Patch::SetCellStyle {
                 sheet: id,
                 at,
-                style: if all { None } else { stored.clone() }.map(Box::new),
+                props: StyleProperty::all(&target),
                 ts: None,
-                prev: Box::new(stored),
+                prev: StyleProperty::all(&stored),
             },
         ]
     }
@@ -844,14 +874,18 @@ impl CollabModel<'_> {
                 let Some(key) = Stable::col_at(index, column) else {
                     continue;
                 };
-                let prev = self.col_prev(i, &key, ColPropKind::Style);
-                if matches!(prev, Some(ColProperty::Style(Some(_)))) {
-                    patches.push(Patch::SetColumnSpan {
+                let styled = self.workbook.worksheets[i]
+                    .cols
+                    .iter()
+                    .any(|c| c.min == key && c.max == key && c.style.is_some());
+                let own = self.col_own_style(i, &key);
+                if styled {
+                    patches.push(Patch::SetColumnStyle {
                         sheet: id,
                         span: (key.clone(), key),
-                        property: ColProperty::Style(None),
+                        props: StyleProperty::all(&Style::default()),
                         ts: None,
-                        prev,
+                        prev: StyleProperty::all(&own),
                     });
                 }
             }
@@ -861,14 +895,18 @@ impl CollabModel<'_> {
                 let Some(key) = Stable::row_at(index, row) else {
                     continue;
                 };
-                let prev = self.row_prev(i, Some(&key), RowPropKind::Style);
-                if matches!(prev, Some(RowProperty::Style(Some(_)))) {
-                    patches.push(Patch::SetRowProperty {
+                let styled = self.workbook.worksheets[i]
+                    .rows
+                    .iter()
+                    .any(|r| r.r == key && r.custom_format);
+                let own = self.row_own_style(i, &key);
+                if styled {
+                    patches.push(Patch::SetRowStyle {
                         sheet: id,
                         row: key,
-                        property: RowProperty::Style(None),
+                        props: StyleProperty::all(&Style::default()),
                         ts: None,
-                        prev,
+                        prev: StyleProperty::all(&own),
                     });
                 }
             }
@@ -892,16 +930,15 @@ impl CollabModel<'_> {
         // `sheet_data` is a hash map: sort, so the commit does not depend on its iteration.
         cells.sort();
         for at in cells {
-            let prev = self.cell_style_at(i, &at);
-            if prev.is_none() {
+            let Some(prev) = self.cell_style_at(i, &at) else {
                 continue; // nothing to clear
-            }
+            };
             patches.push(Patch::SetCellStyle {
                 sheet: id,
                 at,
-                style: None,
+                props: StyleProperty::all(&Style::default()),
                 ts: None,
-                prev: Box::new(prev),
+                prev: StyleProperty::all(&prev),
             });
         }
         if !patches.is_empty() {
@@ -924,17 +961,7 @@ impl CollabModel<'_> {
         let (row, column) = cell;
         let old = self.get_style_for_cell(i as u32, row, column)?;
         let new = update_style(&old, style.0, style.1)?;
-        let prev = self.cell_style_at(i, &at);
-        if prev.as_ref() == Some(&new) {
-            return Ok(()); // nothing changed
-        }
-        writes.push(Patch::SetCellStyle {
-            sheet: id,
-            at,
-            style: Some(Box::new(new)),
-            ts: None,
-            prev: Box::new(prev),
-        });
+        writes.extend(self.style_patch(i, id, at, &new));
         Ok(())
     }
 
@@ -959,17 +986,17 @@ impl CollabModel<'_> {
                 .filter_map(|r| Stable::row_ordinal(&sheet.index, &r.r))
                 .collect();
             for column in area.column..area.column + area.width {
-                let old = self.get_column_style(area.sheet, column)?;
-                let style =
-                    update_style(old.as_ref().unwrap_or(&Style::default()), style_path, value)?;
+                let old = self
+                    .get_column_style(area.sheet, column)?
+                    .unwrap_or_default();
+                let new = update_style(&old, style_path, value)?;
                 let col_key = self.col_key(i, id, column, &mut mints);
-                let property = ColProperty::Style(Some(Box::new(style)));
-                if self.col_effective(i, column, ColPropKind::Style) != property {
-                    let prev = self.col_prev(i, &col_key, ColPropKind::Style);
-                    writes.push(Patch::SetColumnSpan {
+                let (props, prev) = StyleProperty::diff(&old, &new);
+                if !props.is_empty() {
+                    writes.push(Patch::SetColumnStyle {
                         sheet: id,
                         span: (col_key.clone(), col_key.clone()),
-                        property,
+                        props,
                         ts: None,
                         prev,
                     });
@@ -1045,18 +1072,14 @@ impl CollabModel<'_> {
                     )?;
                 }
                 // The row's own style goes last, as upstream does.
-                let prev = self.row_prev(i, Some(&row_key), RowPropKind::Style);
-                let old = match &prev {
-                    Some(RowProperty::Style(style)) => style.as_deref(),
-                    _ => None,
-                };
-                let style = update_style(old.unwrap_or(&Style::default()), style_path, value)?;
-                let property = RowProperty::Style(Some(Box::new(style)));
-                if prev.as_ref() != Some(&property) {
-                    writes.push(Patch::SetRowProperty {
+                let old = self.row_own_style(i, &row_key);
+                let new = update_style(&old, style_path, value)?;
+                let (props, prev) = StyleProperty::diff(&old, &new);
+                if !props.is_empty() {
+                    writes.push(Patch::SetRowStyle {
                         sheet: id,
                         row: row_key,
-                        property,
+                        props,
                         ts: None,
                         prev,
                     });
@@ -1091,22 +1114,13 @@ impl CollabModel<'_> {
     ) -> Result<(), String> {
         let i = self.check_cell(sheet, row, column)?;
         let id = self.sheet_of(sheet)?;
-        let prev = self.get_cell_style_or_none(sheet, row, column)?;
-        match prev {
-            Some(prev) if &prev == style => Ok(()), // nothing changed
-            prev => {
-                let (at, mut patches) = self.resolve_cell(i, id, row, column);
-                patches.push(Patch::SetCellStyle {
-                    sheet: id,
-                    at,
-                    style: Some(Box::new(style.clone())),
-                    ts: None,
-                    prev: Box::new(prev),
-                });
-                self.commit_local(patches);
-                Ok(())
-            }
-        }
+        let (at, mut patches) = self.resolve_cell(i, id, row, column);
+        let Some(write) = self.style_patch(i, id, at, style) else {
+            return Ok(()); // nothing changed, and so nothing minted either
+        };
+        patches.push(write);
+        self.commit_local(patches);
+        Ok(())
     }
 
     /// Sets the named style `style_name` on a cell. Named styles are a local table, so the patch
@@ -1200,11 +1214,12 @@ impl CollabModel<'_> {
         }
         let mut patches = Vec::new();
         let key = self.row_key(i, id, row, &mut patches);
-        let prev = self.row_prev(i, Some(&key), RowPropKind::Style);
-        patches.push(Patch::SetRowProperty {
+        let old = self.row_own_style(i, &key);
+        let (props, prev) = StyleProperty::diff(&old, style);
+        patches.push(Patch::SetRowStyle {
             sheet: id,
             row: key,
-            property: RowProperty::Style(Some(Box::new(style.clone()))),
+            props,
             ts: None,
             prev,
         });
@@ -1220,16 +1235,20 @@ impl CollabModel<'_> {
         let Some(key) = Stable::row_at(&self.workbook.worksheets[i].index, row) else {
             return Ok(());
         };
-        let prev = self.row_prev(i, Some(&key), RowPropKind::Style);
-        if !matches!(prev, Some(RowProperty::Style(Some(_)))) {
+        let styled = self.workbook.worksheets[i]
+            .rows
+            .iter()
+            .any(|r| r.r == key && r.custom_format);
+        if !styled {
             return Ok(());
         }
-        self.commit_local(vec![Patch::SetRowProperty {
+        let own = self.row_own_style(i, &key);
+        self.commit_local(vec![Patch::SetRowStyle {
             sheet: id,
             row: key,
-            property: RowProperty::Style(None),
+            props: StyleProperty::all(&Style::default()),
             ts: None,
-            prev,
+            prev: StyleProperty::all(&own),
         }]);
         Ok(())
     }
@@ -1291,22 +1310,52 @@ impl CollabModel<'_> {
         column: i32,
         style: &Style,
     ) -> Result<(), String> {
-        let property = ColProperty::Style(Some(Box::new(style.clone())));
-        self.commit_column_property(sheet, column, property)
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        let mut patches = Vec::new();
+        let key = self.col_key(i, id, column, &mut patches);
+        let old = self.col_own_style(i, &key);
+        let (props, prev) = StyleProperty::diff(&old, style);
+        if props.is_empty() {
+            return Ok(());
+        }
+        patches.push(Patch::SetColumnStyle {
+            sheet: id,
+            span: (key.clone(), key),
+            props,
+            ts: None,
+            prev,
+        });
+        self.commit_local(patches);
+        Ok(())
     }
 
     /// Resets a column's style to the default, if it has one.
     pub fn delete_column_style(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        self.sheet_of(sheet)?;
+        let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
         let Some(key) = Stable::col_at(&self.workbook.worksheets[i].index, column) else {
             return Ok(());
         };
-        let prev = self.col_prev(i, &key, ColPropKind::Style);
-        if !matches!(prev, Some(ColProperty::Style(Some(_)))) {
+        let styled = self.workbook.worksheets[i]
+            .cols
+            .iter()
+            .any(|c| c.min == key && c.max == key && c.style.is_some());
+        if !styled {
             return Ok(());
         }
-        self.commit_column_property(sheet, column, ColProperty::Style(None))
+        let own = self.col_own_style(i, &key);
+        self.commit_local(vec![Patch::SetColumnStyle {
+            sheet: id,
+            span: (key.clone(), key),
+            props: StyleProperty::all(&Style::default()),
+            ts: None,
+            prev: StyleProperty::all(&own),
+        }]);
+        Ok(())
     }
 
     /// One commit writing `property` to every row in `start..=end`. Rows already holding it are
@@ -1641,6 +1690,25 @@ impl CollabModel<'_> {
     }
 }
 
+/// `style`'s attributes grouped by the stamp their register `key` holds, oldest first. Attributes
+/// with no register entry are at their default and need no restoring.
+fn stamped<K: Eq + std::hash::Hash>(
+    registers: &std::collections::HashMap<K, Timestamp>,
+    key: impl Fn(StylePropKind) -> K,
+    style: &Style,
+) -> Vec<(Vec<StyleProperty>, Timestamp)> {
+    let mut groups: std::collections::BTreeMap<Timestamp, Vec<StyleProperty>> = Default::default();
+    for k in StylePropKind::ALL {
+        if let Some(ts) = registers.get(&key(k)) {
+            groups
+                .entry(*ts)
+                .or_default()
+                .push(StyleProperty::read(style, k));
+        }
+    }
+    groups.into_iter().map(|(ts, props)| (props, ts)).collect()
+}
+
 /// Structural edits.
 ///
 /// Nothing rewrites a formula any more: a bound reference names rows, columns and sheets by
@@ -1689,7 +1757,11 @@ impl CollabModel<'_> {
                             ((key.clone(), col.clone()), col.clone(), cell.get_style())
                         }),
                 );
-                let prop_ts = [RowPropKind::Style, RowPropKind::Height, RowPropKind::Hidden]
+                let style = match &state.style {
+                    Some(own) => stamped(&registers.row_styles, |k| (key.clone(), k), own),
+                    None => Vec::new(),
+                };
+                let prop_ts = [RowPropKind::Height, RowPropKind::Hidden]
                     .into_iter()
                     .filter_map(|kind| {
                         let ts = registers.rows.get(&(key.clone(), kind))?;
@@ -1699,6 +1771,7 @@ impl CollabModel<'_> {
                 RowSnapshot {
                     key: key.clone(),
                     state,
+                    style,
                     cell_values,
                     cell_styles,
                     prop_ts,
@@ -1734,7 +1807,11 @@ impl CollabModel<'_> {
                     }),
                 );
                 let span = (key.clone(), key.clone());
-                let prop_ts = [ColPropKind::Style, ColPropKind::Width, ColPropKind::Hidden]
+                let style = match &state.style {
+                    Some(own) => stamped(&registers.col_styles, |k| (span.clone(), k), own),
+                    None => Vec::new(),
+                };
+                let prop_ts = [ColPropKind::Width, ColPropKind::Hidden]
                     .into_iter()
                     .filter_map(|kind| {
                         let ts = registers.col_spans.get(&(span.clone(), kind))?;
@@ -1744,6 +1821,7 @@ impl CollabModel<'_> {
                 ColumnSnapshot {
                     key: key.clone(),
                     state,
+                    style,
                     cell_values,
                     cell_styles,
                     prop_ts,
@@ -1761,7 +1839,7 @@ impl CollabModel<'_> {
         cells: impl Iterator<Item = (StableCellAddress, FractionalKey, i32)>,
     ) -> (
         Vec<(FractionalKey, CellInput, Timestamp)>,
-        Vec<(FractionalKey, Style, Timestamp)>,
+        Vec<(FractionalKey, Vec<StyleProperty>, Timestamp)>,
     ) {
         let registers = &self.workbook.worksheets[i].index.registers;
         let mut values = Vec::new();
@@ -1775,8 +1853,11 @@ impl CollabModel<'_> {
             }
             if style != 0 {
                 if let Ok(style) = self.workbook.styles.get_style(style) {
-                    let ts = registers.cell_styles.get(&at).copied().unwrap_or_default();
-                    styles.push((key, style, ts));
+                    // One entry per stamp: attributes written together travel together.
+                    for (props, ts) in stamped(&registers.cell_styles, |k| (at.clone(), k), &style)
+                    {
+                        styles.push((key.clone(), props, ts));
+                    }
                 }
             }
         }
@@ -2670,7 +2751,8 @@ impl CollabModel<'_> {
     /// Repoints everything drawn with `old_xf` at `style`. Style *index* equality is the test, as in
     /// the ordinal model: a cell styled the same way by hand moves with the named style.
     fn restyle_patches(&self, old_xf: i32, style: &Style) -> Vec<Patch> {
-        let prev = self.workbook.styles.get_style(old_xf).ok();
+        let prev = self.workbook.styles.get_style(old_xf).unwrap_or_default();
+        let (props, prev) = (StyleProperty::all(style), StyleProperty::all(&prev));
         let mut patches = Vec::new();
         for sheet in &self.workbook.worksheets {
             let id = sheet.sheet_id;
@@ -2689,9 +2771,9 @@ impl CollabModel<'_> {
             patches.extend(cells.into_iter().map(|at| Patch::SetCellStyle {
                 sheet: id,
                 at,
-                style: Some(Box::new(style.clone())),
+                props: props.clone(),
                 ts: None,
-                prev: Box::new(prev.clone()),
+                prev: prev.clone(),
             }));
             // A row's index only draws anything when it is its custom format.
             for row in sheet
@@ -2699,21 +2781,21 @@ impl CollabModel<'_> {
                 .iter()
                 .filter(|r| r.custom_format && r.s == old_xf)
             {
-                patches.push(Patch::SetRowProperty {
+                patches.push(Patch::SetRowStyle {
                     sheet: id,
                     row: row.r.clone(),
-                    property: RowProperty::Style(Some(Box::new(style.clone()))),
+                    props: props.clone(),
                     ts: None,
-                    prev: Some(RowProperty::Style(prev.clone().map(Box::new))),
+                    prev: prev.clone(),
                 });
             }
             for col in sheet.cols.iter().filter(|c| c.style == Some(old_xf)) {
-                patches.push(Patch::SetColumnSpan {
+                patches.push(Patch::SetColumnStyle {
                     sheet: id,
                     span: (col.min.clone(), col.max.clone()),
-                    property: ColProperty::Style(Some(Box::new(style.clone()))),
+                    props: props.clone(),
                     ts: None,
-                    prev: Some(ColProperty::Style(prev.clone().map(Box::new))),
+                    prev: prev.clone(),
                 });
             }
         }
@@ -3985,11 +4067,12 @@ mod test {
         // Outside the range nothing moved.
         assert_eq!(a.get_formatted_cell_value(0, 1, 3), Ok("100".to_string()));
 
-        // The clear left the four cells behind, holding just their styles, so they are cleared again.
+        // The clear left the two styled cells behind; the two that held no style of their own went
+        // with their contents, so only two cells are there to clear again.
         a.range_clear_all(&area(1, 1, 2, 4)).unwrap();
         let commits = a.flush();
         assert_eq!(commits.len(), 1);
-        assert_eq!(commits[0].patches.len(), 8);
+        assert_eq!(commits[0].patches.len(), 4);
         assert_eq!(a.get_cell_style_or_none(0, 1, 2), Ok(None));
         assert_eq!(a.get_cell_style_or_none(0, 2, 2), Ok(None));
         // Nothing left in the range at all — only C1 survives.
@@ -4055,6 +4138,152 @@ mod test {
             assert_eq!(m.get_formatted_cell_value(0, 3, 2), Ok("33".to_string()));
         }
         assert_eq!(b.workbook, a.workbook);
+    }
+
+    fn converged(a: &CollabModel<'_>, b: &CollabModel<'_>) {
+        let sa = &a.workbook.worksheets[0];
+        let sb = &b.workbook.worksheets[0];
+        assert_eq!(sb.index, sa.index);
+        let cells = |s: &crate::types::Worksheet<Stable>| {
+            let mut cells: Vec<_> = s
+                .sheet_data
+                .iter()
+                .flat_map(|(r, row)| row.keys().map(move |c| (r.clone(), c.clone())))
+                .collect();
+            cells.sort();
+            cells
+        };
+        assert_eq!(cells(&sb), cells(&sa));
+        for row in 1..=6 {
+            for col in 1..=6 {
+                assert_eq!(
+                    b.get_formatted_cell_value(0, row, col),
+                    a.get_formatted_cell_value(0, row, col)
+                );
+                assert_eq!(
+                    b.get_style_for_cell(0, row, col),
+                    a.get_style_for_cell(0, row, col),
+                    "style at row {row} column {col}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn concurrent_style_attributes() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+        let setup = a.flush();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &setup);
+
+        // peer A: A1={bold}
+        a.update_range_style(&area(1, 1, 1, 1), "font.b", "true")
+            .unwrap();
+        let bolded = a.flush();
+        // peer B: A1={italic}
+        b.set_cell_style(0, 1, 1, &italic()).unwrap();
+        // peer A: B2={fill.color}
+        a.update_range_style(&area(2, 2, 1, 1), "fill.color", "#FF0000")
+            .unwrap();
+        // peer B: B2={num_fmt}
+        b.update_range_style(&area(2, 2, 1, 1), "num_fmt", "0.00")
+            .unwrap();
+        // peer A: C1={font.color} (losing)
+        a.update_range_style(&area(1, 3, 1, 1), "font.color", "#00FF00")
+            .unwrap();
+        // peer B: C1={font.color} (winning)
+        b.update_range_style(&area(1, 3, 1, 1), "font.color", "#0000FF")
+            .unwrap();
+        // Row 5 and column E as wholes. Each side's column write also lands on E5, the cell sitting
+        // on its own styled row, so E5 ends up merging all four attributes.
+        a.update_range_style(&area(5, 1, LAST_COLUMN, 1), "font.b", "true")
+            .unwrap();
+        b.update_range_style(&area(5, 1, LAST_COLUMN, 1), "font.i", "true")
+            .unwrap();
+        a.update_range_style(&area(1, 5, 1, LAST_ROW), "fill.color", "#FF0000")
+            .unwrap();
+        b.update_range_style(&area(1, 5, 1, LAST_ROW), "num_fmt", "0.00")
+            .unwrap();
+
+        let from_a = a.flush();
+        let from_b = b.flush();
+        deliver(&mut b, 1, &bolded);
+        deliver(&mut b, 1, &from_a);
+        deliver(&mut a, 2, &from_b);
+        a.evaluate();
+        b.evaluate();
+
+        let red = Color::Rgb("#FF0000".to_string());
+        for m in [&a, &b] {
+            let a1 = m.get_style_for_cell(0, 1, 1).unwrap(); // A1={bold & italic}
+            assert!(a1.font.b && a1.font.i);
+            let b2 = m.get_style_for_cell(0, 2, 2).unwrap(); // B2={fill.color & num_fmt}
+            assert_eq!(
+                (b2.fill.color.clone(), b2.num_fmt.as_str()),
+                (red.clone(), "0.00")
+            );
+            let c1 = m.get_style_for_cell(0, 1, 3).unwrap(); // C1={font.color} (peer B's)
+            assert_eq!(c1.font.color, Color::Rgb("#0000FF".to_string()));
+            // Inherited: no cell at A5 or E1.
+            let a5 = m.get_style_for_cell(0, 5, 1).unwrap();
+            assert!(a5.font.b && a5.font.i);
+            let e1 = m.get_style_for_cell(0, 1, 5).unwrap();
+            assert_eq!(
+                (e1.fill.color.clone(), e1.num_fmt.as_str()),
+                (red.clone(), "0.00")
+            );
+            let e5 = m.get_style_for_cell(0, 5, 5).unwrap();
+            assert!(e5.font.b && e5.font.i && e5.fill.color == red && e5.num_fmt == "0.00");
+        }
+        converged(&a, &b);
+
+        // Undoing A's bold on A1 retracts that attribute only.
+        let undo: Vec<Patch> = bolded
+            .iter()
+            .rev()
+            .flat_map(|c| invert_patches(&c.patches))
+            .collect();
+        a.commit_local(undo);
+        deliver(&mut b, 1, &a.flush());
+        for m in [&a, &b] {
+            let a1 = m.get_style_for_cell(0, 1, 1).unwrap();
+            assert!(!a1.font.b && a1.font.i);
+        }
+        converged(&a, &b);
+
+        // A deletes row 5 while B underlines E5. The delete outranks every attribute written before
+        // it: the row's own style and E5's four go, the newer underline stays on the dead cell. B
+        // trims E5 to the underline; A rebuilds E5 from that write alone. Same cell either way.
+        a.delete_rows(0, 5, 1).unwrap();
+        let deleted = a.flush();
+        b.update_range_style(&area(5, 5, 1, 1), "font.u", "true")
+            .unwrap();
+        deliver(&mut a, 2, &b.flush());
+        deliver(&mut b, 1, &deleted);
+        converged(&a, &b);
+
+        // Undoing delete brings the row and its cells back at their original stamps, so the
+        // surviving underline is added to, not replaced.
+        let undo: Vec<Patch> = deleted
+            .iter()
+            .rev()
+            .flat_map(|c| invert_patches(&c.patches))
+            .collect();
+        a.commit_local(undo);
+        deliver(&mut b, 1, &a.flush());
+        a.evaluate();
+        b.evaluate();
+        for m in [&a, &b] {
+            let a5 = m.get_style_for_cell(0, 5, 1).unwrap();
+            assert!(a5.font.b && a5.font.i);
+            let e5 = m.get_style_for_cell(0, 5, 5).unwrap();
+            assert!(
+                e5.font.b && e5.font.i && e5.font.u && e5.fill.color == red && e5.num_fmt == "0.00"
+            );
+        }
+        converged(&a, &b);
     }
 
     #[test]
