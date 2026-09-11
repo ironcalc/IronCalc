@@ -56,6 +56,19 @@ pub(crate) enum Seen {
     Occupied,
 }
 
+/// What was seen at one position in the current pass: the root of the
+/// recursion that first read it as empty, and the root of the recursion on
+/// whose behalf an array was first blocked by it. Both can be set for the
+/// same position: a leftover spill cell of the anchor being evaluated is read
+/// as empty on its behalf, and then blocks an array evaluated on demand
+/// inside it. Keeping only the first record would let the anchor remove the
+/// cell without contradicting the blocked array.
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+pub(crate) struct SeenRecord {
+    pub(crate) empty: Option<CellReferenceIndex>,
+    pub(crate) occupied: Option<CellReferenceIndex>,
+}
+
 /// Why the current pass is abandoned. In every case the anchor is moved to the
 /// front of the evaluation order and the pass starts again.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -158,8 +171,8 @@ pub(crate) struct Evaluation {
     pub(crate) circular: HashSet<CellKey>,
     /// What formulas saw at the positions they read in the current pass, and
     /// the root of the recursion the read was made in (the cell the driver was
-    /// evaluating at the time).
-    pub(crate) seen: HashMap<CellKey, (Seen, CellReferenceIndex)>,
+    /// evaluating at the time), one record per kind.
+    pub(crate) seen: HashMap<CellKey, SeenRecord>,
     /// Set when the current pass must be abandoned. Every evaluation in
     /// progress then returns without storing anything.
     pub(crate) restart: Option<Restart>,
@@ -506,17 +519,22 @@ impl<'a> Model<'a> {
     }
 
     /// Records what the formula being evaluated found at a position, together
-    /// with the root of the current recursion. Reads made by the driver itself,
-    /// or outside a pass, are nobody's dependency.
+    /// with the root of the current recursion. The first record of each kind
+    /// is kept. Reads made by the driver itself, or outside a pass, are
+    /// nobody's dependency.
     pub(crate) fn record_seen(&mut self, position: CellReferenceIndex, seen: Seen) {
         if !self.evaluation.in_pass {
             return;
         }
         if let Some(&root) = self.evaluation.stack.first() {
-            self.evaluation
-                .seen
-                .entry(key(position))
-                .or_insert((seen, root));
+            let record = self.evaluation.seen.entry(key(position)).or_default();
+            let slot = match seen {
+                Seen::Empty => &mut record.empty,
+                Seen::Occupied => &mut record.occupied,
+            };
+            if slot.is_none() {
+                *slot = Some(root);
+            }
         }
     }
 
@@ -538,14 +556,12 @@ impl<'a> Model<'a> {
         let seen = &self.evaluation.seen;
         let contradicted_roots: Vec<CellReferenceIndex> = writes
             .iter()
-            .filter_map(|p| match seen.get(p) {
-                Some((Seen::Empty, root)) => Some(*root),
-                _ => None,
-            })
-            .chain(clears.iter().filter_map(|p| match seen.get(p) {
-                Some((Seen::Occupied, root)) => Some(*root),
-                _ => None,
-            }))
+            .filter_map(|p| seen.get(p).and_then(|record| record.empty))
+            .chain(
+                clears
+                    .iter()
+                    .filter_map(|p| seen.get(p).and_then(|record| record.occupied)),
+            )
             .collect();
         if contradicted_roots.is_empty() {
             return false;

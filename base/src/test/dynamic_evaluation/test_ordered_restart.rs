@@ -294,3 +294,42 @@ fn evaluating_outside_a_pass_reads_spill_cells_through_their_anchor() {
     model.evaluation.cells.clear();
     assert_eq!(model.evaluate_formula("=B3*2", 0), Some(6.0));
 }
+
+// ── A blocking scan after a read of the same cell ───────────────────────────
+
+//         ║   A   |                          B                           |       C        |
+// ════════╬═══════╪══════════════════════════════════════════════════════╪════════════════╪
+//    1    ║ 1     |                                                      | =SEQUENCE(3)   |
+//    2    ║       | =IF(A1=1,SEQUENCE(2,2),IF(AND(C2="",C3=""),IF(ISERROR(C1),5,6),7)) |
+//
+// With A1 = 1, B2 spills B2:C3. Then A1 becomes 0 and C1 is added. B2 runs
+// first (remembered order), reads its own leftovers C2 and C3 as empty, then
+// reads C1, which is blocked by those very leftovers. B2 shrinks to a scalar
+// and removes C2 and C3. Both records of C2 and C3 must be kept: the read as
+// empty (root B2) and the blocked scan (also root B2, since C1 ran on B2's
+// behalf). The removal then contradicts the scan on B2's own behalf: B2 is
+// circular, and C1 spills on the next pass. With a single record per position
+// the scan was lost and C1 stayed #SPILL! over a free area.
+#[test]
+fn a_blocking_cell_read_as_empty_before_the_scan_keeps_both_records() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set(
+        "B2",
+        "=IF(A1=1,SEQUENCE(2,2),IF(AND(C2=\"\",C3=\"\"),IF(ISERROR(C1),5,6),7))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("C3"), "4");
+
+    model._set("A1", "0");
+    model._set("C1", "=SEQUENCE(3)");
+    assert_eq!(model._get_text("C2"), "2");
+    model.evaluate();
+    let violations = crate::test::dynamic_evaluation::oracle::violations(&mut model);
+    assert!(violations.is_empty(), "{violations:?}");
+    assert_eq!(model._get_text("B2"), "#CIRC!");
+    assert_eq!(model._get_text("C1"), "1");
+    assert_eq!(model._get_text("C3"), "3");
+    assert_eq!(restarts(&model), 1);
+    assert_eq!(anchor_order(&model), ["B2", "C1"]);
+}
