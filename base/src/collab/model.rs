@@ -4,7 +4,7 @@ use crate::collab::fractional_index::{FractionalIndex, FractionalKey, SESSION_SU
 use crate::collab::log::{Commit, Lww, SessionId, Timestamp};
 use crate::collab::patch::{
     CfPropKind, ColPropKind, DefinedNameBody, DefinedNameId, NamedStyle, NamedStyleId, Patch,
-    RowPropKind, SheetId, SheetPropKind, WorkbookPropKind,
+    RowPropKind, SheetId, SheetPropKind, StylePropKind, WorkbookPropKind,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, DEFAULT_WINDOW_HEIGHT,
@@ -176,10 +176,12 @@ pub struct SheetIndexes {
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct SheetRegisters {
     pub cell_values: HashMap<StableCellAddress, Timestamp>,
-    pub cell_styles: HashMap<StableCellAddress, Timestamp>,
+    pub cell_styles: HashMap<(StableCellAddress, StylePropKind), Timestamp>,
     pub arrays: HashMap<StableCellAddress, Timestamp>,
     pub rows: HashMap<(FractionalKey, RowPropKind), Timestamp>,
+    pub row_styles: HashMap<(FractionalKey, StylePropKind), Timestamp>,
     pub col_spans: HashMap<((FractionalKey, FractionalKey), ColPropKind), Timestamp>,
+    pub col_styles: HashMap<((FractionalKey, FractionalKey), StylePropKind), Timestamp>,
     pub props: HashMap<SheetPropKind, Timestamp>,
     pub merges: HashMap<StableRange, Timestamp>,
     pub comments: HashMap<StableCellAddress, Timestamp>,
@@ -340,13 +342,35 @@ impl Worksheet<Stable> {
         best.map(|(_, col)| col)
     }
 
+    pub(crate) fn covering_col_style(&self, column: i32) -> Option<&Col<Stable>> {
+        let mut best: Option<(Timestamp, &Col<Stable>)> = None;
+        // since column styles are using col spans we need to iterate over all
+        // spans and check if given column belongs to them
+        for col in &self.cols {
+            match col.resolve(&self.index) {
+                Some((min, max)) if (min..=max).contains(&column) => {}
+                _ => continue,
+            }
+            let span = (col.min.clone(), col.max.clone());
+            let Some(ts) = StylePropKind::ALL
+                .into_iter()
+                .filter_map(|kind| self.index.registers.col_styles.get(&(span.clone(), kind)))
+                .max()
+            else {
+                continue;
+            };
+            if best.is_none_or(|(stored, _)| stored < *ts) {
+                best = Some((*ts, col));
+            }
+        }
+        best.map(|(_, col)| col)
+    }
+
     pub fn get_column_style(&self, column: i32) -> Result<Option<i32>, String> {
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
         }
-        Ok(self
-            .covering_col(column, ColPropKind::Style)
-            .and_then(|col| col.style))
+        Ok(self.covering_col_style(column).and_then(|col| col.style))
     }
 
     /// Rows are addressed one key at a time, so there is nothing to resolve between.
