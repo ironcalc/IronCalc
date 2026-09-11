@@ -1413,10 +1413,18 @@ impl CollabModel<'_> {
         // Only the registers the seed actually sets: a default height is not a write, so a snapshot
         // never restores one as custom.
         if state.custom_height {
-            sheet.index.registers.rows.insert((key.clone(), PropKind::Height), *ts);
+            sheet
+                .index
+                .registers
+                .rows
+                .insert((key.clone(), PropKind::Height), *ts);
         }
         if state.hidden {
-            sheet.index.registers.rows.insert((key.clone(), PropKind::Hidden), *ts);
+            sheet
+                .index
+                .registers
+                .rows
+                .insert((key.clone(), PropKind::Hidden), *ts);
         }
         if let Some(style) = &state.style {
             for kind in set_kinds(style) {
@@ -1443,14 +1451,26 @@ impl CollabModel<'_> {
         let style = state.style.as_ref().map(|style| self.intern_style(style));
         let sheet = &mut self.workbook.worksheets[i];
         if state.custom_width {
-            sheet.index.registers.col_spans.insert((span.clone(), PropKind::Width), *ts);
+            sheet
+                .index
+                .registers
+                .col_spans
+                .insert((span.clone(), PropKind::Width), *ts);
         }
         if state.hidden {
-            sheet.index.registers.col_spans.insert((span.clone(), PropKind::Hidden), *ts);
+            sheet
+                .index
+                .registers
+                .col_spans
+                .insert((span.clone(), PropKind::Hidden), *ts);
         }
         if let Some(style) = &state.style {
             for kind in set_kinds(style) {
-                sheet.index.registers.col_spans.insert((span.clone(), kind), *ts);
+                sheet
+                    .index
+                    .registers
+                    .col_spans
+                    .insert((span.clone(), kind), *ts);
             }
         }
         sheet.cols.push(Col {
