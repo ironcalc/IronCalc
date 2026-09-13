@@ -127,6 +127,8 @@ structure SheetChange (st : PassState Pos Value) (p : Pos) (S' : Sheet Pos Value
   cleared_dyn : C ≠ [] → (st.sheet p).isDynAnchor = true
   so_mono : ∀ x r, st.seenOccupied x = some r → SO' x = some r
   so_spill : ∀ x r, SO' x = some r → ∃ a v, S' x = .spill a v
+  /-- New records were made on behalf of the root. -/
+  so_new : ∀ x r, SO' x = some r → st.seenOccupied x = some r ∨ st.root = some r
 
 section generic
 variable {S₀ : Sheet Pos Value} {st : PassState Pos Value} {p : Pos} {S' : Sheet Pos Value}
@@ -362,8 +364,24 @@ theorem SheetChange.commitOk (hinv : PassInv S₀ st) (htop : st.stack.head? = s
             simp [Content.isEmpty, Content.spillAnchor?] at hfree
         | empty => exact fun _ => hfree.2
         | spill _ _ => exact fun _ => hfree.2
+  have hm_root : m.root = st.root := rfl
   have hinv' : PassInv S₀ m :=
     { not_abandoned := hm_rest ▸ hinv.not_abandoned
+      root_cell := by
+        intro c hc hne
+        rw [hm_root] at hc
+        have hne' : st.stack ≠ [] := fun h => hne (by rw [hm_stack, h]; rfl)
+        rcases hinv.root_cell c hc hne' with h | h
+        · left
+          by_cases hcp : c = p
+          · subst hcp
+            rw [hm_cellsp]
+            simp
+          · rw [hm_cells c hcp]
+            exact h
+        · right
+          rw [hm_sheet]
+          exact hnf_stable c h
       orig_spill := by
         intro q a v hq hne
         rw [hm_sheet] at hq
@@ -670,7 +688,10 @@ theorem SheetChange.commitOk (hinv : PassInv S₀ st) (htop : st.stack.head? = s
       seenEmpty_mono := fun q r h => hm_se ▸ h
       seenOccupied_mono := fun q r h => hm_so ▸ hc.so_mono q r h
       inv := fun _ => Or.inr hinv'
-      protect := fun _ _ q hq => ⟨hf.prot q hq, hf.view q hq⟩ }
+      protect := fun _ _ q hq => ⟨hf.prot q hq, hf.view q hq⟩
+      root_eq := rfl
+      roots_new_empty := fun q r h => Or.inl (hm_se ▸ h)
+      roots_new_occupied := fun q r h => hc.so_new q r (hm_so ▸ h) }
 
 end generic
 
@@ -681,6 +702,21 @@ structure CommitOk (S₀ : Sheet Pos Value) (st st' : PassState Pos Value) (p : 
   inv : PassInv S₀ (markEvaluated st' p)
   cells : st'.cells = st.cells
   stack : st'.stack = st.stack
+
+/-- What the restart raised by a commit of `p` with result `r` says, relative
+to the state the commit started from. -/
+structure Abandoned (S₀ : Sheet Pos Value) (st : PassState Pos Value) (p : Pos)
+    (r : Result Pos Value) (r' : Restart Pos) : Prop where
+  anchor : r'.anchor = p
+  stale : r'.StaleOk S₀
+  /-- Every reader is another cell, on whose behalf something was read. -/
+  readers : ∀ x ∈ r'.readers, x ≠ p ∧
+    ((∃ q, st.seenEmpty q = some x ∨ st.seenOccupied q = some x) ∨ st.root = some x)
+  nonempty : r'.learns = true → r'.readers ≠ []
+  nodup : r'.readers.Nodup
+  /-- A scalar commit restarts only over stale cells of `p`, which are in
+  the original sheet. -/
+  spill : (∃ v, r = .scalar v) → ∃ q v, S₀ q = .spill p v
 
 section
 variable (S₀ : Sheet Pos Value) (U : Universe Pos)
@@ -763,8 +799,25 @@ theorem commit_spec_formula (st : PassState Pos Value) (p : Pos) (r : Result Pos
       cases S₀ q <;> simp [hp, Content.isEmpty, Content.spillAnchor?]
     · rw [hS'ne q hq]
       exact hinv.shape q
+  have hm_root : m.root = st.root := rfl
   have hinv' : PassInv S₀ m :=
     { not_abandoned := hm_rest ▸ hinv.not_abandoned
+      root_cell := by
+        intro c hc hne
+        rw [hm_root] at hc
+        have hne' : st.stack ≠ [] := fun h => hne (by rw [hm_stack, h]; rfl)
+        by_cases hcp : c = p
+        · subst hcp
+          left
+          rw [hm_cellsp]
+          simp
+        · rcases hinv.root_cell c hc hne' with h | h
+          · left
+            rw [hm_cells c hcp]
+            exact h
+          · right
+            rw [hm_sheet, hS'ne c hcp]
+            exact h
       orig_spill := by
         intro q a v hq hne
         rw [hm_sheet] at hq
@@ -932,7 +985,10 @@ theorem commit_spec_formula (st : PassState Pos Value) (p : Pos) (r : Result Pos
         exact hq
       circular_mono := hm_circ ▸ Finset.Subset.refl _
       seenEmpty_mono := fun q r' h => hm_se ▸ h
-      seenOccupied_mono := fun q r' h => hm_so ▸ h
+      seenOccupied_mono := fun q r h => hm_so ▸ h
+      root_eq := rfl
+      roots_new_empty := fun q r h => Or.inl (hm_se ▸ h)
+      roots_new_occupied := fun q r h => Or.inl (hm_so ▸ h)
       inv := fun _ => Or.inr hinv'
       protect := fun _ _ q hq => ⟨hprot q hq, hview q (hne_of_prot q hq)⟩ }
 
@@ -1011,7 +1067,8 @@ theorem commit_spec_cse (st : PassState Pos Value) (p : Pos) (r : Result Pos Val
   have hspill_none : ∀ x w, st.sheet x = .spill p w → st.seenEmpty x = none :=
     fun x w hx => seenEmpty_none_of_cse hinv hp hx
   have hchange : SheetChange st p S' st.seenOccupied W [] :=
-    { p_kind := by
+    { so_new := fun _ _ h => Or.inl h
+      p_kind := by
         rw [hp, hS'p]
         exact ⟨_, rfl⟩
       untouched := fun x hxp hxW _ => hS'ne x hxp hxW
@@ -1089,11 +1146,12 @@ theorem spillContradictsARead_run (anchor : Pos) (writes clears : List Pos)
     (spillContradictsARead (Value := Value) anchor writes clears).run st =
       if (writes.filterMap st.seenEmpty ++ clears.filterMap st.seenOccupied).isEmpty then (false, st)
       else (true, { st with restart := (some
-        (if (writes.filterMap st.seenEmpty ++ clears.filterMap st.seenOccupied).all
-            (fun r => decide (r = anchor))
+        (if (((writes.filterMap st.seenEmpty ++ clears.filterMap st.seenOccupied).filter
+            fun r => decide (r ≠ anchor)).dedup).isEmpty
           then (if (writes.filterMap st.seenEmpty).isEmpty then .staleCells anchor clears
             else .selfContradiction anchor)
-          else .conflict anchor)) }) := by
+          else .conflict anchor (((writes.filterMap st.seenEmpty ++
+            clears.filterMap st.seenOccupied).filter fun r => decide (r ≠ anchor)).dedup))) }) := by
   simp only [spillContradictsARead, StateM.run_getBind]
   try dsimp only
   split <;> rfl
@@ -1106,8 +1164,10 @@ theorem storeScalar_run (st : PassState Pos Value) (p : Pos) (t : Formula Pos Va
         { st with sheet := (Sheet.writeAll (Function.update st.sheet p (.dynAnchor t v))
             (clears.map fun q => (q, .empty))) }
       else { st with restart := (some
-        (if (clears.filterMap st.seenOccupied).all (fun r => decide (r = p))
-          then .staleCells p clears else .conflict p)) } := by
+        (if (((clears.filterMap st.seenOccupied).filter fun r => decide (r ≠ p)).dedup).isEmpty
+          then .staleCells p clears
+          else .conflict p (((clears.filterMap st.seenOccupied).filter
+            fun r => decide (r ≠ p)).dedup))) } := by
   simp only [storeScalar, StateM.run_getBind]
   try dsimp only
   rw [StateT.run_bind, spillContradictsARead_run]
@@ -1118,7 +1178,8 @@ theorem storeScalar_run (st : PassState Pos Value) (p : Pos) (t : Formula Pos Va
 that clears every spill cell of `p`. -/
 theorem storeScalar_spec (st : PassState Pos Value) (p : Pos) (t : Formula Pos Value) (v v₀ : Value)
     (hinv : PassInv S₀ st) (htop : st.stack.head? = some p) (hp : st.sheet p = .dynAnchor t v₀) :
-    (∃ r, (((storeScalar U p t v).run st).2).restart = some r ∧ r.anchor = p ∧ r.StaleOk S₀) ∨
+    (∃ r, (((storeScalar U p t v).run st).2).restart = some r ∧
+        Abandoned S₀ st p (.scalar v) r) ∨
       ∃ S' C, ((storeScalar U p t v).run st).2 = { st with sheet := S' } ∧
         SheetChange st p S' st.seenOccupied [] C ∧ S' p = .dynAnchor t v ∧
         ∀ x, (S' x).spillAnchor? ≠ some p := by
@@ -1192,20 +1253,47 @@ theorem storeScalar_spec (st : PassState Pos Value) (p : Pos) (t : Formula Pos V
           have hxC : x ∉ clears := fun h => by
             rw [hnone x h] at hx
             cases hx
-          exact ⟨a, w, by rw [hS'ne x hxp hxC]; exact hw⟩ }
+          exact ⟨a, w, by rw [hS'ne x hxp hxC]; exact hw⟩
+        so_new := fun _ _ h => Or.inl h }
   · left
     rename_i hroots
-    refine ⟨_, rfl, by split <;> rfl, ?_⟩
-    split
-    · -- Stale cells: one of them was on record as blocking, so it is a spill
-      -- cell of `p`, which has not committed: it is in the original sheet.
-      show ∃ q ∈ clears, ∃ v, S₀ q = .spill p v
+    -- One of the cleared cells was on record as blocking, so it is a spill
+    -- cell of `p`, which has not committed: it is in the original sheet.
+    have hstale : ∃ q ∈ clears, ∃ v, S₀ q = .spill p v := by
       rw [Bool.not_eq_true, List.isEmpty_eq_false_iff_exists_mem] at hroots
       obtain ⟨r', hr'⟩ := hroots
       obtain ⟨x, hx, _⟩ := List.mem_filterMap.mp hr'
       obtain ⟨_, w, hw⟩ := (hmem x).mp hx
       exact ⟨x, hx, w, hinv.orig_spill x p w hw (by rw [cells_of_head hinv htop]; simp)⟩
-    · trivial
+    have hspill : ∃ q v, S₀ q = .spill p v := by
+      obtain ⟨q, _, v, hv⟩ := hstale
+      exact ⟨q, v, hv⟩
+    have hreaders : ∀ x ∈ ((clears.filterMap st.seenOccupied).filter
+        fun r => decide (r ≠ p)).dedup, x ≠ p ∧ ∃ q, st.seenOccupied q = some x := by
+      intro x hx
+      rw [List.mem_dedup, List.mem_filter] at hx
+      obtain ⟨hx, hne⟩ := hx
+      obtain ⟨q, _, hqx⟩ := List.mem_filterMap.mp hx
+      exact ⟨by simpa using hne, q, hqx⟩
+    refine ⟨_, rfl, ?_⟩
+    split
+    · rename_i hempty
+      exact
+        { anchor := rfl
+          stale := hstale
+          readers := by simp [Restart.readers]
+          nonempty := by simp [Restart.learns]
+          nodup := by simp [Restart.readers]
+          spill := fun _ => hspill }
+    · rename_i hne
+      exact
+        { anchor := rfl
+          stale := trivial
+          readers := fun x hx => ⟨(hreaders x hx).1,
+            Or.inl ⟨(hreaders x hx).2.choose, Or.inr (hreaders x hx).2.choose_spec⟩⟩
+          nonempty := fun _ h => hne (List.isEmpty_iff.mpr h)
+          nodup := List.nodup_dedup _
+          spill := fun _ => hspill }
 
 theorem commit_run_dyn (st : PassState Pos Value) (p : Pos) (r : Result Pos Value)
     (t : Formula Pos Value) (v : Value) (h : st.sheet p = .dynAnchor t v) :
@@ -1221,7 +1309,8 @@ theorem commit_run_dyn (st : PassState Pos Value) (p : Pos) (r : Result Pos Valu
 theorem commit_spec_dyn_scalar (st : PassState Pos Value) (p : Pos) (v : Value)
     (hinv : PassInv S₀ st) (htop : st.stack.head? = some p) (hr : ResultOf st p (.scalar v))
     (t : Formula Pos Value) (v₀ : Value) (hp : st.sheet p = .dynAnchor t v₀) :
-    (∃ r, (((commit U p (.scalar v)).run st).2).restart = some r ∧ r.anchor = p ∧ r.StaleOk S₀) ∨
+    (∃ r, (((commit U p (.scalar v)).run st).2).restart = some r ∧
+        Abandoned S₀ st p (.scalar v) r) ∨
       CommitOk S₀ st ((commit U p (.scalar v)).run st).2 p := by
   rw [commit_run_dyn U st p _ t v₀ hp]
   try dsimp only
@@ -1268,22 +1357,23 @@ theorem recordSeen_occupied_run (q : Pos) (s : PassState Pos Value) :
       s'.sheet = s.sheet ∧ s'.cells = s.cells ∧ s'.stack = s.stack ∧ s'.circular = s.circular ∧
       s'.seenEmpty = s.seenEmpty ∧ s'.restart = s.restart ∧
       (∀ x r, s.seenOccupied x = some r → s'.seenOccupied x = some r) ∧
-      (∀ x r, s'.seenOccupied x = some r → s.seenOccupied x = some r ∨ x = q) ∧
-      (s.root.isSome → (s'.seenOccupied q).isSome) := by
+      (∀ x r, s'.seenOccupied x = some r →
+        s.seenOccupied x = some r ∨ (x = q ∧ s.root = some r)) ∧
+      (s.root.isSome → (s'.seenOccupied q).isSome) ∧ s'.root = s.root := by
   simp only [recordSeen, StateM.run_getBind]
   split
   · rename_i hroot
     exact ⟨s, rfl, rfl, rfl, rfl, rfl, rfl, rfl, fun _ _ h => h, fun _ _ h => Or.inl h,
-      fun h => by simp [hroot] at h⟩
+      fun h => by simp [hroot] at h, rfl⟩
   · rename_i r hroot
     try dsimp only
     split
     · rename_i hso
       exact ⟨s, rfl, rfl, rfl, rfl, rfl, rfl, rfl, fun _ _ h => h, fun _ _ h => Or.inl h,
-        fun _ => by simp [hso]⟩
+        fun _ => by simp [hso], rfl⟩
     · rename_i hso
       refine ⟨{ s with seenOccupied := Function.update s.seenOccupied q (some r) }, rfl, rfl, rfl,
-        rfl, rfl, rfl, rfl, ?_, ?_, ?_⟩
+        rfl, rfl, rfl, rfl, ?_, ?_, ?_, rfl⟩
       · intro x r' h
         by_cases hxq : x = q
         · subst hxq
@@ -1292,7 +1382,11 @@ theorem recordSeen_occupied_run (q : Pos) (s : PassState Pos Value) :
         · simp [Function.update_of_ne hxq, h]
       · intro x r' h
         by_cases hxq : x = q
-        · exact Or.inr hxq
+        · subst hxq
+          have h' : Function.update s.seenOccupied x (some r) x = some r' := h
+          rw [Function.update_self] at h'
+          cases h'
+          exact Or.inr ⟨rfl, hroot⟩
         · left
           simpa [Function.update_of_ne hxq] using h
       · intro _
@@ -1308,23 +1402,24 @@ theorem recordBlockers_run (st : PassState Pos Value) (p : Pos) :
       s'.seenEmpty = s.seenEmpty ∧ s'.restart = s.restart ∧
       (∀ x r, s.seenOccupied x = some r → s'.seenOccupied x = some r) ∧
       (∀ x r, s'.seenOccupied x = some r →
-        s.seenOccupied x = some r ∨ (x ∈ l ∧ ∃ a w, st.sheet x = .spill a w ∧ a ≠ p)) ∧
+        s.seenOccupied x = some r ∨
+          (x ∈ l ∧ (∃ a w, st.sheet x = .spill a w ∧ a ≠ p) ∧ s.root = some r)) ∧
       (s.root.isSome → ∀ x ∈ l, (∃ a w, st.sheet x = .spill a w ∧ a ≠ p) →
-        (s'.seenOccupied x).isSome)
+        (s'.seenOccupied x).isSome) ∧ s'.root = s.root
   | [], s => ⟨s, rfl, rfl, rfl, rfl, rfl, rfl, rfl, fun _ _ h => h, fun _ _ h => Or.inl h,
-      fun _ x hx => absurd hx List.not_mem_nil⟩
+      fun _ x hx => absurd hx List.not_mem_nil, rfl⟩
   | q :: l, s => by
       simp only [recordBlockers, StateT.run_bind]
       cases hsa : (st.sheet q).spillAnchor? with
       | none =>
-          obtain ⟨s', hrun, h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := recordBlockers_run st p l s
-          refine ⟨s', ?_, h1, h2, h3, h4, h5, h6, h7, ?_, ?_⟩
+          obtain ⟨s', hrun, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩ := recordBlockers_run st p l s
+          refine ⟨s', ?_, h1, h2, h3, h4, h5, h6, h7, ?_, ?_, h10⟩
           · rw [StateT.run_pure, Id.bind_apply]
             exact hrun
           · intro x r h
-            rcases h8 x r h with h | ⟨hx, hf⟩
+            rcases h8 x r h with h | ⟨hx, hf, hr⟩
             · exact Or.inl h
-            · exact Or.inr ⟨List.mem_cons_of_mem q hx, hf⟩
+            · exact Or.inr ⟨List.mem_cons_of_mem q hx, hf, hr⟩
           · intro hroot x hx hf
             rcases List.mem_cons.mp hx with rfl | hx
             · obtain ⟨a, w, hw, _⟩ := hf
@@ -1335,24 +1430,25 @@ theorem recordBlockers_run (st : PassState Pos Value) (p : Pos) :
           try dsimp only
           by_cases hap : a ≠ p
           · simp only [hap, ne_eq, not_false_eq_true, ↓reduceIte]
-            obtain ⟨s₁, hrun₁, g1, g2, g3, g4, g5, g6, g7, g8, g9⟩ := recordSeen_occupied_run q s
-            obtain ⟨s', hrun, h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := recordBlockers_run st p l s₁
+            obtain ⟨s₁, hrun₁, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10⟩ :=
+              recordSeen_occupied_run q s
+            obtain ⟨s', hrun, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩ :=
+              recordBlockers_run st p l s₁
             refine ⟨s', ?_, h1.trans g1, h2.trans g2, h3.trans g3, h4.trans g4, h5.trans g5,
-              h6.trans g6, fun x r h => h7 x r (g7 x r h), ?_, ?_⟩
+              h6.trans g6, fun x r h => h7 x r (g7 x r h), ?_, ?_, h10.trans g10⟩
             · rw [hrun₁, Id.bind_apply]
               exact hrun
             · intro x r h
-              rcases h8 x r h with h | ⟨hx, hf⟩
-              · rcases g8 x r h with h | rfl
+              rcases h8 x r h with h | ⟨hx, hf, hr⟩
+              · rcases g8 x r h with h | ⟨rfl, hr⟩
                 · exact Or.inl h
                 · right
-                  refine ⟨List.mem_cons_self, ?_⟩
+                  refine ⟨List.mem_cons_self, ?_, hr⟩
                   cases hs : st.sheet x <;> simp_all [Content.spillAnchor?]
-              · exact Or.inr ⟨List.mem_cons_of_mem q hx, hf⟩
+              · exact Or.inr ⟨List.mem_cons_of_mem q hx, hf, g10 ▸ hr⟩
             · intro hroot x hx hf
               have hroot₁ : s₁.root.isSome := by
-                unfold PassState.root
-                rw [g3]
+                rw [g10]
                 exact hroot
               rcases List.mem_cons.mp hx with rfl | hx
               · obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp (g9 hroot)
@@ -1361,14 +1457,15 @@ theorem recordBlockers_run (st : PassState Pos Value) (p : Pos) :
           · have hap' : a = p := not_not.mp hap
             subst hap'
             simp only [ne_eq, not_true_eq_false, ↓reduceIte]
-            obtain ⟨s', hrun, h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := recordBlockers_run st a l s
-            refine ⟨s', ?_, h1, h2, h3, h4, h5, h6, h7, ?_, ?_⟩
+            obtain ⟨s', hrun, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩ :=
+              recordBlockers_run st a l s
+            refine ⟨s', ?_, h1, h2, h3, h4, h5, h6, h7, ?_, ?_, h10⟩
             · rw [StateT.run_pure, Id.bind_apply]
               exact hrun
             · intro x r h
-              rcases h8 x r h with h | ⟨hx, hf⟩
+              rcases h8 x r h with h | ⟨hx, hf, hr⟩
               · exact Or.inl h
-              · exact Or.inr ⟨List.mem_cons_of_mem q hx, hf⟩
+              · exact Or.inr ⟨List.mem_cons_of_mem q hx, hf, hr⟩
             · intro hroot x hx hf
               rcases List.mem_cons.mp hx with rfl | hx
               · obtain ⟨a', w, hw, hap'⟩ := hf
@@ -1435,10 +1532,11 @@ variable (S₀ : Sheet Pos Value) (U : Universe Pos)
 /-- The dynamic-anchor case with an array result. -/
 theorem commit_spec_dyn_array (st : PassState Pos Value) (p : Pos) (area : List Pos)
     (vals : Pos → Value) (hinv : PassInv S₀ st) (htop : st.stack.head? = some p)
+    (hroot : st.root.isSome)
     (hr : ResultOf st p (.array area vals)) (t : Formula Pos Value) (v₀ : Value)
     (hp : st.sheet p = .dynAnchor t v₀) :
-    (∃ r, (((commit U p (.array area vals)).run st).2).restart = some r ∧ r.anchor = p ∧
-        r.StaleOk S₀) ∨
+    (∃ r, (((commit U p (.array area vals)).run st).2).restart = some r ∧
+        Abandoned S₀ st p (.array area vals) r) ∨
       CommitOk S₀ st ((commit U p (.array area vals)).run st).2 p := by
   rw [commit_run_dyn U st p _ t v₀ hp]
   try dsimp only
@@ -1450,7 +1548,24 @@ theorem commit_spec_dyn_array (st : PassState Pos Value) (p : Pos) (area : List 
     simp [htargets, List.mem_filter]
   -- The scan.
   obtain ⟨st₁, hrun₁, h1sheet, h1cells, h1stack, h1circ, h1se, h1rest, h1so_mono, h1so_src,
-    h1so_rec⟩ := recordBlockers_run st p targets st
+    h1so_rec, h1root⟩ := recordBlockers_run st p targets st
+  -- A restart raised from `st₁` says the same relative to `st`: the scan
+  -- only added occupied records, on behalf of the root.
+  have hback : ∀ (r : Result Pos Value) (r' : Restart Pos), Abandoned S₀ st₁ p r r' →
+      Abandoned S₀ st p (.array area vals) r' := by
+    intro r r' h
+    refine ⟨h.anchor, h.stale, ?_, h.nonempty, h.nodup, fun ⟨v, hv⟩ => by cases hv⟩
+    intro x hx
+    obtain ⟨hne, hrec⟩ := h.readers x hx
+    refine ⟨hne, ?_⟩
+    rcases hrec with ⟨q, hq | hq⟩ | hq
+    · rw [h1se] at hq
+      exact Or.inl ⟨q, Or.inl hq⟩
+    · rcases h1so_src q x hq with hq | ⟨_, _, hq⟩
+      · exact Or.inl ⟨q, Or.inr hq⟩
+      · exact Or.inr hq
+    · rw [h1root] at hq
+      exact Or.inr hq
   have hstep₀ : PassStep S₀ st st₁ := by
     have := recordBlockers_step S₀ st p targets st rfl
     rw [hrun₁] at this
@@ -1464,22 +1579,18 @@ theorem commit_spec_dyn_array (st : PassState Pos Value) (p : Pos) (area : List 
   have hp₁ : st₁.sheet p = .dynAnchor t v₀ := by rw [h1sheet]; exact hp
   have hr₁ : ResultOf st₁ p (.array area vals) := ResultOf.of_same h1sheet h1cells h1se hr
   have ht₁ : (st₁.sheet p).formula? = some t := by simp [hp₁, Content.formula?]
-  have hroot : st.root.isSome := by
-    unfold PassState.root
-    rw [(List.cons_head?_tail htop).symm]
-    simp
   have hrest₁ : st₁.restart = none := by rw [h1rest]; exact hinv.not_abandoned
   rw [StateT.run_bind, hrun₁, Id.bind_apply]
   try dsimp only
   split
   · -- Blocked: `#SPILL!`, own leftovers removed.
     rename_i hany
-    show (∃ r, (((storeScalar U p t spillError).run st₁).2).restart = some r ∧ r.anchor = p ∧
-        r.StaleOk S₀) ∨
+    show (∃ r, (((storeScalar U p t spillError).run st₁).2).restart = some r ∧
+        Abandoned S₀ st p (.array area vals) r) ∨
       CommitOk S₀ st (((storeScalar U p t spillError).run st₁).2) p
     rcases storeScalar_spec S₀ U st₁ p t spillError v₀ hinv₁ htop₁ hp₁
-      with h | ⟨S', C, hst', hchange, hS'p, hnospill⟩
-    · exact Or.inl h
+      with ⟨r', hr', hab⟩ | ⟨S', C, hst', hchange, hS'p, hnospill⟩
+    · exact Or.inl ⟨r', hr', hback _ r' hab⟩
     right
     rw [hst']
     have hf := hchange.facts hinv₁ htop₁
@@ -1604,7 +1715,8 @@ theorem commit_spec_dyn_array (st : PassState Pos Value) (p : Pos) (area : List 
         refine ⟨hxa, ?_⟩
         cases hs : st.sheet x <;> simp_all [Content.spillAnchor?]
       have hchange : SheetChange st₁ p S' st₁.seenOccupied targets clears :=
-        { p_kind := by
+        { so_new := fun _ _ h => Or.inl h
+          p_kind := by
             rw [hp₁, hS'p]
             exact ⟨_, rfl⟩
           untouched := fun x hxp hxT hxC => by rw [hS'ne x hxp hxT hxC, h1sheet]
@@ -1677,12 +1789,31 @@ theorem commit_spec_dyn_array (st : PassState Pos Value) (p : Pos) (area : List 
     · -- Contradiction: abandoned.
       left
       rename_i hroots
-      refine ⟨_, rfl, by split <;> (try split) <;> rfl, ?_⟩
+      have hreaders : ∀ x ∈ (((targets.filterMap st₁.seenEmpty ++
+          clears.filterMap st₁.seenOccupied).filter fun r => decide (r ≠ p)).dedup),
+          x ≠ p ∧ ((∃ q, st.seenEmpty q = some x ∨ st.seenOccupied q = some x) ∨
+            st.root = some x) := by
+        intro x hx
+        rw [List.mem_dedup, List.mem_filter] at hx
+        obtain ⟨hx, hne⟩ := hx
+        refine ⟨by simpa using hne, ?_⟩
+        rcases List.mem_append.mp hx with hx | hx
+        · obtain ⟨q, _, hq⟩ := List.mem_filterMap.mp hx
+          rw [h1se] at hq
+          exact Or.inl ⟨q, Or.inl hq⟩
+        · obtain ⟨q, _, hq⟩ := List.mem_filterMap.mp hx
+          rcases h1so_src q x hq with hq | ⟨_, _, hq⟩
+          · exact Or.inl ⟨q, Or.inr hq⟩
+          · exact Or.inr hq
+      refine ⟨_, rfl, ?_⟩
       split
-      · split
+      · rename_i hempty
+        split
         · -- Stale cells: no write contradicts, so a removal does, of a spill
           -- cell of `p` on record as blocking; `p` has not committed.
           rename_i hwe
+          refine ⟨rfl, ?_, by simp [Restart.readers], by simp [Restart.learns],
+            by simp [Restart.readers], fun ⟨v, hv⟩ => by cases hv⟩
           show ∃ q ∈ clears, ∃ v, S₀ q = .spill p v
           rw [Bool.not_eq_true, List.isEmpty_eq_false_iff_exists_mem] at hroots
           obtain ⟨r', hr'⟩ := hroots
@@ -1693,18 +1824,21 @@ theorem commit_spec_dyn_array (st : PassState Pos Value) (p : Pos) (area : List 
           · obtain ⟨x, hx, _⟩ := List.mem_filterMap.mp hcl
             obtain ⟨_, w, hw⟩ := (hmem_c x).mp hx
             exact ⟨x, hx, w, hinv.orig_spill x p w hw (by rw [cells_of_head hinv htop]; simp)⟩
-        · trivial
-      · trivial
+        · exact ⟨rfl, trivial, by simp [Restart.readers], by simp [Restart.learns],
+            by simp [Restart.readers], fun ⟨v, hv⟩ => by cases hv⟩
+      · rename_i hne
+        exact ⟨rfl, trivial, hreaders, fun _ h => hne (List.isEmpty_iff.mpr h),
+          List.nodup_dedup _, fun ⟨v, hv⟩ => by cases hv⟩
 
 
 /-- `set_cells_with_result` on the cell on top of the stack: either the pass
 is abandoned by a restart naming `p`, which is then a dynamic anchor, or the
 cell is committed and, once marked evaluated, the invariant holds again. -/
 theorem commit_spec (st : PassState Pos Value) (p : Pos) (r : Result Pos Value)
-    (hinv : PassInv S₀ st) (htop : st.stack.head? = some p) (hr : ResultOf st p r)
-    (hf : (st.sheet p).formula?.isSome) :
-    (∃ r', (((commit U p r).run st).2).restart = some r' ∧ r'.anchor = p ∧
-        (st.sheet p).isDynAnchor = true ∧ r'.StaleOk S₀) ∨
+    (hinv : PassInv S₀ st) (htop : st.stack.head? = some p) (hroot : st.root.isSome)
+    (hr : ResultOf st p r) (hf : (st.sheet p).formula?.isSome) :
+    (∃ r', (((commit U p r).run st).2).restart = some r' ∧
+        (st.sheet p).isDynAnchor = true ∧ Abandoned S₀ st p r r') ∨
       CommitOk S₀ st ((commit U p r).run st).2 p := by
   cases hp : st.sheet p with
   | formula t v => exact Or.inr (commit_spec_formula S₀ U st p r hinv htop hr t v hp)
@@ -1712,13 +1846,13 @@ theorem commit_spec (st : PassState Pos Value) (p : Pos) (r : Result Pos Value)
   | dynAnchor t v =>
       cases r with
       | scalar v' =>
-          rcases commit_spec_dyn_scalar S₀ U st p v' hinv htop hr t v hp with ⟨r', h1, h2, h3⟩ | h
-          · exact Or.inl ⟨r', h1, h2, by simp [hp, Content.isDynAnchor], h3⟩
+          rcases commit_spec_dyn_scalar S₀ U st p v' hinv htop hr t v hp with ⟨r', h1, h2⟩ | h
+          · exact Or.inl ⟨r', h1, by simp [hp, Content.isDynAnchor], h2⟩
           · exact Or.inr h
       | array area vals =>
-          rcases commit_spec_dyn_array S₀ U st p area vals hinv htop hr t v hp
-            with ⟨r', h1, h2, h3⟩ | h
-          · exact Or.inl ⟨r', h1, h2, by simp [hp, Content.isDynAnchor], h3⟩
+          rcases commit_spec_dyn_array S₀ U st p area vals hinv htop hroot hr t v hp
+            with ⟨r', h1, h2⟩ | h
+          · exact Or.inl ⟨r', h1, by simp [hp, Content.isDynAnchor], h2⟩
           · exact Or.inr h
   | _ => rw [hp] at hf; simp [Content.formula?] at hf
 

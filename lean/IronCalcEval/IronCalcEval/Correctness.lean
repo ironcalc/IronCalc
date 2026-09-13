@@ -59,6 +59,56 @@ theorem PassInv.initial (S : Sheet Pos Value) (circular : Finset Pos) (hwf : Wel
   orig_spill := fun _ _ _ hq _ => hq
   evaluated_consistent := by simp [PassState.initial]
   reads_protected := by simp [PassState.initial]
+  root_cell := by simp [PassState.initial]
+
+omit [DecidableEq Pos] [ValueSort Value] in
+theorem SameShape.isDynAnchor_eq {S₀ S : Sheet Pos Value} (h : SameShape S₀ S) (a : Pos) :
+    (S a).isDynAnchor = (S₀ a).isDynAnchor := by
+  have := h a
+  revert this
+  cases S₀ a with
+  | const v => intro h; rw [h]
+  | formula t _ => rintro ⟨v, hv⟩; rw [hv]; simp [Content.isDynAnchor]
+  | cseAnchor t area _ => rintro ⟨v, hv⟩; rw [hv]; simp [Content.isDynAnchor]
+  | dynAnchor t _ => rintro ⟨v, hv⟩; rw [hv]; simp [Content.isDynAnchor]
+  | empty =>
+      intro h
+      cases hs : S a <;> simp_all [Content.isEmpty, Content.spillAnchor?, Content.isDynAnchor]
+  | spill _ _ =>
+      intro h
+      cases hs : S a <;> simp_all [Content.isEmpty, Content.spillAnchor?, Content.isDynAnchor]
+
+/-! ## The root, set by the pass body before each cell -/
+
+/-- The state `passBody` hands to `evalCell c`. -/
+def setRoot (st : PassState Pos Value) (c : Pos) : PassState Pos Value :=
+  { st with root := some c }
+
+theorem PassInv.setRoot {S₀ : Sheet Pos Value} {st : PassState Pos Value} (hinv : PassInv S₀ st)
+    (hstack : st.stack = []) (c : Pos) : PassInv S₀ (setRoot st c) :=
+  { hinv with root_cell := fun _ _ h => absurd hstack h }
+
+theorem RootOk.setRoot (st : PassState Pos Value) (c : Pos) : RootOk (setRoot st c) c :=
+  ⟨rfl, fun _ c' hc' => Or.inl (by cases hc'; rfl)⟩
+
+/-- What the pass body does between two cells, root changes included. -/
+structure BodyStep (a b : PassState Pos Value) : Prop where
+  cells_mono : ∀ q, a.cells q = some .evaluated → b.cells q = some .evaluated
+  circular_mono : a.circular ⊆ b.circular
+
+theorem BodyStep.refl (a : PassState Pos Value) : BodyStep a a :=
+  ⟨fun _ h => h, Finset.Subset.refl _⟩
+
+theorem BodyStep.trans {a b c : PassState Pos Value} (h₁ : BodyStep a b) (h₂ : BodyStep b c) :
+    BodyStep a c :=
+  ⟨fun q h => h₂.1 q (h₁.1 q h), Finset.Subset.trans h₁.2 h₂.2⟩
+
+theorem PassStep.toBody {S₀ : Sheet Pos Value} {a b : PassState Pos Value} (h : PassStep S₀ a b) :
+    BodyStep a b :=
+  ⟨h.cells_mono, h.circular_mono⟩
+
+theorem BodyStep.setRoot (st : PassState Pos Value) (c : Pos) : BodyStep st (setRoot st c) :=
+  ⟨fun _ h => h, Finset.Subset.refl _⟩
 
 /-- The cells map only grows during a pass: an evaluated cell stays evaluated. -/
 theorem evalCell_cells_mono (U : Universe Pos) (fuel : Nat) (p : Pos)
@@ -74,9 +124,10 @@ enough fuel, either abandons the pass or preserves the invariant. This is the
 state half of `evalCell_spec`; the value half is what the callers use. -/
 theorem evalCell_preserves (S₀ : Sheet Pos Value) (U : Universe Pos) (fuel : Nat) (p : Pos)
     (st st' : PassState Pos Value) (v : Value)
-    (hinv : PassInv S₀ st) (hfuel : FuelOk U st p fuel) (h : (evalCell U fuel p).run st = (v, st')) :
+    (hinv : PassInv S₀ st) (hroot : RootOk st p) (hfuel : FuelOk U st p fuel)
+    (h : (evalCell U fuel p).run st = (v, st')) :
     st'.restart.isSome ∨ PassInv S₀ st' := by
-  have := evalCell_spec U fuel p st hinv hfuel
+  have := evalCell_spec U fuel p st hinv hroot hfuel
   rw [h] at this
   rcases this.2.1 with h | ⟨h, _⟩
   · exact Or.inl h
@@ -100,35 +151,46 @@ theorem passBody_abandoned (U : Universe Pos) :
       simp only [passBody, StateM.run_getBind, h, ↓reduceIte, StateT.run_pure]
       rfl
 
+/-- One step of the pass body: unless the pass is abandoned, the root is set
+to the cell, the cell is read, and the body goes on. -/
+theorem passBody_cons (U : Universe Pos) (c : Pos) (l : List Pos) (s : PassState Pos Value) :
+    (passBody U (c :: l)).run s =
+      if s.restart.isSome then ((), s)
+      else (passBody U l).run ((evalCell U (passFuel U) c).run (setRoot s c)).2 := by
+  simp only [passBody, StateT.run_bind, StateT.run_get, StateT.run_modify, Id.pure_apply,
+    Id.bind_apply]
+  split <;> rfl
+
 /-- The pass body from a state satisfying the invariant with an empty stack:
 either the pass is abandoned, or the invariant holds, the stack is empty and
 every formula cell it visited is evaluated. -/
 theorem passBody_spec (S₀ : Sheet Pos Value) (U : Universe Pos) :
     ∀ (l : List Pos) (s : PassState Pos Value), PassInv S₀ s → s.stack = [] →
-      PassStep S₀ s ((passBody U l).run s).2 ∧
+      BodyStep s ((passBody U l).run s).2 ∧
         ((((passBody U l).run s).2).restart.isSome ∨
           (PassInv S₀ ((passBody U l).run s).2 ∧ (((passBody U l).run s).2).stack = [] ∧
             ∀ c ∈ l, (s.sheet c).formula?.isSome →
               (((passBody U l).run s).2).cells c = some .evaluated))
   | [], s, hinv, hstack =>
-      ⟨PassStep.refl S₀ s, Or.inr ⟨hinv, hstack, fun c hc => absurd hc List.not_mem_nil⟩⟩
+      ⟨BodyStep.refl s, Or.inr ⟨hinv, hstack, fun c hc => absurd hc List.not_mem_nil⟩⟩
   | c :: l, s, hinv, hstack => by
-      simp only [passBody, StateT.run_bind, StateT.run_get, Id.pure_apply, Id.bind_apply,
-        hinv.not_abandoned, Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
-      obtain ⟨hstep₁, h₁, _⟩ :=
-        evalCell_spec U (passFuel U) c s hinv (passFuel_ok S₀ U s hinv hstack c)
-      set out₁ := (evalCell U (passFuel U) c).run s with hout₁
-      try rw [Id.bind_apply]
+      rw [passBody_cons, if_neg (by simp [hinv.not_abandoned])]
+      have hinv₀ : PassInv S₀ (setRoot s c) := hinv.setRoot hstack c
+      have hstack₀ : (setRoot s c).stack = [] := hstack
+      obtain ⟨hstep₁, h₁, _⟩ := evalCell_spec U (passFuel U) c (setRoot s c) hinv₀
+        (RootOk.setRoot s c) (passFuel_ok S₀ U (setRoot s c) hinv₀ hstack₀ c)
+      set out₁ := (evalCell U (passFuel U) c).run (setRoot s c) with hout₁
+      have hstep₁' : BodyStep s out₁.2 := (BodyStep.setRoot s c).trans hstep₁.toBody
       rcases h₁ with hab | ⟨hinv₁, hstack₁, _, hev⟩
       · rw [passBody_abandoned U l out₁.2 hab]
-        exact ⟨hstep₁, Or.inl hab⟩
-      · have hnot : s.cells c ≠ some .evaluating := by
+        exact ⟨hstep₁', Or.inl hab⟩
+      · have hnot : (setRoot s c).cells c ≠ some .evaluating := by
           intro h
           have := (hinv.stack_evaluating c).mpr h
           rw [hstack] at this
           exact List.not_mem_nil this
         obtain ⟨hstep₂, h₂⟩ := passBody_spec S₀ U l out₁.2 hinv₁ (hstack₁.trans hstack)
-        refine ⟨hstep₁.trans hstep₂, ?_⟩
+        refine ⟨hstep₁'.trans hstep₂, ?_⟩
         rcases h₂ with hab | ⟨hinv₂, hstack₂, hev₂⟩
         · exact Or.inl hab
         · right
@@ -143,27 +205,33 @@ theorem passBody_spec (S₀ : Sheet Pos Value) (U : Universe Pos) :
                 cases hf
             exact hev₂ x hx hf₁
 
-/-- A restart of the pass body names a dynamic anchor that was not evaluated
-when the body started. -/
-theorem passBody_restartOk (S₀ : Sheet Pos Value) (U : Universe Pos) :
+/-- A restart of the pass body names a dynamic anchor of the original sheet,
+and if it drops stale cells, one of them is a spill cell of that anchor in
+the original sheet. (What else a restart says is the subject of
+`Loop.lean`.) -/
+theorem passBody_restart_dyn (S₀ : Sheet Pos Value) (U : Universe Pos) :
     ∀ (l : List Pos) (s : PassState Pos Value), PassInv S₀ s → s.stack = [] →
-      ∀ r, (((passBody U l).run s).2).restart = some r → RestartOk S₀ s r
+      ∀ r, (((passBody U l).run s).2).restart = some r →
+        (S₀ r.anchor).isDynAnchor = true ∧ r.StaleOk S₀
   | [], s, hinv, _, r, hr => by
       rw [passBody] at hr
       simp only [StateT.run_pure, Id.pure_apply] at hr
       rw [hinv.not_abandoned] at hr
       cases hr
   | c :: l, s, hinv, hstack, r, hr => by
-      simp only [passBody, StateT.run_bind, StateT.run_get, Id.pure_apply, Id.bind_apply,
-        hinv.not_abandoned, Option.isSome_none, Bool.false_eq_true, ↓reduceIte] at hr
-      obtain ⟨hstep₁, h₁, hr₁⟩ :=
-        evalCell_spec U (passFuel U) c s hinv (passFuel_ok S₀ U s hinv hstack c)
-      set out₁ := (evalCell U (passFuel U) c).run s with hout₁
+      rw [passBody_cons, if_neg (by simp [hinv.not_abandoned])] at hr
+      have hinv₀ : PassInv S₀ (setRoot s c) := hinv.setRoot hstack c
+      have hstack₀ : (setRoot s c).stack = [] := hstack
+      obtain ⟨_, h₁, hr₁⟩ := evalCell_spec U (passFuel U) c (setRoot s c) hinv₀
+        (RootOk.setRoot s c) (passFuel_ok S₀ U (setRoot s c) hinv₀ hstack₀ c)
+      set out₁ := (evalCell U (passFuel U) c).run (setRoot s c) with hout₁
       rcases h₁ with hab | ⟨hinv₁, hstack₁, _, _⟩
       · rw [passBody_abandoned U l out₁.2 hab] at hr
-        exact hr₁ r hr
-      · exact (passBody_restartOk S₀ U l out₁.2 hinv₁ (hstack₁.trans hstack) r hr).transport hinv
-          hinv₁ hstep₁
+        have hok := hr₁ r hr
+        refine ⟨?_, hok.stale⟩
+        rw [← SameShape.isDynAnchor_eq hinv₀.shape]
+        exact hok.dyn
+      · exact passBody_restart_dyn S₀ U l out₁.2 hinv₁ (hstack₁.trans hstack) r hr
 
 /-- When every anchor has committed and no spill cell is an orphan, the pass
 reads the sheet as the specification does. -/
@@ -226,16 +294,15 @@ theorem runPass_consistent (U : Universe Pos) (S S' : Sheet Pos Value) (order : 
 /-- What the driver learns from a restart: it names a dynamic anchor of the
 sheet the pass started from, and if it drops stale cells, one of them is a
 spill cell of that anchor in that sheet. -/
-theorem runPass_restartOk (U : Universe Pos) (S S' : Sheet Pos Value) (order : List Pos)
+theorem runPass_restart_dyn (U : Universe Pos) (S S' : Sheet Pos Value) (order : List Pos)
     (circular : Finset Pos) (r : Restart Pos) (hwf : WellFormed S)
     (h : runPass U S order circular = (S', some r)) :
     (S r.anchor).isDynAnchor = true ∧ r.StaleOk S := by
   rw [runPass_eq] at h
   simp only [Prod.mk.injEq] at h
   obtain ⟨_, hrest⟩ := h
-  have hok := passBody_restartOk S U (order ++ U.positions) (PassState.initial S circular)
+  exact passBody_restart_dyn S U (order ++ U.positions) (PassState.initial S circular)
     (PassInv.initial S circular hwf) rfl r hrest
-  exact ⟨hok.1, hok.2.2⟩
 
 /-- Whatever the loop returns is consistent. The sheet a pass starts from is
 well-formed throughout: dropping stale cells keeps it so. -/
@@ -249,9 +316,10 @@ theorem evaluateLoop_consistent (U : Universe Pos) :
       · simp only [evaluateLoop, hrun, Option.some.injEq, Prod.mk.injEq] at h
         obtain ⟨rfl, _, _⟩ := h
         exact runPass_consistent U S S₁ order log.circular hwf hrun
-      · simp only [evaluateLoop, hrun] at h
+      · rcases hrec : log.record r order with ⟨log₁, order₁, marked⟩
+        simp only [evaluateLoop, hrun, hrec] at h
         exact evaluateLoop_consistent U k _ _ _ S' order' log'
-          (hwf.nextSheet (runPass_restartOk U S S₁ order log.circular r hwf hrun).1) h
+          (hwf.nextSheet (runPass_restart_dyn U S S₁ order log.circular r hwf hrun).1 marked) h
 
 /-- Whatever `evaluate` returns is consistent. -/
 theorem evaluate_consistent (U : Universe Pos) (S S' : Sheet Pos Value)

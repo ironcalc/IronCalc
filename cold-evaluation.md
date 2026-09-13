@@ -84,9 +84,12 @@ pass records what each formula found at the positions it read: empty, or
 occupied by another array's spill cell. When an anchor is about to spill and
 the spill would contradict a record (write a position someone saw empty, or
 remove a cell someone was blocked by), the pass is thrown away and started
-again with that anchor first. The remembered order survives across
-evaluations, so a sheet that needed restarts once evaluates in a single pass
-afterwards. Cycles are what is left when no order works.
+again with that anchor before the cells that read it. Each restart is a fact
+about the sheet, "this anchor runs before those readers"; the driver keeps
+the facts of the evaluation and orders the anchors by them. The remembered
+order survives across evaluations, so a sheet that needed restarts once
+evaluates in a single pass afterwards. Cycles are what is left when the
+facts contradict each other.
 
 ### 3.2 State
 
@@ -98,7 +101,8 @@ afterwards. Cycles are what is left when no order works.
   `seen` map from position to what was found there, `Empty` and, separately,
   `Occupied` (both can hold: a leftover cell of the anchor being evaluated is
   read as empty on its behalf and then blocks an array evaluated inside it),
-  each with the root of the recursion that read it, and a `restart` request.
+  each with the root of the recursion that read it, the `root` itself (the
+  cell the driver is evaluating), and a `restart` request.
 - The sheet itself. Spill cells from a previous evaluation stay where they
   are until their anchor runs.
 
@@ -123,23 +127,25 @@ flowchart TD
     SN --> P["run a pass: anchors in order, then every cell"]
     P --> R{"restart requested?"}
     R -- no --> CF["conditional formatting"]
-    R -- yes --> U["undo what the pass wrote: restore the remembered spills"]
-    U --> V{"verdict"}
-    V -- "self-contradiction, or order seen before" --> C["mark circular"]
+    R -- yes --> V{"verdict"}
+    V -- "stale read, conflict" --> F["learn: the anchor runs before its readers"]
+    F --> CY{"closes a loop among the facts?"}
+    CY -- yes --> C["mark the anchors on the loop circular; drop their stale cells"]
+    CY -- no --> O["reorder anchor_order to respect every fact"]
+    V -- "self-contradiction" --> C
     V -- "stale cells" --> D["drop them from the remembered spills"]
-    V -- otherwise --> M
-    C --> M["move the anchor to the front of anchor_order"]
-    D --> M
-    M --> P
+    C --> O
+    D --> O
+    O --> U["undo what the pass wrote: restore the remembered spills"]
+    U --> P
 ```
 
-A restart has one of four reasons, and all four move the anchor to the
-front:
+A restart has one of four reasons:
 
 - **Stale read.** A spill cell of an anchor that has not run yet in this pass
-  was read. The anchor should have run before the reader.
-- **Conflict.** The anchor's spill contradicts what a formula evaluated on
-  behalf of *another* root read. The anchor should have run before that root.
+  was read, on behalf of some root. Fact: the anchor runs before that root.
+- **Conflict.** The anchor's spill contradicts what formulas evaluated on
+  behalf of *other* roots read. Fact: the anchor runs before each of them.
 - **Self-contradiction.** What the anchor writes contradicts only reads made
   on its own behalf: its inputs depend on its own output. The anchor is
   circular.
@@ -149,17 +155,23 @@ front:
   depended on its history, not on its output. The cells are dropped from the
   remembered spills, so no later pass restores them, and nothing is marked.
 
+The driver keeps the facts of the evaluation and, after each restart,
+repairs the order so that every fact holds: the anchor, and whatever the
+facts place before it, move from behind the reader to just before it, in
+their present order. A reader marked while an earlier reader of the same
+restart was learned is skipped. Every root that read an anchor's area before
+it ran sits before the anchor in the order, so the fact a restart brings is
+one the order breaks, hence one not yet known. A fact that would close a loop among the facts is
+not added: the anchors on that loop read each other's areas, no order can
+serve them, and all of them are marked circular. A marked anchor stores
+`#CIRC!`, runs no formula, and its stale cells are dropped from the
+remembered spills when it is marked, so nothing of it is ever read or
+contradicted again; its facts are discarded.
+
 Every pass starts from the same sheet, because what an abandoned pass wrote
-is undone. A pass is therefore a function of the anchor order and of the set
-of circular anchors, and two more rules follow: if the order comes back to an
-order already seen without the circular set having changed, the restarts
-would repeat forever, and every anchor moved since that order was first seen
-is on a loop of anchors reading each other's areas: all of them are marked.
-The one change to the starting sheet is the dropping of stale cells, which
-happens at most once per cell; it resets the memory of orders, as a change
-of the circular set does, and does not count against the budget.
-And a generous budget of restarts, the square of the number of anchors, marks
-the restarting anchor if it is ever spent.
+is undone, and a pass is therefore a function of the anchor order and of the
+set of circular anchors. The only changes to the starting sheet are the
+dropping of stale cells, at most once per cell.
 
 ### 3.4 `eval(c)`
 
@@ -330,33 +342,37 @@ is consistent in the sense of section 1.
 
 ### 5.3 Termination
 
-Every restart moves one anchor to the front of the order. Each pass starts
-from the same sheet (what an abandoned pass wrote is undone), so a pass is a
-function of the order and of the circular set. If the order repeats without a
-change to the circular set, the driver marks every anchor moved since, which
-changes the circular set. So between two changes of the circular set the
-orders are all distinct: at most `n!` restarts, in practice far fewer. The
-circular set only grows. A marked anchor stores `#CIRC!` without spilling,
-but the spill cells it left from a previous evaluation are restored at every
-restart until its turn comes, so an unmarked anchor placed before it can
-still be blocked by them or read one: a marked anchor restarts only when an
-unmarked anchor precedes it, and it then moves in front of it. A stale-cells
-restart empties at least one spill cell of the starting sheet, and nothing
-puts one back, so there are finitely many of them; they do not count
-against the budget. Hence finitely many restarts. The budget of `n² + 2`
-does not follow from the pigeonhole bound alone (`n!` orders between two
-changes of the circular set); it is the point after which every counted
-restart marks its anchor, which is what the mechanised argument uses: once
-it is spent, an unmarked anchor's restart grows the circular set, and a
-marked anchor's restart removes a pair (unmarked before marked) and creates
-none. Reaching it marks an anchor that may not be circular; no known sheet
-reaches it.
+Each pass starts from the same sheet (what an abandoned pass wrote is
+undone), so a pass is a function of the order and of the circular set. Every
+restart does one of three things.
 
-On a cycle-free sheet the number of restarts is bounded by the number of
-anchors: order the anchors so that each comes after the anchors whose areas
-its inputs read; a restart moves an anchor in front of everything that read
-its area before it ran, and an anchor already in front of all its readers is
-never moved again.
+- It adds a fact, "anchor `a` runs before reader `r`". The reader is a root
+  the driver processed before reaching `a`, so `r` sits before `a` in the
+  current order; the order respects every known fact; so the fact was not
+  known. Facts are pairs of distinct anchors: at most `n(n-1)` such
+  restarts.
+- It marks anchors circular, when the fact would close a loop among the
+  facts, or on a self-contradiction. The anchor of a restart is unmarked (a
+  marked anchor runs no formula, writes nothing, and its stale cells were
+  dropped when it was marked, so it is neither read stale nor contradicted),
+  and so is every reader (a marked anchor makes no records). So each such
+  restart marks at least one new anchor: at most `n` of them.
+- It drops stale cells, at least one, and nothing ever puts one back: at most
+  as many as there are stale cells.
+
+Hence finitely many restarts, with a bound of about `n²`, and no cap is
+needed. An earlier version of the driver moved the restarting anchor to the
+front of the order and relied on an order repeating to detect loops; it
+needed a budget of `n² + 2` restarts as a safety net, and a cycle-free sheet
+of three tiers of anchors, each tier reading every spill cell of the next,
+reached it with 29 anchors, marking innocent anchors circular
+(`a_cycle_free_cascade_is_not_marked_circular`). Moving to the front put a
+reader ahead of everything it read, and the cascade was cubic in the number
+of anchors; with more tiers, exponential.
+
+On a cycle-free sheet the facts learned are edges of the dependency order
+among anchors, and the restarts are at most the number of such edges the
+initial order breaks.
 
 ### 5.4 Order independence and cycle verdicts
 
@@ -375,8 +391,8 @@ sheet rather than about the order in which it was evaluated:
   there, whatever the order (the reads are on its behalf wherever it sits).
   When they were only blocked by its leftover cells, the cells are history:
   they are dropped and the verdict is the fresh sheet's;
-- a loop of anchors reading each other's areas: detected by the order
-  repeating, and every anchor moved in the loop is marked.
+- a loop of anchors reading each other's areas: detected when a fact would
+  close a loop among the facts, and every anchor on that loop is marked.
 
 One exception is documented and tested: when a cycle through a spill area
 and contention for the same cells meet, whether the anchor is reported
@@ -393,10 +409,10 @@ deterministic function `(order, circular) → (sheet, restart?)`, and the
 driver is a loop over it. Sections 5.2 and 5.3 are the two theorems; the
 first is a statement about one pass, the second about the driver, and the
 "orders are distinct between changes of the circular set" argument is a
-pigeonhole lemma. It is done: `lean/IronCalcEval/`, about 5300 lines of
+pigeonhole lemma. It is done: `lean/IronCalcEval/`, about 6400 lines of
 Lean 4 over Mathlib, both theorems proved with no `sorry`, and the termination
-argument as corrected above (`lean/README.md` records what writing it
-surfaced). The property tests in `dynamic_evaluation/` are the same
+argument as it stands above (`lean/README.md` records what writing it
+surfaced, including the sheet that reached the budget of an earlier driver). The property tests in `dynamic_evaluation/` are the same
 statements run on random sheets against the real implementation.
 
 ## 6. Decisions taken
@@ -405,9 +421,10 @@ statements run on random sheets against the real implementation.
    area stores `#CIRC!` and does not spill; the cells that read its area keep
    the values they computed with the area empty. Value cycles keep the stack
    marking. A loop of anchors reading each other's areas marks all of them.
-2. **Termination is unconditional.** Restarts move an anchor forward without
-   repeating an order, an order repeated marks the anchors of the loop, and a
-   budget of the square of the number of anchors backs the argument up.
+2. **Termination is unconditional.** Every restart teaches the driver a
+   fact about the order it did not know, or marks an anchor, or drops a
+   stale cell; a fact that would close a loop marks the anchors of the loop.
+   No budget.
 3. **The anchors-first heuristic stays**, as the remembered `anchor_order`.
 4. **Recursion stays for now.** Converting `eval` to an explicit stack is a
    mechanical, independent change to be done later.
@@ -432,9 +449,9 @@ read before writing anything.
   states, the stack, the circular set, the `seen` records with their roots,
   and the restart request.
 - `evaluate()` snapshots the dynamic anchors and spill cells, runs passes,
-  undoes an abandoned pass, moves the restarting anchor to the front, drops
-  stale cells from the snapshot, and marks circular anchors on
-  self-contradiction, order repetition, or budget.
+  undoes an abandoned pass, learns the facts a restart brings and reorders
+  the anchors by them, drops stale cells from the snapshot, and marks
+  circular anchors on self-contradiction or when a fact would close a loop.
 - Tests: the whole `dynamic_evaluation` folder passes as it stood, with the
   anchor-only expectations of decision 1. `test_ordered_restart.rs` covers
   the mechanics: restart counts and the remembered order on chains, edits and

@@ -326,6 +326,7 @@ sketch; `base/src/evaluation.rs` is the code, and it is short.
 | `anchor_order: Vec<CellReferenceIndex>` | The dynamic anchors in evaluation order. Persists across evaluations; new anchors are appended in natural order, gone ones dropped. |
 | `cells: HashMap<CellKey, CellState>` | As before: `Evaluating` / `Evaluated`, absent = not evaluated in this pass. |
 | `stack: Vec<CellReferenceIndex>` | Cells being evaluated, innermost last. |
+| `root: Option<CellReferenceIndex>` | The cell the driver is evaluating, on whose behalf every read is recorded. |
 | `circular: HashSet<CellKey>` | Cells that store `#CIRC!` whatever their formula does: marked on the stack when a read closes a loop, or by the driver (4.4). |
 | `seen: HashMap<CellKey, (Seen, root)>` | What the pass found at each position it read, `Empty` or `Occupied`, and the root of the recursion that read it. |
 | `restart: Option<Restart>` | Set when the pass must be abandoned: a stale read, a conflict, a self-contradiction, or stale cells to drop (4.3). |
@@ -354,26 +355,36 @@ flowchart TD
     SN --> P["run a pass: anchors in order, then every cell"]
     P --> R{"restart requested?"}
     R -- no --> CF["conditional formatting"]
-    R -- yes --> U["undo what the pass wrote: restore the remembered spills"]
-    U --> V{"verdict"}
-    V -- "self-contradiction, or order seen before" --> C["mark circular"]
+    R -- yes --> V{"verdict"}
+    V -- "stale read, conflict" --> F["learn: the anchor runs before its readers"]
+    F --> CY{"closes a loop among the facts?"}
+    CY -- yes --> C["mark the anchors on the loop circular; drop their stale cells"]
+    CY -- no --> O["reorder anchor_order to respect every fact"]
+    V -- "self-contradiction" --> C
     V -- "stale cells" --> D["drop them from the remembered spills"]
-    V -- otherwise --> M
-    C --> M["move the anchor to the front of anchor_order"]
-    D --> M
-    M --> P
+    C --> O
+    D --> O
+    O --> U["undo what the pass wrote: restore the remembered spills"]
+    U --> P
 ```
+
+A stale read or a conflict is a fact about the sheet: the anchor runs before
+the roots that read its area too early. The driver keeps the facts of the
+evaluation (`RestartLog`) and after each restart repairs the order so that
+all of them hold: the anchor, and whatever the facts place before it, move
+from behind the reader to just before it. Every such restart
+adds a fact the order broke, hence one not yet known, so there are at most
+`n(n-1)` of them, `n` the number of anchors; a fact that would close a loop
+among the facts marks the anchors on the loop instead, at most `n` times;
+stale cells are dropped at most once each. That is the whole termination
+argument (`cold-evaluation.md` 5.3), and there is no cap on restarts.
 
 Every pass starts from the same sheet, because what an abandoned pass wrote
 is undone. A pass is therefore a function of the anchor order and of the set
-of circular anchors, which is what makes the driver's verdicts sound (4.4)
-and the loop finite (`cold-evaluation.md` 5.3). The one change to that sheet
-within an evaluation is the dropping of stale cells (4.3), which happens at
-most once per cell and resets the driver's memory of orders, as marking an
-anchor does. A budget of `n² + 2` restarts, `n` the number of anchors, guards
-against a mistake in that reasoning by marking the restarting anchor once
-spent; stale-cell restarts do not count against it, and no known sheet
-reaches it.
+of circular anchors, which is what makes the driver's verdicts sound (4.4).
+The only changes to that sheet within an evaluation are the dropping of
+stale cells (4.3): an anchor's own when it gives them up, a marked anchor's
+when it is marked.
 
 ### 4.3 A pass: `eval`, `read` and `commit`
 
@@ -475,9 +486,8 @@ Three verdicts, each a structural fact about the sheet:
   anchor whose inputs were blocked only by its own stale cells is not
   circular (4.3): the cells go, and the verdict is the fresh sheet's.
 - **A loop of anchors reading each other's areas**: no order works, the
-  restarts bring the order back to one already seen, and every anchor moved
-  since that order was first seen is marked. `A1 = B2:B3`, `B1 = A2:A3` gives
-  `#CIRC!` in both.
+  facts the restarts learn close a loop, and every anchor on that loop is
+  marked. `A1 = B2:B3`, `B1 = A2:A3` gives `#CIRC!` in both.
 
 Marks made by the driver survive restarts within one evaluation; every mark
 is forgotten at the next `evaluate()`, so a cycle that was edited away is
@@ -582,8 +592,10 @@ measured on a large workbook.
   already spilled into C5 it is blocked instead. Both states are consistent.
   The property tests exempt states containing `#CIRC!` or `#SPILL!` from
   their equality checks for this reason, and check consistency regardless.
-- **The restart budget** in `evaluate()` is a safety net that no known sheet
-  reaches; it is not exercised by tests.
+- **There is no cap on restarts**: the driver learns a new fact about the
+  order at every restart, and there are at most `n(n-1)` of them. An earlier
+  cap of `n² + 2` was reachable by a cycle-free sheet of three tiers of ten
+  anchors and marked innocent anchors circular.
 - **A cold sheet may take several passes** before its anchor order is
   learnt; the passes are not incremental.
 
@@ -597,7 +609,7 @@ All under `base/src/test/dynamic_evaluation/`:
 | `test_known_gaps.rs` | Transitive dependencies through regular cells, `#` before its anchor, computed references, stale reads inside a running evaluation, spill cycles, contention on fresh sheets and with an existing spill, cycle members all reporting `#CIRC!`, dependents seeing what a blocked anchor stored. |
 | `test_bug_hunt.rs` | One test per angle: CSE arrays read early, in cycles, placed over other arrays and spills, shifted by row and column operations; every non-literal way to reach a spill position (`COUNTBLANK`, `ISBLANK`, `INDIRECT`, defined names, `LET`, `XLOOKUP`, `SUMIF`, `ROWS(C1#)`, error values); stale reads through scalar chains; contention toggled by edits and with a dependency; cross-sheet reads and cycles; volatile shapes; break-and-restore, undo, row insertion and deletion, range clears. |
 | `oracle.rs` | The consistency oracle of `cold-evaluation.md` section 1: re-runs every formula against the final sheet and reports stored values, spill areas and CSE areas that disagree, and orphan spill cells. Used by both property tests; its own tests check that tampering is detected. |
-| `test_ordered_restart.rs` | The mechanics: restart counts and the remembered order on chains, edits and row insertions; stale reads; a shrinking spill freeing a blocked array; the three cycle verdicts; evaluation outside a pass; stale cells blocking the anchor's own input, dropped instead of marking it circular. |
+| `test_ordered_restart.rs` | The mechanics: restart counts and the remembered order on chains, edits and row insertions; stale reads; a shrinking spill freeing a blocked array; the three cycle verdicts; evaluation outside a pass; stale cells blocking the anchor's own input, dropped instead of marking it circular; a cycle-free three-tier cascade that stays linear in restarts. |
 | `test_order_independence.rs` | Property test: random fresh sheets must be consistent, be fixed points, and be independent of insertion order (1000 seeds in the suite; checked at 10000 and with denser sheets). |
 | `test_history_independence.rs` | Property test: a `UserModel` through random edit sequences (two sheets, CSE arrays, clears) must be consistent and end in the same state as a fresh model with the final contents, contention excepted (600 seeds in the suite; checked at 3000). |
 

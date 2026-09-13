@@ -397,3 +397,87 @@ fn a_shrunk_anchor_does_not_get_its_leftovers_back() {
     assert_eq!(fresh._get_text("C3"), "3");
     assert_eq!(restarts(&fresh), 0);
 }
+
+// ── The restart budget on a cycle-free sheet ────────────────────────────────
+
+//         ║ A..J (Z group)  | K..T (Y group)                | U..AD (X group)                          |
+// ════════╬═════════════════╪═══════════════════════════════╪══════════════════════════════════════════╪
+//    1    ║ =SEQUENCE(2)    | =SEQUENCE(2)+A2+B2+...+J2     | =SEQUENCE(2)+K2+L2+...+T2+<next X>2      |
+//
+// Three groups of dynamic anchors, each spilling two rows. Every Y reads the
+// spill cell of every Z, every X reads the spill cell of every Y and of the
+// next X. Nothing reads anything that depends on itself: the sheet is cycle
+// free and has one consistent state, with no error anywhere.
+//
+// Each X reads the next X's area before it ran: one restart per link of the
+// chain, nine in all, each placing an X just before the one that read it.
+// The Y's and Z's, already before the X's, never move.
+//
+// When a restart moved the anchor to the front instead, an X landed ahead of
+// every Y it reads, each Y then moved to the front and landed ahead of every
+// Z it reads: about k * m * m restarts, more than the budget of n² + 2 the
+// driver had, after which it marked whatever anchor restarted next. With
+// 10 + 10 + 10 anchors that was #CIRC! in seventeen cells that are not
+// circular, among them plain =SEQUENCE(2) constants.
+#[test]
+fn a_cycle_free_cascade_is_not_marked_circular() {
+    fn column(c: usize) -> String {
+        let mut name = String::new();
+        let mut n = c;
+        loop {
+            name.insert(0, (b'A' + (n % 26) as u8) as char);
+            if n < 26 {
+                break;
+            }
+            n = n / 26 - 1;
+        }
+        name
+    }
+    let m = 10;
+    let k = 10;
+    let z: Vec<usize> = (0..m).collect();
+    let y: Vec<usize> = (m..2 * m).collect();
+    let x: Vec<usize> = (2 * m..2 * m + k).collect();
+    let mut model = new_empty_model();
+    for &c in &z {
+        model._set(&format!("{}1", column(c)), "=SEQUENCE(2)");
+    }
+    let z_cells: Vec<String> = z.iter().map(|&c| format!("{}2", column(c))).collect();
+    for &c in &y {
+        model._set(
+            &format!("{}1", column(c)),
+            &format!("=SEQUENCE(2)+{}", z_cells.join("+")),
+        );
+    }
+    let y_cells: Vec<String> = y.iter().map(|&c| format!("{}2", column(c))).collect();
+    for (i, &c) in x.iter().enumerate() {
+        let next = match x.get(i + 1) {
+            Some(&n) => format!("+{}2", column(n)),
+            None => String::new(),
+        };
+        model._set(
+            &format!("{}1", column(c)),
+            &format!("=SEQUENCE(2)+{}{}", y_cells.join("+"), next),
+        );
+    }
+
+    model.evaluate();
+
+    // Every Z is 1, 2. Every Y is 1 + 10*2, 2 + 10*2. The last X is
+    // 1 + 10*22, 2 + 10*22; the one before it adds the last X's 222.
+    let circular: Vec<String> = (0..2 * m + k)
+        .map(|c| format!("{}1", column(c)))
+        .filter(|cell| model._get_text(cell) == "#CIRC!")
+        .collect();
+    assert_eq!(
+        circular,
+        Vec::<String>::new(),
+        "cycle-free anchors marked circular"
+    );
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("K1"), "21");
+    assert_eq!(model._get_text("AD1"), "221");
+    assert_eq!(model._get_text("AC1"), "443");
+    assert_eq!(super::oracle::violations(&mut model), Vec::<String>::new());
+    assert_eq!(restarts(&model), 9);
+}

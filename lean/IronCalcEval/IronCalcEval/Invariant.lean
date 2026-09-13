@@ -105,12 +105,29 @@ structure PassInv (S₀ : Sheet Pos Value) (st : PassState Pos Value) : Prop whe
   /-- What an evaluated cell read is protected. -/
   reads_protected : ∀ p t, st.cells p = some .evaluated → (st.sheet p).formula? = some t →
     valueAt st.sheet p ≠ circ → ∀ q ∈ t.reads (passView st), Protected st q
+  /-- Once a cell is on the stack, the root (the cell the driver is
+  evaluating) has been started, unless it is not a formula cell at all (a
+  spill cell position, whose anchor is evaluated through it). -/
+  root_cell : ∀ c, st.root = some c → st.stack ≠ [] →
+    st.cells c ≠ none ∨ (st.sheet c).formula? = none
+
+/-- What the driver guarantees of the root when a read of `p` starts: the
+root is set, and if nothing is on the stack yet, the root is `p` itself or a
+position that is not a formula cell. -/
+def RootOk (st : PassState Pos Value) (p : Pos) : Prop :=
+  st.root.isSome ∧ (st.stack = [] → ∀ c, st.root = some c → c = p ∨ (st.sheet c).formula? = none)
 
 /-- A stale-cells restart names at least one original spill cell of its
 anchor; the driver drops it, so a restart of this kind cannot repeat forever. -/
 def Restart.StaleOk (S₀ : Sheet Pos Value) : Restart Pos → Prop
   | .staleCells a cells => ∃ q ∈ cells, ∃ v, S₀ q = .spill a v
   | _ => True
+
+/-- Whether a restart teaches the driver a fact about the order. -/
+def Restart.learns : Restart Pos → Bool
+  | .staleRead .. => true
+  | .conflict .. => true
+  | _ => false
 
 theorem PassInv.consistentAt {S₀ : Sheet Pos Value} {st : PassState Pos Value}
     (hinv : PassInv S₀ st) {p : Pos} (hp : st.cells p = some .evaluated) :
@@ -127,6 +144,12 @@ structure PassStep (S₀ : Sheet Pos Value) (a b : PassState Pos Value) : Prop w
   inv : PassInv S₀ a → b.restart.isSome ∨ PassInv S₀ b
   protect : PassInv S₀ a → b.restart = none → ∀ q, Protected a q →
     Protected b q ∧ passView b q = passView a q
+  /-- Only the driver sets the root. -/
+  root_eq : b.root = a.root
+  /-- Every new record is made on behalf of the root. -/
+  roots_new_empty : ∀ q r, b.seenEmpty q = some r → a.seenEmpty q = some r ∨ a.root = some r
+  roots_new_occupied : ∀ q r, b.seenOccupied q = some r →
+    a.seenOccupied q = some r ∨ a.root = some r
 
 theorem PassStep.refl (S₀ : Sheet Pos Value) (a : PassState Pos Value) : PassStep S₀ a a where
   restart_mono h := h
@@ -136,6 +159,9 @@ theorem PassStep.refl (S₀ : Sheet Pos Value) (a : PassState Pos Value) : PassS
   seenOccupied_mono _ _ h := h
   inv h := Or.inr h
   protect _ _ _ h := ⟨h, rfl⟩
+  root_eq := rfl
+  roots_new_empty _ _ h := Or.inl h
+  roots_new_occupied _ _ h := Or.inl h
 
 theorem PassStep.trans {S₀ : Sheet Pos Value} {a b c : PassState Pos Value}
     (h₁ : PassStep S₀ a b) (h₂ : PassStep S₀ b c) : PassStep S₀ a c where
@@ -162,6 +188,15 @@ theorem PassStep.trans {S₀ : Sheet Pos Value} {a b c : PassState Pos Value}
     obtain ⟨hpb, hvb⟩ := h₁.protect ha hb q hq
     obtain ⟨hpc, hvc⟩ := h₂.protect hinvb hc q hpb
     exact ⟨hpc, hvc.trans hvb⟩
+  root_eq := h₂.root_eq.trans h₁.root_eq
+  roots_new_empty q r h := by
+    rcases h₂.roots_new_empty q r h with h | h
+    · exact h₁.roots_new_empty q r h
+    · exact Or.inr (h₁.root_eq ▸ h)
+  roots_new_occupied q r h := by
+    rcases h₂.roots_new_occupied q r h with h | h
+    · exact h₁.roots_new_occupied q r h
+    · exact Or.inr (h₁.root_eq ▸ h)
 
 /-- The relation every step of a pass satisfies. -/
 def PassRel (S₀ : Sheet Pos Value) : StateRel (PassState Pos Value) where
@@ -172,6 +207,7 @@ def PassRel (S₀ : Sheet Pos Value) : StateRel (PassState Pos Value) where
 /-- A step that only sets `restart`, or changes nothing. -/
 theorem PassStep.of_restart_only {S₀ : Sheet Pos Value} {a b : PassState Pos Value}
     (hsheet : b.sheet = a.sheet) (hcells : b.cells = a.cells) (hstack : b.stack = a.stack)
+    (hroot : b.root = a.root)
     (hcirc : b.circular = a.circular) (hse : b.seenEmpty = a.seenEmpty)
     (hso : b.seenOccupied = a.seenOccupied) (hr : b.restart = a.restart ∨ b.restart.isSome) :
     PassStep S₀ a b := by
@@ -182,12 +218,14 @@ theorem PassStep.of_restart_only {S₀ : Sheet Pos Value} {a b : PassState Pos V
     subst this
     exact PassStep.refl S₀ b
   · refine ⟨fun _ => hr, fun q h => hcells ▸ h, hcirc ▸ Finset.Subset.refl _,
-      fun q r h => hse ▸ h, fun q r h => hso ▸ h, fun _ => Or.inl hr, fun _ hb => ?_⟩
+      fun q r h => hse ▸ h, fun q r h => hso ▸ h, fun _ => Or.inl hr, fun _ hb => ?_, hroot,
+      fun q r h => Or.inl (hse ▸ h), fun q r h => Or.inl (hso ▸ h)⟩
     simp [hb] at hr
 
 /-- A step that only grows the circular set. -/
 theorem PassStep.of_circular_only {S₀ : Sheet Pos Value} {a b : PassState Pos Value}
     (hsheet : b.sheet = a.sheet) (hcells : b.cells = a.cells) (hstack : b.stack = a.stack)
+    (hroot : b.root = a.root)
     (hcirc : a.circular ⊆ b.circular) (hse : b.seenEmpty = a.seenEmpty)
     (hso : b.seenOccupied = a.seenOccupied) (hr : b.restart = a.restart) :
     PassStep S₀ a b := by
@@ -198,9 +236,11 @@ theorem PassStep.of_circular_only {S₀ : Sheet Pos Value} {a b : PassState Pos 
     intro q
     simp [Protected, hsheet, hcells, hse]
   refine ⟨fun h => hr ▸ h, fun q h => hcells ▸ h, hcirc, fun q r h => hse ▸ h,
-    fun q r h => hso ▸ h, fun ha => Or.inr ?_, fun _ _ q hq => ⟨(hprot q).mpr hq, by rw [hview]⟩⟩
+    fun q r h => hso ▸ h, fun ha => Or.inr ?_, fun _ _ q hq => ⟨(hprot q).mpr hq, by rw [hview]⟩,
+    hroot, fun q r h => Or.inl (hse ▸ h), fun q r h => Or.inl (hso ▸ h)⟩
   refine ⟨hr ▸ ha.not_abandoned, hsheet ▸ ha.shape, hsheet ▸ ha.no_orphans,
-    hsheet ▸ ha.cse_areas, hsheet ▸ ha.cse_spills, hstack ▸ ha.stack_nodup, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    hsheet ▸ ha.cse_areas, hsheet ▸ ha.cse_spills, hstack ▸ ha.stack_nodup, ?_, ?_, ?_, ?_, ?_, ?_,
+    ?_⟩
   · intro p
     rw [hstack, hcells]
     exact ha.stack_evaluating p
@@ -230,6 +270,11 @@ theorem PassStep.of_circular_only {S₀ : Sheet Pos Value} {a b : PassState Pos 
     rw [hsheet] at ht hne
     rw [hview] at hq
     exact (hprot q).mpr (ha.reads_protected p t hp ht hne q hq)
+  · intro c hc hne
+    rw [hroot] at hc
+    rw [hstack] at hne
+    rw [hcells, hsheet]
+    exact ha.root_cell c hc hne
 
 section primitives
 variable (S₀ : Sheet Pos Value) (U : Universe Pos)
@@ -242,7 +287,7 @@ theorem storedValue_step (p : Pos) : Preserves PR (storedValue (Value := Value) 
 theorem markCycle_step (o : Pos) : Preserves PR (markCycle (Value := Value) o) :=
   Preserves.modifyM fun st => by
     split
-    · exact PassStep.of_circular_only rfl rfl rfl Finset.subset_union_left rfl rfl rfl
+    · exact PassStep.of_circular_only rfl rfl rfl rfl Finset.subset_union_left rfl rfl rfl
     · exact PassStep.refl S₀ st
 
 theorem spillContradictsARead_step (anchor : Pos) (writes clears : List Pos) :
@@ -251,7 +296,7 @@ theorem spillContradictsARead_step (anchor : Pos) (writes clears : List Pos) :
     dsimp only
     split
     · exact PassStep.refl S₀ st
-    · exact PassStep.of_restart_only rfl rfl rfl rfl rfl rfl (Or.inr rfl)
+    · exact PassStep.of_restart_only rfl rfl rfl rfl rfl rfl rfl (Or.inr rfl)
 
 /-- `recordSeen q .empty` is a step when `q` is empty or a leftover cell of a
 running anchor, which is when the pass records it. -/
@@ -263,7 +308,7 @@ theorem recordSeen_empty_step (q : Pos) (st : PassState Pos Value)
   Preserves.getBind_run (I := PassRel S₀) st <| by
   split
   · exact PassStep.refl S₀ st
-  · rename_i r _
+  · rename_i r hroot
     dsimp only
     split
     · exact PassStep.refl S₀ st
@@ -288,9 +333,10 @@ theorem recordSeen_empty_step (q : Pos) (st : PassState Pos Value)
           obtain ⟨r', hr'⟩ := Option.isSome_iff_exists.mp h
           simp [hse x r' hr']
       refine ⟨fun h => h, fun _ h => h, Finset.Subset.refl _, hse, fun _ _ h => h,
-        fun ha => Or.inr ?_, fun _ _ x hx => ⟨hprot x hx, rfl⟩⟩
+        fun ha => Or.inr ?_, fun _ _ x hx => ⟨hprot x hx, rfl⟩, rfl, ?_, fun _ _ h => Or.inl h⟩
       refine ⟨ha.not_abandoned, ha.shape, ha.no_orphans, ha.cse_areas, ha.cse_spills,
-        ha.stack_nodup, ha.stack_evaluating, ?_, ha.seen_occupied, ha.orig_spill, ?_, ?_⟩
+        ha.stack_nodup, ha.stack_evaluating, ?_, ha.seen_occupied, ha.orig_spill, ?_, ?_,
+        ha.root_cell⟩
       · intro x r' hx
         by_cases hxq : x = q
         · subst hxq
@@ -303,6 +349,16 @@ theorem recordSeen_empty_step (q : Pos) (st : PassState Pos Value)
         exact this
       · intro p t hp ht hne x hx
         exact hprot x (ha.reads_protected p t hp ht hne x hx)
+      · intro x r' hx
+        by_cases hxq : x = q
+        · subst hxq
+          have hx' : Function.update st.seenEmpty x (some r) x = some r' := hx
+          rw [Function.update_self] at hx'
+          cases hx'
+          exact Or.inr hroot
+        · have hx' : Function.update st.seenEmpty q (some r) x = some r' := hx
+          rw [Function.update_of_ne hxq] at hx'
+          exact Or.inl hx'
 
 /-- `recordSeen q .occupied` is a step when `q` holds a spill cell, which is
 when the blocking scan records it. -/
@@ -312,7 +368,7 @@ theorem recordSeen_occupied_step (q : Pos) (st : PassState Pos Value)
   Preserves.getBind_run (I := PassRel S₀) st <| by
   split
   · exact PassStep.refl S₀ st
-  · rename_i r _
+  · rename_i r hroot
     dsimp only
     split
     · exact PassStep.refl S₀ st
@@ -337,10 +393,10 @@ theorem recordSeen_occupied_step (q : Pos) (st : PassState Pos Value)
           obtain ⟨r', hr'⟩ := Option.isSome_iff_exists.mp hso'
           simp [hso x r' hr']
       refine ⟨fun h => h, fun _ h => h, Finset.Subset.refl _, fun _ _ h => h, hso,
-        fun ha => Or.inr ?_, fun _ _ x hx => ⟨hx, rfl⟩⟩
+        fun ha => Or.inr ?_, fun _ _ x hx => ⟨hx, rfl⟩, rfl, fun _ _ h => Or.inl h, ?_⟩
       refine ⟨ha.not_abandoned, ha.shape, ha.no_orphans, ha.cse_areas, ha.cse_spills,
         ha.stack_nodup, ha.stack_evaluating, ha.seen_empty, ?_, ha.orig_spill, ?_,
-        ha.reads_protected⟩
+        ha.reads_protected, ha.root_cell⟩
       · intro x r' hx
         by_cases hxq : x = q
         · subst hxq
@@ -350,6 +406,16 @@ theorem recordSeen_occupied_step (q : Pos) (st : PassState Pos Value)
           exact ha.seen_occupied x r' hx'
       · intro p hp
         exact ConsistentAtWith.mono (hsb) (ha.evaluated_consistent p hp)
+      · intro x r' hx
+        by_cases hxq : x = q
+        · subst hxq
+          have hx' : Function.update st.seenOccupied x (some r) x = some r' := hx
+          rw [Function.update_self] at hx'
+          cases hx'
+          exact Or.inr hroot
+        · have hx' : Function.update st.seenOccupied q (some r) x = some r' := hx
+          rw [Function.update_of_ne hxq] at hx'
+          exact Or.inl hx'
 
 end primitives
 

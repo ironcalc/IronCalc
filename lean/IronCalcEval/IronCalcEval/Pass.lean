@@ -35,8 +35,12 @@ inductive Seen where
 
 /-- `Restart`: why the current pass is abandoned. -/
 inductive Restart (Pos : Type) where
-  | staleRead (anchor : Pos)
-  | conflict (anchor : Pos)
+  /-- A spill cell of `anchor` was read on behalf of `reader` before the
+  anchor had run. -/
+  | staleRead (anchor reader : Pos)
+  /-- What `anchor` is about to write contradicts what was read on behalf of
+  `readers`, other cells. -/
+  | conflict (anchor : Pos) (readers : List Pos)
   | selfContradiction (anchor : Pos)
   /-- The spill cells of `anchor` at `cells`, left by a previous evaluation,
   blocked an array evaluated on its own behalf and nothing else. They were
@@ -47,10 +51,17 @@ inductive Restart (Pos : Type) where
 variable {Pos Value : Type}
 
 def Restart.anchor : Restart Pos → Pos
-  | .staleRead a => a
-  | .conflict a => a
+  | .staleRead a _ => a
+  | .conflict a _ => a
   | .selfContradiction a => a
   | .staleCells a _ => a
+
+/-- The cells that read the anchor's area before it ran: what the driver
+learns the anchor runs before. -/
+def Restart.readers : Restart Pos → List Pos
+  | .staleRead _ r => [r]
+  | .conflict _ rs => rs
+  | _ => []
 
 def Restart.isSelfContradiction : Restart Pos → Bool
   | .selfContradiction _ => true
@@ -65,9 +76,11 @@ structure PassState (Pos Value : Type) where
   sheet : Sheet Pos Value
   /-- `cells`: formula cells touched in this pass. -/
   cells : Pos → Option CellState
-  /-- `stack`: cells being evaluated, innermost **first**. The root of the
-  recursion (`stack.first()` in Rust) is the last element. -/
+  /-- `stack`: cells being evaluated, innermost **first**. -/
   stack : List Pos
+  /-- `root`: the cell the driver is evaluating, on whose behalf every read
+  of the pass is recorded. Set by `passBody` before each cell. -/
+  root : Option Pos
   /-- `circular`: cells known to be circular. -/
   circular : Finset Pos
   /-- `seen`, split by kind: positions read as empty, and positions found
@@ -85,14 +98,11 @@ def PassState.initial (S : Sheet Pos Value) (circular : Finset Pos) : PassState 
   { sheet := S
     cells := fun _ => none
     stack := []
+    root := none
     circular := circular
     seenEmpty := fun _ => none
     seenOccupied := fun _ => none
     restart := none }
-
-/-- The root of the current recursion: the cell the driver is evaluating. -/
-def PassState.root (st : PassState Pos Value) : Option Pos :=
-  st.stack.getLast?
 
 abbrev PassM (Pos Value : Type) := StateM (PassState Pos Value)
 
@@ -105,8 +115,7 @@ def storedValue (p : Pos) : PassM Pos Value Value := do
 
 /-- `record_seen`: records what the formula being evaluated found at a
 position, together with the root of the current recursion. The first record
-of each kind for a position is kept. Reads made by the driver itself (empty
-stack) are nobody's dependency. -/
+of each kind for a position is kept. -/
 def recordSeen (q : Pos) (s : Seen) : PassM Pos Value Unit := do
   let st ← get
   match st.root with
@@ -135,19 +144,21 @@ def markCycle (origin : Pos) : PassM Pos Value Unit :=
 whether writing spill cells at `writes` and removing its own spill cells at
 `clears` would contradict what a formula read earlier in this pass. If so the
 pass is abandoned and `true` is returned: the anchor must not write anything.
-When every contradicted read was on the anchor's own behalf, it is circular,
-unless only the removals contradict: then the cells were stale, and they go. -/
+The contradicted reads made on behalf of other cells are the readers the
+anchor should have run before. When every contradicted read was on the
+anchor's own behalf, it is circular, unless only the removals contradict:
+then the cells were stale, and they go. -/
 def spillContradictsARead (anchor : Pos) (writes clears : List Pos) : PassM Pos Value Bool := do
   let st ← get
   let roots := writes.filterMap st.seenEmpty ++ clears.filterMap st.seenOccupied
   if roots.isEmpty then
     return false
-  let onlyOwnReads := roots.all fun r => decide (r = anchor)
+  let readers := (roots.filter fun r => decide (r ≠ anchor)).dedup
   set { st with
-    restart := some (if onlyOwnReads then
+    restart := some (if readers.isEmpty then
       (if (writes.filterMap st.seenEmpty).isEmpty then .staleCells anchor clears
         else .selfContradiction anchor)
-      else .conflict anchor) }
+      else .conflict anchor readers) }
   return true
 
 /-- Writes several contents at once. -/
@@ -258,9 +269,10 @@ def evalSpillCell (rec : Pos → PassM Pos Value Value) (p a : Pos) : PassM Pos 
       | some .evaluating => do
           recordSeen p .empty
           return emptyValue
-      -- Left over from a previous evaluation: the anchor should have run first.
+      -- Left over from a previous evaluation: the anchor should have run
+      -- before the cell the driver is evaluating.
       | none => do
-          set { st with restart := some (.staleRead a) }
+          set { st with restart := some (.staleRead a (st.root.getD a)) }
           return emptyValue
   -- An orphan: its anchor is gone. Nothing will ever write it again.
   | _ => do
@@ -334,8 +346,8 @@ def evalCell (U : Universe Pos) : Nat → Pos → PassM Pos Value Value
 def passFuel (U : Universe Pos) : Nat :=
   2 * U.positions.length + 2
 
-/-- The body of `run_pass`: evaluates the cells in turn, and stops at the
-first restart. (A `for` loop with a `break` in the Rust.) -/
+/-- The body of `run_pass`: evaluates the cells in turn, each as the root,
+and stops at the first restart. (A `for` loop with a `break` in the Rust.) -/
 def passBody (U : Universe Pos) : List Pos → PassM Pos Value Unit
   | [] => pure ()
   | c :: l => do
@@ -343,6 +355,7 @@ def passBody (U : Universe Pos) : List Pos → PassM Pos Value Unit
       if st.restart.isSome then
         pure ()
       else
+        modify fun st => { st with root := some c }
         let _ ← evalCell U (passFuel U) c
         passBody U l
 

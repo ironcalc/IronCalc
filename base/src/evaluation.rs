@@ -11,8 +11,13 @@
 //!   in the pass read the wrong thing. So the pass records what formulas saw
 //!   at the positions they read, and when an anchor is about to contradict a
 //!   record, the pass is **abandoned and started again with that anchor
-//!   first**. An anchor whose own inputs read its area is contradicted by
-//!   itself wherever it sits: it is circular.
+//!   before the cells that read it**. Each restart is a fact learned about
+//!   the sheet, "this anchor runs before that reader"; the driver keeps the
+//!   facts and orders the anchors by them. A restart can only happen when
+//!   the order breaks a fact not yet known, so there are at most `n²` of
+//!   them, and a loop of anchors reading each other's areas shows up as a
+//!   cycle among the facts. An anchor whose own inputs read its area is
+//!   contradicted by itself wherever it sits: it is circular.
 //! * Spill cells left by a previous evaluation are never read as values
 //!   before their anchor has run in the current pass; they still block other
 //!   arrays, which is how the array that spilled first keeps its cells. The
@@ -73,15 +78,22 @@ pub(crate) struct SeenRecord {
     pub(crate) occupied: Option<CellReferenceIndex>,
 }
 
-/// Why the current pass is abandoned. In every case the anchor is moved to the
-/// front of the evaluation order and the pass starts again.
+/// Why the current pass is abandoned. In every case the pass starts again,
+/// after the driver has learned what the restart says about the order.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub(crate) enum Restart {
-    /// A spill cell of this anchor was read before the anchor had run.
-    StaleRead(CellReferenceIndex),
+    /// A spill cell of this anchor was read, on behalf of `reader`, before the
+    /// anchor had run.
+    StaleRead {
+        anchor: CellReferenceIndex,
+        reader: CellReferenceIndex,
+    },
     /// What this anchor is about to write contradicts something read on behalf
-    /// of another cell: the anchor should have run before it.
-    Conflict(CellReferenceIndex),
+    /// of `readers`, other cells: the anchor should have run before them.
+    Conflict {
+        anchor: CellReferenceIndex,
+        readers: Vec<CellReferenceIndex>,
+    },
     /// What this anchor is about to write contradicts only reads made on its
     /// own behalf: its inputs depend on its own output. It is circular.
     SelfContradiction(CellReferenceIndex),
@@ -95,88 +107,155 @@ pub(crate) enum Restart {
 impl Restart {
     fn anchor(&self) -> CellReferenceIndex {
         match self {
-            Restart::StaleRead(anchor)
-            | Restart::Conflict(anchor)
+            Restart::StaleRead { anchor, .. }
+            | Restart::Conflict { anchor, .. }
             | Restart::SelfContradiction(anchor)
             | Restart::StaleCells(anchor, _) => *anchor,
         }
     }
 }
 
-/// The driver's memory of the restarts of one evaluation, and its verdicts.
+/// The driver's memory of one evaluation: the facts learned about the order,
+/// and the anchors marked circular.
 ///
 /// Every pass starts from the same sheet, so a pass is a function of the
-/// anchor order and of the circular set. Two facts follow. An order that
-/// comes back without the circular set having changed means the restarts
-/// would repeat forever: every anchor moved since that order was first seen
-/// is on a loop of anchors reading each other's areas, and all of them are
-/// marked. And between two changes of the circular set every order is
-/// distinct, so the restarts are finite; a budget of `n² + 2` guards against a
-/// mistake in that reasoning by marking the restarting anchor once spent.
-///
-/// The sheet the passes start from changes only when stale spill cells are
-/// dropped (`Restart::StaleCells`). That happens at most once per stale cell,
-/// and the log starts afresh each time, as it does when the circular set
-/// changes.
+/// anchor order and of the circular set. A restart says that some readers
+/// read an anchor's area before it ran: a fact, "the anchor runs before each
+/// of them", that the current order breaks. The driver records the fact and
+/// repairs the order so that every fact holds, moving the anchor and what
+/// must precede it to just before the reader (`learn`). Since the order
+/// always respects the known facts, every restart adds a fact that was not
+/// known; there are at most `n(n-1)` of them. When a fact would close a
+/// cycle, the anchors on the cycle read each other's areas and no order can
+/// serve them: they are marked circular, at most `n` times.
+/// A marked anchor runs no formula and, its stale cells dropped, writes and
+/// blocks nothing, so it never restarts again. Stale-cell restarts drop at
+/// least one cell each. Hence the loop ends, with no cap needed.
 struct RestartLog {
     /// Anchors marked circular so far; passed to every pass.
     circular: Vec<CellKey>,
-    /// The orders seen since the circular set or the starting sheet last
-    /// changed.
-    orders_seen: Vec<Vec<CellReferenceIndex>>,
-    /// The anchor moved to the front to go from each seen order to the next.
-    moves: Vec<CellReferenceIndex>,
+    /// `(a, r)`: `a` runs before `r`. Learned from restarts; never broken by
+    /// the order; acyclic.
+    facts: Vec<(CellReferenceIndex, CellReferenceIndex)>,
     /// Every restart of this evaluation.
     restarts: u32,
-    /// The restarts that count against the budget: all but the stale-cell ones.
-    spent: u32,
-    budget: u32,
 }
 
 impl RestartLog {
-    fn new(initial_order: &[CellReferenceIndex]) -> Self {
-        let anchors = initial_order.len() as u32;
+    fn new() -> Self {
         RestartLog {
             circular: Vec::new(),
-            orders_seen: vec![initial_order.to_vec()],
-            moves: Vec::new(),
+            facts: Vec::new(),
             restarts: 0,
-            spent: 0,
-            budget: anchors * anchors + 2,
         }
     }
 
-    /// Records a restart whose anchor has just been moved to the front, giving
-    /// `order`, and marks whatever it proves circular.
-    fn record(&mut self, restart: &Restart, order: &[CellReferenceIndex]) {
+    /// Records a restart: learns its facts, marks what it proves circular and
+    /// reorders `order` to respect the facts. Returns the anchors newly
+    /// marked circular.
+    fn record(
+        &mut self,
+        restart: &Restart,
+        order: &mut Vec<CellReferenceIndex>,
+    ) -> Vec<CellReferenceIndex> {
         self.restarts += 1;
-        if let Restart::StaleCells(..) = restart {
-            // The starting sheet changed: what a pass does changed with it.
-            self.orders_seen = vec![order.to_vec()];
-            self.moves.clear();
+        let anchor = restart.anchor();
+        let readers: Vec<CellReferenceIndex> = match restart {
+            Restart::StaleRead { reader, .. } => vec![*reader],
+            Restart::Conflict { readers, .. } => readers.clone(),
+            Restart::SelfContradiction(_) => vec![],
+            Restart::StaleCells(..) => return Vec::new(),
+        };
+        let mut newly_circular: Vec<CellReferenceIndex> = Vec::new();
+        if let Restart::SelfContradiction(_) = restart {
+            self.mark(anchor, &mut newly_circular);
+        }
+        for reader in readers {
+            if self.circular.contains(&key(anchor)) {
+                break;
+            }
+            if self.circular.contains(&key(reader)) {
+                // Marked while an earlier reader was learned: on a loop,
+                // nothing to order it against.
+                continue;
+            }
+            self.learn(anchor, reader, order, &mut newly_circular);
+        }
+        newly_circular
+    }
+
+    /// Learns that `anchor` runs before `reader`, one restart's fact. If the
+    /// facts already place `reader` before `anchor`, the two are on a loop of
+    /// anchors reading each other's areas, with everything the facts place
+    /// between them: all of it is marked. Otherwise the fact is kept and the
+    /// order repaired: `anchor`, and whatever the facts place before it, move
+    /// from behind `reader` to just before it, in their present order.
+    fn learn(
+        &mut self,
+        anchor: CellReferenceIndex,
+        reader: CellReferenceIndex,
+        order: &mut Vec<CellReferenceIndex>,
+        newly_circular: &mut Vec<CellReferenceIndex>,
+    ) {
+        if reader == anchor {
             return;
         }
-        let anchor = restart.anchor();
-        self.moves.push(anchor);
-        let mut newly_circular = Vec::new();
-        if matches!(restart, Restart::SelfContradiction(_)) || self.spent >= self.budget {
-            newly_circular.push(anchor);
-        } else if let Some(first_seen) = self.orders_seen.iter().position(|seen| seen == order) {
-            newly_circular.extend(self.moves[first_seen..].iter().copied());
-        }
-        if newly_circular.is_empty() {
-            self.orders_seen.push(order.to_vec());
-        } else {
-            for cell in newly_circular {
-                if !self.circular.contains(&key(cell)) {
-                    self.circular.push(key(cell));
+        let before_anchor = self.reachable(anchor, |a, r| (r, a));
+        if before_anchor.contains(&reader) {
+            let after_reader = self.reachable(reader, |a, r| (a, r));
+            for cell in before_anchor {
+                if after_reader.contains(&cell) {
+                    self.mark(cell, newly_circular);
                 }
             }
-            // The circular set changed: what a pass does changed with it.
-            self.orders_seen = vec![order.to_vec()];
-            self.moves.clear();
+            return;
         }
-        self.spent += 1;
+        self.facts.push((anchor, reader));
+        let Some(reader_position) = order.iter().position(|c| *c == reader) else {
+            return;
+        };
+        let moved: Vec<CellReferenceIndex> = order[reader_position + 1..]
+            .iter()
+            .copied()
+            .filter(|cell| before_anchor.contains(cell))
+            .collect();
+        order.retain(|cell| !moved.contains(cell));
+        order.splice(reader_position..reader_position, moved);
+    }
+
+    /// Marks an anchor circular. A marked anchor neither writes nor reads:
+    /// its facts are spent.
+    fn mark(&mut self, cell: CellReferenceIndex, newly_circular: &mut Vec<CellReferenceIndex>) {
+        if self.circular.contains(&key(cell)) {
+            return;
+        }
+        self.circular.push(key(cell));
+        newly_circular.push(cell);
+        self.facts.retain(|(a, r)| *a != cell && *r != cell);
+    }
+
+    /// Everything reachable from `start` along the facts, `start` included,
+    /// with `edge` giving the direction to follow.
+    fn reachable(
+        &self,
+        start: CellReferenceIndex,
+        edge: fn(
+            CellReferenceIndex,
+            CellReferenceIndex,
+        ) -> (CellReferenceIndex, CellReferenceIndex),
+    ) -> Vec<CellReferenceIndex> {
+        let mut seen = vec![start];
+        let mut todo = vec![start];
+        while let Some(cell) = todo.pop() {
+            for (a, r) in &self.facts {
+                let (from, to) = edge(*a, *r);
+                if from == cell && !seen.contains(&to) {
+                    seen.push(to);
+                    todo.push(to);
+                }
+            }
+        }
+        seen
     }
 }
 
@@ -184,14 +263,17 @@ impl RestartLog {
 #[derive(Default)]
 pub(crate) struct Evaluation {
     /// The dynamic anchors, in the order in which they are evaluated. Kept
-    /// across evaluations: an anchor moved to the front by a restart stays
-    /// there, so the next evaluation needs no restart. New anchors are appended
-    /// in natural `(sheet, row, column)` order.
+    /// across evaluations: the order the restarts arrived at stays, so the
+    /// next evaluation needs no restart. New anchors are appended in natural
+    /// `(sheet, row, column)` order.
     pub(crate) anchor_order: Vec<CellReferenceIndex>,
     /// Formula cells touched in the current pass, and their state.
     pub(crate) cells: HashMap<CellKey, CellState>,
     /// Cells being evaluated, innermost last.
     pub(crate) stack: Vec<CellReferenceIndex>,
+    /// The cell the driver is evaluating: the root of the current recursion,
+    /// on whose behalf every read of the pass is recorded.
+    pub(crate) root: Option<CellReferenceIndex>,
     /// Cells known to be circular. Marked on the stack when a read closes a
     /// loop, or by the driver when an anchor's spill contradicts its own inputs;
     /// the latter survive restarts within one evaluation.
@@ -214,30 +296,36 @@ pub(crate) struct Evaluation {
 impl<'a> Model<'a> {
     /// Evaluates every formula in the workbook.
     ///
-    /// Runs passes until one completes without a restart. A restart moves the
-    /// anchor that caused it to the front of the anchor order; `RestartLog`
-    /// decides whether it also marks anchors circular. A marked anchor stores
-    /// `#CIRC!` and keeps no spill cells, so there is nothing of it to read or
-    /// to contradict once its stale cells are gone. Every other restart moves
-    /// an anchor forward without repeating an order, or drops stale cells,
-    /// which happens at most once per cell, so the loop ends.
+    /// Runs passes until one completes without a restart. `RestartLog` learns
+    /// from each restart, reorders the anchors and marks what it proves
+    /// circular; see there for why the loop ends. A marked anchor stores
+    /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
+    /// is marked, so there is nothing of it to read or to contradict.
     pub fn evaluate(&mut self) {
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
-        // The only change to that sheet within an evaluation is the dropping
-        // of stale spill cells an anchor gave up.
+        // The only changes to that sheet within an evaluation are the dropping
+        // of stale spill cells: an anchor's own when it gave them up, a marked
+        // anchor's when it is marked.
         let mut spills_before = self.dynamic_spills();
-        let mut log = RestartLog::new(&self.evaluation.anchor_order);
+        let mut log = RestartLog::new();
         while let Some(restart) = self.run_pass(&log.circular) {
-            if let Restart::StaleCells(_, cells) = &restart {
-                spills_before.retain(|(position, _)| !cells.contains(&key(*position)));
-            }
+            let marked = log.record(&restart, &mut self.evaluation.anchor_order);
+            spills_before.retain(|(position, cell)| {
+                let dropped = match &restart {
+                    Restart::StaleCells(_, cells) => cells.contains(&key(*position)),
+                    _ => false,
+                };
+                let of_marked = match cell {
+                    Cell::SpillCell { a, .. } => marked
+                        .iter()
+                        .any(|m| m.sheet == position.sheet && (m.row, m.column) == *a),
+                    _ => false,
+                };
+                !dropped && !of_marked
+            });
             self.restore_dynamic_spills(&spills_before);
-            let anchor = restart.anchor();
-            self.evaluation.anchor_order.retain(|a| *a != anchor);
-            self.evaluation.anchor_order.insert(0, anchor);
-            log.record(&restart, &self.evaluation.anchor_order);
         }
         self.evaluation.restarts_in_last_evaluation = log.restarts;
         self.evaluate_conditional_formatting();
@@ -356,6 +444,7 @@ impl<'a> Model<'a> {
         let everything = self.all_positions();
         let mut restart = None;
         for cell in anchors.into_iter().chain(everything) {
+            self.evaluation.root = Some(cell);
             self.evaluate_cell(cell);
             if self.evaluation.restart.is_some() {
                 restart = self.evaluation.restart.take();
@@ -363,6 +452,7 @@ impl<'a> Model<'a> {
             }
         }
         self.evaluation.in_pass = false;
+        self.evaluation.root = None;
         restart
     }
 
@@ -432,11 +522,17 @@ impl<'a> Model<'a> {
                 CalcResult::EmptyCell
             }
             // Left over from a previous evaluation: the anchor should have run
-            // before anyone read its cells. Restart with it first. Outside a
-            // pass there is no driver, so the anchor is simply evaluated now.
+            // before anyone read its cells. Restart with it before the reader.
+            // Outside a pass there is no driver, so the anchor is simply
+            // evaluated now.
             (ArrayKind::Dynamic, None) => {
                 if self.evaluation.in_pass {
-                    self.evaluation.restart = Some(Restart::StaleRead(anchor_reference));
+                    // Inside a pass the driver has always set the root.
+                    let reader = self.evaluation.root.unwrap_or(anchor_reference);
+                    self.evaluation.restart = Some(Restart::StaleRead {
+                        anchor: anchor_reference,
+                        reader,
+                    });
                     CalcResult::EmptyCell
                 } else {
                     self.evaluate_cell(anchor_reference);
@@ -552,14 +648,14 @@ impl<'a> Model<'a> {
     }
 
     /// Records what the formula being evaluated found at a position, together
-    /// with the root of the current recursion. The first record of each kind
-    /// is kept. Reads made by the driver itself, or outside a pass, are
-    /// nobody's dependency.
+    /// with the root of the current recursion, the cell the driver is
+    /// evaluating. The first record of each kind is kept. Reads made outside
+    /// a pass are nobody's dependency.
     pub(crate) fn record_seen(&mut self, position: CellReferenceIndex, seen: Seen) {
         if !self.evaluation.in_pass {
             return;
         }
-        if let Some(&root) = self.evaluation.stack.first() {
+        if let Some(root) = self.evaluation.root {
             let record = self.evaluation.seen.entry(key(position)).or_default();
             let slot = match seen {
                 Seen::Empty => &mut record.empty,
@@ -599,12 +695,14 @@ impl<'a> Model<'a> {
         if contradicted_by_writes.is_empty() && contradicted_by_clears.is_empty() {
             return false;
         }
-        let only_own_reads = contradicted_by_writes
-            .iter()
-            .chain(&contradicted_by_clears)
-            .all(|root| *root == anchor);
-        self.evaluation.restart = Some(if !only_own_reads {
-            Restart::Conflict(anchor)
+        let mut readers: Vec<CellReferenceIndex> = Vec::new();
+        for root in contradicted_by_writes.iter().chain(&contradicted_by_clears) {
+            if *root != anchor && !readers.contains(root) {
+                readers.push(*root);
+            }
+        }
+        self.evaluation.restart = Some(if !readers.is_empty() {
+            Restart::Conflict { anchor, readers }
         } else if contradicted_by_writes.is_empty() {
             Restart::StaleCells(anchor, clears.to_vec())
         } else {

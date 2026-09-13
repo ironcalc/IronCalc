@@ -24,14 +24,14 @@ The project is `IronCalcEval/` (a `lake` project depending on Mathlib).
 |---|---|---|
 | `Sheet.lean` | positions, values, formulas as strategy trees, contents, `valueAt`, `Consistent` | `Cell`, `cold-evaluation.md` §1 |
 | `Pass.lean` | `PassState`, `recordSeen`, `markCycle`, `spillContradictsARead`, `commit`, `evalCell`, `runPass` | `evaluation.rs` and `spill_dynamic_array` in `model.rs` |
-| `Driver.lean` | `RestartLog`, `record`, `syncAnchorOrder`, `evaluate` | `RestartLog`, `Model::evaluate` |
+| `Driver.lean` | `RestartLog` (facts and marks), `closure`, `learn`, `record`, `dropStale`, `dropMarked`, `syncAnchorOrder`, `evaluate` | `RestartLog`, `Model::evaluate` |
 | `StateLemmas.lean` | `Preserves`: reasoning about the pass monad; one lemma per primitive; `evalCell` keeps evaluated cells evaluated | |
 | `Invariant.lean` | `PassInv` (§5.1 as a state predicate), `Protected`, `StableBlocked`, the step relation `PassStep`/`PassRel`, the simple primitives | |
 | `Commit.lean` | `SheetChange` (what a commit did), the generic `SheetChange.commitOk`, and `commit_spec`: a commit either abandons the pass or re-establishes the invariant once the cell is marked evaluated | `set_cells_with_result`, `spill_dynamic_array` |
 | `Read.lean` | `ReadSpec`/`RunSpec`, the specs of `evalSpillCell`, `evalFormulaCell`, `finishFormulaCell`, `Formula.run` and `evalCell` (by induction on fuel) | `evaluate_cell`, `evaluate_spill_cell`, `evaluate_formula_cell` |
-| `Loop.lean` | the pass seen from the driver: a restart names an unevaluated dynamic anchor; a marked anchor restarts only behind an unmarked one | `run_pass` |
+| `Loop.lean` | the pass seen from the driver (`RestartFacts`): a restart names an unmarked anchor of the order, and its readers are unmarked anchors placed before it | `run_pass` |
 | `Correctness.lean` | the pass invariant (§5.1) and partial correctness (§5.2) | |
-| `Termination.lean` | the log invariant, pigeonhole, the potential, termination (§5.3) | `RestartLog`, `Model::evaluate` |
+| `Termination.lean` | closure lemmas, the two-element sublist as "before", `learn_spec`, `record_spec`, the measure, termination (§5.3) | `RestartLog`, `Model::evaluate` |
 | `Examples.lean` | `#eval` of the model on six small sheets | `test_ordered_restart.rs` |
 
 Build with `lake build` inside `IronCalcEval/`. The `#eval` results appear in
@@ -58,35 +58,51 @@ what is left.
   fuel is always enough. This is the theorem, so the definition may not
   assume it.
 * A restarted pass starts again from the original sheet, minus the stale
-  cells a `staleCells` restart dropped (`dropStale`). The Rust restores only
+  cells a `staleCells` restart dropped (`dropStale`) and the spill cells of
+  the anchors the restart marked (`dropMarked`). The Rust restores only
   dynamic anchors and spill cells, and leaves the values an abandoned pass
   stored in formula cells, which a pass never reads before recomputing.
+* The root of a record, the cell the driver is evaluating, is a field of the
+  state set by `passBody` before each cell, as `Evaluation.root` in the Rust.
+* The reachability the driver needs (`closure`) is computed by saturating a
+  list a fixed number of times; the Rust walks the graph. Both compute the
+  same set, and `Termination.lean` proves the saturated list is closed.
 * A dynamic anchor's own spill cells are found by scanning the whole sheet,
   not the remembered old area.
 * `in_pass = false` (evaluation outside a pass) is out of scope.
 
 ## What writing the model surfaced
 
-1. **A marked anchor can restart.** §5.3 says "a marked anchor never restarts
-   again: it stores `#CIRC!` without spilling and keeps no spill cells". But
-   the spill cells it left from a *previous* evaluation are restored at every
-   restart and removed only when its turn comes, through
-   `retire_own_spill_cells` with the contradiction check. An unmarked anchor
-   placed before it can be blocked by them (a `Conflict` when they go) or read
-   one (`StaleRead`). Both restart the marked anchor. The statement that
-   survives, and that termination needs, is
-   `marked_restart_has_unmarked_before`: a marked anchor restarts only when
-   an unmarked anchor precedes it, and it then moves in front of it.
-   Termination still holds; the potential is (unmarked anchors, pairs of an
-   unmarked anchor before a marked one), and the argument is in the header of
-   `Termination.lean`.
-2. **The budget and the pigeonhole bound do not match.** The pigeonhole gives
-   at most `n!` orders between two changes of the circular set. The budget is
-   `n² + 2`. The claim that the budget is "reached only by a mistake in this
-   reasoning" therefore does not follow from §5.3 alone; it needs the
-   cycle-free bound of `n` restarts, or a proof that the pigeonhole bound is
-   loose. Reaching the budget marks an anchor circular that may not be, so
-   this is worth settling. It is not stated as a theorem yet.
+1. **A marked anchor could restart.** §5.3 said "a marked anchor never
+   restarts again: it stores `#CIRC!` without spilling and keeps no spill
+   cells". But the spill cells it left from a *previous* evaluation were
+   restored at every restart and removed only when its turn came, so an
+   unmarked anchor placed before it could be blocked by them or read one,
+   and restart it. Resolved with finding 5: the driver now drops a marked
+   anchor's spill cells when it marks it (`dropMarked`), which makes the
+   sentence true; `RestartFacts.marked_spill` and the driver invariant
+   `no_stale_marked` are the two halves of the argument that a restart's
+   anchor is unmarked.
+2. **The budget was reachable, and it fired on a cycle-free sheet.** The
+   pigeonhole gives at most `n!` orders between two changes of the circular
+   set; the budget was `n² + 2`; the document's cycle-free bound of `n`
+   restarts was false, because moving an anchor to the front puts a reader
+   ahead of what it reads. Three tiers of ten anchors, each tier reading
+   every spill cell of the next, take about `k·m²` restarts, hit the budget,
+   and got innocent `=SEQUENCE(2)` cells marked `#CIRC!`
+   (`a_cycle_free_cascade_is_not_marked_circular`). Resolved by replacing
+   the driver: a restart is a fact, "the anchor runs before its readers"; the
+   driver keeps the facts and repairs the order to respect them, moving the
+   anchor and what must precede it to just before the reader
+   (`RestartLog.learn`); a fact that would close a loop marks the anchors on
+   it. Every restart adds a fact the order broke, hence a new one (at most
+   `n²`), or marks an anchor (at most `n`), or drops a stale cell. There is
+   no budget any more, and `evaluate_terminates` is proved from that
+   measure. Proving it needed the readers of a restart to be known: the root
+   became an explicit field, every new record is on record as made for the
+   root (`PassStep.roots_new_*`), and the loop invariant of `Loop.lean`
+   tracks that every record's root is a processed, unmarked cell. The same
+   sheet takes nine restarts now, one per link of the chain.
 
 3. **`record_seen` drops the `Occupied` record of a position already read as
    empty.** `record_seen` uses `or_insert`, one record per position. A cell
@@ -158,17 +174,15 @@ what is left.
    `syncAnchorOrder_orderOf`. The pass body is the recursive `passBody`
    (a `for` with `break` in the Rust), and `ReadSpec` gained the clause that
    a formula cell read while not on the stack ends up evaluated.
-5. Done: `restart_anchor_mem`, `marked_restart_has_unmarked_before`
-   (`Loop.lean`), then `evaluate_terminates`. The measure is: restarts left
-   before the budget, then the number of unmarked anchors, then the number of
-   pairs (unmarked anchor before a marked one). Once the budget is spent every
-   restart marks its anchor; a marked anchor's restart moves it in front of an
-   unmarked one, which removes a pair and creates none. The statement
-   `first_unmarked_restarts_only_by_self` was dropped: it needs the root of
-   every record tracked through the pass, and termination does not need it.
-   With finding 4 resolved the measure has one more component in front: the
-   spill cells of the sheet the passes start from, which a stale-cells
-   restart strictly decreases and nothing increases.
-6. Done: `ordersSeen_le_factorial`. The budget question below stands: the
-   proof uses the budget as the point after which every restart marks, and
-   does not show the budget is never reached.
+5. Done, then redone with finding 2: `runPass_facts` (`Loop.lean`), then
+   `evaluate_terminates`. The measure is: spill cells of the sheet the
+   passes start from, then unmarked anchors, then facts still to learn
+   (`measure` in `Termination.lean`). `learn_spec` says one reader either
+   adds a fact and repairs the order (`repair_ok`, `repair_perm`) or marks
+   the reader and what the facts place between it and the anchor;
+   `fold_spec` folds that over the readers; `record_spec` adds the
+   self-contradiction mark; `restart_step` adds the sheet. The "before"
+   relation of an order is the two-element sublist `[a, b] <+ order`, with
+   `pair_sublist_append_iff` and `pair_sublist_cons_iff` doing the work of
+   the repair proof.
+6. Gone: `ordersSeen_le_factorial` and the budget, with the old driver.
