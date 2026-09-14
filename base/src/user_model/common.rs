@@ -2545,6 +2545,60 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         self.tracked(|s| s.model.range_clear_formatting(range))
     }
 
+    /// Returns the link attached to cell (`row`, `column`) or `None` if there isn't one.
+    pub fn get_cell_link(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<crate::types::Link>, String> {
+        self.model.get_cell_link(sheet, row, column)
+    }
+
+    /// Returns all the links in the worksheet as a list sorted by (row, column).
+    pub fn get_links_list(&self, sheet: u32) -> Result<Vec<crate::links::CellLinkView>, String> {
+        self.model.get_links_list(sheet)
+    }
+
+    /// Attaches `link` to cell (`row`, `column`), replacing the existing link if there was one.
+    ///
+    /// If `label` is given it becomes the content of the cell. When the cell did not have a link
+    /// before, the link style (underline and the theme hyperlink color) is applied too. The whole
+    /// operation is a single entry in the undo/redo history.
+    pub fn set_cell_link(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        link: crate::types::Link,
+        label: Option<&str>,
+    ) -> Result<(), String> {
+        let is_new_link = self.model.get_cell_link(sheet, row, column)?.is_none();
+        self.tracked(|s| {
+            s.model.set_cell_link(sheet, row, column, link)?;
+            if let Some(label) = label {
+                if label != s.model.get_formatted_cell_value(sheet, row, column)? {
+                    s.model
+                        .set_user_input(sheet, row, column, label.to_string())?;
+                    s.evaluate_if_not_paused();
+                }
+            }
+            if is_new_link {
+                let mut style = s.model.get_style_for_cell(sheet, row, column)?;
+                style.font.u = true;
+                style.font.color = Color::Theme(crate::links::THEME_COLOR_HYPERLINK, 0.0);
+                s.model.set_cell_style(sheet, row, column, &style)?;
+            }
+            Ok(())
+        })
+    }
+
+    /// Removes the link attached to cell (`row`, `column`). It is NOT an error if the cell has no
+    /// link. The cell content and the cell style are left untouched.
+    pub fn delete_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        self.tracked(|s| s.model.delete_cell_link(sheet, row, column))
+    }
+
     /// Updates the range with a cell style.
     pub fn update_range_style(
         &mut self,

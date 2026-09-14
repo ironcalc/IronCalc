@@ -44,7 +44,7 @@ use crate::cf_types::CfRule;
 use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::FractionalKey;
 use crate::collab::log::Timestamp;
-use crate::collab::model::{Stable, StableCellAddress, StableRange};
+use crate::collab::model::{Stable, StableCellAddress, StableLink, StableRange};
 use crate::collab::DynError;
 use crate::constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
 use crate::expressions::token::Error;
@@ -284,6 +284,17 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                 at: at.clone(),
                 comment: prev.clone(),
                 prev: comment.clone(),
+            }),
+            Patch::SetCellLink {
+                sheet,
+                at,
+                link,
+                prev,
+            } => out.push(Patch::SetCellLink {
+                sheet: *sheet,
+                at: at.clone(),
+                link: prev.clone(),
+                prev: link.clone(),
             }),
             Patch::DeleteRows { sheet, keys, prev } => {
                 // Snapshots came off the wire, or none were taken: there is nothing to restore.
@@ -662,6 +673,16 @@ pub enum Patch {
         #[bitcode(skip)]
         prev: Option<Comment<Stable>>,
     },
+    /// The link on a cell. Dynamic links (the ones `HYPERLINK` produces)
+    /// are derived by evaluation and never written.
+    SetCellLink {
+        sheet: SheetId,
+        at: StableCellAddress,
+        link: Option<StableLink>,
+
+        #[bitcode(skip)]
+        prev: Option<StableLink>,
+    },
 }
 
 impl Patch {
@@ -686,7 +707,8 @@ impl Patch {
             | Patch::MoveConditionalFormats { sheet, .. }
             | Patch::SetConditionalFormat { sheet, .. }
             | Patch::SetMergedRange { sheet, .. }
-            | Patch::SetComment { sheet, .. } => Some(*sheet),
+            | Patch::SetComment { sheet, .. }
+            | Patch::SetCellLink { sheet, .. } => Some(*sheet),
             // `SetDefinedName`'s scope is a name scope, not a place a write lands.
             Patch::AddSheet { .. }
             | Patch::DeleteSheet { .. }
@@ -1157,6 +1179,7 @@ pub struct SheetContent {
     pub cell_styles: Vec<(StableCellAddress, Style)>,
     pub merge_cells: Vec<StableRange>,
     pub comments: Vec<Comment<Stable>>,
+    pub links: Vec<(StableCellAddress, StableLink)>,
     /// Ordered by [`FractionalKey`], which is both each rule's identity and its priority.
     pub conditional_formatting: Vec<(FractionalKey, ConditionalFormatState)>,
 }
@@ -1311,6 +1334,13 @@ mod test {
         }
     }
 
+    fn link() -> StableLink {
+        StableLink::External {
+            target: "https://ironcalc.com".to_string(),
+            tooltip: None,
+        }
+    }
+
     fn content() -> SheetContent {
         SheetContent {
             state: SheetState::Visible,
@@ -1326,6 +1356,7 @@ mod test {
             cell_styles: vec![((key(1), key(3)), Style::default())],
             merge_cells: vec![range()],
             comments: vec![comment()],
+            links: vec![((key(1), key(3)), link())],
             conditional_formatting: vec![(
                 key(9),
                 ConditionalFormatState {
@@ -1497,6 +1528,21 @@ mod test {
                 sheet: 7,
                 at: (key(1), key(3)),
                 comment: Some(comment()),
+                prev: None,
+            },
+            Patch::SetCellLink {
+                sheet: 7,
+                at: (key(1), key(3)),
+                link: Some(link()),
+                prev: None,
+            },
+            Patch::SetCellLink {
+                sheet: 7,
+                at: (key(1), key(3)),
+                link: Some(StableLink::Internal {
+                    location: formula(),
+                    tooltip: Some("go".to_string()),
+                }),
                 prev: None,
             },
         ]

@@ -49,6 +49,7 @@ impl Position for Stable {
     type Local = CollabSession;
     type UserState = StableUserState;
     type Formula = StableFormula;
+    type Link = StableLink;
 
     fn row_ordinal(idx: &SheetIndexes, key: &FractionalKey) -> Option<i32> {
         idx.rows.position_of(key).map(|p| p as i32 + 1)
@@ -151,6 +152,19 @@ impl Position for Stable {
     }
 }
 
+/// Same as [`Link`](crate::types::Link), but an internal location uses stable addressing pattern.
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+pub enum StableLink {
+    External {
+        target: String,
+        tooltip: Option<String>,
+    },
+    Internal {
+        location: StableFormula,
+        tooltip: Option<String>,
+    },
+}
+
 /// Undo/redo for a collaborative [`UserModel`](crate::UserModel): stacks of the patches a local
 /// action emitted. Declared here, but not consumed until a later round wires undo/redo up.
 #[derive(Default)]
@@ -183,6 +197,7 @@ pub struct SheetRegisters {
     pub props: HashMap<SheetPropKind, Timestamp>,
     pub merges: HashMap<StableRange, Timestamp>,
     pub comments: HashMap<StableCellAddress, Timestamp>,
+    pub links: HashMap<StableCellAddress, Timestamp>,
     pub cf: HashMap<(FractionalKey, CfPropKind), Timestamp>,
     /// CF rule identity ↔ storage order; kept sorted, position = priority.
     pub cf_order: Vec<FractionalKey>,

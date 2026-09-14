@@ -384,6 +384,9 @@ pub trait Position: sealed::Sealed + Sized + Clone {
     /// Storage form of a shared formula: R1C1 text under [`Ordinal`], a bound token stream under
     /// [`Stable`](crate::collab::model::Stable).
     type Formula: Clone + PartialEq + std::fmt::Debug + Encode + bitcode::DecodeOwned;
+    /// Storage form of a cell hyperlink: a plain [`Link`] under [`Ordinal`], a link whose internal
+    /// location is a bound stream under [`Stable`](crate::collab::model::Stable).
+    type Link: Clone + PartialEq + std::fmt::Debug + Encode + bitcode::DecodeOwned;
 
     // Key ⇄ ordinal resolution. Ordinals are the 1-based `i32` the rest of the codebase uses;
     // `None` means the key names nothing in this index any more.
@@ -448,6 +451,7 @@ impl Position for Ordinal {
     type Local = ();
     type UserState = OrdinalUserState;
     type Formula = String;
+    type Link = Link;
 
     // The key *is* the ordinal, so resolution is the identity and there is nothing to bound-check.
     #[inline]
@@ -722,7 +726,7 @@ pub struct Worksheet<A: Position = Ordinal> {
     pub show_grid_lines: bool,
     pub conditional_formatting: Vec<ConditionalFormatting<A>>,
     /// Hyperlinks in the worksheet, keyed by (row, column) of the cell they are attached to
-    pub links: HashMap<CellAddr<A>, Link>,
+    pub links: HashMap<CellAddr<A>, A::Link>,
     /// The ordering context every key in this sheet resolves against; `()` for [`Ordinal`].
     pub index: A::SheetIndex,
 }

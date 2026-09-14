@@ -18,8 +18,8 @@ use crate::expressions::types::CellReferenceRC;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::types::{
-    Cell, Col, Comment, MergedCell, Ordinal, Position, RangeRef, Row, SheetData, StyleIncludes,
-    Styles, Workbook, Worksheet,
+    Cell, Col, Comment, Link, MergedCell, Ordinal, Position, RangeRef, Row, SheetData,
+    StyleIncludes, Styles, Workbook, Worksheet,
 };
 
 /// How far the sheet reaches on each axis.
@@ -100,10 +100,6 @@ pub(crate) fn content_from_ordinal(
             }
         }
     }
-    // `sheet_data` is a hash map: sort if to avoid non-determinism
-    cell_values.sort_by(|(a, _), (b, _)| a.cmp(b));
-    cell_styles.sort_by(|(a, _), (b, _)| a.cmp(b));
-
     // same as `add_conditional_formatting` would work like
     fn cf_key(at: usize, suffix: &[u8]) -> FractionalKey {
         let mut buf = KeyBuf::from(&(2 * (at as u32 + 1)).to_be_bytes()[1..]);
@@ -162,6 +158,7 @@ pub(crate) fn content_from_ordinal(
             .iter()
             .map(|m| range(&RangeRef::from(m)))
             .collect(),
+        links: Vec::new(), // links come in the second pass
         comments: ws
             .comments
             .iter()
@@ -204,7 +201,7 @@ impl CollabModel<'static> {
             .map_err(|_| format!("Invalid language: {language_id}"))?;
         model.language = language;
         model.parser.set_language(language);
-        // Tables and hyperlinks are not replicated yet, so they are left behind here.
+        // Tables are not replicated yet, so they are left behind here.
         // A conditional formatting rule names its format by index into the local `dxfs` table, the
         // way one added through `add_conditional_formatting` does, so that table comes along.
         model.workbook.styles.dxfs = workbook.styles.dxfs.clone();
@@ -250,19 +247,15 @@ impl CollabModel<'static> {
         for (i, ws) in workbook.worksheets.iter().enumerate() {
             let sheet = i as u32;
             let id = model.workbook.worksheets[i].sheet_id;
-            let mut formulas: Vec<(i32, i32, i32)> = Vec::new();
-            for (r, row) in &ws.sheet_data {
-                for (c, cell) in row {
-                    match cell {
-                        Cell::CellFormula { f, .. } => formulas.push((*r, *c, *f)),
-                        // Array formulas are skipped: there is no emitter for them yet.
-                        _ => {}
-                    }
-                }
-            }
-            formulas.sort();
             let mut plan = MintPlan::default();
             let mut writes = Vec::new();
+            // Array formulas are skipped: there is no emitter for them yet.
+            let formulas = ws.sheet_data.iter().flat_map(|(&row, cells)| {
+                cells.iter().filter_map(move |(&column, cell)| match cell {
+                    Cell::CellFormula { f, .. } => Some((row, column, *f)),
+                    _ => None,
+                })
+            });
             for (row, column, f) in formulas {
                 let Some(text) = ws.shared_formulas.get(f as usize).cloned() else {
                     continue;
@@ -277,6 +270,16 @@ impl CollabModel<'static> {
                     value: Some(CellInput::Formula(bound)),
                     ts: None,
                     prev: Box::new(None),
+                });
+            }
+            // links bind in the same pass: by now referenced sheets should exist
+            for (&(row, column), link) in &ws.links {
+                let bound = model.bind_link(link.clone(), &mut plan)?;
+                writes.push(Patch::SetCellLink {
+                    sheet: id,
+                    at: (virtual_key(row as u32), virtual_key(column as u32)),
+                    link: Some(bound),
+                    prev: None,
                 });
             }
             if !writes.is_empty() {
@@ -475,7 +478,7 @@ impl CollabModel<'_> {
             links: ws
                 .links
                 .iter()
-                .filter_map(|((r, c), link)| Some(((row(r)?, col(c)?), link.clone())))
+                .filter_map(|((r, c), link)| Some(((row(r)?, col(c)?), self.link_view(link))))
                 .collect(),
             frozen_rows: ws.frozen_rows,
             frozen_columns: ws.frozen_columns,
@@ -552,6 +555,28 @@ mod test {
                     ..Default::default()
                 },
                 stop_if_true: false,
+            },
+        )
+        .unwrap();
+
+        // An external and an internal link, the latter naming the other sheet.
+        m.set_cell_link(
+            0,
+            7,
+            1,
+            Link::External {
+                target: "https://ironcalc.com".to_string(),
+                tooltip: None,
+            },
+        )
+        .unwrap();
+        m.set_cell_link(
+            0,
+            8,
+            1,
+            Link::Internal {
+                location: "Data!A1".to_string(),
+                tooltip: None,
             },
         )
         .unwrap();
@@ -641,6 +666,14 @@ mod test {
         assert!(a.get_style_for_cell(0, 1, 3).unwrap().font.u);
         assert_eq!(a.workbook.worksheets[0].merged_cells.len(), 1);
         assert_eq!(a.workbook.worksheets[0].comments.len(), 1);
+        // Both links survived the import and read back as they were written.
+        for (row, column) in [(7, 1), (8, 1)] {
+            assert_eq!(
+                a.get_cell_link(0, row, column),
+                ordinal.get_cell_link(0, row, column),
+                "link at {row}:{column}"
+            );
+        }
         assert_eq!(a.workbook.worksheets[0].conditional_formatting.len(), 1);
         assert_eq!(a.workbook.defined_names.len(), 2);
         assert!(a
@@ -723,6 +756,7 @@ mod test {
             assert_eq!(col_shape(out), col_shape(ws));
             assert_eq!(out.merged_cells, ws.merged_cells);
             assert_eq!(out.comments, ws.comments);
+            assert_eq!(out.links, ws.links);
             let ranges = |w: &Worksheet| -> Vec<Vec<RangeRef>> {
                 w.conditional_formatting
                     .iter()

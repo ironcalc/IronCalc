@@ -4,7 +4,6 @@ use wasm_bindgen::{
     JsValue,
 };
 
-#[cfg(not(feature = "collab"))]
 use ironcalc_base::types::Link;
 use ironcalc_base::{
     cf_types::CfRuleInput,
@@ -848,8 +847,6 @@ impl Model {
     }
 
     /// Returns the link attached to the cell or undefined if there isn't one.
-    // Hyperlinks are not replicated yet: the collaborative model has no link API.
-    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "getCellLink", unchecked_return_type = "Link | undefined")]
     pub fn get_cell_link(&self, sheet: u32, row: i32, column: i32) -> Result<JsValue, JsError> {
         let link = self
@@ -863,7 +860,6 @@ impl Model {
     /// If `label` is given it becomes the content of the cell (the displayed text).
     /// A new link also applies the link style (underline + theme hyperlink color)
     /// to the cell. The whole operation is a single undo step.
-    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "setCellLink")]
     pub fn set_cell_link(
         &mut self,
@@ -881,7 +877,6 @@ impl Model {
     }
 
     /// Removes the link attached to the cell. It is not an error if the cell has no link.
-    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "deleteCellLink")]
     pub fn delete_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), JsError> {
         self.model
@@ -890,8 +885,6 @@ impl Model {
     }
 
     /// Returns all the links in the worksheet sorted by (row, column).
-    // Hyperlinks are not replicated yet: the collaborative model has no link API.
-    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "getLinks", unchecked_return_type = "CellLink[]")]
     pub fn get_links(&self, sheet: u32) -> Result<JsValue, JsError> {
         let links = self.model.get_links_list(sheet).map_err(to_js_error)?;
