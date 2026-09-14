@@ -109,6 +109,20 @@ fn values_and_references() {
     o.evaluate();
     c.evaluate();
     compare(&o, &c, &[0, 1], 8, 6, "late defined name");
+
+    // The missing sheet arrives, then is renamed: the references have to follow it either way.
+    o.new_sheet();
+    c.new_sheet();
+    o.rename_sheet_by_index(2, "Nope").unwrap();
+    c.rename_sheet_by_index(2, "Nope").unwrap();
+    set(&mut o, &mut c, 2, 1, 1, "7");
+    compare(&o, &c, &[0, 1, 2], 8, 6, "the missing sheet appears");
+
+    o.rename_sheet_by_index(2, "Other").unwrap();
+    c.rename_sheet_by_index(2, "Other").unwrap();
+    o.evaluate();
+    c.evaluate();
+    compare(&o, &c, &[0, 1, 2], 8, 6, "the missing sheet is renamed");
 }
 
 #[test]

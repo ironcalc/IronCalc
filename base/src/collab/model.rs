@@ -23,7 +23,7 @@ use crate::types::{
 use crate::tz::Tz;
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// What a replica assumes until a peer writes the workbook's locale and timezone registers.
 const DEFAULT_LOCALE: &str = "en";
@@ -403,6 +403,10 @@ pub struct CollabSession {
     /// would potentially skip formula lowering, when in fact it should be evaluated. This field
     /// prevents that.
     pub(crate) revived: bool,
+    /// Whenever formula couldn't bind name to specific defined_name_id or sheet_id (eg. because
+    /// they were not created yet) it will land here and rebound when an object with relevant name
+    /// has been defined.
+    pub(crate) unresolved: HashMap<String, HashSet<(SheetId, StableCellAddress)>>,
     /// How many commits took the full (structural) `resync_derived` path.
     #[cfg(test)]
     pub(crate) full_resyncs: u64,

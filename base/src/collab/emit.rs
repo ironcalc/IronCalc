@@ -662,6 +662,58 @@ impl CollabModel<'_> {
 
 /// Document mutation: the collaborative twin of the ordinal writers, patch by patch.
 impl CollabModel<'_> {
+    /// Re-binds every formula that references `name` by text - this can happen when i.e. formula
+    /// references sheet name before that sheet was created.
+    fn rebind_naming(&mut self, name: &str) {
+        // The register holds every cell whose stream named it; nothing there, nothing to rebind.
+        let Some(cells) = self.local.unresolved.remove(&name.to_uppercase()) else {
+            return;
+        };
+        // Set order is fine: every write lands on its own register, and the mints are planned.
+        let mut plan = MintPlan::default();
+        let mut writes = Vec::new();
+        for (id, at) in cells {
+            let Some(i) = self.sheet_index(id) else {
+                continue;
+            };
+            let sheet = &self.workbook.worksheets[i];
+            // A cell on a row or column the index no longer holds has no ordinal to bind against.
+            let (Some(row), Some(column)) = (
+                Stable::row_ordinal(&sheet.index, &at.0),
+                Stable::col_ordinal(&sheet.index, &at.1),
+            ) else {
+                continue;
+            };
+            let Some(Cell::CellFormula { f, .. }) = sheet.cell(row, column) else {
+                continue; // entry may hold no formula anymore
+            };
+            let f = *f;
+            let Some(node) = Stable::materialize_formula(self, i as u32, row, column, f) else {
+                continue; // lowering already turned the tokens that now resolve into live nodes.
+            };
+            let Ok(bound) = self.bind_formula(&node, i as u32, row, column, &mut plan) else {
+                continue; // a reference whose offset fell off the grid since it was made
+            };
+            if self.workbook.worksheets[i].shared_formulas.get(f as usize) == Some(&bound) {
+                continue; // identity action - skip
+            }
+            let prev = Box::new(self.cell_input(i, &at));
+            writes.push(Patch::SetCellValue {
+                sheet: id,
+                at,
+                value: Some(CellInput::Formula(bound)),
+                ts: None,
+                prev,
+            });
+        }
+        if writes.is_empty() {
+            return;
+        }
+        let mut patches = self.mint_patches(&plan);
+        patches.extend(writes);
+        self.commit_local(patches);
+    }
+
     /// Adds a sheet with an automatically generated name.
     pub fn new_sheet(&mut self) -> (String, u32) {
         let base_name = self.get_sheet_name();
@@ -684,6 +736,7 @@ impl CollabModel<'_> {
             position: self.sheet_position(),
             content: None,
         }]);
+        self.rebind_naming(&name);
         let at = self.get_sheet_index_by_sheet_id(id).unwrap_or_default();
         self.evaluate();
         (name, at)
@@ -733,6 +786,7 @@ impl CollabModel<'_> {
             position,
             content: None,
         }]);
+        self.rebind_naming(name);
         self.evaluate();
         Ok(())
     }
@@ -2305,6 +2359,7 @@ impl CollabModel<'_> {
             });
         }
         self.commit_local(patches);
+        self.rebind_naming(&new_name);
         let at = self.get_sheet_index_by_sheet_id(id).unwrap_or_default();
         self.evaluate();
         Ok((new_name, at))
@@ -2334,9 +2389,9 @@ impl CollabModel<'_> {
             property: SheetProperty::Name(new_name.to_string()),
             prev,
         }];
-        // Nothing else to write: a bound reference names the sheet by id, so it renders under the
-        // new name the moment the register does.
+        // re-bound reference names the sheet by id
         self.commit_local(patches);
+        self.rebind_naming(new_name);
         self.evaluate();
         Ok(())
     }
@@ -2450,6 +2505,7 @@ impl CollabModel<'_> {
             },
         ]);
         self.commit_local(patches);
+        self.rebind_naming(name);
         Ok(())
     }
 
@@ -2516,6 +2572,9 @@ impl CollabModel<'_> {
         // An update that changed neither register is not an edit, so it authors no commit.
         if !patches.is_empty() {
             self.commit_local(patches);
+        }
+        if renaming {
+            self.rebind_naming(new_name);
         }
         Ok(())
     }
@@ -2891,7 +2950,7 @@ unsupported! { &mut self
 mod test {
     #![allow(clippy::unwrap_used)]
     use super::*;
-    use crate::collab::log::{Consumer, SessionId};
+    use crate::collab::log::{Consumer, SessionId, Snapshot};
     use crate::collab::patch::invert_patches;
     use crate::Model;
 
@@ -5094,6 +5153,20 @@ mod test {
         assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("10".to_string()));
         same(&o, &a, "new_defined_name");
 
+        // Renaming the defined name keeps the formula on it, as a formula typed after the name would.
+        a.update_defined_name("total", None, "grand", None, "Sheet1!$A$3")
+            .unwrap();
+        a.evaluate();
+        assert_eq!(
+            a.get_cell_formula(0, 2, 1),
+            Ok(Some("=grand*2".to_string()))
+        );
+        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("10".to_string()));
+        // Back to the authored name, so the delete below still finds it.
+        a.update_defined_name("grand", None, "total", None, "Sheet1!$A$3")
+            .unwrap();
+        a.evaluate();
+
         // And loses it again when the name goes.
         o.delete_defined_name("total", None).unwrap();
         a.delete_defined_name("total", None).unwrap();
@@ -5104,6 +5177,18 @@ mod test {
             Ok("#NAME?".to_string())
         );
         same(&o, &a, "delete_defined_name");
+
+        // A cell that named the sheet and was then overwritten: the register keeps a stale entry.
+        a.set_user_input(0, 1, 3, "=Nope!B1".to_string()).unwrap();
+        a.set_user_input(0, 1, 3, "9".to_string()).unwrap();
+        assert!(a
+            .local
+            .unresolved
+            .get("NOPE")
+            .is_some_and(|cells| !cells.is_empty()));
+
+        // A replica restoring from a snapshot rebuilds the register, so it rebinds too.
+        let mut r = CollabModel::decode(&a.encode(), 3).unwrap();
 
         // A sheet by that name showing up later repairs the reference, as upstream's reparse does.
         o.new_sheet();
@@ -5117,6 +5202,32 @@ mod test {
         assert_eq!(a.get_formatted_cell_value(0, 1, 1), Ok("3".to_string()));
         assert_eq!(a.get_formatted_cell_value(0, 1, 2), Ok("3".to_string()));
         same(&o, &a, "the sheet appears");
+        // The overwritten cell is not touched, and its entry is gone with the rest.
+        assert_eq!(a.get_formatted_cell_value(0, 1, 3), Ok("9".to_string()));
+        assert_eq!(a.local.unresolved.get("NOPE"), None);
+
+        // The restored replica rebinds the same way from its rebuilt register.
+        r.new_sheet();
+        r.rename_sheet_by_index(1, "Nope").unwrap();
+        r.set_user_input(1, 1, 1, "3".to_string()).unwrap();
+        r.evaluate();
+        assert_eq!(r.get_formatted_cell_value(0, 1, 1), Ok("3".to_string()));
+        assert_eq!(
+            r.get_cell_formula(0, 1, 1),
+            Ok(Some("=Nope!A1".to_string()))
+        );
+
+        // Renaming the sheet keeps the reference: it was bound to the id when the sheet arrived.
+        o.rename_sheet_by_index(1, "Other").unwrap();
+        a.rename_sheet_by_index(1, "Other").unwrap();
+        o.evaluate();
+        a.evaluate();
+        assert_eq!(
+            a.get_cell_formula(0, 1, 1),
+            Ok(Some("=Other!A1".to_string()))
+        );
+        assert_eq!(a.get_formatted_cell_value(0, 1, 1), Ok("3".to_string()));
+        same(&o, &a, "the sheet is renamed");
 
         // All of it over the wire: a peer that only saw the commits reads the same cells.
         let mut b = CollabModel::new(2);

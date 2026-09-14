@@ -251,6 +251,16 @@ impl StableFormula {
         &self.0
     }
 
+    /// The names the stream still holds as text: sheets it could not bind, and bare names.
+    pub fn text_names(&self) -> impl Iterator<Item = &str> {
+        self.0.iter().filter_map(|token| match token {
+            StableToken::WrongRef { sheet_name, .. }
+            | StableToken::WrongRange { sheet_name, .. } => sheet_name.as_deref(),
+            StableToken::NamedVariable(n) => Some(n.as_str()),
+            _ => None,
+        })
+    }
+
     /// Points every reference naming `source` at `target` instead, returning whether anything
     /// changed. A reference with no sheet prefix stays as it is. Swapping a sheet ref is
     /// one-for-one, so a valid stream stays one.
