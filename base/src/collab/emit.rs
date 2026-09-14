@@ -2893,6 +2893,7 @@ mod test {
     use super::*;
     use crate::collab::log::{Consumer, SessionId};
     use crate::collab::patch::invert_patches;
+    use crate::Model;
 
     /// Replays what a framework would transport: each flushed [`Commit`] delivered as it stands.
     /// `session` is who the test believes authored them, checked against each commit.
@@ -5035,22 +5036,104 @@ mod test {
         assert_eq!(b.workbook, a.workbook);
     }
 
-    /// Divergence from ordinal, by design: a reference has to bind to something, so naming a sheet
-    /// that is not there is refused at write time rather than stored and evaluated to `#REF!`.
     #[test]
-    fn formula_naming_an_absent_sheet_is_refused() {
+    fn wrong_references_and_late_names() {
+        // Cells under test: A1 `=Nope!A1`, B1 `=SUM(Nope!A1:B2)`, A2 `=total*2`, A3 the name's body.
+        let cells = [(1, 1), (1, 2), (2, 1), (3, 1)];
+        let same = |o: &Model, c: &CollabModel<'_>, step: &str| {
+            for (row, col) in cells {
+                assert_eq!(
+                    c.get_formatted_cell_value(0, row, col),
+                    o.get_formatted_cell_value(0, row, col),
+                    "value at {row}:{col} after {step}"
+                );
+                assert_eq!(
+                    c.get_cell_formula(0, row, col),
+                    o.get_cell_formula(0, row, col),
+                    "formula at {row}:{col} after {step}"
+                );
+            }
+        };
+
+        let mut o = Model::new_empty("model", "en", "UTC", "en").unwrap();
         let mut a = CollabModel::new(1);
         a.new_sheet();
-        a.set_user_input(0, 1, 1, "7".to_string()).unwrap();
-        assert!(a.set_user_input(0, 2, 1, "=Sheet2!C3".to_string()).is_err());
+        for (row, col, value) in [
+            (1, 1, "=Nope!A1"),
+            (1, 2, "=SUM(Nope!A1:B2)"),
+            (2, 1, "=total*2"),
+            (3, 1, "5"),
+        ] {
+            o.set_user_input(0, row, col, value.to_string()).unwrap();
+            a.set_user_input(0, row, col, value.to_string()).unwrap();
+        }
+        o.evaluate();
         a.evaluate();
-        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("".to_string()));
+        assert_eq!(
+            a.get_cell_formula(0, 1, 1),
+            Ok(Some("=Nope!A1".to_string()))
+        );
+        assert_eq!(a.get_formatted_cell_value(0, 1, 1), Ok("#REF!".to_string()));
+        assert_eq!(
+            a.get_cell_formula(0, 1, 2),
+            Ok(Some("=SUM(Nope!A1:B2)".to_string()))
+        );
+        assert_eq!(a.get_formatted_cell_value(0, 1, 2), Ok("#REF!".to_string()));
+        // The name does not exist yet.
+        assert_eq!(
+            a.get_formatted_cell_value(0, 2, 1),
+            Ok("#NAME?".to_string())
+        );
+        same(&o, &a, "seed");
 
-        // Once the sheet is there the same input binds and evaluates.
-        a.new_sheet();
-        a.set_user_input(0, 2, 1, "=Sheet2!C3".to_string()).unwrap();
+        // The name arrives after the formula that uses it, and the formula picks it up.
+        o.new_defined_name("total", None, "Sheet1!$A$3").unwrap();
+        a.new_defined_name("total", None, "Sheet1!$A$3").unwrap();
+        o.evaluate();
         a.evaluate();
-        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("0".to_string()));
+        assert_eq!(a.get_formatted_cell_value(0, 2, 1), Ok("10".to_string()));
+        same(&o, &a, "new_defined_name");
+
+        // And loses it again when the name goes.
+        o.delete_defined_name("total", None).unwrap();
+        a.delete_defined_name("total", None).unwrap();
+        o.evaluate();
+        a.evaluate();
+        assert_eq!(
+            a.get_formatted_cell_value(0, 2, 1),
+            Ok("#NAME?".to_string())
+        );
+        same(&o, &a, "delete_defined_name");
+
+        // A sheet by that name showing up later repairs the reference, as upstream's reparse does.
+        o.new_sheet();
+        a.new_sheet();
+        o.rename_sheet_by_index(1, "Nope").unwrap();
+        a.rename_sheet_by_index(1, "Nope").unwrap();
+        o.set_user_input(1, 1, 1, "3".to_string()).unwrap();
+        a.set_user_input(1, 1, 1, "3".to_string()).unwrap();
+        o.evaluate();
+        a.evaluate();
+        assert_eq!(a.get_formatted_cell_value(0, 1, 1), Ok("3".to_string()));
+        assert_eq!(a.get_formatted_cell_value(0, 1, 2), Ok("3".to_string()));
+        same(&o, &a, "the sheet appears");
+
+        // All of it over the wire: a peer that only saw the commits reads the same cells.
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &a.flush());
+        b.evaluate();
+        for (row, col) in cells {
+            assert_eq!(
+                b.get_formatted_cell_value(0, row, col),
+                a.get_formatted_cell_value(0, row, col),
+                "value at {row}:{col} on the peer"
+            );
+            assert_eq!(
+                b.get_cell_formula(0, row, col),
+                a.get_cell_formula(0, row, col),
+                "formula at {row}:{col} on the peer"
+            );
+        }
     }
 
     /// Two cells at different positions can author the identical binding — same keys, same
@@ -5161,24 +5244,35 @@ mod test {
         );
     }
 
-    /// Divergence from upstream, by design: a reference that cannot be bound is refused at write
-    /// time instead of being stored and evaluated to `#REF!`.
+    /// A reference naming a sheet that is not there is stored and evaluates to `#REF!`, as ordinal
+    /// does.
     #[test]
     fn unbindable_input_is_refused() {
         let mut model = CollabModel::new(1);
         model.new_sheet();
-        assert!(model
+        model
             .set_user_input(0, 1, 1, "=NoSuchSheet!A1".to_string())
-            .is_err());
-        assert!(model
-            .update_cell_with_formula(0, 1, 1, "=NoSuchSheet!A1".to_string())
-            .is_err());
-        assert!(model
+            .unwrap();
+        model
+            .update_cell_with_formula(0, 1, 2, "=NoSuchSheet!A1".to_string())
+            .unwrap();
+        model
             .new_defined_name("Nope", None, "NoSuchSheet!$A$1")
+            .unwrap();
+        model.evaluate();
+        assert_eq!(
+            model.get_formatted_cell_value(0, 1, 1),
+            Ok("#REF!".to_string())
+        );
+        assert_eq!(
+            model.get_formatted_cell_value(0, 1, 2),
+            Ok("#REF!".to_string())
+        );
+        assert_eq!(model.workbook.defined_names.len(), 1);
+        // A scope index that is not a sheet has nothing to hang the name on.
+        assert!(model
+            .new_defined_name("Nope2", Some(9), "Sheet1!$A$1")
             .is_err());
-        // Nothing was written, and nothing was committed.
-        assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("".to_string()));
-        assert!(model.workbook.defined_names.is_empty());
     }
 
     #[test]

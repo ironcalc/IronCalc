@@ -1,204 +1,32 @@
 #![allow(clippy::unwrap_used)]
 
-//! The `Ordinal` ⇄ `Stable` projection. Building a stable sheet out of an ordinal one and projecting
-//! it straight back has to give the sheet we started with, field for field.
+//! The `Ordinal` ⇄ `Stable` projection. An ordinal worksheet imported into the collaborative model
+//! and projected straight back has to be the worksheet we started with, field for field.
 
-use std::collections::HashMap;
-
-use crate::cf_types::{CfRuleInput, ConditionalFormatting, ValueOperator};
-use crate::collab::fractional_index::{virtual_key, FractionalKey};
-use crate::collab::import::used_extent;
-use crate::collab::model::{SheetIndexes, Stable, StableRange};
+use crate::cf_types::{CfRuleInput, ValueOperator};
+use crate::collab::model::CollabModel;
 use crate::test::util::new_empty_model;
-use crate::types::{
-    Col, Color, Comment, Dxf, Fill, MergedCell, Position, RangeRef, Row, Worksheet,
-};
+use crate::types::{Col, Color, Comment, Dxf, Fill, MergedCell, RangeRef, Worksheet};
 
-pub(crate) fn stable_from_ordinal(ws: &Worksheet) -> Worksheet<Stable> {
-    let (row_count, column_count) = used_extent(ws);
-    let mut index = SheetIndexes::default();
-    for i in 1..=row_count as u32 {
-        index.rows.insert_key(virtual_key(i));
-    }
-    for i in 1..=column_count as u32 {
-        index.cols.insert_key(virtual_key(i));
-    }
-    let row_key = |o: i32| Stable::row_at(&index, o).unwrap();
-    let col_key = |o: i32| Stable::col_at(&index, o).unwrap();
-    let range = |r: &RangeRef| StableRange {
-        rows: r.rows.map(|(lo, hi)| (row_key(lo), row_key(hi))),
-        cols: r.cols.map(|(lo, hi)| (col_key(lo), col_key(hi))),
-    };
-
-    let mut sheet_data = crate::types::SheetData::<Stable>::default();
-    for (r, row) in &ws.sheet_data {
-        let entry = sheet_data.entry(row_key(*r)).or_default();
-        for (c, cell) in row {
-            entry.insert(col_key(*c), cell.clone());
-        }
-    }
-
-    let cols = ws
-        .cols
+/// Rows and columns without the style index, which is local to each workbook's style table.
+fn row_shape(ws: &Worksheet) -> Vec<(i32, f64, bool, bool, bool)> {
+    let mut rows: Vec<_> = ws
+        .rows
         .iter()
-        .map(|c| Col {
-            min: col_key(c.min),
-            max: col_key(c.max),
-            width: c.width,
-            custom_width: c.custom_width,
-            hidden: c.hidden,
-            style: c.style,
-        })
+        .map(|r| (r.r, r.height, r.hidden, r.custom_height, r.custom_format))
         .collect();
-
-    Worksheet {
-        dimension: ws.dimension.clone(),
-        cols,
-        rows: ws
-            .rows
-            .iter()
-            .map(|r| Row {
-                r: row_key(r.r),
-                height: r.height,
-                custom_format: r.custom_format,
-                custom_height: r.custom_height,
-                s: r.s,
-                hidden: r.hidden,
-            })
-            .collect(),
-        name: ws.name.clone(),
-        sheet_data,
-        // Not projectable: a stable formula is a bound token stream, and binding one needs the
-        // whole workbook, not a worksheet.
-        shared_formulas: Vec::new(),
-        sheet_id: ws.sheet_id,
-        state: ws.state.clone(),
-        color: ws.color.clone(),
-        merged_cells: ws
-            .merged_cells
-            .iter()
-            .map(|m| range(&RangeRef::from(m)))
-            .collect(),
-        comments: ws
-            .comments
-            .iter()
-            .map(|c| Comment {
-                text: c.text.clone(),
-                author_name: c.author_name.clone(),
-                author_id: c.author_id.clone(),
-                cell_ref: (row_key(c.cell_ref.0), col_key(c.cell_ref.1)),
-            })
-            .collect(),
-        links: ws
-            .links
-            .iter()
-            .map(|(&(r, c), link)| ((row_key(r), col_key(c)), link.clone()))
-            .collect(),
-        frozen_rows: ws.frozen_rows,
-        frozen_columns: ws.frozen_columns,
-        views: ws.views.clone(),
-        show_grid_lines: ws.show_grid_lines,
-        conditional_formatting: ws
-            .conditional_formatting
-            .iter()
-            .map(|cf| ConditionalFormatting {
-                ranges: cf.ranges.iter().map(&range).collect(),
-                cf_rule: cf.cf_rule.clone(),
-                priority: cf.priority,
-            })
-            .collect(),
-        index,
-    }
+    rows.sort_by_key(|r| r.0);
+    rows
 }
 
-fn project(ws: &Worksheet<Stable>) -> Worksheet {
-    let index = &ws.index;
-    let row = |k: &FractionalKey| Stable::row_ordinal(index, k).unwrap();
-    let col = |k: &FractionalKey| Stable::col_ordinal(index, k).unwrap();
-    let range = |r: &StableRange| RangeRef {
-        rows: r.rows.as_ref().map(|(lo, hi)| (row(lo), row(hi))),
-        cols: r.cols.as_ref().map(|(lo, hi)| (col(lo), col(hi))),
-    };
-
-    let mut sheet_data = HashMap::new();
-    for (r, cells) in &ws.sheet_data {
-        let entry: &mut HashMap<i32, _> = sheet_data.entry(row(r)).or_default();
-        for (c, cell) in cells {
-            entry.insert(col(c), cell.clone());
-        }
-    }
-
-    let cols = ws
+fn col_shape(ws: &Worksheet) -> Vec<(i32, i32, f64, bool, bool)> {
+    let mut cols: Vec<_> = ws
         .cols
         .iter()
-        .map(|c| Col {
-            min: col(&c.min),
-            max: col(&c.max),
-            width: c.width,
-            custom_width: c.custom_width,
-            hidden: c.hidden,
-            style: c.style,
-        })
+        .map(|c| (c.min, c.max, c.width, c.custom_width, c.hidden))
         .collect();
-
-    Worksheet {
-        dimension: ws.dimension.clone(),
-        cols,
-        rows: ws
-            .rows
-            .iter()
-            .map(|r| Row {
-                r: row(&r.r),
-                height: r.height,
-                custom_format: r.custom_format,
-                custom_height: r.custom_height,
-                s: r.s,
-                hidden: r.hidden,
-            })
-            .collect(),
-        name: ws.name.clone(),
-        sheet_data,
-        // Not projectable: a stable formula is a bound token stream, and binding one needs the
-        // whole workbook, not a worksheet.
-        shared_formulas: Vec::new(),
-        sheet_id: ws.sheet_id,
-        state: ws.state.clone(),
-        color: ws.color.clone(),
-        merged_cells: ws
-            .merged_cells
-            .iter()
-            .map(|r| MergedCell::from(&range(r)))
-            .collect(),
-        comments: ws
-            .comments
-            .iter()
-            .map(|c| Comment {
-                text: c.text.clone(),
-                author_name: c.author_name.clone(),
-                author_id: c.author_id.clone(),
-                cell_ref: (row(&c.cell_ref.0), col(&c.cell_ref.1)),
-            })
-            .collect(),
-        links: ws
-            .links
-            .iter()
-            .map(|((r, c), link)| ((row(r), col(c)), link.clone()))
-            .collect(),
-        frozen_rows: ws.frozen_rows,
-        frozen_columns: ws.frozen_columns,
-        views: ws.views.clone(),
-        show_grid_lines: ws.show_grid_lines,
-        conditional_formatting: ws
-            .conditional_formatting
-            .iter()
-            .map(|cf| ConditionalFormatting {
-                ranges: cf.ranges.iter().map(&range).collect(),
-                cf_rule: cf.cf_rule.clone(),
-                priority: cf.priority,
-            })
-            .collect(),
-        index: (),
-    }
+    cols.sort_by_key(|c| (c.0, c.1));
+    cols
 }
 
 #[test]
@@ -255,39 +83,85 @@ fn projection_identity() {
     }
     let ws = &model.workbook.worksheets[0];
 
-    let stable = stable_from_ordinal(ws);
-    // Everything but the formula table, which does not project either way — see `stable_from_ordinal`.
-    assert_eq!(
-        project(&stable),
-        Worksheet {
-            shared_formulas: Vec::new(),
-            ..ws.clone()
+    let mut a = CollabModel::from_workbook_with_session(model.workbook.clone(), "en", 1).unwrap();
+    a.evaluate();
+    let projected = a.to_ordinal_workbook();
+    let out = &projected.worksheets[0];
+
+    // Everything the projection carries. `dimension`, `views`, `links` and the order of
+    // `shared_formulas` are the model's own bookkeeping, not the sheet's shape.
+    assert_eq!(out.name, ws.name);
+    assert_eq!(out.sheet_id, ws.sheet_id);
+    assert_eq!(out.state, ws.state);
+    assert_eq!(out.color, ws.color);
+    assert_eq!(out.show_grid_lines, ws.show_grid_lines);
+    assert_eq!(out.frozen_rows, ws.frozen_rows);
+    assert_eq!(out.frozen_columns, ws.frozen_columns);
+    assert_eq!(row_shape(out), row_shape(ws));
+    assert_eq!(col_shape(out), col_shape(ws));
+    assert_eq!(out.merged_cells, ws.merged_cells);
+    assert_eq!(out.comments, ws.comments);
+    let ranges: Vec<_> = out
+        .conditional_formatting
+        .iter()
+        .map(|cf| cf.ranges.clone())
+        .collect();
+    let expected: Vec<_> = ws
+        .conditional_formatting
+        .iter()
+        .map(|cf| cf.ranges.clone())
+        .collect();
+    assert_eq!(ranges, expected);
+
+    // Cells come back as they went in. A formula cell's stream is bound, not copied, so it is
+    // compared by the text the two models read out of it.
+    for (r, cells) in &ws.sheet_data {
+        for (c, cell) in cells {
+            let back = out.sheet_data.get(r).and_then(|row| row.get(c));
+            if cell.has_formula() {
+                assert!(back.unwrap().has_formula(), "formula lost at {r}:{c}");
+                assert_eq!(
+                    a.get_cell_formula(0, *r, *c),
+                    model.get_cell_formula(0, *r, *c),
+                    "formula text at {r}:{c}"
+                );
+            } else {
+                assert_eq!(
+                    back.map(|b| (b.get_type(), b.get_style() != 0)),
+                    Some((cell.get_type(), cell.get_style() != 0)),
+                    "cell at {r}:{c}"
+                );
+            }
+            assert_eq!(
+                a.get_formatted_cell_value(0, *r, *c),
+                model.get_formatted_cell_value(0, *r, *c),
+                "value at {r}:{c}"
+            );
         }
-    );
+    }
+    assert!(a.get_style_for_cell(0, 1, 1).unwrap().font.b);
 
     // The identity above must come from the mapping, not from the projection being a no-op: reorder
-    // the rows on the stable side and every ordinal the projection reports has to follow.
-    let mut moved = stable.clone();
-    moved.index.rows.move_to(0..1, 5); // first row of five to the end
-    let projected = project(&moved);
-    assert_ne!(projected, *ws);
+    // the rows on the stable side and every ordinal the projection reports has to follow. Nothing
+    // public moves a row without also displacing what points at it, so the index is moved directly.
+    a.workbook.worksheets[0].index.rows.move_to(0..1, 5); // first row of five to the end
+    let projected = a.to_ordinal_workbook();
+    let moved = &projected.worksheets[0];
+    assert_ne!(moved.sheet_data, out.sheet_data);
     for (before, after) in [(1, 5), (2, 1), (3, 2), (4, 3), (5, 4)] {
         assert_eq!(
-            projected.sheet_data.get(&after),
-            ws.sheet_data.get(&before),
+            moved.sheet_data.get(&after),
+            out.sheet_data.get(&before),
             "row {before} should now read at {after}"
         );
     }
+    // The one custom row sat at 3 and reads at 2 now that the first row went to the end.
+    let mut expected_rows = row_shape(out);
+    expected_rows[0].0 -= 1;
+    assert_eq!(row_shape(moved), expected_rows);
+    assert_eq!(moved.comments[0].cell_ref, (4, 2));
     assert_eq!(
-        projected.rows,
-        vec![Row {
-            r: 2,
-            ..ws.rows[0].clone()
-        }]
-    );
-    assert_eq!(projected.comments[0].cell_ref, (4, 2));
-    assert_eq!(
-        projected.merged_cells,
+        moved.merged_cells,
         vec![MergedCell {
             row: 2,
             column: 3,
@@ -298,12 +172,12 @@ fn projection_identity() {
     // The projection maps corners, it does not re-normalize them: A1:B5 comes back inverted because
     // its top row is now the bottom one.
     assert_eq!(
-        projected.conditional_formatting[0].ranges,
+        moved.conditional_formatting[0].ranges,
         vec![RangeRef {
             rows: Some((5, 4)),
             cols: Some((1, 2))
         }]
     );
     // Nothing on the column axis moved.
-    assert_eq!(projected.cols, ws.cols);
+    assert_eq!(col_shape(moved), col_shape(out));
 }

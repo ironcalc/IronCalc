@@ -234,6 +234,19 @@ impl CollabModel<'static> {
             }]);
         }
 
+        // Before the formulas: a formula naming one then binds to the name's id, which survives a
+        // later rename of the name.
+        for name in &workbook.defined_names {
+            let scope = match name.sheet_id {
+                Some(id) => match workbook.worksheets.iter().position(|ws| ws.sheet_id == id) {
+                    Some(at) => Some(at as u32),
+                    None => continue,
+                },
+                None => None,
+            };
+            model.new_defined_name(&name.name, scope, &name.formula)?;
+        }
+
         for (i, ws) in workbook.worksheets.iter().enumerate() {
             let sheet = i as u32;
             let id = model.workbook.worksheets[i].sheet_id;
@@ -255,9 +268,9 @@ impl CollabModel<'static> {
                     continue;
                 };
                 let node = model.parse_rc(i, row, column, &text);
-                let Ok(bound) = model.bind_formula(&node, sheet, row, column, &mut plan) else {
-                    continue;
-                };
+                let bound = model
+                    .bind_formula(&node, sheet, row, column, &mut plan)
+                    .map_err(|err| format!("Invalid formula \"{text}\": {err}"))?;
                 writes.push(Patch::SetCellValue {
                     sheet: id,
                     at: (virtual_key(row as u32), virtual_key(column as u32)),
@@ -274,17 +287,6 @@ impl CollabModel<'static> {
             }
         }
 
-        // A name or a style the emitters reject is dropped rather than failing the whole import.
-        for name in &workbook.defined_names {
-            let scope = match name.sheet_id {
-                Some(id) => match workbook.worksheets.iter().position(|ws| ws.sheet_id == id) {
-                    Some(at) => Some(at as u32),
-                    None => continue,
-                },
-                None => None,
-            };
-            let _ = model.new_defined_name(&name.name, scope, &name.formula);
-        }
         for named in &workbook.styles.cell_styles {
             if workbook.styles.is_builtin_style(&named.name) {
                 continue;
@@ -292,7 +294,7 @@ impl CollabModel<'static> {
             let Ok(style) = workbook.styles.get_style_by_name(&named.name) else {
                 continue;
             };
-            let _ = model.create_named_style(&named.name, &style, StyleIncludes::default());
+            model.create_named_style(&named.name, &style, StyleIncludes::default())?;
         }
 
         model.evaluate();
@@ -520,6 +522,9 @@ mod test {
         m.set_user_input(0, 2, 2, "=Data!A1+1".to_string()).unwrap();
         m.set_user_input(0, 3, 2, "=SUM(A1:A20)".to_string())
             .unwrap();
+        // A sheet the workbook does not have, and a name the import creates after the formulas.
+        m.set_user_input(0, 5, 2, "=Nope!A1".to_string()).unwrap();
+        m.set_user_input(0, 6, 2, "=total*2".to_string()).unwrap();
 
         let mut bold = Style::default();
         bold.font.b = true;
