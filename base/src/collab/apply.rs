@@ -89,6 +89,7 @@ impl Snapshot for CollabModel<'static> {
         for (index, text) in model.workbook.shared_strings.iter().enumerate() {
             model.shared_strings.insert(text.clone(), index);
         }
+        model.index_unresolved();
         Ok(model)
     }
 }
@@ -426,7 +427,7 @@ fn cf_slot(sheet: &Worksheet<Stable>, key: &FractionalKey) -> Option<usize> {
 }
 
 impl CollabModel<'_> {
-    fn sheet_index(&self, sheet: SheetId) -> Option<usize> {
+    pub(crate) fn sheet_index(&self, sheet: SheetId) -> Option<usize> {
         self.workbook
             .worksheets
             .iter()
@@ -1296,6 +1297,43 @@ impl CollabModel<'_> {
         let style = cell_style(sheet, at);
         let cell = build_cell(sheet, value, style, shared_string);
         put_cell(sheet, at, cell);
+        // use [CollabSession::unresolved] to remember the names of object that couldn't be mapped
+        // to their IDs
+        if let CellInput::Formula(formula) = value {
+            let id = self.workbook.worksheets[i].sheet_id;
+            for name in formula.text_names() {
+                self.local
+                    .unresolved
+                    .entry(name.to_uppercase())
+                    .or_default()
+                    .insert((id, at.clone()));
+            }
+        }
+    }
+
+    /// Rebuilds the unresolved-name register from the workbook: it's only called when a state is
+    /// deserialized.
+    fn index_unresolved(&mut self) {
+        self.local.unresolved.clear();
+        for sheet in &self.workbook.worksheets {
+            for (row_key, row_data) in &sheet.sheet_data {
+                for (column_key, cell) in row_data {
+                    let Cell::CellFormula { f, .. } = cell else {
+                        continue;
+                    };
+                    let Some(formula) = sheet.shared_formulas.get(*f as usize) else {
+                        continue;
+                    };
+                    for name in formula.text_names() {
+                        self.local
+                            .unresolved
+                            .entry(name.to_uppercase())
+                            .or_default()
+                            .insert((sheet.sheet_id, (row_key.clone(), column_key.clone())));
+                    }
+                }
+            }
+        }
     }
 
     /// Fills a freshly created sheet from the payload an `AddSheet` carried.
