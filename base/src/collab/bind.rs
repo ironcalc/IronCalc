@@ -362,11 +362,42 @@ impl CollabModel<'_> {
                     )?,
                 }
             }
-            // Upstream keeps these and evaluates them to #REF!; a stable stream has no way to say
-            // "unknown sheet", so authoring one is rejected instead.
-            Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
-                return Err(BindError::UnboundReference)
-            }
+            // No sheet to key against, so these carry the parser's own fields: they print back as
+            // typed and evaluate to #REF!, as ordinal does.
+            Node::WrongReferenceKind {
+                sheet_name,
+                absolute_row,
+                absolute_column,
+                row,
+                column,
+            } => StableToken::WrongRef {
+                sheet_name: sheet_name.clone(),
+                absolute_row: *absolute_row,
+                absolute_column: *absolute_column,
+                row: *row,
+                column: *column,
+            },
+            Node::WrongRangeKind {
+                sheet_name,
+                absolute_row1,
+                absolute_column1,
+                row1,
+                column1,
+                absolute_row2,
+                absolute_column2,
+                row2,
+                column2,
+            } => StableToken::WrongRange {
+                sheet_name: sheet_name.clone(),
+                absolute_row1: *absolute_row1,
+                absolute_column1: *absolute_column1,
+                row1: *row1,
+                column1: *column1,
+                absolute_row2: *absolute_row2,
+                absolute_column2: *absolute_column2,
+                row2: *row2,
+                column2: *column2,
+            },
             Node::OpRangeKind { .. } => StableToken::OpRange,
             Node::OpConcatenateKind { .. } => StableToken::OpConcatenate,
             Node::OpPowerKind { .. } => StableToken::OpPower,
@@ -600,11 +631,80 @@ impl CollabModel<'_> {
                     }
                 }
             }
+            // Resolved here too: a sheet by that name showing up later makes it a live reference,
+            // the way the ordinal model's reparse does.
+            StableToken::WrongRef {
+                sheet_name,
+                absolute_row,
+                absolute_column,
+                row,
+                column,
+            } => match sheet_name
+                .as_deref()
+                .and_then(|n| self.get_sheet_index_by_name(n))
+            {
+                Some(sheet_index) => Node::ReferenceKind {
+                    sheet_name: sheet_name.clone(),
+                    sheet_index,
+                    absolute_row: *absolute_row,
+                    absolute_column: *absolute_column,
+                    row: *row,
+                    column: *column,
+                },
+                None => Node::WrongReferenceKind {
+                    sheet_name: sheet_name.clone(),
+                    absolute_row: *absolute_row,
+                    absolute_column: *absolute_column,
+                    row: *row,
+                    column: *column,
+                },
+            },
+            StableToken::WrongRange {
+                sheet_name,
+                absolute_row1,
+                absolute_column1,
+                row1,
+                column1,
+                absolute_row2,
+                absolute_column2,
+                row2,
+                column2,
+            } => match sheet_name
+                .as_deref()
+                .and_then(|n| self.get_sheet_index_by_name(n))
+            {
+                Some(sheet_index) => Node::RangeKind {
+                    sheet_name: sheet_name.clone(),
+                    sheet_index,
+                    absolute_row1: *absolute_row1,
+                    absolute_column1: *absolute_column1,
+                    row1: *row1,
+                    column1: *column1,
+                    absolute_row2: *absolute_row2,
+                    absolute_column2: *absolute_column2,
+                    row2: *row2,
+                    column2: *column2,
+                },
+                None => Node::WrongRangeKind {
+                    sheet_name: sheet_name.clone(),
+                    absolute_row1: *absolute_row1,
+                    absolute_column1: *absolute_column1,
+                    row1: *row1,
+                    column1: *column1,
+                    absolute_row2: *absolute_row2,
+                    absolute_column2: *absolute_column2,
+                    row2: *row2,
+                    column2: *column2,
+                },
+            },
             StableToken::DefinedName(id) => self.lower_defined_name(*id, names),
             StableToken::TableName(name) => Node::TableNameKind(name.clone()),
-            StableToken::NamedVariable(name) => Node::NamedVariableKind {
-                name: name.clone(),
-                id: None,
+            StableToken::NamedVariable(name) => match self.named_variable_id(name, host, names) {
+                Some(id) => self.lower_defined_name(id, names),
+                None => Node::NamedVariableKind {
+                    name: name.clone(),
+                    id: None,
+                },
             },
             StableToken::Error(kind) => Node::ErrorKind(kind.clone()),
             StableToken::EmptyArg => Node::EmptyArgKind,
@@ -704,6 +804,27 @@ impl CollabModel<'_> {
                 }
             }
         })
+    }
+
+    /// The defined name a bare name in a formula stands for, looked up as the parser looks one up:
+    /// the host sheet's own scope first, then the workbook scope. `None` if no live name matches.
+    fn named_variable_id(
+        &self,
+        name: &str,
+        host: &Host,
+        names: &DisplayNameCache,
+    ) -> Option<DefinedNameId> {
+        let upper = name.to_uppercase();
+        let display = names.get_or_init(|| self.defined_name_display());
+        let find = |scope: Option<SheetId>| {
+            display
+                .iter()
+                .find(|(_, s, shown)| *s == scope && shown.to_uppercase() == upper)
+                .map(|(id, ..)| *id)
+        };
+        self.sheet_id_at(host.sheet)
+            .and_then(|id| find(Some(id)))
+            .or_else(|| find(None))
     }
 
     /// A live name lowers to its current display name and formula; a deleted one to the node the
@@ -1016,11 +1137,6 @@ mod test {
             .new_defined_name("MyName", None, "Sheet1!$A$1")
             .unwrap();
 
-        // A sheet name the parser could not resolve, which is what typing `=Nope!A1` parses to.
-        // Authoring one is now refused outright — upstream stores it and evaluates it to `#REF!`.
-        assert!(model
-            .set_user_input(0, 1, 1, "=Nope!A1".to_string())
-            .is_err());
         let unknown_sheet = Node::WrongReferenceKind {
             sheet_name: Some("Nope".to_string()),
             absolute_row: true,
@@ -1028,6 +1144,10 @@ mod test {
             row: 1,
             column: 1,
         };
+        assert_eq!(
+            round_trip(&model, &unknown_sheet, 0, 1, 1),
+            unknown_sheet.clone()
+        );
 
         let relative = |row: i32, column: i32| Node::ReferenceKind {
             sheet_name: None,
@@ -1038,7 +1158,6 @@ mod test {
             column,
         };
         let cases = [
-            (unknown_sheet, BindError::UnboundReference),
             // Offsets landing off the grid, above it and past its end.
             (relative(-1, 0), BindError::UnboundReference),
             (relative(0, -1), BindError::UnboundReference),

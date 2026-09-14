@@ -134,6 +134,28 @@ pub enum StableToken {
     LambdaCall {
         argc: u16,
     },
+
+    // arity 0, appended so the existing variant codes stay put
+    /// A reference whose sheet the author named but the workbook does not have. Kept as written so
+    /// it prints back as typed and evaluates to `#REF!`, as the ordinal model does.
+    WrongRef {
+        sheet_name: Option<String>,
+        absolute_row: bool,
+        absolute_column: bool,
+        row: i32,
+        column: i32,
+    },
+    WrongRange {
+        sheet_name: Option<String>,
+        absolute_row1: bool,
+        absolute_column1: bool,
+        row1: i32,
+        column1: i32,
+        absolute_row2: bool,
+        absolute_column2: bool,
+        row2: i32,
+        column2: i32,
+    },
 }
 
 impl StableToken {
@@ -151,7 +173,9 @@ impl StableToken {
             | StableToken::Error(_)
             | StableToken::EmptyArg
             | StableToken::Array(_)
-            | StableToken::RawText(_) => 0,
+            | StableToken::RawText(_)
+            | StableToken::WrongRef { .. }
+            | StableToken::WrongRange { .. } => 0,
             StableToken::Unary(_)
             | StableToken::ImplicitIntersection { .. }
             | StableToken::SpillRange
@@ -472,6 +496,32 @@ mod tests {
                 StableToken::OpConcatenate,
             ],
             vec![StableToken::RawText("=this is not a formula".to_string())],
+            // =Nope!A1+SUM(Nope!A1:B2), naming a sheet the workbook does not have
+            vec![
+                StableToken::WrongRef {
+                    sheet_name: Some("Nope".to_string()),
+                    absolute_row: true,
+                    absolute_column: true,
+                    row: 1,
+                    column: 1,
+                },
+                StableToken::WrongRange {
+                    sheet_name: Some("Nope".to_string()),
+                    absolute_row1: false,
+                    absolute_column1: false,
+                    row1: 0,
+                    column1: 0,
+                    absolute_row2: true,
+                    absolute_column2: true,
+                    row2: 2,
+                    column2: 2,
+                },
+                StableToken::Function {
+                    kind: Function::Sum,
+                    argc: 1,
+                },
+                StableToken::OpSum(OpSum::Add),
+            ],
         ];
 
         for tokens in streams {

@@ -96,7 +96,19 @@ fn values_and_references() {
     // A cross-sheet formula living on the other sheet too.
     set(&mut o, &mut c, 1, 3, 1, "=Sheet1!A1+Sheet1!B1");
 
+    // A sheet nobody ever created, and a name that does not exist yet.
+    set(&mut o, &mut c, 0, 7, 3, "=Nope!A1");
+    set(&mut o, &mut c, 0, 8, 3, "=SUM(Nope!A1:B2)");
+    set(&mut o, &mut c, 0, 7, 4, "=late*2");
+
     compare(&o, &c, &[0, 1], 8, 6, "seed");
+
+    // The name arrives after the formula naming it: both models start resolving it.
+    o.new_defined_name("late", None, "Sheet1!$A$1").unwrap();
+    c.new_defined_name("late", None, "Sheet1!$A$1").unwrap();
+    o.evaluate();
+    c.evaluate();
+    compare(&o, &c, &[0, 1], 8, 6, "late defined name");
 }
 
 #[test]
