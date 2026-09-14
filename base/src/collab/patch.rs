@@ -1142,6 +1142,10 @@ pub struct SheetContent {
     pub show_grid_lines: bool,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
+    /// How many virtual rows have been materialized.
+    pub virtual_rows: u32,
+    /// How many virtual columns have been materialized.
+    pub virtual_columns: u32,
     /// Ordered by [`FractionalKey`].
     pub rows: Vec<(FractionalKey, RowState)>,
     /// Column spans, addressed by corner keys; a [`FractionalKey::NULL`] corner is an open end, so
@@ -1314,6 +1318,8 @@ mod test {
             show_grid_lines: false,
             frozen_rows: 1,
             frozen_columns: 2,
+            virtual_rows: 3,
+            virtual_columns: 4,
             rows: vec![(key(1), row_state())],
             columns: vec![((key(3), key(4)), col_state())],
             cell_values: vec![((key(1), key(3)), CellInput::Number(3.5))],

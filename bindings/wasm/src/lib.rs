@@ -181,7 +181,6 @@ impl Model {
 
     /// Loads a workbook from the bytes of an xlsx file.
     /// Only available in `@ironcalc/wasm-xlsx`.
-    /// Not available with `collab`: the import produces an ordinal model.
     #[cfg(all(feature = "xlsx", not(feature = "collab")))]
     #[wasm_bindgen(js_name = "fromXlsx")]
     pub fn from_xlsx(
@@ -199,6 +198,26 @@ impl Model {
         Ok(Model {
             model: BaseModel::from_model(calc_model),
         })
+    }
+
+    /// Loads a workbook from the bytes of an xlsx file: the import is the
+    /// replica's whole history and ships to peers like any other edit.
+    /// Only available in `@ironcalc/wasm-xlsx`.
+    #[cfg(all(feature = "xlsx", feature = "collab"))]
+    #[wasm_bindgen(js_name = "fromXlsx")]
+    pub fn from_xlsx(
+        bytes: &[u8],
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+        session: u32,
+    ) -> Result<Model, JsError> {
+        let workbook = ironcalc::import::load_from_xlsx_bytes(bytes, name, locale, timezone)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        let model = BaseModel::from_workbook_with_session(workbook, language_id, session)
+            .map_err(to_js_error)?;
+        Ok(Model { model })
     }
 
     pub fn undo(&mut self) -> Result<(), JsError> {
@@ -1052,6 +1071,20 @@ impl Model {
     pub fn to_xlsx(&self) -> Result<Vec<u8>, JsError> {
         let writer = std::io::Cursor::new(Vec::new());
         let writer = ironcalc::export::save_xlsx_to_writer(self.model.get_model(), writer)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        Ok(writer.into_inner())
+    }
+
+    /// Serializes the workbook to xlsx bytes.
+    /// Only available in `@ironcalc/wasm-xlsx`.
+    #[cfg(all(feature = "xlsx", feature = "collab"))]
+    #[wasm_bindgen(js_name = "toXlsx")]
+    pub fn to_xlsx(&self) -> Result<Vec<u8>, JsError> {
+        let workbook = self.model.get_model().to_ordinal_workbook();
+        // Stored formulas are English, which is what the exporter writes out.
+        let model = ironcalc_base::Model::from_workbook(workbook, "en").map_err(to_js_error)?;
+        let writer = std::io::Cursor::new(Vec::new());
+        let writer = ironcalc::export::save_xlsx_to_writer(&model, writer)
             .map_err(|e| to_js_error(e.to_string()))?;
         Ok(writer.into_inner())
     }

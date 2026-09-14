@@ -3045,6 +3045,21 @@ impl UserModel<'static, crate::collab::model::Stable> {
         Ok(UserModel::from_model(model))
     }
 
+    /// Imports an ordinal workbook — an xlsx load, say — as a fresh replica. See
+    /// [`CollabModel::from_workbook_with_session`](crate::collab::model::CollabModel).
+    pub fn from_workbook_with_session(
+        workbook: crate::types::Workbook,
+        language_id: &str,
+        session: crate::collab::log::SessionId,
+    ) -> Result<UserModel<'static, crate::collab::model::Stable>, String> {
+        let model = crate::collab::model::CollabModel::from_workbook_with_session(
+            workbook,
+            language_id,
+            session,
+        )?;
+        Ok(UserModel::from_model(model))
+    }
+
     /// Returns the internal representation of a model.
     pub fn to_bytes(&self) -> Vec<u8> {
         use crate::collab::log::Snapshot;

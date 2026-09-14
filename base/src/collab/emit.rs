@@ -79,7 +79,7 @@ impl CollabModel<'_> {
     /// A fresh sheet id, hashed from this replica's session and a slot past every id it has seen:
     /// session-dependent, so two peers creating a sheet concurrently do not mint the same id.
     /// Existence guards outlive their sheet, so a deleted id is never handed out twice.
-    fn new_sheet_id(&self) -> SheetId {
+    pub(crate) fn new_sheet_id(&self) -> SheetId {
         let seen = |id: &SheetId| {
             self.workbook.worksheets.iter().any(|ws| &ws.sheet_id == id)
                 || self.workbook.meta.sheet_existence.contains_key(id)
@@ -107,7 +107,7 @@ impl CollabModel<'_> {
 
     /// A tab-order key past every sheet this replica has seen. The session suffix separates two
     /// replicas appending concurrently, so the order stays total.
-    fn sheet_position(&self) -> FractionalKey {
+    pub(crate) fn sheet_position(&self) -> FractionalKey {
         let slot = self.workbook.meta.sheet_existence.len() as u32 + 1;
         let mut buf = KeyBuf::from(&(2 * slot).to_be_bytes()[1..]);
         buf.extend_from_slice(&self.suffix());
@@ -1933,6 +1933,9 @@ impl CollabModel<'_> {
             show_grid_lines: sheet.show_grid_lines,
             frozen_rows: sheet.frozen_rows,
             frozen_columns: sheet.frozen_columns,
+            // A copy addresses the rows and columns the source already holds; nothing to seed.
+            virtual_rows: 0,
+            virtual_columns: 0,
             rows: sheet
                 .rows
                 .iter()

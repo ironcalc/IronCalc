@@ -7,46 +7,12 @@ use std::collections::HashMap;
 
 use crate::cf_types::{CfRuleInput, ConditionalFormatting, ValueOperator};
 use crate::collab::fractional_index::{virtual_key, FractionalKey};
+use crate::collab::import::used_extent;
 use crate::collab::model::{SheetIndexes, Stable, StableRange};
 use crate::test::util::new_empty_model;
 use crate::types::{
     Col, Color, Comment, Dxf, Fill, MergedCell, Position, RangeRef, Row, Worksheet,
 };
-
-/// How far the sheet reaches on each axis. Only the used range gets keys — a stable sheet has no
-/// notion of the million rows an ordinal one addresses implicitly.
-fn used_extent(ws: &Worksheet) -> (i32, i32) {
-    let (mut rows, mut cols) = (0, 0);
-    for (r, row) in &ws.sheet_data {
-        rows = rows.max(*r);
-        for c in row.keys() {
-            cols = cols.max(*c);
-        }
-    }
-    for r in &ws.rows {
-        rows = rows.max(r.r);
-    }
-    for c in &ws.cols {
-        cols = cols.max(c.max);
-    }
-    for m in &ws.merged_cells {
-        rows = rows.max(m.last_row());
-        cols = cols.max(m.last_column());
-    }
-    for range in ws.conditional_formatting.iter().flat_map(|cf| &cf.ranges) {
-        if let Some((_, hi)) = range.rows {
-            rows = rows.max(hi);
-        }
-        if let Some((_, hi)) = range.cols {
-            cols = cols.max(hi);
-        }
-    }
-    for c in &ws.comments {
-        rows = rows.max(c.cell_ref.0);
-        cols = cols.max(c.cell_ref.1);
-    }
-    (rows, cols)
-}
 
 pub(crate) fn stable_from_ordinal(ws: &Worksheet) -> Worksheet<Stable> {
     let (row_count, column_count) = used_extent(ws);

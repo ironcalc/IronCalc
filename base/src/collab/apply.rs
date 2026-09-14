@@ -16,7 +16,7 @@ use std::hash::Hash;
 use crate::cf_types::ConditionalFormatting;
 use crate::collab::bind::Host;
 use crate::collab::formula::StableFormula;
-use crate::collab::fractional_index::{FractionalIndex, FractionalKey};
+use crate::collab::fractional_index::{virtual_key, FractionalIndex, FractionalKey};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Consumer, Lww, SessionId, Snapshot, Timestamp};
 use crate::collab::model::{
@@ -1310,6 +1310,15 @@ impl CollabModel<'_> {
         sheet.frozen_rows = content.frozen_rows;
         sheet.frozen_columns = content.frozen_columns;
 
+        // The used extent first: index ordinals are list positions, so an imported sheet needs the
+        // rows and columns before its cells to exist for them to read where the file put them.
+        for i in 1..=content.virtual_rows {
+            sheet.index.rows.insert_key_at(virtual_key(i), ts.hlc);
+        }
+        for i in 1..=content.virtual_columns {
+            sheet.index.cols.insert_key_at(virtual_key(i), ts.hlc);
+        }
+
         let mut rows: Vec<&FractionalKey> = content.rows.iter().map(|(key, _)| key).collect();
         let mut cols: Vec<&FractionalKey> = content
             .columns
@@ -1489,7 +1498,6 @@ mod test {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::cf_types::CfRule;
-    use crate::collab::fractional_index::virtual_key;
     use crate::collab::patch::{DefinedNameBody, NamedStyle};
     use crate::types::{Color, Comment, Position, Theme};
 
