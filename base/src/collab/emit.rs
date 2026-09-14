@@ -8,13 +8,14 @@
 
 use crate::cf_types::{CfRuleInput, ConditionalFormattingView};
 use crate::collab::apply::SHEET_NAMES;
-use crate::collab::bind::MintPlan;
+use crate::collab::bind::{Host, MintPlan};
 #[cfg(test)]
 use crate::collab::formula::StableFormula;
+use crate::collab::formula::StableToken;
 use crate::collab::fractional_index::{CreateKeys, FractionalIndex, FractionalKey, KeyBuf};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Timestamp};
-use crate::collab::model::{CollabModel, Stable, StableCellAddress, StableRange};
+use crate::collab::model::{CollabModel, Stable, StableCellAddress, StableLink, StableRange};
 use crate::collab::naming::{defined_name_id, stable_id};
 use crate::collab::patch::{
     CellInput, CfProperty, ColState, ColumnSnapshot, ConditionalFormatState, DefinedNameBody,
@@ -26,6 +27,7 @@ use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
     ROW_HEIGHT_FACTOR,
 };
+use crate::expressions::parser::stringify::to_english_string;
 use crate::expressions::parser::Node;
 use crate::expressions::token::get_error_by_name;
 use crate::expressions::types::Area;
@@ -34,10 +36,12 @@ use crate::expressions::utils::{is_valid_column_number, is_valid_identifier, is_
 use crate::formatter::format::parse_formatted_number;
 use crate::formatter::lexer::is_likely_date_number_format;
 use crate::language::get_default_language;
+use crate::links::{detect_link_target, CellLinkView, THEME_COLOR_HYPERLINK};
 use crate::locale::{get_default_locale, get_locale};
 use crate::new_empty::is_valid_sheet_name;
 use crate::types::{
-    Cell, Col, Color, Comment, Dxf, Position, RangeRef, SheetState, Style, StyleIncludes, Theme,
+    Cell, Col, Color, Comment, Dxf, Link, Position, RangeRef, SheetState, Style, StyleIncludes,
+    Theme,
 };
 use crate::tz::Tz;
 use crate::user_model::update_style;
@@ -602,7 +606,7 @@ impl CollabModel<'_> {
         } else {
             stored.clone()
         };
-        vec![
+        let mut patches = vec![
             Patch::SetCellValue {
                 sheet: id,
                 at: at.clone(),
@@ -612,12 +616,21 @@ impl CollabModel<'_> {
             },
             Patch::SetCellStyle {
                 sheet: id,
-                at,
+                at: at.clone(),
                 props: Property::all(&target),
                 ts: None,
                 prev: Property::all(&stored),
             },
-        ]
+        ];
+        if let Some(link) = self.workbook.worksheets[i].links.get(&at) {
+            patches.push(Patch::SetCellLink {
+                sheet: id,
+                at,
+                link: None,
+                prev: Some(link.clone()),
+            });
+        }
+        patches
     }
 
     /// The patches clearing every cell the `area` actually holds, styles included when `all`.
@@ -676,35 +689,8 @@ impl CollabModel<'_> {
             let Some(i) = self.sheet_index(id) else {
                 continue;
             };
-            let sheet = &self.workbook.worksheets[i];
-            // A cell on a row or column the index no longer holds has no ordinal to bind against.
-            let (Some(row), Some(column)) = (
-                Stable::row_ordinal(&sheet.index, &at.0),
-                Stable::col_ordinal(&sheet.index, &at.1),
-            ) else {
-                continue;
-            };
-            let Some(Cell::CellFormula { f, .. }) = sheet.cell(row, column) else {
-                continue; // entry may hold no formula anymore
-            };
-            let f = *f;
-            let Some(node) = Stable::materialize_formula(self, i as u32, row, column, f) else {
-                continue; // lowering already turned the tokens that now resolve into live nodes.
-            };
-            let Ok(bound) = self.bind_formula(&node, i as u32, row, column, &mut plan) else {
-                continue; // a reference whose offset fell off the grid since it was made
-            };
-            if self.workbook.worksheets[i].shared_formulas.get(f as usize) == Some(&bound) {
-                continue; // identity action - skip
-            }
-            let prev = Box::new(self.cell_input(i, &at));
-            writes.push(Patch::SetCellValue {
-                sheet: id,
-                at,
-                value: Some(CellInput::Formula(bound)),
-                ts: None,
-                prev,
-            });
+            writes.extend(self.rebind_formula(i, &at, &mut plan));
+            writes.extend(self.rebind_link(i, &at, &mut plan));
         }
         if writes.is_empty() {
             return;
@@ -712,6 +698,64 @@ impl CollabModel<'_> {
         let mut patches = self.mint_patches(&plan);
         patches.extend(writes);
         self.commit_local(patches);
+    }
+
+    /// The write re-binding the formula of cell `at`, if it has one that binds differently now.
+    fn rebind_formula(
+        &self,
+        i: usize,
+        at: &StableCellAddress,
+        plan: &mut MintPlan,
+    ) -> Option<Patch> {
+        let sheet = &self.workbook.worksheets[i];
+        // A cell on a row or column the index no longer holds has no ordinal to bind against.
+        let row = Stable::row_ordinal(&sheet.index, &at.0)?;
+        let column = Stable::col_ordinal(&sheet.index, &at.1)?;
+        let Cell::CellFormula { f, .. } = sheet.cell(row, column)? else {
+            return None;
+        };
+        let f = *f;
+        // Lowering already turned the tokens that now resolve into live nodes; a reference whose
+        // offset fell off the grid since it was made simply does not bind.
+        let node = Stable::materialize_formula(self, i as u32, row, column, f)?;
+        let bound = self.bind_formula(&node, i as u32, row, column, plan).ok()?;
+        // An entry gone stale binds to what the cell holds; writing that back would only restamp
+        // the cell against a concurrent edit.
+        if sheet.shared_formulas.get(f as usize) == Some(&bound) {
+            return None;
+        }
+        Some(Patch::SetCellValue {
+            sheet: sheet.sheet_id,
+            at: at.clone(),
+            value: Some(CellInput::Formula(bound)),
+            ts: None,
+            prev: Box::new(self.cell_input(i, at)),
+        })
+    }
+
+    /// [`Self::rebind_formula`] for the cell's link: an internal location re-bound the same way.
+    fn rebind_link(&self, i: usize, at: &StableCellAddress, plan: &mut MintPlan) -> Option<Patch> {
+        let sheet = &self.workbook.worksheets[i];
+        let StableLink::Internal { location, tooltip } = sheet.links.get(at)? else {
+            return None;
+        };
+        let node = self.lower(location, &Host::relative(0, 1, 1)).ok()?;
+        let bound = self.bind_formula(&node, 0, 1, 1, plan).ok()?;
+        if &bound == location {
+            return None;
+        }
+        Some(Patch::SetCellLink {
+            sheet: sheet.sheet_id,
+            at: at.clone(),
+            link: Some(StableLink::Internal {
+                location: bound,
+                tooltip: tooltip.clone(),
+            }),
+            prev: Some(StableLink::Internal {
+                location: location.clone(),
+                tooltip: tooltip.clone(),
+            }),
+        })
     }
 
     /// Adds a sheet with an automatically generated name.
@@ -825,15 +869,54 @@ impl CollabModel<'_> {
         column: i32,
         value: String,
     ) -> Result<(), String> {
-        self.check_cell(sheet, row, column)?;
+        let i = self.check_cell(sheet, row, column)?;
+        let id = self.sheet_of(sheet)?;
         let style = self.get_style_for_cell(sheet, row, column)?;
         let mut plan = MintPlan::default();
-        let (input, style) = self.classify_input(sheet, row, column, &value, style, &mut plan)?;
+        let (input, mut style) =
+            self.classify_input(sheet, row, column, &value, style, &mut plan)?;
+        let link = self.auto_link(i, id, row, column, &value, &input, &mut style);
         // Whatever the formula names has to exist before the write that names it.
         let mut patches = self.mint_patches(&plan);
         patches.extend(self.write_patches(sheet, row, column, input, style)?);
+        patches.extend(link);
         self.commit_local(patches);
         Ok(())
+    }
+
+    /// The link typed text attaches when it looks like a URL or an email, as
+    /// `Model::auto_link_cell` does; a quote prefix prevents it. A new link also puts the link
+    /// style on `style`, so it lands in the same write. `None` when nothing links.
+    fn auto_link(
+        &self,
+        i: usize,
+        id: SheetId,
+        row: i32,
+        column: i32,
+        value: &str,
+        input: &Option<CellInput>,
+        style: &mut Style,
+    ) -> Option<Patch> {
+        if !matches!(input, Some(CellInput::Text(_))) || style.quote_prefix {
+            return None;
+        }
+        let target = detect_link_target(value)?;
+        let prev = self.stored_link(i, row, column);
+        if prev.is_none() {
+            style.font.u = true;
+            style.font.color = Color::Theme(THEME_COLOR_HYPERLINK, 0.0);
+        }
+        // The value write mints whatever the cell needs; these are the same keys.
+        let (at, _) = self.resolve_cell(i, id, row, column);
+        Some(Patch::SetCellLink {
+            sheet: id,
+            at,
+            link: Some(StableLink::External {
+                target,
+                tooltip: None,
+            }),
+            prev,
+        })
     }
 
     /// Clears the contents of a cell, keeping its formatting.
@@ -1796,6 +1879,160 @@ impl CollabModel<'_> {
     }
 }
 
+impl CollabModel<'_> {
+    fn stored_link(&self, i: usize, row: i32, column: i32) -> Option<StableLink> {
+        let w = &self.workbook.worksheets[i];
+        let at = Stable::row_at(&w.index, row).zip(Stable::col_at(&w.index, column))?;
+        w.links.get(&at).cloned()
+    }
+
+    pub(crate) fn bind_link(
+        &mut self,
+        link: Link,
+        plan: &mut MintPlan,
+    ) -> Result<StableLink, String> {
+        match link {
+            Link::External { target, tooltip } => Ok(StableLink::External { target, tooltip }),
+            Link::Internal { location, tooltip } => {
+                let context = self.defined_name_context();
+                let node = self.parser.parse(&location, &context);
+                let bound = self
+                    .bind_formula(&node, 0, 1, 1, plan)
+                    .map_err(|err| format!("Invalid link location: {err}"))?;
+                // while formula token stream can be anything, for link location
+                // only small subset is valid
+                let is_valid = matches!(
+                    bound.tokens(),
+                    [StableToken::CellRef { .. }
+                        | StableToken::RangeRef { .. }
+                        | StableToken::DefinedName(_)
+                        | StableToken::NamedVariable(_)
+                        | StableToken::WrongRef { .. }
+                        | StableToken::WrongRange { .. }]
+                );
+                if !is_valid {
+                    return Err(format!("Invalid link location: '{location}'"));
+                }
+                Ok(StableLink::Internal {
+                    location: bound,
+                    tooltip,
+                })
+            }
+        }
+    }
+
+    pub(crate) fn link_view(&self, link: &StableLink) -> Link {
+        match link {
+            StableLink::External { target, tooltip } => Link::External {
+                target: target.clone(),
+                tooltip: tooltip.clone(),
+            },
+            StableLink::Internal { location, tooltip } => {
+                let text = match self.lower(location, &Host::relative(0, 1, 1)) {
+                    Ok(node) => to_english_string(&node, &self.defined_name_context()),
+                    Err(_) => String::new(),
+                };
+                Link::Internal {
+                    location: text,
+                    tooltip: tooltip.clone(),
+                }
+            }
+        }
+    }
+
+    pub fn get_cell_link(&self, sheet: u32, row: i32, column: i32) -> Result<Option<Link>, String> {
+        let i = self.check_cell(sheet, row, column)?;
+        Ok(self
+            .stored_link(i, row, column)
+            .map(|link| self.link_view(&link)))
+    }
+
+    pub fn get_links_list(&self, sheet: u32) -> Result<Vec<CellLinkView>, String> {
+        let ws = self.workbook.worksheet(sheet)?;
+        let mut list = Vec::new();
+        let mut stored = std::collections::HashSet::new();
+        for (at, link) in &ws.links {
+            // A link on a row or column that is gone names no cell any more.
+            let (Some(row), Some(column)) = (
+                Stable::row_ordinal(&ws.index, &at.0),
+                Stable::col_ordinal(&ws.index, &at.1),
+            ) else {
+                continue;
+            };
+            stored.insert((row, column));
+            list.push(CellLinkView {
+                row,
+                column,
+                dynamic: false,
+                link: self.link_view(link),
+            });
+        }
+        for (&(link_sheet, row, column), link) in &self.links {
+            if link_sheet == sheet && !stored.contains(&(row, column)) {
+                list.push(CellLinkView {
+                    row,
+                    column,
+                    dynamic: true,
+                    link: link.clone(),
+                });
+            }
+        }
+        list.sort_by_key(|l| (l.row, l.column));
+        Ok(list)
+    }
+
+    /// Attaches `link` to cell (`row`, `column`), replacing any link it already has.
+    pub fn set_cell_link(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        link: Link,
+    ) -> Result<(), String> {
+        let i = self.check_cell(sheet, row, column)?;
+        let id = self.sheet_of(sheet)?;
+        let mut plan = MintPlan::default();
+        let bound = self.bind_link(link, &mut plan)?;
+        let prev = self.stored_link(i, row, column);
+        if prev.as_ref() == Some(&bound) {
+            return Ok(()); // identity action - skip
+        }
+        // Whatever the location names has to exist before the write that names it.
+        let mut patches = self.mint_patches(&plan);
+        let (at, mints) = self.resolve_cell(i, id, row, column);
+        patches.extend(mints);
+        patches.push(Patch::SetCellLink {
+            sheet: id,
+            at,
+            link: Some(bound),
+            prev,
+        });
+        self.commit_local(patches);
+        Ok(())
+    }
+
+    /// Removes the link attached to cell (`row`, `column`). It is not an error if there is none.
+    pub fn delete_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        let i = self.check_cell(sheet, row, column)?;
+        let id = self.sheet_of(sheet)?;
+        let Some(prev) = self.stored_link(i, row, column) else {
+            return Ok(());
+        };
+        // The cell exists — it holds a link — so there is nothing to mint.
+        let w = &self.workbook.worksheets[i];
+        let at = Stable::row_at(&w.index, row)
+            .zip(Stable::col_at(&w.index, column))
+            .expect("the cell holding the link resolves");
+        self.commit_local(vec![Patch::SetCellLink {
+            sheet: id,
+            at,
+            link: None,
+            prev: Some(prev),
+        }]);
+        Ok(())
+    }
+}
+
 /// The properties `read` answers for, grouped by the stamp their register `key` holds, oldest
 /// first. A kind with no register entry is at its default and needs no restoring, and so is one
 /// `read` has no value for.
@@ -2027,6 +2264,16 @@ impl CollabModel<'_> {
             cell_styles,
             merge_cells: sheet.merged_cells.clone(),
             comments: sheet.comments.clone(),
+            links: {
+                // A hash map, and the payload travels: sort so it does not depend on it.
+                let mut links: Vec<_> = sheet
+                    .links
+                    .iter()
+                    .map(|(at, link)| (at.clone(), link.clone()))
+                    .collect();
+                links.sort_by(|(a, _), (b, _)| a.cmp(b));
+                links
+            },
             // `cf_order` is kept aligned with the rules themselves, entry by entry.
             conditional_formatting: sheet
                 .index
@@ -2383,14 +2630,16 @@ impl CollabModel<'_> {
                 return Ok(()); // name hasn't changed
             }
         }
+        // we need to try rebind on old name first in case if there were still unresolved
+        // references in formulas and links. Otherwise, we'll loose them after rename
+        let old_name = self.workbook.worksheets[i].get_name();
+        self.rebind_naming(&old_name);
         let prev = self.sheet_prev(i, SheetPropKind::Name);
-        let patches = vec![Patch::SetSheetProperty {
+        self.commit_local(vec![Patch::SetSheetProperty {
             sheet: id,
             property: SheetProperty::Name(new_name.to_string()),
             prev,
-        }];
-        // re-bound reference names the sheet by id
-        self.commit_local(patches);
+        }]);
         self.rebind_naming(new_name);
         self.evaluate();
         Ok(())
@@ -2545,6 +2794,9 @@ impl CollabModel<'_> {
             return Err("Defined name not found".to_string());
         };
         let old_formula = self.formula_of(id);
+        if renaming {
+            self.rebind_naming(name); // we may need to rebind names
+        }
         let mut plan = MintPlan::default();
         let formula = self.bind_defined_name(new_formula, &mut plan)?;
         let mut patches = self.mint_patches(&plan);
@@ -5667,5 +5919,205 @@ mod test {
             assert_eq!(m.get_row_height(0, 1), Ok(80.0));
         }
         assert_eq!(b.workbook, a.workbook);
+    }
+
+    #[test]
+    fn links_replicate() {
+        let external = |target: &str| Link::External {
+            target: target.to_string(),
+            tooltip: None,
+        };
+        let internal = |location: &str| Link::Internal {
+            location: location.to_string(),
+            tooltip: None,
+        };
+        fn agree(a: &CollabModel<'_>, b: &CollabModel<'_>) {
+            let list = a.get_links_list(0).unwrap();
+            assert_eq!(b.get_links_list(0), Ok(list.clone()));
+            let mut sorted = list.clone();
+            sorted.sort_by_key(|l| (l.row, l.column));
+            assert_eq!(sorted, list);
+            let links_a = &a.workbook.worksheets[0].index.registers.links;
+            let links_b = &b.workbook.worksheets[0].index.registers.links;
+            assert_eq!(links_a, links_b);
+        }
+
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &a.flush());
+
+        a.set_cell_link(0, 1, 1, external("https://ironcalc.com"))
+            .unwrap();
+        assert_eq!(
+            a.get_cell_link(0, 1, 1),
+            Ok(Some(external("https://ironcalc.com")))
+        );
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        a.set_cell_link(0, 1, 1, external("https://ironcalc.com"))
+            .unwrap(); // identity action
+        assert!(a.flush().is_empty());
+        // assert that only valid location string can be used
+        assert!(a.set_cell_link(0, 1, 2, internal("A1+1")).is_err());
+        assert!(a.set_cell_link(0, 1, 2, internal("SUM(A1:A2)")).is_err());
+        assert!(a.flush().is_empty());
+
+        a.set_cell_link(0, 1, 2, external("https://a.only"))
+            .unwrap();
+        a.set_cell_link(0, 2, 2, external("https://from.a"))
+            .unwrap();
+        b.set_cell_link(0, 2, 2, external("https://from.b"))
+            .unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(
+                m.get_cell_link(0, 2, 2),
+                Ok(Some(external("https://from.b")))
+            );
+            assert_eq!(
+                m.get_cell_link(0, 1, 2),
+                Ok(Some(external("https://a.only")))
+            );
+        }
+
+        a.delete_cell_link(0, 2, 2).unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(m.get_cell_link(0, 2, 2), Ok(None));
+        }
+        a.delete_cell_link(0, 2, 2).unwrap();
+        assert!(a.flush().is_empty());
+
+        // assert auto-link on URL
+        a.set_user_input(0, 1, 3, "https://example.com".to_string())
+            .unwrap();
+        a.set_user_input(0, 2, 3, "'https://example.com".to_string())
+            .unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(
+                m.get_cell_link(0, 1, 3),
+                Ok(Some(external("https://example.com")))
+            );
+            assert_eq!(m.get_cell_link(0, 2, 3), Ok(None));
+            assert_eq!(
+                m.get_formatted_cell_value(0, 1, 3),
+                Ok("https://example.com".to_string())
+            );
+            let style = m.get_style_for_cell(0, 1, 3).unwrap();
+            assert!(style.font.u);
+            assert_eq!(style.font.color, Color::Theme(THEME_COLOR_HYPERLINK, 0.0));
+        }
+
+        // clear content - delete link but leave formatting
+        a.range_clear_contents(&area(1, 3, 1, 1)).unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(m.get_cell_link(0, 1, 3), Ok(None));
+            assert!(m.get_style_for_cell(0, 1, 3).unwrap().font.u);
+        }
+
+        // a link on a deleted row is unreachable, and comes back with the row an undo restores.
+        a.delete_rows(0, 1, 1).unwrap();
+        let deleted = a.flush();
+        deliver(&mut b, 1, &deleted);
+        for m in [&a, &b] {
+            assert_eq!(m.get_cell_link(0, 1, 2), Ok(None));
+        }
+        let undo: Vec<Patch> = deleted
+            .iter()
+            .rev()
+            .flat_map(|commit| invert_patches(&commit.patches))
+            .collect();
+        a.commit_local(undo);
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(
+                m.get_cell_link(0, 1, 2),
+                Ok(Some(external("https://a.only")))
+            );
+        }
+
+        // a dynamic link shows up in the list, and a stored link on the same cell wins.
+        a.set_user_input(0, 4, 4, "=HYPERLINK(\"https://x.y\")".to_string())
+            .unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        let dynamic = |m: &CollabModel<'_>| {
+            m.get_links_list(0)
+                .unwrap()
+                .into_iter()
+                .find(|l| (l.row, l.column) == (4, 4))
+                .map(|l| (l.dynamic, l.link))
+        };
+        for m in [&a, &b] {
+            assert_eq!(dynamic(m), Some((true, external("https://x.y"))));
+        }
+        a.set_cell_link(0, 4, 4, external("https://z.z")).unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(dynamic(m), Some((false, external("https://z.z"))));
+        }
+
+        // an internal location follows its target through an insert and the sheet through a
+        // rename, exactly as a formula naming the same cell would.
+        a.set_cell_link(0, 1, 5, internal("Sheet1!A30")).unwrap();
+        assert_eq!(a.get_cell_link(0, 1, 5), Ok(Some(internal("Sheet1!A30"))));
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        a.insert_rows(0, 10, 2).unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(m.get_cell_link(0, 1, 5), Ok(Some(internal("Sheet1!A32"))));
+        }
+        a.rename_sheet_by_index(0, "Data").unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(m.get_cell_link(0, 1, 5), Ok(Some(internal("Data!A32"))));
+        }
+
+        // a location naming a sheet that does not exist reads back as typed. The sheet arrives
+        // from the other replica, which never saw the link, so nothing rebinds it then; the
+        // rename on this side binds it to the id first, and the new name carries it.
+        a.set_cell_link(0, 2, 5, internal("Nope!B2")).unwrap();
+        assert_eq!(a.get_cell_link(0, 2, 5), Ok(Some(internal("Nope!B2"))));
+        b.new_sheet();
+        b.rename_sheet_by_index(1, "Nope").unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(m.get_cell_link(0, 2, 5), Ok(Some(internal("Nope!B2"))));
+        }
+        a.rename_sheet_by_index(1, "Other").unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        for m in [&a, &b] {
+            assert_eq!(m.get_cell_link(0, 2, 5), Ok(Some(internal("Other!B2"))));
+        }
+
+        // a link written against a cell another replica clears concurrently: a stale link is
+        // fine as long as both replicas hold the same one.
+        a.set_user_input(0, 1, 6, "x".to_string()).unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        a.set_cell_link(0, 1, 6, external("https://f.one")).unwrap();
+        b.range_clear_contents(&area(1, 6, 1, 1)).unwrap();
+        exchange(&mut a, &mut b);
+        agree(&a, &b);
+        assert_eq!(b.get_cell_link(0, 1, 6), a.get_cell_link(0, 1, 6));
+        assert_eq!(
+            b.get_formatted_cell_value(0, 1, 6),
+            a.get_formatted_cell_value(0, 1, 6)
+        );
     }
 }

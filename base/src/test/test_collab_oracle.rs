@@ -369,3 +369,46 @@ fn sheet_move_matches_ordinal() {
     c.evaluate();
     compare(&o, &c, &sheets, 3, 2, "move_sheet(2, 1)");
 }
+
+#[test]
+fn links_match_ordinal() {
+    let (mut o, mut c) = pair();
+    let link = crate::types::Link::External {
+        target: "https://ironcalc.com".to_string(),
+        tooltip: None,
+    };
+    o.set_cell_link(0, 1, 1, link.clone()).unwrap();
+    c.set_cell_link(0, 1, 1, link).unwrap();
+
+    // A typed URL auto-links, a quote-prefixed one does not, and clearing a cell drops its link.
+    set(&mut o, &mut c, 0, 2, 1, "www.example.com");
+    set(&mut o, &mut c, 0, 3, 1, "'www.example.com");
+    set(&mut o, &mut c, 0, 4, 1, "hello@example.com");
+    set(&mut o, &mut c, 0, 4, 1, "");
+    set(
+        &mut o,
+        &mut c,
+        0,
+        5,
+        1,
+        "=HYPERLINK(\"https://x.y\", \"click\")",
+    );
+    o.evaluate();
+    c.evaluate();
+
+    compare(&o, &c, &[0], 5, 1, "links");
+    assert_eq!(c.get_links_list(0), o.get_links_list(0));
+    assert_eq!(c.get_links_list(0).unwrap().len(), 3);
+    for row in 1..=5 {
+        assert_eq!(
+            c.get_style_for_cell(0, row, 1),
+            o.get_style_for_cell(0, row, 1),
+            "style at row {row}"
+        );
+        assert_eq!(
+            c.get_cell_link(0, row, 1),
+            o.get_cell_link(0, row, 1),
+            "link at row {row}"
+        );
+    }
+}

@@ -21,7 +21,7 @@ use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Consumer, Lww, SessionId, Snapshot, Timestamp};
 use crate::collab::model::{
     default_workbook_views, default_worksheet_views, CollabModel, SheetIndexes, SheetRegisters,
-    Stable, StableCellAddress, StableRange,
+    Stable, StableCellAddress, StableLink, StableRange,
 };
 use crate::collab::naming::NameRepair;
 use crate::collab::patch::{
@@ -659,7 +659,8 @@ impl CollabModel<'_> {
             | Patch::MoveConditionalFormats { .. }
             | Patch::SetConditionalFormat { .. }
             | Patch::SetMergedRange { .. }
-            | Patch::SetComment { .. } => true,
+            | Patch::SetComment { .. }
+            | Patch::SetCellLink { .. } => true,
             Patch::SetSheetProperty { property, .. } => matches!(
                 property,
                 SheetProperty::Color(_)
@@ -1053,6 +1054,36 @@ impl CollabModel<'_> {
                     (None, None) => {}
                 }
             }
+            Patch::SetCellLink {
+                sheet, at, link, ..
+            } => {
+                let Some(i) = self.sheet_index(*sheet) else {
+                    return;
+                };
+                let id = self.workbook.worksheets[i].sheet_id;
+                let sheet = &mut self.workbook.worksheets[i];
+                if !wins(&mut sheet.index.registers.links, at, ts) {
+                    return;
+                }
+                match link {
+                    Some(link) => {
+                        sheet.links.insert(at.clone(), link.clone());
+                    }
+                    None => {
+                        sheet.links.remove(at);
+                    }
+                }
+                // if link refers to object that was not defined yet, remember it
+                if let Some(StableLink::Internal { location, .. }) = link {
+                    for name in location.text_names() {
+                        self.local
+                            .unresolved
+                            .entry(name.to_uppercase())
+                            .or_default()
+                            .insert((id, at.clone()));
+                    }
+                }
+            }
             Patch::AddSheet {
                 id,
                 name,
@@ -1333,6 +1364,18 @@ impl CollabModel<'_> {
                     }
                 }
             }
+            for (at, link) in &sheet.links {
+                let StableLink::Internal { location, .. } = link else {
+                    continue;
+                };
+                for name in location.text_names() {
+                    self.local
+                        .unresolved
+                        .entry(name.to_uppercase())
+                        .or_default()
+                        .insert((sheet.sheet_id, at.clone()));
+                }
+            }
         }
     }
 
@@ -1364,12 +1407,19 @@ impl CollabModel<'_> {
             .flat_map(|((min, max), _)| [min, max])
             .filter(|key| !key.is_empty())
             .collect();
-        let cells = content
-            .cell_values
-            .iter()
-            .map(|(at, _)| at)
-            .chain(content.cell_styles.iter().map(|(at, _)| at))
-            .chain(content.comments.iter().map(|c| &c.cell_ref));
+        let mut cells = Vec::with_capacity(content.cell_values.len());
+        for (at, _) in &content.cell_values {
+            cells.push(at);
+        }
+        for (at, _) in &content.cell_styles {
+            cells.push(at);
+        }
+        for comment in &content.comments {
+            cells.push(&comment.cell_ref)
+        }
+        for (at, _) in &content.links {
+            cells.push(at);
+        }
         for (row, col) in cells {
             rows.push(row);
             cols.push(col);
@@ -1432,6 +1482,10 @@ impl CollabModel<'_> {
                 .insert(comment.cell_ref.clone(), *ts);
             sheet.comments.push(comment.clone());
         }
+        for (at, link) in &content.links {
+            sheet.index.registers.links.insert(at.clone(), *ts);
+            sheet.links.insert(at.clone(), link.clone());
+        }
         for (key, state) in &content.conditional_formatting {
             let registers = &mut sheet.index.registers;
             registers.cf.insert((key.clone(), CfPropKind::Rule), *ts);
@@ -1449,6 +1503,22 @@ impl CollabModel<'_> {
             .cols
             .sort_by(|a, b| (&a.min, &a.max).cmp(&(&b.min, &b.max)));
         sort_cf(sheet);
+
+        // sometimes we couldn't resolve location of internal link (it doesn't exist yet), so we
+        // need to remember it
+        let id = self.workbook.worksheets[i].sheet_id;
+        for (at, link) in &content.links {
+            let StableLink::Internal { location, .. } = link else {
+                continue;
+            };
+            for name in location.text_names() {
+                self.local
+                    .unresolved
+                    .entry(name.to_uppercase())
+                    .or_default()
+                    .insert((id, at.clone()));
+            }
+        }
     }
 
     fn seed_row(&mut self, i: usize, key: &FractionalKey, state: &RowState, ts: &Timestamp) {
