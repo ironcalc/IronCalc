@@ -309,6 +309,10 @@ pub enum CfRuleInput {
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[serde(bound(
+    serialize = "A::Key: Serialize",
+    deserialize = "A::Key: serde::Deserialize<'de>"
+))]
 pub struct ConditionalFormatting<A: Position = Ordinal> {
     pub ranges: Vec<RangeRef<A>>,
     pub cf_rule: CfRule,
