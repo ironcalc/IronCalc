@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used)]
+// merge cells for collab are not finished yet
+#![cfg(not(feature = "collab-test"))]
 
 use crate::expressions::types::Area;
 use crate::merged_cells::MergeStructure;

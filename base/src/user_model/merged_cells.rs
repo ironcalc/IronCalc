@@ -273,3 +273,52 @@ impl UserModel<'_> {
         Ok(diff_list)
     }
 }
+
+/// to be implemented
+#[cfg(feature = "collab")]
+impl UserModel<'_, crate::collab::model::Stable> {
+    const NOT_IMPLEMENTED: &'static str =
+        "Merging cells is not implemented in the collaborative model yet";
+
+    /// Not implemented yet for the collaborative model.
+    pub fn merge_cells(&mut self, _range: &Area) -> Result<(), String> {
+        Err(Self::NOT_IMPLEMENTED.to_string())
+    }
+
+    /// Not implemented yet for the collaborative model.
+    pub fn merge_cells_center(&mut self, _range: &Area) -> Result<(), String> {
+        Err(Self::NOT_IMPLEMENTED.to_string())
+    }
+
+    /// Not implemented yet for the collaborative model.
+    pub fn merge_cells_across(&mut self, _range: &Area) -> Result<(), String> {
+        Err(Self::NOT_IMPLEMENTED.to_string())
+    }
+
+    /// Not implemented yet for the collaborative model.
+    pub fn merge_cells_down(&mut self, _range: &Area) -> Result<(), String> {
+        Err(Self::NOT_IMPLEMENTED.to_string())
+    }
+
+    /// Not implemented yet for the collaborative model.
+    pub fn unmerge_cells(&mut self, _range: &Area) -> Result<(), String> {
+        Err(Self::NOT_IMPLEMENTED.to_string())
+    }
+
+    /// Returns the merged cells of the worksheet as ordinal rectangles, as the UI expects them.
+    /// A stable range whose corners the sheet no longer resolves is skipped.
+    pub fn get_merged_cells(&self, sheet: u32) -> Result<Vec<MergedCell>, String> {
+        Ok(self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .merged_ranges()
+            .map(|(row, column, last_row, last_column)| MergedCell {
+                row,
+                column,
+                width: last_column - column + 1,
+                height: last_row - row + 1,
+            })
+            .collect())
+    }
+}
