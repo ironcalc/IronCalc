@@ -355,25 +355,12 @@ pub(crate) mod sealed {
 /// `A: Clone` bounds, are satisfied by a bare `A: Position`.
 pub trait Position: sealed::Sealed + Sized + Clone {
     /// Row/column identifier. Bounds are the union of what the containers' derives need.
-    type Key: Clone
-        + Ord
-        + Hash
-        + std::fmt::Debug
-        + Encode
-        + bitcode::DecodeOwned
-        + Serialize
-        + serde::de::DeserializeOwned;
+    type Key: Clone + Ord + Hash + std::fmt::Debug + Encode + bitcode::DecodeOwned;
     /// Per-sheet ordering context; `()` for [`Ordinal`].
     type SheetIndex: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
     /// How a merged range is stored: an anchor plus a size ([`MergedCell`]) when
     /// the addressing is positional, a keyed [`RangeRef`] when it is stable.
-    type MergedCell: Clone
-        + std::fmt::Debug
-        + PartialEq
-        + Encode
-        + bitcode::DecodeOwned
-        + Serialize
-        + serde::de::DeserializeOwned;
+    type MergedCell: Clone + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
     /// Workbook-wide replication metadata; `()` for [`Ordinal`].
     type WorkbookMeta: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
     /// Replica-local model state, never serialized; `()` for [`Ordinal`].
@@ -573,6 +560,10 @@ pub type CellAddr<A = Ordinal> = (<A as Position>::Key, <A as Position>::Key);
 /// A rectangular reference. An axis is a closed 1-based interval, or `None`
 /// meaning the whole axis (full-column `D:D`, full-row `5:7`).
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
+#[serde(bound(
+    serialize = "A::Key: Serialize",
+    deserialize = "A::Key: serde::Deserialize<'de>"
+))]
 pub struct RangeRef<A: Position = Ordinal> {
     pub rows: Option<(A::Key, A::Key)>,
     pub cols: Option<(A::Key, A::Key)>,
@@ -882,6 +873,10 @@ impl Default for Cell {
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[serde(bound(
+    serialize = "A::Key: Serialize",
+    deserialize = "A::Key: serde::Deserialize<'de>"
+))]
 pub struct Comment<A: Position = Ordinal> {
     pub text: String,
     pub author_name: String,
