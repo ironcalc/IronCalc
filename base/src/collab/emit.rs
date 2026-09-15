@@ -35,9 +35,8 @@ use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::expressions::utils::{is_valid_column_number, is_valid_identifier, is_valid_row};
 use crate::formatter::format::parse_formatted_number;
 use crate::formatter::lexer::is_likely_date_number_format;
-use crate::language::get_default_language;
 use crate::links::{detect_link_target, CellLinkView, THEME_COLOR_HYPERLINK};
-use crate::locale::{get_default_locale, get_locale};
+use crate::locale::get_locale;
 use crate::new_empty::is_valid_sheet_name;
 use crate::types::{
     Cell, Col, Color, Comment, Dxf, Link, Position, RangeRef, SheetState, Style, StyleIncludes,

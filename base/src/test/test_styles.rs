@@ -2,7 +2,7 @@
 
 use crate::types::StyleIncludes;
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, TestModel};
 
 #[test]
 fn test_model_set_cells_with_values_styles() {
@@ -228,6 +228,8 @@ fn test_update_named_style_leaves_anonymous_formatting_alone() {
     assert!(!model.get_style_for_cell(0, 2, 1).unwrap().font.i);
 }
 
+// Writes a raw cell style through the ordinal worksheet; `collab-test` has no equivalent.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_update_named_style_respects_cell_overrides() {
     use crate::types::Color;
@@ -328,7 +330,7 @@ fn test_named_style_base_record_includes_all_categories() {
     // IronCalc styles are full styles, so records we create or update must have
     // all flags true; false would export as applyX="0" and Excel would treat
     // the style as including nothing.
-    fn assert_all_included(model: &crate::model::Model, name: &str) {
+    fn assert_all_included(model: &TestModel, name: &str) {
         let styles = &model.workbook.styles;
         let xf_id = styles.get_xf_id_by_name(name).unwrap();
         let record = &styles.cell_style_xfs[xf_id as usize];
@@ -374,7 +376,7 @@ fn test_named_style_partial_includes() {
         .create_named_style("my percent", &style, includes)
         .unwrap();
 
-    let assert_includes = |model: &crate::model::Model| {
+    let assert_includes = |model: &TestModel| {
         let styles = &model.workbook.styles;
         let xf_id = styles.get_xf_id_by_name("my percent").unwrap();
         let record = &styles.cell_style_xfs[xf_id as usize];
@@ -566,6 +568,8 @@ fn test_named_style_ignores_quote_prefix() {
     assert!(!cell_style.quote_prefix);
 }
 
+// Writes a raw cell style through the ordinal worksheet; `collab-test` has no equivalent.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_update_named_style_keeps_cell_quote_prefix() {
     // A cell parented to a named style can carry its own quote prefix (an
