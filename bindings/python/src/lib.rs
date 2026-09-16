@@ -1,12 +1,14 @@
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use pyo3::{create_exception, wrap_pyfunction};
+use pyo3::IntoPyObjectExt;
 use serde::Serialize;
 
 use xlsx::base::expressions::types::Area;
 use xlsx::base::expressions::utils::{
     column_to_number, number_to_column, quote_name as quote_name_ic,
 };
+use xlsx::base::cell::CellValue;
 use xlsx::base::types::{Color, Workbook};
 use xlsx::base::{Model, UserModel};
 use xlsx::import;
@@ -36,6 +38,16 @@ pub(crate) fn to_python<'py, T: Serialize>(
 /// Converts a Python object (dicts, lists, ...) into a serde-deserializable value
 pub(crate) fn from_python<T: serde::de::DeserializeOwned>(obj: &Bound<'_, PyAny>) -> PyResult<T> {
     pythonize::depythonize(obj).map_err(to_py_err)
+}
+
+/// Converts a `CellValue` into a native Python object (None, str, float, or bool)
+pub(crate) fn cell_value_to_py(py: Python<'_>, value: CellValue) -> PyResult<Py<PyAny>> {
+    match value {
+        CellValue::None => Ok(py.None()),
+        CellValue::String(s) => s.into_py_any(py),
+        CellValue::Number(f) => f.into_py_any(py),
+        CellValue::Boolean(b) => b.into_py_any(py),
+    }
 }
 
 /// Converts a Python value into a `Color`:

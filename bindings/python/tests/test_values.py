@@ -28,6 +28,19 @@ def test_get_cell_value_returns_native_types(rm):
     assert rm.get_cell_value(0, 5, 1) is None
 
 
+def test_user_model_get_cell_value_returns_native_types(um):
+    um.set_user_input(0, 1, 1, "42.5")
+    um.set_user_input(0, 2, 1, "Hello")
+    um.set_user_input(0, 3, 1, "TRUE")
+    um.set_user_input(0, 4, 1, "=2*21")
+
+    assert um.get_cell_value(0, 1, 1) == 42.5
+    assert um.get_cell_value(0, 2, 1) == "Hello"
+    assert um.get_cell_value(0, 3, 1) is True
+    assert um.get_cell_value(0, 4, 1) == 42.0
+    assert um.get_cell_value(0, 5, 1) is None
+
+
 def test_get_cell_value_by_ref(rm):
     rm.set_user_input(0, 4, 3, "3.25")
     rm.evaluate()
