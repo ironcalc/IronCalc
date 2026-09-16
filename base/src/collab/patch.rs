@@ -1153,6 +1153,15 @@ pub struct SheetRestore {
     pub content: Option<Box<SheetContent>>,
 }
 
+/// How a seeded sheet gets its row and column indexes.
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+pub enum SheetIndexSeed {
+    /// An import: virtual keys `1..=n` per axis; the content's own keys fill in the rest.
+    Extent { rows: u32, columns: u32 },
+    /// A copy or restore: the source indexes as `FractionalIndex::encode` bytes.
+    Encoded { rows: Vec<u8>, columns: Vec<u8> },
+}
+
 /// A complete worksheet payload, used to seed [`Patch::AddSheet`] and to restore a
 /// [`Patch::DeleteSheet`]. The sheet's name is carried by `AddSheet` itself and so is absent here.
 ///
@@ -1164,10 +1173,7 @@ pub struct SheetContent {
     pub show_grid_lines: bool,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
-    /// How many virtual rows have been materialized.
-    pub virtual_rows: u32,
-    /// How many virtual columns have been materialized.
-    pub virtual_columns: u32,
+    pub index: SheetIndexSeed,
     /// Ordered by [`FractionalKey`].
     pub rows: Vec<(FractionalKey, RowState)>,
     /// Column spans, addressed by corner keys; a [`FractionalKey::NULL`] corner is an open end, so
@@ -1348,8 +1354,10 @@ mod test {
             show_grid_lines: false,
             frozen_rows: 1,
             frozen_columns: 2,
-            virtual_rows: 3,
-            virtual_columns: 4,
+            index: SheetIndexSeed::Extent {
+                rows: 3,
+                columns: 4,
+            },
             rows: vec![(key(1), row_state())],
             columns: vec![((key(3), key(4)), col_state())],
             cell_values: vec![((key(1), key(3)), CellInput::Number(3.5))],

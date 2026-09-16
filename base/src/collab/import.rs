@@ -8,7 +8,7 @@ use crate::collab::fractional_index::{
 use crate::collab::log::SessionId;
 use crate::collab::model::{CollabModel, Stable, StableRange};
 use crate::collab::patch::{
-    CellInput, ColState, ConditionalFormatState, Patch, RowState, SheetContent,
+    CellInput, ColState, ConditionalFormatState, Patch, RowState, SheetContent, SheetIndexSeed,
 };
 use crate::constants::LAST_COLUMN;
 use crate::expressions::lexer::LexerMode;
@@ -113,8 +113,10 @@ pub(crate) fn content_from_ordinal(
         show_grid_lines: ws.show_grid_lines,
         frozen_rows: ws.frozen_rows,
         frozen_columns: ws.frozen_columns,
-        virtual_rows: virtual_rows.max(0) as u32,
-        virtual_columns: virtual_columns.max(0) as u32,
+        index: SheetIndexSeed::Extent {
+            rows: virtual_rows.max(0) as u32,
+            columns: virtual_columns.max(0) as u32,
+        },
         rows: ws
             .rows
             .iter()
