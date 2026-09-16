@@ -6,6 +6,7 @@
 //! [`CollabModel::commit_local`]. There is no second path into the document: for [`Stable`] every
 //! mutation is a patch.
 
+use crate::actions::interval_survives_move;
 use crate::cf_types::{CfRuleInput, ConditionalFormattingView};
 use crate::collab::apply::SHEET_NAMES;
 use crate::collab::bind::{Host, MintPlan};
@@ -75,7 +76,7 @@ impl CollabModel<'_> {
     }
 
     /// The id of the sheet at index `sheet`.
-    fn sheet_of(&self, sheet: u32) -> Result<SheetId, String> {
+    pub(crate) fn sheet_of(&self, sheet: u32) -> Result<SheetId, String> {
         Ok(self.workbook.worksheet(sheet)?.sheet_id)
     }
 
@@ -241,7 +242,7 @@ impl CollabModel<'_> {
 
     /// Keys for `(row, column)` on worksheet `i`. If row/column IDs have to be created (via virtual
     /// fractional key creation), they will be returned as vec of patches with the result.
-    fn resolve_cell(
+    pub(crate) fn resolve_cell(
         &self,
         i: usize,
         id: SheetId,
@@ -256,7 +257,7 @@ impl CollabModel<'_> {
 
     /// The stable twin of an ordinal rectangle, materializing whatever it names. An unbounded axis
     /// stays unbounded: it tracks the sheet rather than a pair of corners.
-    fn stable_range(
+    pub(crate) fn stable_range(
         &self,
         i: usize,
         id: SheetId,
@@ -280,7 +281,7 @@ impl CollabModel<'_> {
 
     /// [`Self::stable_range`] without minting: `None` when a corner is not materialized, and so
     /// names nothing the document could already hold.
-    fn resolved_range(&self, i: usize, range: &RangeRef) -> Option<StableRange> {
+    pub(crate) fn resolved_range(&self, i: usize, range: &RangeRef) -> Option<StableRange> {
         let index = &self.workbook.worksheets[i].index;
         let rows = match range.rows {
             Some((a, b)) => Some((Stable::row_at(index, a)?, Stable::row_at(index, b)?)),
@@ -391,7 +392,7 @@ impl CollabModel<'_> {
     /// What the cell at `at` would be written back as: its authored contents, never its evaluated
     /// value. An array anchor and a spill cell have no input we can reproduce, so they read as
     /// nothing — see [`invert_patches`](crate::collab::patch::Patch).
-    fn cell_input(&self, i: usize, at: &StableCellAddress) -> Option<CellInput> {
+    pub(crate) fn cell_input(&self, i: usize, at: &StableCellAddress) -> Option<CellInput> {
         let sheet = &self.workbook.worksheets[i];
         let cell = sheet.sheet_data.get(&at.0)?.get(&at.1)?;
         match cell {
@@ -538,7 +539,7 @@ impl CollabModel<'_> {
         }
     }
 
-    fn cell_style_at(&self, i: usize, at: &StableCellAddress) -> Option<Style> {
+    pub(crate) fn cell_style_at(&self, i: usize, at: &StableCellAddress) -> Option<Style> {
         let cell = self.workbook.worksheets[i]
             .sheet_data
             .get(&at.0)?
@@ -573,7 +574,7 @@ impl CollabModel<'_> {
     /// differ; `None` when it already holds it. A cell without a style of its own starts from the
     /// default, so formatting it inherits from its row or column is written into the cell, as under
     /// ordinal addressing.
-    fn style_patch(
+    pub(crate) fn style_patch(
         &self,
         i: usize,
         id: SheetId,
@@ -662,7 +663,7 @@ impl CollabModel<'_> {
     }
 
     /// Validates that `(sheet, row, column)` is addressable, as the ordinal writers do.
-    fn check_cell(&self, sheet: u32, row: i32, column: i32) -> Result<usize, String> {
+    pub(crate) fn check_cell(&self, sheet: u32, row: i32, column: i32) -> Result<usize, String> {
         self.sheet_of(sheet)?;
         let i = sheet as usize;
         if !is_valid_row(row) || !is_valid_column_number(column) {
@@ -869,18 +870,40 @@ impl CollabModel<'_> {
         value: String,
     ) -> Result<(), String> {
         let i = self.check_cell(sheet, row, column)?;
-        let id = self.sheet_of(sheet)?;
+        // A covered cell shows the anchor's content: it is not editable, as in the ordinal model.
+        if let Some((r, c, _, _)) = self.workbook.worksheets[i].merged_range_containing(row, column)
+        {
+            if (r, c) != (row, column) {
+                return Err("Cannot edit a cell that is part of a merged cell".to_string());
+            }
+        }
         let style = self.get_style_for_cell(sheet, row, column)?;
+        let patches = self.input_patches(sheet, row, column, &value, style)?;
+        self.commit_local(patches);
+        Ok(())
+    }
+
+    /// The patches writing `value` into a cell as typed, style and auto-link included, without
+    /// committing them.
+    pub(crate) fn input_patches(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+        style: Style,
+    ) -> Result<Vec<Patch>, String> {
+        let i = sheet as usize;
+        let id = self.sheet_of(sheet)?;
         let mut plan = MintPlan::default();
         let (input, mut style) =
-            self.classify_input(sheet, row, column, &value, style, &mut plan)?;
-        let link = self.auto_link(i, id, row, column, &value, &input, &mut style);
+            self.classify_input(sheet, row, column, value, style, &mut plan)?;
+        let link = self.auto_link(i, id, row, column, value, &input, &mut style);
         // Whatever the formula names has to exist before the write that names it.
         let mut patches = self.mint_patches(&plan);
         patches.extend(self.write_patches(sheet, row, column, input, style)?);
         patches.extend(link);
-        self.commit_local(patches);
-        Ok(())
+        Ok(patches)
     }
 
     /// The link typed text attaches when it looks like a URL or an email, as
@@ -2435,6 +2458,15 @@ impl CollabModel<'_> {
         if !(1..=LAST_ROW).contains(&row) || !(1..=LAST_ROW).contains(&(row + row_count - 1)) {
             return Err("Initial row out of boundaries".to_string());
         }
+        let group_end = row + row_count - 1;
+        if self
+            .workbook
+            .worksheet(sheet)?
+            .merged_ranges()
+            .any(|(r1, _, r2, _)| !interval_survives_move(r1, r2, row, group_end, delta))
+        {
+            return Err("Cannot move rows because that would split a merged cell".to_string());
+        }
         let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
         let index = &self.workbook.worksheets[i].index.rows;
@@ -2483,6 +2515,15 @@ impl CollabModel<'_> {
             || !(1..=LAST_COLUMN).contains(&(column + column_count - 1))
         {
             return Err("Initial column out of boundaries".to_string());
+        }
+        let group_end = column + column_count - 1;
+        if self
+            .workbook
+            .worksheet(sheet)?
+            .merged_ranges()
+            .any(|(_, c1, _, c2)| !interval_survives_move(c1, c2, column, group_end, delta))
+        {
+            return Err("Cannot move columns because that would split a merged cell".to_string());
         }
         let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
@@ -3201,7 +3242,7 @@ unsupported! { &mut self
 mod test {
     #![allow(clippy::unwrap_used)]
     use super::*;
-    use crate::collab::log::{Consumer, SessionId, Snapshot};
+    use crate::collab::log::{SessionId, Snapshot};
     use crate::collab::patch::invert_patches;
     use crate::Model;
 
@@ -3210,8 +3251,8 @@ mod test {
     fn deliver(model: &mut CollabModel<'_>, session: SessionId, commits: &[Commit]) {
         for commit in commits {
             assert_eq!(commit.session, session, "commit from an unexpected author");
-            model.apply(commit).unwrap();
         }
+        model.apply_batch(commits).unwrap();
     }
 
     /// The full loop: emit locally, ship, converge. Both replicas must end up with the same

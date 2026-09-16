@@ -55,7 +55,7 @@ where
 // Returns whether the interval [start, end] survives the move without being
 // split: it must be fully inside the moved group, fully inside the displaced
 // zone or fully outside both.
-fn interval_survives_move(
+pub(crate) fn interval_survives_move(
     start: i32,
     end: i32,
     group_start: i32,

@@ -59,6 +59,18 @@ impl Consumer for CollabModel<'_> {
     }
 }
 
+impl CollabModel<'_> {
+    /// Applies a delivered batch of commits, then reconciles the merges concurrency may have
+    /// duplicated or overlapped.
+    pub fn apply_batch(&mut self, commits: &[Commit]) -> Result<(), DynError> {
+        for commit in commits {
+            self.apply(commit)?;
+        }
+        self.reconcile_merges();
+        Ok(())
+    }
+}
+
 impl Snapshot for CollabModel<'static> {
     /// A version byte, then the workbook. Views are per-user state and are never encoded.
     fn encode(&self) -> Vec<u8> {
@@ -1419,6 +1431,15 @@ impl CollabModel<'_> {
         }
         for (at, _) in &content.links {
             cells.push(at);
+        }
+        // A merged range names its corners: they have to resolve on the copy too.
+        for range in &content.merge_cells {
+            if let Some((first, last)) = &range.rows {
+                rows.extend([first, last].into_iter().filter(|key| !key.is_empty()));
+            }
+            if let Some((first, last)) = &range.cols {
+                cols.extend([first, last].into_iter().filter(|key| !key.is_empty()));
+            }
         }
         for (row, col) in cells {
             rows.push(row);

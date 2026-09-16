@@ -2340,7 +2340,10 @@ impl<'a, A: Position> UserModel<'a, A> {
 impl<'a> UserModel<'a, crate::collab::model::Stable> {
     /// Runs one user action and records the commits it emitted as a single undo step, newest last.
     /// An action that failed or changed nothing records nothing.
-    fn tracked<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T, String>) -> Result<T, String> {
+    pub(super) fn tracked<T>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<T, String>,
+    ) -> Result<T, String> {
         let from = self.model.local.pending.len();
         let out = f(self)?;
         let step: Vec<crate::collab::patch::Patch> = self.model.local.pending[from..]
@@ -2399,13 +2402,13 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
     /// See also:
     /// * [UserModel::flush_send_queue]
     pub fn apply_external_diffs(&mut self, diff_list_str: &[u8]) -> Result<(), String> {
-        use crate::collab::log::{Commit, Consumer};
+        use crate::collab::log::Commit;
         // Malformed bytes can panic inside the bitcode decoder; hardening it is deferred.
         let commits: Vec<Commit> =
             bitcode::decode(diff_list_str).map_err(|_| "Error parsing diff list".to_string())?;
-        for commit in &commits {
-            self.model.apply(commit).map_err(|e| e.to_string())?;
-        }
+        self.model
+            .apply_batch(&commits)
+            .map_err(|e| e.to_string())?;
         self.evaluate_if_not_paused();
         Ok(())
     }
