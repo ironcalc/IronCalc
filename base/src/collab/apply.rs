@@ -26,8 +26,8 @@ use crate::collab::model::{
 use crate::collab::naming::NameRepair;
 use crate::collab::patch::{
     CellInput, CfPropKind, CfProperty, ColState, DefinedNameId, DefinedNameProperty, NamedStyleId,
-    NamedStyleProperty, Patch, PropKind, Property, RowState, SheetContent, SheetId, SheetProperty,
-    WorkbookProperty,
+    NamedStyleProperty, Patch, PropKind, Property, RowState, SheetContent, SheetId, SheetIndexSeed,
+    SheetProperty, WorkbookProperty,
 };
 use crate::collab::DynError;
 use crate::constants::{
@@ -1392,10 +1392,8 @@ impl CollabModel<'_> {
     }
 
     /// Fills a freshly created sheet from the payload an `AddSheet` carried.
-    ///
-    /// Only the keys the content names are seeded into the indexes; a range with a corner outside
-    /// them still resolves by clamping, exactly as one whose corner was deleted does.
     fn seed_sheet(&mut self, i: usize, content: &SheetContent, ts: &Timestamp) {
+        let suffix = self.suffix();
         let sheet = &mut self.workbook.worksheets[i];
         sheet.state = content.state.clone();
         sheet.color = content.color.clone();
@@ -1403,57 +1401,59 @@ impl CollabModel<'_> {
         sheet.frozen_rows = content.frozen_rows;
         sheet.frozen_columns = content.frozen_columns;
 
-        // The used extent first: index ordinals are list positions, so an imported sheet needs the
-        // rows and columns before its cells to exist for them to read where the file put them.
-        for i in 1..=content.virtual_rows {
-            sheet.index.rows.insert_key_at(virtual_key(i), ts.hlc);
-        }
-        for i in 1..=content.virtual_columns {
-            sheet.index.cols.insert_key_at(virtual_key(i), ts.hlc);
-        }
+        match &content.index {
+            SheetIndexSeed::Encoded { rows, columns } => {
+                sheet.index.rows =
+                    FractionalIndex::decode(rows, suffix).expect("malformed bitcode payload");
+                sheet.index.cols =
+                    FractionalIndex::decode(columns, suffix).expect("malformed bitcode payload");
+            }
+            SheetIndexSeed::Extent { rows, columns } => {
+                // The used extent first: index ordinals are list positions, so an imported sheet needs
+                // the rows and columns before its cells to exist for them to read where the file put them.
+                for i in 1..=*rows {
+                    sheet.index.rows.insert_key_at(virtual_key(i), ts.hlc);
+                }
+                for i in 1..=*columns {
+                    sheet.index.cols.insert_key_at(virtual_key(i), ts.hlc);
+                }
 
-        let mut rows: Vec<&FractionalKey> = content.rows.iter().map(|(key, _)| key).collect();
-        let mut cols: Vec<&FractionalKey> = content
-            .columns
-            .iter()
-            .flat_map(|((min, max), _)| [min, max])
-            .filter(|key| !key.is_empty())
-            .collect();
-        let mut cells = Vec::with_capacity(content.cell_values.len());
-        for (at, _) in &content.cell_values {
-            cells.push(at);
-        }
-        for (at, _) in &content.cell_styles {
-            cells.push(at);
-        }
-        for comment in &content.comments {
-            cells.push(&comment.cell_ref)
-        }
-        for (at, _) in &content.links {
-            cells.push(at);
-        }
-        // A merged range names its corners: they have to resolve on the copy too.
-        for range in &content.merge_cells {
-            if let Some((first, last)) = &range.rows {
-                rows.extend([first, last].into_iter().filter(|key| !key.is_empty()));
+                let mut rows: Vec<&FractionalKey> =
+                    content.rows.iter().map(|(key, _)| key).collect();
+                let mut cols: Vec<&FractionalKey> = content
+                    .columns
+                    .iter()
+                    .flat_map(|((min, max), _)| [min, max])
+                    .filter(|key| !key.is_empty())
+                    .collect();
+                let mut cells = Vec::with_capacity(content.cell_values.len());
+                for (at, _) in &content.cell_values {
+                    cells.push(at);
+                }
+                for (at, _) in &content.cell_styles {
+                    cells.push(at);
+                }
+                for comment in &content.comments {
+                    cells.push(&comment.cell_ref)
+                }
+                for (at, _) in &content.links {
+                    cells.push(at);
+                }
+                for (row, col) in cells {
+                    rows.push(row);
+                    cols.push(col);
+                }
+                rows.sort();
+                rows.dedup();
+                cols.sort();
+                cols.dedup();
+                for key in rows {
+                    sheet.index.rows.insert_key_at(key.clone(), ts.hlc);
+                }
+                for key in cols {
+                    sheet.index.cols.insert_key_at(key.clone(), ts.hlc);
+                }
             }
-            if let Some((first, last)) = &range.cols {
-                cols.extend([first, last].into_iter().filter(|key| !key.is_empty()));
-            }
-        }
-        for (row, col) in cells {
-            rows.push(row);
-            cols.push(col);
-        }
-        rows.sort();
-        rows.dedup();
-        cols.sort();
-        cols.dedup();
-        for key in rows {
-            sheet.index.rows.insert_key_at(key.clone(), ts.hlc);
-        }
-        for key in cols {
-            sheet.index.cols.insert_key_at(key.clone(), ts.hlc);
         }
 
         for (key, state) in &content.rows {

@@ -21,8 +21,8 @@ use crate::collab::naming::{defined_name_id, stable_id};
 use crate::collab::patch::{
     CellInput, CfProperty, ColState, ColumnSnapshot, ConditionalFormatState, DefinedNameBody,
     DefinedNameId, DefinedNameProperty, NamedStyle, NamedStyleId, NamedStyleProperty, Patch,
-    PropKind, Property, RowSnapshot, RowState, SheetContent, SheetId, SheetPropKind, SheetProperty,
-    SheetRestore, WorkbookPropKind, WorkbookProperty,
+    PropKind, Property, RowSnapshot, RowState, SheetContent, SheetId, SheetIndexSeed,
+    SheetPropKind, SheetProperty, SheetRestore, WorkbookPropKind, WorkbookProperty,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
@@ -2246,9 +2246,18 @@ impl CollabModel<'_> {
             show_grid_lines: sheet.show_grid_lines,
             frozen_rows: sheet.frozen_rows,
             frozen_columns: sheet.frozen_columns,
-            // A copy addresses the rows and columns the source already holds; nothing to seed.
-            virtual_rows: 0,
-            virtual_columns: 0,
+            index: SheetIndexSeed::Encoded {
+                rows: sheet
+                    .index
+                    .rows
+                    .encode()
+                    .expect("fractional index cannot be encoded"),
+                columns: sheet
+                    .index
+                    .cols
+                    .encode()
+                    .expect("fractional index cannot be encoded"),
+            },
             rows: sheet
                 .rows
                 .iter()
@@ -3244,7 +3253,8 @@ mod test {
     use super::*;
     use crate::collab::log::{SessionId, Snapshot};
     use crate::collab::patch::invert_patches;
-    use crate::Model;
+    use crate::types::MergedCell;
+    use crate::{Model, UserModel};
 
     /// Replays what a framework would transport: each flushed [`Commit`] delivered as it stands.
     /// `session` is who the test believes authored them, checked against each commit.
@@ -5211,6 +5221,79 @@ mod test {
             a.duplicate_sheet(99),
             Err("Invalid sheet index".to_string())
         );
+    }
+
+    /// A copy carries the source's whole index, so every cell keeps the ordinals it had.
+    #[test]
+    fn duplicate_sheet_keeps_positions() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.set_user_input(0, 2, 2, "x".to_string()).unwrap();
+        a.set_row_height(0, 5, 42.0).unwrap();
+        a.merge_cells(&area(3, 3, 2, 2)).unwrap();
+        a.duplicate_sheet(0).unwrap();
+        a.evaluate();
+
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, 1, &a.flush());
+        b.evaluate();
+        for m in [&a, &b] {
+            assert_eq!(m.get_formatted_cell_value(1, 2, 2), Ok("x".to_string()));
+            assert_eq!(m.get_formatted_cell_value(1, 1, 1), Ok(String::new()));
+            assert_eq!(m.get_row_height(1, 5), Ok(42.0));
+            assert_eq!(
+                m.get_merged_cells(1).unwrap(),
+                vec![MergedCell {
+                    row: 3,
+                    column: 3,
+                    width: 2,
+                    height: 2
+                }]
+            );
+        }
+        assert_eq!(
+            b.workbook.worksheets[1].index.rows,
+            a.workbook.worksheets[1].index.rows
+        );
+        assert_eq!(
+            b.workbook.worksheets[1].index.cols,
+            a.workbook.worksheets[1].index.cols
+        );
+    }
+
+    /// The undo of a delete restores the index too, so nothing shifts.
+    #[test]
+    fn delete_sheet_undo_keeps_positions() {
+        let mut a = UserModel::new_empty_with_session("model", "en", "UTC", "en", 1).unwrap();
+        let mut b = UserModel::new_empty_with_session("model", "en", "UTC", "en", 2).unwrap();
+        a.new_sheet().unwrap();
+        a.set_user_input(1, 2, 2, "x").unwrap();
+        let merged = Area {
+            sheet: 1,
+            row: 3,
+            column: 3,
+            width: 2,
+            height: 2,
+        };
+        a.merge_cells(&merged).unwrap();
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+
+        a.delete_sheet(1).unwrap();
+        a.undo().unwrap();
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        for m in [&a, &b] {
+            assert_eq!(m.get_formatted_cell_value(1, 2, 2).unwrap(), "x");
+            assert_eq!(m.get_formatted_cell_value(1, 1, 1).unwrap(), "");
+            assert_eq!(
+                m.get_merged_cells(1).unwrap(),
+                vec![MergedCell {
+                    row: 3,
+                    column: 3,
+                    width: 2,
+                    height: 2
+                }]
+            );
+        }
     }
 
     #[test]

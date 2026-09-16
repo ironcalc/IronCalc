@@ -589,7 +589,6 @@ fn merge_structure() {
     );
 }
 
-#[cfg(not(feature = "collab-test"))]
 #[test]
 fn duplicate_sheet_copies_merges() {
     let mut model = new_empty_model();

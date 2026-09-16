@@ -1,12 +1,37 @@
 //! Merged cells under stable addressing: a merge is one commit, a merged range is a register.
 
+use crate::collab::fractional_index::{FractionalIndex, FractionalKey};
 use crate::collab::log::Timestamp;
-use crate::collab::model::{CollabModel, Stable, StableCellAddress, StableRange};
+use crate::collab::model::{CollabModel, StableCellAddress, StableRange};
 use crate::collab::patch::{Patch, Property};
 use crate::expressions::types::Area;
 use crate::merged_cells::{merge_across_ranges, merge_down_ranges};
-use crate::types::{Alignment, Cell, HorizontalAlignment, MergedCell, Position, RangeRef};
+use crate::types::{Alignment, Cell, HorizontalAlignment, MergedCell};
 use std::cmp::Ordering;
+
+/// The keys of ordinals `first..=last` on `index`, and the tail keys that have to be inserted
+/// first for the whole span to be addressable.
+fn axis_keys(
+    index: &FractionalIndex,
+    first: i32,
+    last: i32,
+) -> (Vec<FractionalKey>, Vec<FractionalKey>) {
+    let planned = index.plan_virtual(last as usize);
+    let len = index.len() as i32;
+    let keys = (first..=last)
+        .map(|o| match index.key(o as usize - 1) {
+            Some(key) => key.clone(),
+            None => planned[(o - len - 1) as usize].clone(),
+        })
+        .collect();
+    (keys, planned)
+}
+
+/// Every `(row, column)` of `range`, row-major.
+fn cells_of(range: &Area) -> impl Iterator<Item = (i32, i32)> + '_ {
+    (range.row..range.row + range.height)
+        .flat_map(|row| (range.column..range.column + range.width).map(move |col| (row, col)))
+}
 
 /// Whether two ordinal rectangles `(row1, column1, row2, column2)` overlap.
 fn intersects(a: (i32, i32, i32, i32), b: (i32, i32, i32, i32)) -> bool {
@@ -165,22 +190,32 @@ impl CollabModel<'_> {
         }
         let id = self.sheet_of(sheet)?;
         let i = sheet as usize;
-        // The rectangle is materialized first, as its own commit: minting the same missing row
-        // twice inside one commit would duplicate keys.
-        let rect = RangeRef {
-            rows: Some((row, row + height - 1)),
-            cols: Some((column, column + width - 1)),
-        };
-        let mut mint = Vec::new();
-        self.stable_range(i, id, &rect, &mut mint);
-        if !mint.is_empty() {
-            self.commit_local(mint);
-        }
+        let index = &self.workbook.worksheets[i].index;
+        let (row_keys, planned_rows) = axis_keys(&index.rows, row, row + height - 1);
+        let (col_keys, planned_cols) = axis_keys(&index.cols, column, column + width - 1);
 
         let mut patches = Vec::new();
-        let anchor = self.cell_address(i, row, column)?;
+        if !planned_rows.is_empty() {
+            patches.push(Patch::InsertRows {
+                sheet: id,
+                keys: planned_rows,
+            });
+        }
+        if !planned_cols.is_empty() {
+            patches.push(Patch::InsertColumns {
+                sheet: id,
+                keys: planned_cols,
+            });
+        }
+        let at_of = |r: i32, c: i32| -> StableCellAddress {
+            (
+                row_keys[(r - row) as usize].clone(),
+                col_keys[(c - column) as usize].clone(),
+            )
+        };
+        let anchor = at_of(row, column);
         if (source_row, source_column) != (row, column) {
-            let source = self.cell_address(i, source_row, source_column)?;
+            let source = at_of(source_row, source_column);
             match self.workbook.worksheets[i].cell(source_row, source_column) {
                 Some(Cell::CellFormula { .. }) | Some(Cell::ArrayFormula { .. }) => {
                     // Formulas are stored relative to their cell: re-enter the text at the anchor
@@ -210,7 +245,8 @@ impl CollabModel<'_> {
             }
         }
 
-        for (at, r, c) in self.range_addresses(i, range)? {
+        for (r, c) in cells_of(range) {
+            let at = at_of(r, c);
             if (r, c) == (row, column) {
                 continue;
             }
@@ -233,7 +269,8 @@ impl CollabModel<'_> {
             }
         }
 
-        for (at, r, c) in self.range_addresses(i, range)? {
+        for (r, c) in cells_of(range) {
+            let at = at_of(r, c);
             let mut style = merged_style.clone();
             if r != row {
                 style.border.top = None;
@@ -259,40 +296,18 @@ impl CollabModel<'_> {
             });
         }
 
-        let stable = self
-            .resolved_range(i, &rect)
-            .ok_or("the merged range must resolve")?;
+        let last = at_of(row + height - 1, column + width - 1);
         patches.push(Patch::SetMergedRange {
             sheet: id,
-            range: stable,
+            range: StableRange {
+                rows: Some((anchor.0.clone(), last.0)),
+                cols: Some((anchor.1.clone(), last.1)),
+            },
             merged: true,
             prev: false,
         });
         self.commit_local(patches);
         Ok(())
-    }
-
-    // The address of an existing cell; every cell of a materialized rectangle has one.
-    fn cell_address(&self, i: usize, row: i32, column: i32) -> Result<StableCellAddress, String> {
-        let index = &self.workbook.worksheets[i].index;
-        let row_key = Stable::row_at(index, row).ok_or("row is not materialized")?;
-        let col_key = Stable::col_at(index, column).ok_or("column is not materialized")?;
-        Ok((row_key, col_key))
-    }
-
-    // The address of every cell of `range`, with its ordinal row and column.
-    fn range_addresses(
-        &self,
-        i: usize,
-        range: &Area,
-    ) -> Result<Vec<(StableCellAddress, i32, i32)>, String> {
-        let mut out = Vec::new();
-        for row in range.row..range.row + range.height {
-            for column in range.column..range.column + range.width {
-                out.push((self.cell_address(i, row, column)?, row, column));
-            }
-        }
-        Ok(out)
     }
 
     /// Unmerges duplicate and overlapping merges after a delivered batch.
@@ -362,6 +377,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::collab::log::Commit;
+    use crate::collab::model::Stable;
     use crate::types::Worksheet;
     use crate::UserModel;
 
@@ -456,6 +472,52 @@ mod tests {
             assert!(m.get_merged_cells(0).unwrap().is_empty());
             assert_eq!(m.get_formatted_cell_value(0, 3, 3).unwrap(), "x");
             assert_eq!(m.get_formatted_cell_value(0, 2, 2).unwrap(), "");
+        }
+    }
+
+    #[test]
+    fn merge_past_tail_is_one_commit() {
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, &a.flush());
+
+        a.merge_cells(&area(20, 1, 2, 2)).unwrap();
+        let commits = a.flush();
+        assert_eq!(commits.len(), 1);
+        let patches = &commits[0].patches;
+        assert!(matches!(patches[0], Patch::InsertRows { .. }));
+        assert!(matches!(patches[1], Patch::InsertColumns { .. }));
+        assert!(matches!(
+            patches[patches.len() - 1],
+            Patch::SetMergedRange { merged: true, .. }
+        ));
+        deliver(&mut b, &commits);
+        for m in [&a, &b] {
+            assert_eq!(
+                m.get_merged_cells(0).unwrap(),
+                vec![MergedCell {
+                    row: 20,
+                    column: 1,
+                    width: 2,
+                    height: 2
+                }]
+            );
+        }
+        converged(&a, &b);
+
+        let mut a = UserModel::new_empty_with_session("model", "en", "UTC", "en", 1).unwrap();
+        let mut b = UserModel::new_empty_with_session("model", "en", "UTC", "en", 2).unwrap();
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        let rows_before = a.model.workbook.worksheets[0].index.rows.len();
+
+        a.merge_cells(&area(20, 1, 2, 2)).unwrap();
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        a.undo().unwrap();
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        for m in [&a, &b] {
+            assert!(m.get_merged_cells(0).unwrap().is_empty());
+            assert_eq!(m.model.workbook.worksheets[0].index.rows.len(), rows_before);
         }
     }
 
