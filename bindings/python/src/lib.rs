@@ -1,14 +1,14 @@
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
-use pyo3::{create_exception, wrap_pyfunction};
 use pyo3::IntoPyObjectExt;
+use pyo3::{create_exception, wrap_pyfunction};
 use serde::Serialize;
 
+use xlsx::base::cell::CellValue;
 use xlsx::base::expressions::types::Area;
 use xlsx::base::expressions::utils::{
     column_to_number, number_to_column, quote_name as quote_name_ic,
 };
-use xlsx::base::cell::CellValue;
 use xlsx::base::types::{Color, Workbook};
 use xlsx::base::{Model, UserModel};
 use xlsx::import;
