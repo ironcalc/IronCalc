@@ -49,8 +49,8 @@ use crate::collab::DynError;
 use crate::constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
 use crate::expressions::token::Error;
 use crate::types::{
-    ArrayKind, BorderItem, Color, Comment, FontScheme, HorizontalAlignment, SheetState, Style,
-    Theme, VerticalAlignment,
+    BorderItem, Color, Comment, FontScheme, HorizontalAlignment, SheetState, Style, Theme,
+    VerticalAlignment,
 };
 use crate::{COLUMN_WIDTH_FACTOR, ROW_HEIGHT_FACTOR};
 use bitcode::{Decode, Encode};
@@ -95,7 +95,6 @@ pub fn decode_patches(bytes: &[u8]) -> Result<Vec<Patch>, DynError> {
 /// matching delete, and a delete into the matching insert followed by restores of the snapshot's
 /// state and cells. What does not, and is dropped:
 ///
-/// - `SetArrayValue`, whose `prev` covers a rectangle rather than the anchor it would write to,
 /// - `DeleteSheet` with no [`SheetRestore`] captured — a user-initiated delete still takes no
 ///   snapshot, so only the one an `AddSheet` inverted into puts its sheet back,
 /// - `MoveConditionalFormats`, which is a no-op to begin with,
@@ -434,9 +433,7 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                 position: restore.position.clone(),
                 content: restore.content.clone(),
             }),
-            Patch::SetArrayValue { .. }
-            | Patch::DeleteSheet { prev: None, .. }
-            | Patch::MoveConditionalFormats { .. } => {}
+            Patch::DeleteSheet { prev: None, .. } | Patch::MoveConditionalFormats { .. } => {}
         }
     }
     out
@@ -458,16 +455,6 @@ pub enum Patch {
 
         #[bitcode(skip)]
         prev: Box<Option<CellInput>>,
-    },
-    /// `value` is a [`CellInput::Array`], or `None` to clear the array. `prev` covers the whole
-    /// range the array occupied, which is why this is not folded into [`Patch::SetCellValue`].
-    SetArrayValue {
-        sheet: SheetId,
-        anchor: StableCellAddress,
-        value: Option<CellInput>,
-
-        #[bitcode(skip)]
-        prev: Vec<Vec<Option<CellInput>>>,
     },
     /// The listed attributes of the cell's own formatting.
     /// To clear single style property is to set it to default value.
@@ -691,7 +678,6 @@ impl Patch {
     pub(crate) fn target_sheet(&self) -> Option<SheetId> {
         match self {
             Patch::SetCellValue { sheet, .. }
-            | Patch::SetArrayValue { sheet, .. }
             | Patch::SetCellStyle { sheet, .. }
             | Patch::InsertRows { sheet, .. }
             | Patch::DeleteRows { sheet, .. }
@@ -1273,12 +1259,7 @@ pub enum CellInput {
     Text(String),
     Error(Error),
     Formula(StableFormula),
-    /// The anchor of an array formula. The cells it spills into are derived, not stored.
-    Array {
-        formula: StableFormula,
-        range: StableRange,
-        kind: ArrayKind,
-    },
+    Array(StableFormula),
 }
 
 #[cfg(test)]
@@ -1385,15 +1366,12 @@ mod test {
                 ts: None,
                 prev: Box::default(),
             },
-            Patch::SetArrayValue {
+            Patch::SetCellValue {
                 sheet: 7,
-                anchor: (key(1), key(3)),
-                value: Some(CellInput::Array {
-                    formula: formula(),
-                    range: range(),
-                    kind: ArrayKind::Dynamic,
-                }),
-                prev: Vec::new(),
+                at: (key(1), key(3)),
+                value: Some(CellInput::Array(formula())),
+                ts: None,
+                prev: Box::default(),
             },
             Patch::SetCellStyle {
                 sheet: 7,

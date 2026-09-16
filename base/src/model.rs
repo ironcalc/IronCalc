@@ -1293,23 +1293,24 @@ impl<'a, A: Position> Model<'a, A> {
         for r in row..row + height {
             for c in column..column + width {
                 let value = array[(r - row) as usize][(c - column) as usize].clone();
-                let cell = if (r, c) == (row, column) {
-                    Cell::ArrayFormula {
+                // Cells are created on demand: rows and columns may not exist yet.
+                if (r, c) == (row, column) {
+                    let anchor = Cell::ArrayFormula {
                         f: formula,
                         s: style,
                         r: (width, height),
                         kind: ArrayKind::Dynamic,
                         v: array_node_to_formula_value(value),
-                    }
+                    };
+                    worksheet.update_cell(r, c, anchor)?;
                 } else {
-                    Cell::SpillCell {
+                    let spill = Cell::SpillCell {
                         a: (row, column),
                         s: worksheet.get_style(r, c),
                         v: array_node_to_spill_value(value),
-                    }
-                };
-                // Cells are created on demand: rows and columns may not exist yet.
-                worksheet.update_cell(r, c, cell)?;
+                    };
+                    worksheet.write_spill(r, c, spill)?;
+                }
             }
         }
         for (_, r, c) in clears {

@@ -84,7 +84,7 @@ pub(crate) fn content_from_ordinal(
                     .get(*si as usize)
                     .cloned()
                     .map(CellInput::Text),
-                // Formulas come in the second pass; arrays are skipped and spills are derived.
+                // Formulas, array anchors included, come in the second pass; spills are derived.
                 _ => None,
             };
             if let Some(input) = input {
@@ -249,15 +249,16 @@ impl CollabModel<'static> {
             let id = model.workbook.worksheets[i].sheet_id;
             let mut plan = MintPlan::default();
             let mut writes = Vec::new();
-            // Array formulas are skipped: there is no emitter for them yet.
+            // A CSE anchor comes over as a dynamic one: stable addressing has no CSE arrays.
             let formulas = ws
                 .sheet_data
                 .cells()
                 .filter_map(|(row, column, cell)| match cell {
-                    Cell::CellFormula { f, .. } => Some((row, column, *f)),
+                    Cell::CellFormula { f, .. } => Some((row, column, *f, false)),
+                    Cell::ArrayFormula { f, .. } => Some((row, column, *f, true)),
                     _ => None,
                 });
-            for (row, column, f) in formulas {
+            for (row, column, f, is_array) in formulas {
                 let Some(text) = ws.shared_formulas.get(f as usize).cloned() else {
                     continue;
                 };
@@ -265,10 +266,15 @@ impl CollabModel<'static> {
                 let bound = model
                     .bind_formula(&node, sheet, row, column, &mut plan)
                     .map_err(|err| format!("Invalid formula \"{text}\": {err}"))?;
+                let value = if is_array {
+                    CellInput::Array(bound)
+                } else {
+                    CellInput::Formula(bound)
+                };
                 writes.push(Patch::SetCellValue {
                     sheet: id,
                     at: (virtual_key(row as u32), virtual_key(column as u32)),
-                    value: Some(CellInput::Formula(bound)),
+                    value: Some(value),
                     ts: None,
                     prev: Box::new(None),
                 });

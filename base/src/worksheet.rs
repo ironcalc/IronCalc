@@ -59,7 +59,16 @@ impl<A: Position> Worksheet<A> {
     }
 
     pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
+        A::cell(self, row, column)
+    }
+
+    pub(crate) fn stored_cell(&self, row: i32, column: i32) -> Option<&Cell> {
         A::stored_cell(self, row, column)
+    }
+
+    #[inline]
+    pub(crate) fn write_spill(&mut self, row: i32, column: i32, cell: Cell) -> Result<(), String> {
+        A::write_spill(self, row, column, cell)
     }
 
     pub(crate) fn cell_mut(&mut self, row: i32, column: i32) -> Option<&mut Cell> {

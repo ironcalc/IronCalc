@@ -10,9 +10,7 @@ use crate::actions::interval_survives_move;
 use crate::cf_types::{CfRuleInput, ConditionalFormattingView};
 use crate::collab::apply::SHEET_NAMES;
 use crate::collab::bind::{Host, MintPlan};
-#[cfg(test)]
-use crate::collab::formula::StableFormula;
-use crate::collab::formula::StableToken;
+use crate::collab::formula::{StableFormula, StableToken};
 use crate::collab::fractional_index::{CreateKeys, FractionalIndex, FractionalKey, KeyBuf};
 use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Timestamp};
@@ -28,6 +26,7 @@ use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
     ROW_HEIGHT_FACTOR,
 };
+use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
 use crate::expressions::parser::stringify::to_english_string;
 use crate::expressions::parser::Node;
 use crate::expressions::token::get_error_by_name;
@@ -390,8 +389,7 @@ impl CollabModel<'_> {
     }
 
     /// What the cell at `at` would be written back as: its authored contents, never its evaluated
-    /// value. An array anchor and a spill cell have no input we can reproduce, so they read as
-    /// nothing — see [`invert_patches`](crate::collab::patch::Patch).
+    /// value.
     pub(crate) fn cell_input(&self, i: usize, at: &StableCellAddress) -> Option<CellInput> {
         let sheet = &self.workbook.worksheets[i];
         let cell = sheet.sheet_data.get(&at.0)?.get(&at.1)?;
@@ -410,7 +408,12 @@ impl CollabModel<'_> {
                 .get(*f as usize)
                 .cloned()
                 .map(CellInput::Formula),
-            Cell::EmptyCell { .. } | Cell::ArrayFormula { .. } | Cell::SpillCell { .. } => None,
+            Cell::ArrayFormula { f, .. } => sheet
+                .shared_formulas
+                .get(*f as usize)
+                .cloned()
+                .map(CellInput::Array),
+            Cell::EmptyCell { .. } | Cell::SpillCell { .. } => None,
         }
     }
 
@@ -446,6 +449,16 @@ impl CollabModel<'_> {
             .expect("test formula binds")
     }
 
+    /// A bound formula as the input it should be written as: a formula that can only produce a
+    /// scalar is a plain cell, anything else is a dynamic array anchor. Same call the ordinal path
+    /// makes in `set_cell_with_formula`.
+    fn formula_input(node: &Node, bound: StableFormula) -> CellInput {
+        match run_static_analysis_on_node(node) {
+            StaticResult::Scalar => CellInput::Formula(bound),
+            _ => CellInput::Array(bound),
+        }
+    }
+
     /// The authored contents `value` denotes and the style the ordinal path would leave behind:
     /// the same classification order — quote prefix, formula, number, boolean, error, text.
     fn classify_input(
@@ -475,7 +488,7 @@ impl CollabModel<'_> {
             let bound = self
                 .bind_formula(&node, sheet, row, column, plan)
                 .map_err(|err| format!("Invalid formula: {err}"))?;
-            return Ok((Some(CellInput::Formula(bound)), style));
+            return Ok((Some(Self::formula_input(&node, bound)), style));
         }
         // The list of currencies is '$', '€' and the local currency
         let mut currencies = vec!["$", "€"];
@@ -711,10 +724,11 @@ impl CollabModel<'_> {
         // A cell on a row or column the index no longer holds has no ordinal to bind against.
         let row = Stable::row_ordinal(&sheet.index, &at.0)?;
         let column = Stable::col_ordinal(&sheet.index, &at.1)?;
-        let Cell::CellFormula { f, .. } = sheet.cell(row, column)? else {
-            return None;
+        // An array anchor re-binds like any other formula cell; only its input variant differs.
+        let f = match sheet.cell(row, column)? {
+            Cell::CellFormula { f, .. } | Cell::ArrayFormula { f, .. } => *f,
+            _ => return None,
         };
-        let f = *f;
         // Lowering already turned the tokens that now resolve into live nodes; a reference whose
         // offset fell off the grid since it was made simply does not bind.
         let node = Stable::materialize_formula(self, i as u32, row, column, f)?;
@@ -727,7 +741,7 @@ impl CollabModel<'_> {
         Some(Patch::SetCellValue {
             sheet: sheet.sheet_id,
             at: at.clone(),
-            value: Some(CellInput::Formula(bound)),
+            value: Some(Self::formula_input(&node, bound)),
             ts: None,
             prev: Box::new(self.cell_input(i, at)),
         })
@@ -1022,13 +1036,8 @@ impl CollabModel<'_> {
             .bind_formula(&node, sheet, row, column, &mut plan)
             .map_err(|err| format!("Invalid formula: {err}"))?;
         let mut patches = self.mint_patches(&plan);
-        patches.extend(self.write_patches(
-            sheet,
-            row,
-            column,
-            Some(CellInput::Formula(bound)),
-            style,
-        )?);
+        let input = Self::formula_input(&node, bound);
+        patches.extend(self.write_patches(sheet, row, column, Some(input), style)?);
         self.commit_local(patches);
         Ok(())
     }
@@ -2609,7 +2618,7 @@ impl CollabModel<'_> {
         // one naming the source *by id* has to be pointed at the copy instead.
         let mut content = self.sheet_content(i);
         for (_, input) in &mut content.cell_values {
-            if let CellInput::Formula(formula) = input {
+            if let CellInput::Formula(formula) | CellInput::Array(formula) = input {
                 formula.retarget_sheet(source_id, id);
             }
         }

@@ -24,7 +24,7 @@ use crate::user_model::history::{ColumnData, Diff, DiffList, DiffType, QueueDiff
 
 use super::border_utils::is_max_border;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum CellArrayStructure {
     // It's just a single cell
     SingleCell,

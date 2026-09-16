@@ -12,6 +12,7 @@ pub mod merge;
 pub mod model;
 pub mod naming;
 pub mod patch;
+pub mod spill;
 pub mod varint;
 
 pub type DynError = Box<dyn std::error::Error>;

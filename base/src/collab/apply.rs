@@ -21,7 +21,7 @@ use crate::collab::hlc::Hlc;
 use crate::collab::log::{Commit, Consumer, Lww, SessionId, Snapshot, Timestamp};
 use crate::collab::model::{
     default_workbook_views, default_worksheet_views, CollabModel, SheetIndexes, SheetRegisters,
-    Stable, StableCellAddress, StableLink, StableRange,
+    Stable, StableCellAddress, StableLink,
 };
 use crate::collab::naming::NameRepair;
 use crate::collab::patch::{
@@ -37,8 +37,8 @@ use crate::expressions::parser::stringify::to_english_string;
 use crate::expressions::parser::{static_analysis::run_static_analysis_on_node, Node};
 use crate::expressions::token;
 use crate::types::{
-    Alignment, Cell, CellStyles, Col, DefinedName, FormulaValue, Row, SheetState, Style, Styles,
-    Workbook, Worksheet,
+    Alignment, ArrayKind, Cell, CellStyles, Col, DefinedName, FormulaValue, Row, SheetState, Style,
+    Styles, Workbook, Worksheet,
 };
 
 /// Version byte prefixing every [`Snapshot::encode`] payload.
@@ -102,6 +102,7 @@ impl Snapshot for CollabModel<'static> {
             model.shared_strings.insert(text.clone(), index);
         }
         model.index_unresolved();
+        model.resync_parsed();
         Ok(model)
     }
 }
@@ -268,15 +269,6 @@ fn remove_cell(sheet: &mut Worksheet<Stable>, at: &StableCellAddress) {
     }
 }
 
-/// The `(width, height)` an array formula currently spills over, derived from the sheet's ordering.
-/// A range that no longer resolves is one cell.
-fn array_extent(sheet: &Worksheet<Stable>, range: &StableRange) -> (i32, i32) {
-    match range.resolve(&sheet.index) {
-        Some((row1, column1, row2, column2)) => (column2 - column1 + 1, row2 - row1 + 1),
-        None => (1, 1),
-    }
-}
-
 /// The cell a [`CellInput`] materializes into, keeping the style already on the cell. Formula text
 /// is interned into the sheet's table but never parsed — evaluation is derived state.
 fn build_cell(
@@ -301,20 +293,13 @@ fn build_cell(
             s: style,
             v: FormulaValue::Unevaluated,
         },
-        CellInput::Array {
-            formula,
-            range,
-            kind,
-        } => {
-            let r = array_extent(sheet, range);
-            Cell::ArrayFormula {
-                f: intern_formula(&mut sheet.shared_formulas, formula),
-                s: style,
-                r,
-                kind: kind.clone(),
-                v: FormulaValue::Unevaluated,
-            }
-        }
+        CellInput::Array(formula) => Cell::ArrayFormula {
+            f: intern_formula(&mut sheet.shared_formulas, formula),
+            s: style,
+            r: (1, 1),
+            kind: ArrayKind::Dynamic,
+            v: FormulaValue::Unevaluated,
+        },
     }
 }
 
@@ -661,7 +646,6 @@ impl CollabModel<'_> {
     pub(crate) fn is_content_only(&self, patches: &[Patch]) -> bool {
         patches.iter().all(|patch| match patch {
             Patch::SetCellValue { .. }
-            | Patch::SetArrayValue { .. }
             | Patch::SetCellStyle { .. }
             | Patch::SetRowProperty { .. }
             | Patch::SetColumnSpan { .. }
@@ -772,22 +756,6 @@ impl CollabModel<'_> {
                     return;
                 }
                 self.write_cell(i, at, value.as_ref());
-            }
-            Patch::SetArrayValue {
-                sheet,
-                anchor,
-                value,
-                ..
-            } => {
-                let Some(i) = self.sheet_index(*sheet) else {
-                    return;
-                };
-                let registers = &mut self.workbook.worksheets[i].index.registers;
-                if !wins(&mut registers.arrays, anchor, ts) {
-                    return;
-                }
-                // Only the anchor is stored; the cells it spills into are derived.
-                self.write_cell(i, anchor, value.as_ref());
             }
             Patch::SetCellStyle {
                 sheet,
@@ -1342,7 +1310,7 @@ impl CollabModel<'_> {
         put_cell(sheet, at, cell);
         // use [CollabSession::unresolved] to remember the names of object that couldn't be mapped
         // to their IDs
-        if let CellInput::Formula(formula) = value {
+        if let CellInput::Formula(formula) | CellInput::Array(formula) = value {
             let id = self.workbook.worksheets[i].sheet_id;
             for name in formula.text_names() {
                 self.local
@@ -1361,10 +1329,10 @@ impl CollabModel<'_> {
         for sheet in &self.workbook.worksheets {
             for (row_key, row_data) in &sheet.sheet_data {
                 for (column_key, cell) in row_data {
-                    let Cell::CellFormula { f, .. } = cell else {
+                    let Some(f) = cell.get_formula() else {
                         continue;
                     };
-                    let Some(formula) = sheet.shared_formulas.get(*f as usize) else {
+                    let Some(formula) = sheet.shared_formulas.get(f as usize) else {
                         continue;
                     };
                     for name in formula.text_names() {
@@ -1627,6 +1595,7 @@ mod test {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::cf_types::CfRule;
+    use crate::collab::model::StableRange;
     use crate::collab::patch::{DefinedNameBody, NamedStyle};
     use crate::types::{Color, Comment, Position, Theme};
 

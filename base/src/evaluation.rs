@@ -656,6 +656,11 @@ impl<'a, A: Position> Model<'a, A> {
     /// One pass over the workbook: anchors first, then every cell. Returns the
     /// reason the pass had to be abandoned, if any.
     fn run_pass(&mut self, circular_anchors: &[CellKey]) -> Option<Restart> {
+        // Spill cells are derived: every pass rebuilds them from nothing, so a representation
+        // keeping them out of `sheet_data` needs no per-anchor clearing of its own.
+        for worksheet in &mut self.workbook.worksheets {
+            A::drop_spills(worksheet);
+        }
         let state = &mut self.evaluation;
         state.cells.clear();
         state.stack.clear();
