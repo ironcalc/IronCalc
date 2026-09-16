@@ -8,6 +8,7 @@ pub mod fractional_key;
 pub mod hlc;
 pub mod import;
 pub mod log;
+pub mod merge;
 pub mod model;
 pub mod naming;
 pub mod patch;

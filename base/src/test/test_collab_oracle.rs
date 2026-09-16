@@ -5,7 +5,9 @@
 
 use crate::collab::model::CollabModel;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::types::Area;
 use crate::model::Model;
+use crate::types::MergedCell;
 
 /// The pair the scenarios drive. Both start with a single `Sheet1`.
 fn pair() -> (Model<'static>, CollabModel<'static>) {
@@ -411,4 +413,96 @@ fn links_match_ordinal() {
             "link at row {row}"
         );
     }
+}
+
+fn area(row: i32, column: i32, width: i32, height: i32) -> Area {
+    Area {
+        sheet: 0,
+        row,
+        column,
+        width,
+        height,
+    }
+}
+
+/// The merged rectangles of sheet 0, as sorted `(row, column, width, height)` tuples.
+fn merged(cells: &[MergedCell]) -> Vec<(i32, i32, i32, i32)> {
+    let mut out: Vec<_> = cells
+        .iter()
+        .map(|m| (m.row, m.column, m.width, m.height))
+        .collect();
+    out.sort();
+    out
+}
+
+#[test]
+fn merged_cells_match_ordinal() {
+    let (mut o, mut c) = pair();
+    let check = |o: &Model, c: &CollabModel, step: &str| {
+        compare(o, c, &[0], 9, 7, step);
+        assert_eq!(
+            merged(&c.get_merged_cells(0).unwrap()),
+            merged(o.get_merged_cells(0).unwrap()),
+            "merged cells after {step}"
+        );
+        for row in 1..=9 {
+            for col in 1..=7 {
+                assert_eq!(
+                    c.get_style_for_cell(0, row, col),
+                    o.get_style_for_cell(0, row, col),
+                    "style at row {row} column {col} after {step}"
+                );
+            }
+        }
+    };
+
+    set(&mut o, &mut c, 0, 1, 1, "10");
+    // The only cell with content is not the anchor: the merge moves it there.
+    set(&mut o, &mut c, 0, 3, 3, "=A1+1");
+    set(&mut o, &mut c, 0, 2, 5, "center me");
+    set(&mut o, &mut c, 0, 6, 3, "across");
+    set(&mut o, &mut c, 0, 7, 5, "down");
+    check(&o, &c, "seed");
+
+    o.merge_cells(&area(2, 2, 2, 2)).unwrap();
+    c.merge_cells(&area(2, 2, 2, 2)).unwrap();
+    o.evaluate();
+    c.evaluate();
+    check(&o, &c, "merge_cells");
+
+    o.merge_cells_center(&area(2, 5, 2, 2)).unwrap();
+    c.merge_cells_center(&area(2, 5, 2, 2)).unwrap();
+    o.evaluate();
+    c.evaluate();
+    check(&o, &c, "merge_cells_center");
+
+    o.merge_cells_across(&area(6, 2, 2, 3)).unwrap();
+    c.merge_cells_across(&area(6, 2, 2, 3)).unwrap();
+    o.evaluate();
+    c.evaluate();
+    check(&o, &c, "merge_cells_across");
+
+    o.merge_cells_down(&area(6, 5, 2, 3)).unwrap();
+    c.merge_cells_down(&area(6, 5, 2, 3)).unwrap();
+    o.evaluate();
+    c.evaluate();
+    check(&o, &c, "merge_cells_down");
+
+    // A covered cell rejects input on both models.
+    let error = "Cannot edit a cell that is part of a merged cell".to_string();
+    assert_eq!(
+        o.set_user_input(0, 3, 2, "x".to_string()),
+        Err(error.clone())
+    );
+    assert_eq!(c.set_user_input(0, 3, 2, "x".to_string()), Err(error));
+
+    o.unmerge_cells(&area(2, 2, 2, 2)).unwrap();
+    c.unmerge_cells(&area(2, 2, 2, 2)).unwrap();
+    o.evaluate();
+    c.evaluate();
+    check(&o, &c, "unmerge_cells");
+
+    // The cell the merge covered is editable again.
+    set(&mut o, &mut c, 0, 3, 2, "back");
+    check(&o, &c, "write into a formerly covered cell");
 }
