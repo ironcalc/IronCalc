@@ -693,8 +693,6 @@ fn insert_and_delete_columns_displace_merges() {
     assert!(merges(&model, 0).is_empty());
 }
 
-// stable merges follow their keys and never shrink
-#[cfg(not(feature = "collab-test"))]
 #[test]
 fn merge_shrunk_to_single_cell_is_removed() {
     let mut model = new_empty_model();
@@ -709,7 +707,7 @@ fn merge_shrunk_to_single_cell_is_removed() {
     assert!(merges(&model, 0).is_empty());
 }
 
-// stable merges follow their keys and never shrink
+// materializing the index up to LAST_ROW is impractical in the collaborative model
 #[cfg(not(feature = "collab-test"))]
 #[test]
 fn insert_rows_clamps_merges_at_the_bottom() {

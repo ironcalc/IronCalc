@@ -82,7 +82,8 @@ impl Position for Stable {
     }
 
     fn resolve_merged(merged: &StableRange, idx: &SheetIndexes) -> Option<(i32, i32, i32, i32)> {
-        Self::resolve_range(merged, idx)
+        // A merge clamped down to one cell is no merge, as under ordinal addressing.
+        Self::resolve_range(merged, idx).filter(|(r1, c1, r2, c2)| (r1, c1) != (r2, c2))
     }
 
     fn resolve_range(range: &StableRange, idx: &SheetIndexes) -> Option<(i32, i32, i32, i32)> {
