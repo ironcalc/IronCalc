@@ -1029,23 +1029,24 @@ impl<'a, A: Position> Model<'a, A> {
                     for r in row..row + array_height {
                         for c in column..column + array_width {
                             let value = array[(r - row) as usize][(c - column) as usize].clone();
-                            let cell = if r == row && c == column {
-                                Cell::ArrayFormula {
+                            if r == row && c == column {
+                                let anchor = Cell::ArrayFormula {
                                     f: formula,
                                     s,
                                     r: (array_width, array_height),
                                     kind: ArrayKind::Dynamic,
                                     v: array_node_to_formula_value(value),
-                                }
+                                };
+                                worksheet.update_cell(r, c, anchor)?;
                             } else {
                                 let existing_style = worksheet.get_style(r, c);
-                                Cell::SpillCell {
+                                let spill = Cell::SpillCell {
                                     a: (row, column),
                                     s: existing_style,
                                     v: array_node_to_spill_value(value),
-                                }
-                            };
-                            worksheet.update_cell(r, c, cell)?;
+                                };
+                                worksheet.write_spill(r, c, spill)?;
+                            }
                         }
                     }
                     return Ok(());
@@ -3124,6 +3125,11 @@ impl<'a, A: Position> Model<'a, A> {
 
         while retry && restart_count < max_restarts {
             retry = false;
+            // Spill cells are derived: every pass rebuilds them from nothing, so a representation
+            // keeping them out of `sheet_data` needs no per-anchor clearing of its own.
+            for worksheet in &mut self.workbook.worksheets {
+                A::drop_spills(worksheet);
+            }
             self.cells.clear();
             self.support.clear();
             // dynamic links (HYPERLINK) are rebuilt on every evaluation

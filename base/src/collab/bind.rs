@@ -896,7 +896,7 @@ mod test {
         let r = Stable::row_at(&ws.index, row).unwrap();
         let c = Stable::col_at(&ws.index, column).unwrap();
         match ws.sheet_data.get(&r).and_then(|row| row.get(&c)).unwrap() {
-            Cell::CellFormula { f, .. } => {
+            Cell::CellFormula { f, .. } | Cell::ArrayFormula { f, .. } => {
                 model.parsed_formulas[sheet as usize][*f as usize].0.clone()
             }
             other => panic!("not a formula cell: {other:?}"),

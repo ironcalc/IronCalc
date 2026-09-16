@@ -514,3 +514,78 @@ fn update_range_style_matches_ordinal() {
     undo_both(&mut o, &mut c, "undo italic column B");
     redo_both(&mut o, &mut c, "redo italic column B");
 }
+
+#[test]
+fn dynamic_array_undo_redo_matches_ordinal() {
+    let (mut o, mut c) = pair();
+    // passive peer: it only ever sees what `c` put on the wire, undo and redo included.
+    let mut peer = UserModel::<Stable>::from_model(CollabModel::new(2));
+    macro_rules! sync {
+        () => {
+            peer.apply_external_diffs(&c.flush_send_queue()).unwrap();
+        };
+    }
+
+    both!(o, c, set_user_input(0, 2, 2, "=SEQUENCE(2,2)"), "anchor B2");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 3, 3).unwrap(), "4");
+
+    // C3 is a spill position: writing there blocks the anchor on both.
+    both!(o, c, set_user_input(0, 3, 3, "7"), "block C3");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 2, 2).unwrap(), "#SPILL!");
+
+    undo_both(&mut o, &mut c, "undo block C3");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 3, 3).unwrap(), "4");
+    redo_both(&mut o, &mut c, "redo block C3");
+    sync!();
+    undo_both(&mut o, &mut c, "undo block C3 again");
+    sync!();
+
+    // Overwriting the anchor itself with a scalar formula, and putting it back.
+    both!(o, c, set_user_input(0, 2, 2, "=A1"), "scalar over anchor");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 3, 3).unwrap(), "");
+    undo_both(&mut o, &mut c, "undo scalar over anchor");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 3, 3).unwrap(), "4");
+    redo_both(&mut o, &mut c, "redo scalar over anchor");
+    sync!();
+    undo_both(&mut o, &mut c, "undo scalar over anchor again");
+    sync!();
+
+    // A structural move straight through the spill.
+    both!(o, c, insert_rows(0, 2, 1), "insert a row at the anchor");
+    sync!();
+    undo_both(&mut o, &mut c, "undo insert_rows");
+    sync!();
+    redo_both(&mut o, &mut c, "redo insert_rows");
+    sync!();
+    undo_both(&mut o, &mut c, "undo insert_rows again");
+    sync!();
+
+    // All the way back to an empty sheet, then all the way forward again.
+    undo_both(&mut o, &mut c, "undo anchor B2");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 2, 2).unwrap(), "");
+    assert!(!c.can_undo() && !o.can_undo());
+    while c.can_redo() {
+        redo_both(&mut o, &mut c, "redo forward");
+        sync!();
+    }
+    // The last redo is the row insert, so the anchor sits at B3 and spills B3:C4.
+    assert_eq!(c.get_formatted_cell_value(0, 3, 2).unwrap(), "1");
+    assert_eq!(c.get_formatted_cell_value(0, 4, 3).unwrap(), "4");
+
+    // The peer only ever replayed the wire, and still shows the same sheet.
+    for row in 1..=8 {
+        for col in 1..=4 {
+            assert_eq!(
+                peer.get_formatted_cell_value(0, row, col).unwrap(),
+                c.get_formatted_cell_value(0, row, col).unwrap(),
+                "peer value at ({row}, {col})"
+            );
+        }
+    }
+}

@@ -407,6 +407,18 @@ pub trait Position: sealed::Sealed + Sized + Clone {
     fn row_height(sheet: &Worksheet<Self>, row: i32) -> Result<f64, String>;
     fn is_row_hidden(sheet: &Worksheet<Self>, row: i32) -> Result<bool, String>;
 
+    /// The cell at `(row, column)`: what `sheet_data` holds.
+    fn cell(sheet: &Worksheet<Self>, row: i32, column: i32) -> Option<&Cell>;
+    /// Stores a spilled cell at `(row, column)`.
+    fn write_spill(
+        sheet: &mut Worksheet<Self>,
+        row: i32,
+        column: i32,
+        cell: Cell,
+    ) -> Result<(), String>;
+    /// Drops every spilled cell of the sheet, before a full re-evaluation rebuilds them.
+    fn drop_spills(_sheet: &mut Worksheet<Self>) {}
+
     /// The AST the formula interned at `index` on `sheet` is *shown* as:
     /// 1. For [Ordinal] is pretty much identity function.
     /// 2. For [Stable] is a lowered stable references to construct a specific node.
@@ -535,6 +547,15 @@ impl Position for Ordinal {
             }
         }
         Ok(false)
+    }
+
+    #[inline]
+    fn cell(sheet: &Worksheet, row: i32, column: i32) -> Option<&Cell> {
+        sheet.stored_cell(row, column)
+    }
+    #[inline]
+    fn write_spill(sheet: &mut Worksheet, row: i32, column: i32, cell: Cell) -> Result<(), String> {
+        sheet.update_cell(row, column, cell)
     }
 
     /// The stored node already carries offsets from wherever the formula sits, so it *is* the

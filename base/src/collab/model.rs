@@ -6,6 +6,7 @@ use crate::collab::patch::{
     CfPropKind, DefinedNameBody, DefinedNameId, NamedStyle, NamedStyleId, Patch, PropKind, SheetId,
     SheetPropKind, WorkbookPropKind,
 };
+use crate::collab::spill::Spills;
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, DEFAULT_WINDOW_HEIGHT,
     DEFAULT_WINDOW_WIDTH, ROW_HEIGHT_FACTOR,
@@ -17,7 +18,7 @@ use crate::locale::get_default_locale;
 use crate::model::Model;
 use crate::new_empty::{APPLICATION, APP_VERSION, IRONCALC_USER};
 use crate::types::{
-    sealed::Sealed, CellAddr, Col, Metadata, Position, RangeRef, Row, Style, Workbook,
+    sealed::Sealed, Cell, CellAddr, Col, Metadata, Position, RangeRef, Row, Style, Workbook,
     WorkbookSettings, WorkbookView, Worksheet, WorksheetView,
 };
 use crate::tz::Tz;
@@ -130,6 +131,30 @@ impl Position for Stable {
         Ok(sheet.row_record(row).is_some_and(|record| record.hidden))
     }
 
+    fn cell(sheet: &Worksheet<Stable>, row: i32, column: i32) -> Option<&Cell> {
+        match sheet.stored_cell(row, column) {
+            stored @ (Some(Cell::EmptyCell { .. }) | None) => {
+                // we need to check spills in case if spilled cell reached beyond
+                // materialized fractional index
+                sheet.index.spills.get(row, column).or(stored)
+            }
+            stored => stored,
+        }
+    }
+
+    fn write_spill(
+        sheet: &mut Worksheet<Stable>,
+        row: i32,
+        column: i32,
+        cell: Cell,
+    ) -> Result<(), String> {
+        sheet.index.spills.insert(row, column, cell)
+    }
+
+    fn drop_spills(sheet: &mut Worksheet<Stable>) {
+        sheet.index.spills.clear();
+    }
+
     /// The cell's own stream, lowered against the cell: relative references come back as offsets
     /// from it and keep the `$`-less spelling they were authored with. `parsed_formulas` cannot
     /// serve this — it holds the all-absolute form the evaluator shares between hosts.
@@ -180,6 +205,9 @@ pub struct SheetIndexes {
     pub rows: FractionalIndex,
     pub cols: FractionalIndex,
     pub registers: SheetRegisters,
+    /// Spill cells are rebuild from sheet state.
+    #[bitcode(skip)]
+    pub spills: Spills,
 }
 
 /// The last-write guard of every register a sheet owns: only the [`Timestamp`] that last won each,
@@ -192,7 +220,6 @@ pub struct SheetIndexes {
 pub struct SheetRegisters {
     pub cell_values: HashMap<StableCellAddress, Timestamp>,
     pub cell_styles: HashMap<(StableCellAddress, PropKind), Timestamp>,
-    pub arrays: HashMap<StableCellAddress, Timestamp>,
     pub rows: HashMap<(FractionalKey, PropKind), Timestamp>,
     pub col_spans: HashMap<((FractionalKey, FractionalKey), PropKind), Timestamp>,
     pub props: HashMap<SheetPropKind, Timestamp>,
@@ -534,6 +561,7 @@ impl CollabModel<'_> {
             rows: FractionalIndex::new(vec![], vec![], suffix),
             cols: FractionalIndex::new(vec![], vec![], suffix),
             registers: Default::default(),
+            spills: Default::default(),
         }
     }
 }
@@ -552,6 +580,7 @@ mod test {
             rows: FractionalIndex::new(vec![], vec![], [b'r', 0, 0, 0]),
             cols: FractionalIndex::new(vec![], vec![], [b'c', 0, 0, 0]),
             registers: Default::default(),
+            spills: Default::default(),
         }
     }
 

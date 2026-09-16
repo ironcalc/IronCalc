@@ -15,6 +15,9 @@ mod ui;
 mod undo_redo;
 
 pub(crate) use common::update_style;
+// The collab spill tests assert on this; nothing in the library reads it.
+#[cfg(test)]
+pub(crate) use common::CellArrayStructure;
 pub use common::UserModel;
 pub use history::OrdinalUserState;
 
