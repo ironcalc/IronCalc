@@ -1,23 +1,12 @@
 use pyo3::prelude::*;
-use pyo3::IntoPyObjectExt;
 
-use xlsx::base::cell::CellValue;
 use xlsx::base::types::{Link, SheetState, Style, Theme};
 use xlsx::base::Model;
 use xlsx::export::{save_to_icalc, save_to_xlsx};
 
 use crate::types::PyCellType;
 use crate::user_model::DefinedNameEntry;
-use crate::{area, from_python, py_to_color, to_py_err, to_python};
-
-fn cell_value_to_py(py: Python<'_>, value: CellValue) -> PyResult<Py<PyAny>> {
-    match value {
-        CellValue::None => Ok(py.None()),
-        CellValue::String(s) => s.into_py_any(py),
-        CellValue::Number(f) => f.into_py_any(py),
-        CellValue::Boolean(b) => b.into_py_any(py),
-    }
-}
+use crate::{area, cell_value_to_py, from_python, py_to_color, to_py_err, to_python};
 
 /// A workbook model implementing the "raw" low level API. Nothing is
 /// evaluated automatically: you need to call `evaluate` yourself. There is no

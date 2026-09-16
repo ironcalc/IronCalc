@@ -7,7 +7,7 @@ use xlsx::export::{save_to_icalc, save_to_xlsx};
 use xlsx::import;
 
 use crate::types::PyCellType;
-use crate::{area, from_python, leak_str, py_to_color, to_py_err, to_python};
+use crate::{area, cell_value_to_py, from_python, leak_str, py_to_color, to_py_err, to_python};
 
 use serde::Serialize;
 
@@ -240,6 +240,23 @@ impl PyUserModel {
         self.model
             .get_cell_content(sheet, row, column)
             .map_err(to_py_err)
+    }
+
+    /// Returns the value of a cell as a native Python value
+    /// (None, str, float or bool)
+    pub fn get_cell_value(
+        &self,
+        py: Python<'_>,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> PyResult<Py<PyAny>> {
+        let value = self
+            .model
+            .get_model()
+            .get_cell_value_by_index(sheet, row, column)
+            .map_err(to_py_err)?;
+        cell_value_to_py(py, value)
     }
 
     /// Returns the formatted value of a cell (i.e. "$ 5.75")
