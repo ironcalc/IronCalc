@@ -2,11 +2,11 @@
 
 use crate::collab::fractional_index::{FractionalIndex, FractionalKey};
 use crate::collab::log::Timestamp;
-use crate::collab::model::{CollabModel, StableCellAddress, StableRange};
+use crate::collab::model::{CollabModel, Stable, StableCellAddress, StableRange};
 use crate::collab::patch::{Patch, Property};
 use crate::expressions::types::Area;
 use crate::merged_cells::{merge_across_ranges, merge_down_ranges};
-use crate::types::{Alignment, Cell, HorizontalAlignment, MergedCell};
+use crate::types::{Alignment, Cell, HorizontalAlignment, MergedCell, Position};
 use std::cmp::Ordering;
 
 /// The keys of ordinals `first..=last` on `index`, and the tail keys that have to be inserted
@@ -25,12 +25,6 @@ fn axis_keys(
         })
         .collect();
     (keys, planned)
-}
-
-/// Every `(row, column)` of `range`, row-major.
-fn cells_of(range: &Area) -> impl Iterator<Item = (i32, i32)> + '_ {
-    (range.row..range.row + range.height)
-        .flat_map(|row| (range.column..range.column + range.width).map(move |col| (row, col)))
 }
 
 /// Whether two ordinal rectangles `(row1, column1, row2, column2)` overlap.
@@ -131,8 +125,7 @@ impl CollabModel<'_> {
             .merged_cells
             .iter()
             .filter(|range| {
-                range
-                    .resolve(&worksheet.index)
+                Stable::resolve_merged(range, &worksheet.index)
                     .is_some_and(|stored| intersects(stored, rect))
             })
             .map(|range| Patch::SetMergedRange {
@@ -245,55 +238,59 @@ impl CollabModel<'_> {
             }
         }
 
-        for (r, c) in cells_of(range) {
-            let at = at_of(r, c);
-            if (r, c) == (row, column) {
-                continue;
-            }
-            if self.workbook.worksheets[i].cell(r, c).is_some() {
-                patches.push(Patch::SetCellValue {
-                    sheet: id,
-                    at: at.clone(),
-                    value: None,
-                    ts: None,
-                    prev: Box::new(self.cell_input(i, &at)),
-                });
-            }
-            if let Some(link) = self.workbook.worksheets[i].links.get(&at).cloned() {
-                patches.push(Patch::SetCellLink {
-                    sheet: id,
-                    at,
-                    link: None,
-                    prev: Some(link),
-                });
+        for r in row..row + height {
+            for c in column..column + width {
+                let at = at_of(r, c);
+                if (r, c) == (row, column) {
+                    continue;
+                }
+                if self.workbook.worksheets[i].cell(r, c).is_some() {
+                    patches.push(Patch::SetCellValue {
+                        sheet: id,
+                        at: at.clone(),
+                        value: None,
+                        ts: None,
+                        prev: Box::new(self.cell_input(i, &at)),
+                    });
+                }
+                if let Some(link) = self.workbook.worksheets[i].links.get(&at).cloned() {
+                    patches.push(Patch::SetCellLink {
+                        sheet: id,
+                        at,
+                        link: None,
+                        prev: Some(link),
+                    });
+                }
             }
         }
 
-        for (r, c) in cells_of(range) {
-            let at = at_of(r, c);
-            let mut style = merged_style.clone();
-            if r != row {
-                style.border.top = None;
+        for r in row..row + height {
+            for c in column..column + width {
+                let at = at_of(r, c);
+                let mut style = merged_style.clone();
+                if r != row {
+                    style.border.top = None;
+                }
+                if r != row + height - 1 {
+                    style.border.bottom = None;
+                }
+                if c != column {
+                    style.border.left = None;
+                }
+                if c != column + width - 1 {
+                    style.border.right = None;
+                }
+                // Every attribute is stamped: a cleared cell keeps no style of its own, and the
+                // merged style has to outrank whatever the anchor's own write left behind.
+                let stored = self.cell_style_at(i, &at).unwrap_or_default();
+                patches.push(Patch::SetCellStyle {
+                    sheet: id,
+                    at,
+                    props: Property::all(&style),
+                    ts: None,
+                    prev: Property::all(&stored),
+                });
             }
-            if r != row + height - 1 {
-                style.border.bottom = None;
-            }
-            if c != column {
-                style.border.left = None;
-            }
-            if c != column + width - 1 {
-                style.border.right = None;
-            }
-            // Every attribute is stamped: a cleared cell keeps no style of its own, and the
-            // merged style has to outrank whatever the anchor's own write left behind.
-            let stored = self.cell_style_at(i, &at).unwrap_or_default();
-            patches.push(Patch::SetCellStyle {
-                sheet: id,
-                at,
-                props: Property::all(&style),
-                ts: None,
-                prev: Property::all(&stored),
-            });
         }
 
         let last = at_of(row + height - 1, column + width - 1);
@@ -322,7 +319,7 @@ impl CollabModel<'_> {
                 .merged_cells
                 .iter()
                 .filter_map(|range| {
-                    let rect = range.resolve(index)?;
+                    let rect = Stable::resolve_merged(range, index)?;
                     let ts = index
                         .registers
                         .merges
@@ -377,7 +374,6 @@ mod tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::collab::log::Commit;
-    use crate::collab::model::Stable;
     use crate::types::Worksheet;
     use crate::UserModel;
 
@@ -634,6 +630,75 @@ mod tests {
             assert_eq!(m.get_formatted_cell_value(0, 2, 2), Ok("late".to_string()));
         }
         converged(&a, &b);
+    }
+
+    #[test]
+    fn shrunk_merge_vanishes_and_returns() {
+        let mut a = UserModel::new_empty_with_session("model", "en", "UTC", "en", 1).unwrap();
+        let mut b = UserModel::new_empty_with_session("model", "en", "UTC", "en", 2).unwrap();
+        a.set_user_input(0, 2, 2, "x").unwrap(); // B2='x'
+        a.merge_cells(&area(2, 2, 1, 2)).unwrap(); // B2:B3
+        a.delete_rows(0, 3, 1).unwrap(); // remove row which was part of merged cells
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        for m in [&mut a, &mut b] {
+            assert!(m.get_merged_cells(0).unwrap().is_empty());
+            assert!(m.model.workbook.worksheets[0]
+                .merged_range_containing(2, 2)
+                .is_none());
+        }
+
+        // A undoes delete rows
+        a.undo().unwrap();
+        // B changes the value
+        b.set_user_input(0, 2, 2, "y").unwrap(); // B2='y'
+        b.evaluate();
+        assert_eq!(b.get_formatted_cell_value(0, 2, 2), Ok("y".to_string()));
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        a.apply_external_diffs(&b.flush_send_queue()).unwrap();
+
+        for m in [&a, &b] {
+            assert_eq!(
+                m.get_merged_cells(0).unwrap(),
+                vec![MergedCell {
+                    row: 2,
+                    column: 2,
+                    width: 1,
+                    height: 2
+                }]
+            );
+            assert_eq!(m.get_formatted_cell_value(0, 2, 2).unwrap(), "y");
+        }
+        converged(&a.model, &b.model);
+    }
+
+    #[test]
+    fn revived_merge_over_a_newer_one_cancels_both() {
+        let mut a = UserModel::new_empty_with_session("model", "en", "UTC", "en", 1).unwrap();
+        let mut b = UserModel::new_empty_with_session("model", "en", "UTC", "en", 2).unwrap();
+        a.set_user_input(0, 2, 2, "x").unwrap(); // B2='x'
+        a.merge_cells(&area(2, 2, 1, 2)).unwrap(); // B2:B3
+        a.delete_rows(0, 3, 1).unwrap(); // remove row with covered cell
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+
+        // B2:B3 is collapsed to a single cell, so B2:C2 is a valid merge.
+        b.merge_cells(&area(2, 2, 2, 1)).unwrap(); // B2:C2
+        a.apply_external_diffs(&b.flush_send_queue()).unwrap();
+
+        // A undoes delete row
+        a.undo().unwrap();
+        assert!(a.get_merged_cells(0).unwrap().is_empty());
+        assert!(a.model.local.pending.iter().any(|commit| commit
+            .patches
+            .iter()
+            .any(|patch| matches!(patch, Patch::SetMergedRange { merged: false, .. }))));
+
+        let cancel = a.flush_send_queue();
+        b.apply_external_diffs(&cancel).unwrap();
+        for m in [&a, &b] {
+            assert!(m.get_merged_cells(0).unwrap().is_empty());
+            assert_eq!(m.get_formatted_cell_value(0, 2, 2).unwrap(), "x");
+        }
+        converged(&a.model, &b.model);
     }
 
     #[test]

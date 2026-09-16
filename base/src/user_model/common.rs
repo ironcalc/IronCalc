@@ -2334,6 +2334,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         if let Some(step) = self.state.undo_stack.pop() {
             self.model
                 .commit_local(crate::collab::patch::invert_patches(&step));
+            self.model.reconcile_merges();
             self.state.redo_stack.push(step);
             self.evaluate_if_not_paused();
         }
@@ -2344,6 +2345,7 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
     pub fn redo(&mut self) -> Result<(), String> {
         if let Some(step) = self.state.redo_stack.pop() {
             self.model.commit_local(step.clone());
+            self.model.reconcile_merges();
             self.state.undo_stack.push(step);
             self.evaluate_if_not_paused();
         }
