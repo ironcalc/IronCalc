@@ -24,6 +24,23 @@ fn test_general() {
 }
 
 #[test]
+fn rounding_carries_into_an_integer_part_of_zero() {
+    // 0.96 shown with one decimal is 1.0: the carry must not be lost when the
+    // integer part is 0 (it was: "0.0").
+    let locale = get_default_locale();
+    assert_eq!(format_number(0.96, "0.0", locale).text, "1.0");
+    assert_eq!(format_number(-0.96, "0.0", locale).text, "-1.0");
+    assert_eq!(format_number(-0.96, "#,##0.0;(#,##0.0)", locale).text, "(1.0)");
+    assert_eq!(format_number(0.996, "0.00", locale).text, "1.00");
+    assert_eq!(format_number(0.0996, "0.00", locale).text, "0.10");
+    assert_eq!(format_number(0.04, "0.0", locale).text, "0.0");
+    assert_eq!(format_number(0.6, "0", locale).text, "1");
+    assert_eq!(format_number(9.96, "0.0", locale).text, "10.0");
+    assert_eq!(format_number(0.996, "0.0%", locale).text, "99.6%");
+    assert_eq!(format_number(0.00996, "0.0%", locale).text, "1.0%");
+}
+
+#[test]
 fn simple_test_comma() {
     let locale = get_default_locale();
     assert_eq!(format_number(1007.0, "000", locale).text, "1007");
