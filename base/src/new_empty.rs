@@ -678,7 +678,6 @@ impl<'a> Model<'a> {
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
         let parser = Parser::new(worksheet_names, vec![], HashMap::new(), locale, language);
-        let cells = HashMap::new();
 
         let mut model = Model {
             workbook,
@@ -686,7 +685,6 @@ impl<'a> Model<'a> {
             parsed_formulas,
             parsed_defined_names: HashMap::new(),
             parser,
-            cells,
             locale,
             language,
             tz,
@@ -695,8 +693,7 @@ impl<'a> Model<'a> {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
-            spill_cells: Vec::new(),
-            support: HashMap::new(),
+            evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
         };

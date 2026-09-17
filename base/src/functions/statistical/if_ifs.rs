@@ -115,6 +115,27 @@ impl<'a> Model<'a> {
         let open_row = left_row == 1 && right_row == LAST_ROW;
         let open_column = left_column == 1 && right_column == LAST_COLUMN;
 
+        // The cells beyond the used area are taken as empty without being
+        // read; every range depends on them, so they go on record first.
+        for range in ranges.iter() {
+            let sheet = range.left.sheet;
+            let (top, left) = (range.left.row, range.left.column);
+            let (bottom, right) = (range.right.row, range.right.column);
+            if open_row {
+                let first_skipped = top + (max_row + 1 - left_row);
+                self.record_seen_empty_range(sheet, first_skipped, left, bottom, right);
+            }
+            if open_column {
+                let first_skipped = left + (max_column + 1 - left_column);
+                let last_walked_row = if open_row {
+                    top + (max_row - left_row)
+                } else {
+                    bottom
+                };
+                self.record_seen_empty_range(sheet, top, first_skipped, last_walked_row, right);
+            }
+        }
+
         for row in left_row..right_row + 1 {
             if open_row && row > max_row {
                 // If the row is larger than the max row in the sheet then all cells are empty.
@@ -267,29 +288,18 @@ impl<'a> Model<'a> {
         let mut right_row = sum_range.right.row;
         let mut right_column = sum_range.right.column;
 
-        if left_row == 1 && right_row == LAST_ROW {
-            right_row = match self.workbook.worksheet(sum_range.left.sheet) {
-                Ok(s) => s.dimension().max_row,
-                Err(_) => {
-                    return Err(CalcResult::new_error(
-                        Error::ERROR,
-                        cell,
-                        format!("Invalid worksheet index: '{}'", sum_range.left.sheet),
-                    ));
-                }
-            };
-        }
-        if left_column == 1 && right_column == LAST_COLUMN {
-            right_column = match self.workbook.worksheet(sum_range.left.sheet) {
-                Ok(s) => s.dimension().max_column,
-                Err(_) => {
-                    return Err(CalcResult::new_error(
-                        Error::ERROR,
-                        cell,
-                        format!("Invalid worksheet index: '{}'", sum_range.left.sheet),
-                    ));
-                }
-            };
+        match self.clip_to_used_area(
+            sum_range.left.sheet,
+            left_row,
+            left_column,
+            right_row,
+            right_column,
+        ) {
+            Ok((r, c)) => {
+                right_row = r;
+                right_column = c;
+            }
+            Err(message) => return Err(CalcResult::new_error(Error::ERROR, cell, message)),
         }
 
         for row in left_row..right_row + 1 {

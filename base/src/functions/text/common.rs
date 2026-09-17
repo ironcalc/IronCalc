@@ -2,7 +2,6 @@ use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
     cast::{array_node_to_string, calc_result_to_array_node},
-    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -468,33 +467,9 @@ impl<'a> Model<'a> {
     // LEN, LEFT, RIGHT, MID, LOWER, UPPER, TRIM
     pub(crate) fn fn_len(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
-            let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => format!("{v}"),
-                CalcResult::String(v) => v,
-                CalcResult::Boolean(b) => {
-                    if b {
-                        "TRUE".to_string()
-                    } else {
-                        "FALSE".to_string()
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::Range { .. } => {
-                    // Implicit Intersection not implemented
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Implicit Intersection not implemented".to_string(),
-                    };
-                }
-                CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
+            let s = match self.get_string(&args[0], cell) {
+                Ok(s) => s,
+                Err(error) => return error,
             };
             return CalcResult::Number(s.chars().count() as f64);
         }
@@ -999,29 +974,12 @@ impl<'a> Model<'a> {
                     let mut row2 = right.row;
                     let column1 = left.column;
                     let mut column2 = right.column;
-                    if row1 == 1 && row2 == LAST_ROW {
-                        row2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_row,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_column,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
+                    match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
+                        Ok((r, c)) => {
+                            row2 = r;
+                            column2 = c;
+                        }
+                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {

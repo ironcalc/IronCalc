@@ -3,7 +3,6 @@ use regex::Regex;
 #[cfg(target_arch = "wasm32")]
 use regex_lite::Regex;
 
-use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -221,29 +220,12 @@ impl<'a> Model<'a> {
                 // Honour entire-column/row references: clamp to worksheet used range.
                 let mut row2 = right.row;
                 let mut col2 = right.column;
-                if left.row == 1 && row2 == LAST_ROW {
-                    row2 = match self.workbook.worksheet(left.sheet) {
-                        Ok(s) => s.dimension().max_row,
-                        Err(_) => {
-                            return CalcResult::new_error(
-                                Error::ERROR,
-                                cell,
-                                format!("Invalid worksheet index: '{}'", left.sheet),
-                            )
-                        }
-                    };
-                }
-                if left.column == 1 && col2 == LAST_COLUMN {
-                    col2 = match self.workbook.worksheet(left.sheet) {
-                        Ok(s) => s.dimension().max_column,
-                        Err(_) => {
-                            return CalcResult::new_error(
-                                Error::ERROR,
-                                cell,
-                                format!("Invalid worksheet index: '{}'", left.sheet),
-                            )
-                        }
-                    };
+                match self.clip_to_used_area(left.sheet, left.row, left.column, row2, col2) {
+                    Ok((r, c)) => {
+                        row2 = r;
+                        col2 = c;
+                    }
+                    Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
                 }
                 let right = CellReferenceIndex {
                     sheet: right.sheet,
