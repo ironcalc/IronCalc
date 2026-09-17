@@ -376,6 +376,12 @@ fn get_cell_from_excel(
     //   str (String)
 
     if formula_index == -1 {
+        // A cell with no <v> and no inline string is empty whatever its `t`
+        // says: writers routinely emit `<c r="C10" s="1" t="n"/>` for a cell
+        // that only carries a style, and Excel treats it as blank, not as 0.
+        if cell_value.is_none() && rich_text_inline.is_none() && cell_type != "empty" {
+            return Cell::EmptyCell { s: cell_style };
+        }
         match cell_type {
             "b" => {
                 if let Some(anchor) = anchor_cell {
@@ -1427,7 +1433,20 @@ mod tests {
 
     use ironcalc_base::types::Link;
 
-    use crate::import::worksheets::{load_hyperlinks, parse_reference};
+    use crate::import::worksheets::{get_cell_from_excel, load_hyperlinks, parse_reference, CellArrayKind};
+    use ironcalc_base::types::Cell;
+
+    #[test]
+    fn typed_cell_without_value_is_empty() {
+        // `<c r="C10" s="1" t="n"/>`: a style, a type, no value → blank, not 0.
+        let mut shared_strings = Vec::new();
+        for t in ["n", "b", "str", "s", "e"] {
+            let cell = get_cell_from_excel(None, None, t, 1, -1, "Sheet1", "C10", &mut shared_strings, None, None, CellArrayKind::None);
+            assert_eq!(cell, Cell::EmptyCell { s: 1 }, "type {t}");
+        }
+        let cell = get_cell_from_excel(Some("0"), None, "n", 1, -1, "Sheet1", "C10", &mut shared_strings, None, None, CellArrayKind::None);
+        assert_eq!(cell, Cell::NumberCell { v: 0.0, s: 1 });
+    }
 
     #[test]
     fn parse_reference_works() {
