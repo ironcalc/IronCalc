@@ -1,0 +1,15 @@
+# Normalise line endings: every text file is committed with LF, whatever the
+# contributor's editor or platform does.
+* text=auto eol=lf
+
+# Binary formats, never normalised.
+*.xlsx binary
+*.xlsm binary
+*.ic   binary
+*.png  binary
+*.jpg  binary
+*.gif  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
