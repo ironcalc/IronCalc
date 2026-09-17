@@ -362,6 +362,16 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
+                CalcResult::Array(array) => {
+                    // COUNT over an array counts its numeric elements.
+                    for row in array {
+                        for value in row {
+                            if matches!(value, crate::expressions::parser::ArrayNode::Number(_)) {
+                                result += 1.0;
+                            }
+                        }
+                    }
+                }
                 _ => {
                     // Ignore everything else
                 }

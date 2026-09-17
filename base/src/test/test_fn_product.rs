@@ -122,3 +122,32 @@ fn test_fn_product_boolean_values_converted() {
     assert_eq!(model._get_text("A1"), *"1");
     assert_eq!(model._get_text("A2"), *"0");
 }
+
+#[test]
+fn test_product_over_arrays() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("A4", "4");
+    model._set("B1", "=PRODUCT(1+A1:A4)");
+    model._set("B2", "=PRODUCT({1,2,3})");
+    model._set("B3", "=PRODUCT(A1:A4*2)");
+    model._set("B4", "=(PRODUCT(1+A1:A4))^0.5-1");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "120");
+    assert_eq!(model._get_text("B2"), "6");
+    assert_eq!(model._get_text("B3"), "384");
+    // sqrt(120) - 1
+    assert_eq!(model._get_text("B4"), "9.95445115");
+}
+
+#[test]
+fn test_product_array_error_propagates() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "=1/0");
+    model._set("B1", "=PRODUCT(A1:A2*2)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#DIV/0!");
+}
