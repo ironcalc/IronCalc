@@ -62,6 +62,12 @@ def test_cross_sheet_formula(um):
     assert um.get_formatted_cell_value(0, 1, 1) == "42"
 
 
+def test_cross_sheet_get_cell_value_by_ref_(um):
+    um.new_sheet()
+    um.set_user_input(1, 1, 1, "42")
+    assert um.get_cell_value_by_ref("Sheet2!A1") == 42.0
+
+
 def test_show_grid_lines(um):
     assert um.get_show_grid_lines(0) is True
     um.set_show_grid_lines(0, False)

@@ -259,6 +259,26 @@ impl PyUserModel {
         cell_value_to_py(py, value)
     }
 
+    /// Returns the value of a cell referenced like "Sheet1!C4"
+    /// as a native Python value (None, str, float or bool).
+    pub fn get_cell_value_by_ref(&self, py: Python<'_>, cell_ref: &str) -> PyResult<Py<PyAny>> {
+        let value = self
+            .model
+            .get_model()
+            .get_cell_value_by_ref(cell_ref)
+            .map_err(to_py_err)?;
+
+        cell_value_to_py(py, value)
+    }
+
+    /// Returns the formula of a cell, if any.
+    pub fn get_cell_formula(&self, sheet: u32, row: i32, column: i32) -> PyResult<Option<String>> {
+        self.model
+            .get_model()
+            .get_cell_formula(sheet, row, column)
+            .map_err(to_py_err)
+    }
+
     /// Returns the formatted value of a cell (i.e. "$ 5.75")
     pub fn get_formatted_cell_value(&self, sheet: u32, row: i32, column: i32) -> PyResult<String> {
         self.model
