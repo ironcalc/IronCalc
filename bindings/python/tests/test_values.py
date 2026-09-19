@@ -47,6 +47,16 @@ def test_get_cell_value_by_ref(rm):
     assert rm.get_cell_value_by_ref("Sheet1!C4") == 3.25
 
 
+def test_user_model_get_cell_value_by_ref(um):
+    um.set_user_input(0, 1, 1, "100")
+    um.set_user_input(0, 1, 2, "50")
+    um.set_user_input(0, 1, 3, "=A1+B1")
+
+    assert um.get_cell_value_by_ref("Sheet1!C1") == 150.0
+    assert um.get_cell_value_by_ref("Sheet1!A1") == 100.0
+    assert um.get_cell_value_by_ref("Sheet1!D1") is None
+
+
 def test_cell_types(um):
     um.set_user_input(0, 1, 1, "42")
     um.set_user_input(0, 2, 1, "Hello")
@@ -64,6 +74,15 @@ def test_get_cell_content_returns_formula(um):
     um.set_user_input(0, 2, 1, "plain text")
     assert um.get_cell_content(0, 1, 1) == "=1+2"
     assert um.get_cell_content(0, 2, 1) == "plain text"
+
+
+def test_user_model_get_cell_formula(um):
+    um.set_user_input(0, 1, 1, "100")
+    um.set_user_input(0, 1, 2, "=A1*2")
+
+    assert um.get_cell_formula(0, 1, 1) is None
+    assert um.get_cell_formula(0, 1, 2) == "=A1*2"
+    assert um.get_cell_formula(0, 1, 3) is None
 
 
 def test_update_cell_without_parsing(rm):

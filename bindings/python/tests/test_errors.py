@@ -12,6 +12,11 @@ def test_invalid_cell_reference_raises(rm):
         rm.get_cell_value_by_ref("NotASheet!A1")
 
 
+def test_user_model_invalid_cell_reference_raises(um):
+    with pytest.raises(ic.WorkbookError):
+        um.get_cell_value_by_ref("NotASheet!A1")
+
+
 def test_invalid_style_path_raises(um):
     with pytest.raises(ic.WorkbookError):
         um.update_range_style(0, 1, 1, 1, 1, "font.nonsense", "true")

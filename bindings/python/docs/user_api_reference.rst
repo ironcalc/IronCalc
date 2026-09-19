@@ -91,6 +91,18 @@ Cell values
 
    Returns the value formatted with the cell's number format (i.e. ``"$5.75"``).
 
+.. method:: UserModel.get_cell_value(sheet: int, row: int, column: int) -> None | str | float | bool
+
+   Returns the evaluated value of a cell as a native Python type.
+
+.. method:: UserModel.get_cell_value_by_ref(cell_ref: str) -> None | str | float | bool
+
+   Returns the evaluated value of a cell referenced by a string such as ``"Sheet1!C4"`` as a native Python value.
+
+.. method:: UserModel.get_cell_formula(sheet: int, row: int, column: int) -> str | None
+
+   Returns the cell formula, including the leading ``=``, or ``None`` if the cell does not contain a formula.
+
 .. method:: UserModel.get_cell_type(sheet: int, row: int, column: int) -> CellType
 .. method:: UserModel.get_cell_array_structure(sheet: int, row: int, column: int)
 
