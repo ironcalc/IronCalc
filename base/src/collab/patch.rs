@@ -49,7 +49,7 @@ use crate::collab::DynError;
 use crate::constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
 use crate::expressions::token::Error;
 use crate::types::{
-    BorderItem, Color, Comment, FontScheme, HorizontalAlignment, SheetState, Style, Theme,
+    BorderItem, Color, Comment, Dxf, FontScheme, HorizontalAlignment, SheetState, Style, Theme,
     VerticalAlignment,
 };
 use crate::{COLUMN_WIDTH_FACTOR, ROW_HEIGHT_FACTOR};
@@ -97,7 +97,6 @@ pub fn decode_patches(bytes: &[u8]) -> Result<Vec<Patch>, DynError> {
 ///
 /// - `DeleteSheet` with no [`SheetRestore`] captured — a user-initiated delete still takes no
 ///   snapshot, so only the one an `AddSheet` inverted into puts its sheet back,
-/// - `MoveConditionalFormats`, which is a no-op to begin with,
 /// - anything whose `prev` came off the wire, where it decodes as the default.
 ///
 /// Content restores replay at the stamp they were captured with, via the `ts` field, so a
@@ -433,7 +432,7 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                 position: restore.position.clone(),
                 content: restore.content.clone(),
             }),
-            Patch::DeleteSheet { prev: None, .. } | Patch::MoveConditionalFormats { .. } => {}
+            Patch::DeleteSheet { prev: None, .. } => {}
         }
     }
     out
@@ -615,7 +614,7 @@ pub enum Patch {
     AddConditionalFormat {
         sheet: SheetId,
         key: FractionalKey,
-        rule: Box<CfRule>,
+        rule: Box<StableCfRule>,
         ranges: Vec<StableRange>,
     },
     DeleteConditionalFormat {
@@ -624,13 +623,6 @@ pub enum Patch {
 
         #[bitcode(skip)]
         prev: Option<Box<ConditionalFormatState>>,
-    },
-    /// Dead: superseded by [`CfProperty::Priority`], which writes a position register instead of
-    /// reordering an index. Kept because variants are append-only; applying it does nothing.
-    MoveConditionalFormats {
-        sheet: SheetId,
-        keys: Vec<FractionalKey>,
-        dest: FractionalKey,
     },
     SetConditionalFormat {
         sheet: SheetId,
@@ -690,7 +682,6 @@ impl Patch {
             | Patch::SetSheetProperty { sheet, .. }
             | Patch::AddConditionalFormat { sheet, .. }
             | Patch::DeleteConditionalFormat { sheet, .. }
-            | Patch::MoveConditionalFormats { sheet, .. }
             | Patch::SetConditionalFormat { sheet, .. }
             | Patch::SetMergedRange { sheet, .. }
             | Patch::SetComment { sheet, .. }
@@ -1026,7 +1017,7 @@ impl WorkbookProperty {
 /// A property of a single conditional formatting rule. Each variant is a distinct register.
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub enum CfProperty {
-    Rule(Box<CfRule>),
+    Rule(Box<StableCfRule>),
     Ranges(Vec<StableRange>),
     /// Where the rule sits among the sheet's rules, which is what its priority *is*. A rule with
     /// no position written sorts by its own identity key.
@@ -1122,12 +1113,26 @@ impl DefinedNameProperty {
     }
 }
 
-/// A conditional formatting rule, without its priority — priority is the rule's position in the
-/// worksheet's conditional formatting index.
+/// A conditional formatting rule as it travels: a replica-local `dxf_id` and a replica-local A1
+/// formula string both mean nothing to a peer, so the format rides by value and each formula slot
+/// rides as a bound stream. The rule's own strings and `dxf_id` are derived on apply.
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+pub struct StableCfRule {
+    /// The rule with every formula slot blanked and `dxf_id` zeroed.
+    pub shape: CfRule,
+    /// One entry per formula slot, in [`CfRule::formulas_mut`] order.
+    pub formulas: Vec<DefinedNameBody>,
+    pub dxf: Option<Dxf>,
+}
+
+/// A conditional formatting rule, together with where it sits among the sheet's rules — which is
+/// what its priority is.
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct ConditionalFormatState {
-    pub rule: CfRule,
+    pub rule: StableCfRule,
     pub ranges: Vec<StableRange>,
+    /// The rule's position register, when one was ever written for it.
+    pub position: Option<FractionalKey>,
 }
 
 /// Everything a [`Patch::DeleteSheet`] removed, as the [`Patch::AddSheet`] that puts it back.
@@ -1172,7 +1177,7 @@ pub struct SheetContent {
     pub merge_cells: Vec<StableRange>,
     pub comments: Vec<Comment<Stable>>,
     pub links: Vec<(StableCellAddress, StableLink)>,
-    /// Ordered by [`FractionalKey`], which is both each rule's identity and its priority.
+    /// Ordered by the [`FractionalKey`] that is each rule's identity.
     pub conditional_formatting: Vec<(FractionalKey, ConditionalFormatState)>,
 }
 
@@ -1313,11 +1318,18 @@ mod test {
         }
     }
 
-    fn cf_rule() -> CfRule {
-        CfRule::Formula {
-            formula: "A1>0".to_string(),
-            dxf_id: 0,
-            stop_if_true: false,
+    fn cf_rule() -> StableCfRule {
+        StableCfRule {
+            shape: CfRule::Formula {
+                formula: String::new(),
+                dxf_id: 0,
+                stop_if_true: false,
+            },
+            formulas: vec![DefinedNameBody {
+                formula: formula(),
+                equals: false,
+            }],
+            dxf: Some(Dxf::default()),
         }
     }
 
@@ -1351,6 +1363,7 @@ mod test {
                 ConditionalFormatState {
                     rule: cf_rule(),
                     ranges: vec![range()],
+                    position: Some(key(10)),
                 },
             )],
         }
@@ -1492,11 +1505,6 @@ mod test {
                 sheet: 7,
                 key: key(9),
                 prev: None,
-            },
-            Patch::MoveConditionalFormats {
-                sheet: 7,
-                keys: vec![key(9)],
-                dest: key(10),
             },
             Patch::SetConditionalFormat {
                 sheet: 7,

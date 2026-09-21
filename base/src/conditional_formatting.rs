@@ -1218,166 +1218,11 @@ impl<'a, A: Position> Model<'a, A> {
 
     /// Converts a `CfRuleInput` into a stored `CfRule`, creating a dxf entry when a format is provided.
     pub(crate) fn cf_rule_from_input(&mut self, rule: CfRuleInput) -> CfRule {
-        match rule {
-            CfRuleInput::ColorScale { thresholds } => CfRule::ColorScale { thresholds },
-            CfRuleInput::CellIs {
-                operator,
-                formula,
-                formula2,
-                format,
-                stop_if_true,
-            } => CfRule::CellIs {
-                operator,
-                formula,
-                formula2,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Text {
-                operator,
-                value,
-                format,
-                stop_if_true,
-            } => CfRule::Text {
-                operator,
-                value,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Formula {
-                formula,
-                format,
-                stop_if_true,
-            } => CfRule::Formula {
-                formula,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::TimePeriod {
-                time_period,
-                date1,
-                date2,
-                format,
-                stop_if_true,
-            } => CfRule::TimePeriod {
-                time_period,
-                date1,
-                date2,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::DuplicateValues {
-                format,
-                stop_if_true,
-            } => CfRule::DuplicateValues {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::UniqueValues {
-                format,
-                stop_if_true,
-            } => CfRule::UniqueValues {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Blanks {
-                format,
-                stop_if_true,
-            } => CfRule::Blanks {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::NotBlanks {
-                format,
-                stop_if_true,
-            } => CfRule::NotBlanks {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Errors {
-                format,
-                stop_if_true,
-            } => CfRule::Errors {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::NoErrors {
-                format,
-                stop_if_true,
-            } => CfRule::NoErrors {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::AboveAverage {
-                format,
-                stop_if_true,
-            } => CfRule::AboveAverage {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::BelowAverage {
-                format,
-                stop_if_true,
-            } => CfRule::BelowAverage {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Top10 {
-                rank,
-                percent,
-                format,
-                stop_if_true,
-            } => CfRule::Top10 {
-                rank,
-                percent,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Bottom10 {
-                rank,
-                percent,
-                format,
-                stop_if_true,
-            } => CfRule::Bottom10 {
-                rank,
-                percent,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::DataBar {
-                min,
-                max,
-                positive_color,
-                negative_color,
-                is_gradient,
-                show_value,
-            } => CfRule::DataBar {
-                min,
-                max,
-                positive_color,
-                negative_color,
-                is_gradient,
-                show_value,
-            },
-            CfRuleInput::IconSet {
-                thresholds,
-                show_value,
-            } => CfRule::IconSet {
-                thresholds,
-                show_value,
-            },
-            CfRuleInput::IconRating {
-                icon,
-                color,
-                thresholds,
-                show_value,
-            } => CfRule::IconRating {
-                icon,
-                color,
-                thresholds,
-                show_value,
-            },
+        let (mut rule, dxf) = rule.split();
+        if let (Some(slot), Some(dxf)) = (rule.dxf_id_mut(), dxf) {
+            *slot = self.create_dxf(dxf);
         }
+        rule
     }
 
     /// The anchor used to parse/stringify a conditional-formatting formula on
@@ -1457,12 +1302,6 @@ impl<'a, A: Position> Model<'a, A> {
         }
         Ok(())
     }
-}
-
-impl<'a> Model<'a> {
-    // -----------------------------------------------------------------------
-    // CRUD API for conditional formatting rules
-    // -----------------------------------------------------------------------
 
     /// Translates every formula in a CF rule from the internal English
     /// representation into the active language/locale for display.
@@ -1530,9 +1369,8 @@ impl<'a> Model<'a> {
         &self,
         sheet: u32,
     ) -> Result<Vec<ConditionalFormattingView>, String> {
-        let mut list: Vec<(usize, ConditionalFormatting)> = self
-            .workbook
-            .worksheet(sheet)?
+        let ws = self.workbook.worksheet(sheet)?;
+        let mut list: Vec<(usize, ConditionalFormatting<A>)> = ws
             .conditional_formatting
             .iter()
             .cloned()
@@ -1543,9 +1381,15 @@ impl<'a> Model<'a> {
         let mut result = Vec::with_capacity(list.len());
         for (index, mut cf) in list {
             self.cf_rule_to_display(&mut cf.cf_rule, sheet);
+            // Ranges are shown as the ordinals they currently denote, whatever they are stored as.
+            let ordinal: Vec<RangeRef> = cf
+                .ranges
+                .iter()
+                .filter_map(|r| A::to_ordinal_range(r, &ws.index))
+                .collect();
             result.push(ConditionalFormattingView {
                 index,
-                range: RangeRef::to_sqref(&cf.ranges),
+                range: RangeRef::to_sqref(&ordinal),
                 cf_rule: cf.cf_rule,
                 priority: cf.priority,
             });
@@ -1584,6 +1428,12 @@ impl<'a> Model<'a> {
         };
         Ok(self.workbook.styles.dxfs.get(dxf_id as usize).cloned())
     }
+}
+
+impl<'a> Model<'a> {
+    // -----------------------------------------------------------------------
+    // CRUD API for conditional formatting rules
+    // -----------------------------------------------------------------------
 
     /// Adds a new CF rule to `sheet`, appended with priority = 1 + current max.
     /// Returns the assigned priority.

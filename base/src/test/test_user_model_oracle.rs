@@ -589,3 +589,179 @@ fn dynamic_array_undo_redo_matches_ordinal() {
         }
     }
 }
+
+/// The list a reader sees, with the replica-local `dxf_id` replaced by the format it names: the
+/// two models intern their `dxfs` tables differently, but must show the same rules.
+///
+/// The priority *number* is left out: the list is ordered by it, and stable addressing renumbers
+/// to a dense `1..=n` on every change where the ordinal model leaves gaps a delete opened. What
+/// both have to agree on is the order, which [`cf_compare`] checks is descending on each side.
+macro_rules! cf_shown {
+    ($m:expr) => {
+        $m.get_conditional_formatting_list(0)
+            .unwrap()
+            .into_iter()
+            .map(|mut view| {
+                let dxf = $m
+                    .get_dxf_for_conditional_formatting(0, view.index as u32)
+                    .unwrap();
+                if let Some(slot) = view.cf_rule.dxf_id_mut() {
+                    *slot = 0;
+                }
+                (view.index, view.range, view.cf_rule, dxf)
+            })
+            .collect::<Vec<_>>()
+    };
+}
+
+/// The rules and the rendering they produce, on both models.
+macro_rules! cf_compare {
+    ($o:expr, $c:expr, $step:expr) => {{
+        assert_eq!(cf_shown!($c), cf_shown!($o), "cf list after {}", $step);
+        for model in [
+            $c.get_conditional_formatting_list(0).unwrap(),
+            $o.get_conditional_formatting_list(0).unwrap(),
+        ] {
+            let priorities: Vec<u32> = model.iter().map(|view| view.priority).collect();
+            assert!(
+                priorities.windows(2).all(|w| w[0] > w[1]),
+                "priorities {:?} are not descending after {}",
+                priorities,
+                $step
+            );
+        }
+        for row in 1..=8 {
+            for col in 1..=4 {
+                assert_eq!(
+                    $c.get_extended_cell_style(0, row, col).unwrap().style,
+                    $o.get_extended_cell_style(0, row, col).unwrap().style,
+                    "extended style at ({}, {}) after {}",
+                    row,
+                    col,
+                    $step
+                );
+            }
+        }
+    }};
+}
+
+#[test]
+fn conditional_formatting_undo_redo_matches_ordinal() {
+    use crate::cf_types::{CfRuleInput, ValueOperator};
+    use crate::types::{Color, Dxf, Fill};
+
+    fn fill(color: &str) -> Dxf {
+        Dxf {
+            fill: Some(Fill {
+                color: Color::Rgb(color.to_string()),
+            }),
+            ..Default::default()
+        }
+    }
+    fn formula_rule(formula: &str, color: &str) -> CfRuleInput {
+        CfRuleInput::Formula {
+            formula: formula.to_string(),
+            format: fill(color),
+            stop_if_true: false,
+        }
+    }
+    fn cell_is_gt(threshold: &str, color: &str) -> CfRuleInput {
+        CfRuleInput::CellIs {
+            operator: ValueOperator::GreaterThan,
+            formula: threshold.to_string(),
+            formula2: None,
+            format: fill(color),
+            stop_if_true: false,
+        }
+    }
+
+    let (mut o, mut c) = pair();
+    // passive peer: it only ever sees what `c` put on the wire, undo and redo included.
+    let mut peer = UserModel::<Stable>::from_model(CollabModel::new(2));
+    macro_rules! sync {
+        () => {
+            peer.apply_external_diffs(&c.flush_send_queue()).unwrap();
+        };
+    }
+    /// One call on both models, then the cells, the rules and the rendering compared.
+    macro_rules! cf_both {
+        ($method:ident($($arg:expr),*), $step:expr) => {{
+            both!(o, c, $method($($arg),*), $step);
+            cf_compare!(o, c, $step);
+            sync!();
+        }};
+    }
+    macro_rules! cf_undo {
+        ($step:expr) => {{
+            undo_both(&mut o, &mut c, $step);
+            cf_compare!(o, c, $step);
+            sync!();
+        }};
+    }
+    macro_rules! cf_redo {
+        ($step:expr) => {{
+            redo_both(&mut o, &mut c, $step);
+            cf_compare!(o, c, $step);
+            sync!();
+        }};
+    }
+
+    for row in 1..=5 {
+        cf_both!(set_user_input(0, row, 1, &row.to_string()), "values");
+    }
+
+    cf_both!(
+        add_conditional_formatting(0, "A1:A5", formula_rule("=A1>2", "#FF0000")),
+        "add the formula rule"
+    );
+    cf_undo!("undo add the formula rule");
+    cf_redo!("redo add the formula rule");
+
+    cf_both!(
+        add_conditional_formatting(0, "A1:A5", cell_is_gt("3", "#0000FF")),
+        "add the cell-is rule"
+    );
+    cf_both!(
+        update_conditional_formatting(0, 1, "A2:A5", cell_is_gt("4", "#00FF00")),
+        "update the cell-is rule"
+    );
+    cf_undo!("undo the update");
+    cf_redo!("redo the update");
+
+    cf_both!(raise_conditional_formatting_priority(0, 0), "raise");
+    cf_undo!("undo the raise");
+    cf_redo!("redo the raise");
+
+    cf_both!(lower_conditional_formatting_priority(0, 0), "lower");
+    cf_undo!("undo the lower");
+    cf_redo!("redo the lower");
+
+    cf_both!(delete_conditional_formatting(0, 0), "delete");
+    cf_undo!("undo the delete");
+    cf_redo!("redo the delete");
+
+    cf_both!(insert_rows(0, 1, 2), "insert rows above the rule");
+    cf_undo!("undo the insert");
+    cf_redo!("redo the insert");
+
+    // All the way back, then all the way forward again.
+    while c.can_undo() {
+        cf_undo!("unwind");
+    }
+    assert!(cf_shown!(c).is_empty());
+    while c.can_redo() {
+        cf_redo!("rewind");
+    }
+
+    // The peer only ever replayed the wire, and still shows the same rules and the same rendering.
+    assert_eq!(cf_shown!(peer), cf_shown!(c));
+    for row in 1..=8 {
+        for col in 1..=4 {
+            assert_eq!(
+                peer.get_extended_cell_style(0, row, col).unwrap().style,
+                c.get_extended_cell_style(0, row, col).unwrap().style,
+                "peer extended style at ({row}, {col})"
+            );
+        }
+    }
+}

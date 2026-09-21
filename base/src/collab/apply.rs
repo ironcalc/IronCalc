@@ -13,7 +13,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use crate::cf_types::ConditionalFormatting;
+use crate::cf_types::{CfRule, ConditionalFormatting};
 use crate::collab::bind::Host;
 use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::{virtual_key, FractionalIndex, FractionalKey};
@@ -27,7 +27,7 @@ use crate::collab::naming::NameRepair;
 use crate::collab::patch::{
     CellInput, CfPropKind, CfProperty, ColState, DefinedNameId, DefinedNameProperty, NamedStyleId,
     NamedStyleProperty, Patch, PropKind, Property, RowState, SheetContent, SheetId, SheetIndexSeed,
-    SheetProperty, WorkbookProperty,
+    SheetProperty, StableCfRule, WorkbookProperty,
 };
 use crate::collab::DynError;
 use crate::constants::{
@@ -396,31 +396,37 @@ fn col_record<'r>(
     &mut sheet.cols[at]
 }
 
-/// Puts the rules back in priority order and renumbers them, which is what priority *is* under
-/// stable addressing: a rule sorts by the position key written for it, by its own identity when
-/// none was, and identity breaks any tie.
-fn sort_cf(sheet: &mut Worksheet<Stable>) {
-    let mut order = std::mem::take(&mut sheet.index.registers.cf_order);
-    let mut rules = std::mem::take(&mut sheet.conditional_formatting);
-    let positions = &sheet.index.registers.cf_positions;
-    let mut pairs: Vec<_> = order.drain(..).zip(rules.drain(..)).collect();
-    //TODO: optimize?
-    pairs.sort_by_cached_key(|(key, _)| {
-        let position = positions.get(key).map(|p| &p.value).unwrap_or(key).clone();
-        (position, key.clone())
+/// Renumbers the priorities, which is what a rule's position key *means*: rank by the position
+/// written for it, by its own identity when none was, identity breaking any tie. Storage is left
+/// alone — it stays in creation order, so the index a caller holds does not move.
+fn rank_cf(sheet: &mut Worksheet<Stable>) {
+    let registers = &sheet.index.registers;
+    let mut rank: Vec<usize> = (0..registers.cf_order.len()).collect();
+    // a moved rule sorts by the position written for it, an unmoved one by its identity
+    rank.sort_by_cached_key(|&at| {
+        let key = &registers.cf_order[at];
+        (
+            registers.cf_positions.get(key).map_or(key, |p| &p.value),
+            key,
+        )
     });
-    for (i, (key, mut cf)) in pairs.into_iter().enumerate() {
-        cf.priority = i as u32 + 1;
-        order.push(key);
-        rules.push(cf);
+    // `at` is the storage slot, `priority` the rank it came out at
+    for (priority, at) in rank.into_iter().enumerate() {
+        sheet.conditional_formatting[at].priority = priority as u32 + 1;
     }
-    sheet.index.registers.cf_order = order;
-    sheet.conditional_formatting = rules;
+}
+
+/// Files a rule at the slot its identity key sorts to, which keeps storage in creation order.
+fn insert_cf(sheet: &mut Worksheet<Stable>, key: FractionalKey, cf: ConditionalFormatting<Stable>) {
+    let order = &mut sheet.index.registers.cf_order;
+    let at = order.binary_search(&key).unwrap_or_else(|at| at);
+    order.insert(at, key);
+    sheet.conditional_formatting.insert(at, cf);
 }
 
 /// Where rule `key` currently sits in storage.
 fn cf_slot(sheet: &Worksheet<Stable>, key: &FractionalKey) -> Option<usize> {
-    sheet.index.registers.cf_order.iter().position(|k| k == key)
+    sheet.index.registers.cf_order.binary_search(key).ok()
 }
 
 impl CollabModel<'_> {
@@ -639,6 +645,7 @@ impl CollabModel<'_> {
             self.normalize_defined_names();
             self.resync_parsed();
         }
+        self.normalize_cf();
     }
 
     /// Return `true` if none of the `patches` introduce changes that may trigger shift
@@ -652,7 +659,6 @@ impl CollabModel<'_> {
             | Patch::SetNamedStyle { .. }
             | Patch::AddConditionalFormat { .. }
             | Patch::DeleteConditionalFormat { .. }
-            | Patch::MoveConditionalFormats { .. }
             | Patch::SetConditionalFormat { .. }
             | Patch::SetMergedRange { .. }
             | Patch::SetComment { .. }
@@ -1216,18 +1222,18 @@ impl CollabModel<'_> {
                 if !rule_wins || !ranges_win {
                     return;
                 }
-                let sheet = &mut self.workbook.worksheets[i];
-                // originally cf_order was sorted by key, however now we support move operations
-                // which may change keys order
-                if cf_slot(sheet, key).is_none() {
-                    sheet.index.registers.cf_order.push(key.clone());
-                    sheet.conditional_formatting.push(ConditionalFormatting {
-                        ranges: ranges.clone(),
-                        cf_rule: (**rule).clone(),
-                        priority: 0,
-                    });
-                    sort_cf(sheet);
+                if cf_slot(&self.workbook.worksheets[i], key).is_some() {
+                    return;
                 }
+                let cf_rule = self.install_rule(i, key, rule);
+                let sheet = &mut self.workbook.worksheets[i];
+                let cf = ConditionalFormatting {
+                    ranges: ranges.clone(),
+                    cf_rule,
+                    priority: 0,
+                };
+                insert_cf(sheet, key.clone(), cf);
+                rank_cf(sheet);
             }
             Patch::DeleteConditionalFormat { sheet, key, .. } => {
                 let Some(i) = self.sheet_index(*sheet) else {
@@ -1237,8 +1243,9 @@ impl CollabModel<'_> {
                 // The guards stay: they keep a concurrent edit from resurrecting the rule.
                 if let Some(at) = cf_slot(sheet, key) {
                     sheet.index.registers.cf_order.remove(at);
+                    sheet.index.registers.cf_formulas.remove(key);
                     sheet.conditional_formatting.remove(at);
-                    sort_cf(sheet);
+                    rank_cf(sheet);
                 }
             }
             Patch::SetConditionalFormat {
@@ -1263,7 +1270,7 @@ impl CollabModel<'_> {
                     {
                         return; // outdated patch
                     }
-                    sort_cf(sheet);
+                    rank_cf(sheet);
                     return;
                 }
                 if !wins(
@@ -1278,7 +1285,8 @@ impl CollabModel<'_> {
                 };
                 match property {
                     CfProperty::Rule(rule) => {
-                        sheet.conditional_formatting[at].cf_rule = (**rule).clone()
+                        let cf_rule = self.install_rule(i, key, rule);
+                        self.workbook.worksheets[i].conditional_formatting[at].cf_rule = cf_rule;
                     }
                     CfProperty::Ranges(ranges) => {
                         sheet.conditional_formatting[at].ranges = ranges.clone()
@@ -1286,10 +1294,31 @@ impl CollabModel<'_> {
                     CfProperty::Priority(_) => unreachable!("handled above"),
                 }
             }
-            // A move over `cf_order`, needing the author-minted destinations `MoveRows` carries.
-            // Phase 5b.
-            Patch::MoveConditionalFormats { .. } => {}
         }
+    }
+
+    /// Turns a wire rule into a stored one with interning for deduplication.
+    fn install_rule(&mut self, i: usize, key: &FractionalKey, wire: &StableCfRule) -> CfRule {
+        let mut rule = wire.shape.clone();
+        if let (Some(slot), Some(dxf)) = (rule.dxf_id_mut(), wire.dxf.as_ref()) {
+            let dxfs = &mut self.workbook.styles.dxfs;
+            *slot = match dxfs.iter().position(|held| held == dxf) {
+                Some(at) => at as u32,
+                None => {
+                    dxfs.push(dxf.clone());
+                    dxfs.len() as u32 - 1
+                }
+            };
+        }
+        let registers = &mut self.workbook.worksheets[i].index.registers;
+        if wire.formulas.is_empty() {
+            registers.cf_formulas.remove(key);
+        } else {
+            registers
+                .cf_formulas
+                .insert(key.clone(), wire.formulas.clone());
+        }
+        rule
     }
 
     /// Writes `value` into cell `at` of the `i`-th worksheet, `None` clearing it. The style already
@@ -1475,23 +1504,34 @@ impl CollabModel<'_> {
             sheet.index.registers.links.insert(at.clone(), *ts);
             sheet.links.insert(at.clone(), link.clone());
         }
-        for (key, state) in &content.conditional_formatting {
-            let registers = &mut sheet.index.registers;
-            registers.cf.insert((key.clone(), CfPropKind::Rule), *ts);
-            registers.cf.insert((key.clone(), CfPropKind::Ranges), *ts);
-            registers.cf_order.push(key.clone());
-            sheet.conditional_formatting.push(ConditionalFormatting {
-                ranges: state.ranges.clone(),
-                cf_rule: state.rule.clone(),
-                priority: 0,
-            });
-        }
         // The payload is ordered by key, but nothing stops a peer from sending it otherwise.
         sheet.rows.sort_by(|a, b| a.r.cmp(&b.r));
         sheet
             .cols
             .sort_by(|a, b| (&a.min, &a.max).cmp(&(&b.min, &b.max)));
-        sort_cf(sheet);
+
+        for (key, state) in &content.conditional_formatting {
+            let cf_rule = self.install_rule(i, key, &state.rule);
+            let sheet = &mut self.workbook.worksheets[i];
+            let registers = &mut sheet.index.registers;
+            registers.cf.insert((key.clone(), CfPropKind::Rule), *ts);
+            registers.cf.insert((key.clone(), CfPropKind::Ranges), *ts);
+            if let Some(position) = &state.position {
+                registers
+                    .cf_positions
+                    .entry(key.clone())
+                    .or_default()
+                    .merge(position.clone(), ts); // resolve potential conflicting position changes
+            }
+            let cf = ConditionalFormatting {
+                ranges: state.ranges.clone(),
+                cf_rule,
+                priority: 0,
+            };
+            // the payload is ordered by key, but nothing stops a peer from sending it otherwise
+            insert_cf(sheet, key.clone(), cf);
+        }
+        rank_cf(&mut self.workbook.worksheets[i]);
 
         // sometimes we couldn't resolve location of internal link (it doesn't exist yet), so we
         // need to remember it
@@ -1648,7 +1688,17 @@ mod test {
         }
     }
 
-    fn cf_rule(formula: &str) -> CfRule {
+    /// A wire rule carrying no bound slots, so the text it ships survives as written: these tests
+    /// are about the registers, not about what a formula resolves to.
+    fn cf_rule(formula: &str) -> StableCfRule {
+        StableCfRule {
+            shape: cf_stored(formula),
+            formulas: Vec::new(),
+            dxf: None,
+        }
+    }
+
+    fn cf_stored(formula: &str) -> CfRule {
         CfRule::Formula {
             formula: formula.to_string(),
             dxf_id: 0,
@@ -1915,7 +1965,7 @@ mod test {
         assert_eq!(sheet.merged_cells, vec![merged.clone()]);
         assert_eq!(sheet.comments, vec![comment.clone()]);
         assert_eq!(sheet.conditional_formatting.len(), 1);
-        assert_eq!(sheet.conditional_formatting[0].cf_rule, cf_rule("A1>5"));
+        assert_eq!(sheet.conditional_formatting[0].cf_rule, cf_stored("A1>5"));
         assert_eq!(sheet.conditional_formatting[0].ranges, vec![merged.clone()]);
         assert_eq!(sheet.conditional_formatting[0].priority, 1);
         assert_eq!(sheet.index.registers.cf_order, vec![cf_key.clone()]);
@@ -2313,16 +2363,17 @@ mod test {
         assert!(a.is_column_hidden(0, 2).unwrap());
         assert!(!a.is_column_hidden(0, 5).unwrap());
 
-        // The moved rule sorts first, and priorities are renumbered to storage order.
+        // Storage stays in creation order — a caller's index must not move — and only the
+        // priorities follow the moved rule, which now sorts lowest.
         let sheet = &a.workbook.worksheets[0];
-        assert_eq!(sheet.index.registers.cf_order, vec![second, first]);
-        assert_eq!(sheet.conditional_formatting[0].cf_rule, cf_rule("A1>1"));
+        assert_eq!(sheet.index.registers.cf_order, vec![first, second]);
+        assert_eq!(sheet.conditional_formatting[0].cf_rule, cf_stored("A1>0"));
         let priorities: Vec<u32> = sheet
             .conditional_formatting
             .iter()
             .map(|cf| cf.priority)
             .collect();
-        assert_eq!(priorities, vec![1, 2]);
+        assert_eq!(priorities, vec![2, 1]);
         assert_eq!(
             b.workbook.worksheets[0].index.registers.cf_order,
             sheet.index.registers.cf_order

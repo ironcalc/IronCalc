@@ -33,25 +33,25 @@ impl Spills {
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     #![allow(clippy::unwrap_used)]
     use crate::collab::model::{CollabModel, Stable};
     use crate::types::Position;
     use crate::user_model::CellArrayStructure;
     use crate::UserModel;
 
-    type Peer = UserModel<'static, Stable>;
+    pub(crate) type Peer = UserModel<'static, Stable>;
 
-    fn peer(session: u32) -> Peer {
+    pub(crate) fn peer(session: u32) -> Peer {
         UserModel::<Stable>::from_model(CollabModel::new(session))
     }
 
-    fn deliver(from: &mut Peer, to: &mut Peer) {
+    pub(crate) fn deliver(from: &mut Peer, to: &mut Peer) {
         to.apply_external_diffs(&from.flush_send_queue()).unwrap();
     }
 
     /// Both replicas show the same values and the same array geometry over a small rectangle.
-    fn converged(a: &Peer, b: &Peer) {
+    pub(crate) fn converged(a: &Peer, b: &Peer) {
         for row in 1..=6 {
             for col in 1..=4 {
                 assert_eq!(

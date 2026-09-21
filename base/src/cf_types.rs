@@ -209,6 +209,91 @@ pub enum CfRule {
     },
 }
 
+impl Cfvo {
+    fn formula_mut(&mut self) -> Option<&mut String> {
+        match self {
+            Cfvo::Formula(formula) => Some(formula),
+            _ => None,
+        }
+    }
+}
+
+impl CfRule {
+    /// Every formula slot the rule carries, in a fixed order. Stable addressing stores the bound
+    /// form of each slot separately and derives these strings back, so the order is part of the
+    /// wire format and must not change.
+    pub(crate) fn formulas_mut(&mut self) -> Vec<&mut String> {
+        match self {
+            CfRule::CellIs {
+                formula, formula2, ..
+            } => match formula2 {
+                Some(formula2) => vec![formula, formula2],
+                None => vec![formula],
+            },
+            CfRule::Formula { formula, .. } => vec![formula],
+            CfRule::ColorScale { thresholds } => thresholds
+                .iter_mut()
+                .filter_map(|t| t.cfvo.formula_mut())
+                .collect(),
+            CfRule::DataBar { min, max, .. } => min
+                .iter_mut()
+                .chain(max.iter_mut())
+                .filter_map(|cfvo| cfvo.formula_mut())
+                .collect(),
+            CfRule::IconSet { thresholds, .. } => thresholds
+                .iter_mut()
+                .filter_map(|t| t.cfvo.formula_mut())
+                .collect(),
+            CfRule::IconRating { thresholds, .. } => thresholds
+                .iter_mut()
+                .filter_map(|(cfvo, _)| cfvo.formula_mut())
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// The rule's index into the workbook's `dxfs` table, for the kinds that name a format.
+    pub(crate) fn dxf_id_mut(&mut self) -> Option<&mut u32> {
+        match self {
+            CfRule::CellIs { dxf_id, .. }
+            | CfRule::Formula { dxf_id, .. }
+            | CfRule::Text { dxf_id, .. }
+            | CfRule::TimePeriod { dxf_id, .. }
+            | CfRule::DuplicateValues { dxf_id, .. }
+            | CfRule::UniqueValues { dxf_id, .. }
+            | CfRule::Blanks { dxf_id, .. }
+            | CfRule::NotBlanks { dxf_id, .. }
+            | CfRule::Errors { dxf_id, .. }
+            | CfRule::NoErrors { dxf_id, .. }
+            | CfRule::AboveAverage { dxf_id, .. }
+            | CfRule::BelowAverage { dxf_id, .. }
+            | CfRule::Top10 { dxf_id, .. }
+            | CfRule::Bottom10 { dxf_id, .. } => Some(dxf_id),
+            CfRule::ColorScale { .. }
+            | CfRule::DataBar { .. }
+            | CfRule::IconSet { .. }
+            | CfRule::IconRating { .. } => None,
+        }
+    }
+
+    /// The format `dxf_id` names in `dxfs`, by value. The id is zeroed: it means nothing outside
+    /// the table it indexed.
+    pub(crate) fn take_dxf(&mut self, dxfs: &[Dxf]) -> Option<Dxf> {
+        let slot = self.dxf_id_mut()?;
+        let dxf = dxfs.get(*slot as usize).cloned();
+        *slot = 0;
+        dxf
+    }
+
+    /// The formula strings in slot order, leaving every slot blank.
+    pub(crate) fn take_formulas(&mut self) -> Vec<String> {
+        self.formulas_mut()
+            .into_iter()
+            .map(std::mem::take)
+            .collect()
+    }
+}
+
 /// User-facing input type for creating or updating a CF rule.
 /// Mirrors `CfRule` but dxf-based variants carry a `Dxf` format
 /// instead of a `dxf_id` index.  Non-dxf variants (ColorScale, DataBar,
@@ -306,6 +391,224 @@ pub enum CfRuleInput {
         thresholds: Vec<(Cfvo, bool)>,
         show_value: bool,
     },
+}
+
+impl CfRuleInput {
+    /// The stored rule and the format it carries, which the caller interns. `dxf_id` comes back as
+    /// 0: nothing has been interned yet.
+    pub(crate) fn split(self) -> (CfRule, Option<Dxf>) {
+        match self {
+            CfRuleInput::ColorScale { thresholds } => (CfRule::ColorScale { thresholds }, None),
+            CfRuleInput::CellIs {
+                operator,
+                formula,
+                formula2,
+                format,
+                stop_if_true,
+            } => (
+                CfRule::CellIs {
+                    operator,
+                    formula,
+                    formula2,
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::Text {
+                operator,
+                value,
+                format,
+                stop_if_true,
+            } => (
+                CfRule::Text {
+                    operator,
+                    value,
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::Formula {
+                formula,
+                format,
+                stop_if_true,
+            } => (
+                CfRule::Formula {
+                    formula,
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::TimePeriod {
+                time_period,
+                date1,
+                date2,
+                format,
+                stop_if_true,
+            } => (
+                CfRule::TimePeriod {
+                    time_period,
+                    date1,
+                    date2,
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::DuplicateValues {
+                format,
+                stop_if_true,
+            } => (
+                CfRule::DuplicateValues {
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::UniqueValues {
+                format,
+                stop_if_true,
+            } => (
+                CfRule::UniqueValues {
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::Blanks {
+                format,
+                stop_if_true,
+            } => (
+                CfRule::Blanks {
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::NotBlanks {
+                format,
+                stop_if_true,
+            } => (
+                CfRule::NotBlanks {
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::Errors {
+                format,
+                stop_if_true,
+            } => (
+                CfRule::Errors {
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::NoErrors {
+                format,
+                stop_if_true,
+            } => (
+                CfRule::NoErrors {
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::AboveAverage {
+                format,
+                stop_if_true,
+            } => (
+                CfRule::AboveAverage {
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::BelowAverage {
+                format,
+                stop_if_true,
+            } => (
+                CfRule::BelowAverage {
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::Top10 {
+                rank,
+                percent,
+                format,
+                stop_if_true,
+            } => (
+                CfRule::Top10 {
+                    rank,
+                    percent,
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::Bottom10 {
+                rank,
+                percent,
+                format,
+                stop_if_true,
+            } => (
+                CfRule::Bottom10 {
+                    rank,
+                    percent,
+                    dxf_id: 0,
+                    stop_if_true,
+                },
+                Some(format),
+            ),
+            CfRuleInput::DataBar {
+                min,
+                max,
+                positive_color,
+                negative_color,
+                is_gradient,
+                show_value,
+            } => (
+                CfRule::DataBar {
+                    min,
+                    max,
+                    positive_color,
+                    negative_color,
+                    is_gradient,
+                    show_value,
+                },
+                None,
+            ),
+            CfRuleInput::IconSet {
+                thresholds,
+                show_value,
+            } => (
+                CfRule::IconSet {
+                    thresholds,
+                    show_value,
+                },
+                None,
+            ),
+            CfRuleInput::IconRating {
+                icon,
+                color,
+                thresholds,
+                show_value,
+            } => (
+                CfRule::IconRating {
+                    icon,
+                    color,
+                    thresholds,
+                    show_value,
+                },
+                None,
+            ),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
