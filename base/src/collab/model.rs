@@ -91,6 +91,15 @@ impl Position for Stable {
         range.resolve(idx)
     }
 
+    fn to_ordinal_range(range: &StableRange, idx: &SheetIndexes) -> Option<RangeRef> {
+        // Through `resolve`, so a deleted corner clamps exactly as it does for evaluation.
+        let (row1, column1, row2, column2) = range.resolve(idx)?;
+        Some(RangeRef {
+            rows: range.rows.as_ref().map(|_| (row1, row2)),
+            cols: range.cols.as_ref().map(|_| (column1, column2)),
+        })
+    }
+
     fn column_width(sheet: &Worksheet<Stable>, column: i32) -> Result<f64, String> {
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
@@ -232,6 +241,9 @@ pub struct SheetRegisters {
     /// Where a rule sits, for the rules that were ever moved. Position keys are CRDT-only state,
     /// so the value sits with its guard, as in [`WorkbookMeta::sheet_positions`].
     pub cf_positions: HashMap<FractionalKey, Lww<FractionalKey>>,
+    /// The bound form of each rule's formula slots, in slot order. The strings the rule itself
+    /// carries are derived from these, the way `Workbook::defined_names` is derived.
+    pub cf_formulas: HashMap<FractionalKey, Vec<DefinedNameBody>>,
 }
 
 /// Workbook-wide registers: those outliving the sheet they talk about, and those no sheet owns.

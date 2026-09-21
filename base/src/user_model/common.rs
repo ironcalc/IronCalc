@@ -2933,8 +2933,12 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         sheet: u32,
         index: u32,
     ) -> Result<(), String> {
-        self.model
-            .raise_conditional_formatting_priority(sheet, index as usize)
+        self.tracked(|s| {
+            s.model
+                .raise_conditional_formatting_priority(sheet, index as usize)
+        })?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Lowers the priority of the CF rule at `index` on `sheet`.
@@ -2943,8 +2947,12 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         sheet: u32,
         index: u32,
     ) -> Result<(), String> {
-        self.model
-            .lower_conditional_formatting_priority(sheet, index as usize)
+        self.tracked(|s| {
+            s.model
+                .lower_conditional_formatting_priority(sheet, index as usize)
+        })?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Returns all CF rules for `sheet`.

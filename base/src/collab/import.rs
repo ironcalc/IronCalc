@@ -8,7 +8,8 @@ use crate::collab::fractional_index::{
 use crate::collab::log::SessionId;
 use crate::collab::model::{CollabModel, Stable, StableRange};
 use crate::collab::patch::{
-    CellInput, ColState, ConditionalFormatState, Patch, RowState, SheetContent, SheetIndexSeed,
+    CellInput, CfProperty, ColState, ConditionalFormatState, Patch, RowState, SheetContent,
+    SheetIndexSeed, StableCfRule,
 };
 use crate::constants::LAST_COLUMN;
 use crate::expressions::lexer::LexerMode;
@@ -18,8 +19,8 @@ use crate::expressions::types::CellReferenceRC;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::types::{
-    Cell, Col, Comment, Link, MergedCell, Ordinal, Position, RangeRef, Row, SheetData,
-    StyleIncludes, Styles, Workbook, Worksheet,
+    Cell, Col, Comment, MergedCell, Ordinal, Position, RangeRef, Row, SheetData, StyleIncludes,
+    Styles, Workbook, Worksheet,
 };
 
 /// How far the sheet reaches on each axis.
@@ -57,6 +58,14 @@ pub(crate) fn used_extent(ws: &Worksheet) -> (i32, i32) {
 }
 
 /// The seed payload an `AddSheet` carries for `ws`.
+/// The key the rule at storage index `at` takes: the same shape
+/// [`CollabModel::add_conditional_formatting`] mints, so the order is the file's order.
+pub(crate) fn cf_key(at: usize, suffix: &[u8]) -> FractionalKey {
+    let mut buf = KeyBuf::from(&(2 * (at as u32 + 1)).to_be_bytes()[1..]);
+    buf.extend_from_slice(suffix);
+    FractionalKey::try_from_bytes(&buf).expect("position and suffix are 7 bytes")
+}
+
 pub(crate) fn content_from_ordinal(
     ws: &Worksheet,
     styles: &Styles,
@@ -100,11 +109,15 @@ pub(crate) fn content_from_ordinal(
             }
         }
     }
-    // same as `add_conditional_formatting` would work like
-    fn cf_key(at: usize, suffix: &[u8]) -> FractionalKey {
-        let mut buf = KeyBuf::from(&(2 * (at as u32 + 1)).to_be_bytes()[1..]);
-        buf.extend_from_slice(suffix);
-        FractionalKey::try_from_bytes(&buf).unwrap()
+    let mut rank: Vec<usize> = (0..ws.conditional_formatting.len()).collect();
+    rank.sort_by_key(|&at| ws.conditional_formatting[at].priority);
+    let reordered = rank.iter().enumerate().any(|(r, &at)| r != at);
+    let mut positions = vec![None; rank.len()];
+    if reordered {
+        // All of them, so no position can tie with an unmoved rule's identity key.
+        for (r, &at) in rank.iter().enumerate() {
+            positions[at] = Some(cf_key(r, &suffix));
+        }
     }
 
     SheetContent {
@@ -179,9 +192,19 @@ pub(crate) fn content_from_ordinal(
             .iter()
             .enumerate()
             .map(|(at, cf)| {
+                let mut shape = cf.cf_rule.clone();
+                // the id is set later, in `install_rule`
+                let dxf = shape.take_dxf(&styles.dxfs);
+                // A1 formula strings do not travel; the slots are bound in the formula pass
+                shape.take_formulas();
                 let state = ConditionalFormatState {
-                    rule: cf.cf_rule.clone(),
+                    rule: StableCfRule {
+                        shape,
+                        formulas: Vec::new(),
+                        dxf,
+                    },
                     ranges: cf.ranges.iter().map(&range).collect(),
+                    position: positions[at].clone(),
                 };
                 (cf_key(at, &suffix), state)
             })
@@ -203,10 +226,8 @@ impl CollabModel<'static> {
             .map_err(|_| format!("Invalid language: {language_id}"))?;
         model.language = language;
         model.parser.set_language(language);
-        // Tables are not replicated yet, so they are left behind here.
-        // A conditional formatting rule names its format by index into the local `dxfs` table, the
-        // way one added through `add_conditional_formatting` does, so that table comes along.
-        model.workbook.styles.dxfs = workbook.styles.dxfs.clone();
+        // Tables are not replicated yet, so they are left behind here. A conditional formatting
+        // rule ships its format by value, so `dxfs` is rebuilt as the rules arrive.
 
         model.set_name(&workbook.name);
         model.set_locale(&workbook.settings.locale)?;
@@ -278,6 +299,26 @@ impl CollabModel<'static> {
                     value: Some(value),
                     ts: None,
                     prev: Box::new(None),
+                });
+            }
+            // Conditional formatting formulas bind here too: the strings are English already, and
+            // by now every sheet a reference could name exists.
+            for (at, cf) in ws.conditional_formatting.iter().enumerate() {
+                let mut shape = cf.cf_rule.clone();
+                let dxf = shape.take_dxf(&workbook.styles.dxfs);
+                let formulas = model.cf_bind_slots(i, &cf.ranges, &mut shape, &mut plan)?;
+                if formulas.is_empty() {
+                    continue;
+                }
+                writes.push(Patch::SetConditionalFormat {
+                    sheet: id,
+                    key: cf_key(at, &suffix),
+                    property: CfProperty::Rule(Box::new(StableCfRule {
+                        shape,
+                        formulas,
+                        dxf,
+                    })),
+                    prev: None,
                 });
             }
             // links bind in the same pass: by now referenced sheets should exist
@@ -372,6 +413,7 @@ impl CollabModel<'_> {
         let (rows, cols) = (ordinals(&ws.index.rows), ordinals(&ws.index.cols));
         let row = |k: &FractionalKey| rows.get(k).copied();
         let col = |k: &FractionalKey| cols.get(k).copied();
+        // Corners are mapped, not re-normalized: see `test_stable_projection`.
         let range = |r: &StableRange| -> Option<RangeRef> {
             let rows = match &r.rows {
                 Some((lo, hi)) => Some((row(lo)?, row(hi)?)),
@@ -512,7 +554,7 @@ mod test {
     use super::*;
     use crate::cf_types::{CfRuleInput, ValueOperator};
     use crate::collab::log::{Commit, Consumer};
-    use crate::types::{Color, Comment as OrdinalComment, Dxf, Fill, Style};
+    use crate::types::{Color, Comment as OrdinalComment, Dxf, Fill, Link, Style};
     use crate::Model;
 
     fn source() -> Model<'static> {

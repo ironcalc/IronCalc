@@ -393,6 +393,10 @@ pub trait Position: sealed::Sealed + Sized + Clone {
         idx: &Self::SheetIndex,
     ) -> Option<(i32, i32, i32, i32)>;
 
+    /// The range as ordinals: each corner is the 1-based index its key currently sits at, and an
+    /// unbounded axis stays unbounded. `None` when a corner names nothing any more.
+    fn to_ordinal_range(range: &RangeRef<Self>, idx: &Self::SheetIndex) -> Option<RangeRef>;
+
     /// The 1-based ordinal rectangle `(row1, column1, row2, column2)` a merged range currently
     /// covers, or `None` if it collapsed.
     fn resolve_merged(
@@ -490,6 +494,11 @@ impl Position for Ordinal {
 
     fn resolve_range(range: &RangeRef, _idx: &()) -> Option<(i32, i32, i32, i32)> {
         Some(range.resolve())
+    }
+
+    #[inline]
+    fn to_ordinal_range(range: &RangeRef, _idx: &()) -> Option<RangeRef> {
+        Some(range.clone())
     }
 
     fn column_width(sheet: &Worksheet, column: i32) -> Result<f64, String> {

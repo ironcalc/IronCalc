@@ -7,9 +7,10 @@
 //! mutation is a patch.
 
 use crate::actions::interval_survives_move;
-use crate::cf_types::{CfRuleInput, ConditionalFormattingView};
+use crate::cf_types::{CfRule, CfRuleInput};
 use crate::collab::apply::SHEET_NAMES;
 use crate::collab::bind::{Host, MintPlan};
+use crate::collab::cf::cf_anchor;
 use crate::collab::formula::{StableFormula, StableToken};
 use crate::collab::fractional_index::{CreateKeys, FractionalIndex, FractionalKey, KeyBuf};
 use crate::collab::hlc::Hlc;
@@ -20,7 +21,7 @@ use crate::collab::patch::{
     CellInput, CfProperty, ColState, ColumnSnapshot, ConditionalFormatState, DefinedNameBody,
     DefinedNameId, DefinedNameProperty, NamedStyle, NamedStyleId, NamedStyleProperty, Patch,
     PropKind, Property, RowSnapshot, RowState, SheetContent, SheetId, SheetIndexSeed,
-    SheetPropKind, SheetProperty, SheetRestore, WorkbookPropKind, WorkbookProperty,
+    SheetPropKind, SheetProperty, SheetRestore, StableCfRule, WorkbookPropKind, WorkbookProperty,
 };
 use crate::constants::{
     COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
@@ -39,8 +40,7 @@ use crate::links::{detect_link_target, CellLinkView, THEME_COLOR_HYPERLINK};
 use crate::locale::get_locale;
 use crate::new_empty::is_valid_sheet_name;
 use crate::types::{
-    Cell, Col, Color, Comment, Dxf, Link, Position, RangeRef, SheetState, Style, StyleIncludes,
-    Theme,
+    Cell, Col, Color, Comment, Link, Position, RangeRef, SheetState, Style, StyleIncludes, Theme,
 };
 use crate::tz::Tz;
 use crate::user_model::update_style;
@@ -2320,16 +2320,20 @@ impl CollabModel<'_> {
                 .registers
                 .cf_order
                 .iter()
-                .cloned()
-                .zip(
-                    sheet
-                        .conditional_formatting
-                        .iter()
-                        .map(|cf| ConditionalFormatState {
-                            rule: cf.cf_rule.clone(),
-                            ranges: cf.ranges.clone(),
-                        }),
-                )
+                .enumerate()
+                .map(|(at, key)| {
+                    let state = ConditionalFormatState {
+                        rule: self.wire_rule(i, at),
+                        ranges: sheet.conditional_formatting[at].ranges.clone(),
+                        position: sheet
+                            .index
+                            .registers
+                            .cf_positions
+                            .get(key)
+                            .map(|p| p.value.clone()),
+                    };
+                    (key.clone(), state)
+                })
                 .collect(),
         }
     }
@@ -2622,6 +2626,11 @@ impl CollabModel<'_> {
                 formula.retarget_sheet(source_id, id);
             }
         }
+        for (_, state) in &mut content.conditional_formatting {
+            for body in &mut state.rule.formulas {
+                body.formula.retarget_sheet(source_id, id);
+            }
+        }
         let mut patches = vec![Patch::AddSheet {
             id,
             name: new_name.clone(),
@@ -2889,8 +2898,74 @@ impl CollabModel<'_> {
         Ok(())
     }
 
-    /// Adds a conditional formatting rule to `sheet`. The key it is minted with is both its
-    /// identity and its priority, so the returned priority is its position in storage order.
+    /// Convert a conditional formatting rule `at` position into form to be sent to other peers.
+    fn wire_rule(&self, sheet_idx: usize, at: usize) -> StableCfRule {
+        let sheet = &self.workbook.worksheets[sheet_idx];
+        let mut shape = sheet.conditional_formatting[at].cf_rule.clone();
+        // Both are rederived on apply: the id by interning, the strings from the bound slots.
+        let dxf = shape.take_dxf(&self.workbook.styles.dxfs);
+        shape.take_formulas();
+        let formulas = sheet
+            .index
+            .registers
+            .cf_order
+            .get(at)
+            .and_then(|key| sheet.index.registers.cf_formulas.get(key))
+            .cloned()
+            .unwrap_or_default();
+        StableCfRule {
+            shape,
+            formulas,
+            dxf,
+        }
+    }
+
+    /// Binds every formula slot of `shape` against the rule's anchor, blanking the slots as it
+    /// goes — the wire form carries the bound streams instead. An invalid formula fails the whole
+    /// call, before a single patch exists.
+    pub(crate) fn cf_bind_slots(
+        &mut self,
+        i: usize,
+        ranges: &[RangeRef],
+        shape: &mut CfRule,
+        plan: &mut MintPlan,
+    ) -> Result<Vec<DefinedNameBody>, String> {
+        let (row, column) = cf_anchor(ranges).unwrap_or((1, 1));
+        let context = CellReferenceRC {
+            sheet: self.workbook.worksheets[i].get_name(),
+            row,
+            column,
+        };
+        let texts = shape.take_formulas();
+        let mut formulas = Vec::with_capacity(texts.len());
+        for text in texts {
+            let (node, equals) = self.user_formula_to_node(&text, &context)?;
+            let formula = self
+                .bind_formula(&node, i as u32, row, column, plan)
+                .map_err(|err| format!("Invalid formula: {err}"))?;
+            formulas.push(DefinedNameBody { formula, equals });
+        }
+        Ok(formulas)
+    }
+
+    /// An authored rule as it travels: every formula slot bound, the format taken by value.
+    fn cf_wire_from_input(
+        &mut self,
+        i: usize,
+        ranges: &[RangeRef],
+        input: CfRuleInput,
+        plan: &mut MintPlan,
+    ) -> Result<StableCfRule, String> {
+        let (mut shape, dxf) = input.split();
+        let formulas = self.cf_bind_slots(i, ranges, &mut shape, plan)?;
+        Ok(StableCfRule {
+            shape,
+            formulas,
+            dxf,
+        })
+    }
+
+    /// Adds a conditional formatting rule to `sheet`, returning the priority it was given.
     pub fn add_conditional_formatting(
         &mut self,
         sheet: u32,
@@ -2903,10 +2978,9 @@ impl CollabModel<'_> {
         if ordinal.is_empty() {
             return Err(format!("Invalid conditional formatting range: '{range}'"));
         }
-        let mut rule = rule;
-        self.cf_rule_input_to_internal(&mut rule, sheet)?;
-        let rule = self.cf_rule_from_input(rule);
-        let mut patches = Vec::new();
+        let mut plan = MintPlan::default();
+        let wire = self.cf_wire_from_input(i, &ordinal, rule, &mut plan)?;
+        let mut patches = self.mint_patches(&plan);
         let ranges = ordinal
             .iter()
             .map(|r| self.stable_range(i, id, r, &mut patches))
@@ -2915,20 +2989,35 @@ impl CollabModel<'_> {
         patches.push(Patch::AddConditionalFormat {
             sheet: id,
             key: key.clone(),
-            rule: Box::new(rule),
+            rule: Box::new(wire),
             ranges,
         });
         self.commit_local(patches);
-        let order = &self.workbook.worksheets[i].index.registers.cf_order;
-        Ok(order.binary_search(&key).map_or(0, |at| at as u32 + 1))
+        let sheet = &self.workbook.worksheets[i];
+        Ok(sheet
+            .index
+            .registers
+            .cf_order
+            .iter()
+            .position(|k| k == &key)
+            .map_or(0, |at| sheet.conditional_formatting[at].priority))
     }
 
-    /// A rule key past every rule this sheet holds, suffixed with this replica's session.
+    /// Create [FractionalKey] that can be used as a stable conditional formatting rule identity
+    /// or priority order.
     fn cf_key(&self, i: usize) -> FractionalKey {
-        let order = &self.workbook.worksheets[i].index.registers.cf_order;
-        let mut buf = KeyBuf::from(&(2 * (order.len() as u32 + 1)).to_be_bytes()[1..]);
-        buf.extend_from_slice(&self.suffix());
-        FractionalKey::try_from_bytes(&buf).expect("position and suffix are 7 bytes")
+        let registers = &self.workbook.worksheets[i].index.registers;
+        let nil = FractionalKey::NULL;
+        // get the last known fractional key and append new one after it
+        let lo = registers
+            .cf
+            .keys()
+            .map(|(key, _)| key)
+            .chain(registers.cf_positions.values().map(|p| &p.value))
+            .max()
+            .unwrap_or(&nil);
+        self.position_between(lo, &nil)
+            .expect("there is always room past the last rule")
     }
 
     /// Removes the conditional formatting rule at `index`.
@@ -2945,14 +3034,16 @@ impl CollabModel<'_> {
                 "Conditional formatting index {index} out of bounds"
             ));
         };
-        let prev = ws
-            .conditional_formatting
-            .get(index)
-            .map(|cf| ConditionalFormatState {
-                rule: cf.cf_rule.clone(),
-                ranges: cf.ranges.clone(),
-            })
-            .map(Box::new);
+        let prev = Some(Box::new(ConditionalFormatState {
+            rule: self.wire_rule(i, index),
+            ranges: ws.conditional_formatting[index].ranges.clone(),
+            position: ws
+                .index
+                .registers
+                .cf_positions
+                .get(&key)
+                .map(|p| p.value.clone()),
+        }));
         self.commit_local(vec![Patch::DeleteConditionalFormat {
             sheet: id,
             key,
@@ -2988,20 +3079,21 @@ impl CollabModel<'_> {
                 "Conditional formatting index {index} out of bounds"
             ));
         };
-        let mut new_rule = new_rule;
-        self.cf_rule_input_to_internal(&mut new_rule, sheet)?;
-        let rule = self.cf_rule_from_input(new_rule);
-        let mut patches = Vec::new();
+        let old_rule = self.wire_rule(i, index);
+        let mut plan = MintPlan::default();
+        let wire = self.cf_wire_from_input(i, &ordinal, new_rule, &mut plan)?;
+        let mut patches = self.mint_patches(&plan);
         let ranges = ordinal
             .iter()
             .map(|r| self.stable_range(i, id, r, &mut patches))
             .collect();
-        let old = &self.workbook.worksheets[i].conditional_formatting[index];
-        let (old_rule, old_ranges) = (old.cf_rule.clone(), old.ranges.clone());
+        let old_ranges = self.workbook.worksheets[i].conditional_formatting[index]
+            .ranges
+            .clone();
         patches.push(Patch::SetConditionalFormat {
             sheet: id,
             key: key.clone(),
-            property: CfProperty::Rule(Box::new(rule)),
+            property: CfProperty::Rule(Box::new(wire)),
             prev: Some(CfProperty::Rule(Box::new(old_rule))),
         });
         patches.push(Patch::SetConditionalFormat {
@@ -3011,6 +3103,90 @@ impl CollabModel<'_> {
             prev: Some(CfProperty::Ranges(old_ranges)),
         });
         self.commit_local(patches);
+        Ok(())
+    }
+
+    pub fn raise_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: usize,
+    ) -> Result<(), String> {
+        self.move_cf_priority(sheet, index, true)
+    }
+
+    pub fn lower_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: usize,
+    ) -> Result<(), String> {
+        self.move_cf_priority(sheet, index, false)
+    }
+
+    /// One position write, minted into the gap beside the neighbour the rule steps over.
+    fn move_cf_priority(&mut self, sheet: u32, index: usize, up: bool) -> Result<(), String> {
+        let id = self.sheet_of(sheet)?;
+        let i = sheet as usize;
+        let registers = &self.workbook.worksheets[i].index.registers;
+        let Some(key) = registers.cf_order.get(index).cloned() else {
+            return Err(format!(
+                "Conditional formatting index {index} out of bounds"
+            ));
+        };
+        // (where the rule sits, which rule it is) — the very ordering `rank_cf` ranks by.
+        let mut ranked: Vec<(FractionalKey, FractionalKey)> = registers
+            .cf_order
+            .iter()
+            .map(|k| {
+                let position = registers
+                    .cf_positions
+                    .get(k)
+                    .map_or_else(|| k.clone(), |p| p.value.clone());
+                (position, k.clone())
+            })
+            .collect();
+        ranked.sort();
+        let at = ranked
+            .iter()
+            .position(|(_, k)| k == &key)
+            .expect("the rule is in the order");
+        let current = ranked[at].0.clone();
+
+        let nil = FractionalKey::NULL;
+        let (lo, hi) = match up {
+            true => match ranked.get(at + 1) {
+                None => return Ok(()), // already the highest-priority rule
+                Some((neighbour, _)) => {
+                    let hi = ranked[at + 2..]
+                        .iter()
+                        .map(|(p, _)| p)
+                        .find(|p| p.position() > neighbour.position())
+                        .unwrap_or(&nil);
+                    (neighbour.clone(), hi.clone())
+                }
+            },
+            false => match at.checked_sub(1) {
+                None => return Ok(()), // already the lowest-priority rule
+                Some(below) => {
+                    let neighbour = &ranked[below].0;
+                    let lo = ranked[..below]
+                        .iter()
+                        .rev()
+                        .map(|(p, _)| p)
+                        .find(|p| p.position() < neighbour.position())
+                        .unwrap_or(&nil);
+                    (lo.clone(), neighbour.clone())
+                }
+            },
+        };
+        let position = self
+            .position_between(&lo, &hi)
+            .map_err(|_| "No room to move the conditional formatting rule".to_string())?;
+        self.commit_local(vec![Patch::SetConditionalFormat {
+            sheet: id,
+            key,
+            property: CfProperty::Priority(position),
+            prev: Some(CfProperty::Priority(current)),
+        }]);
         Ok(())
     }
 }
@@ -3245,15 +3421,11 @@ pub(crate) const UNSUPPORTED: &str = "unsupported in collab mode";
 
 unsupported! { &self
     get_sheet_markup(sheet: u32) -> String;
-    get_dxf_for_conditional_formatting(sheet: u32, index: usize) -> Option<Dxf>;
-    get_conditional_formatting_list(sheet: u32) -> Vec<ConditionalFormattingView>;
 }
 
 unsupported! { &mut self
     set_language(language_id: &str) -> ();
     set_user_array_formula(sheet: u32, row: i32, column: i32, width: i32, height: i32, value: &str) -> ();
-    raise_conditional_formatting_priority(sheet: u32, index: usize) -> ();
-    lower_conditional_formatting_priority(sheet: u32, index: usize) -> ();
 }
 
 #[cfg(test)]
