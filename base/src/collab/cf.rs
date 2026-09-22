@@ -506,6 +506,38 @@ mod test {
         );
     }
 
+    /// Function calls under different language should be localized.
+    #[test]
+    fn localise_function_names_in_peers_lang() {
+        // Peer A uses Spanish as a language
+        let mut a = UserModel::<Stable>::new_empty_with_session("a", "en", "UTC", "es", 1).unwrap();
+        let mut b = peer(2);
+        a.set_user_input(0, 1, 1, "5").unwrap();
+        a.set_user_input(0, 1, 2, "=SUM(A1,1)").unwrap();
+        a.add_conditional_formatting(0, "A1:A5", formula_rule("=SUM($A$1,0)>0", fill("#FF0000")))
+            .unwrap();
+        a.new_defined_name("plus1", None, "=LAMBDA(x,SUM(x,1))")
+            .unwrap();
+        a.set_user_input(0, 2, 2, "=plus1(A1)").unwrap();
+        deliver(&mut a, &mut b);
+
+        assert_eq!(a.get_cell_content(0, 1, 2).unwrap(), "=SUMA(A1,1)"); // lang=es
+        assert_eq!(b.get_cell_content(0, 1, 2).unwrap(), "=SUM(A1,1)"); // lang=en
+        for m in [&a, &b] {
+            assert_eq!(m.get_formatted_cell_value(0, 1, 2).unwrap(), "6");
+            assert_eq!(m.get_formatted_cell_value(0, 2, 2).unwrap(), "6");
+            assert_eq!(color_at(m, 1, 1), Color::Rgb("#FF0000".to_string()));
+        }
+        assert!(matches!(
+            &list(&a)[0].cf_rule,
+            CfRule::Formula { formula, .. } if formula == "=SUMA($A$1,0)>0"
+        ));
+        assert!(matches!(
+            &list(&b)[0].cf_rule,
+            CfRule::Formula { formula, .. } if formula == "=SUM($A$1,0)>0"
+        ));
+    }
+
     /// A rule minted by the import path reads back the way the ordinal model shows it.
     #[test]
     fn import_keeps_rules() {
@@ -517,9 +549,67 @@ mod test {
         source
             .add_conditional_formatting(0, "A1:A5", cell_is_gt("1", fill("#0000FF")))
             .unwrap();
+        source
+            .add_conditional_formatting(
+                0,
+                "A1:A5",
+                formula_rule("=SUM($A$1:$A$2)>0", fill("#00FF00")),
+            )
+            .unwrap();
+        source
+            .new_defined_name("plus1", None, "=LAMBDA(x,SUM(x,1))")
+            .unwrap();
+        source
+            .set_user_input(0, 2, 2, "=plus1(A1)".to_string())
+            .unwrap();
         // Storage order and priority order disagree, which the import has to carry over.
         source.raise_conditional_formatting_priority(0, 0).unwrap();
         source.evaluate();
+
+        // Under Spanish, so a stored English name has to bind as the builtin it is, not as a
+        // named function the Spanish parser does not know.
+        let mut imported =
+            CollabModel::from_workbook_with_session(source.workbook.clone(), "es", 1).unwrap();
+        imported.evaluate();
+
+        fn stored(m: &CollabModel<'_>) -> Vec<CfRule> {
+            m.workbook.worksheets[0]
+                .conditional_formatting
+                .iter()
+                .map(|cf| cf.cf_rule.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            stored(&imported).len(),
+            source.workbook.worksheets[0].conditional_formatting.len()
+        );
+        assert!(stored(&imported).iter().any(
+            |r| matches!(r, CfRule::Formula { formula, .. } if formula == "=SUM($A$1:$A$2)>0")
+        ));
+        assert!(imported
+            .get_conditional_formatting_list(0)
+            .unwrap()
+            .iter()
+            .any(|v| matches!(&v.cf_rule, CfRule::Formula { formula, .. } if formula == "=SUMA($A$1:$A$2)>0")));
+        assert_eq!(
+            imported.get_defined_name_list()[0].2,
+            "=LAMBDA(x,SUMA(x,1))"
+        );
+        assert_eq!(imported.get_formatted_cell_value(0, 2, 2).unwrap(), "6");
+        assert_eq!(
+            imported
+                .get_extended_style_for_cell(0, 1, 1)
+                .unwrap()
+                .style
+                .fill
+                .color,
+            source
+                .get_extended_style_for_cell(0, 1, 1)
+                .unwrap()
+                .style
+                .fill
+                .color
+        );
 
         let mut imported =
             CollabModel::from_workbook_with_session(source.workbook.clone(), "en", 1).unwrap();
