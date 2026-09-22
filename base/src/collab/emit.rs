@@ -3429,7 +3429,6 @@ unsupported! { &self
 }
 
 unsupported! { &mut self
-    set_language(language_id: &str) -> ();
     set_user_array_formula(sheet: u32, row: i32, column: i32, width: i32, height: i32, value: &str) -> ();
 }
 

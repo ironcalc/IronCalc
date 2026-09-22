@@ -3898,7 +3898,10 @@ impl<'a> Model<'a> {
         self.evaluate();
         Ok(())
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Sets the language
     pub fn set_language(&mut self, language_id: &str) -> Result<(), String> {
         let language = match get_language(language_id) {
@@ -3909,10 +3912,7 @@ impl<'a> Model<'a> {
         self.language = language;
         Ok(())
     }
-}
 
-/// Reads and evaluation: everything here runs on any addressing scheme.
-impl<'a, A: Position> Model<'a, A> {
     /// Gets the current language
     pub fn get_language(&self) -> String {
         self.language.code.clone()

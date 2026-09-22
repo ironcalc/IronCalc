@@ -538,6 +538,56 @@ mod test {
         ));
     }
 
+    #[test]
+    fn set_language_is_local_and_relocalizes_reads() {
+        let mut a = UserModel::<Stable>::new_empty_with_session("a", "en", "UTC", "en", 1).unwrap();
+        let mut b = peer(2);
+        a.set_user_input(0, 1, 1, "5").unwrap();
+        a.set_user_input(0, 1, 2, "=SUM(A1,1)").unwrap();
+        a.add_conditional_formatting(0, "A1:A5", formula_rule("=SUM($A$1,0)>0", fill("#FF0000")))
+            .unwrap();
+        a.new_defined_name("plus1", None, "=LAMBDA(x,SUM(x,1))")
+            .unwrap();
+        deliver(&mut a, &mut b);
+
+        a.set_language("es").unwrap();
+        b.set_language("fr").unwrap();
+
+        assert_eq!(a.get_cell_content(0, 1, 2).unwrap(), "=SUMA(A1,1)");
+        assert_eq!(b.get_cell_content(0, 1, 2).unwrap(), "=SOMME(A1,1)");
+        assert!(matches!(
+            &list(&a)[0].cf_rule,
+            CfRule::Formula { formula, .. } if formula == "=SUMA($A$1,0)>0"
+        ));
+        assert!(matches!(
+            &list(&b)[0].cf_rule,
+            CfRule::Formula { formula, .. } if formula == "=SOMME($A$1,0)>0"
+        ));
+        assert_eq!(a.get_defined_name_list()[0].2, "=LAMBDA(x,SUMA(x,1))");
+        assert_eq!(b.get_defined_name_list()[0].2, "=LAMBDA(x,SOMME(x,1))");
+        for m in [&a, &b] {
+            assert_eq!(m.get_formatted_cell_value(0, 1, 2).unwrap(), "6");
+            assert_eq!(color_at(m, 1, 1), Color::Rgb("#FF0000".to_string()));
+        }
+        // Nothing was replicated: the switch is a local preference, not an edit.
+        assert!(a.model.flush().is_empty());
+        assert!(b.model.flush().is_empty());
+
+        // Input is parsed under the new language too, and still travels in English.
+        a.set_user_input(0, 1, 3, "=SUMA(A1,2)").unwrap();
+        deliver(&mut a, &mut b);
+        assert_eq!(a.get_cell_content(0, 1, 3).unwrap(), "=SUMA(A1,2)");
+        assert_eq!(b.get_cell_content(0, 1, 3).unwrap(), "=SOMME(A1,2)");
+        for m in [&a, &b] {
+            assert_eq!(m.get_formatted_cell_value(0, 1, 3).unwrap(), "7");
+        }
+
+        // An unknown language is rejected and leaves the model on the one it had.
+        let error = a.set_language("xx").unwrap_err();
+        assert!(error.contains("Invalid language"), "{error}");
+        assert_eq!(a.get_language(), "es");
+    }
+
     /// A rule minted by the import path reads back the way the ordinal model shows it.
     #[test]
     fn import_keeps_rules() {
