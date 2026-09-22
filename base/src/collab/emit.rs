@@ -888,7 +888,11 @@ impl CollabModel<'_> {
         column: i32,
         value: String,
     ) -> Result<(), String> {
-        let i = self.check_cell(sheet, row, column)?;
+        self.sheet_of(sheet)?;
+        let i = sheet as usize;
+        if !is_valid_row(row) || !is_valid_column_number(column) {
+            return Err("Row or column is outside valid range.".to_string());
+        }
         // A covered cell shows the anchor's content: it is not editable, as in the ordinal model.
         if let Some((r, c, _, _)) = self.workbook.worksheets[i].merged_range_containing(row, column)
         {
@@ -1755,6 +1759,9 @@ impl CollabModel<'_> {
 
     /// Freezes the first `frozen_rows` rows of a sheet.
     pub fn set_frozen_rows(&mut self, sheet: u32, frozen_rows: i32) -> Result<(), String> {
+        if self.workbook.worksheets.get(sheet as usize).is_none() {
+            return Err("Invalid sheet".to_string());
+        }
         if frozen_rows < 0 {
             return Err("Frozen rows cannot be negative".to_string());
         }
@@ -1766,6 +1773,9 @@ impl CollabModel<'_> {
 
     /// Freezes the first `frozen_columns` columns of a sheet.
     pub fn set_frozen_columns(&mut self, sheet: u32, frozen_columns: i32) -> Result<(), String> {
+        if self.workbook.worksheets.get(sheet as usize).is_none() {
+            return Err("Invalid sheet".to_string());
+        }
         if frozen_columns < 0 {
             return Err("Frozen columns cannot be negative".to_string());
         }
