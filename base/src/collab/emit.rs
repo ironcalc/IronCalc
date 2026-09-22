@@ -418,21 +418,26 @@ impl CollabModel<'_> {
     }
 
     /// Parses `formula` as the user typed it, anchored at the cell it goes into, retrying with a
-    /// closing parenthesis exactly as the ordinal path does.
+    /// closing parenthesis exactly as the ordinal path does. What comes back is the node of the
+    /// English text, as the ordinal model's stored R1C1 string would give.
     fn parse_at(&mut self, i: usize, row: i32, column: i32, formula: &str) -> Node {
         let context = CellReferenceRC {
             sheet: self.workbook.worksheets[i].get_name(),
             row,
             column,
         };
-        let node = self.parser.parse(formula, &context);
+        let mut node = self.parser.parse(formula, &context);
         if let Node::ParseErrorKind { .. } = node {
             let retry = self.parser.parse(&format!("{formula})"), &context);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
-                return retry;
+                node = retry;
             }
         }
-        node
+        if let Node::ParseErrorKind { .. } = node {
+            return node;
+        }
+        let english = to_english_string(&node, &context);
+        self.parse_internal_formula(&english, &context)
     }
 
     /// A formula bound as if typed into (`sheet`, `row`, `column`).
@@ -2780,7 +2785,7 @@ impl CollabModel<'_> {
         plan: &mut MintPlan,
     ) -> Result<DefinedNameBody, String> {
         let context = self.defined_name_context();
-        let (node, equals) = self.user_formula_to_node(formula, &context)?;
+        let (node, equals) = self.user_formula_to_english_node(formula, &context)?;
         // The context is the first worksheet's A1, so that is the host — and what a reference
         // carrying no sheet prefix binds to.
         let formula = self
@@ -2939,7 +2944,7 @@ impl CollabModel<'_> {
         let texts = shape.take_formulas();
         let mut formulas = Vec::with_capacity(texts.len());
         for text in texts {
-            let (node, equals) = self.user_formula_to_node(&text, &context)?;
+            let (node, equals) = self.user_formula_to_english_node(&text, &context)?;
             let formula = self
                 .bind_formula(&node, i as u32, row, column, plan)
                 .map_err(|err| format!("Invalid formula: {err}"))?;

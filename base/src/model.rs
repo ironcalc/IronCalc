@@ -477,6 +477,18 @@ impl<'a, A: Position> Model<'a, A> {
         })
     }
 
+    /// The node the stored English text of a user formula parses to.
+    pub(crate) fn user_formula_to_english_node(
+        &mut self,
+        formula: &str,
+        context: &CellReferenceRC,
+    ) -> Result<(Node, bool), String> {
+        let english = self.user_formula_to_internal(formula, context)?;
+        let had_equals = english.starts_with('=');
+        let body = english.strip_prefix('=').unwrap_or(&english);
+        Ok((self.parse_internal_formula(body, context), had_equals))
+    }
+
     /// [`Self::user_formula_to_internal`] stopping at the AST, together with whether the author
     /// wrote the leading `=` that the stored text keeps.
     pub(crate) fn user_formula_to_node(
