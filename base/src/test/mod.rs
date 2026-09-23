@@ -84,6 +84,7 @@ mod mathematical;
 mod statistical;
 mod test_fn_offset;
 mod test_number_format;
+mod test_number_to_text;
 
 mod array_formulas;
 mod compatibility;

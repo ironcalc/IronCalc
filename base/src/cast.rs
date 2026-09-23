@@ -39,11 +39,50 @@ pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// A number as text the way Excel writes it in a formula ("a"&0.1+0.2 is
+/// "a0.3"): 15 significant digits, always spelled out in full (no
+/// scientific notation), matching zero digits included.
+pub(crate) fn number_to_text(f: f64) -> String {
+    let s = crate::number_format::to_excel_precision_str(f);
+    match s.split_once('e') {
+        Some((mantissa, exponent)) => match exponent.parse::<i32>() {
+            Ok(e) => expand_scientific(mantissa, e),
+            Err(_) => s,
+        },
+        None => s,
+    }
+}
+
+/// Writes `mantissa` x 10^`exponent` (ryu's shortest scientific form, one
+/// digit before the point) out in full, the way a formula shows a number:
+/// no "E+" ever, just the digits and, if needed, leading or trailing zeros.
+fn expand_scientific(mantissa: &str, exponent: i32) -> String {
+    let (sign, mantissa) = match mantissa.strip_prefix('-') {
+        Some(rest) => ("-", rest),
+        None => ("", mantissa),
+    };
+    let (int_part, frac_part) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    let digits = format!("{int_part}{frac_part}");
+    // Where the decimal point falls, counting from the start of `digits`
+    let point = int_part.len() as i32 + exponent;
+    if point <= 0 {
+        format!("{sign}0.{}{digits}", "0".repeat((-point) as usize))
+    } else if (point as usize) >= digits.len() {
+        format!(
+            "{sign}{digits}{}",
+            "0".repeat(point as usize - digits.len())
+        )
+    } else {
+        let (whole, frac) = digits.split_at(point as usize);
+        format!("{sign}{whole}.{frac}")
+    }
+}
+
 /// Converts a single array element to a string using the same rules as
 /// [`Model::cast_to_string`]. Errors propagate.
 pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
     match node {
-        ArrayNode::Number(f) => Ok(format!("{f}")),
+        ArrayNode::Number(f) => Ok(number_to_text(*f)),
         ArrayNode::String(s) => Ok(s.clone()),
         ArrayNode::Boolean(b) => Ok(if *b {
             "TRUE".to_string()
@@ -308,10 +347,8 @@ impl<'a> Model<'a> {
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<String, CalcResult> {
-        // FIXME: I think when casting a number we should convert it to_precision(x, 15)
-        // See function Exact
         match result {
-            CalcResult::Number(f) => Ok(format!("{f}")),
+            CalcResult::Number(f) => Ok(number_to_text(f)),
             CalcResult::String(s) => Ok(s),
             CalcResult::Boolean(f) => {
                 if f {
