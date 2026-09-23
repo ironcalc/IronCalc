@@ -504,7 +504,75 @@ fn parse_year_simple(year_str: &str) -> Result<i32, String> {
     }
 }
 
+/// "Sep 23, 2026", "September 23 2026" or "23 Sep 2026": a month name, a
+/// day and a four-digit year separated by spaces or commas.
+fn parse_spaced_date(value: &str) -> Option<i32> {
+    if value.contains('/') || value.contains('-') {
+        return None;
+    }
+    let parts: Vec<&str> = value.split([' ', ',']).filter(|p| !p.is_empty()).collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    let is_numeric = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_digit());
+    let year_str = parts[2];
+    if year_str.len() != 4 || !is_numeric(year_str) {
+        return None;
+    }
+    let (month_str, day_str) = if is_numeric(parts[1]) && !is_numeric(parts[0]) {
+        (parts[0], parts[1])
+    } else if is_numeric(parts[0]) && !is_numeric(parts[1]) {
+        (parts[1], parts[0])
+    } else {
+        return None;
+    };
+    let day = parse_day_simple(day_str).ok()?;
+    let month = parse_month_simple(month_str.trim_end_matches('.')).ok()?;
+    let year = parse_year_simple(year_str).ok()?;
+    if year == 1900 && month == 2 && day == 29 {
+        return Some(60);
+    }
+    let n = date_to_serial_number(day, month, year).ok()?;
+    if !(MINIMUM_DATE_SERIAL_NUMBER..=MAXIMUM_DATE_SERIAL_NUMBER).contains(&n) {
+        return None;
+    }
+    Some(n)
+}
+
+/// A date, a time, or a date followed by a time, typed as text
+/// ("2026-09-23 12:00", "12:00", "Sep 23, 2026") as a serial number.
+pub(crate) fn parse_date_time_text(value: &str) -> Option<f64> {
+    let value = value.trim();
+    // The time starts at the first word with a colon in it
+    let mut time_start = None;
+    let mut offset = 0;
+    for word in value.split(' ') {
+        if word.contains(':') {
+            time_start = Some(offset);
+            break;
+        }
+        offset += word.len() + 1;
+    }
+    let (date_part, time_part) = match time_start {
+        Some(i) if i > 0 => (&value[..i], &value[i..]),
+        _ => {
+            if let Some(t) = parse_time_string(value) {
+                return Some(t);
+            }
+            (value, "")
+        }
+    };
+    let date = parse_datevalue_text(date_part.trim().trim_end_matches('T')).ok()? as f64;
+    if time_part.trim().is_empty() {
+        return Some(date);
+    }
+    parse_time_string(time_part).map(|t| date + t)
+}
+
 pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
+    if let Some(serial) = parse_spaced_date(value.trim()) {
+        return Ok(serial);
+    }
     // Trim whitespace and discard any time component (e.g., "2024-02-29 06:00" -> "2024-02-29")
     let mut date_str = value.trim();
     if let Some(idx) = date_str.find('T') {
