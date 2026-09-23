@@ -14,6 +14,7 @@ mod test_datedif_leap_month_end;
 mod test_days360_month_end;
 mod test_days_days360;
 mod test_degrees_radians;
+mod test_ecma_ceiling;
 mod test_error_propagation;
 mod test_fact_factdouble;
 mod test_fn_accrint;
