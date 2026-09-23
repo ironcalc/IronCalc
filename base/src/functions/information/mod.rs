@@ -245,10 +245,11 @@ impl<'a> Model<'a> {
                 // This cannot happen
                 CalcResult::Number(1.0)
             }
-            CalcResult::Array(_) | CalcResult::Lambda(_) => CalcResult::Error {
+            CalcResult::Array(_) => CalcResult::Number(64.0),
+            CalcResult::Lambda(_) => CalcResult::Error {
                 error: Error::NIMPL,
                 origin: cell,
-                message: "Arrays not supported yet".to_string(),
+                message: "Lambdas not supported yet".to_string(),
             },
         }
     }
