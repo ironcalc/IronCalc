@@ -139,5 +139,6 @@ mod test_spill_functions;
 mod test_today;
 mod test_trigonometric_reciprocals;
 mod test_types;
+mod test_unary_minus;
 mod text_functions;
 mod user_model;
