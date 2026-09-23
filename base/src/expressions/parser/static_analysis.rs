@@ -1654,7 +1654,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Ifs => not_implemented(args),
         Function::Lambda => StaticResult::Unknown,
         Function::Let => StaticResult::Unknown,
-        Function::Not => StaticResult::Scalar,
+        Function::Not => scalar_arguments(args),
         Function::Or => StaticResult::Scalar,
         Function::Switch => not_implemented(args),
         Function::True => StaticResult::Scalar,

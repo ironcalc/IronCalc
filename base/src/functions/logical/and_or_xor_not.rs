@@ -11,6 +11,36 @@ use crate::{
 impl<'a> Model<'a> {
     pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
+            // NOT of a list of values works value by value: NOT(A1:A3>1)
+            let values = match self.evaluate_node_in_context(&args[0], cell) {
+                CalcResult::Array(a) => Some(a),
+                CalcResult::Range { left, right } if left != right => {
+                    Some(self.evaluate_range(left, right))
+                }
+                _ => None,
+            };
+            if let Some(values) = values {
+                return CalcResult::Array(
+                    values
+                        .into_iter()
+                        .map(|row| {
+                            row.into_iter()
+                                .map(|v| match v {
+                                    ArrayNode::Boolean(b) => ArrayNode::Boolean(!b),
+                                    ArrayNode::Number(f) => ArrayNode::Boolean(f == 0.0),
+                                    ArrayNode::Empty => ArrayNode::Boolean(true),
+                                    ArrayNode::String(s) => match s.to_uppercase().as_str() {
+                                        "TRUE" => ArrayNode::Boolean(false),
+                                        "FALSE" => ArrayNode::Boolean(true),
+                                        _ => ArrayNode::Error(Error::VALUE),
+                                    },
+                                    e @ ArrayNode::Error(_) => e,
+                                })
+                                .collect()
+                        })
+                        .collect(),
+                );
+            }
             match self.get_boolean(&args[0], cell) {
                 Ok(f) => return CalcResult::Boolean(!f),
                 Err(s) => {
