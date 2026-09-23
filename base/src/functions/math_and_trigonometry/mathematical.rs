@@ -640,7 +640,7 @@ impl<'a> Model<'a> {
             Err(s) => return s,
         };
         let scale = 10.0_f64.powf(number_of_digits);
-        CalcResult::Number((value * scale).round() / scale)
+        CalcResult::Number(to_precision(value * scale, 15).round() / scale)
     }
 
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -663,9 +663,9 @@ impl<'a> Model<'a> {
         };
         let scale = 10.0_f64.powf(number_of_digits);
         if value > 0.0 {
-            CalcResult::Number((value * scale).ceil() / scale)
+            CalcResult::Number(to_precision(value * scale, 15).ceil() / scale)
         } else {
-            CalcResult::Number((value * scale).floor() / scale)
+            CalcResult::Number(to_precision(value * scale, 15).floor() / scale)
         }
     }
 
@@ -689,9 +689,9 @@ impl<'a> Model<'a> {
         };
         let scale = 10.0_f64.powf(number_of_digits);
         if value > 0.0 {
-            CalcResult::Number((value * scale).floor() / scale)
+            CalcResult::Number(to_precision(value * scale, 15).floor() / scale)
         } else {
-            CalcResult::Number((value * scale).ceil() / scale)
+            CalcResult::Number(to_precision(value * scale, 15).ceil() / scale)
         }
     }
 
