@@ -127,6 +127,13 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
+// The time of day of a serial in whole seconds, after rounding it to the
+// nearest millisecond (0..=86399; a time that rounds up to midnight is 0).
+fn seconds_of_day(v: f64) -> i64 {
+    let ms = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64 * 1000.0).round() as i64;
+    (ms % (SECONDS_PER_DAY as i64 * 1000)) / 1000
+}
+
 // ---------------------------------------------------------------------------
 // Helper macros to eliminate boilerplate in date/time component extraction
 // functions (DAY, MONTH, YEAR, HOUR, MINUTE, SECOND).
@@ -187,7 +194,6 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
-use crate::number_format::to_precision;
 use crate::{
     calc_result::CalcResult,
     constants::EXCEL_DATE_BASE,
@@ -1259,14 +1265,11 @@ impl<'a> Model<'a> {
     // -----------------------------------------------------------------------
 
     time_part_fn!(fn_hour, |v: f64| (v.rem_euclid(1.0) * 24.0).floor());
-    time_part_fn!(fn_minute, |v: f64| {
-        let total_seconds = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64).floor();
-        ((total_seconds / 60.0) as i64 % 60) as f64
-    });
-    time_part_fn!(fn_second, |v: f64| {
-        let total_seconds = to_precision(v.rem_euclid(1.0) * SECONDS_PER_DAY_F64, 15).floor();
-        (total_seconds as i64 % 60) as f64
-    });
+    // MINUTE and SECOND round the time of day to the nearest millisecond
+    // before taking it apart, as Excel does: MINUTE(0.520833333) is 30
+    // (12:29:59.99997 is 12:30:00.000), SECOND(TIME(14,30,45.999)) stays 45.
+    time_part_fn!(fn_minute, |v: f64| ((seconds_of_day(v) / 60) % 60) as f64);
+    time_part_fn!(fn_second, |v: f64| (seconds_of_day(v) % 60) as f64);
 
     pub(crate) fn fn_timevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
