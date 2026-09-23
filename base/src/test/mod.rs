@@ -69,6 +69,7 @@ mod test_styles;
 mod test_sumsq;
 mod test_trigonometric;
 mod test_true_false;
+mod test_value_datevalue_text_dates;
 mod test_weekday_return_types;
 mod test_weekday_weeknum_isoweeknum;
 mod test_weeknum_return_types;

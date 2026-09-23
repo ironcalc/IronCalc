@@ -1182,6 +1182,10 @@ impl<'a> Model<'a> {
                 if let Ok((value, _)) = parse_formatted_number(&text, &currencies, self.locale) {
                     return CalcResult::Number(value);
                 };
+                // Dates and times typed as text: VALUE("12:00") is 0.5
+                if let Some(value) = crate::functions::date_and_time::parse_date_time_text(&text) {
+                    return CalcResult::Number(value);
+                }
                 CalcResult::Error {
                     error: Error::VALUE,
                     origin: cell,
