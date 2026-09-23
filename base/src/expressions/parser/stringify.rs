@@ -172,6 +172,7 @@ fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
             }
         }
         Node::OpRangeKind { left, right }
+        | Node::OpIntersectKind { left, right }
         | Node::OpConcatenateKind { left, right }
         | Node::OpSumKind { left, right, .. }
         | Node::OpProductKind { left, right, .. }
@@ -179,6 +180,11 @@ fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::CompareKind { left, right, .. } => {
             prefix_bound_variables(left, bound);
             prefix_bound_variables(right, bound);
+        }
+        Node::OpUnionKind(areas) => {
+            for area in areas {
+                prefix_bound_variables(area, bound);
+            }
         }
         Node::UnaryKind { right, .. } => prefix_bound_variables(right, bound),
         Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
@@ -650,6 +656,46 @@ fn stringify(
             );
             format!("{s1}:{s2}")
         }
+        OpIntersectKind { left, right } => format!(
+            "{} {}",
+            stringify(
+                left,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language
+            ),
+            stringify(
+                right,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language
+            )
+        ),
+        OpUnionKind(areas) => {
+            let separator = if locale.numbers.symbols.decimal == "." {
+                ","
+            } else {
+                ";"
+            };
+            let parts: Vec<String> = areas
+                .iter()
+                .map(|area| {
+                    stringify(
+                        area,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language,
+                    )
+                })
+                .collect();
+            format!("({})", parts.join(separator))
+        }
         OpRangeKind { left, right } => format!(
             "{}:{}",
             stringify(
@@ -826,6 +872,8 @@ fn stringify(
                     language,
                 ),
                 OpRangeKind { .. }
+                | OpIntersectKind { .. }
+                | OpUnionKind(_)
                 | OpConcatenateKind { .. }
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
@@ -871,6 +919,8 @@ fn stringify(
                     language,
                 ),
                 OpRangeKind { .. }
+                | OpIntersectKind { .. }
+                | OpUnionKind(_)
                 | OpConcatenateKind { .. }
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
@@ -969,6 +1019,8 @@ fn stringify(
                     | WrongReferenceKind { .. }
                     | WrongRangeKind { .. }
                     | OpRangeKind { .. }
+                    | OpIntersectKind { .. }
+                    | OpUnionKind(_)
                     | OpConcatenateKind { .. }
                     | OpProductKind { .. }
                     | FunctionKind { .. }
@@ -1190,9 +1242,14 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         }
 
         // Go next level
-        Node::OpRangeKind { left, right } => {
+        Node::OpRangeKind { left, right } | Node::OpIntersectKind { left, right } => {
             rename_sheet_in_node(left, sheet_index, new_name);
             rename_sheet_in_node(right, sheet_index, new_name);
+        }
+        Node::OpUnionKind(areas) => {
+            for area in areas {
+                rename_sheet_in_node(area, sheet_index, new_name);
+            }
         }
         Node::OpConcatenateKind { left, right } => {
             rename_sheet_in_node(left, sheet_index, new_name);
@@ -1293,9 +1350,14 @@ pub(crate) fn rename_defined_name_in_node(
             }
         }
         // Go next level
-        Node::OpRangeKind { left, right } => {
+        Node::OpRangeKind { left, right } | Node::OpIntersectKind { left, right } => {
             rename_defined_name_in_node(left, name, scope, new_name);
             rename_defined_name_in_node(right, name, scope, new_name);
+        }
+        Node::OpUnionKind(areas) => {
+            for area in areas {
+                rename_defined_name_in_node(area, name, scope, new_name);
+            }
         }
         Node::OpConcatenateKind { left, right } => {
             rename_defined_name_in_node(left, name, scope, new_name);

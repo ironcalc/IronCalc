@@ -69,9 +69,14 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
         Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
             assign_variable_ids(child, target, id);
         }
-        Node::OpRangeKind { left, right } => {
+        Node::OpRangeKind { left, right } | Node::OpIntersectKind { left, right } => {
             assign_variable_ids(left, target, id);
             assign_variable_ids(right, target, id);
+        }
+        Node::OpUnionKind(areas) => {
+            for area in areas.iter_mut() {
+                assign_variable_ids(area, target, id);
+            }
         }
         Node::LambdaDefKind { parameters, body } => {
             // If a LAMBDA parameter shadows `target`, don't recurse into the body.

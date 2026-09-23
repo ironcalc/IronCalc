@@ -58,6 +58,25 @@ pub mod stringify;
 #[cfg(test)]
 mod tests;
 
+/// True for a node that stands for a reference: the operands of the space
+/// (intersection) operator.
+fn is_reference_node(node: &Node) -> bool {
+    match node {
+        Node::ReferenceKind { .. }
+        | Node::RangeKind { .. }
+        | Node::OpRangeKind { .. }
+        | Node::OpIntersectKind { .. }
+        | Node::OpUnionKind(_)
+        | Node::DefinedNameKind(_)
+        | Node::TableNameKind(_)
+        | Node::NamedVariableKind { .. } => true,
+        Node::FunctionKind { kind, .. } => {
+            kind.returns_reference() || matches!(kind, Function::Index)
+        }
+        _ => false,
+    }
+}
+
 pub(crate) fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String> {
     let mut lexer = lexer::Lexer::new(
         formula,
@@ -187,6 +206,13 @@ pub enum Node {
         left: Box<Node>,
         right: Box<Node>,
     },
+    // A1:C5 B2:D8 (the space operator): the cells both references share
+    OpIntersectKind {
+        left: Box<Node>,
+        right: Box<Node>,
+    },
+    // (A1:A5,C1:C5): several references taken together
+    OpUnionKind(Vec<Node>),
     OpConcatenateKind {
         left: Box<Node>,
         right: Box<Node>,
@@ -560,7 +586,7 @@ impl<'a> Parser<'a> {
             next_token = self.lexer.peek_token();
         }
 
-        let mut t = self.parse_range();
+        let mut t = self.parse_intersect();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
@@ -578,6 +604,36 @@ impl<'a> Parser<'a> {
                 right: Box::new(t),
             };
             next_token = self.lexer.peek_token();
+        }
+        t
+    }
+
+    // The intersection operator is a space between two references:
+    // `A1:C5 B2:D8`. It binds tighter than everything but `:`.
+    fn parse_intersect(&mut self) -> Node {
+        let mut t = self.parse_range();
+        if let Node::ParseErrorKind { .. } = t {
+            return t;
+        }
+        while is_reference_node(&t) && self.lexer.has_whitespace_ahead() {
+            let next_token = self.lexer.peek_token();
+            if !matches!(
+                next_token,
+                TokenType::Reference { .. }
+                    | TokenType::Range { .. }
+                    | TokenType::Ident(_)
+                    | TokenType::LeftParenthesis
+            ) {
+                break;
+            }
+            let p = self.parse_range();
+            if let Node::ParseErrorKind { .. } = p {
+                return p;
+            }
+            t = Node::OpIntersectKind {
+                left: Box::new(t),
+                right: Box::new(p),
+            };
         }
         t
     }
@@ -712,6 +768,22 @@ impl<'a> Parser<'a> {
                 if let Node::ParseErrorKind { .. } = t {
                     return t;
                 }
+                // `(A1,C1:C3)` is a union of references
+                let separator = self.get_argument_separator_token();
+                let t = if self.lexer.peek_token() == separator {
+                    let mut areas = vec![t];
+                    while self.lexer.peek_token() == separator {
+                        self.lexer.advance_token();
+                        let p = self.parse_expr();
+                        if let Node::ParseErrorKind { .. } = p {
+                            return p;
+                        }
+                        areas.push(p);
+                    }
+                    Node::OpUnionKind(areas)
+                } else {
+                    t
+                };
 
                 if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
                     return Node::ParseErrorKind {
