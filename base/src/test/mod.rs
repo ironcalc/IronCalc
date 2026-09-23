@@ -36,6 +36,7 @@ mod test_fn_hyperlink;
 mod test_fn_if;
 mod test_fn_maxifs;
 mod test_fn_minifs;
+mod test_fn_minute_second_rounding;
 mod test_fn_or_xor;
 mod test_fn_product;
 mod test_fn_randarray;
