@@ -808,6 +808,16 @@ impl<'a> Model<'a> {
         CalcResult::Number(result)
     }
 
+    /// ECMA.CEILING(number, significance) — the OpenFormula/ECMA-376 name for
+    /// Excel's regular two-argument CEILING.
+    pub(crate) fn fn_ecma_ceiling(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.fn_ceiling(args, cell)
+    }
+
     pub(crate) fn fn_ceiling_math(
         &mut self,
         args: &[Node],

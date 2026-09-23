@@ -523,6 +523,7 @@ pub struct Functions {
     pub sumproduct: String,
     pub percentof: String,
     pub encodeurl: String,
+    pub ecma_ceiling: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]
