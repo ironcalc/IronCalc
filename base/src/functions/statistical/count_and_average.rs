@@ -362,6 +362,13 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
+                CalcResult::Array(array) => {
+                    result += array
+                        .iter()
+                        .flatten()
+                        .filter(|v| matches!(v, ArrayNode::Number(_)))
+                        .count() as f64;
+                }
                 _ => {
                     // Ignore everything else
                 }
