@@ -348,3 +348,19 @@ fn test_logest_basic() {
     assert!((m - 3.0).abs() < 0.01, "m should be ≈3, got {m}");
     assert!((b - 2.0).abs() < 0.01, "b should be ≈2, got {b}");
 }
+
+// ── GROWTH/TREND/LINEST/LOGEST with data in rows ─────────────────────────────
+
+#[test]
+fn test_regressions_take_data_in_rows() {
+    let mut model = new_empty_model();
+    model._set("A1", "=GROWTH({2,4,8},{1,2,3},4)");
+    model._set("A2", "=LOGEST({2,4,8},{1,2,3})");
+    model._set("A3", "=TREND({1,2,3},,{4,5})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "16");
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("B2"), "1");
+    assert_eq!(model._get_text("A3"), "4");
+    assert_eq!(model._get_text("B3"), "5");
+}
