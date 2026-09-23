@@ -763,9 +763,17 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_reference(&args[0], cell) {
-            Ok(c) => CalcResult::Number((c.right.row - c.left.row + 1) as f64),
-            Err(s) => s,
+        // A list of values counts too: ROWS(UNIQUE(A1:A5)), ROWS({1;2;3})
+        match self.evaluate_node_with_reference(&args[0], cell) {
+            CalcResult::Range { left, right } => {
+                CalcResult::Number((right.row - left.row + 1) as f64)
+            }
+            CalcResult::Array(a) => CalcResult::Number(a.len() as f64),
+            error @ CalcResult::Error { .. } => error,
+            CalcResult::Lambda(_) => {
+                CalcResult::new_error(Error::VALUE, cell, "Unexpected lambda".to_string())
+            }
+            _ => CalcResult::Number(1.0),
         }
     }
 
@@ -859,9 +867,16 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_reference(&args[0], cell) {
-            Ok(c) => CalcResult::Number((c.right.column - c.left.column + 1) as f64),
-            Err(s) => s,
+        match self.evaluate_node_with_reference(&args[0], cell) {
+            CalcResult::Range { left, right } => {
+                CalcResult::Number((right.column - left.column + 1) as f64)
+            }
+            CalcResult::Array(a) => CalcResult::Number(a.first().map_or(0, |r| r.len()) as f64),
+            error @ CalcResult::Error { .. } => error,
+            CalcResult::Lambda(_) => {
+                CalcResult::new_error(Error::VALUE, cell, "Unexpected lambda".to_string())
+            }
+            _ => CalcResult::Number(1.0),
         }
     }
 
