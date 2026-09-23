@@ -969,7 +969,6 @@ fn stringify(
                     | WrongReferenceKind { .. }
                     | WrongRangeKind { .. }
                     | OpRangeKind { .. }
-                    | OpConcatenateKind { .. }
                     | OpProductKind { .. }
                     | FunctionKind { .. }
                     | NamedFunctionKind { .. }
@@ -981,11 +980,17 @@ fn stringify(
                     | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
                     | SpillRangeOperator { .. }
-                    | CompareKind { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
                     | EmptyArgKind => false,
 
+                    // --A1 reads back as it was typed
+                    UnaryKind {
+                        kind: OpUnary::Minus,
+                        ..
+                    } => false,
+                    // -(A1="a") and -(A1&B1) keep their parentheses
+                    OpConcatenateKind { .. } | CompareKind { .. } => true,
                     OpPowerKind { .. } | OpSumKind { .. } | UnaryKind { .. } => true,
                 };
                 if needs_parentheses {

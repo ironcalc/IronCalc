@@ -788,15 +788,34 @@ impl<'a> Model<'a> {
             ),
             CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
             UnaryKind { kind, right } => {
-                let r = match self.get_number(right, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
+                let op = |r: f64| match kind {
+                    OpUnary::Minus => -r,
+                    OpUnary::Percentage => r / 100.0,
                 };
-                match kind {
-                    OpUnary::Minus => CalcResult::Number(-r),
-                    OpUnary::Percentage => CalcResult::Number(r / 100.0),
+                // A list of values is negated value by value: --(A1:A5="a")
+                match self.get_number_or_array(right, cell) {
+                    Ok(crate::cast::NumberOrArray::Number(r)) => CalcResult::Number(op(r)),
+                    Ok(crate::cast::NumberOrArray::Array(a)) => CalcResult::Array(
+                        a.into_iter()
+                            .map(|row| {
+                                row.into_iter()
+                                    .map(|v| match v {
+                                        ArrayNode::Number(f) => ArrayNode::Number(op(f)),
+                                        ArrayNode::Boolean(b) => {
+                                            ArrayNode::Number(op(if b { 1.0 } else { 0.0 }))
+                                        }
+                                        ArrayNode::Empty => ArrayNode::Number(op(0.0)),
+                                        ArrayNode::String(s) => match self.cast_number(&s) {
+                                            Some(f) => ArrayNode::Number(op(f)),
+                                            None => ArrayNode::Error(Error::VALUE),
+                                        },
+                                        e @ ArrayNode::Error(_) => e,
+                                    })
+                                    .collect()
+                            })
+                            .collect(),
+                    ),
+                    Err(s) => s,
                 }
             }
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
