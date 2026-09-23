@@ -225,6 +225,10 @@ pub struct Model<'a> {
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
     /// Dynamic links: links created by formulas like HYPERLINK
     pub(crate) links: HashMap<(u32, i32, i32), Link>,
+    /// Which formulas refer to which cells, for evaluate_incremental
+    pub(crate) dependency_index: Option<Box<crate::incremental::DependencyIndex>>,
+    /// How many times a formula met itself while being evaluated
+    pub(crate) circular_hits: u64,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -1477,6 +1481,7 @@ impl<'a> Model<'a> {
                 if let Some(state) = self.cells.get(&key) {
                     match state {
                         CellState::Evaluating => {
+                            self.circular_hits += 1;
                             return CalcResult::new_error(
                                 Error::CIRC,
                                 cell_reference,
@@ -1752,6 +1757,8 @@ impl<'a> Model<'a> {
             lambdas: HashMap::new(),
             last_lambda_id: 0,
             spill_cells: Vec::new(),
+            dependency_index: None,
+            circular_hits: 0,
             support: HashMap::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
@@ -2975,7 +2982,7 @@ impl<'a> Model<'a> {
 
     /// Collects all dynamic-formula anchor cells in natural (sheet, row, column) order
     /// and stores them in `self.spill_cells`.
-    fn collect_spill_cells(&mut self) {
+    pub(crate) fn collect_spill_cells(&mut self) {
         let mut spill_cells = Vec::new();
         for (sheet_index, worksheet) in self.workbook.worksheets.iter().enumerate() {
             let mut sorted_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
@@ -3006,7 +3013,7 @@ impl<'a> Model<'a> {
 
     /// Returns all cells in the current spill area of a dynamic-formula anchor,
     /// including the anchor itself.
-    fn get_spill_area(&self, cell_ref: CellReferenceIndex) -> Vec<CellReferenceIndex> {
+    pub(crate) fn get_spill_area(&self, cell_ref: CellReferenceIndex) -> Vec<CellReferenceIndex> {
         let ws = match self.workbook.worksheet(cell_ref.sheet) {
             Ok(ws) => ws,
             Err(_) => return Vec::new(),
@@ -3131,6 +3138,7 @@ impl<'a> Model<'a> {
             });
         }
         self.evaluate_conditional_formatting();
+        self.build_dependency_index();
     }
 
     /// Removes the content of every cell in the range but leaves the style.

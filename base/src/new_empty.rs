@@ -696,6 +696,8 @@ impl<'a> Model<'a> {
             lambdas: HashMap::new(),
             last_lambda_id: 0,
             spill_cells: Vec::new(),
+            dependency_index: None,
+            circular_hits: 0,
             support: HashMap::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
