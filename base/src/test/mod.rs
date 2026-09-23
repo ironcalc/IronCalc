@@ -75,6 +75,7 @@ mod test_weeknum_return_types;
 mod test_workbook;
 mod test_workday_workdayintl;
 mod test_worksheet;
+mod test_xlookup_rows_and_arrays;
 mod test_yearfrac_basis;
 mod test_yearfrac_datedif;
 pub(crate) mod util;

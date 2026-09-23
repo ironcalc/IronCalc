@@ -1734,7 +1734,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Vstack => StaticResult::Unknown,
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
-        Function::Xlookup => not_implemented(args),
+        Function::Xlookup => StaticResult::Unknown,
         Function::Xmatch => not_implemented(args),
         Function::Trimrange => StaticResult::Unknown,
         Function::Sort => StaticResult::Unknown,
