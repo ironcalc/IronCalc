@@ -781,11 +781,14 @@ impl<'a> Model<'a> {
                     ),
                 }
             }
-            NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
+            NamedVariableKind { name, id: None } => match self.eta_lambda(name) {
+                Some(lambda) => lambda,
+                None => CalcResult::new_error(
+                    Error::NAME,
+                    cell,
+                    format!("Variable name \"{name}\" not found."),
+                ),
+            },
             CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
             UnaryKind { kind, right } => {
                 let r = match self.get_number(right, cell) {
