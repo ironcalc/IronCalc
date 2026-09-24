@@ -209,23 +209,37 @@ pub struct Model<'a> {
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
     /// Dynamic links: links created by formulas like HYPERLINK
     pub(crate) links: HashMap<(u32, i32, i32), Link>,
-    /// For each sheet, where each of its shared formulas is: formula text to
-    /// index in `Worksheet::shared_formulas`. Only an aid to find a formula
-    /// without comparing it with all the others; the list is what counts and
-    /// what is saved. Rebuilt with the parsed formulas (`parse_formulas`),
-    /// extended when a formula is added. See `shared_formula_index`.
-    pub(crate) shared_formula_lookup: Vec<HashMap<String, i32>>,
+    /// For each sheet, where each of its shared formulas is. Only an aid to
+    /// find a formula without comparing it with all the others; the list is
+    /// what counts and what is saved. Rebuilt with the parsed formulas
+    /// (`parse_formulas`), extended when a formula is added. See
+    /// `shared_formula_index`.
+    pub(crate) shared_formula_lookup: Vec<SharedFormulaLookup>,
 }
 
-/// Formula text to index for a list of shared formulas. If a formula is in the
-/// list twice, which renaming a sheet or a defined name can cause, the first one
-/// stays, as it would for someone looking through the list from the start.
-pub(crate) fn build_shared_formula_lookup(shared_formulas: &[String]) -> HashMap<String, i32> {
-    let mut lookup = HashMap::with_capacity(shared_formulas.len());
-    for (index, formula) in shared_formulas.iter().enumerate() {
-        lookup.entry(formula.clone()).or_insert(index as i32);
+/// Formula text to index in `Worksheet::shared_formulas`, for one sheet.
+#[derive(Default)]
+pub(crate) struct SharedFormulaLookup {
+    pub(crate) index: HashMap<String, i32>,
+    /// How many formulas of the list the index was built from. A formula the
+    /// index does not know is new only if this is the length of the list. The
+    /// size of the index says nothing: a formula can be in the list twice,
+    /// which renaming a sheet or a defined name can cause.
+    pub(crate) built_from: usize,
+}
+
+/// The lookup for a list of shared formulas. If a formula is in the list twice
+/// the first one stays, as it would for someone looking through the list from
+/// the start.
+pub(crate) fn build_shared_formula_lookup(shared_formulas: &[String]) -> SharedFormulaLookup {
+    let mut index = HashMap::with_capacity(shared_formulas.len());
+    for (i, formula) in shared_formulas.iter().enumerate() {
+        index.entry(formula.clone()).or_insert(i as i32);
     }
-    lookup
+    SharedFormulaLookup {
+        index,
+        built_from: shared_formulas.len(),
+    }
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -2557,26 +2571,28 @@ impl<'a> Model<'a> {
         let shared_formulas = &mut self.workbook.worksheet_mut(sheet)?.shared_formulas;
         if self.shared_formula_lookup.len() <= sheet_index {
             self.shared_formula_lookup
-                .resize_with(sheet_index + 1, HashMap::new);
+                .resize_with(sheet_index + 1, SharedFormulaLookup::default);
         }
         let lookup = &mut self.shared_formula_lookup[sheet_index];
-        let agrees = |lookup: &HashMap<String, i32>, shared_formulas: &Vec<String>| {
-            lookup.len() <= shared_formulas.len()
-                && match lookup.get(&text) {
+        // The lookup is believed only if it was built from the whole list and,
+        // for the formula it knows, the list agrees with it.
+        let agrees = |lookup: &SharedFormulaLookup, shared_formulas: &Vec<String>| {
+            lookup.built_from == shared_formulas.len()
+                && match lookup.index.get(&text) {
                     Some(index) => shared_formulas.get(*index as usize) == Some(&text),
-                    // Not there: believable only if nothing is missing from it.
-                    None => lookup.len() == shared_formulas.len(),
+                    None => true,
                 }
         };
         if !agrees(lookup, shared_formulas) {
             *lookup = build_shared_formula_lookup(shared_formulas);
         }
-        if let Some(index) = lookup.get(&text) {
+        if let Some(index) = lookup.index.get(&text) {
             return Ok(*index);
         }
         let index = shared_formulas.len() as i32;
-        lookup.insert(text.clone(), index);
+        lookup.index.insert(text.clone(), index);
         shared_formulas.push(text);
+        lookup.built_from = shared_formulas.len();
         self.parsed_formulas[sheet_index].push((Arc::new(parsed_formula), static_result));
         Ok(index)
     }
