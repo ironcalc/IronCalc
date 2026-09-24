@@ -5,7 +5,8 @@
   "default_workbook_name": "Workbook",
   "errors": {
     "model_not_found": "Model not found, or failed to load",
-    "example_not_found": "Example file not found, or failed to load"
+    "example_not_found": "Example file not found, or failed to load",
+    "storage_save_failed": "Your changes could not be saved. The browser may be out of storage space."
   },
   "welcome_dialog": {
     "title": "Welcome to IronCalc",

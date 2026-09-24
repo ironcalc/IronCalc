@@ -17,8 +17,8 @@ import {
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
-import { getModelsMetadata, getSelectedUuid } from "../storage";
 import UploadFileDialog from "../UploadFileDialog/UploadFileDialog";
+import { useModelsMetadata, useSelectedUuid } from "../useStorage";
 
 const LANGUAGES = [
   ["en-US", "English"],
@@ -53,8 +53,8 @@ export function FileMenu(props: {
   const [anchorPosition, setAnchorPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { t, i18n } = useTranslation();
-  const models = getModelsMetadata();
-  const selectedUuid = getSelectedUuid();
+  const models = useModelsMetadata();
+  const selectedUuid = useSelectedUuid();
 
   const captureAnchor = () => {
     const rect = triggerRef.current?.getBoundingClientRect();

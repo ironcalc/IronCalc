@@ -5,7 +5,8 @@
   "default_workbook_name": "Arbeitsmappe",
   "errors": {
     "model_not_found": "Modell nicht gefunden oder Ladefehler",
-    "example_not_found": "Beispieldatei nicht gefunden oder Ladefehler"
+    "example_not_found": "Beispieldatei nicht gefunden oder Ladefehler",
+    "storage_save_failed": "Ihre Änderungen konnten nicht gespeichert werden. Möglicherweise hat der Browser keinen Speicherplatz mehr."
   },
   "welcome_dialog": {
     "title": "Willkommen bei IronCalc",

@@ -27,7 +27,6 @@ export function FileBar(properties: {
   onDelete: () => void;
   isDrawerOpen: boolean;
   setIsDrawerOpen: (open: boolean) => void;
-  setLocalStorageId: (updater: (id: number) => number) => void;
   onLanguageChange: (language: string) => void;
   isDarkMode: boolean;
   onDarkModeChange: (isDark: boolean) => void;
@@ -116,8 +115,9 @@ export function FileBar(properties: {
           name={properties.model.getName()}
           onNameChange={(name) => {
             properties.model.setName(name);
-            updateNameSelectedWorkbook(properties.model, name);
-            properties.setLocalStorageId((id) => id + 1);
+            updateNameSelectedWorkbook(properties.model, name).catch((e) =>
+              console.error("Failed saving new name", e),
+            );
           }}
           maxWidth={maxTitleWidth}
         />

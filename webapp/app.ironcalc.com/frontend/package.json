@@ -8,7 +8,8 @@
     "preview": "vite preview",
     "check": "biome check ./src",
     "typecheck": "tsc -b",
-    "check-write": "biome check --write ./src"
+    "check-write": "biome check --write ./src",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ironcalc/workbook": "file:../../IronCalc/",
@@ -24,8 +25,11 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "fake-indexeddb": "^6.0.0",
+    "jsdom": "^25.0.1",
     "typescript": "6.0.3",
     "vite": "^8.0.16",
-    "vite-plugin-svgr": "^5.2.0"
+    "vite-plugin-svgr": "^5.2.0",
+    "vitest": "^4.1.8"
   }
 }
