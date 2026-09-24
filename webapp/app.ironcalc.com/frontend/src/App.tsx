@@ -9,7 +9,7 @@ import {
   Model,
 } from "@ironcalc/workbook";
 import "@ironcalc/workbook/style.css";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileBar } from "./components/FileBar";
 import LeftDrawer from "./components/LeftDrawer/LeftDrawer";
@@ -19,12 +19,14 @@ import {
   uploadFile,
 } from "./components/rpc";
 import {
+  clearSelectedUuid,
   createModelWithSafeTimezone,
   createNewModel,
   deleteModelByUuid,
   deleteSelectedModel,
   getLanguageFromLocale,
   getShortLocaleCode,
+  initStorage,
   isStorageEmpty,
   loadDarkModeFromStorage,
   loadDefaultLocaleFromStorage,
@@ -34,6 +36,7 @@ import {
   saveModelToStorage,
   saveSelectedModelInStorage,
   selectModelFromStorage,
+  subscribeToStorage,
 } from "./components/storage";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
@@ -43,10 +46,25 @@ function App() {
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [localStorageId, setLocalStorageId] = useState<number>(1);
   const [isDarkMode, setIsDarkMode] = useState(loadDarkModeFromStorage);
 
   const ironCalcRef = useRef<IronCalcHandle>(null);
+  // Guards against overlapping autosaves and repeated error alerts.
+  const isSavingRef = useRef(false);
+  const saveErrorReportedRef = useRef(false);
+
+  const { t, i18n } = useTranslation();
+
+  const reportSaveError = useCallback(
+    (e: unknown) => {
+      console.error("Failed to save workbook", e);
+      if (!saveErrorReportedRef.current) {
+        saveErrorReportedRef.current = true;
+        alert(t("errors.storage_save_failed"));
+      }
+    },
+    [t],
+  );
 
   const handleLanguageChange = (language: string) => {
     if (ironCalcRef.current) {
@@ -54,7 +72,7 @@ function App() {
       saveDefaultLocaleInStorage(language);
       if (model) {
         model.setLocale(getShortLocaleCode(language));
-        saveSelectedModelInStorage(model);
+        saveSelectedModelInStorage(model).catch(reportSaveError);
       }
     }
   };
@@ -64,12 +82,11 @@ function App() {
     saveDarkModeInStorage(isDark);
   };
 
-  const { t, i18n } = useTranslation();
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: Run only for i18n.language dependency
   useEffect(() => {
     async function start() {
       await init();
+      await initStorage();
       const queryString = window.location.search;
       const urlParams = new URLSearchParams(queryString);
       const modelHash = urlParams.get("model");
@@ -84,7 +101,7 @@ function App() {
         try {
           const model_bytes = await get_model(modelHash);
           loadedModel = Model.fromBytes(model_bytes, languageId);
-          localStorage.removeItem("selected");
+          clearSelectedUuid();
         } catch (_e) {
           console.error(_e);
           alert(t("errors.model_not_found"));
@@ -94,7 +111,7 @@ function App() {
         try {
           const model_bytes = await get_documentation_model(exampleFilename);
           loadedModel = Model.fromBytes(model_bytes, languageId);
-          localStorage.removeItem("selected");
+          clearSelectedUuid();
         } catch (_e) {
           console.error(_e);
           alert(t("errors.example_not_found"));
@@ -105,15 +122,17 @@ function App() {
       if (loadedModel) {
         setModel(loadedModel);
       } else {
-        // try to load from local storage
-        const result = loadSelectedModelFromStorage();
-        if (!result) {
+        // try to load from storage
+        const result = await loadSelectedModelFromStorage();
+        if (result) {
+          setModel(result);
+        } else if (isStorageEmpty()) {
           setShowWelcomeDialog(true);
           const createdModel = createModelWithSafeTimezone("template");
           setModel(createdModel);
         } else {
-          const newModel = result;
-          setModel(newModel);
+          // There are workbooks but none could be selected: start a new one
+          setModel(await createNewModel());
         }
       }
       i18n.changeLanguage(language);
@@ -126,27 +145,38 @@ function App() {
     start();
   }, [i18n.changeLanguage]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: localStorageId needed to detect name changes (model mutates internally)
+  // Keeps the tab title in sync with the workbook name. We subscribe to the
+  // storage directly instead of using a hook so that a rename (or any other
+  // storage change) does not re-render App and, with it, the whole sheet.
   useEffect(() => {
-    if (model) {
-      const workbookName = model.getName();
+    const update = () => {
+      const workbookName = model?.getName();
       document.title = workbookName ? `${workbookName} - IronCalc` : "IronCalc";
-    } else {
-      document.title = "IronCalc";
-    }
-  }, [model, localStorageId]);
+    };
+    update();
+    return subscribeToStorage(update);
+  }, [model]);
 
   useEffect(() => {
     if (!model) return;
     // We try to save the model every second
     const interval = setInterval(() => {
+      if (isSavingRef.current) {
+        // The previous save is still running; changes are picked up next tick
+        return;
+      }
       const queue = model.flushSendQueue();
       if (queue.length !== 1) {
-        saveSelectedModelInStorage(model);
+        isSavingRef.current = true;
+        saveSelectedModelInStorage(model)
+          .catch(reportSaveError)
+          .finally(() => {
+            isSavingRef.current = false;
+          });
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [model]);
+  }, [model, reportSaveError]);
 
   if (!model) {
     return (
@@ -158,27 +188,27 @@ function App() {
   }
 
   // Handlers for model changes that also update our models state
-  const handleNewModel = () => {
-    const newModel = createNewModel();
+  const handleNewModel = async () => {
+    const newModel = await createNewModel();
     setModel(newModel);
   };
 
-  const handleSetModel = (uuid: string) => {
-    const newModel = selectModelFromStorage(uuid);
+  const handleSetModel = async (uuid: string) => {
+    const newModel = await selectModelFromStorage(uuid);
     if (newModel) {
       setModel(newModel);
     }
   };
 
-  const handleDeleteModel = () => {
-    const newModel = deleteSelectedModel();
+  const handleDeleteModel = async () => {
+    const newModel = await deleteSelectedModel();
     if (newModel) {
       setModel(newModel);
     }
   };
 
-  const handleDeleteModelByUuid = (uuid: string) => {
-    const newModel = deleteModelByUuid(uuid);
+  const handleDeleteModelByUuid = async (uuid: string) => {
+    const newModel = await deleteModelByUuid(uuid);
     if (newModel) {
       setModel(newModel);
     }
@@ -194,7 +224,6 @@ function App() {
         newModel={handleNewModel}
         setModel={handleSetModel}
         onDelete={handleDeleteModelByUuid}
-        localStorageId={localStorageId}
       />
       <div
         className={`app-ic-main-content${isDrawerOpen ? " app-ic-main-content--open" : ""}`}
@@ -212,7 +241,7 @@ function App() {
             const locale = loadDefaultLocaleFromStorage();
             const languageId = getLanguageFromLocale(locale);
             const newModel = Model.fromBytes(bytes, languageId);
-            saveModelToStorage(newModel);
+            await saveModelToStorage(newModel);
 
             setModel(newModel);
           }}
@@ -224,7 +253,6 @@ function App() {
           onDelete={handleDeleteModel}
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
-          setLocalStorageId={setLocalStorageId}
           onLanguageChange={handleLanguageChange}
           isDarkMode={isDarkMode}
           onDarkModeChange={handleDarkModeChange}
@@ -244,9 +272,9 @@ function App() {
       </div>
       {showWelcomeDialog && (
         <WelcomeDialog
-          onClose={() => {
+          onClose={async () => {
             if (isStorageEmpty()) {
-              const createdModel = createNewModel();
+              const createdModel = await createNewModel();
               setModel(createdModel);
             }
             setShowWelcomeDialog(false);
@@ -261,13 +289,13 @@ function App() {
             const locale = loadDefaultLocaleFromStorage();
             const languageId = getLanguageFromLocale(locale);
             const newModel = Model.fromBytes(bytes, languageId);
-            saveModelToStorage(newModel);
+            await saveModelToStorage(newModel);
             setModel(newModel);
           }}
           onSelectTemplate={async (templateId) => {
             switch (templateId) {
               case "blank": {
-                const createdModel = createNewModel();
+                const createdModel = await createNewModel();
                 setModel(createdModel);
                 break;
               }
@@ -276,7 +304,7 @@ function App() {
                 const locale = loadDefaultLocaleFromStorage();
                 const languageId = getLanguageFromLocale(locale);
                 const importedModel = Model.fromBytes(model_bytes, languageId);
-                saveModelToStorage(importedModel);
+                await saveModelToStorage(importedModel);
                 setModel(importedModel);
                 break;
               }
@@ -293,7 +321,7 @@ function App() {
           const locale = loadDefaultLocaleFromStorage();
           const languageId = getLanguageFromLocale(locale);
           const importedModel = Model.fromBytes(model_bytes, languageId);
-          saveModelToStorage(importedModel);
+          await saveModelToStorage(importedModel);
           setModel(importedModel);
           setTemplatesDialogOpen(false);
         }}

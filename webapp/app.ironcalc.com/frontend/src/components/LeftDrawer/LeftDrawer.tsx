@@ -10,7 +10,6 @@ interface LeftDrawerProps {
   newModel: () => void;
   setModel: (key: string) => void;
   onDelete: (uuid: string) => void;
-  localStorageId: number;
 }
 
 function LeftDrawer({ open, newModel, setModel, onDelete }: LeftDrawerProps) {

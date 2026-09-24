@@ -5,7 +5,8 @@
   "default_workbook_name": "Libro",
   "errors": {
     "model_not_found": "Modelo no encontrado o error al cargar",
-    "example_not_found": "Archivo de ejemplo no encontrado o error al cargar"
+    "example_not_found": "Archivo de ejemplo no encontrado o error al cargar",
+    "storage_save_failed": "No se han podido guardar los cambios. Puede que el navegador no tenga espacio de almacenamiento."
   },
   "welcome_dialog": {
     "title": "Bienvenido a IronCalc",

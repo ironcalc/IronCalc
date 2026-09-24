@@ -5,7 +5,8 @@
   "default_workbook_name": "Classeur",
   "errors": {
     "model_not_found": "Modèle introuvable ou échec du chargement",
-    "example_not_found": "Fichier d'exemple introuvable ou échec du chargement"
+    "example_not_found": "Fichier d'exemple introuvable ou échec du chargement",
+    "storage_save_failed": "Vos modifications n'ont pas pu être enregistrées. Le navigateur n'a peut-être plus d'espace de stockage."
   },
   "welcome_dialog": {
     "title": "Bienvenue sur IronCalc",

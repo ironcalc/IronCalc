@@ -5,7 +5,8 @@
   "default_workbook_name": "Cartella",
   "errors": {
     "model_not_found": "Modello non trovato o errore durante il caricamento",
-    "example_not_found": "File di esempio non trovato o errore durante il caricamento"
+    "example_not_found": "File di esempio non trovato o errore durante il caricamento",
+    "storage_save_failed": "Impossibile salvare le modifiche. Il browser potrebbe aver esaurito lo spazio di archiviazione."
   },
   "welcome_dialog": {
     "title": "Benvenuto su IronCalc",
