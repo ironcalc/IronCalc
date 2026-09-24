@@ -375,6 +375,23 @@ fn to_string_moved(
             to_string_moved(left, move_context, locale, language),
             to_string_moved(right, move_context, locale, language),
         ),
+        OpIntersectKind { left, right } => format!(
+            "{} {}",
+            to_string_moved(left, move_context, locale, language),
+            to_string_moved(right, move_context, locale, language),
+        ),
+        OpUnionKind(areas) => {
+            let separator = if locale.numbers.symbols.decimal == "." {
+                ","
+            } else {
+                ";"
+            };
+            let parts: Vec<String> = areas
+                .iter()
+                .map(|area| to_string_moved(area, move_context, locale, language))
+                .collect();
+            format!("({})", parts.join(separator))
+        }
         OpConcatenateKind { left, right } => format!(
             "{}&{}",
             to_string_moved(left, move_context, locale, language),

@@ -21,6 +21,7 @@ mod spill_functions;
 mod statistical;
 mod subtotal;
 mod text;
+mod unions;
 pub(crate) mod util;
 mod xlookup;
 
@@ -2311,6 +2312,11 @@ impl<'a> Model<'a> {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        if args.iter().any(|arg| matches!(arg, Node::OpUnionKind(_))) {
+            if let Some(args) = unions::expand_unions(kind, args) {
+                return self.evaluate_function(kind, &args, cell);
+            }
+        }
         match kind {
             Function::And => self.fn_and(args, cell),
             Function::False => self.fn_false(args, cell),
