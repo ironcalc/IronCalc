@@ -387,10 +387,8 @@ fn canonicalize_borders(
             }
             let ws = um.model.workbook.worksheet(sheet)?;
             let mut coords: Vec<(i32, i32)> = Vec::new();
-            for (row, row_data) in &ws.sheet_data {
-                for column in row_data.keys() {
-                    coords.push((*row, *column));
-                }
+            for (row, column, _) in ws.sheet_data.cells() {
+                coords.push((row, column));
             }
             for (row, column) in coords {
                 let Some(style) = um.model.get_cell_style_or_none(sheet, row, column)? else {
@@ -1135,7 +1133,7 @@ impl CollabSession {
         };
         {
             let ws = um.model.workbook.worksheet_mut(sheet)?;
-            ws.sheet_data.clear();
+            ws.sheet_data = crate::sheet_data::SheetData::new();
             ws.rows.clear();
             ws.cols.clear();
             ws.links.clear();
@@ -1439,34 +1437,31 @@ fn bootstrap_sheet(
     }
     let mut cell_style_writes: Vec<(String, Style)> = Vec::new();
     let mut edge_marks: Vec<(u32, u32)> = Vec::new();
-    for (row, row_cells) in &ws.sheet_data {
-        for (column, cell) in row_cells {
-            if matches!(cell, Cell::SpillCell { .. }) {
-                continue;
-            }
-            let (row_id, col_id) = (
-                EntityId::Original(*row as u32),
-                EntityId::Original(*column as u32),
-            );
-            if !matches!(cell, Cell::EmptyCell { .. }) {
-                let content =
-                    read_cell_for_doc(um, sheet_index, *row, *column, sheet_id, resolver)?;
-                if !content.is_empty() {
-                    maps.cells
-                        .insert(txn, cell_key(sheet_id, col_id, row_id), content.as_str());
-                }
-            }
-            let style = um.model.get_style_for_cell(sheet_index, *row, *column)?;
-            let stripped = strip_edge_borders(&style);
-            let owns_edges = um
-                .model
-                .get_cell_style_or_none(sheet_index, *row, *column)?
-                .is_some_and(|s| has_edge_borders(&s));
-            if stripped != default_style || owns_edges {
-                cell_style_writes.push((cell_key(sheet_id, col_id, row_id), stripped));
-            }
-            edge_marks.push((*row as u32, *column as u32));
+    for (row, column, cell) in ws.sheet_data.cells() {
+        if matches!(cell, Cell::SpillCell { .. }) {
+            continue;
         }
+        let (row_id, col_id) = (
+            EntityId::Original(row as u32),
+            EntityId::Original(column as u32),
+        );
+        if !matches!(cell, Cell::EmptyCell { .. }) {
+            let content = read_cell_for_doc(um, sheet_index, row, column, sheet_id, resolver)?;
+            if !content.is_empty() {
+                maps.cells
+                    .insert(txn, cell_key(sheet_id, col_id, row_id), content.as_str());
+            }
+        }
+        let style = um.model.get_style_for_cell(sheet_index, row, column)?;
+        let stripped = strip_edge_borders(&style);
+        let owns_edges = um
+            .model
+            .get_cell_style_or_none(sheet_index, row, column)?
+            .is_some_and(|s| has_edge_borders(&s));
+        if stripped != default_style || owns_edges {
+            cell_style_writes.push((cell_key(sheet_id, col_id, row_id), stripped));
+        }
+        edge_marks.push((row as u32, column as u32));
     }
     for (key, style) in cell_style_writes {
         let hash = ensure_style_in_pool(txn, maps, &style);
@@ -2726,43 +2721,37 @@ fn write_final_state(
         let cols_order = ctx.order(*sheet_id, Axis::Columns)?;
         let mut style_writes: Vec<(String, Style)> = Vec::new();
         let mut edge_marks: Vec<(EntityId, EntityId)> = Vec::new();
-        for (row, row_cells) in &ws.sheet_data {
-            for (column, cell) in row_cells {
-                if matches!(cell, Cell::SpillCell { .. }) {
-                    continue;
-                }
-                let (Some(_), Some(_)) = (
-                    rows_order.index_of(EntityId::Original(*row as u32)),
-                    cols_order.index_of(EntityId::Original(*column as u32)),
-                ) else {
-                    continue;
-                };
-                let (row_id, col_id) = (
-                    EntityId::Original(*row as u32),
-                    EntityId::Original(*column as u32),
-                );
-                if !matches!(cell, Cell::EmptyCell { .. }) {
-                    let content =
-                        read_cell_for_doc(um, sheet, *row, *column, *sheet_id, &resolver)?;
-                    if !content.is_empty() {
-                        maps.cells.insert(
-                            txn,
-                            cell_key(*sheet_id, col_id, row_id),
-                            content.as_str(),
-                        );
-                    }
-                }
-                let style = um.model.get_style_for_cell(sheet, *row, *column)?;
-                let stripped = strip_edge_borders(&style);
-                let owns_edges = um
-                    .model
-                    .get_cell_style_or_none(sheet, *row, *column)?
-                    .is_some_and(|s| has_edge_borders(&s));
-                if stripped != default_style || owns_edges {
-                    style_writes.push((cell_key(*sheet_id, col_id, row_id), stripped));
-                }
-                edge_marks.push((col_id, row_id));
+        for (row, column, cell) in ws.sheet_data.cells() {
+            if matches!(cell, Cell::SpillCell { .. }) {
+                continue;
             }
+            let (Some(_), Some(_)) = (
+                rows_order.index_of(EntityId::Original(row as u32)),
+                cols_order.index_of(EntityId::Original(column as u32)),
+            ) else {
+                continue;
+            };
+            let (row_id, col_id) = (
+                EntityId::Original(row as u32),
+                EntityId::Original(column as u32),
+            );
+            if !matches!(cell, Cell::EmptyCell { .. }) {
+                let content = read_cell_for_doc(um, sheet, row, column, *sheet_id, &resolver)?;
+                if !content.is_empty() {
+                    maps.cells
+                        .insert(txn, cell_key(*sheet_id, col_id, row_id), content.as_str());
+                }
+            }
+            let style = um.model.get_style_for_cell(sheet, row, column)?;
+            let stripped = strip_edge_borders(&style);
+            let owns_edges = um
+                .model
+                .get_cell_style_or_none(sheet, row, column)?
+                .is_some_and(|s| has_edge_borders(&s));
+            if stripped != default_style || owns_edges {
+                style_writes.push((cell_key(*sheet_id, col_id, row_id), stripped));
+            }
+            edge_marks.push((col_id, row_id));
         }
         for (key, style) in style_writes {
             let hash = ensure_style_in_pool(txn, maps, &style);
@@ -4384,24 +4373,22 @@ fn reinherit_cell_styles(
     };
     let ws = um.model.workbook.worksheet(sheet)?;
     let mut coords: Vec<(i32, i32)> = Vec::new();
-    for (row, row_data) in &ws.sheet_data {
+    for (row, column, _) in ws.sheet_data.cells() {
         match scope {
-            ReinheritScope::Row(target) | ReinheritScope::Cell(target, _) if *row != target => {
+            ReinheritScope::Row(target) | ReinheritScope::Cell(target, _) if row != target => {
                 continue;
             }
             _ => {}
         }
-        for column in row_data.keys() {
-            match scope {
-                ReinheritScope::Column(target) | ReinheritScope::Cell(_, target)
-                    if *column != target =>
-                {
-                    continue;
-                }
-                _ => {}
+        match scope {
+            ReinheritScope::Column(target) | ReinheritScope::Cell(_, target)
+                if column != target =>
+            {
+                continue;
             }
-            coords.push((*row, *column));
+            _ => {}
         }
+        coords.push((row, column));
     }
     for (row, column) in coords {
         let (Some(row_id), Some(col_id)) = (rows.id_at(row as u32), cols.id_at(column as u32))
