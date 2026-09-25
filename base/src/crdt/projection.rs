@@ -383,291 +383,653 @@ impl Projection {
         sheets
     }
 
+    /// Builds the projection by replaying every entry of every root map
+    /// through the same per-entry patch functions the incremental path uses
+    /// ([`Projection::patch`]), so the two can never disagree.
     pub(crate) fn from_doc(doc: &Doc, maps: &SchemaMaps) -> Projection {
         let txn = doc.transact();
         let mut proj = Projection::default();
-
-        for (key, value) in maps.meta.iter(&txn) {
-            if let Some(field) = key.strip_prefix("wb.") {
-                match field {
-                    "name" => proj.name = as_string(&value),
-                    "locale" => proj.locale = as_string(&value),
-                    "tz" => proj.timezone = as_string(&value),
-                    "theme" => {
-                        if let Out::Any(Any::Buffer(bytes)) = &value {
-                            proj.theme = Some(bytes.to_vec());
-                        }
-                    }
-                    _ => {}
-                }
-                continue;
-            }
-            let Some(rest) = key.strip_prefix("s.") else {
-                continue;
-            };
-            let Some((sid, field)) = rest.split_once('.') else {
-                continue;
-            };
-            let Some(sheet_id) = EntityId::decode(sid) else {
-                continue;
-            };
-            let sheet = proj.sheets.entry(sheet_id).or_default();
-            match field {
-                "name" => {
-                    if let Some(name) = as_string(&value) {
-                        sheet.name = name;
-                    }
-                }
-                "pos" => {
-                    if let Some(pos) = as_string(&value) {
-                        sheet.pos = pos;
-                    }
-                }
-                "del" => sheet.del = as_bool(&value).unwrap_or(false),
-                "fr" => sheet.frozen_rows = as_i32(&value).unwrap_or(0),
-                "fc" => sheet.frozen_columns = as_i32(&value).unwrap_or(0),
-                "color" => sheet.color = as_string(&value),
-                "state" => sheet.state = as_string(&value),
-                "grid" => sheet.grid_lines = as_bool(&value),
-                _ => {}
+        for (kind, map) in maps.all() {
+            for (key, value) in map.iter(&txn) {
+                proj.patch(kind, key, Some(value), None);
             }
         }
+        proj
+    }
 
-        for (key, _) in maps.keep_sheets.iter(&txn) {
-            let Some((sid, _client)) = key.split_once('/') else {
-                continue;
-            };
-            if let Some(sheet_id) = EntityId::decode(sid) {
-                proj.keep_sheets.insert(sheet_id);
+    /// Applies the current document value of one root-map entry (`None` =
+    /// the key is absent) to the projection. When `delta` is given, the old
+    /// value is recorded there whenever the projection actually changed.
+    ///
+    /// Invariant: after patching every changed key of a transaction, the
+    /// projection equals [`Projection::from_doc`] on the resulting document.
+    /// (`refresh_shadow` checks this in tests.)
+    pub(crate) fn patch(
+        &mut self,
+        kind: MapKind,
+        key: &str,
+        value: Option<Out>,
+        delta: Option<&mut Delta>,
+    ) {
+        match kind {
+            MapKind::Meta => self.patch_meta(key, value, delta),
+            MapKind::KeepSheets => {
+                let Some((sid, _client)) = key.split_once('/') else {
+                    return;
+                };
+                let Some(sheet_id) = EntityId::decode(sid) else {
+                    return;
+                };
+                let present = value.is_some();
+                let changed = if present {
+                    self.keep_sheets.insert(sheet_id)
+                } else {
+                    self.keep_sheets.remove(&sheet_id)
+                };
+                if changed {
+                    if let Some(delta) = delta {
+                        delta.keep_sheets = true;
+                    }
+                }
             }
-        }
-
-        for (key, value) in maps.cells.iter(&txn) {
-            let Some((sid, rest)) = key.split_once('!') else {
-                continue;
-            };
-            let Some((cid, rid)) = rest.split_once(':') else {
-                continue;
-            };
-            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
-                EntityId::decode(sid),
-                EntityId::decode(cid),
-                EntityId::decode(rid),
-            ) else {
-                continue;
-            };
-            if let Some(input) = as_string(&value) {
-                proj.sheets
-                    .entry(sheet_id)
-                    .or_default()
-                    .cells
-                    .insert((col_id, row_id), input);
+            MapKind::Cells => {
+                let Some((sheet_id, cell)) = parse_cell_key(key) else {
+                    return;
+                };
+                let new = value.as_ref().and_then(as_string);
+                let old = match &new {
+                    Some(input) => self
+                        .sheets
+                        .entry(sheet_id)
+                        .or_default()
+                        .cells
+                        .insert(cell, input.clone()),
+                    None => self
+                        .sheets
+                        .get_mut(&sheet_id)
+                        .and_then(|s| s.cells.remove(&cell)),
+                };
+                if old != new {
+                    if let Some(delta) = delta {
+                        delta.sheet(sheet_id).cells.entry(cell).or_insert(old);
+                    }
+                }
+                if new.is_none() {
+                    self.prune_sheet(sheet_id);
+                }
             }
-        }
-
-        for (axis_map, is_rows) in [(&maps.rows, true), (&maps.cols, false)] {
-            for (key, value) in axis_map.iter(&txn) {
+            MapKind::Rows | MapKind::Cols => {
+                let is_rows = kind == MapKind::Rows;
                 let Some((sid, rest)) = key.split_once('!') else {
-                    continue;
+                    return;
                 };
                 let Some((id, field)) = rest.rsplit_once('.') else {
-                    continue;
+                    return;
                 };
                 let (Some(sheet_id), Some(entity_id)) =
                     (EntityId::decode(sid), EntityId::decode(id))
                 else {
-                    continue;
+                    return;
                 };
-                let sheet = proj.sheets.entry(sheet_id).or_default();
+                if !matches!(field, "p" | "h" | "x" | "d" | "sty") {
+                    return;
+                }
+                let sheet = self.sheets.entry(sheet_id).or_default();
                 let entries = if is_rows {
                     &mut sheet.rows
                 } else {
                     &mut sheet.cols
                 };
+                let old = entries.get(&entity_id).cloned();
                 let entry = entries.entry(entity_id).or_default();
                 match field {
-                    "p" => entry.pos = as_string(&value),
-                    "h" => entry.size = as_f64(&value),
-                    "x" => entry.hidden = as_bool(&value).unwrap_or(false),
-                    "d" => entry.del = as_bool(&value).unwrap_or(false),
-                    "sty" => entry.style = as_string(&value),
-                    _ => {}
+                    "p" => entry.pos = value.as_ref().and_then(as_string),
+                    "h" => entry.size = value.as_ref().and_then(as_f64),
+                    "x" => entry.hidden = value.as_ref().and_then(as_bool).unwrap_or(false),
+                    "d" => entry.del = value.as_ref().and_then(as_bool).unwrap_or(false),
+                    _ => entry.style = value.as_ref().and_then(as_string),
                 }
-            }
-        }
-
-        for (key, value) in maps.names.iter(&txn) {
-            if let Some(formula) = as_string(&value) {
-                proj.names.insert(key.to_string(), formula);
-            }
-        }
-
-        for (key, value) in maps.cell_styles.iter(&txn) {
-            let Some((sid, rest)) = key.split_once('!') else {
-                continue;
-            };
-            let Some((cid, rid)) = rest.split_once(':') else {
-                continue;
-            };
-            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
-                EntityId::decode(sid),
-                EntityId::decode(cid),
-                EntityId::decode(rid),
-            ) else {
-                continue;
-            };
-            if let Some(hash) = as_string(&value) {
-                proj.sheets
-                    .entry(sheet_id)
-                    .or_default()
-                    .cell_styles
-                    .insert((col_id, row_id), hash);
-            }
-        }
-
-        for (key, value) in maps.styles.iter(&txn) {
-            if let Out::Any(Any::Buffer(bytes)) = value {
-                proj.styles.insert(key.to_string(), bytes.to_vec());
-            }
-        }
-
-        for (key, value) in maps.merges.iter(&txn) {
-            let Some((sid, rest)) = key.split_once('!') else {
-                continue;
-            };
-            let Some((cid, rid)) = rest.split_once(':') else {
-                continue;
-            };
-            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
-                EntityId::decode(sid),
-                EntityId::decode(cid),
-                EntityId::decode(rid),
-            ) else {
-                continue;
-            };
-            let Some(corner) = as_string(&value).as_deref().and_then(parse_merge_value) else {
-                continue;
-            };
-            proj.sheets
-                .entry(sheet_id)
-                .or_default()
-                .merges
-                .insert((col_id, row_id), corner);
-        }
-
-        for (key, value) in maps.links.iter(&txn) {
-            let Some((sid, rest)) = key.split_once('!') else {
-                continue;
-            };
-            let Some((cid, rid)) = rest.split_once(':') else {
-                continue;
-            };
-            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
-                EntityId::decode(sid),
-                EntityId::decode(cid),
-                EntityId::decode(rid),
-            ) else {
-                continue;
-            };
-            if let Out::Any(Any::Buffer(bytes)) = value {
-                proj.sheets
-                    .entry(sheet_id)
-                    .or_default()
-                    .links
-                    .insert((col_id, row_id), bytes.to_vec());
-            }
-        }
-
-        for (key, value) in maps.named_styles.iter(&txn) {
-            if let Out::Any(Any::Buffer(bytes)) = value {
-                proj.named_styles.insert(key.to_string(), bytes.to_vec());
-            }
-        }
-
-        for (key, value) in maps.edges.iter(&txn) {
-            let Some((sid, rest)) = key.split_once('!') else {
-                continue;
-            };
-            let Some((axis, ids)) = rest.split_once('.') else {
-                continue;
-            };
-            let Some((cid, rid)) = ids.split_once(':') else {
-                continue;
-            };
-            let (Some(sheet_id), Some(col_id), Some(row_id)) = (
-                EntityId::decode(sid),
-                EntityId::decode(cid),
-                EntityId::decode(rid),
-            ) else {
-                continue;
-            };
-            let Some(item) = as_string(&value) else {
-                continue;
-            };
-            let sheet = proj.sheets.entry(sheet_id).or_default();
-            match axis {
-                "v" => {
-                    sheet.v_edges.insert((col_id, row_id), item);
+                if *entry == AxisEntryProj::default() {
+                    entries.remove(&entity_id);
                 }
-                "h" => {
-                    sheet.h_edges.insert((col_id, row_id), item);
-                }
-                _ => {}
-            }
-        }
-
-        for (key, value) in maps.cf.iter(&txn) {
-            let Some((sid, rest)) = key.split_once('!') else {
-                continue;
-            };
-            let Some((rid, field)) = rest.rsplit_once('.') else {
-                continue;
-            };
-            let (Some(sheet_id), Some(rule_id)) =
-                (EntityId::decode(sid), EntityId::decode(rid))
-            else {
-                continue;
-            };
-            let entry = proj
-                .sheets
-                .entry(sheet_id)
-                .or_default()
-                .cf
-                .entry(rule_id)
-                .or_default();
-            match field {
-                "p" => entry.pos = as_string(&value),
-                "v" => {
-                    if let Out::Any(Any::Buffer(bytes)) = value {
-                        entry.value = Some(bytes.to_vec());
+                let new = entries.get(&entity_id).cloned();
+                if old != new {
+                    if let Some(delta) = delta {
+                        let sd = delta.sheet(sheet_id);
+                        sd.axis = true;
+                        let axis_delta = if is_rows { &mut sd.rows } else { &mut sd.cols };
+                        axis_delta.entry(entity_id).or_insert(old);
                     }
                 }
-                _ => {}
+                if new.is_none() {
+                    self.prune_sheet(sheet_id);
+                }
             }
-        }
-
-        for (keep_map, is_rows) in [(&maps.keep_rows, true), (&maps.keep_cols, false)] {
-            for (key, _) in keep_map.iter(&txn) {
+            MapKind::Names => {
+                let new = value.as_ref().and_then(as_string);
+                let old = match &new {
+                    Some(formula) => self.names.insert(key.to_string(), formula.clone()),
+                    None => self.names.remove(key),
+                };
+                if old != new {
+                    if let Some(delta) = delta {
+                        delta.names = true;
+                    }
+                }
+            }
+            MapKind::CellStyles => {
+                let Some((sheet_id, cell)) = parse_cell_key(key) else {
+                    return;
+                };
+                let new = value.as_ref().and_then(as_string);
+                let old = match &new {
+                    Some(hash) => self
+                        .sheets
+                        .entry(sheet_id)
+                        .or_default()
+                        .cell_styles
+                        .insert(cell, hash.clone()),
+                    None => self
+                        .sheets
+                        .get_mut(&sheet_id)
+                        .and_then(|s| s.cell_styles.remove(&cell)),
+                };
+                if old != new {
+                    if let Some(delta) = delta {
+                        delta.sheet(sheet_id).cell_styles.entry(cell).or_insert(old);
+                    }
+                }
+                if new.is_none() {
+                    self.prune_sheet(sheet_id);
+                }
+            }
+            MapKind::Styles => {
+                let new = value.as_ref().and_then(as_buffer);
+                let old = match &new {
+                    Some(bytes) => self.styles.insert(key.to_string(), bytes.clone()),
+                    None => self.styles.remove(key),
+                };
+                if old != new {
+                    if let Some(delta) = delta {
+                        delta.styles = true;
+                    }
+                }
+            }
+            MapKind::Merges => {
+                let Some((sheet_id, cell)) = parse_cell_key(key) else {
+                    return;
+                };
+                let new = value
+                    .as_ref()
+                    .and_then(as_string)
+                    .as_deref()
+                    .and_then(parse_merge_value);
+                let old = match new {
+                    Some(corner) => self
+                        .sheets
+                        .entry(sheet_id)
+                        .or_default()
+                        .merges
+                        .insert(cell, corner),
+                    None => self
+                        .sheets
+                        .get_mut(&sheet_id)
+                        .and_then(|s| s.merges.remove(&cell)),
+                };
+                if old != new {
+                    if let Some(delta) = delta {
+                        delta.sheet(sheet_id).merges = true;
+                    }
+                }
+                if new.is_none() {
+                    self.prune_sheet(sheet_id);
+                }
+            }
+            MapKind::Links => {
+                let Some((sheet_id, cell)) = parse_cell_key(key) else {
+                    return;
+                };
+                let new = value.as_ref().and_then(as_buffer);
+                let old = match &new {
+                    Some(bytes) => self
+                        .sheets
+                        .entry(sheet_id)
+                        .or_default()
+                        .links
+                        .insert(cell, bytes.clone()),
+                    None => self
+                        .sheets
+                        .get_mut(&sheet_id)
+                        .and_then(|s| s.links.remove(&cell)),
+                };
+                if old != new {
+                    if let Some(delta) = delta {
+                        delta.sheet(sheet_id).links.entry(cell).or_insert(old);
+                    }
+                }
+                if new.is_none() {
+                    self.prune_sheet(sheet_id);
+                }
+            }
+            MapKind::NamedStyles => {
+                let new = value.as_ref().and_then(as_buffer);
+                let old = match &new {
+                    Some(bytes) => self.named_styles.insert(key.to_string(), bytes.clone()),
+                    None => self.named_styles.remove(key),
+                };
+                if old != new {
+                    if let Some(delta) = delta {
+                        delta.named_styles = true;
+                    }
+                }
+            }
+            MapKind::Edges => {
                 let Some((sid, rest)) = key.split_once('!') else {
-                    continue;
+                    return;
+                };
+                let Some((axis, ids)) = rest.split_once('.') else {
+                    return;
+                };
+                let Some((cid, rid)) = ids.split_once(':') else {
+                    return;
+                };
+                let (Some(sheet_id), Some(col_id), Some(row_id)) = (
+                    EntityId::decode(sid),
+                    EntityId::decode(cid),
+                    EntityId::decode(rid),
+                ) else {
+                    return;
+                };
+                let vertical = match axis {
+                    "v" => true,
+                    "h" => false,
+                    _ => return,
+                };
+                let cell = (col_id, row_id);
+                let new = value.as_ref().and_then(as_string);
+                let old = match &new {
+                    Some(item) => {
+                        let sheet = self.sheets.entry(sheet_id).or_default();
+                        let edges = if vertical {
+                            &mut sheet.v_edges
+                        } else {
+                            &mut sheet.h_edges
+                        };
+                        edges.insert(cell, item.clone())
+                    }
+                    None => self.sheets.get_mut(&sheet_id).and_then(|sheet| {
+                        if vertical {
+                            sheet.v_edges.remove(&cell)
+                        } else {
+                            sheet.h_edges.remove(&cell)
+                        }
+                    }),
+                };
+                if old != new {
+                    if let Some(delta) = delta {
+                        let sd = delta.sheet(sheet_id);
+                        let edges = if vertical {
+                            &mut sd.v_edges
+                        } else {
+                            &mut sd.h_edges
+                        };
+                        edges.entry(cell).or_insert(old);
+                    }
+                }
+                if new.is_none() {
+                    self.prune_sheet(sheet_id);
+                }
+            }
+            MapKind::Cf => {
+                let Some((sid, rest)) = key.split_once('!') else {
+                    return;
+                };
+                let Some((rid, field)) = rest.rsplit_once('.') else {
+                    return;
+                };
+                let (Some(sheet_id), Some(rule_id)) =
+                    (EntityId::decode(sid), EntityId::decode(rid))
+                else {
+                    return;
+                };
+                if !matches!(field, "p" | "v") {
+                    return;
+                }
+                let sheet = self.sheets.entry(sheet_id).or_default();
+                let old = sheet.cf.get(&rule_id).cloned();
+                let entry = sheet.cf.entry(rule_id).or_default();
+                match field {
+                    "p" => entry.pos = value.as_ref().and_then(as_string),
+                    _ => entry.value = value.as_ref().and_then(as_buffer),
+                }
+                if *entry == CfRuleProj::default() {
+                    sheet.cf.remove(&rule_id);
+                }
+                let new = sheet.cf.get(&rule_id).cloned();
+                if old != new {
+                    if let Some(delta) = delta {
+                        delta.sheet(sheet_id).cf = true;
+                    }
+                }
+                if new.is_none() {
+                    self.prune_sheet(sheet_id);
+                }
+            }
+            MapKind::KeepRows | MapKind::KeepCols => {
+                // Membership is "some client's key exists": a removal only
+                // drops the id when no other key with the same prefix is
+                // left, which the caller checks (`KeepMembership`).
+                let is_rows = kind == MapKind::KeepRows;
+                let Some((sid, rest)) = key.split_once('!') else {
+                    return;
                 };
                 let Some((id, _client)) = rest.split_once('/') else {
-                    continue;
+                    return;
                 };
                 let (Some(sheet_id), Some(entity_id)) =
                     (EntityId::decode(sid), EntityId::decode(id))
                 else {
-                    continue;
+                    return;
                 };
-                let sheet = proj.sheets.entry(sheet_id).or_default();
-                if is_rows {
-                    sheet.keep_rows.insert(entity_id);
-                } else {
-                    sheet.keep_cols.insert(entity_id);
+                let present = value.is_some();
+                let changed = {
+                    let sheet = self.sheets.entry(sheet_id).or_default();
+                    let keeps = if is_rows {
+                        &mut sheet.keep_rows
+                    } else {
+                        &mut sheet.keep_cols
+                    };
+                    if present {
+                        keeps.insert(entity_id)
+                    } else {
+                        keeps.remove(&entity_id)
+                    }
+                };
+                if changed {
+                    if let Some(delta) = delta {
+                        delta.sheet(sheet_id).axis = true;
+                    }
+                }
+                if !present {
+                    self.prune_sheet(sheet_id);
                 }
             }
         }
+    }
 
-        proj
+    /// Drops a sheet entry that no map entry references any more, so the
+    /// incremental projection never holds a sheet `from_doc` would not.
+    fn prune_sheet(&mut self, sheet_id: EntityId) {
+        if self
+            .sheets
+            .get(&sheet_id)
+            .is_some_and(|sheet| *sheet == SheetProj::default())
+        {
+            self.sheets.remove(&sheet_id);
+        }
+    }
+
+    fn patch_meta(&mut self, key: &str, value: Option<Out>, delta: Option<&mut Delta>) {
+        if let Some(field) = key.strip_prefix("wb.") {
+            let changed = match field {
+                "name" => {
+                    let new = value.as_ref().and_then(as_string);
+                    let changed = self.name != new;
+                    self.name = new;
+                    changed
+                }
+                "locale" => {
+                    let new = value.as_ref().and_then(as_string);
+                    let changed = self.locale != new;
+                    self.locale = new;
+                    changed
+                }
+                "tz" => {
+                    let new = value.as_ref().and_then(as_string);
+                    let changed = self.timezone != new;
+                    self.timezone = new;
+                    changed
+                }
+                "theme" => {
+                    let new = value.as_ref().and_then(as_buffer);
+                    let changed = self.theme != new;
+                    self.theme = new;
+                    changed
+                }
+                _ => false,
+            };
+            if changed {
+                if let Some(delta) = delta {
+                    delta.workbook = true;
+                }
+            }
+            return;
+        }
+        let Some(rest) = key.strip_prefix("s.") else {
+            return;
+        };
+        let Some((sid, field)) = rest.split_once('.') else {
+            return;
+        };
+        let Some(sheet_id) = EntityId::decode(sid) else {
+            return;
+        };
+        if !matches!(
+            field,
+            "name" | "pos" | "del" | "fr" | "fc" | "color" | "state" | "grid"
+        ) {
+            return;
+        }
+        if value.is_none() && !self.sheets.contains_key(&sheet_id) {
+            return;
+        }
+        let sheet = self.sheets.entry(sheet_id).or_default();
+        let changed = match field {
+            "name" => {
+                let new = value.as_ref().and_then(as_string).unwrap_or_default();
+                let changed = sheet.name != new;
+                sheet.name = new;
+                changed
+            }
+            "pos" => {
+                let new = value.as_ref().and_then(as_string).unwrap_or_default();
+                let changed = sheet.pos != new;
+                sheet.pos = new;
+                changed
+            }
+            "del" => {
+                let new = value.as_ref().and_then(as_bool).unwrap_or(false);
+                let changed = sheet.del != new;
+                sheet.del = new;
+                changed
+            }
+            "fr" => {
+                let new = value.as_ref().and_then(as_i32).unwrap_or(0);
+                let changed = sheet.frozen_rows != new;
+                sheet.frozen_rows = new;
+                changed
+            }
+            "fc" => {
+                let new = value.as_ref().and_then(as_i32).unwrap_or(0);
+                let changed = sheet.frozen_columns != new;
+                sheet.frozen_columns = new;
+                changed
+            }
+            "color" => {
+                let new = value.as_ref().and_then(as_string);
+                let changed = sheet.color != new;
+                sheet.color = new;
+                changed
+            }
+            "state" => {
+                let new = value.as_ref().and_then(as_string);
+                let changed = sheet.state != new;
+                sheet.state = new;
+                changed
+            }
+            _ => {
+                let new = value.as_ref().and_then(as_bool);
+                let changed = sheet.grid_lines != new;
+                sheet.grid_lines = new;
+                changed
+            }
+        };
+        if changed {
+            if let Some(delta) = delta {
+                delta.sheet(sheet_id).meta = true;
+            }
+        }
+        if value.is_none() {
+            self.prune_sheet(sheet_id);
+        }
+    }
+}
+
+/// `<sid>!<cid>:<rid>` → `(sheet, (column, row))`.
+fn parse_cell_key(key: &str) -> Option<(EntityId, (EntityId, EntityId))> {
+    let (sid, rest) = key.split_once('!')?;
+    let (cid, rid) = rest.split_once(':')?;
+    Some((
+        EntityId::decode(sid)?,
+        (EntityId::decode(cid)?, EntityId::decode(rid)?),
+    ))
+}
+
+fn as_buffer(value: &Out) -> Option<Vec<u8>> {
+    match value {
+        Out::Any(Any::Buffer(bytes)) => Some(bytes.to_vec()),
+        _ => None,
+    }
+}
+
+/// Identifies one of the root maps (see [`SchemaMaps`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum MapKind {
+    Meta,
+    Cells,
+    Rows,
+    Cols,
+    KeepRows,
+    KeepCols,
+    KeepSheets,
+    Names,
+    Styles,
+    CellStyles,
+    NamedStyles,
+    Cf,
+    Edges,
+    Links,
+    Merges,
+}
+
+impl SchemaMaps {
+    /// Every root map with its kind.
+    pub(crate) fn all(&self) -> [(MapKind, &MapRef); 15] {
+        [
+            (MapKind::Meta, &self.meta),
+            (MapKind::Cells, &self.cells),
+            (MapKind::Rows, &self.rows),
+            (MapKind::Cols, &self.cols),
+            (MapKind::KeepRows, &self.keep_rows),
+            (MapKind::KeepCols, &self.keep_cols),
+            (MapKind::KeepSheets, &self.keep_sheets),
+            (MapKind::Names, &self.names),
+            (MapKind::Styles, &self.styles),
+            (MapKind::CellStyles, &self.cell_styles),
+            (MapKind::NamedStyles, &self.named_styles),
+            (MapKind::Cf, &self.cf),
+            (MapKind::Edges, &self.edges),
+            (MapKind::Links, &self.links),
+            (MapKind::Merges, &self.merges),
+        ]
+    }
+
+    pub(crate) fn map(&self, kind: MapKind) -> &MapRef {
+        match kind {
+            MapKind::Meta => &self.meta,
+            MapKind::Cells => &self.cells,
+            MapKind::Rows => &self.rows,
+            MapKind::Cols => &self.cols,
+            MapKind::KeepRows => &self.keep_rows,
+            MapKind::KeepCols => &self.keep_cols,
+            MapKind::KeepSheets => &self.keep_sheets,
+            MapKind::Names => &self.names,
+            MapKind::Styles => &self.styles,
+            MapKind::CellStyles => &self.cell_styles,
+            MapKind::NamedStyles => &self.named_styles,
+            MapKind::Cf => &self.cf,
+            MapKind::Edges => &self.edges,
+            MapKind::Links => &self.links,
+            MapKind::Merges => &self.merges,
+        }
+    }
+}
+
+/// What changed in one sheet between two projections: the keys whose value
+/// differs, each with its **old** value (the new one is in the projection).
+#[derive(Debug, Default)]
+pub(crate) struct SheetDelta {
+    pub cells: BTreeMap<(EntityId, EntityId), Option<String>>,
+    pub cell_styles: BTreeMap<(EntityId, EntityId), Option<String>>,
+    pub links: BTreeMap<(EntityId, EntityId), Option<Vec<u8>>>,
+    pub v_edges: BTreeMap<(EntityId, EntityId), Option<String>>,
+    pub h_edges: BTreeMap<(EntityId, EntityId), Option<String>>,
+    pub rows: BTreeMap<EntityId, Option<AxisEntryProj>>,
+    pub cols: BTreeMap<EntityId, Option<AxisEntryProj>>,
+    /// Some CF register changed.
+    pub cf: bool,
+    /// Some merge register changed.
+    pub merges: bool,
+    /// Some sheet-level meta register changed (name, pos, del, …).
+    pub meta: bool,
+    /// Some row/column entry or keep-set membership changed, so the axis
+    /// orders may differ.
+    pub axis: bool,
+    /// The row or column order changed (set by the session after patching).
+    pub structural: bool,
+    /// The whole old sheet, captured only when `structural` (the rebuild
+    /// clears every old location).
+    pub old: Option<Box<SheetProj>>,
+}
+
+/// What changed in the projection since the last refresh.
+#[derive(Debug, Default)]
+pub(crate) struct Delta {
+    pub sheets: BTreeMap<EntityId, SheetDelta>,
+    pub names: bool,
+    pub named_styles: bool,
+    /// Workbook-level registers (name, locale, timezone, theme).
+    pub workbook: bool,
+    pub keep_sheets: bool,
+    pub styles: bool,
+    /// Visible sheet ids, in order, before the refresh.
+    pub old_visible: Vec<EntityId>,
+}
+
+impl Delta {
+    pub(crate) fn sheet(&mut self, id: EntityId) -> &mut SheetDelta {
+        self.sheets.entry(id).or_default()
+    }
+
+    /// True when no value differs (the style pool is content-addressed and
+    /// only ever grows, so it never changes what the model shows on its own).
+    pub(crate) fn is_empty(&self) -> bool {
+        !self.names
+            && !self.named_styles
+            && !self.workbook
+            && !self.keep_sheets
+            && self.sheets.values().all(|sd| {
+                sd.cells.is_empty()
+                    && sd.cell_styles.is_empty()
+                    && sd.links.is_empty()
+                    && sd.v_edges.is_empty()
+                    && sd.h_edges.is_empty()
+                    && sd.rows.is_empty()
+                    && sd.cols.is_empty()
+                    && !sd.cf
+                    && !sd.merges
+                    && !sd.meta
+                    && !sd.axis
+            })
     }
 }

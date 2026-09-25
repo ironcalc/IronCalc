@@ -24,9 +24,15 @@ export interface Collaborator {
   isSelf: boolean;
 }
 
-export function useCollaborators(provider: CollabProvider): Collaborator[] {
+export function useCollaborators(
+  provider: CollabProvider | null,
+): Collaborator[] {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   useEffect(() => {
+    if (!provider) {
+      setCollaborators([]);
+      return;
+    }
     const read = () => {
       const list: Collaborator[] = [];
       for (const entry of provider.presence()) {
@@ -148,7 +154,10 @@ export function CollabControls(properties: {
           </span>
         </Button>
       )}
-      {isDialogOpen && provider && (
+      {isDialogOpen && (
+        // Opened right on the click: the provider arrives a moment later
+        // (attaching a large workbook takes a while) and the dialog shows
+        // the invite link meanwhile.
         <CollabDialog
           provider={provider}
           onClose={() => setIsDialogOpen(false)}

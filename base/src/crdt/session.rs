@@ -35,11 +35,15 @@
 //! up when the linking replica pushes (conservative re-marking keeps the
 //! originator consistent).
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::sync::{Arc, Mutex};
 
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use yrs::{Doc, Map, ReadTxn, StateVector, Transact, TransactionMut, Update};
+use yrs::{
+    Any, Doc, Map, Observable, Out, ReadTxn, StateVector, Subscription, Transact, TransactionMut,
+    Update,
+};
 
 use crate::cf_types::{CfRule, Cfvo, ConditionalFormatting};
 use crate::constants::{
@@ -57,7 +61,8 @@ use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
 use super::order::{original_position, unique_position, AxisOrder, ResolvedIndex};
 use super::projection::{
     axis_key, cell_key, edge_key, keep_key, keep_prefix, merge_value, name_key, parse_name_key,
-    sheet_keep_key, sheet_keep_prefix, sheet_meta_key, Axis, Projection, SchemaMaps, SheetProj,
+    sheet_keep_key, sheet_keep_prefix, sheet_meta_key, Axis, AxisEntryProj, Delta, MapKind,
+    Projection, SchemaMaps, SheetDelta, SheetProj,
 };
 
 /// Ensures a style body is in the pool and returns its hash.
@@ -765,9 +770,20 @@ pub struct CollabSession {
     client_id: u64,
     counter: u32,
     sent_sv: StateVector,
+    /// Mirror of the document, kept in step with it by
+    /// [`CollabSession::refresh_shadow`] (never rebuilt from scratch after
+    /// attach: that is O(document) per update).
     shadow: Projection,
     journal: Vec<JournalEntry>,
+    /// Root-map keys changed by transactions the shadow has not absorbed yet
+    /// (fed by the map observers, drained by `refresh_shadow`).
+    dirty: DirtyKeys,
+    _map_subs: Vec<Subscription>,
 }
+
+/// Root-map keys changed by committed transactions, shared with the map
+/// observers.
+type DirtyKeys = Arc<Mutex<BTreeSet<(MapKind, String)>>>;
 
 impl CollabSession {
     /// Attaches a session to a model, bootstrapping the document from the
@@ -818,6 +834,7 @@ impl CollabSession {
             }
         }
         let shadow = Projection::from_doc(&doc, &maps);
+        let (dirty, map_subs) = observe_maps(&maps);
         Ok(CollabSession {
             doc,
             maps,
@@ -826,7 +843,128 @@ impl CollabSession {
             sent_sv: StateVector::default(),
             shadow,
             journal: Vec::new(),
+            dirty,
+            _map_subs: map_subs,
         })
+    }
+
+    /// Absorbs every root-map change since the last refresh into the shadow
+    /// and returns what changed (old values are only collected when
+    /// `want_delta`; the local path just needs the shadow up to date).
+    fn refresh_shadow(&mut self, want_delta: bool) -> Delta {
+        let dirty: Vec<(MapKind, String)> = match self.dirty.lock() {
+            Ok(mut dirty) => std::mem::take(&mut *dirty).into_iter().collect(),
+            Err(_) => Vec::new(),
+        };
+        let mut delta = Delta::default();
+        if want_delta {
+            delta.old_visible = self
+                .shadow
+                .visible_sheets()
+                .iter()
+                .map(|(id, _)| *id)
+                .collect();
+        }
+        if dirty.is_empty() {
+            return delta;
+        }
+        let is_axis = |kind: MapKind| {
+            matches!(
+                kind,
+                MapKind::Rows | MapKind::Cols | MapKind::KeepRows | MapKind::KeepCols
+            )
+        };
+        {
+            let txn = self.doc.transact();
+            let maps = &self.maps;
+            let shadow = &mut self.shadow;
+            // Axis maps first: structural detection compares the orders
+            // before and after, and a structural sheet needs its whole old
+            // projection (cells still untouched at this point).
+            let mut snapshots: BTreeMap<EntityId, AxisSnapshot> = BTreeMap::new();
+            if want_delta {
+                for (kind, key) in &dirty {
+                    if !is_axis(*kind) {
+                        continue;
+                    }
+                    let Some(sheet_id) = key
+                        .split_once('!')
+                        .and_then(|(sid, _)| EntityId::decode(sid))
+                    else {
+                        continue;
+                    };
+                    if snapshots.contains_key(&sheet_id) {
+                        continue;
+                    }
+                    if let Some(sp) = shadow.sheets.get(&sheet_id) {
+                        snapshots.insert(
+                            sheet_id,
+                            AxisSnapshot {
+                                rows: sp.rows.clone(),
+                                cols: sp.cols.clone(),
+                                keep_rows: sp.keep_rows.clone(),
+                                keep_cols: sp.keep_cols.clone(),
+                                row_order: sp.axis_order(Axis::Rows),
+                                col_order: sp.axis_order(Axis::Columns),
+                            },
+                        );
+                    }
+                }
+            }
+            for (kind, key) in &dirty {
+                if is_axis(*kind) {
+                    patch_from_doc(
+                        shadow,
+                        maps,
+                        &txn,
+                        *kind,
+                        key,
+                        want_delta.then_some(&mut delta),
+                    );
+                }
+            }
+            for (sheet_id, snap) in snapshots {
+                let Some(sp) = shadow.sheets.get(&sheet_id) else {
+                    continue;
+                };
+                let sd = delta.sheet(sheet_id);
+                if !sd.axis {
+                    continue;
+                }
+                if snap.row_order != sp.axis_order(Axis::Rows)
+                    || snap.col_order != sp.axis_order(Axis::Columns)
+                {
+                    sd.structural = true;
+                    let mut old = sp.clone();
+                    old.rows = snap.rows;
+                    old.cols = snap.cols;
+                    old.keep_rows = snap.keep_rows;
+                    old.keep_cols = snap.keep_cols;
+                    sd.old = Some(Box::new(old));
+                }
+            }
+            for (kind, key) in &dirty {
+                if !is_axis(*kind) {
+                    patch_from_doc(
+                        shadow,
+                        maps,
+                        &txn,
+                        *kind,
+                        key,
+                        want_delta.then_some(&mut delta),
+                    );
+                }
+            }
+        }
+        #[cfg(test)]
+        {
+            let reference = Projection::from_doc(&self.doc, &self.maps);
+            assert!(
+                self.shadow == reference,
+                "incremental shadow diverged from the document"
+            );
+        }
+        delta
     }
 
     /// Translates pending local edits into the document and returns the
@@ -861,7 +999,8 @@ impl CollabSession {
                 }
             }
         }
-        self.reconcile(um)
+        let delta = self.refresh_shadow(true);
+        self.reconcile(um, delta)
     }
 
     /// The document state vector (v1 encoding), for sync handshakes.
@@ -1063,7 +1202,7 @@ impl CollabSession {
                 )?;
             }
         }
-        self.shadow = Projection::from_doc(&self.doc, &self.maps);
+        let _ = self.refresh_shadow(false);
         // An undo that resurrected rows/columns at a drifted position leaves
         // the model misaligned with the document; rebuild those sheets from
         // the document (which is authoritative).
@@ -1147,17 +1286,19 @@ impl CollabSession {
 
     // ---- inbound ----
 
-    fn reconcile(&mut self, um: &mut UserModel) -> Result<(), String> {
-        let new_proj = Projection::from_doc(&self.doc, &self.maps);
-        if new_proj == self.shadow {
+    /// Applies `delta` (what the last refresh changed in the shadow) to the
+    /// model. Work is proportional to the delta, except for structural
+    /// changes (row/column/sheet order), which rebuild the affected sheets.
+    fn reconcile(&mut self, um: &mut UserModel, delta: Delta) -> Result<(), String> {
+        if delta.is_empty() {
             return Ok(());
         }
-        let old_proj = std::mem::take(&mut self.shadow);
+        let new_proj = &self.shadow;
 
-        let old_sheets = old_proj.visible_sheets();
         let new_sheets = new_proj.visible_sheets();
-        let old_ids: Vec<EntityId> = old_sheets.iter().map(|(id, _)| *id).collect();
+        let old_ids: Vec<EntityId> = delta.old_visible.clone();
         let new_ids: Vec<EntityId> = new_sheets.iter().map(|(id, _)| *id).collect();
+        let sheet_list_changed = old_ids != new_ids;
 
         // Deterministic display names: on a duplicate-name collision the later
         // sheet (by position/id) gets a numeric suffix on every replica.
@@ -1290,54 +1431,125 @@ impl CollabSession {
         // such change can shift the *rendering* of id-form formulas on every
         // sheet (cross-sheet references), so even sheets on the fast delta
         // path must re-render their formulas.
-        let resolver = DocResolver::from_projection(&new_proj);
+        let resolver = DocResolver::from_projection(new_proj);
         let mut structural: Vec<bool> = Vec::with_capacity(new_sheets.len());
-        for (id, sp_new) in &new_sheets {
-            let changed = match old_proj.sheets.get(id).filter(|_| old_ids.contains(id)) {
-                Some(sp_old) => {
-                    sp_old.axis_order(Axis::Rows) != sp_new.axis_order(Axis::Rows)
-                        || sp_old.axis_order(Axis::Columns) != sp_new.axis_order(Axis::Columns)
-                }
-                None => true,
+        for (id, _) in &new_sheets {
+            let changed = if old_ids.contains(id) {
+                delta.sheets.get(id).is_some_and(|sd| sd.structural)
+            } else {
+                true
             };
             structural.push(changed);
         }
         let rerender_all = structural.iter().any(|s| *s);
         // Defined names: apply doc state to the model when the map changed or
         // any structural change shifted the rendering of id-form formulas.
-        if old_proj.names != new_proj.names || rerender_all {
-            reconcile_names(um, &new_proj, &resolver)?;
+        if delta.names || rerender_all {
+            reconcile_names(um, new_proj, &resolver)?;
         }
-        if old_proj.named_styles != new_proj.named_styles {
-            reconcile_named_styles(um, &new_proj)?;
+        if delta.named_styles {
+            reconcile_named_styles(um, new_proj)?;
         }
+        // Only content-affecting changes need a recalculation; styles,
+        // links, borders, sizes and presence-like metadata do not.
+        let mut needs_eval = sheet_list_changed || delta.names || delta.workbook || rerender_all;
+        let no_changes = SheetDelta::default();
         for (index, (id, sp_new)) in new_sheets.iter().enumerate() {
             let sheet = index as u32;
-            match old_proj.sheets.get(id).filter(|_| old_ids.contains(id)) {
-                Some(sp_old) => reconcile_sheet(
+            if old_ids.contains(id) {
+                let sd = delta.sheets.get(id);
+                if sd.is_none() && !rerender_all {
+                    continue; // untouched sheet
+                }
+                let sd = sd.unwrap_or(&no_changes);
+                needs_eval |= !sd.cells.is_empty() || sd.cf || sd.merges || sd.structural;
+                reconcile_sheet(
                     um,
                     sheet,
                     *id,
-                    sp_old,
+                    sd,
                     sp_new,
                     &resolver,
-                    &new_proj,
+                    new_proj,
                     structural[index],
                     rerender_all,
-                )?,
-                None => apply_full_sheet(um, sheet, *id, sp_new, &resolver, &new_proj)?,
+                )?;
+            } else {
+                needs_eval = true;
+                apply_full_sheet(um, sheet, *id, sp_new, &resolver, new_proj)?;
             }
         }
         // Structural changes orphan/revive edge registers wholesale;
         // re-derive every bordered cell from the visible edges (mirrors the
         // outbound canonicalization).
         if rerender_all {
-            canonicalize_borders(um, &new_proj, &Touched::default(), true)?;
+            canonicalize_borders(um, new_proj, &Touched::default(), true)?;
         }
-        um.model.evaluate();
-        self.shadow = new_proj;
+        if needs_eval {
+            um.model.evaluate();
+        }
         Ok(())
     }
+}
+
+/// Old axis state of one sheet, taken before an axis map patch so the
+/// structural check can compare orders (and a structural rebuild can clear
+/// the old locations).
+struct AxisSnapshot {
+    rows: BTreeMap<EntityId, AxisEntryProj>,
+    cols: BTreeMap<EntityId, AxisEntryProj>,
+    keep_rows: HashSet<EntityId>,
+    keep_cols: HashSet<EntityId>,
+    row_order: AxisOrder,
+    col_order: AxisOrder,
+}
+
+/// Subscribes to every root map; each committed transaction adds its changed
+/// keys to the returned set (both local and remote transactions — the shadow
+/// must follow the document either way).
+fn observe_maps(maps: &SchemaMaps) -> (DirtyKeys, Vec<Subscription>) {
+    let dirty: DirtyKeys = Arc::new(Mutex::new(BTreeSet::new()));
+    let mut subs = Vec::with_capacity(15);
+    for (kind, map) in maps.all() {
+        let dirty = Arc::clone(&dirty);
+        subs.push(map.observe(move |txn, event| {
+            if let Ok(mut dirty) = dirty.lock() {
+                for key in event.keys(txn).keys() {
+                    dirty.insert((kind, key.to_string()));
+                }
+            }
+        }));
+    }
+    (dirty, subs)
+}
+
+/// Reads `key`'s current value from the document and patches it into the
+/// projection. Keep-set maps are membership sets over several clients' keys,
+/// so a removed key only counts as absent when no sibling key is left.
+fn patch_from_doc<T: ReadTxn>(
+    shadow: &mut Projection,
+    maps: &SchemaMaps,
+    txn: &T,
+    kind: MapKind,
+    key: &str,
+    delta: Option<&mut Delta>,
+) {
+    let map = maps.map(kind);
+    let mut value = map.get(txn, key);
+    if value.is_none()
+        && matches!(
+            kind,
+            MapKind::KeepRows | MapKind::KeepCols | MapKind::KeepSheets
+        )
+    {
+        if let Some(slash) = key.rfind('/') {
+            let prefix = &key[..=slash];
+            if map.iter(txn).any(|(other, _)| other.starts_with(prefix)) {
+                value = Some(Out::Any(Any::Null));
+            }
+        }
+    }
+    shadow.patch(kind, key, value, delta);
 }
 
 // ---- bootstrap ----
@@ -3718,7 +3930,7 @@ fn reconcile_sheet(
     um: &mut UserModel,
     sheet: u32,
     sheet_id: EntityId,
-    sp_old: &SheetProj,
+    sd: &SheetDelta,
     sp_new: &SheetProj,
     resolver: &DocResolver,
     proj: &Projection,
@@ -3738,28 +3950,22 @@ fn reconcile_sheet(
         // auto-links URLs and a clear drops the link, so their links are
         // re-derived from the document below whatever the register did.
         let mut content_written: BTreeSet<(EntityId, EntityId)> = BTreeSet::new();
-        for (key, new_value) in &sp_new.cells {
-            let changed = sp_old.cells.get(key) != Some(new_value);
-            let rerender = rerender_all && is_id_form(new_value);
-            if changed || rerender {
-                set_projected_cell(um, sheet, sheet_id, resolver, key, new_value)?;
-                content_written.insert(*key);
-            }
-        }
-        for key in sp_old.cells.keys() {
-            if sp_new.cells.contains_key(key) {
-                continue;
-            }
-            set_projected_cell(um, sheet, sheet_id, resolver, key, "")?;
+        for key in sd.cells.keys() {
+            let new_value = sp_new.cells.get(key).map(String::as_str).unwrap_or("");
+            set_projected_cell(um, sheet, sheet_id, resolver, key, new_value)?;
             content_written.insert(*key);
+        }
+        if rerender_all {
+            for (key, new_value) in &sp_new.cells {
+                if is_id_form(new_value) && !content_written.contains(key) {
+                    set_projected_cell(um, sheet, sheet_id, resolver, key, new_value)?;
+                    content_written.insert(*key);
+                }
+            }
         }
         // Link deltas (an independent register per cell).
         let mut link_keys: BTreeSet<(EntityId, EntityId)> = content_written.clone();
-        for key in sp_old.links.keys().chain(sp_new.links.keys()) {
-            if sp_old.links.get(key) != sp_new.links.get(key) {
-                link_keys.insert(*key);
-            }
-        }
+        link_keys.extend(sd.links.keys().copied());
         for key in link_keys {
             set_projected_cell_link(um, sheet, sheet_id, resolver, &key, sp_new.links.get(&key))?;
         }
@@ -3797,19 +4003,9 @@ fn reconcile_sheet(
             }
         }
         // Cell style deltas (an independent register per cell).
-        let style_keys: BTreeSet<(EntityId, EntityId)> = sp_old
-            .cell_styles
-            .keys()
-            .chain(sp_new.cell_styles.keys())
-            .copied()
-            .collect();
-        for key in style_keys {
-            let old_hash = sp_old.cell_styles.get(&key);
-            let new_hash = sp_new.cell_styles.get(&key);
-            if old_hash == new_hash {
-                continue;
-            }
-            set_projected_cell_style(um, sheet, sheet_id, resolver, proj, &key, new_hash)?;
+        for key in sd.cell_styles.keys() {
+            let new_hash = sp_new.cell_styles.get(key);
+            set_projected_cell_style(um, sheet, sheet_id, resolver, proj, key, new_hash)?;
         }
         let rows_new = resolver
             .rows
@@ -3820,9 +4016,9 @@ fn reconcile_sheet(
             .get(&sheet_id)
             .ok_or("collab: unknown sheet in resolver")?;
         // Property deltas.
-        let row_ids: BTreeSet<EntityId> = sp_old.rows.keys().chain(sp_new.rows.keys()).copied().collect();
-        for id in row_ids {
-            let old_entry = sp_old.rows.get(&id);
+        for (id, old_entry) in &sd.rows {
+            let id = *id;
+            let old_entry = old_entry.as_ref();
             let new_entry = sp_new.rows.get(&id);
             let old_props = old_entry
                 .map(|e| (e.size, e.hidden, e.style.clone()))
@@ -3850,9 +4046,9 @@ fn reconcile_sheet(
                 )?;
             }
         }
-        let col_ids: BTreeSet<EntityId> = sp_old.cols.keys().chain(sp_new.cols.keys()).copied().collect();
-        for id in col_ids {
-            let old_entry = sp_old.cols.get(&id);
+        for (id, old_entry) in &sd.cols {
+            let id = *id;
+            let old_entry = old_entry.as_ref();
             let new_entry = sp_new.cols.get(&id);
             let old_props = old_entry
                 .map(|e| (e.size, e.hidden, e.style.clone()))
@@ -3890,17 +4086,8 @@ fn reconcile_sheet(
         // Border edge deltas: recompute the cells adjacent to every changed
         // edge (they may have no style register of their own).
         let mut edge_cells: BTreeSet<(EntityId, EntityId)> = BTreeSet::new();
-        let v_keys: BTreeSet<(EntityId, EntityId)> = sp_old
-            .v_edges
-            .keys()
-            .chain(sp_new.v_edges.keys())
-            .copied()
-            .collect();
-        for key in v_keys {
-            if sp_old.v_edges.get(&key) == sp_new.v_edges.get(&key) {
-                continue;
-            }
-            let (col_id, row_id) = key;
+        for key in sd.v_edges.keys() {
+            let (col_id, row_id) = *key;
             edge_cells.insert((col_id, row_id));
             if let Some(column) = cols_new.index_of(col_id) {
                 if column > 1 {
@@ -3910,17 +4097,8 @@ fn reconcile_sheet(
                 }
             }
         }
-        let h_keys: BTreeSet<(EntityId, EntityId)> = sp_old
-            .h_edges
-            .keys()
-            .chain(sp_new.h_edges.keys())
-            .copied()
-            .collect();
-        for key in h_keys {
-            if sp_old.h_edges.get(&key) == sp_new.h_edges.get(&key) {
-                continue;
-            }
-            let (col_id, row_id) = key;
+        for key in sd.h_edges.keys() {
+            let (col_id, row_id) = *key;
             edge_cells.insert((col_id, row_id));
             if let Some(row) = rows_new.index_of(row_id) {
                 if row > 1 {
@@ -3937,7 +4115,7 @@ fn reconcile_sheet(
         // CF rules: rebuilt when their registers changed, or when any sheet
         // changed structurally (id-form CF ranges/formulas render against the
         // new orders; formulas can reference other sheets).
-        if sp_old.cf != sp_new.cf || rerender_all {
+        if sd.cf || rerender_all {
             reconcile_cf_sheet(um, sheet, sheet_id, sp_new, resolver)?;
         }
         install_merges(um, sheet, sheet_id, sp_new, resolver)?;
@@ -3947,6 +4125,9 @@ fn reconcile_sheet(
     // Structural change: conservative rebuild. The model's cells do not move
     // by themselves (we never replay insert/delete on remote), so shifting is
     // simulated by clearing every old location and writing every new one.
+    let Some(sp_old) = sd.old.as_deref() else {
+        return Err("collab: structural change without the old sheet state".to_string());
+    };
     let rows_old = sp_old.axis_order(Axis::Rows);
     let cols_old = sp_old.axis_order(Axis::Columns);
     for key in sp_old.cells.keys() {

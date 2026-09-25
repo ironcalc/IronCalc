@@ -14,7 +14,8 @@ import "./collab.css";
 // the room right now. Styled after the share dialog.
 
 function CollabDialog(properties: {
-  provider: CollabProvider;
+  /** `null` while the session is still being prepared (attach pending). */
+  provider: CollabProvider | null;
   onClose: () => void;
 }) {
   const { provider, onClose } = properties;
@@ -87,6 +88,11 @@ function CollabDialog(properties: {
           </div>
         </div>
         <div className="app-ic-collab-dialog-people">
+          {!provider && (
+            <div className="app-ic-collab-dialog-preparing">
+              {t("file_bar.collab.preparing")}
+            </div>
+          )}
           {collaborators.map((collaborator) => (
             <div
               key={collaborator.clientId}
