@@ -4372,24 +4372,31 @@ fn reinherit_cell_styles(
         return Ok(());
     };
     let ws = um.model.workbook.worksheet(sheet)?;
-    let mut coords: Vec<(i32, i32)> = Vec::new();
-    for (row, column, _) in ws.sheet_data.cells() {
-        match scope {
-            ReinheritScope::Row(target) | ReinheritScope::Cell(target, _) if row != target => {
-                continue;
-            }
-            _ => {}
-        }
-        match scope {
-            ReinheritScope::Column(target) | ReinheritScope::Cell(_, target)
-                if column != target =>
-            {
-                continue;
-            }
-            _ => {}
-        }
-        coords.push((row, column));
-    }
+    // Narrow scopes address the sheet data directly: the per-cell scope runs
+    // once per remote cell write, so a full-sheet scan here is quadratic.
+    let coords: Vec<(i32, i32)> = match scope {
+        ReinheritScope::Cell(row, column) => match ws.cell(row, column) {
+            Some(_) => vec![(row, column)],
+            None => Vec::new(),
+        },
+        ReinheritScope::Row(row) => ws
+            .sheet_data
+            .columns_in_row(row)
+            .into_iter()
+            .map(|column| (row, column))
+            .collect(),
+        ReinheritScope::Column(target) => ws
+            .sheet_data
+            .cells()
+            .filter(|(_, column, _)| *column == target)
+            .map(|(row, column, _)| (row, column))
+            .collect(),
+        ReinheritScope::Sheet => ws
+            .sheet_data
+            .cells()
+            .map(|(row, column, _)| (row, column))
+            .collect(),
+    };
     for (row, column) in coords {
         let (Some(row_id), Some(col_id)) = (rows.id_at(row as u32), cols.id_at(column as u32))
         else {
