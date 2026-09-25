@@ -317,9 +317,8 @@ pub(crate) fn render_formula_rc(
         let close = after
             .find(REF_DELIM)
             .ok_or("unterminated reference token")?;
-        match render_payload_rc(&after[..close], own_sheet, resolver, row, column)? {
-            Some(text) => out.push_str(&text),
-            None => return Ok(None),
+        if !render_payload_rc(&after[..close], own_sheet, resolver, row, column, &mut out)? {
+            return Ok(None);
         }
         rest = &after[close + REF_DELIM.len_utf8()..];
     }
@@ -327,14 +326,18 @@ pub(crate) fn render_formula_rc(
     Ok(Some(out))
 }
 
+/// Appends the R1C1 rendering of one reference token to `out`; `Ok(false)`
+/// means the token is outside the fast path (see [`render_formula_rc`]).
 fn render_payload_rc(
     payload: &str,
     own_sheet: EntityId,
     resolver: &impl RefResolver,
     row: u32,
     column: u32,
-) -> Result<Option<String>, String> {
-    let (sheet, prefix, rest) = match payload.strip_prefix('s') {
+    out: &mut String,
+) -> Result<bool, String> {
+    use std::fmt::Write;
+    let (sheet, rest) = match payload.strip_prefix('s') {
         Some(rest) => {
             let (sheet_enc, endpoints) = rest
                 .split_once(';')
@@ -342,35 +345,44 @@ fn render_payload_rc(
             let sheet_id =
                 EntityId::decode(sheet_enc).ok_or("malformed reference token: bad sheet id")?;
             match resolver.sheet_name_by_id(sheet_id) {
-                Some(name) => (sheet_id, format!("{}!", quote_name(&name)), endpoints),
-                None => return Ok(None),
+                Some(name) => {
+                    out.push_str(&quote_name(&name));
+                    out.push('!');
+                }
+                None => return Ok(false),
             }
+            (sheet_id, endpoints)
         }
-        None => (own_sheet, String::new(), payload),
+        None => (own_sheet, payload),
     };
-    let rc_text = |c: (u32, bool), r: (u32, bool)| -> String {
-        let row_text = if r.1 {
-            format!("R{}", r.0)
+    let push_rc = |out: &mut String, c: (u32, bool), r: (u32, bool)| {
+        if r.1 {
+            let _ = write!(out, "R{}", r.0);
         } else {
-            format!("R[{}]", r.0 as i64 - row as i64)
-        };
-        let column_text = if c.1 {
-            format!("C{}", c.0)
+            let _ = write!(out, "R[{}]", r.0 as i64 - row as i64);
+        }
+        if c.1 {
+            let _ = write!(out, "C{}", c.0);
         } else {
-            format!("C[{}]", c.0 as i64 - column as i64)
-        };
-        format!("{row_text}{column_text}")
+            let _ = write!(out, "C[{}]", c.0 as i64 - column as i64);
+        }
     };
     match rest.split_once(':') {
         None => {
             let endpoint = parse_endpoint(rest)?;
+            if !matches!(endpoint.column, Part::Id { .. })
+                || !matches!(endpoint.row, Part::Id { .. })
+            {
+                return Ok(false);
+            }
             let c = part_index(sheet, Axis2::Columns, &endpoint.column, resolver);
             let r = part_index(sheet, Axis2::Rows, &endpoint.row, resolver);
-            match (&endpoint.column, &endpoint.row, c, r) {
-                (Part::Id { .. }, Part::Id { .. }, Some(c), Some(r)) => {
-                    Ok(Some(format!("{prefix}{}", rc_text(c, r))))
+            match (c, r) {
+                (Some(c), Some(r)) => {
+                    push_rc(out, c, r);
+                    Ok(true)
                 }
-                _ => Ok(None),
+                _ => Ok(false),
             }
         }
         Some((left, right)) => {
@@ -380,17 +392,20 @@ fn render_payload_rc(
                 .iter()
                 .all(|part| matches!(part, Part::Id { .. }));
             if !all_ids {
-                return Ok(None);
+                return Ok(false);
             }
             let lc = part_index(sheet, Axis2::Columns, &l.column, resolver);
             let lr = part_index(sheet, Axis2::Rows, &l.row, resolver);
             let rc = part_index(sheet, Axis2::Columns, &r.column, resolver);
             let rr = part_index(sheet, Axis2::Rows, &r.row, resolver);
             match (lc, lr, rc, rr) {
-                (Some(c1), Some(r1), Some(c2), Some(r2)) if c1.0 <= c2.0 && r1.0 <= r2.0 => Ok(
-                    Some(format!("{prefix}{}:{}", rc_text(c1, r1), rc_text(c2, r2))),
-                ),
-                _ => Ok(None),
+                (Some(c1), Some(r1), Some(c2), Some(r2)) if c1.0 <= c2.0 && r1.0 <= r2.0 => {
+                    push_rc(out, c1, r1);
+                    out.push(':');
+                    push_rc(out, c2, r2);
+                    Ok(true)
+                }
+                _ => Ok(false),
             }
         }
     }

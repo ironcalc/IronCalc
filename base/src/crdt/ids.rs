@@ -23,13 +23,42 @@ pub const MAX_COLUMN: u32 = 16_384;
 
 /// Stable identity of a row, column or sheet.
 ///
-/// The derived `Ord` (variant order first: all `Original` sort before all
-/// `Inserted`) is used as the deterministic tiebreak when two entities end up
-/// with the same fractional position.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+/// The `Ord` (variant order first: all `Original` sort before all
+/// `Inserted`, then by field) is used as the deterministic tiebreak when two
+/// entities end up with the same fractional position. It is implemented on a
+/// packed integer key rather than derived: ids key every projection map, and
+/// under wasm the derived enum comparison showed up as a hot spot of a join.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EntityId {
     Original(u32),
     Inserted { client: u64, counter: u32 },
+}
+
+impl EntityId {
+    /// A single integer with the same order as the derived one would have.
+    #[inline]
+    fn sort_key(self) -> u128 {
+        match self {
+            EntityId::Original(k) => k as u128,
+            EntityId::Inserted { client, counter } => {
+                (1u128 << 127) | ((client as u128) << 32) | counter as u128
+            }
+        }
+    }
+}
+
+impl Ord for EntityId {
+    #[inline]
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.sort_key().cmp(&other.sort_key())
+    }
+}
+
+impl PartialOrd for EntityId {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 const BASE36: &[u8; 36] = b"0123456789abcdefghijklmnopqrstuvwxyz";
@@ -89,6 +118,37 @@ impl EntityId {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn order_matches_variant_then_field_order() {
+        let ids = [
+            EntityId::Original(0),
+            EntityId::Original(1),
+            EntityId::Original(u32::MAX),
+            EntityId::Inserted {
+                client: 0,
+                counter: 0,
+            },
+            EntityId::Inserted {
+                client: 0,
+                counter: 5,
+            },
+            EntityId::Inserted {
+                client: 1,
+                counter: 0,
+            },
+            EntityId::Inserted {
+                client: u64::MAX,
+                counter: u32::MAX,
+            },
+        ];
+        for window in ids.windows(2) {
+            assert!(window[0] < window[1], "{:?} < {:?}", window[0], window[1]);
+        }
+        let mut shuffled = vec![ids[4], ids[0], ids[6], ids[2], ids[5], ids[1], ids[3]];
+        shuffled.sort();
+        assert_eq!(shuffled, ids);
+    }
 
     #[test]
     fn encode_decode_round_trip() {

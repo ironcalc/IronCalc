@@ -3976,7 +3976,7 @@ fn reconcile_sheet(
             sp_new,
             resolver,
             proj,
-            sd.cells.keys().copied(),
+            sd.cells.iter().map(|(key, _)| *key),
         )?;
         let mut content_written: BTreeSet<(EntityId, EntityId)> = BTreeSet::new();
         for key in interactive {
