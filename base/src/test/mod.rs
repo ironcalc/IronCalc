@@ -121,6 +121,7 @@ mod test_format_case;
 mod test_frozen_rows_and_columns;
 mod test_geomean;
 mod test_get_cell_content;
+mod test_groupby;
 mod test_implicit_intersection;
 mod test_issue_155;
 mod test_issue_483;

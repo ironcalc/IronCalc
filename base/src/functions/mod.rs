@@ -12,6 +12,7 @@ mod database;
 pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
+mod groupby;
 mod information;
 mod logical;
 mod lookup_and_reference;
