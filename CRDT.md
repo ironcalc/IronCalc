@@ -847,5 +847,22 @@ Each phase lands with its convergence tests; the fuzzer grows with the vocabular
     peer decodes an update once. 1M-cell join: 11.8 s → 8.8 s native, of
     which yrs decode+apply 1.3 s, yrs change events 1.0 s, shadow patch
     ~0.8 s, formula render 0.6 s, engine parse+insert 2.6 s, evaluate 0.4 s.
-    Still open: attach ≈ 5 s at 1M cells, the engine's per-cell parse cost,
-    and a snapshot/local cache so joins and reloads skip the rebuild.
+    (6) Measured in V8 (Node with the web wasm build, `bindings/wasm/pkg`
+    loaded via `init({module_or_path: bytes})` — same engine as Chrome), the
+    join was 23 s, not the native 8 s: allocation-heavy code runs 3-7x
+    slower under wasm's allocator, and the engine's A1 parse alone was
+    5.6 s for a million `=A<n>+1` cells. Fix: `render_formula_rc` renders
+    an id-form formula straight into the engine's internal R1C1 form
+    relative to its own cell (`=R[-1]C[0]+1` for every cell of the column),
+    `Model::set_cell_with_rc_formula` parses that text once (lexer in R1C1
+    mode, no leading `=`, context-independent) and returns the shared
+    formula index, and `Model::set_cell_with_formula_index` writes the other
+    cells with no parse at all (`write_fresh_cells` keeps the text → index
+    cache per call). Shapes the fast path does not cover (pinned/full
+    ranges, crossed ranges, dead endpoints, missing sheets) fall back to the
+    A1 path. V8 join apply: 23 s → 11 s (engine write 13.4 s → 1.4 s).
+    What is left in V8: yrs decode+apply 3.1 s, yrs change events + shadow
+    patch 3.5 s, R1C1 render 2.1 s, lookups 1.1 s, evaluate 0.8 s — mostly
+    allocator-bound; a faster wasm global allocator (e.g. `talc`) is the
+    next cross-cutting lever, then a snapshot/local cache so joins and
+    reloads skip the rebuild entirely.

@@ -101,6 +101,10 @@ fn main() {
         UserModel::from_model(model)
     });
 
+    if let Ok(path) = std::env::var("COLLAB_BENCH_DUMP_MODEL") {
+        std::fs::write(&path, host.to_bytes()).unwrap();
+        println!("  host model written to {path}");
+    }
     // ---- host clicks "Collaborate" ----
     let mut host_peer = timed("host: SyncPeer::attach", || {
         SyncPeer::attach(&mut host, 1).unwrap()

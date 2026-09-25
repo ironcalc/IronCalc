@@ -56,7 +56,7 @@ use crate::user_model::history::{Diff, DiffType, QueueDiffs};
 use crate::UserModel;
 
 use super::formula::{
-    encode_formula, needs_reencode, is_id_form, render_formula, RefResolver,
+    encode_formula, is_id_form, needs_reencode, render_formula, render_formula_rc, RefResolver,
 };
 use super::ids::{EntityId, MAX_COLUMN, MAX_ROW};
 use super::order::{original_position, unique_position, AxisOrder, ResolvedIndex};
@@ -3985,6 +3985,7 @@ fn reconcile_sheet(
             content_written.insert(key);
         }
         if rerender_all {
+            let bulk_written: CellKeys = bulk_written.into_iter().collect();
             for (key, new_value) in &sp_new.cells {
                 if is_id_form(new_value)
                     && !content_written.contains(key)
@@ -4524,13 +4525,17 @@ fn write_fresh_cells(
     resolver: &DocResolver,
     proj: &Projection,
     keys: impl IntoIterator<Item = (EntityId, EntityId)>,
-) -> Result<(CellKeys, CellKeys), String> {
+) -> Result<(CellKeys, Vec<(EntityId, EntityId)>), String> {
     let (Some(rows), Some(cols)) = (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
     else {
         return Err("collab: unknown sheet in resolver".to_string());
     };
     let mut interactive = CellKeys::new();
-    let mut bulk = CellKeys::new();
+    let mut bulk: Vec<(EntityId, EntityId)> = Vec::new();
+    // R1C1 text → (shared formula index, dynamic?): equal formulas in
+    // different cells are parsed once (a column of `=A1+1`-style formulas is
+    // a single entry).
+    let mut rc_formulas: HashMap<String, (i32, bool)> = HashMap::new();
     // Pool hash → model style index (a join has a handful of distinct
     // styles over a huge number of cells). Only for cells whose edges are
     // all absent: an edge composes into the style (see
@@ -4608,14 +4613,43 @@ fn write_fresh_cells(
             }
         };
         if is_id_form(value) {
-            let text = render_formula(value, sheet_id, resolver)?;
-            um.model
-                .set_cell_input_with_style(sheet, row, column, &text, style_index)?;
+            let rc = render_formula_rc(value, sheet_id, resolver, row as u32, column as u32)?;
+            let mut written = false;
+            if let Some(rc) = rc {
+                match rc_formulas.get(&rc) {
+                    Some(&(index, is_dynamic)) => {
+                        um.model.set_cell_with_formula_index(
+                            sheet,
+                            row,
+                            column,
+                            index,
+                            is_dynamic,
+                            style_index,
+                        )?;
+                        written = true;
+                    }
+                    None => {
+                        if let Ok(entry) =
+                            um.model
+                                .set_cell_with_rc_formula(sheet, row, column, &rc, style_index)
+                        {
+                            rc_formulas.insert(rc, entry);
+                            written = true;
+                        }
+                    }
+                }
+            }
+            if !written {
+                // Shapes the R1C1 fast path leaves out: full A1 rendering.
+                let text = render_formula(value, sheet_id, resolver)?;
+                um.model
+                    .set_cell_input_with_style(sheet, row, column, &text, style_index)?;
+            }
         } else {
             um.model
                 .set_cell_input_with_style(sheet, row, column, value, style_index)?;
         }
-        bulk.insert(key);
+        bulk.push(key);
     }
     Ok((interactive, bulk))
 }
