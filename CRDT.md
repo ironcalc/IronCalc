@@ -833,6 +833,19 @@ Each phase lands with its convergence tests; the fuzzer grows with the vocabular
     1.5 MB), so the join download of a 1M-cell workbook drops from ~31 MB
     to ~5 MB. Verified by `large_workbooks_travel_compressed` (relay
     integration test) and a Node run of the real provider over the relay.
-    Still open: attach ≈ 5 s and the joiner's full-state apply ≈ 10 s at 1M
-    cells (native; per-cell `set_user_input` writes — a bulk-load path would
-    help), and a local cache of the doc for reloads.
+    (5) Join apply: cells landing on empty locations (every cell on a join,
+    every cell of a structural rebuild) take `write_fresh_cells` →
+    `Model::set_cell_input_with_style`: the interactive pipeline's spill
+    preparation, quote-prefix/number-format/units restyling and auto-linking
+    are skipped because the document's registers already carry the exact
+    style and link — the style index is derived from the register (composed
+    with the edge registers like `set_projected_cell_style`) or the
+    inherited row/column style, memoized per pool hash, and the link and
+    restyle passes skip those cells. The map observers now record the key
+    *and the new value* straight from the event (`DirtyEntry`) instead of
+    copying keys into a sorted set and looking values up again, and the
+    peer decodes an update once. 1M-cell join: 11.8 s → 8.8 s native, of
+    which yrs decode+apply 1.3 s, yrs change events 1.0 s, shadow patch
+    ~0.8 s, formula render 0.6 s, engine parse+insert 2.6 s, evaluate 0.4 s.
+    Still open: attach ≈ 5 s at 1M cells, the engine's per-cell parse cost,
+    and a snapshot/local cache so joins and reloads skip the rebuild.

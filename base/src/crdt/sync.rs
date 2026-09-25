@@ -270,7 +270,7 @@ impl SyncPeer {
                 Ok(Delivery::Stashed)
             }
             UpdateFit::Content => {
-                self.session.apply_remote(um, bytes)?;
+                self.session.apply_remote_update(um, update)?;
                 self.retry_stash(um)?;
                 Ok(Delivery::Applied)
             }
