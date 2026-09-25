@@ -289,6 +289,113 @@ pub(crate) fn render_formula(
     Ok(out)
 }
 
+/// Renders an id-form formula in the engine's internal R1C1 form, relative
+/// to the cell `(row, column)` that holds it — `=A5+$B$2` in A6 becomes
+/// `=R[-1]C[0]+R2C2` — so equal formulas in different cells produce the
+/// same text and the engine parses them once (shared formulas). Returns
+/// `Ok(None)` for shapes this fast path does not cover (dead or pinned
+/// endpoints, crossed ranges, missing sheets); the caller then renders in A1
+/// with [`render_formula`], which handles every case.
+pub(crate) fn render_formula_rc(
+    id_form: &str,
+    own_sheet: EntityId,
+    resolver: &impl RefResolver,
+    row: u32,
+    column: u32,
+) -> Result<Option<String>, String> {
+    let mut out = String::with_capacity(id_form.len());
+    let mut rest = id_form;
+    while let Some(open) = rest.find(REF_DELIM) {
+        out.push_str(&rest[..open]);
+        let after = &rest[open + REF_DELIM.len_utf8()..];
+        if after.starts_with(REF_DELIM) {
+            // Escaped literal delimiter.
+            out.push(REF_DELIM);
+            rest = &after[REF_DELIM.len_utf8()..];
+            continue;
+        }
+        let close = after
+            .find(REF_DELIM)
+            .ok_or("unterminated reference token")?;
+        match render_payload_rc(&after[..close], own_sheet, resolver, row, column)? {
+            Some(text) => out.push_str(&text),
+            None => return Ok(None),
+        }
+        rest = &after[close + REF_DELIM.len_utf8()..];
+    }
+    out.push_str(rest);
+    Ok(Some(out))
+}
+
+fn render_payload_rc(
+    payload: &str,
+    own_sheet: EntityId,
+    resolver: &impl RefResolver,
+    row: u32,
+    column: u32,
+) -> Result<Option<String>, String> {
+    let (sheet, prefix, rest) = match payload.strip_prefix('s') {
+        Some(rest) => {
+            let (sheet_enc, endpoints) = rest
+                .split_once(';')
+                .ok_or("malformed reference token: missing sheet separator")?;
+            let sheet_id =
+                EntityId::decode(sheet_enc).ok_or("malformed reference token: bad sheet id")?;
+            match resolver.sheet_name_by_id(sheet_id) {
+                Some(name) => (sheet_id, format!("{}!", quote_name(&name)), endpoints),
+                None => return Ok(None),
+            }
+        }
+        None => (own_sheet, String::new(), payload),
+    };
+    let rc_text = |c: (u32, bool), r: (u32, bool)| -> String {
+        let row_text = if r.1 {
+            format!("R{}", r.0)
+        } else {
+            format!("R[{}]", r.0 as i64 - row as i64)
+        };
+        let column_text = if c.1 {
+            format!("C{}", c.0)
+        } else {
+            format!("C[{}]", c.0 as i64 - column as i64)
+        };
+        format!("{row_text}{column_text}")
+    };
+    match rest.split_once(':') {
+        None => {
+            let endpoint = parse_endpoint(rest)?;
+            let c = part_index(sheet, Axis2::Columns, &endpoint.column, resolver);
+            let r = part_index(sheet, Axis2::Rows, &endpoint.row, resolver);
+            match (&endpoint.column, &endpoint.row, c, r) {
+                (Part::Id { .. }, Part::Id { .. }, Some(c), Some(r)) => {
+                    Ok(Some(format!("{prefix}{}", rc_text(c, r))))
+                }
+                _ => Ok(None),
+            }
+        }
+        Some((left, right)) => {
+            let l = parse_endpoint(left)?;
+            let r = parse_endpoint(right)?;
+            let all_ids = [&l.column, &l.row, &r.column, &r.row]
+                .iter()
+                .all(|part| matches!(part, Part::Id { .. }));
+            if !all_ids {
+                return Ok(None);
+            }
+            let lc = part_index(sheet, Axis2::Columns, &l.column, resolver);
+            let lr = part_index(sheet, Axis2::Rows, &l.row, resolver);
+            let rc = part_index(sheet, Axis2::Columns, &r.column, resolver);
+            let rr = part_index(sheet, Axis2::Rows, &r.row, resolver);
+            match (lc, lr, rc, rr) {
+                (Some(c1), Some(r1), Some(c2), Some(r2)) if c1.0 <= c2.0 && r1.0 <= r2.0 => Ok(
+                    Some(format!("{prefix}{}:{}", rc_text(c1, r1), rc_text(c2, r2))),
+                ),
+                _ => Ok(None),
+            }
+        }
+    }
+}
+
 /// Is the formula stored in id-form (as opposed to a plain-text fallback)?
 pub(crate) fn is_id_form(stored: &str) -> bool {
     stored.contains(REF_DELIM)
@@ -723,6 +830,32 @@ mod tests {
         ] {
             assert_eq!(round_trip(&resolver, formula), formula, "{formula}");
         }
+    }
+
+    #[test]
+    fn rc_rendering_is_relative_to_the_cell() {
+        let resolver = TestResolver::pristine();
+        let rc = |formula: &str, row: u32, column: u32| {
+            let encoded = encode_formula(formula, S0, &resolver).unwrap();
+            render_formula_rc(&encoded, S0, &resolver, row, column).unwrap()
+        };
+        // Same formula shape in two cells → same R1C1 text.
+        assert_eq!(rc("=A5+1", 6, 1), Some("=R[-1]C[0]+1".to_string()));
+        assert_eq!(rc("=A6+1", 7, 1), Some("=R[-1]C[0]+1".to_string()));
+        assert_eq!(rc("=$B$2*C3", 1, 1), Some("=R2C2*R[2]C[2]".to_string()));
+        assert_eq!(
+            rc("=SUM(A1:B$3)", 5, 5),
+            Some("=SUM(R[-4]C[-4]:R3C[-3])".to_string())
+        );
+        assert_eq!(
+            rc("='My Sheet'!A1", 2, 2),
+            Some("='My Sheet'!R[-1]C[-1]".to_string())
+        );
+        // Not covered by the fast path: full ranges, crossed ranges.
+        assert_eq!(rc("=SUM(D:D)", 1, 1), None);
+        assert_eq!(rc("=SUM(B2:A1)", 1, 1), None);
+        // Plain text and literals pass through.
+        assert_eq!(rc("=\"a\"&1", 1, 1), Some("=\"a\"&1".to_string()));
     }
 
     #[test]
