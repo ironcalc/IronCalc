@@ -74,7 +74,9 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     }
 
     date = {
-        let month_diff = month - 1;
+        let Some(month_diff) = month.checked_sub(1) else {
+            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        };
         let abs_month = month_diff.unsigned_abs();
         let shifted = if month_diff <= 0 {
             date.checked_sub_months(Months::new(abs_month))
@@ -91,7 +93,9 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     };
 
     date = {
-        let day_diff = day - 1;
+        let Some(day_diff) = day.checked_sub(1) else {
+            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        };
         let abs_day = day_diff.unsigned_abs() as u64;
         let shifted = if day_diff <= 0 {
             date.checked_sub_days(Days::new(abs_day))
@@ -158,6 +162,22 @@ mod tests {
         );
         assert_eq!(
             permissive_date_to_serial_number(i32::MAX, 1, 2025),
+            Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
+        );
+        assert_eq!(
+            permissive_date_to_serial_number(1, i32::MIN, 2025),
+            Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
+        );
+        assert_eq!(
+            permissive_date_to_serial_number(i32::MIN, 1, 2025),
+            Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
+        );
+        assert_eq!(
+            permissive_date_to_serial_number(1, -32767, 2025),
+            Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
+        );
+        assert_eq!(
+            permissive_date_to_serial_number(-1_000_000_000, 1, 2025),
             Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
         );
     }
