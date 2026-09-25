@@ -9,8 +9,12 @@
 //!
 //! Wire format: binary websocket messages, each carrying one or more y-sync
 //! protocol messages (`yrs::sync::Message`, lib0 v1) — the same framing
-//! `base/src/crdt/sync.rs` speaks, compatible with y-websocket.
+//! `base/src/crdt/sync.rs` speaks, compatible with y-websocket — except that
+//! large messages are gzip-wrapped in a custom y-sync message (see
+//! [`compress`]), which clients must unwrap before handing the frame to
+//! their peer.
 
+pub mod compress;
 pub mod protocol;
 pub mod room;
 pub mod server;

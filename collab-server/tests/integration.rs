@@ -12,6 +12,7 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use ironcalc_base::crdt::SyncPeer;
 use ironcalc_base::UserModel;
 
+use ironcalc_collab_server::compress::{unwrap_frame, wrap_frame, COMPRESS_THRESHOLD};
 use ironcalc_collab_server::server::{run, Rooms};
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
@@ -47,8 +48,9 @@ impl Client {
     }
 
     async fn send(&mut self, frame: Vec<u8>) {
+        // Like the browser client, large frames go gzip-wrapped.
         self.socket
-            .send(WsMessage::Binary(frame))
+            .send(WsMessage::Binary(wrap_frame(frame)))
             .await
             .expect("send");
     }
@@ -66,6 +68,7 @@ impl Client {
         let incoming = tokio::time::timeout(wait, self.socket.next()).await;
         match incoming {
             Ok(Some(Ok(WsMessage::Binary(data)))) => {
+                let data = unwrap_frame(&data, 1 << 30).expect("unwrap frame");
                 let outcome = self
                     .peer
                     .handle_frame(&mut self.um, &data)
@@ -115,12 +118,14 @@ async fn two_clients_converge_through_the_relay() {
     // A's edit reaches B.
     a.um.set_user_input(0, 1, 1, "5").expect("edit");
     a.flush().await;
-    b.pump_until(|c| cell(c, 1, 1) == "5", "A's edit on B").await;
+    b.pump_until(|c| cell(c, 1, 1) == "5", "A's edit on B")
+        .await;
 
     // B answers with a formula over it; A converges and evaluates.
     b.um.set_user_input(0, 1, 2, "=A1+1").expect("edit");
     b.flush().await;
-    a.pump_until(|c| cell(c, 1, 2) == "6", "B's formula on A").await;
+    a.pump_until(|c| cell(c, 1, 2) == "6", "B's formula on A")
+        .await;
 
     // Rooms are isolated: a third client in another room sees none of it.
     let mut c = Client::connect(&url, "other-room", 3).await;
@@ -196,9 +201,52 @@ async fn room_survives_server_restart() {
     // workbook, including evaluated formulas.
     let (url, server) = start_server(Rooms::new(Some(data_dir.clone()))).await;
     let mut b = Client::connect(&url, "budget", 22).await;
-    b.pump_until(|c| cell(c, 1, 1) == "42", "restored cell").await;
+    b.pump_until(|c| cell(c, 1, 1) == "42", "restored cell")
+        .await;
     assert_eq!(cell(&b, 2, 1), "84");
 
     server.abort();
     let _ = std::fs::remove_dir_all(&data_dir);
+}
+
+/// A workbook whose bootstrap update is well past the compression threshold
+/// travels gzip-wrapped in both directions (client upload, relay fan-out and
+/// handshake reply) and still lands intact on a late joiner.
+#[tokio::test]
+async fn large_workbooks_travel_compressed() {
+    let rooms = Rooms::new(None);
+    let (url, server) = start_server(rooms).await;
+
+    // Build the workbook before attaching: attach bootstraps it into the doc.
+    let mut um = UserModel::new_empty("big", "en", "UTC", "en").unwrap();
+    let rows = 2000;
+    for row in 1..=rows {
+        um.set_user_input(0, row, 1, &format!("=ROW()*{row}"))
+            .unwrap();
+        um.set_user_input(0, row, 2, "some repeated text").unwrap();
+    }
+    let peer = SyncPeer::attach(&mut um, 1).unwrap();
+    let full_state = peer.session().full_state();
+    assert!(
+        full_state.len() > COMPRESS_THRESHOLD,
+        "test workbook too small to exercise compression ({} bytes)",
+        full_state.len()
+    );
+    let (socket, _) = tokio_tungstenite::connect_async(format!("{url}/big"))
+        .await
+        .expect("connect");
+    let mut alice = Client { um, peer, socket };
+    for frame in alice.peer.start_sync() {
+        alice.send(frame).await;
+    }
+    alice.pump_quiet().await;
+
+    let mut bob = Client::connect(&url, "big", 2).await;
+    bob.pump_until(
+        |c| cell(c, rows, 1) == (rows * rows).to_string(),
+        "bob receives the large workbook",
+    )
+    .await;
+    assert_eq!(cell(&bob, 1, 2), "some repeated text");
+    server.abort();
 }

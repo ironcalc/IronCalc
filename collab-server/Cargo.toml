@@ -12,6 +12,8 @@ yrs = { version = "0.27.3", features = ["sync"] }
 tokio = { version = "1", features = ["rt-multi-thread", "net", "macros", "sync", "time"] }
 tokio-tungstenite = "0.24"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+# Large frames (a room's full state) are gzip-wrapped on the wire, see `compress.rs`.
+flate2 = "1"
 
 [dev-dependencies]
 ironcalc_base = { path = "../base" }
