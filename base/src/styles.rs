@@ -401,27 +401,89 @@ impl Styles {
         self.add_named_cell_style(style_name, xf_id)
     }
 
-    /// The `cell_style_xfs` record for a full named style with this look, created (together with
-    /// its plain representative) if absent. Content-addressed and never rewritten, so a style table
-    /// derived from replicated definitions is a function of the definitions alone.
-    pub(crate) fn get_base_style_index_or_create(&mut self, style: &Style) -> i32 {
-        let includes = StyleIncludes::default();
+    /// Writes the base record of a named style: in place at `slot` when there is one, rewriting it
+    /// as [`Model::update_named_style`] does, otherwise as a new record (with its plain
+    /// representative). Returns the record's `xf_id`.
+    pub(crate) fn set_base_style(
+        &mut self,
+        slot: Option<i32>,
+        style: &Style,
+        includes: StyleIncludes,
+    ) -> i32 {
+        match slot {
+            Some(xf_id) if xf_id >= 0 && (xf_id as usize) < self.cell_style_xfs.len() => {
+                self.rewrite_base_style(xf_id, style, includes);
+                xf_id
+            }
+            _ => self.create_base_style(style, includes),
+        }
+    }
+
+    // Rewrites the base record `xf_id` in place and pushes the new components into every
+    // `cell_xfs` entry parented to it, except the categories an entry overrides locally (its
+    // `apply_*` flags). A quote prefix is never touched: it belongs to the cell's content.
+    fn rewrite_base_style(&mut self, xf_id: i32, style: &Style, includes: StyleIncludes) {
         let (num_fmt_id, font_id, fill_id, border_id) = self.get_or_create_component_ids(style);
-        let record = CellStyleXfs {
+
+        let record = &mut self.cell_style_xfs[xf_id as usize];
+        record.num_fmt_id = num_fmt_id;
+        record.font_id = font_id;
+        record.fill_id = fill_id;
+        record.border_id = border_id;
+        record.apply_number_format = includes.number_format;
+        record.apply_font = includes.font;
+        record.apply_fill = includes.fill;
+        record.apply_border = includes.border;
+        record.apply_alignment = includes.alignment;
+        record.apply_protection = includes.protection;
+
+        for cell_xf in self.cell_xfs.iter_mut().filter(|xf| xf.xf_id == xf_id) {
+            if !cell_xf.apply_number_format {
+                cell_xf.num_fmt_id = num_fmt_id;
+            }
+            if !cell_xf.apply_font {
+                cell_xf.font_id = font_id;
+            }
+            if !cell_xf.apply_fill {
+                cell_xf.fill_id = fill_id;
+            }
+            if !cell_xf.apply_border {
+                cell_xf.border_id = border_id;
+            }
+            if !cell_xf.apply_alignment {
+                cell_xf.alignment = style.alignment.clone();
+            }
+        }
+    }
+
+    pub(crate) fn get_parented_style_index_or_create(
+        &mut self,
+        style: &Style,
+        xf_id: i32,
+        owned: StyleIncludes,
+    ) -> i32 {
+        let (num_fmt_id, font_id, fill_id, border_id) = self.get_or_create_component_ids(style);
+        let record = CellXfs {
+            xf_id,
             num_fmt_id,
             font_id,
             fill_id,
             border_id,
-            apply_number_format: includes.number_format,
-            apply_font: includes.font,
-            apply_fill: includes.fill,
-            apply_border: includes.border,
-            apply_alignment: includes.alignment,
-            apply_protection: includes.protection,
+            apply_number_format: owned.number_format,
+            apply_border: owned.border,
+            apply_alignment: owned.alignment,
+            apply_protection: owned.protection,
+            apply_font: owned.font,
+            apply_fill: owned.fill,
+            quote_prefix: style.quote_prefix,
+            alignment: style.alignment.clone(),
         };
-        match self.cell_style_xfs.iter().position(|r| *r == record) {
+        match self.cell_xfs.iter().position(|xf| *xf == record) {
             Some(index) => index as i32,
-            None => self.create_base_style(style, includes),
+            None => {
+                self.cell_xfs.push(record);
+                self.cell_xfs.len() as i32 - 1
+            }
         }
     }
 
@@ -686,37 +748,7 @@ impl<'a> Model<'a> {
             return Err(format!("Style '{name}' points to an invalid xf id"));
         }
 
-        let (num_fmt_id, font_id, fill_id, border_id) = styles.get_or_create_component_ids(style);
-
-        let record = &mut styles.cell_style_xfs[xf_id as usize];
-        record.num_fmt_id = num_fmt_id;
-        record.font_id = font_id;
-        record.fill_id = fill_id;
-        record.border_id = border_id;
-        record.apply_number_format = includes.number_format;
-        record.apply_font = includes.font;
-        record.apply_fill = includes.fill;
-        record.apply_border = includes.border;
-        record.apply_alignment = includes.alignment;
-        record.apply_protection = includes.protection;
-
-        for cell_xf in styles.cell_xfs.iter_mut().filter(|xf| xf.xf_id == xf_id) {
-            if !cell_xf.apply_number_format {
-                cell_xf.num_fmt_id = num_fmt_id;
-            }
-            if !cell_xf.apply_font {
-                cell_xf.font_id = font_id;
-            }
-            if !cell_xf.apply_fill {
-                cell_xf.fill_id = fill_id;
-            }
-            if !cell_xf.apply_border {
-                cell_xf.border_id = border_id;
-            }
-            if !cell_xf.apply_alignment {
-                cell_xf.alignment = style.alignment.clone();
-            }
-        }
+        styles.rewrite_base_style(xf_id, style, includes);
 
         if name != new_name {
             styles.rename_named_style_entry(name, new_name)?;

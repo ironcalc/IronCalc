@@ -280,6 +280,8 @@ fn test_update_named_style_respects_cell_overrides() {
     assert_eq!(a2.fill.color, Color::Rgb("#FFFF00".to_string()));
 }
 
+// Writes the style table directly, which `collab-test` derives from the named-style registers.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_apply_named_style_without_representative() {
     use crate::types::{CellStyleXfs, CellStyles};

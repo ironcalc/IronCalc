@@ -49,8 +49,8 @@ use crate::collab::DynError;
 use crate::constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
 use crate::expressions::token::Error;
 use crate::types::{
-    BorderItem, Color, Comment, Dxf, FontScheme, HorizontalAlignment, SheetState, Style, Theme,
-    VerticalAlignment,
+    BorderItem, Color, Comment, Dxf, FontScheme, HorizontalAlignment, SheetState, Style,
+    StyleIncludes, Theme, VerticalAlignment,
 };
 use crate::{COLUMN_WIDTH_FACTOR, ROW_HEIGHT_FACTOR};
 use bitcode::{Decode, Encode};
@@ -724,6 +724,8 @@ pub enum Property {
     AlignHorizontal(HorizontalAlignment),
     AlignVertical(VerticalAlignment),
     WrapText(bool),
+    /// The named style a cell is parented to. Not part of style properties.
+    StyleRef(Option<NamedStyleId>),
 }
 
 /// The register a [`Property`] writes to, without its value.
@@ -754,11 +756,65 @@ pub enum PropKind {
     AlignHorizontal,
     AlignVertical,
     WrapText,
+    StyleRef,
+}
+
+/// A formatting category a named style may include (Excel's "Style Includes").
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum StyleCategory {
+    NumberFormat,
+    Font,
+    Fill,
+    Border,
+    Alignment,
+}
+
+impl StyleCategory {
+    pub const ALL: [StyleCategory; 5] = [
+        StyleCategory::NumberFormat,
+        StyleCategory::Font,
+        StyleCategory::Fill,
+        StyleCategory::Border,
+        StyleCategory::Alignment,
+    ];
+
+    /// Whether a style with these `includes` carries this category.
+    pub fn included(self, includes: &StyleIncludes) -> bool {
+        match self {
+            StyleCategory::NumberFormat => includes.number_format,
+            StyleCategory::Font => includes.font,
+            StyleCategory::Fill => includes.fill,
+            StyleCategory::Border => includes.border,
+            StyleCategory::Alignment => includes.alignment,
+        }
+    }
+
+    /// Marks this category in `includes`.
+    pub fn mark(self, includes: &mut StyleIncludes) {
+        match self {
+            StyleCategory::NumberFormat => includes.number_format = true,
+            StyleCategory::Font => includes.font = true,
+            StyleCategory::Fill => includes.fill = true,
+            StyleCategory::Border => includes.border = true,
+            StyleCategory::Alignment => includes.alignment = true,
+        }
+    }
+
+    /// Copies this category of `from` into `into`.
+    pub fn copy(self, from: &Style, into: &mut Style) {
+        match self {
+            StyleCategory::NumberFormat => into.num_fmt = from.num_fmt.clone(),
+            StyleCategory::Font => into.font = from.font.clone(),
+            StyleCategory::Fill => into.fill = from.fill.clone(),
+            StyleCategory::Border => into.border = from.border.clone(),
+            StyleCategory::Alignment => into.alignment = from.alignment.clone(),
+        }
+    }
 }
 
 impl PropKind {
     /// Every kind.
-    pub const ALL: [PropKind; 25] = [
+    pub const ALL: [PropKind; 26] = [
         PropKind::Height,
         PropKind::Width,
         PropKind::Hidden,
@@ -784,6 +840,7 @@ impl PropKind {
         PropKind::AlignHorizontal,
         PropKind::AlignVertical,
         PropKind::WrapText,
+        PropKind::StyleRef,
     ];
 
     /// The formatting kinds: what a [`Style`] holds.
@@ -811,6 +868,38 @@ impl PropKind {
         PropKind::AlignVertical,
         PropKind::WrapText,
     ];
+
+    /// The named-style category this kind belongs to. Doesn't include inherited styles.
+    pub fn category(self) -> Option<StyleCategory> {
+        Some(match self {
+            PropKind::NumFmt => StyleCategory::NumberFormat,
+            PropKind::FontBold
+            | PropKind::FontItalic
+            | PropKind::FontUnderline
+            | PropKind::FontStrike
+            | PropKind::FontSize
+            | PropKind::FontColor
+            | PropKind::FontName
+            | PropKind::FontFamily
+            | PropKind::FontScheme => StyleCategory::Font,
+            PropKind::FillColor => StyleCategory::Fill,
+            PropKind::BorderLeft
+            | PropKind::BorderRight
+            | PropKind::BorderTop
+            | PropKind::BorderBottom
+            | PropKind::BorderDiagonal
+            | PropKind::DiagonalUp
+            | PropKind::DiagonalDown => StyleCategory::Border,
+            PropKind::AlignHorizontal | PropKind::AlignVertical | PropKind::WrapText => {
+                StyleCategory::Alignment
+            }
+            PropKind::Height
+            | PropKind::Width
+            | PropKind::Hidden
+            | PropKind::QuotePrefix
+            | PropKind::StyleRef => return None,
+        })
+    }
 }
 
 impl Property {
@@ -841,14 +930,16 @@ impl Property {
             Property::AlignHorizontal(_) => PropKind::AlignHorizontal,
             Property::AlignVertical(_) => PropKind::AlignVertical,
             Property::WrapText(_) => PropKind::WrapText,
+            Property::StyleRef(_) => PropKind::StyleRef,
         }
     }
 
-    /// What `style` holds for `kind`; `None` for a layout kind, which is not formatting.
     pub fn read(style: &Style, kind: PropKind) -> Option<Property> {
         let alignment = style.alignment.clone().unwrap_or_default();
         Some(match kind {
-            PropKind::Height | PropKind::Width | PropKind::Hidden => return None,
+            PropKind::Height | PropKind::Width | PropKind::Hidden | PropKind::StyleRef => {
+                return None
+            }
             PropKind::NumFmt => Property::NumFmt(style.num_fmt.clone()),
             PropKind::QuotePrefix => Property::QuotePrefix(style.quote_prefix),
             PropKind::FontBold => Property::FontBold(style.font.b),
@@ -877,7 +968,10 @@ impl Property {
     /// Writes a formatting value into `style`.
     pub fn write_into(&self, style: &mut Style) {
         match self {
-            Property::Height(_) | Property::Width(_) | Property::Hidden(_) => {}
+            Property::Height(_)
+            | Property::Width(_)
+            | Property::Hidden(_)
+            | Property::StyleRef(_) => {}
             Property::NumFmt(v) => style.num_fmt = v.clone(),
             Property::QuotePrefix(v) => style.quote_prefix = *v,
             Property::FontBold(v) => style.font.b = *v,
@@ -1049,6 +1143,8 @@ impl CfProperty {
 pub struct NamedStyle {
     pub style: Style,
     pub builtin_id: i32,
+    /// The categories the style carries — what a cell parented to it inherits.
+    pub includes: StyleIncludes,
 }
 
 /// A property of a named style. Each variant is a distinct register.
@@ -1174,6 +1270,9 @@ pub struct SheetContent {
     /// and they are separate registers in any case.
     pub cell_values: Vec<(StableCellAddress, CellInput)>,
     pub cell_styles: Vec<(StableCellAddress, Style)>,
+    /// The named style each parented cell points at, with the categories the cell owns rather
+    /// than inherits (its overrides), ordered by address.
+    pub cell_parents: Vec<(StableCellAddress, NamedStyleId, StyleIncludes)>,
     pub merge_cells: Vec<StableRange>,
     pub comments: Vec<Comment<Stable>>,
     pub links: Vec<(StableCellAddress, StableLink)>,
@@ -1355,6 +1454,7 @@ mod test {
             columns: vec![((key(3), key(4)), col_state())],
             cell_values: vec![((key(1), key(3)), CellInput::Number(3.5))],
             cell_styles: vec![((key(1), key(3)), Style::default())],
+            cell_parents: vec![((key(1), key(3)), 42, StyleIncludes::default())],
             merge_cells: vec![range()],
             comments: vec![comment()],
             links: vec![((key(1), key(3)), link())],
@@ -1389,7 +1489,7 @@ mod test {
             Patch::SetCellStyle {
                 sheet: 7,
                 at: (key(1), key(3)),
-                props: vec![Property::FontBold(true)],
+                props: vec![Property::FontBold(true), Property::StyleRef(Some(42))],
                 ts: None,
                 prev: Vec::new(),
             },
@@ -1487,6 +1587,10 @@ mod test {
                 property: NamedStyleProperty::Definition(Some(Box::new(NamedStyle {
                     style: Style::default(),
                     builtin_id: 26,
+                    includes: StyleIncludes {
+                        font: false,
+                        ..Default::default()
+                    },
                 }))),
                 prev: None,
             },

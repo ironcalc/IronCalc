@@ -8,8 +8,8 @@ use crate::collab::fractional_index::{
 use crate::collab::log::SessionId;
 use crate::collab::model::{CollabModel, Stable, StableRange};
 use crate::collab::patch::{
-    CellInput, CfProperty, ColState, ConditionalFormatState, Patch, RowState, SheetContent,
-    SheetIndexSeed, StableCfRule,
+    CellInput, CfProperty, ColState, ConditionalFormatState, NamedStyleId, Patch, RowState,
+    SheetContent, SheetIndexSeed, StableCfRule,
 };
 use crate::constants::LAST_COLUMN;
 use crate::expressions::lexer::LexerMode;
@@ -70,6 +70,7 @@ pub(crate) fn content_from_ordinal(
     ws: &Worksheet,
     styles: &Styles,
     shared_strings: &[String],
+    named: &HashMap<i32, NamedStyleId>, // maps the `xf_id` of each imported style to the style's id
     suffix: [u8; SESSION_SUFFIX_LEN],
 ) -> SheetContent {
     let (virtual_rows, virtual_columns) = used_extent(ws);
@@ -84,6 +85,7 @@ pub(crate) fn content_from_ordinal(
 
     let mut cell_values = Vec::new();
     let mut cell_styles = Vec::new();
+    let mut cell_parents = Vec::new();
     for (r, row) in &ws.sheet_data {
         for (c, cell) in row {
             let at = (virtual_key(*r as u32), virtual_key(*c as u32));
@@ -103,6 +105,21 @@ pub(crate) fn content_from_ordinal(
             }
             // Only a cell holding a style of its own: 0 is the table's default entry.
             if cell.get_style() != 0 {
+                if let Some(xf) = styles.cell_xfs.get(cell.get_style() as usize) {
+                    if xf.xf_id != 0 {
+                        if let Some(id) = named.get(&xf.xf_id) {
+                            let owned = StyleIncludes {
+                                number_format: xf.apply_number_format,
+                                font: xf.apply_font,
+                                fill: xf.apply_fill,
+                                border: xf.apply_border,
+                                alignment: xf.apply_alignment,
+                                protection: xf.apply_protection,
+                            };
+                            cell_parents.push((at.clone(), *id, owned));
+                        }
+                    }
+                }
                 if let Ok(style) = styles.get_style(cell.get_style()) {
                     cell_styles.push((at, style));
                 }
@@ -168,6 +185,10 @@ pub(crate) fn content_from_ordinal(
             .collect(),
         cell_values,
         cell_styles,
+        cell_parents: {
+            cell_parents.sort_by(|(a, ..), (b, ..)| a.cmp(b));
+            cell_parents
+        },
         merge_cells: ws
             .merged_cells
             .iter()
@@ -234,6 +255,23 @@ impl CollabModel<'static> {
         model.set_timezone(&workbook.settings.tz)?;
         model.set_theme(workbook.theme.clone());
 
+        // A cell parented to a named style is seeded pointing at the style's id.
+        // Built-ins are not replicated, so their children come over detached.
+        let mut named = HashMap::new();
+        for entry in &workbook.styles.cell_styles {
+            if workbook.styles.is_builtin_style(&entry.name) {
+                continue;
+            }
+            let (Ok(style), Ok(includes)) = (
+                workbook.styles.get_style_by_name(&entry.name),
+                workbook.styles.get_style_includes(&entry.name),
+            ) else {
+                continue;
+            };
+            model.create_named_style(&entry.name, &style, includes)?;
+            named.insert(entry.xf_id, model.style_id_by_name(&entry.name)?);
+        }
+
         // One commit per sheet, in file order, so each position is minted after the previous sheet
         // exists. The file's own ids are kept where they can be: two replicas importing the same
         // file then agree on the sheets as well as on the cells.
@@ -243,8 +281,13 @@ impl CollabModel<'static> {
                 id if id != 0 && !model.workbook.meta.sheet_existence.contains_key(&id) => id,
                 _ => model.new_sheet_id(),
             };
-            let content =
-                content_from_ordinal(ws, &workbook.styles, &workbook.shared_strings, suffix);
+            let content = content_from_ordinal(
+                ws,
+                &workbook.styles,
+                &workbook.shared_strings,
+                &named,
+                suffix,
+            );
             let position = model.sheet_position();
             model.commit_local(vec![Patch::AddSheet {
                 id,
@@ -337,16 +380,6 @@ impl CollabModel<'static> {
                 patches.extend(writes);
                 model.commit_local(patches);
             }
-        }
-
-        for named in &workbook.styles.cell_styles {
-            if workbook.styles.is_builtin_style(&named.name) {
-                continue;
-            }
-            let Ok(style) = workbook.styles.get_style_by_name(&named.name) else {
-                continue;
-            };
-            model.create_named_style(&named.name, &style, StyleIncludes::default())?;
         }
 
         model.evaluate();
@@ -882,6 +915,72 @@ mod test {
                     "value after delete at row {row} column {col}"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn named_style_parents_survive_import() {
+        let mut m = Model::new_empty("import", "en", "UTC", "en").unwrap();
+        let percent = Style {
+            num_fmt: "0%".to_string(),
+            ..Default::default()
+        };
+        let number_format = StyleIncludes {
+            number_format: true,
+            font: false,
+            fill: false,
+            border: false,
+            alignment: false,
+            protection: false,
+        };
+        m.create_named_style("pct", &percent, number_format)
+            .unwrap();
+        let mut bold = Style::default();
+        bold.font.b = true;
+        m.set_cell_style(0, 1, 1, &bold).unwrap();
+        m.set_cell_style_by_name(0, 1, 1, "pct").unwrap();
+        m.create_named_style("strong", &bold, StyleIncludes::default())
+            .unwrap();
+        m.set_cell_style_by_name(0, 2, 1, "strong").unwrap();
+        // A child owning its font, as a file can carry one (`applyFont="1"`).
+        let styles = &mut m.workbook.styles;
+        let mut child =
+            styles.cell_xfs[styles.get_style_index_by_name("strong").unwrap() as usize].clone();
+        child.apply_font = true;
+        child.font_id = 0;
+        styles.cell_xfs.push(child);
+        let child = styles.cell_xfs.len() as i32 - 1;
+        m.workbook
+            .worksheet_mut(0)
+            .unwrap()
+            .set_cell_style(3, 1, child)
+            .unwrap();
+
+        let mut a = CollabModel::from_workbook_with_session(m.workbook.clone(), "en", 1).unwrap();
+        assert_eq!(a.get_named_style_includes("pct"), Ok(number_format));
+        assert_eq!(a.workbook.worksheets[0].index.parents.len(), 3);
+        let mut b = CollabModel::new(2);
+        deliver(&mut b, &a.flush());
+
+        let mut pct = percent.clone();
+        pct.num_fmt = "0.00%".to_string();
+        a.update_named_style("pct", "pct", &pct, number_format)
+            .unwrap();
+        let mut strong = bold.clone();
+        strong.font.i = true;
+        strong.fill.color = Color::Rgb("#FFFF00".to_string());
+        a.update_named_style("strong", "strong", &strong, StyleIncludes::default())
+            .unwrap();
+        deliver(&mut b, &a.flush());
+        for peer in [&a, &b] {
+            let a1 = peer.get_style_for_cell(0, 1, 1).unwrap();
+            assert_eq!(a1.num_fmt, "0.00%");
+            assert!(a1.font.b);
+            assert_eq!(peer.get_style_for_cell(0, 2, 1), Ok(strong.clone()));
+            // The child keeps its own plain font and takes the new fill.
+            let a3 = peer.get_style_for_cell(0, 3, 1).unwrap();
+            assert!(!a3.font.b && !a3.font.i);
+            assert_eq!(a3.fill.color, strong.fill.color);
         }
     }
 }

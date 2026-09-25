@@ -25,9 +25,9 @@ use crate::collab::model::{
 };
 use crate::collab::naming::NameRepair;
 use crate::collab::patch::{
-    CellInput, CfPropKind, CfProperty, ColState, DefinedNameId, DefinedNameProperty, NamedStyleId,
-    NamedStyleProperty, Patch, PropKind, Property, RowState, SheetContent, SheetId, SheetIndexSeed,
-    SheetProperty, StableCfRule, WorkbookProperty,
+    CellInput, CfPropKind, CfProperty, ColState, DefinedNameId, DefinedNameProperty, NamedStyle,
+    NamedStyleId, NamedStyleProperty, Patch, PropKind, Property, RowState, SheetContent, SheetId,
+    SheetIndexSeed, SheetProperty, StableCfRule, StyleCategory, WorkbookProperty,
 };
 use crate::collab::DynError;
 use crate::constants::{
@@ -38,7 +38,7 @@ use crate::expressions::parser::{static_analysis::run_static_analysis_on_node, N
 use crate::expressions::token;
 use crate::types::{
     Alignment, ArrayKind, Cell, CellStyles, Col, DefinedName, FormulaValue, Row, SheetState, Style,
-    Styles, Workbook, Worksheet,
+    StyleIncludes, Styles, Workbook, Worksheet,
 };
 
 /// Version byte prefixing every [`Snapshot::encode`] payload.
@@ -174,6 +174,32 @@ fn set_kinds(style: &Style) -> impl Iterator<Item = PropKind> {
         .map(|p| p.kind())
 }
 
+/// Returns styles included categories for a given cell.
+pub(crate) fn owned_categories(
+    registers: &HashMap<(StableCellAddress, PropKind), Timestamp>,
+    at: &StableCellAddress,
+    reference: Option<&Timestamp>,
+) -> StyleIncludes {
+    let mut owned = StyleIncludes {
+        number_format: false,
+        font: false,
+        fill: false,
+        border: false,
+        alignment: false,
+        protection: false,
+    };
+    // One pass over the kinds; a category's first later stamp settles it, the rest are not read.
+    for kind in PropKind::STYLE {
+        let Some(category) = kind.category() else {
+            continue;
+        };
+        if !category.included(&owned) && registers.get(&(at.clone(), kind)) > reference {
+            category.mark(&mut owned);
+        }
+    }
+    owned
+}
+
 /// Sheet names are case-insensitively unique and capped at Excel's 31, mirrored by
 /// [`is_valid_sheet_name`](crate::new_empty::is_valid_sheet_name).
 pub(crate) const SHEET_NAMES: NameRepair = NameRepair {
@@ -259,6 +285,22 @@ fn put_cell(sheet: &mut Worksheet<Stable>, at: &StableCellAddress, cell: Cell) {
         .insert(at.1.clone(), cell);
 }
 
+fn store_style(sheet: &mut Worksheet<Stable>, at: &StableCellAddress, s: i32) {
+    let cell = sheet.sheet_data.get(&at.0).and_then(|r| r.get(&at.1));
+    if s == 0 && matches!(cell, None | Some(Cell::EmptyCell { .. })) {
+        remove_cell(sheet, at);
+        return;
+    }
+    match sheet
+        .sheet_data
+        .get_mut(&at.0)
+        .and_then(|r| r.get_mut(&at.1))
+    {
+        Some(cell) => cell.set_style(s),
+        None => put_cell(sheet, at, Cell::EmptyCell { s }),
+    }
+}
+
 fn remove_cell(sheet: &mut Worksheet<Stable>, at: &StableCellAddress) {
     if let Some(row) = sheet.sheet_data.get_mut(&at.0) {
         row.remove(&at.1);
@@ -339,7 +381,7 @@ fn keep_cell(
     newer_value || any_style
 }
 
-fn cell_deleted(index: &SheetIndexes, at: &StableCellAddress, ts: Hlc) -> bool {
+pub(crate) fn cell_deleted(index: &SheetIndexes, at: &StableCellAddress, ts: Hlc) -> bool {
     match index.rows.removed_at(&at.0) {
         Some(tombstone) if tombstone >= ts => true,
         _ => match index.cols.removed_at(&at.1) {
@@ -545,18 +587,100 @@ impl CollabModel<'_> {
             else {
                 continue;
             };
-            // A replicated style includes every formatting category (a quote prefix is a cell's
-            // own state, never a style's). Its record is content-addressed, so the table is a
-            // function of the registers rather than of the order their writes arrived in.
-            let xf_id = self
-                .workbook
-                .styles
-                .get_base_style_index_or_create(&definition.style);
+            // A quote prefix is a cell's own state, never a style's; the record ignores it.
+            let slot = self.workbook.meta.style_xf.get(&id).copied();
+            let xf_id = self.workbook.styles.set_base_style(
+                slot,
+                &canonical(definition.style.clone()),
+                definition.includes,
+            );
+            self.workbook.meta.style_xf.insert(id, xf_id);
             self.workbook.styles.cell_styles.push(CellStyles {
                 name,
                 xf_id,
                 builtin_id: definition.builtin_id,
             });
+        }
+    }
+
+    /// Returns [NamedStyle]'s `xf_id`, style itself and its include categories for a given cell.
+    pub(crate) fn inheritance(
+        &self,
+        sheet_idx: usize,
+        at: &StableCellAddress,
+        reference: Option<&Timestamp>,
+    ) -> Option<(i32, &NamedStyle, StyleIncludes)> {
+        let meta = &self.workbook.meta;
+        let index = &self.workbook.worksheets[sheet_idx].index;
+        let id = index.parents.get(at)?;
+        let definition = meta.named_styles.get(id)?.definition.value.as_deref()?;
+        let xf_id = *meta.style_xf.get(id)?;
+        let owned = owned_categories(&index.registers.cell_styles, at, reference);
+        let inherit = |category: StyleCategory| {
+            category.included(&definition.includes) && !category.included(&owned)
+        };
+        let inherited = StyleIncludes {
+            number_format: inherit(StyleCategory::NumberFormat),
+            font: inherit(StyleCategory::Font),
+            fill: inherit(StyleCategory::Fill),
+            border: inherit(StyleCategory::Border),
+            alignment: inherit(StyleCategory::Alignment),
+            protection: definition.includes.protection,
+        };
+        Some((xf_id, definition, inherited))
+    }
+
+    /// Recomputes cell `at`'s look from its named style: the one place a parent reaches a cell.
+    fn derive_cell(&mut self, sheet_idx: usize, at: &StableCellAddress) {
+        let index = &self.workbook.worksheets[sheet_idx].index;
+        let reference = index
+            .registers
+            .cell_styles
+            .get(&(at.clone(), PropKind::StyleRef));
+        // A row or column delete that outranks the reference took it along with the cell.
+        if reference.is_some_and(|ts| cell_deleted(index, at, ts.hlc)) {
+            return;
+        }
+        let parent = self
+            .inheritance(sheet_idx, at, reference)
+            .map(|(xf_id, definition, inherited)| (xf_id, definition.style.clone(), inherited));
+        let sheet = &mut self.workbook.worksheets[sheet_idx];
+        let styles = &mut self.workbook.styles;
+        let mut own = styles.get_style(cell_style(sheet, at)).unwrap_or_default();
+        let s = match parent {
+            None => styles.get_style_index_or_create(&canonical(own)),
+            Some((xf_id, style, inherited)) => {
+                for category in StyleCategory::ALL {
+                    if category.included(&inherited) {
+                        category.copy(&style, &mut own);
+                    }
+                }
+                let apply = StyleIncludes {
+                    number_format: !inherited.number_format,
+                    font: !inherited.font,
+                    fill: !inherited.fill,
+                    border: !inherited.border,
+                    alignment: !inherited.alignment,
+                    protection: !inherited.protection,
+                };
+                styles.get_parented_style_index_or_create(&canonical(own), xf_id, apply)
+            }
+        };
+        store_style(sheet, at, s);
+    }
+
+    fn derive_parented(&mut self) {
+        for i in 0..self.workbook.worksheets.len() {
+            let mut cells: Vec<StableCellAddress> = self.workbook.worksheets[i]
+                .index
+                .parents
+                .keys()
+                .cloned()
+                .collect();
+            cells.sort();
+            for at in &cells {
+                self.derive_cell(i, at);
+            }
         }
     }
 
@@ -627,6 +751,7 @@ impl CollabModel<'_> {
             .any(|patch| matches!(patch, Patch::SetNamedStyle { .. }))
         {
             self.normalize_named_styles();
+            self.derive_parented();
         }
 
         // A revival (an insert re-applied over its own delete, e.g. redo) looks like a tail append,
@@ -784,26 +909,27 @@ impl CollabModel<'_> {
                 if won.is_empty() || cell_deleted(index, at, ts.hlc) {
                     return;
                 }
-                let cell = self.workbook.worksheets[i]
-                    .sheet_data
-                    .get(&at.0)
-                    .and_then(|r| r.get(&at.1));
-                let empty = matches!(cell, None | Some(Cell::EmptyCell { .. }));
-                let own = cell.map_or(0, Cell::get_style);
-                let s = overlay(&mut self.workbook.styles, own, &won);
-                let sheet = &mut self.workbook.worksheets[i];
-                // Nothing left for the cell to hold, so it goes too.
-                if s == 0 && empty {
-                    remove_cell(sheet, at);
-                } else {
-                    match sheet
-                        .sheet_data
-                        .get_mut(&at.0)
-                        .and_then(|r| r.get_mut(&at.1))
-                    {
-                        Some(cell) => cell.set_style(s),
-                        None => put_cell(sheet, at, Cell::EmptyCell { s }),
+                let reference = won.iter().find_map(|p| match p {
+                    Property::StyleRef(id) => Some(*id),
+                    _ => None,
+                });
+                match reference {
+                    Some(Some(id)) => {
+                        index.parents.insert(at.clone(), id);
                     }
+                    Some(None) => {
+                        index.parents.remove(at);
+                    }
+                    None => {}
+                }
+                let parented = reference.is_some() || index.parents.contains_key(at);
+                let sheet = &mut self.workbook.worksheets[i];
+                let s = overlay(&mut self.workbook.styles, cell_style(sheet, at), &won);
+                // Nothing left for the cell to hold, so it goes too.
+                store_style(sheet, at, s);
+                // Whatever just won may have changed what the cell inherits and what it owns.
+                if parented {
+                    self.derive_cell(i, at);
                 }
             }
             Patch::InsertRows { sheet, keys } => {
@@ -1487,6 +1613,26 @@ impl CollabModel<'_> {
             }
         }
 
+        let below = Timestamp::new(Hlc::new(ts.hlc.get().saturating_sub(1)), ts.session);
+        for (at, id, owned) in &content.cell_parents {
+            let index = &mut self.workbook.worksheets[i].index;
+            index.parents.insert(at.clone(), *id);
+            let registers = &mut index.registers.cell_styles;
+            registers.insert((at.clone(), PropKind::StyleRef), below);
+            for kind in PropKind::STYLE {
+                let Some(category) = kind.category() else {
+                    continue;
+                };
+                let key = (at.clone(), kind);
+                if category.included(owned) {
+                    registers.insert(key, *ts);
+                } else if let Some(stamp) = registers.get_mut(&key) {
+                    *stamp = below;
+                }
+            }
+            self.derive_cell(i, at);
+        }
+
         let sheet = &mut self.workbook.worksheets[i];
         for range in &content.merge_cells {
             sheet.index.registers.merges.insert(range.clone(), *ts);
@@ -1636,7 +1782,7 @@ mod test {
     use super::*;
     use crate::cf_types::CfRule;
     use crate::collab::model::StableRange;
-    use crate::collab::patch::{DefinedNameBody, NamedStyle};
+    use crate::collab::patch::DefinedNameBody;
     use crate::types::{Color, Comment, Position, Theme};
 
     /// Method-syntax delivery, chainable straight off [`rec`].
@@ -1908,6 +2054,7 @@ mod test {
                     property: NamedStyleProperty::Definition(Some(Box::new(NamedStyle {
                         style: named_styled(),
                         builtin_id: 0,
+                        includes: Default::default(),
                     }))),
                     prev: None,
                 },

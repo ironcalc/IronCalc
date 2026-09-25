@@ -214,6 +214,7 @@ pub struct SheetIndexes {
     pub rows: FractionalIndex,
     pub cols: FractionalIndex,
     pub registers: SheetRegisters,
+    pub parents: HashMap<StableCellAddress, NamedStyleId>,
     /// Spill cells are rebuild from sheet state.
     #[bitcode(skip)]
     pub spills: Spills,
@@ -261,6 +262,8 @@ pub struct WorkbookMeta {
     pub defined_names: HashMap<DefinedNameId, DefinedNameState>,
     /// Named styles; entries survive deletion (resurrection guard).
     pub named_styles: HashMap<NamedStyleId, NamedStyleState>,
+    /// The `cell_style_xfs` slot each named style owns.
+    pub style_xf: HashMap<NamedStyleId, i32>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
@@ -573,6 +576,7 @@ impl CollabModel<'_> {
             rows: FractionalIndex::new(vec![], vec![], suffix),
             cols: FractionalIndex::new(vec![], vec![], suffix),
             registers: Default::default(),
+            parents: Default::default(),
             spills: Default::default(),
         }
     }
@@ -592,6 +596,7 @@ mod test {
             rows: FractionalIndex::new(vec![], vec![], [b'r', 0, 0, 0]),
             cols: FractionalIndex::new(vec![], vec![], [b'c', 0, 0, 0]),
             registers: Default::default(),
+            parents: Default::default(),
             spills: Default::default(),
         }
     }
