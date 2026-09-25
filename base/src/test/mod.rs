@@ -18,6 +18,7 @@ mod test_error_propagation;
 mod test_fact_factdouble;
 mod test_fn_accrint;
 mod test_fn_accrintm;
+mod test_fn_aggregate;
 mod test_fn_average;
 mod test_fn_averageifs;
 mod test_fn_bond_functions;

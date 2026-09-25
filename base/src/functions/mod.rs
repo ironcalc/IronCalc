@@ -7,6 +7,7 @@ use crate::{
     model::Model,
 };
 
+mod aggregate;
 pub(crate) mod binary_search;
 mod database;
 pub(crate) mod date_and_time;
@@ -539,6 +540,7 @@ pub enum Function {
     Delta,
     Gestep,
     Subtotal,
+    Aggregate,
 
     // Database
     Daverage,
@@ -1065,6 +1067,7 @@ impl_function_lookup! {
     delta    => Delta,
     gestep   => Gestep,
     subtotal => Subtotal,
+    aggregate => Aggregate,
 
     // Database
     daverage => Daverage,
@@ -1571,6 +1574,7 @@ impl Function {
             Function::Delta => functions.delta.clone(),
             Function::Gestep => functions.gestep.clone(),
             Function::Subtotal => functions.subtotal.clone(),
+            Function::Aggregate => functions.aggregate.clone(),
             Function::Daverage => functions.daverage.clone(),
             Function::Dcount => functions.dcount.clone(),
             Function::Dget => functions.dget.clone(),
@@ -1614,7 +1618,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 496> {
+    pub fn into_iter() -> IntoIter<Function, 497> {
         [
             Function::And,
             Function::False,
@@ -1950,6 +1954,7 @@ impl Function {
             Function::Delta,
             Function::Gestep,
             Function::Subtotal,
+            Function::Aggregate,
             Function::Roman,
             Function::Arabic,
             Function::Combin,
@@ -2167,6 +2172,7 @@ impl Function {
             Function::Numbervalue => "_xlfn.NUMBERVALUE".to_string(),
             Function::Arraytotext => "_xlfn.ARRAYTOTEXT".to_string(),
             Function::Encodeurl => "_xlfn.ENCODEURL".to_string(),
+            Function::Aggregate => "_xlfn.AGGREGATE".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),
@@ -2611,6 +2617,7 @@ impl<'a> Model<'a> {
             Function::Delta => self.fn_delta(args, cell),
             Function::Gestep => self.fn_gestep(args, cell),
             Function::Subtotal => self.fn_subtotal(args, cell),
+            Function::Aggregate => self.fn_aggregate(args, cell),
             Function::Acot => self.fn_acot(args, cell),
             Function::Acoth => self.fn_acoth(args, cell),
             Function::Cot => self.fn_cot(args, cell),
