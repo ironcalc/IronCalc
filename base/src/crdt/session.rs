@@ -35,9 +35,10 @@
 //! up when the linking replica pushes (conservative re-marking keeps the
 //! originator consistent).
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
+use yrs::types::EntryChange;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{
@@ -775,15 +776,24 @@ pub struct CollabSession {
     /// attach: that is O(document) per update).
     shadow: Projection,
     journal: Vec<JournalEntry>,
-    /// Root-map keys changed by transactions the shadow has not absorbed yet
+    /// Root-map changes the shadow has not absorbed yet, in commit order
     /// (fed by the map observers, drained by `refresh_shadow`).
     dirty: DirtyKeys,
     _map_subs: Vec<Subscription>,
 }
 
-/// Root-map keys changed by committed transactions, shared with the map
-/// observers.
-type DirtyKeys = Arc<Mutex<BTreeSet<(MapKind, String)>>>;
+/// One root-map entry change reported by a map observer: the key and its
+/// value after the transaction (`None` = removed). Taken straight from the
+/// event so the refresh needs no document lookups — on a million-cell join
+/// that, and copying keys, cost more than applying the update itself.
+struct DirtyEntry {
+    kind: MapKind,
+    key: Arc<str>,
+    value: Option<Out>,
+}
+
+/// Changes reported by committed transactions, shared with the map observers.
+type DirtyKeys = Arc<Mutex<Vec<DirtyEntry>>>;
 
 impl CollabSession {
     /// Attaches a session to a model, bootstrapping the document from the
@@ -852,8 +862,8 @@ impl CollabSession {
     /// and returns what changed (old values are only collected when
     /// `want_delta`; the local path just needs the shadow up to date).
     fn refresh_shadow(&mut self, want_delta: bool) -> Delta {
-        let dirty: Vec<(MapKind, String)> = match self.dirty.lock() {
-            Ok(mut dirty) => std::mem::take(&mut *dirty).into_iter().collect(),
+        let dirty: Vec<DirtyEntry> = match self.dirty.lock() {
+            Ok(mut dirty) => std::mem::take(&mut *dirty),
             Err(_) => Vec::new(),
         };
         let mut delta = Delta::default();
@@ -874,20 +884,20 @@ impl CollabSession {
                 MapKind::Rows | MapKind::Cols | MapKind::KeepRows | MapKind::KeepCols
             )
         };
+        // Axis maps first: structural detection compares the orders before
+        // and after, and a structural sheet needs its whole old projection
+        // (cells still untouched at that point).
+        let (axis_entries, other_entries): (Vec<DirtyEntry>, Vec<DirtyEntry>) =
+            dirty.into_iter().partition(|entry| is_axis(entry.kind));
         {
             let txn = self.doc.transact();
             let maps = &self.maps;
             let shadow = &mut self.shadow;
-            // Axis maps first: structural detection compares the orders
-            // before and after, and a structural sheet needs its whole old
-            // projection (cells still untouched at this point).
             let mut snapshots: BTreeMap<EntityId, AxisSnapshot> = BTreeMap::new();
             if want_delta {
-                for (kind, key) in &dirty {
-                    if !is_axis(*kind) {
-                        continue;
-                    }
-                    let Some(sheet_id) = key
+                for entry in &axis_entries {
+                    let Some(sheet_id) = entry
+                        .key
                         .split_once('!')
                         .and_then(|(sid, _)| EntityId::decode(sid))
                     else {
@@ -911,17 +921,8 @@ impl CollabSession {
                     }
                 }
             }
-            for (kind, key) in &dirty {
-                if is_axis(*kind) {
-                    patch_from_doc(
-                        shadow,
-                        maps,
-                        &txn,
-                        *kind,
-                        key,
-                        want_delta.then_some(&mut delta),
-                    );
-                }
+            for entry in axis_entries {
+                patch_entry(shadow, maps, &txn, entry, want_delta.then_some(&mut delta));
             }
             for (sheet_id, snap) in snapshots {
                 let Some(sp) = shadow.sheets.get(&sheet_id) else {
@@ -943,17 +944,8 @@ impl CollabSession {
                     sd.old = Some(Box::new(old));
                 }
             }
-            for (kind, key) in &dirty {
-                if !is_axis(*kind) {
-                    patch_from_doc(
-                        shadow,
-                        maps,
-                        &txn,
-                        *kind,
-                        key,
-                        want_delta.then_some(&mut delta),
-                    );
-                }
+            for entry in other_entries {
+                patch_entry(shadow, maps, &txn, entry, want_delta.then_some(&mut delta));
             }
         }
         #[cfg(test)]
@@ -981,11 +973,21 @@ impl CollabSession {
     /// document first, then the update is applied and the model is reconciled
     /// with the merged document state.
     pub fn apply_remote(&mut self, um: &mut UserModel, update: &[u8]) -> Result<(), String> {
+        let update = Update::decode_v1(update).map_err(|e| e.to_string())?;
+        self.apply_remote_update(um, update)
+    }
+
+    /// [`CollabSession::apply_remote`] for an already decoded update (the
+    /// sync peer decodes once to classify it).
+    pub fn apply_remote_update(
+        &mut self,
+        um: &mut UserModel,
+        update: Update,
+    ) -> Result<(), String> {
         self.translate_queue(um)?;
         {
             let mut txn = self.doc.transact_mut_with(REMOTE_ORIGIN);
             let sv_pre = txn.state_vector();
-            let update = Update::decode_v1(update).map_err(|e| e.to_string())?;
             txn.apply_update(update).map_err(|e| e.to_string())?;
             let sv_post = txn.state_vector();
             // Blocks the remote update contributed are already known on the
@@ -1508,14 +1510,24 @@ struct AxisSnapshot {
 /// keys to the returned set (both local and remote transactions — the shadow
 /// must follow the document either way).
 fn observe_maps(maps: &SchemaMaps) -> (DirtyKeys, Vec<Subscription>) {
-    let dirty: DirtyKeys = Arc::new(Mutex::new(BTreeSet::new()));
+    let dirty: DirtyKeys = Arc::new(Mutex::new(Vec::new()));
     let mut subs = Vec::with_capacity(15);
     for (kind, map) in maps.all() {
         let dirty = Arc::clone(&dirty);
         subs.push(map.observe(move |txn, event| {
             if let Ok(mut dirty) = dirty.lock() {
-                for key in event.keys(txn).keys() {
-                    dirty.insert((kind, key.to_string()));
+                for (key, change) in event.keys(txn) {
+                    let value = match change {
+                        EntryChange::Inserted(value) | EntryChange::Updated(_, value) => {
+                            Some(value.clone())
+                        }
+                        EntryChange::Removed(_) => None,
+                    };
+                    dirty.push(DirtyEntry {
+                        kind,
+                        key: Arc::clone(key),
+                        value,
+                    });
                 }
             }
         }));
@@ -1523,19 +1535,21 @@ fn observe_maps(maps: &SchemaMaps) -> (DirtyKeys, Vec<Subscription>) {
     (dirty, subs)
 }
 
-/// Reads `key`'s current value from the document and patches it into the
-/// projection. Keep-set maps are membership sets over several clients' keys,
-/// so a removed key only counts as absent when no sibling key is left.
-fn patch_from_doc<T: ReadTxn>(
+/// Patches one observed change into the projection. Keep-set maps are
+/// membership sets over several clients' keys, so a removed key only counts
+/// as absent when no sibling key is left in the document.
+fn patch_entry<T: ReadTxn>(
     shadow: &mut Projection,
     maps: &SchemaMaps,
     txn: &T,
-    kind: MapKind,
-    key: &str,
+    entry: DirtyEntry,
     delta: Option<&mut Delta>,
 ) {
-    let map = maps.map(kind);
-    let mut value = map.get(txn, key);
+    let DirtyEntry {
+        kind,
+        key,
+        mut value,
+    } = entry;
     if value.is_none()
         && matches!(
             kind,
@@ -1544,12 +1558,16 @@ fn patch_from_doc<T: ReadTxn>(
     {
         if let Some(slash) = key.rfind('/') {
             let prefix = &key[..=slash];
-            if map.iter(txn).any(|(other, _)| other.starts_with(prefix)) {
+            if maps
+                .map(kind)
+                .iter(txn)
+                .any(|(other, _)| other.starts_with(prefix))
+            {
                 value = Some(Out::Any(Any::Null));
             }
         }
     }
-    shadow.patch(kind, key, value, delta);
+    shadow.patch(kind, &key, value, delta);
 }
 
 // ---- bootstrap ----
@@ -3949,15 +3967,29 @@ fn reconcile_sheet(
         // Cells whose content was (re)written: the engine's input path
         // auto-links URLs and a clear drops the link, so their links are
         // re-derived from the document below whatever the register did.
+        // Cells landing on empty locations (all of them on a join) take the
+        // bulk path and need none of the passes below.
+        let (interactive, bulk_written) = write_fresh_cells(
+            um,
+            sheet,
+            sheet_id,
+            sp_new,
+            resolver,
+            proj,
+            sd.cells.keys().copied(),
+        )?;
         let mut content_written: BTreeSet<(EntityId, EntityId)> = BTreeSet::new();
-        for key in sd.cells.keys() {
-            let new_value = sp_new.cells.get(key).map(String::as_str).unwrap_or("");
-            set_projected_cell(um, sheet, sheet_id, resolver, key, new_value)?;
-            content_written.insert(*key);
+        for key in interactive {
+            let new_value = sp_new.cells.get(&key).map(String::as_str).unwrap_or("");
+            set_projected_cell(um, sheet, sheet_id, resolver, &key, new_value)?;
+            content_written.insert(key);
         }
         if rerender_all {
             for (key, new_value) in &sp_new.cells {
-                if is_id_form(new_value) && !content_written.contains(key) {
+                if is_id_form(new_value)
+                    && !content_written.contains(key)
+                    && !bulk_written.contains(key)
+                {
                     set_projected_cell(um, sheet, sheet_id, resolver, key, new_value)?;
                     content_written.insert(*key);
                 }
@@ -4195,8 +4227,19 @@ fn apply_sheet_content(
 ) -> Result<(), String> {
     // Merged cells are cleared first and installed last (see reconcile_sheet).
     um.model.workbook.worksheet_mut(sheet)?.merged_cells.clear();
-    for (key, value) in &sp.cells {
-        set_projected_cell(um, sheet, sheet_id, resolver, key, value)?;
+    let (interactive, _) = write_fresh_cells(
+        um,
+        sheet,
+        sheet_id,
+        sp,
+        resolver,
+        proj,
+        sp.cells.keys().copied(),
+    )?;
+    for key in interactive {
+        if let Some(value) = sp.cells.get(&key) {
+            set_projected_cell(um, sheet, sheet_id, resolver, &key, value)?;
+        }
     }
     // Links are exactly the document's: the cell writes above may have
     // auto-linked URLs (and the structural path leaves link-only cells
@@ -4459,6 +4502,122 @@ fn set_projected_cell_style(
     style.border.bottom = bottom;
     um.model
         .set_cell_style(sheet, row as i32, column as i32, &style)
+}
+
+/// `(column, row)` cell keys of one sheet.
+type CellKeys = BTreeSet<(EntityId, EntityId)>;
+
+/// Writes the document cells `keys` whose model location holds no content
+/// (a join, a sheet rebuild) through the engine's bulk input path: no spill
+/// preparation, no automatic restyling or auto-linking, because the
+/// document's registers already carry the exact style and link — the style
+/// index is derived here (register, else the inherited row/column style,
+/// else the default), so the caller's restyle and link passes can skip these
+/// cells. Returns `(interactive, bulk)`: the keys that were *not* fresh and
+/// must go through [`set_projected_cell`] (with the usual passes), and the
+/// keys written here.
+fn write_fresh_cells(
+    um: &mut UserModel,
+    sheet: u32,
+    sheet_id: EntityId,
+    sp: &SheetProj,
+    resolver: &DocResolver,
+    proj: &Projection,
+    keys: impl IntoIterator<Item = (EntityId, EntityId)>,
+) -> Result<(CellKeys, CellKeys), String> {
+    let (Some(rows), Some(cols)) = (resolver.rows.get(&sheet_id), resolver.cols.get(&sheet_id))
+    else {
+        return Err("collab: unknown sheet in resolver".to_string());
+    };
+    let mut interactive = CellKeys::new();
+    let mut bulk = CellKeys::new();
+    // Pool hash → model style index (a join has a handful of distinct
+    // styles over a huge number of cells). Only for cells whose edges are
+    // all absent: an edge composes into the style (see
+    // `set_projected_cell_style`), making it specific to the cell.
+    let mut style_indices: HashMap<&str, i32> = HashMap::new();
+    let sheet_has_edges = !sp.v_edges.is_empty() || !sp.h_edges.is_empty();
+    for key in keys {
+        let (col_id, row_id) = key;
+        let Some(value) = sp.cells.get(&key) else {
+            interactive.insert(key); // a clear
+            continue;
+        };
+        let (Some(row), Some(column)) = (rows.index_of(row_id), cols.index_of(col_id)) else {
+            continue; // masked: its row or column is currently deleted
+        };
+        let (row, column) = (row as i32, column as i32);
+        let fresh = matches!(
+            um.model.workbook.worksheet(sheet)?.cell(row, column),
+            None | Some(Cell::EmptyCell { .. })
+        );
+        if !fresh {
+            interactive.insert(key);
+            continue;
+        }
+        // The cell's own register composes with its edge registers (as
+        // `set_projected_cell_style` renders it); a register-less cell takes
+        // the inherited row style, else column style, else the default
+        // (index 0), never growing borders — as `reinherit_cell_styles`.
+        let style_index = match sp.cell_styles.get(&key) {
+            Some(hash) => {
+                let edges = if sheet_has_edges {
+                    edge_sides_for_cell(sp, resolver, sheet_id, col_id, row_id)?
+                } else {
+                    (None, None, None, None)
+                };
+                if edges == (None, None, None, None) {
+                    match style_indices.get(hash.as_str()) {
+                        Some(index) => *index,
+                        None => {
+                            let style = style_from_pool(proj, hash)?;
+                            let index = um.model.workbook.styles.get_style_index_or_create(&style);
+                            style_indices.insert(hash.as_str(), index);
+                            index
+                        }
+                    }
+                } else {
+                    let mut style = style_from_pool(proj, hash)?;
+                    (
+                        style.border.left,
+                        style.border.right,
+                        style.border.top,
+                        style.border.bottom,
+                    ) = edges;
+                    um.model.workbook.styles.get_style_index_or_create(&style)
+                }
+            }
+            None => {
+                let inherited = sp
+                    .rows
+                    .get(&row_id)
+                    .and_then(|e| e.style.as_ref())
+                    .or_else(|| sp.cols.get(&col_id).and_then(|e| e.style.as_ref()));
+                match inherited {
+                    None => 0,
+                    Some(hash) => match style_indices.get(hash.as_str()) {
+                        Some(index) => *index,
+                        None => {
+                            let style = style_from_pool(proj, hash)?;
+                            let index = um.model.workbook.styles.get_style_index_or_create(&style);
+                            style_indices.insert(hash.as_str(), index);
+                            index
+                        }
+                    },
+                }
+            }
+        };
+        if is_id_form(value) {
+            let text = render_formula(value, sheet_id, resolver)?;
+            um.model
+                .set_cell_input_with_style(sheet, row, column, &text, style_index)?;
+        } else {
+            um.model
+                .set_cell_input_with_style(sheet, row, column, value, style_index)?;
+        }
+        bulk.insert(key);
+    }
+    Ok((interactive, bulk))
 }
 
 fn set_projected_cell(

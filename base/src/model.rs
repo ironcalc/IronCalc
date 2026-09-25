@@ -2283,6 +2283,54 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
+    /// Bulk variant of [`Model::set_user_input`] for a location that holds no
+    /// content and whose final style is already known (collaboration joins
+    /// and rebuilds, where the document's registers carry the exact style and
+    /// link). It parses `value` like `set_user_input` but skips everything
+    /// the interactive path derives on its own: spill preparation, quote
+    /// prefix styling, number-format and units restyling, auto-linking.
+    pub(crate) fn set_cell_input_with_style(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+        style_index: i32,
+    ) -> Result<(), String> {
+        if value.is_empty() {
+            let ws = self.workbook.worksheet_mut(sheet)?;
+            ws.cell_clear_contents(row, column)?;
+            ws.links.remove(&(row, column));
+            return Ok(());
+        }
+        if let Some(text) = value.strip_prefix('\'') {
+            // The quote prefix lives in the style; the content is the text.
+            return self.set_cell_with_string(sheet, row, column, text, style_index);
+        }
+        if let Some(formula) = self.formula_without_prefix(value) {
+            self.set_cell_with_formula(sheet, row, column, formula, style_index)?;
+            return Ok(());
+        }
+        let mut currencies = vec!["$", "€"];
+        let currency = &self.locale.currency.symbol;
+        if !currencies.iter().any(|e| e == currency) {
+            currencies.push(currency);
+        }
+        if let Ok((number, _)) = parse_formatted_number(value, &currencies, self.locale) {
+            let worksheet = self.workbook.worksheet_mut(sheet)?;
+            return worksheet.set_cell_with_number(row, column, number, style_index);
+        }
+        if let Ok(boolean) = value.to_lowercase().parse::<bool>() {
+            let worksheet = self.workbook.worksheet_mut(sheet)?;
+            return worksheet.set_cell_with_boolean(row, column, boolean, style_index);
+        }
+        if let Some(error) = get_error_by_name(&value.to_uppercase(), self.language) {
+            let worksheet = self.workbook.worksheet_mut(sheet)?;
+            return worksheet.set_cell_with_error(row, column, error, style_index);
+        }
+        self.set_cell_with_string(sheet, row, column, value, style_index)
+    }
+
     /// Sets a cell parametrized by (`sheet`, `row`, `column`) with `value`.
     ///
     /// This mimics a user entering a value on a cell.
