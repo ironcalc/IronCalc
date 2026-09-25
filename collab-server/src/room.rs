@@ -11,6 +11,7 @@ use yrs::updates::decoder::{Decode, DecoderV1};
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Subscription, Transact, Update};
 
+use crate::compress::wrap_frame;
 use crate::protocol::{classify_update, UpdateFit, EMPTY_UPDATE_V1};
 use crate::storage::Storage;
 
@@ -81,9 +82,11 @@ impl Room {
                             }
                         }
                     }
+                    // Compressed once here rather than per connection: a
+                    // full-state bootstrap is tens of MB.
                     let frame =
                         Message::Sync(SyncMessage::Update(event.update.clone())).encode_v1();
-                    let _ = tx.send(frame);
+                    let _ = tx.send(wrap_frame(frame));
                 }
             })
             .expect("fresh doc accepts an update observer")
@@ -298,10 +301,8 @@ mod tests {
 
     #[test]
     fn room_state_survives_recreation() {
-        let dir = std::env::temp_dir().join(format!(
-            "ironcalc-collab-room-test-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("ironcalc-collab-room-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let mut presence = Vec::new();
 

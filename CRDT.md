@@ -823,7 +823,16 @@ Each phase lands with its convergence tests; the fuzzer grows with the vocabular
     tungstenite's 64 MiB default (a 1M-cell full state is 31 MB) to 1 GiB;
     the provider queues frames and reports a `syncing` status, deferring a
     large frame past a paint so the joiner shows a loading overlay; the
-    Collaborate click paints the dialog/URL before attaching. Still open:
-    attach ≈ 5 s and the joiner's full-state apply ≈ 10 s at 1M cells
-    (native; per-cell `set_user_input` writes — a bulk-load path would help)
-    and the id-form string encoding that makes the full state 31 MB.
+    Collaborate click paints the dialog/URL before attaching. (4) Wire
+    compression: a frame ≥ 64 KB travels as `Message::Custom(0x10,
+    gzip(frame))` (`collab-server/src/compress.rs`; the relay wraps replies
+    and, once per update, the fan-out, and unwraps what clients send; the
+    provider does the same with `CompressionStream`/`DecompressionStream`,
+    keeping both directions ordered through queues since the browser
+    codecs are asynchronous). yrs v1 state gzips 6-7x (300k rows: 9.8 MB →
+    1.5 MB), so the join download of a 1M-cell workbook drops from ~31 MB
+    to ~5 MB. Verified by `large_workbooks_travel_compressed` (relay
+    integration test) and a Node run of the real provider over the relay.
+    Still open: attach ≈ 5 s and the joiner's full-state apply ≈ 10 s at 1M
+    cells (native; per-cell `set_user_input` writes — a bulk-load path would
+    help), and a local cache of the doc for reloads.

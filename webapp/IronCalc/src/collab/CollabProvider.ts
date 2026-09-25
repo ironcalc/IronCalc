@@ -14,6 +14,12 @@ import type { CollabPresence, Model } from "@ironcalc/wasm";
 //   - local edits are shipped on a short interval via `collabFlushLocal`
 //     (a no-op returning nothing when the model is unchanged).
 //
+// Large frames (a workbook's full state is tens of MB) travel gzip-wrapped
+// in a custom y-sync message agreed with the relay
+// (`collab-server/src/compress.rs`); wrapping and unwrapping happen here,
+// with the platform's CompressionStream/DecompressionStream, so the wasm
+// peer only ever sees plain frames.
+//
 // The provider never touches cell content; everything it sends is opaque.
 
 export type CollabStatus =
@@ -65,6 +71,98 @@ function afterPaint(callback: () => void): void {
   } else {
     setTimeout(callback, 0);
   }
+}
+
+// ---- gzip-wrapped frames (must match collab-server/src/compress.rs) ----
+
+/** Custom y-sync message tag of a gzip-wrapped frame. */
+const MSG_GZIP = 0x10;
+/** Outgoing frames at least this large are gzip-wrapped. */
+const COMPRESS_THRESHOLD = 64 * 1024;
+
+function canCompress(): boolean {
+  return typeof CompressionStream === "function";
+}
+
+function canDecompress(): boolean {
+  return typeof DecompressionStream === "function";
+}
+
+/** lib0 unsigned varint: 7 bits per byte, least significant first. */
+function readVarUint(
+  bytes: Uint8Array,
+  offset: number,
+): { value: number; next: number } | null {
+  let value = 0;
+  let scale = 1;
+  let position = offset;
+  while (position < bytes.length) {
+    const byte = bytes[position++];
+    value += (byte & 0x7f) * scale;
+    if ((byte & 0x80) === 0) {
+      return { value, next: position };
+    }
+    scale *= 128;
+    if (scale > Number.MAX_SAFE_INTEGER) {
+      return null;
+    }
+  }
+  return null;
+}
+
+function writeVarUint(value: number): number[] {
+  const out: number[] = [];
+  let rest = value;
+  while (rest >= 0x80) {
+    out.push((rest % 128) | 0x80);
+    rest = Math.floor(rest / 128);
+  }
+  out.push(rest);
+  return out;
+}
+
+/** The gzip payload of a wrapped frame, or null for a plain frame. */
+function gzipPayload(frame: Uint8Array): Uint8Array | null {
+  if (frame.length === 0 || frame[0] !== MSG_GZIP) {
+    return null;
+  }
+  const header = readVarUint(frame, 1);
+  if (!header || header.next + header.value !== frame.length) {
+    return null;
+  }
+  return frame.subarray(header.next);
+}
+
+function wrapGzip(compressed: Uint8Array): Uint8Array {
+  const header = [MSG_GZIP, ...writeVarUint(compressed.length)];
+  const out = new Uint8Array(header.length + compressed.length);
+  out.set(header, 0);
+  out.set(compressed, header.length);
+  return out;
+}
+
+async function pipeThrough(
+  data: Uint8Array,
+  transform: ReadableWritablePair<Uint8Array, BufferSource>,
+): Promise<Uint8Array> {
+  const source = new ReadableStream<BufferSource>({
+    start(controller) {
+      // `slice` yields an ArrayBuffer-backed copy (the streams API rejects
+      // views over other buffer kinds).
+      controller.enqueue(data.slice());
+      controller.close();
+    },
+  });
+  const stream = source.pipeThrough(transform);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function deflate(data: Uint8Array): Promise<Uint8Array> {
+  return pipeThrough(data, new CompressionStream("gzip"));
+}
+
+function inflate(data: Uint8Array): Promise<Uint8Array> {
+  return pipeThrough(data, new DecompressionStream("gzip"));
 }
 
 function randomClientId(): number {
@@ -142,8 +240,12 @@ export class CollabProvider {
 
   /** Received frames not yet applied (applied strictly in arrival order). */
   private inbox: Uint8Array[] = [];
-  /** A paint is pending before the next large frame is applied. */
+  /** A paint or an inflate is pending before the head frame is applied. */
   private inboxWaiting = false;
+  /** Outgoing frames are sent in call order even when some are compressed
+   *  asynchronously: `outbound` is the tail of that chain. */
+  private outbound: Promise<void> = Promise.resolve();
+  private outboundPending = 0;
 
   private remoteUpdateHandlers = new Set<() => void>();
   private presenceChangeHandlers = new Set<() => void>();
@@ -310,6 +412,43 @@ export class CollabProvider {
     }
     while (this.inbox.length > 0) {
       const frame = this.inbox[0];
+      const payload = gzipPayload(frame);
+      if (payload) {
+        if (!canDecompress()) {
+          console.warn("collab: dropping compressed frame (no gzip support)");
+          this.inbox.shift();
+          continue;
+        }
+        // Wrapped frames are large by construction: show the syncing state
+        // now, inflate, then apply after a paint (see below).
+        if (this.currentStatus === "connected") {
+          this.setStatus("syncing");
+        }
+        this.inboxWaiting = true;
+        inflate(payload).then(
+          (inflated) => {
+            if (this.inbox[0] === frame) {
+              this.inbox[0] = inflated;
+            }
+            afterPaint(() => {
+              this.inboxWaiting = false;
+              this.drainInbox();
+            });
+          },
+          (error) => {
+            console.warn(
+              "collab: dropping undecodable compressed frame",
+              error,
+            );
+            if (this.inbox[0] === frame) {
+              this.inbox.shift();
+            }
+            this.inboxWaiting = false;
+            this.drainInbox();
+          },
+        );
+        return;
+      }
       if (
         frame.length >= LARGE_FRAME_BYTES &&
         this.currentStatus === "connected"
@@ -359,6 +498,33 @@ export class CollabProvider {
     if (frame.length === 0) {
       return;
     }
+    const compress = frame.length >= COMPRESS_THRESHOLD && canCompress();
+    if (!compress && this.outboundPending === 0) {
+      this.sendNow(frame);
+      return;
+    }
+    // Compression is asynchronous; later frames queue behind it so the
+    // relay sees them in order (out-of-order updates would only cost a
+    // resync round trip, but there is no reason to pay it).
+    this.outboundPending += 1;
+    this.outbound = this.outbound
+      .then(async () => {
+        let data = frame;
+        if (compress) {
+          try {
+            data = wrapGzip(await deflate(frame));
+          } catch (error) {
+            console.warn("collab: sending frame uncompressed", error);
+          }
+        }
+        this.sendNow(data);
+      })
+      .finally(() => {
+        this.outboundPending -= 1;
+      });
+  }
+
+  private sendNow(frame: Uint8Array): void {
     const socket = this.socket;
     if (socket && socket.readyState === WS_OPEN) {
       // Frames dropped while closed are recovered by the next handshake.

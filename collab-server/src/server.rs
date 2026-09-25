@@ -11,6 +11,7 @@ use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 
+use crate::compress::{unwrap_frame, wrap_frame};
 use crate::room::Room;
 
 /// The server's room registry. Rooms live for the lifetime of the process;
@@ -40,10 +41,11 @@ impl Rooms {
     }
 }
 
-/// Largest websocket message accepted from a client. The handshake carries a
-/// room's full state in one message and a big workbook is tens of MB (about
-/// 30 MB per million cells), so tungstenite's 64 MiB default would silently
-/// drop such joins (the connection closes and the client reconnects forever).
+/// Largest websocket message accepted from a client, before and after
+/// inflating (see `compress`). The handshake carries a room's full state in
+/// one message and a big workbook is tens of MB (about 30 MB per million
+/// cells uncompressed), so tungstenite's 64 MiB default would silently drop
+/// such joins (the connection closes and the client reconnects forever).
 const MAX_MESSAGE_BYTES: usize = 1024 * 1024 * 1024;
 
 /// Room names come from URL paths and double as file names — keep them to a
@@ -108,10 +110,13 @@ async fn handle_connection(
         tokio::select! {
             incoming = source.next() => match incoming {
                 Some(Ok(WsMessage::Binary(data))) => {
+                    let Ok(data) = unwrap_frame(&data, MAX_MESSAGE_BYTES) else {
+                        break Ok(()); // undecodable wrapper: drop the client
+                    };
                     match room.handle_frame(&data, &mut presence_clients) {
                         Ok(replies) => {
                             for reply in replies {
-                                sink.send(WsMessage::Binary(reply)).await?;
+                                sink.send(WsMessage::Binary(wrap_frame(reply))).await?;
                             }
                         }
                         // Protocol garbage: drop the client, keep the room.
