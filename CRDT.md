@@ -861,8 +861,17 @@ Each phase lands with its convergence tests; the fuzzer grows with the vocabular
     cache per call). Shapes the fast path does not cover (pinned/full
     ranges, crossed ranges, dead endpoints, missing sheets) fall back to the
     A1 path. V8 join apply: 23 s → 11 s (engine write 13.4 s → 1.4 s).
-    What is left in V8: yrs decode+apply 3.1 s, yrs change events + shadow
-    patch 3.5 s, R1C1 render 2.1 s, lookups 1.1 s, evaluate 0.8 s — mostly
-    allocator-bound; a faster wasm global allocator (e.g. `talc`) is the
-    next cross-cutting lever, then a snapshot/local cache so joins and
-    reloads skip the rebuild entirely.
+    (7) A `talc` global allocator was tried and made no measurable
+    difference (10.5-12.5 s vs 10.8-11.0 s), so allocation count is not the
+    wasm penalty. A V8 CPU profile (node `--cpu-prof` with the wasm name
+    section kept: `wasm-opt = ["-O", "-g"]` in the wasm-pack profile) put
+    the rest in our own code: id→index resolution allocating a position
+    string per lookup, `format!` chains in the R1C1 renderer, a second
+    million-entry BTreeMap for the join delta, and the derived `EntityId`
+    ordering. Fixes: `AxisOrder::resolve` fast path for a pristine order,
+    allocation-free `render_payload_rc`, `SheetDelta.cells` as a Vec, and
+    `EntityId::Ord` on a packed u128 key. V8 join apply: 23 s → ~10 s.
+    What is left (V8): yrs decode+apply ≈ 2.5 s, yrs change events ≈ 1.1 s,
+    shadow patch ≈ 1.2 s, evaluate ≈ 1.1 s, R1C1 render ≈ 1 s, cell inserts
+    ≈ 0.6 s. Next step is the snapshot/local cache so joins and reloads
+    skip the rebuild entirely.

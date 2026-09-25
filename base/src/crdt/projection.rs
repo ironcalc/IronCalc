@@ -451,7 +451,7 @@ impl Projection {
                 };
                 if old != new {
                     if let Some(delta) = delta {
-                        delta.sheet(sheet_id).cells.entry(cell).or_insert(old);
+                        delta.sheet(sheet_id).cells.push((cell, old));
                     }
                 }
                 if new.is_none() {
@@ -969,7 +969,10 @@ impl SchemaMaps {
 /// differs, each with its **old** value (the new one is in the projection).
 #[derive(Debug, Default)]
 pub(crate) struct SheetDelta {
-    pub cells: BTreeMap<(EntityId, EntityId), Option<String>>,
+    /// Changed cells with their old value, in patch order. A plain list: on
+    /// a join this holds every cell and a sorted map cost as much as the
+    /// document apply itself; consumers only iterate it.
+    pub cells: Vec<((EntityId, EntityId), Option<String>)>,
     pub cell_styles: BTreeMap<(EntityId, EntityId), Option<String>>,
     pub links: BTreeMap<(EntityId, EntityId), Option<Vec<u8>>>,
     pub v_edges: BTreeMap<(EntityId, EntityId), Option<String>>,
