@@ -8,6 +8,7 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
 use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 
 use crate::room::Room;
@@ -39,6 +40,12 @@ impl Rooms {
     }
 }
 
+/// Largest websocket message accepted from a client. The handshake carries a
+/// room's full state in one message and a big workbook is tens of MB (about
+/// 30 MB per million cells), so tungstenite's 64 MiB default would silently
+/// drop such joins (the connection closes and the client reconnects forever).
+const MAX_MESSAGE_BYTES: usize = 1024 * 1024 * 1024;
+
 /// Room names come from URL paths and double as file names — keep them to a
 /// character set that cannot traverse the data directory.
 fn valid_room_name(name: &str) -> bool {
@@ -69,10 +76,19 @@ async fn handle_connection(
     rooms: Rooms,
 ) -> Result<(), tokio_tungstenite::tungstenite::Error> {
     let mut room_name = String::new();
-    let websocket = tokio_tungstenite::accept_hdr_async(stream, |req: &Request, resp: Response| {
-        room_name = req.uri().path().trim_matches('/').to_string();
-        Ok(resp)
-    })
+    let config = WebSocketConfig {
+        max_message_size: Some(MAX_MESSAGE_BYTES),
+        max_frame_size: Some(MAX_MESSAGE_BYTES),
+        ..WebSocketConfig::default()
+    };
+    let websocket = tokio_tungstenite::accept_hdr_async_with_config(
+        stream,
+        |req: &Request, resp: Response| {
+            room_name = req.uri().path().trim_matches('/').to_string();
+            Ok(resp)
+        },
+        Some(config),
+    )
     .await?;
     if room_name.is_empty() {
         room_name = "default".to_string();

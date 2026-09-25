@@ -3,6 +3,7 @@ import type { IronCalcHandle } from "@ironcalc/workbook";
 // From IronCalc
 import {
   CollabProvider,
+  type CollabStatus,
   darkThemeVariables,
   IronCalc,
   IronCalcIcon,
@@ -51,11 +52,21 @@ function collabServerUrl(): string {
   );
 }
 
+/** Runs `callback` after the browser has painted once. */
+function afterPaint(callback: () => void): void {
+  requestAnimationFrame(() => setTimeout(callback, 0));
+}
+
 function App() {
   const [model, setModel] = useState<Model | null>(null);
   const [collabProvider, setCollabProvider] = useState<CollabProvider | null>(
     null,
   );
+  // Set while a "Collaborate" click is being carried out (the attach is
+  // deferred past a paint, see startCollaboration).
+  const collabStartingRef = useRef(false);
+  const [collabStatus, setCollabStatus] =
+    useState<CollabStatus>("disconnected");
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -220,6 +231,15 @@ function App() {
   }, [model, collabProvider, reportSaveError]);
 
   useEffect(() => {
+    if (!collabProvider) {
+      setCollabStatus("disconnected");
+      return;
+    }
+    setCollabStatus(collabProvider.status);
+    return collabProvider.onStatusChange(setCollabStatus);
+  }, [collabProvider]);
+
+  useEffect(() => {
     if (!collabProvider) return;
     // Withdraw our presence when the tab goes away.
     const goodbye = () => collabProvider.destroy();
@@ -242,20 +262,28 @@ function App() {
   // Turns the current workbook into a live session: attaching bootstraps
   // the full content into the CRDT doc, so joiners receive this workbook.
   const startCollaboration = () => {
-    if (!model || collabProvider) {
+    if (!model || collabProvider || collabStartingRef.current) {
       return;
     }
+    collabStartingRef.current = true;
     const room = crypto.randomUUID().replace(/-/g, "");
     const params = new URLSearchParams(window.location.search);
-    const provider = new CollabProvider(model, `${collabServerUrl()}/${room}`, {
-      userName: params.get("name") ?? undefined,
-    });
-    provider.connect();
-    setCollabProvider(provider);
     params.delete("model");
     params.delete("example");
     params.set("room", room);
     window.history.replaceState(null, "", `?${params.toString()}`);
+    // Attaching is synchronous and takes seconds on a large workbook: the
+    // URL is already final, so let the dialog paint it before attaching.
+    afterPaint(() => {
+      const provider = new CollabProvider(
+        model,
+        `${collabServerUrl()}/${room}`,
+        { userName: params.get("name") ?? undefined },
+      );
+      provider.connect();
+      collabStartingRef.current = false;
+      setCollabProvider(provider);
+    });
   };
 
   // Handlers for model changes that also update our models state
@@ -336,6 +364,12 @@ function App() {
           themeVariables={isDarkMode ? darkThemeVariables : undefined}
           collabProvider={collabProvider ?? undefined}
         />
+        {collabStatus === "syncing" && (
+          <div className="app-ic-collab-syncing-overlay" role="status">
+            <IronCalcIcon style={{ width: 24, height: 24, marginBottom: 16 }} />
+            <div>{t("file_bar.collab.loading_workbook")}</div>
+          </div>
+        )}
         {isDrawerOpen && (
           <div
             className="app-ic-mobile-overlay"

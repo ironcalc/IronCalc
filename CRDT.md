@@ -804,4 +804,26 @@ Each phase lands with its convergence tests; the fuzzer grows with the vocabular
     i18n keys under `file_bar.collab` in all five app locales. Verified by
     a playwright run: local workbook with content → Collaborate → joiner
     gets the content, both bars show 2 avatars, dialog lists "Bo (you)|Ana",
-    live edits flow, avatar count drops when a tab closes.
+    live edits flow, avatar count drops when a tab closes.  - **10.4 Large workbooks** — DONE (harness `base/examples/collab_bench.rs`:
+    host attach + in-process relay room + joiner + one edit each way,
+    `cargo run --release --example collab_bench -- <rows>`; measured on the
+    `forward_chain` example). Three fixes: (1) `reinherit_cell_styles` scanned
+    the whole sheet for a single-cell scope and the delta path calls it once
+    per written cell — O(n²) joins (100k rows: 170 s → 0.8 s). (2) The shadow
+    is no longer rebuilt with `Projection::from_doc` on every remote update
+    and every local flush (O(doc) per keystroke): every root map has an
+    observer collecting changed keys, `refresh_shadow` re-reads just those
+    (`Projection::patch`, which `from_doc` itself is built on; a `cfg(test)`
+    assert keeps them equal) and produces a `Delta` with the old values of
+    the changed keys, which drives `reconcile`/`reconcile_sheet`. Structural
+    sheets still take the full rebuild with the old sheet snapshotted into
+    the delta. `evaluate()` is skipped for style/link/border/size-only
+    deltas. At 1M cells: flush 1.6 s → 10 ms, receive 1.9 s → 0.3 s (the
+    engine's full evaluate). (3) UX/transport: relay message cap raised from
+    tungstenite's 64 MiB default (a 1M-cell full state is 31 MB) to 1 GiB;
+    the provider queues frames and reports a `syncing` status, deferring a
+    large frame past a paint so the joiner shows a loading overlay; the
+    Collaborate click paints the dialog/URL before attaching. Still open:
+    attach ≈ 5 s and the joiner's full-state apply ≈ 10 s at 1M cells
+    (native; per-cell `set_user_input` writes — a bulk-load path would help)
+    and the id-form string encoding that makes the full state 31 MB.
