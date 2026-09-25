@@ -5,7 +5,7 @@ import {
   Tooltip,
 } from "@ironcalc/workbook";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
 import { CollabControls } from "./Collab/CollabControls";
@@ -45,8 +45,22 @@ export function FileBar(properties: {
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
   const { t } = useTranslation();
+  const [, setRemoteNameTick] = useState(0);
+  const collabProvider = properties.collabProvider;
+  const model = properties.model;
+  useEffect(() => {
+    if (!collabProvider) return;
+    // Repaint the title when a remote update changes the workbook name.
+    let lastName = model.getName();
+    return collabProvider.onRemoteUpdate(() => {
+      const name = model.getName();
+      if (name !== lastName) {
+        lastName = name;
+        setRemoteNameTick((tick) => tick + 1);
+      }
+    });
+  }, [collabProvider, model]);
   const handleDownload = async () => {
-    const model = properties.model;
     const bytes = model.toBytes();
     const fileName = model.getName();
     await downloadModel(bytes, fileName);
