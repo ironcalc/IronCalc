@@ -298,6 +298,15 @@ impl AxisOrder {
     /// Full resolution of an id, including tombstoned ones — the basis for
     /// rendering id-based formula references (`crdt::formula`).
     pub(crate) fn resolve(&self, id: EntityId) -> ResolvedIndex {
+        // Pristine order (nothing materialized): an original's rank is its
+        // number. This is the whole axis of most sheets and the hot path of
+        // a join, so skip the position-string and hashing work below.
+        if self.materialized.is_empty() {
+            return match id {
+                EntityId::Original(k) if k >= 1 && k <= self.max => ResolvedIndex::Visible(k),
+                _ => ResolvedIndex::Unknown,
+            };
+        }
         let (pos, visible) = match self.materialized.get(&id) {
             Some((pos, visible)) => (pos.clone(), *visible),
             None => match id {
