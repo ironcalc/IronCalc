@@ -124,10 +124,13 @@
       "connected": "En direct",
       "connecting": "Connexion…",
       "disconnected": "Hors ligne",
+      "syncing": "Synchronisation…",
       "copy_url": "Copier l'URL",
       "copied": "Copié !",
       "info_text": "Toute personne disposant du lien peut rejoindre et modifier ce classeur en direct",
-      "you": "vous"
+      "you": "vous",
+      "preparing": "Préparation du classeur…",
+      "loading_workbook": "Chargement du classeur partagé…"
     }
   },
   "loading_screen": {

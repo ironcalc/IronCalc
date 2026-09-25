@@ -124,10 +124,13 @@
       "connected": "Live",
       "connecting": "Connecting…",
       "disconnected": "Offline",
+      "syncing": "Syncing…",
       "copy_url": "Copy URL",
       "copied": "Copied!",
       "info_text": "Anyone with the link can join and edit this workbook live",
-      "you": "you"
+      "you": "you",
+      "preparing": "Preparing the workbook…",
+      "loading_workbook": "Loading the shared workbook…"
     }
   },
   "loading_screen": {

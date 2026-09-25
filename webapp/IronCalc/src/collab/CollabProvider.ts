@@ -16,7 +16,12 @@ import type { CollabPresence, Model } from "@ironcalc/wasm";
 //
 // The provider never touches cell content; everything it sends is opaque.
 
-export type CollabStatus = "connecting" | "connected" | "disconnected";
+export type CollabStatus =
+  | "connecting"
+  | "connected"
+  /** Applying a large document frame (typically the room state on join). */
+  | "syncing"
+  | "disconnected";
 
 // The subset of the browser WebSocket API the provider uses; tests inject
 // in-process fakes through `createWebSocket`.
@@ -46,6 +51,21 @@ export interface CollabProviderOptions {
 }
 
 const WS_OPEN = 1;
+
+/**
+ * Frames at least this large are applied only after the UI has had a chance
+ * to paint: applying is synchronous and a big workbook takes seconds.
+ */
+const LARGE_FRAME_BYTES = 256 * 1024;
+
+/** Runs `callback` after the browser has painted once. */
+function afterPaint(callback: () => void): void {
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => setTimeout(callback, 0));
+  } else {
+    setTimeout(callback, 0);
+  }
+}
 
 function randomClientId(): number {
   const buffer = new Uint32Array(1);
@@ -120,6 +140,11 @@ export class CollabProvider {
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Received frames not yet applied (applied strictly in arrival order). */
+  private inbox: Uint8Array[] = [];
+  /** A paint is pending before the next large frame is applied. */
+  private inboxWaiting = false;
+
   private remoteUpdateHandlers = new Set<() => void>();
   private presenceChangeHandlers = new Set<() => void>();
   private statusChangeHandlers = new Set<(status: CollabStatus) => void>();
@@ -169,7 +194,8 @@ export class CollabProvider {
       this.send(this.model.collabStartSync());
     };
     socket.onmessage = (event) => {
-      this.handleFrame(new Uint8Array(event.data));
+      this.inbox.push(new Uint8Array(event.data));
+      this.drainInbox();
     };
     socket.onclose = () => {
       this.socket = null;
@@ -266,10 +292,43 @@ export class CollabProvider {
       socket.onclose = null;
       socket.close();
     }
+    this.inbox = [];
     this.setStatus("disconnected");
     this.remoteUpdateHandlers.clear();
     this.presenceChangeHandlers.clear();
     this.statusChangeHandlers.clear();
+  }
+
+  /**
+   * Applies queued frames in order. Before a large frame the status flips
+   * to "syncing" and the apply is deferred past the next paint, so the UI
+   * can show that the workbook is loading instead of freezing silently.
+   */
+  private drainInbox(): void {
+    if (this.inboxWaiting || this.destroyed) {
+      return;
+    }
+    while (this.inbox.length > 0) {
+      const frame = this.inbox[0];
+      if (
+        frame.length >= LARGE_FRAME_BYTES &&
+        this.currentStatus === "connected"
+      ) {
+        this.setStatus("syncing");
+        this.inboxWaiting = true;
+        afterPaint(() => {
+          this.inboxWaiting = false;
+          this.drainInbox();
+        });
+        return;
+      }
+      this.inbox.shift();
+      this.handleFrame(frame);
+      if (this.currentStatus === "syncing") {
+        const open = this.socket?.readyState === WS_OPEN;
+        this.setStatus(open ? "connected" : "disconnected");
+      }
+    }
   }
 
   private handleFrame(data: Uint8Array): void {

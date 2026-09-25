@@ -124,10 +124,13 @@
       "connected": "In diretta",
       "connecting": "Connessione…",
       "disconnected": "Offline",
+      "syncing": "Sincronizzazione…",
       "copy_url": "Copia URL",
       "copied": "Copiato!",
       "info_text": "Chiunque abbia il link può partecipare e modificare questa cartella di lavoro in diretta",
-      "you": "tu"
+      "you": "tu",
+      "preparing": "Preparazione della cartella di lavoro…",
+      "loading_workbook": "Caricamento della cartella di lavoro condivisa…"
     }
   },
   "loading_screen": {
