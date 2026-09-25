@@ -188,8 +188,14 @@ function App() {
       document.title = workbookName ? `${workbookName} - IronCalc` : "IronCalc";
     };
     update();
-    return subscribeToStorage(update);
-  }, [model]);
+    const unsubscribeStorage = subscribeToStorage(update);
+    // In a collab session the name can also change through a remote update.
+    const unsubscribeRemote = collabProvider?.onRemoteUpdate(update);
+    return () => {
+      unsubscribeStorage();
+      unsubscribeRemote?.();
+    };
+  }, [model, collabProvider]);
 
   useEffect(() => {
     // Collaborative models live on the relay server, not in local storage.
@@ -212,19 +218,6 @@ function App() {
     }, 1000);
     return () => clearInterval(interval);
   }, [model, collabProvider, reportSaveError]);
-
-  useEffect(() => {
-    if (!collabProvider || !model) return;
-    // Repaint the title bar when a remote update changes the workbook name.
-    let lastName = model.getName();
-    return collabProvider.onRemoteUpdate(() => {
-      const name = model.getName();
-      if (name !== lastName) {
-        lastName = name;
-        setLocalStorageId((id) => id + 1);
-      }
-    });
-  }, [collabProvider, model]);
 
   useEffect(() => {
     if (!collabProvider) return;
