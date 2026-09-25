@@ -130,14 +130,17 @@ fn main() {
             host_peer.handle_frame(&mut host, frame).unwrap()
         });
     }
-    println!(
-        "  room doc full state = {}",
-        mb(room
-            .doc
-            .transact()
-            .encode_state_as_update_v1(&StateVector::default())
-            .len())
-    );
+    let full_state = room
+        .doc
+        .transact()
+        .encode_state_as_update_v1(&StateVector::default());
+    println!("  room doc full state = {}", mb(full_state.len()));
+    // COLLAB_BENCH_DUMP=<path> writes the full state (e.g. to measure how
+    // well it compresses).
+    if let Ok(path) = std::env::var("COLLAB_BENCH_DUMP") {
+        std::fs::write(&path, &full_state).unwrap();
+        println!("  full state written to {path}");
+    }
 
     // ---- joiner opens the URL ----
     let mut joiner = UserModel::new_empty("", "en", "UTC", "en").unwrap();
