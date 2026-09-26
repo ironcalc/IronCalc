@@ -73,9 +73,7 @@ pub(crate) struct ReferenceSpan {
 
 /// Locates every cell reference and range in a canonical (English, A1)
 /// formula text as char spans.
-pub(crate) fn extract_reference_spans(
-    formula: &str,
-) -> Result<Vec<ReferenceSpan>, Unsupported> {
+pub(crate) fn extract_reference_spans(formula: &str) -> Result<Vec<ReferenceSpan>, Unsupported> {
     let chars: Vec<char> = formula.chars().collect();
     let mut spans = Vec::new();
     for marked in get_tokens(formula) {
@@ -427,8 +425,8 @@ fn render_payload(
             let (sheet_enc, endpoints) = rest
                 .split_once(';')
                 .ok_or("malformed reference token: missing sheet separator")?;
-            let sheet_id = EntityId::decode(sheet_enc)
-                .ok_or("malformed reference token: bad sheet id")?;
+            let sheet_id =
+                EntityId::decode(sheet_enc).ok_or("malformed reference token: bad sheet id")?;
             match resolver.sheet_name_by_id(sheet_id) {
                 Some(name) => (sheet_id, format!("{}!", quote_name(&name)), endpoints),
                 // The referenced sheet is gone.
@@ -458,8 +456,7 @@ fn render_payload(
             let r = parse_endpoint(right)?;
             // Pinned axes render in the engine's short form: `D:D` for full
             // columns (row parts omitted), `5:9` for full rows.
-            let rows_pinned =
-                matches!(l.row, Part::Pinned(_)) && matches!(r.row, Part::Pinned(_));
+            let rows_pinned = matches!(l.row, Part::Pinned(_)) && matches!(r.row, Part::Pinned(_));
             let columns_pinned =
                 matches!(l.column, Part::Pinned(_)) && matches!(r.column, Part::Pinned(_));
             if rows_pinned && !columns_pinned {
@@ -568,7 +565,10 @@ type IndexedPart = (u32, bool);
 /// One side (row or column) of an endpoint.
 #[derive(Debug, PartialEq)]
 enum Part {
-    Id { id: EntityId, absolute: bool },
+    Id {
+        id: EntityId,
+        absolute: bool,
+    },
     /// A literal index that never tracks structural edits (full ranges).
     Pinned(u32),
 }
@@ -617,7 +617,9 @@ fn parse_endpoint(text: &str) -> Result<Endpoint, String> {
 
 fn parse_part(part: &str) -> Result<Part, String> {
     let mut chars = part.chars();
-    let flag = chars.next().ok_or("malformed reference token: empty part")?;
+    let flag = chars
+        .next()
+        .ok_or("malformed reference token: empty part")?;
     let body = chars.as_str();
     match flag {
         'a' | 'r' => Ok(Part::Id {
@@ -681,8 +683,10 @@ pub(crate) fn needs_reencode(
             .filter_map(|text| parse_endpoint(text).ok())
             .collect();
         for endpoint in &endpoints {
-            for (axis, part) in [(Axis2::Columns, &endpoint.column), (Axis2::Rows, &endpoint.row)]
-            {
+            for (axis, part) in [
+                (Axis2::Columns, &endpoint.column),
+                (Axis2::Rows, &endpoint.row),
+            ] {
                 if let Part::Id { id, .. } = part {
                     let resolved = match axis {
                         Axis2::Rows => resolver.resolve_row(sheet, *id),
@@ -744,15 +748,14 @@ mod tests {
     impl TestResolver {
         fn pristine() -> TestResolver {
             let mut resolver = TestResolver {
-                sheets: vec![
-                    ("Sheet1".to_string(), S0),
-                    ("My Sheet".to_string(), S1),
-                ],
+                sheets: vec![("Sheet1".to_string(), S0), ("My Sheet".to_string(), S1)],
                 rows: BTreeMap::new(),
                 cols: BTreeMap::new(),
             };
             for id in [S0, S1] {
-                resolver.rows.insert(id, AxisOrder::new(1_048_576, Vec::new()));
+                resolver
+                    .rows
+                    .insert(id, AxisOrder::new(1_048_576, Vec::new()));
                 resolver.cols.insert(id, AxisOrder::new(16_384, Vec::new()));
             }
             resolver
@@ -882,21 +885,24 @@ mod tests {
         let rows = resolver.rows.get_mut(&S0).unwrap();
         let (lo, hi) = rows.insert_bounds(3);
         rows.insert(
-            EntityId::Inserted { client: 9, counter: 1 },
+            EntityId::Inserted {
+                client: 9,
+                counter: 1,
+            },
             crate::crdt::order::between(lo.as_deref(), hi.as_deref()),
         );
         let cols = resolver.cols.get_mut(&S0).unwrap();
         let (lo, hi) = cols.insert_bounds(1);
         cols.insert(
-            EntityId::Inserted { client: 9, counter: 2 },
+            EntityId::Inserted {
+                client: 9,
+                counter: 2,
+            },
             crate::crdt::order::between(lo.as_deref(), hi.as_deref()),
         );
 
         // The stored form did not change; only the rendering does.
-        assert_eq!(
-            render_formula(&encoded, S0, &resolver).unwrap(),
-            "=B6+$C$2"
-        );
+        assert_eq!(render_formula(&encoded, S0, &resolver).unwrap(), "=B6+$C$2");
     }
 
     #[test]
@@ -975,10 +981,7 @@ mod tests {
         let mut resolver = TestResolver::pristine();
         let encoded = encode_formula("='My Sheet'!B2+1", S0, &resolver).unwrap();
         resolver.sheets.retain(|(_, id)| *id != S1);
-        assert_eq!(
-            render_formula(&encoded, S0, &resolver).unwrap(),
-            "=#REF!+1"
-        );
+        assert_eq!(render_formula(&encoded, S0, &resolver).unwrap(), "=#REF!+1");
     }
 
     #[test]
@@ -1014,19 +1017,31 @@ mod tests {
         let rows = resolver.rows.get_mut(&S0).unwrap();
         let (lo, hi) = rows.insert_bounds(1);
         rows.insert(
-            EntityId::Inserted { client: 9, counter: 1 },
+            EntityId::Inserted {
+                client: 9,
+                counter: 1,
+            },
             crate::crdt::order::between(lo.as_deref(), hi.as_deref()),
         );
         rows.remove(EntityId::Original(5));
-        assert_eq!(render_formula(&encoded, S0, &resolver).unwrap(), "=SUM(D:D)");
+        assert_eq!(
+            render_formula(&encoded, S0, &resolver).unwrap(),
+            "=SUM(D:D)"
+        );
 
         let cols = resolver.cols.get_mut(&S0).unwrap();
         let (lo, hi) = cols.insert_bounds(1);
         cols.insert(
-            EntityId::Inserted { client: 9, counter: 2 },
+            EntityId::Inserted {
+                client: 9,
+                counter: 2,
+            },
             crate::crdt::order::between(lo.as_deref(), hi.as_deref()),
         );
-        assert_eq!(render_formula(&encoded, S0, &resolver).unwrap(), "=SUM(E:E)");
+        assert_eq!(
+            render_formula(&encoded, S0, &resolver).unwrap(),
+            "=SUM(E:E)"
+        );
     }
 
     #[test]
@@ -1038,10 +1053,16 @@ mod tests {
         let rows = resolver.rows.get_mut(&S0).unwrap();
         let (lo, hi) = rows.insert_bounds(3);
         rows.insert(
-            EntityId::Inserted { client: 9, counter: 1 },
+            EntityId::Inserted {
+                client: 9,
+                counter: 1,
+            },
             crate::crdt::order::between(lo.as_deref(), hi.as_deref()),
         );
-        assert_eq!(render_formula(&encoded, S0, &resolver).unwrap(), "=A1048577");
+        assert_eq!(
+            render_formula(&encoded, S0, &resolver).unwrap(),
+            "=A1048577"
+        );
         // The overflow scan flags the formula for demotion to plain text.
         assert!(needs_reencode(&encoded, S0, &resolver));
         let healthy = encode_formula("=A5", S0, &resolver).unwrap();
@@ -1082,7 +1103,10 @@ mod tests {
             ResolvedIndex::Visible(5)
         );
         assert_eq!(
-            order.resolve(EntityId::Inserted { client: 1, counter: 1 }),
+            order.resolve(EntityId::Inserted {
+                client: 1,
+                counter: 1
+            }),
             ResolvedIndex::Unknown
         );
     }

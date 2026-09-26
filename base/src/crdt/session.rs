@@ -47,9 +47,7 @@ use yrs::{
 };
 
 use crate::cf_types::{CfRule, Cfvo, ConditionalFormatting};
-use crate::constants::{
-    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, ROW_HEIGHT_FACTOR,
-};
+use crate::constants::{COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, ROW_HEIGHT_FACTOR};
 use crate::types::{BorderItem, BorderStyle, Cell, Dxf, Link, MergedCell};
 use crate::user_model::border_utils::is_max_border;
 use crate::user_model::history::{Diff, DiffType, QueueDiffs};
@@ -67,11 +65,7 @@ use super::projection::{
 };
 
 /// Ensures a style body is in the pool and returns its hash.
-fn ensure_style_in_pool(
-    txn: &mut TransactionMut,
-    maps: &SchemaMaps,
-    style: &Style,
-) -> String {
+fn ensure_style_in_pool(txn: &mut TransactionMut, maps: &SchemaMaps, style: &Style) -> String {
     let bytes = bitcode::encode(style);
     let hash = style_pool_hash(&bytes);
     if maps.styles.get(&*txn, &hash).is_none() {
@@ -280,8 +274,7 @@ fn encode_cf_body(
     resolver: &impl RefResolver,
     dxfs: &[Dxf],
 ) -> Vec<u8> {
-    let range =
-        encode_formula(&cf.range, sheet_id, resolver).unwrap_or_else(|_| cf.range.clone());
+    let range = encode_formula(&cf.range, sheet_id, resolver).unwrap_or_else(|_| cf.range.clone());
     let mut rule = cf.cf_rule.clone();
     let dxf = rule
         .dxf_id()
@@ -429,7 +422,10 @@ fn canonicalize_borders(
         // neither an explicit style nor a register are left alone.
         let has_register = sp.cell_styles.contains_key(&(col_id, row_id));
         if !has_register
-            && um.model.get_cell_style_or_none(sheet, row, column)?.is_none()
+            && um
+                .model
+                .get_cell_style_or_none(sheet, row, column)?
+                .is_none()
         {
             continue;
         }
@@ -569,8 +565,12 @@ impl DocResolver {
         for (index, ws) in um.model.workbook.worksheets.iter().enumerate() {
             let id = EntityId::Original(index as u32);
             resolver.sheets.push((id, ws.get_name()));
-            resolver.rows.insert(id, AxisOrder::new(MAX_ROW, Vec::new()));
-            resolver.cols.insert(id, AxisOrder::new(MAX_COLUMN, Vec::new()));
+            resolver
+                .rows
+                .insert(id, AxisOrder::new(MAX_ROW, Vec::new()));
+            resolver
+                .cols
+                .insert(id, AxisOrder::new(MAX_COLUMN, Vec::new()));
         }
         resolver
     }
@@ -1082,11 +1082,7 @@ impl CollabSession {
                 for column in 1..=15u32 {
                     let expected = match (rows.id_at(row), cols.id_at(column)) {
                         (Some(row_id), Some(col_id)) => {
-                            let raw = sp
-                                .cells
-                                .get(&(col_id, row_id))
-                                .cloned()
-                                .unwrap_or_default();
+                            let raw = sp.cells.get(&(col_id, row_id)).cloned().unwrap_or_default();
                             if is_id_form(&raw) {
                                 render_formula(&raw, *sheet_id, &resolver)
                                     .unwrap_or_else(|e| format!("<render error: {e}>"))
@@ -1159,7 +1155,6 @@ impl CollabSession {
                 counter: &mut self.counter,
             };
             for entry in &queue {
-
                 match entry.r#type {
                     DiffType::Redo => {
                         for diff in &entry.list {
@@ -1263,7 +1258,11 @@ impl CollabSession {
     /// index-based undo may have re-inserted them at a stale position if
     /// remote structural changes arrived in between, and masked cells may
     /// have been updated remotely while the rows were deleted.
-    fn repair_sheet_from_shadow(&self, um: &mut UserModel, sheet_id: EntityId) -> Result<(), String> {
+    fn repair_sheet_from_shadow(
+        &self,
+        um: &mut UserModel,
+        sheet_id: EntityId,
+    ) -> Result<(), String> {
         let visible = self.shadow.visible_sheets();
         let Some(index) = visible.iter().position(|(id, _)| *id == sheet_id) else {
             return Ok(());
@@ -1423,8 +1422,8 @@ impl CollabSession {
             }
         }
         if let Some(bytes) = &new_proj.theme {
-            let theme: Theme = bitcode::decode(bytes)
-                .map_err(|e| format!("collab: corrupt theme body: {e}"))?;
+            let theme: Theme =
+                bitcode::decode(bytes).map_err(|e| format!("collab: corrupt theme body: {e}"))?;
             if um.model.workbook.theme != theme {
                 um.model.set_theme(theme);
             }
@@ -1596,8 +1595,11 @@ fn bootstrap_sheet(
             .insert(txn, sheet_meta_key(sheet_id, "fr"), ws.frozen_rows as i64);
     }
     if ws.frozen_columns != 0 {
-        maps.meta
-            .insert(txn, sheet_meta_key(sheet_id, "fc"), ws.frozen_columns as i64);
+        maps.meta.insert(
+            txn,
+            sheet_meta_key(sheet_id, "fc"),
+            ws.frozen_columns as i64,
+        );
     }
     if let Some(color) = color_to_doc(&ws.color) {
         maps.meta
@@ -1706,7 +1708,8 @@ fn bootstrap_sheet(
             EntityId::Original(*column as u32),
             EntityId::Original(*row as u32),
         );
-        maps.links.insert(txn, key, yrs::Any::from(link_to_doc(link)));
+        maps.links
+            .insert(txn, key, yrs::Any::from(link_to_doc(link)));
     }
     for merge in &ws.merged_cells {
         if merge.row < 1 || merge.column < 1 {
@@ -2151,9 +2154,7 @@ impl Pass1<'_, '_> {
                 }
                 Ok(())
             }
-            Diff::UpdateDefinedName {
-                name, new_name, ..
-            } => {
+            Diff::UpdateDefinedName { name, new_name, .. } => {
                 self.touched.names = true;
                 // A rename rewrites every dependent cell formula in the model
                 // (both directions, for undo); push those cells too. CF
@@ -2736,7 +2737,11 @@ impl Pass1<'_, '_> {
         } else {
             None
         };
-        let upper = self.ctx.sheets.get(index as usize).map(|(_, pos)| pos.clone());
+        let upper = self
+            .ctx
+            .sheets
+            .get(index as usize)
+            .map(|(_, pos)| pos.clone());
         let EntityId::Inserted { client, counter } = id else {
             unreachable!("new_id always allocates an Inserted id");
         };
@@ -2912,11 +2917,7 @@ fn write_final_state(
             if ctx.order(*sheet_id, axis)?.index_of(*id).is_none() {
                 continue;
             }
-            keep_map.insert(
-                txn,
-                keep_key(*sheet_id, *id, client_id),
-                op_counter as i64,
-            );
+            keep_map.insert(txn, keep_key(*sheet_id, *id, client_id), op_counter as i64);
         }
     }
 
@@ -3085,7 +3086,9 @@ fn write_final_state(
         // is what tells receivers this cell composes the surrounding edges
         // (edges are never materialized onto style-less cells, so that undo
         // of a border op converges back to no border).
-        let style = um.model.get_style_for_cell(sheet, row as i32, column as i32)?;
+        let style = um
+            .model
+            .get_style_for_cell(sheet, row as i32, column as i32)?;
         let stripped = strip_edge_borders(&style);
         let owns_edges = um
             .model
@@ -3245,8 +3248,7 @@ fn write_final_state(
 
     if touched.workbook {
         let settings = &um.model.workbook.settings;
-        maps.meta
-            .insert(txn, "wb.locale", settings.locale.as_str());
+        maps.meta.insert(txn, "wb.locale", settings.locale.as_str());
         maps.meta.insert(txn, "wb.tz", settings.tz.as_str());
         let theme = bitcode::encode(&um.model.workbook.theme);
         maps.meta.insert(txn, "wb.theme", yrs::Any::from(theme));
@@ -3276,11 +3278,8 @@ fn write_final_state(
         if ctx.sheet_index(sheet_id).is_none() {
             continue; // deleted later in the same batch
         }
-        maps.keep_sheets.insert(
-            txn,
-            sheet_keep_key(sheet_id, client_id),
-            op_counter as i64,
-        );
+        maps.keep_sheets
+            .insert(txn, sheet_keep_key(sheet_id, client_id), op_counter as i64);
     }
 
     for sheet_id in &touched.sheet_meta {
@@ -3454,7 +3453,9 @@ fn desired_cell_edges(
     const TOP: u8 = 2;
     const BOTTOM: u8 = 3;
     let resolved_side = |row: u32, column: u32, which: u8| -> Result<Option<BorderItem>, String> {
-        let style = um.model.get_style_for_cell(sheet, row as i32, column as i32)?;
+        let style = um
+            .model
+            .get_style_for_cell(sheet, row as i32, column as i32)?;
         Ok(match which {
             LEFT => style.border.left,
             RIGHT => style.border.right,
@@ -3537,7 +3538,8 @@ fn sync_cell_edges(
     };
     let sp = shadow.sheets.get(&sheet_id);
     for (axis, edge_column, edge_row, value) in desired_cell_edges(um, sheet, row, column)? {
-        let (Some(edge_col_id), Some(edge_row_id)) = (cols.id_at(edge_column), rows.id_at(edge_row))
+        let (Some(edge_col_id), Some(edge_row_id)) =
+            (cols.id_at(edge_column), rows.id_at(edge_row))
         else {
             continue;
         };
@@ -3632,7 +3634,8 @@ fn sync_merges(
     };
     for anchor in current.keys() {
         if visible.contains(anchor) && !desired.contains_key(anchor) {
-            maps.merges.remove(txn, &cell_key(sheet_id, anchor.0, anchor.1));
+            maps.merges
+                .remove(txn, &cell_key(sheet_id, anchor.0, anchor.1));
         }
     }
     for (anchor, corner) in &desired {
@@ -3859,8 +3862,8 @@ fn reconcile_names(
 fn reconcile_named_styles(um: &mut UserModel, proj: &Projection) -> Result<(), String> {
     let mut desired: BTreeMap<String, (Style, StyleIncludes)> = BTreeMap::new();
     for (name, bytes) in &proj.named_styles {
-        let decoded: (Style, StyleIncludes) = bitcode::decode(bytes)
-            .map_err(|e| format!("collab: corrupt named style body: {e}"))?;
+        let decoded: (Style, StyleIncludes) =
+            bitcode::decode(bytes).map_err(|e| format!("collab: corrupt named style body: {e}"))?;
         desired.insert(name.clone(), decoded);
     }
     for name in um.get_named_style_list() {
@@ -3889,7 +3892,11 @@ fn dedupe_names(sheets: &[(EntityId, &SheetProj)]) -> Vec<String> {
     let mut seen: BTreeSet<String> = BTreeSet::new();
     let mut names = Vec::with_capacity(sheets.len());
     for (_, sp) in sheets {
-        let base = if sp.name.is_empty() { "Sheet" } else { &sp.name };
+        let base = if sp.name.is_empty() {
+            "Sheet"
+        } else {
+            &sp.name
+        };
         let mut candidate = base.to_string();
         let mut n = 1;
         while seen.contains(&candidate.to_lowercase()) {
@@ -4066,7 +4073,14 @@ fn reconcile_sheet(
                 continue;
             };
             let style = pool_style_opt(proj, new_props.2.as_deref())?;
-            apply_row_props(um, sheet, row as i32, new_props.0, new_props.1, style.as_ref())?;
+            apply_row_props(
+                um,
+                sheet,
+                row as i32,
+                new_props.0,
+                new_props.1,
+                style.as_ref(),
+            )?;
             if old_props.2 != new_props.2 {
                 reinherit_cell_styles(
                     um,
@@ -4448,9 +4462,10 @@ fn set_projected_cell_link(
         return Ok(()); // masked
     };
     match bytes {
-        Some(bytes) => um
-            .model
-            .set_cell_link(sheet, row as i32, column as i32, link_from_doc(bytes)?),
+        Some(bytes) => {
+            um.model
+                .set_cell_link(sheet, row as i32, column as i32, link_from_doc(bytes)?)
+        }
         None => um.model.delete_cell_link(sheet, row as i32, column as i32),
     }
 }
@@ -4824,4 +4839,3 @@ fn apply_column_props(
     }
     Ok(())
 }
-

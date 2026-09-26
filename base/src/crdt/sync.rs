@@ -174,7 +174,10 @@ impl SyncPeer {
             Message::Sync(SyncMessage::SyncStep1(sv)).encode_v1(),
             Message::AwarenessQuery.encode_v1(),
         ];
-        if let Ok(update) = self.awareness.update_with_clients([self.awareness.client_id()]) {
+        if let Ok(update) = self
+            .awareness
+            .update_with_clients([self.awareness.client_id()])
+        {
             frames.push(Message::Awareness(update).encode_v1());
         }
         frames
@@ -332,9 +335,7 @@ impl SyncPeer {
                 Update::merge_updates(updates).encode_v1()
             }
         };
-        Ok(Some(
-            Message::Sync(SyncMessage::Update(update)).encode_v1(),
-        ))
+        Ok(Some(Message::Sync(SyncMessage::Update(update)).encode_v1()))
     }
 
     /// Sets this client's presence state (an opaque JSON string — the caller
