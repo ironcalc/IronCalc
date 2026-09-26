@@ -70,6 +70,8 @@ pub fn unwrap_frame(frame: &[u8], max_len: usize) -> Result<Cow<'_, [u8]>, Strin
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
     use super::*;
     use yrs::sync::SyncMessage;
 

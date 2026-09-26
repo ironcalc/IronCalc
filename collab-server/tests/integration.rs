@@ -1,6 +1,8 @@
 //! End-to-end tests: real `SyncPeer` clients (the engine's collaboration
 //! peer) talking to the relay over live websockets.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};

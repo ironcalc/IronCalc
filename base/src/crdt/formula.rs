@@ -732,6 +732,8 @@ fn cell_text(column: u32, row: u32, abs_column: bool, abs_row: bool) -> Result<S
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
     use super::*;
     use crate::crdt::order::AxisOrder;
     use std::collections::BTreeMap;

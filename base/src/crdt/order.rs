@@ -45,7 +45,7 @@ pub(crate) fn original_position(k: u32) -> String {
         *slot = ALPHABET[(v % BASE) as usize];
         v /= BASE;
     }
-    String::from_utf8(out.to_vec()).expect("alphabet is ascii")
+    out.iter().map(|&b| char::from(b)).collect()
 }
 
 /// Number of `k ≥ 1` such that `fixed4(k) < pos`, capped at `max`.

@@ -3978,6 +3978,8 @@ mod tests {
 
 #[cfg(test)]
 mod rc_formula_tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
 
     #[test]
