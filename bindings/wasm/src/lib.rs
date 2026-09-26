@@ -7,6 +7,7 @@ use wasm_bindgen::{
 use ironcalc_base::{
     cf_types::CfRuleInput,
     colors,
+    crdt::SyncPeer,
     expressions::{
         lexer::util::get_tokens as tokenizer,
         types::Area,
@@ -14,7 +15,6 @@ use ironcalc_base::{
     },
     types::{CellType, Color, Link, Style, StyleIncludes},
     worksheet::NavigationDirection,
-    crdt::SyncPeer,
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
 

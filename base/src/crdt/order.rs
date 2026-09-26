@@ -59,7 +59,11 @@ fn originals_strictly_below(pos: &str, max: u32) -> u64 {
     // For pos longer than 4 digits: fixed4(k) < pos ⟺ k ≤ v (prefix equality
     // makes the shorter string smaller). For pos of length ≤ 4: fixed4(k) < pos
     // ⟺ k < v.
-    let count = if bytes.len() > 4 { v } else { v.saturating_sub(1) };
+    let count = if bytes.len() > 4 {
+        v
+    } else {
+        v.saturating_sub(1)
+    };
     count.min(max as u64)
 }
 
@@ -87,9 +91,7 @@ fn midpoint(a: &str, b: Option<&str>) -> String {
         }
     }
     let digit_a = a.as_bytes().first().map(|b| digit_value(*b)).unwrap_or(0);
-    let digit_b = b
-        .map(|b| digit_value(b.as_bytes()[0]))
-        .unwrap_or(BASE);
+    let digit_b = b.map(|b| digit_value(b.as_bytes()[0])).unwrap_or(BASE);
     if digit_b - digit_a > 1 {
         let mid = (digit_a + digit_b).div_ceil(2);
         debug_assert!(digit_a < mid && mid < digit_b);
@@ -571,10 +573,7 @@ mod tests {
         let pos = between(Some(&original_position(1)), Some(&original_position(2)));
         let order = AxisOrder::new(
             100,
-            vec![
-                (b, Some(pos.clone()), true),
-                (a, Some(pos.clone()), true),
-            ],
+            vec![(b, Some(pos.clone()), true), (a, Some(pos.clone()), true)],
         );
         assert_eq!(order.id_at(2), Some(a));
         assert_eq!(order.id_at(3), Some(b));
