@@ -676,14 +676,15 @@ fn moving_rows_keeps_a_link_on_an_empty_cell() {
 #[test]
 fn setting_a_link_with_a_label_on_a_covered_cell_fails_without_side_effects() {
     let mut model = UserModel::from_model(new_empty_model());
-    model.merge_cells(&Area {
-        sheet: 0,
-        row: 2,
-        column: 2,
-        width: 2,
-        height: 2,
-    })
-    .unwrap();
+    model
+        .merge_cells(&Area {
+            sheet: 0,
+            row: 2,
+            column: 2,
+            width: 2,
+            height: 2,
+        })
+        .unwrap();
     let link = Link::External {
         target: "https://www.ironcalc.com/".to_string(),
         tooltip: None,

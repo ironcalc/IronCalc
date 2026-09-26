@@ -29,14 +29,18 @@ fn sync(a: &mut Replica, b: &mut Replica) {
     let from_a = a.session.flush_local(&mut a.um).unwrap();
     let from_b = b.session.flush_local(&mut b.um).unwrap();
     if trace {
-        a.session.assert_model_matches_shadow(&a.um, "replica A after flush");
-        b.session.assert_model_matches_shadow(&b.um, "replica B after flush");
+        a.session
+            .assert_model_matches_shadow(&a.um, "replica A after flush");
+        b.session
+            .assert_model_matches_shadow(&b.um, "replica B after flush");
     }
     a.session.apply_remote(&mut a.um, &from_b).unwrap();
     b.session.apply_remote(&mut b.um, &from_a).unwrap();
     if trace {
-        a.session.assert_model_matches_shadow(&a.um, "replica A after apply");
-        b.session.assert_model_matches_shadow(&b.um, "replica B after apply");
+        a.session
+            .assert_model_matches_shadow(&a.um, "replica A after apply");
+        b.session
+            .assert_model_matches_shadow(&b.um, "replica B after apply");
         let names = |r: &Replica| -> Vec<String> {
             (0..r.um.model.workbook.worksheets.len() as u32)
                 .map(|s| r.um.model.workbook.worksheet(s).unwrap().get_name())
@@ -392,7 +396,10 @@ fn formulas_are_recomputed_not_shipped() {
     // The other replica changes the input; the formula re-evaluates everywhere.
     b.um.set_user_input(0, 1, 1, "50").unwrap();
     sync(&mut a, &mut b);
-    assert_eq!(a.um.get_formatted_cell_value(0, 1, 2), Ok("100".to_string()));
+    assert_eq!(
+        a.um.get_formatted_cell_value(0, 1, 2),
+        Ok("100".to_string())
+    );
     assert_converged(&a, &b);
 }
 
@@ -891,15 +898,13 @@ fn fuzz_round(seed: u64) {
                                 if trace {
                                     eprintln!("{step}: {who} raise cf {index}");
                                 }
-                                let _ =
-                                    replica.um.raise_conditional_formatting_priority(0, index);
+                                let _ = replica.um.raise_conditional_formatting_priority(0, index);
                             }
                             2 => {
                                 if trace {
                                     eprintln!("{step}: {who} lower cf {index}");
                                 }
-                                let _ =
-                                    replica.um.lower_conditional_formatting_priority(0, index);
+                                let _ = replica.um.lower_conditional_formatting_priority(0, index);
                             }
                             _ => {
                                 let range = format!("B{row}:D{}", row + 2);
@@ -968,7 +973,11 @@ fn fuzz_round(seed: u64) {
                             target: format!("https://l{}.example", rng.gen::<u8>()),
                             tooltip: None,
                         };
-                        let label = if rng.gen_bool(0.3) { Some("link") } else { None };
+                        let label = if rng.gen_bool(0.3) {
+                            Some("link")
+                        } else {
+                            None
+                        };
                         if trace {
                             eprintln!("{step}: {who} set link R{row}C{column} label={label:?}");
                         }
@@ -1090,7 +1099,10 @@ fn range_grows_and_clamps_under_concurrent_structural_edits() {
     b.um.set_user_input(0, 3, 1, "5").unwrap();
     sync(&mut a, &mut b);
     assert_converged(&a, &b);
-    assert_eq!(a.um.get_cell_content(0, 7, 2), Ok("=SUM(A1:A5)".to_string()));
+    assert_eq!(
+        a.um.get_cell_content(0, 7, 2),
+        Ok("=SUM(A1:A5)".to_string())
+    );
     assert_eq!(a.um.get_formatted_cell_value(0, 7, 2), Ok("45".to_string()));
 
     // Deleting the range's last row kills that endpoint (engine semantics:
@@ -1120,10 +1132,7 @@ fn cross_sheet_formula_rerenders_on_remote_structural_change() {
     sync(&mut a, &mut b);
 
     assert_converged(&a, &b);
-    assert_eq!(
-        a.um.get_cell_content(1, 1, 1),
-        Ok("=Sheet1!A6".to_string())
-    );
+    assert_eq!(a.um.get_cell_content(1, 1, 1), Ok("=Sheet1!A6".to_string()));
     assert_eq!(a.um.get_formatted_cell_value(1, 1, 1), Ok("9".to_string()));
     assert_eq!(b.um.get_formatted_cell_value(1, 1, 1), Ok("9".to_string()));
 }
@@ -1296,7 +1305,8 @@ fn full_column_style_syncs() {
         width: 1,
         height: LAST_ROW,
     };
-    a.um.update_range_style(&full_column, "font.b", "true").unwrap();
+    a.um.update_range_style(&full_column, "font.b", "true")
+        .unwrap();
     sync(&mut a, &mut b);
     assert_converged(&a, &b);
     // Inherited by any cell of the column, including untouched ones.
@@ -1421,7 +1431,10 @@ fn named_style_definitions_sync_and_apply() {
         .unwrap();
     sync(&mut a, &mut b);
     assert_converged(&a, &b);
-    assert!(b.um.get_named_style_list().contains(&"Bold Header".to_string()));
+    assert!(b
+        .um
+        .get_named_style_list()
+        .contains(&"Bold Header".to_string()));
 
     // The other replica applies it; the resolved style replicates back.
     b.um.set_selected_range(1, 1, 1, 1).unwrap();
@@ -1438,7 +1451,15 @@ fn border_area(style: &str, kind: &str) -> crate::BorderArea {
     .unwrap()
 }
 
-fn set_border(um: &mut UserModel, row: i32, column: i32, height: i32, width: i32, style: &str, kind: &str) {
+fn set_border(
+    um: &mut UserModel,
+    row: i32,
+    column: i32,
+    height: i32,
+    width: i32,
+    style: &str,
+    kind: &str,
+) {
     use crate::expressions::types::Area;
     um.set_area_with_border(
         &Area {
@@ -1589,8 +1610,7 @@ fn cf_rule_syncs_to_remote_with_dxf() {
     let mut b = replica(2);
     sync(&mut a, &mut b);
     a.um.set_user_input(0, 1, 1, "5").unwrap();
-    a.um
-        .add_conditional_formatting(0, "A1:B4", cell_is_gt("3"))
+    a.um.add_conditional_formatting(0, "A1:B4", cell_is_gt("3"))
         .unwrap();
     sync(&mut a, &mut b);
 
@@ -1608,18 +1628,15 @@ fn cf_rule_syncs_to_remote_with_dxf() {
 fn cf_raise_priority_vs_concurrent_add() {
     let mut a = replica(1);
     let mut b = replica(2);
-    a.um
-        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+    a.um.add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
         .unwrap();
-    a.um
-        .add_conditional_formatting(0, "B1:B5", cell_is_gt("2"))
+    a.um.add_conditional_formatting(0, "B1:B5", cell_is_gt("2"))
         .unwrap();
     sync(&mut a, &mut b);
 
     // A raises the first rule above the second; B adds a third rule.
     a.um.raise_conditional_formatting_priority(0, 0).unwrap();
-    b.um
-        .add_conditional_formatting(0, "C1:C5", cell_is_gt("3"))
+    b.um.add_conditional_formatting(0, "C1:C5", cell_is_gt("3"))
         .unwrap();
     sync(&mut a, &mut b);
 
@@ -1636,11 +1653,9 @@ fn cf_concurrent_adds_converge_deterministically() {
     let mut a = replica(1);
     let mut b = replica(2);
     sync(&mut a, &mut b);
-    a.um
-        .add_conditional_formatting(0, "A1:A3", cell_is_gt("1"))
+    a.um.add_conditional_formatting(0, "A1:A3", cell_is_gt("1"))
         .unwrap();
-    b.um
-        .add_conditional_formatting(0, "B1:B3", cell_is_gt("2"))
+    b.um.add_conditional_formatting(0, "B1:B3", cell_is_gt("2"))
         .unwrap();
     sync(&mut a, &mut b);
 
@@ -1653,12 +1668,10 @@ fn cf_update_vs_concurrent_delete_converges_order_independently() {
     // Pair 1.
     let mut a = replica(1);
     let mut b = replica(2);
-    a.um
-        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+    a.um.add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
         .unwrap();
     sync(&mut a, &mut b);
-    a.um
-        .update_conditional_formatting(0, 0, "A1:C4", cell_is_gt("7"))
+    a.um.update_conditional_formatting(0, 0, "A1:C4", cell_is_gt("7"))
         .unwrap();
     b.um.delete_conditional_formatting(0, 0).unwrap();
     sync(&mut a, &mut b);
@@ -1668,12 +1681,10 @@ fn cf_update_vs_concurrent_delete_converges_order_independently() {
     // Pair 2: reversed delivery order — same outcome.
     let mut c = replica(1);
     let mut d = replica(2);
-    c.um
-        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+    c.um.add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
         .unwrap();
     sync(&mut c, &mut d);
-    c.um
-        .update_conditional_formatting(0, 0, "A1:C4", cell_is_gt("7"))
+    c.um.update_conditional_formatting(0, 0, "A1:C4", cell_is_gt("7"))
         .unwrap();
     d.um.delete_conditional_formatting(0, 0).unwrap();
     let from_c = c.session.flush_local(&mut c.um).unwrap();
@@ -1688,8 +1699,7 @@ fn cf_update_vs_concurrent_delete_converges_order_independently() {
 fn cf_range_follows_concurrent_row_insert() {
     let mut a = replica(1);
     let mut b = replica(2);
-    a.um
-        .add_conditional_formatting(0, "A5:A10", cell_is_gt("0"))
+    a.um.add_conditional_formatting(0, "A5:A10", cell_is_gt("0"))
         .unwrap();
     sync(&mut a, &mut b);
 
@@ -1706,8 +1716,7 @@ fn cf_undo_of_add_propagates() {
     let mut a = replica(1);
     let mut b = replica(2);
     sync(&mut a, &mut b);
-    a.um
-        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+    a.um.add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
         .unwrap();
     sync(&mut a, &mut b);
     assert_eq!(cf_snapshot(&b.um, 0).len(), 1);
@@ -1727,8 +1736,7 @@ fn cf_undo_of_add_propagates() {
 fn cf_travels_with_duplicated_sheet() {
     let mut a = replica(1);
     let mut b = replica(2);
-    a.um
-        .add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
+    a.um.add_conditional_formatting(0, "A1:A5", cell_is_gt("1"))
         .unwrap();
     sync(&mut a, &mut b);
 
@@ -1850,7 +1858,8 @@ fn sheet_settings_sync() {
     a.um.new_sheet().unwrap();
     sync(&mut a, &mut b);
 
-    a.um.set_sheet_color(0, &Color::Rgb("#FFAA00".to_string())).unwrap();
+    a.um.set_sheet_color(0, &Color::Rgb("#FFAA00".to_string()))
+        .unwrap();
     a.um.set_show_grid_lines(0, false).unwrap();
     a.um.hide_sheet(1).unwrap();
     sync(&mut a, &mut b);
@@ -2123,7 +2132,8 @@ fn defined_name_syncs_and_reevaluates() {
     let mut a = replica(1);
     let mut b = replica(2);
     a.um.set_user_input(0, 1, 1, "21").unwrap();
-    a.um.new_defined_name("DOUBLE_ME", None, "Sheet1!$A$1").unwrap();
+    a.um.new_defined_name("DOUBLE_ME", None, "Sheet1!$A$1")
+        .unwrap();
     a.um.set_user_input(0, 2, 2, "=DOUBLE_ME*2").unwrap();
     sync(&mut a, &mut b);
     assert_eq!(b.um.get_formatted_cell_value(0, 2, 2), Ok("42".to_string()));
@@ -2134,7 +2144,10 @@ fn defined_name_syncs_and_reevaluates() {
         .unwrap();
     sync(&mut a, &mut b);
     assert_converged(&a, &b);
-    assert_eq!(a.um.get_formatted_cell_value(0, 2, 2), Ok("200".to_string()));
+    assert_eq!(
+        a.um.get_formatted_cell_value(0, 2, 2),
+        Ok("200".to_string())
+    );
 }
 
 #[test]
@@ -2164,7 +2177,8 @@ fn defined_name_stays_positional_under_structural_edits() {
     let mut a = replica(1);
     let mut b = replica(2);
     a.um.set_user_input(0, 5, 1, "7").unwrap();
-    a.um.new_defined_name("TARGET", None, "Sheet1!$A$5").unwrap();
+    a.um.new_defined_name("TARGET", None, "Sheet1!$A$5")
+        .unwrap();
     a.um.set_user_input(0, 1, 3, "=TARGET+1").unwrap();
     sync(&mut a, &mut b);
     assert_eq!(b.um.get_formatted_cell_value(0, 1, 3), Ok("8".to_string()));
@@ -2185,7 +2199,8 @@ fn renaming_defined_name_updates_dependent_formulas() {
     let mut a = replica(1);
     let mut b = replica(2);
     a.um.set_user_input(0, 1, 1, "5").unwrap();
-    a.um.new_defined_name("OLD_NAME", None, "Sheet1!$A$1").unwrap();
+    a.um.new_defined_name("OLD_NAME", None, "Sheet1!$A$1")
+        .unwrap();
     a.um.set_user_input(0, 3, 3, "=OLD_NAME*3").unwrap();
     sync(&mut a, &mut b);
 
@@ -2205,7 +2220,8 @@ fn undo_of_defined_name_creation_propagates() {
     let mut a = replica(1);
     let mut b = replica(2);
     sync(&mut a, &mut b);
-    a.um.new_defined_name("EPHEMERAL", None, "Sheet1!$A$1").unwrap();
+    a.um.new_defined_name("EPHEMERAL", None, "Sheet1!$A$1")
+        .unwrap();
     sync(&mut a, &mut b);
     assert_eq!(b.um.get_defined_name_list().len(), 1);
 
@@ -2308,7 +2324,10 @@ fn peer_update_frames_flow_after_connect() {
     a.um.set_user_input(0, 1, 1, "5").unwrap();
     let frame = a.peer.flush_local(&mut a.um).unwrap().expect("an update");
     let outcome = b.peer.handle_frame(&mut b.um, &frame).unwrap();
-    assert!(outcome.applied_update, "update frame must mark the model dirty");
+    assert!(
+        outcome.applied_update,
+        "update frame must mark the model dirty"
+    );
     assert!(outcome.replies.is_empty(), "plain update needs no reply");
     assert_eq!(b.um.get_formatted_cell_value(0, 1, 1), Ok("5".to_string()));
 
@@ -2407,7 +2426,10 @@ fn peer_presence_exchange_and_clear() {
     let mut b = peer_replica(2);
     connect(&mut a, &mut b);
 
-    let frame = a.peer.set_presence(r#"{"name":"ana","cell":"A1"}"#).unwrap();
+    let frame = a
+        .peer
+        .set_presence(r#"{"name":"ana","cell":"A1"}"#)
+        .unwrap();
     let outcome = b.peer.handle_frame(&mut b.um, &frame).unwrap();
     assert!(outcome.presence_changed);
     assert!(!outcome.applied_update);
@@ -2435,7 +2457,10 @@ fn peer_presence_set_before_connect_travels_in_handshake() {
     let mut b = peer_replica(2);
     let _unsent = a.peer.set_presence(r#"{"name":"ana"}"#).unwrap();
     connect(&mut a, &mut b);
-    assert_eq!(b.peer.presence(), vec![(1, r#"{"name":"ana"}"#.to_string())]);
+    assert_eq!(
+        b.peer.presence(),
+        vec![(1, r#"{"name":"ana"}"#.to_string())]
+    );
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -2543,7 +2568,6 @@ fn randomized_peer_protocol_fuzz() {
     }
 }
 
-
 // ---- cell links ----
 
 fn external_link(target: &str) -> Link {
@@ -2558,8 +2582,7 @@ fn link_syncs_to_remote_and_undo_propagates() {
     let mut a = replica(1);
     let mut b = replica(2);
     a.um.set_user_input(0, 3, 2, "IronCalc").unwrap();
-    a.um
-        .set_cell_link(0, 3, 2, external_link("https://ironcalc.com"), None)
+    a.um.set_cell_link(0, 3, 2, external_link("https://ironcalc.com"), None)
         .unwrap();
     sync(&mut a, &mut b);
     assert_eq!(
@@ -2571,8 +2594,7 @@ fn link_syncs_to_remote_and_undo_propagates() {
     assert_converged(&a, &b);
 
     // Replace, then delete, then undo everything back.
-    a.um
-        .set_cell_link(0, 3, 2, external_link("https://docs.ironcalc.com"), None)
+    a.um.set_cell_link(0, 3, 2, external_link("https://docs.ironcalc.com"), None)
         .unwrap();
     sync(&mut a, &mut b);
     assert_eq!(
@@ -2600,12 +2622,10 @@ fn link_syncs_to_remote_and_undo_propagates() {
 #[test]
 fn late_joiner_receives_links() {
     let mut a = replica(1);
-    a.um
-        .set_cell_link(0, 2, 2, external_link("https://a.example"), Some("A"))
+    a.um.set_cell_link(0, 2, 2, external_link("https://a.example"), Some("A"))
         .unwrap();
     // A link on a cell without content.
-    a.um
-        .set_cell_link(0, 5, 1, external_link("mailto:x@y.z"), None)
+    a.um.set_cell_link(0, 5, 1, external_link("mailto:x@y.z"), None)
         .unwrap();
 
     let mut b = replica(2);
@@ -2636,8 +2656,7 @@ fn link_survives_concurrent_content_edit() {
     sync(&mut a, &mut b);
 
     // Independent registers: both intentions survive.
-    a.um
-        .set_cell_link(0, 1, 1, external_link("https://a.example"), None)
+    a.um.set_cell_link(0, 1, 1, external_link("https://a.example"), None)
         .unwrap();
     b.um.set_user_input(0, 1, 1, "after").unwrap();
     sync(&mut a, &mut b);
@@ -2656,26 +2675,23 @@ fn link_survives_concurrent_content_edit() {
 fn clearing_content_removes_link_on_remote() {
     let mut a = replica(1);
     let mut b = replica(2);
-    a.um
-        .set_cell_link(0, 2, 3, external_link("https://a.example"), Some("A"))
+    a.um.set_cell_link(0, 2, 3, external_link("https://a.example"), Some("A"))
         .unwrap();
-    a.um
-        .set_cell_link(0, 4, 3, external_link("https://b.example"), Some("B"))
+    a.um.set_cell_link(0, 4, 3, external_link("https://b.example"), Some("B"))
         .unwrap();
     sync(&mut a, &mut b);
     assert!(b.um.get_cell_link(0, 2, 3).unwrap().is_some());
 
     // Typing an empty value drops the link; so does a range clear.
     a.um.set_user_input(0, 2, 3, "").unwrap();
-    a.um
-        .range_clear_contents(&crate::expressions::types::Area {
-            sheet: 0,
-            row: 4,
-            column: 1,
-            width: 5,
-            height: 1,
-        })
-        .unwrap();
+    a.um.range_clear_contents(&crate::expressions::types::Area {
+        sheet: 0,
+        row: 4,
+        column: 1,
+        width: 5,
+        height: 1,
+    })
+    .unwrap();
     sync(&mut a, &mut b);
     assert_eq!(b.um.get_cell_link(0, 2, 3).unwrap(), None);
     assert_eq!(b.um.get_cell_link(0, 4, 3).unwrap(), None);
@@ -2703,8 +2719,7 @@ fn link_follows_concurrent_row_insert() {
     a.um.set_user_input(0, 5, 1, "x").unwrap();
     sync(&mut a, &mut b);
 
-    a.um
-        .set_cell_link(0, 5, 1, external_link("https://a.example"), None)
+    a.um.set_cell_link(0, 5, 1, external_link("https://a.example"), None)
         .unwrap();
     b.um.insert_rows(0, 1, 2).unwrap();
     sync(&mut a, &mut b);
@@ -2719,8 +2734,7 @@ fn link_follows_concurrent_row_insert() {
     assert_converged(&a, &b);
 
     // And the remote structural rebuild keeps link-only cells in place.
-    a.um
-        .set_cell_link(0, 10, 4, external_link("https://c.example"), None)
+    a.um.set_cell_link(0, 10, 4, external_link("https://c.example"), None)
         .unwrap();
     sync(&mut a, &mut b);
     b.um.delete_rows(0, 1, 1).unwrap();
@@ -2739,7 +2753,8 @@ fn link_follows_concurrent_row_insert() {
 fn typed_url_auto_link_and_its_removal_replicate() {
     let mut a = replica(1);
     let mut b = replica(2);
-    a.um.set_user_input(0, 1, 1, "https://ironcalc.com").unwrap();
+    a.um.set_user_input(0, 1, 1, "https://ironcalc.com")
+        .unwrap();
     sync(&mut a, &mut b);
     assert_eq!(
         b.um.get_cell_link(0, 1, 1).unwrap(),
@@ -2829,27 +2844,25 @@ fn merge_syncs_to_remote_document_and_undo_propagates() {
     let mut a = replica(1);
     let mut b = replica(2);
     a.um.set_user_input(0, 2, 2, "title").unwrap();
-    a.um
-        .merge_cells(&Area {
-            sheet: 0,
-            row: 2,
-            column: 2,
-            width: 3,
-            height: 2,
-        })
-        .unwrap();
+    a.um.merge_cells(&Area {
+        sheet: 0,
+        row: 2,
+        column: 2,
+        width: 3,
+        height: 2,
+    })
+    .unwrap();
     sync(&mut a, &mut b);
     assert_eq!(merges_of(&b, 0), vec![((2, 2), (4, 3))]);
 
-    a.um
-        .unmerge_cells(&Area {
-            sheet: 0,
-            row: 3,
-            column: 3,
-            width: 1,
-            height: 1,
-        })
-        .unwrap();
+    a.um.unmerge_cells(&Area {
+        sheet: 0,
+        row: 3,
+        column: 3,
+        width: 1,
+        height: 1,
+    })
+    .unwrap();
     sync(&mut a, &mut b);
     assert_eq!(merges_of(&b, 0), vec![]);
 
@@ -2869,15 +2882,14 @@ fn merge_registers_follow_structural_ops_by_id() {
     use crate::expressions::types::Area;
     let mut a = replica(1);
     let mut b = replica(2);
-    a.um
-        .merge_cells(&Area {
-            sheet: 0,
-            row: 5,
-            column: 2,
-            width: 2,
-            height: 2,
-        })
-        .unwrap();
+    a.um.merge_cells(&Area {
+        sheet: 0,
+        row: 5,
+        column: 2,
+        width: 2,
+        height: 2,
+    })
+    .unwrap();
     sync(&mut a, &mut b);
     assert_eq!(merges_of(&b, 0), vec![((2, 5), (3, 6))]);
 
@@ -2925,15 +2937,14 @@ fn duplicated_sheet_pushes_its_merges() {
     use crate::expressions::types::Area;
     let mut a = replica(1);
     let mut b = replica(2);
-    a.um
-        .merge_cells(&Area {
-            sheet: 0,
-            row: 1,
-            column: 1,
-            width: 2,
-            height: 1,
-        })
-        .unwrap();
+    a.um.merge_cells(&Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 2,
+        height: 1,
+    })
+    .unwrap();
     a.um.duplicate_sheet(0).unwrap();
     assert_eq!(a.um.get_merged_cells(1).unwrap().len(), 1);
     sync(&mut a, &mut b);
@@ -3227,7 +3238,10 @@ fn spill_blocked_by_a_concurrent_remote_merge_converges() {
     sync(&mut a, &mut b);
     for r in [&a, &b] {
         assert_eq!(r.um.get_merged_cells(0).unwrap(), vec![merged(2, 1, 2, 2)]);
-        assert_eq!(r.um.get_formatted_cell_value(0, 1, 1), Ok("#SPILL!".to_string()));
+        assert_eq!(
+            r.um.get_formatted_cell_value(0, 1, 1),
+            Ok("#SPILL!".to_string())
+        );
     }
     assert_converged(&a, &b);
 
@@ -3278,9 +3292,9 @@ fn typed_url_style_vs_concurrent_border_on_the_same_cell_converges() {
     a.um.set_user_input(0, 1, 1, "seed").unwrap();
     sync(&mut a, &mut b);
 
-    a.um.set_user_input(0, 5, 2, "https://ironcalc.com").unwrap();
-    b.um
-        .set_area_with_border(&area(5, 2, 1, 1), &border_area("thin", "All"))
+    a.um.set_user_input(0, 5, 2, "https://ironcalc.com")
+        .unwrap();
+    b.um.set_area_with_border(&area(5, 2, 1, 1), &border_area("thin", "All"))
         .unwrap();
     sync(&mut a, &mut b);
     assert_converged(&a, &b);
