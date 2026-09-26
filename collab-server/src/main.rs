@@ -8,7 +8,13 @@ async fn main() {
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:9000".to_string());
     let data_dir = std::env::args().nth(2).map(std::path::PathBuf::from);
-    let listener = TcpListener::bind(&addr).await.expect("cannot bind address");
+    let listener = match TcpListener::bind(&addr).await {
+        Ok(listener) => listener,
+        Err(e) => {
+            eprintln!("cannot bind {addr}: {e}");
+            std::process::exit(1);
+        }
+    };
     match &data_dir {
         Some(dir) => eprintln!(
             "ironcalc collab relay on ws://{addr}/<room>, persisting to {}",

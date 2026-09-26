@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //! Two-replica convergence tests for the CRDT collaboration session.
 //!

@@ -1055,6 +1055,7 @@ impl CollabSession {
     /// cell over a window (the model must be a faithful rendering of the
     /// document at all times).
     #[cfg(test)]
+    #[allow(clippy::panic)]
     pub(crate) fn assert_model_matches_shadow(&self, um: &UserModel, label: &str) {
         let resolver = DocResolver::from_projection(&self.shadow);
         let visible = self.shadow.visible_sheets();

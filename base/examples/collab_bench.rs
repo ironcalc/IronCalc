@@ -8,6 +8,9 @@
 //!
 //! Usage: cargo run --release --example collab_bench -- [rows]
 
+// A timing harness: any failure should abort loudly.
+#![allow(clippy::unwrap_used)]
+
 use std::time::Instant;
 
 use ironcalc_base::crdt::SyncPeer;
