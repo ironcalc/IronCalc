@@ -157,3 +157,47 @@ fn move_propagates() {
 
     assert_eq!(sheet_names(&model2), ["Sheet2", "Sheet3", "Sheet1"]);
 }
+
+#[test]
+fn deleting_a_sheet_before_the_selected_one_keeps_the_selection_valid() {
+    let mut model = new_empty_user_model();
+    model.new_sheet().unwrap(); // Sheet2
+    model.new_sheet().unwrap(); // Sheet3
+    model.new_sheet().unwrap(); // Sheet4
+    model.set_selected_sheet(3).unwrap();
+    assert_eq!(selected_name(&model), "Sheet4");
+
+    // Deleting a sheet below slides the selection down with its sheet.
+    model.delete_sheet(1).unwrap();
+    assert_eq!(model.get_selected_sheet(), 2);
+    assert_eq!(selected_name(&model), "Sheet4");
+
+    // Deleting the selected sheet in the middle selects its successor.
+    model.set_selected_sheet(1).unwrap(); // Sheet3
+    model.delete_sheet(1).unwrap();
+    assert_eq!(model.get_selected_sheet(), 1);
+    assert_eq!(selected_name(&model), "Sheet4");
+
+    // Deleting the selected last sheet selects the previous one.
+    model.delete_sheet(1).unwrap();
+    assert_eq!(model.get_selected_sheet(), 0);
+    assert_eq!(selected_name(&model), "Sheet1");
+}
+
+#[test]
+fn move_sheet_after_a_delete_is_recorded_in_full() {
+    let mut model = new_empty_user_model();
+    model.new_sheet().unwrap(); // Sheet2
+    model.new_sheet().unwrap(); // Sheet3
+    model.new_sheet().unwrap(); // Sheet4
+    model.set_selected_sheet(3).unwrap();
+    model.delete_sheet(1).unwrap();
+    assert_eq!(sheet_names(&model), vec!["Sheet1", "Sheet3", "Sheet4"]);
+
+    // Used to fail half-way ("Invalid worksheet index 3") after moving the
+    // sheet in the model, leaving the move out of the history.
+    model.move_sheet(2, 1).unwrap();
+    assert_eq!(sheet_names(&model), vec!["Sheet1", "Sheet4", "Sheet3"]);
+    model.undo().unwrap();
+    assert_eq!(sheet_names(&model), vec!["Sheet1", "Sheet3", "Sheet4"]);
+}

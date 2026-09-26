@@ -2283,6 +2283,113 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
+    /// Bulk variant of [`Model::set_user_input`] for a location that holds no
+    /// content and whose final style is already known (collaboration joins
+    /// and rebuilds, where the document's registers carry the exact style and
+    /// link). It parses `value` like `set_user_input` but skips everything
+    /// the interactive path derives on its own: spill preparation, quote
+    /// prefix styling, number-format and units restyling, auto-linking.
+    pub(crate) fn set_cell_input_with_style(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+        style_index: i32,
+    ) -> Result<(), String> {
+        if value.is_empty() {
+            let ws = self.workbook.worksheet_mut(sheet)?;
+            ws.cell_clear_contents(row, column)?;
+            ws.links.remove(&(row, column));
+            return Ok(());
+        }
+        if let Some(text) = value.strip_prefix('\'') {
+            // The quote prefix lives in the style; the content is the text.
+            return self.set_cell_with_string(sheet, row, column, text, style_index);
+        }
+        if let Some(formula) = self.formula_without_prefix(value) {
+            self.set_cell_with_formula(sheet, row, column, formula, style_index)?;
+            return Ok(());
+        }
+        let mut currencies = vec!["$", "€"];
+        let currency = &self.locale.currency.symbol;
+        if !currencies.iter().any(|e| e == currency) {
+            currencies.push(currency);
+        }
+        if let Ok((number, _)) = parse_formatted_number(value, &currencies, self.locale) {
+            let worksheet = self.workbook.worksheet_mut(sheet)?;
+            return worksheet.set_cell_with_number(row, column, number, style_index);
+        }
+        if let Ok(boolean) = value.to_lowercase().parse::<bool>() {
+            let worksheet = self.workbook.worksheet_mut(sheet)?;
+            return worksheet.set_cell_with_boolean(row, column, boolean, style_index);
+        }
+        if let Some(error) = get_error_by_name(&value.to_uppercase(), self.language) {
+            let worksheet = self.workbook.worksheet_mut(sheet)?;
+            return worksheet.set_cell_with_error(row, column, error, style_index);
+        }
+        self.set_cell_with_string(sheet, row, column, value, style_index)
+    }
+
+    /// Bulk-load companion of [`Model::set_cell_input_with_style`] for a
+    /// formula already in the engine's internal R1C1 form (context
+    /// independent, so equal formulas in different cells share one text).
+    /// Parses it once, registers it as a shared formula and writes the cell.
+    /// Returns the shared-formula index and whether it is a dynamic-array
+    /// formula, so equal formulas can be written with
+    /// [`Model::set_cell_with_formula_index`] without parsing again.
+    pub(crate) fn set_cell_with_rc_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        rc_formula: &str,
+        style: i32,
+    ) -> Result<(i32, bool), String> {
+        // Internal formulas carry no leading `=`; other prefixes (`+`, `-`)
+        // keep the interactive path's number-vs-formula heuristics.
+        let Some(body) = rc_formula.strip_prefix('=') else {
+            return Err("R1C1 formulas must start with '='".to_string());
+        };
+        let cell_reference = CellReferenceRC {
+            sheet: self.workbook.worksheet(sheet)?.get_name(),
+            row: 1,
+            column: 1,
+        };
+        self.parser.set_lexer_mode(LexerMode::R1C1);
+        let parsed_formula = self.parser.parse(body, &cell_reference);
+        self.parser.set_lexer_mode(LexerMode::A1);
+        if let Node::ParseErrorKind { message, .. } = &parsed_formula {
+            return Err(format!(
+                "cannot parse R1C1 formula '{rc_formula}': {message}"
+            ));
+        }
+        let static_result = run_static_analysis_on_node(&parsed_formula);
+        let is_dynamic = !matches!(static_result, StaticResult::Scalar);
+        let index = self.shared_formula_index(sheet, parsed_formula, static_result)?;
+        self.set_cell_with_formula_index(sheet, row, column, index, is_dynamic, style)?;
+        Ok((index, is_dynamic))
+    }
+
+    /// Writes a cell holding the shared formula `index` (see
+    /// [`Model::set_cell_with_rc_formula`]).
+    pub(crate) fn set_cell_with_formula_index(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        index: i32,
+        is_dynamic: bool,
+        style: i32,
+    ) -> Result<(), String> {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        if is_dynamic {
+            worksheet.set_cell_with_dynamic_formula(row, column, index, style, 1, 1)
+        } else {
+            worksheet.set_cell_with_formula(row, column, index, style)
+        }
+    }
+
     /// Sets a cell parametrized by (`sheet`, `row`, `column`) with `value`.
     ///
     /// This mimics a user entering a value on a cell.
@@ -3866,5 +3973,50 @@ mod tests {
         model.evaluate();
         assert_eq!(update_result, Ok(()));
         assert_eq!(model._get_formula("A1"), *"=-A2*2");
+    }
+}
+
+#[cfg(test)]
+mod rc_formula_tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    #[test]
+    fn rc_formulas_parse_once_and_share_an_index() {
+        let mut model = Model::new_empty("wb", "en", "UTC", "en").unwrap();
+        let (index_a, dynamic_a) = model
+            .set_cell_with_rc_formula(0, 2, 1, "=R[-1]C[0]+1", 0)
+            .unwrap();
+        let (index_b, _) = model
+            .set_cell_with_rc_formula(0, 3, 1, "=R[-1]C[0]+1", 0)
+            .unwrap();
+        assert_eq!(index_a, index_b, "equal R1C1 text shares the formula");
+        assert!(!dynamic_a);
+        assert_eq!(
+            model.workbook.worksheet(0).unwrap().shared_formulas.len(),
+            1
+        );
+        model.set_user_input(0, 1, 1, "5".to_string()).unwrap();
+        model.evaluate();
+        assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "7");
+        // The stored text is the engine's own canonical form, so the same
+        // formula typed in A1 style dedupes against it.
+        model.set_user_input(0, 4, 1, "=A3+1".to_string()).unwrap();
+        assert_eq!(
+            model.workbook.worksheet(0).unwrap().shared_formulas.len(),
+            1
+        );
+        for f in [
+            "=R2C2*R[2]C[2]",
+            "=SUM(R[-4]C[-4]:R3C[-3])",
+            "='My Sheet'!R[-1]C[-1]",
+        ] {
+            // Unknown sheets parse (as errors) too; only syntax errors are Err.
+            assert!(model.set_cell_with_rc_formula(0, 5, 5, f, 0).is_ok(), "{f}");
+        }
+        assert!(model
+            .set_cell_with_rc_formula(0, 6, 6, "+R[1]C", 0)
+            .is_err());
     }
 }

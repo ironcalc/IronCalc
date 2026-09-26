@@ -118,6 +118,19 @@
       "copy_url": "Copy URL",
       "copied": "Copied!",
       "info_text": "Anyone with the link will be able to access a copy of this workbook"
+    },
+    "collab": {
+      "button": "Collaborate",
+      "connected": "Live",
+      "connecting": "Connecting…",
+      "disconnected": "Offline",
+      "syncing": "Syncing…",
+      "copy_url": "Copy URL",
+      "copied": "Copied!",
+      "info_text": "Anyone with the link can join and edit this workbook live",
+      "you": "you",
+      "preparing": "Preparing the workbook…",
+      "loading_workbook": "Loading the shared workbook…"
     }
   },
   "loading_screen": {

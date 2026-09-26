@@ -118,6 +118,19 @@
       "copy_url": "Copiar URL",
       "copied": "¡Copiado!",
       "info_text": "Cualquier persona con el enlace podrá acceder a una copia de este libro"
+    },
+    "collab": {
+      "button": "Colaborar",
+      "connected": "En vivo",
+      "connecting": "Conectando…",
+      "disconnected": "Sin conexión",
+      "syncing": "Sincronizando…",
+      "copy_url": "Copiar URL",
+      "copied": "¡Copiado!",
+      "info_text": "Cualquiera con el enlace puede unirse y editar este libro en vivo",
+      "you": "tú",
+      "preparing": "Preparando el libro…",
+      "loading_workbook": "Cargando el libro compartido…"
     }
   },
   "loading_screen": {
