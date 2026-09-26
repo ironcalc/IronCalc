@@ -1,3 +1,6 @@
+// A demo script: any failure should abort loudly.
+#![allow(clippy::unwrap_used)]
+
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};

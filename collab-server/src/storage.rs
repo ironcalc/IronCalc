@@ -113,8 +113,8 @@ impl Storage {
 fn read_log(bytes: &[u8]) -> (Vec<Vec<u8>>, u64) {
     let mut entries = Vec::new();
     let mut offset = 0usize;
-    while let Some(header) = bytes.get(offset..offset + 4) {
-        let len = u32::from_le_bytes(header.try_into().expect("4 bytes")) as usize;
+    while let Some(&[a, b, c, d]) = bytes.get(offset..offset + 4) {
+        let len = u32::from_le_bytes([a, b, c, d]) as usize;
         let Some(entry) = bytes.get(offset + 4..offset + 4 + len) else {
             break;
         };
@@ -126,6 +126,8 @@ fn read_log(bytes: &[u8]) -> (Vec<Vec<u8>>, u64) {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
     use super::*;
 
     fn scratch_dir(tag: &str) -> PathBuf {

@@ -32,7 +32,10 @@ impl Rooms {
     }
 
     pub fn get_or_create(&self, name: &str) -> Arc<Room> {
-        let mut rooms = self.rooms.lock().expect("rooms lock");
+        let mut rooms = self
+            .rooms
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         Arc::clone(
             rooms
                 .entry(name.to_string())

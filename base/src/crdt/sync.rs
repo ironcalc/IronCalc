@@ -321,19 +321,21 @@ impl SyncPeer {
                 .map_err(|_| "collab: outbox poisoned".to_string())?;
             std::mem::take(&mut *queued)
         };
-        let update = match payloads.len() {
-            0 => return Ok(None),
-            1 => payloads.into_iter().next().expect("len checked"),
-            _ => {
-                let mut updates = Vec::with_capacity(payloads.len());
-                for payload in &payloads {
-                    updates.push(
-                        Update::decode_v1(payload)
-                            .map_err(|e| format!("collab: bad outbox update: {e}"))?,
-                    );
-                }
-                Update::merge_updates(updates).encode_v1()
+        let mut payloads = payloads.into_iter();
+        let Some(first) = payloads.next() else {
+            return Ok(None);
+        };
+        let update = if payloads.len() == 0 {
+            first
+        } else {
+            let mut updates = Vec::with_capacity(payloads.len() + 1);
+            for payload in std::iter::once(first).chain(payloads) {
+                updates.push(
+                    Update::decode_v1(&payload)
+                        .map_err(|e| format!("collab: bad outbox update: {e}"))?,
+                );
             }
+            Update::merge_updates(updates).encode_v1()
         };
         Ok(Some(Message::Sync(SyncMessage::Update(update)).encode_v1()))
     }

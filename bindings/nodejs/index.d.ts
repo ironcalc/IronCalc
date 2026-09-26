@@ -348,7 +348,7 @@ export interface SelectedView {
 export interface ClipboardCell {
   text: string;
   style: CellStyle;
-  /** The link attached to the cell, if any */
+  /** The link attached to the cell, when present */
   link?: Link | null;
 }
 

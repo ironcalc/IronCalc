@@ -2,7 +2,7 @@
 //! state, and a broadcast channel fanning frames out to every connection.
 
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use tokio::sync::broadcast;
 use yrs::block::ClientID;
@@ -66,6 +66,10 @@ impl Room {
                 None
             }
         });
+        // Subscribing can only fail while a transaction is open on the doc;
+        // the replay transaction above is dropped by now, so this is an
+        // invariant, not a runtime error.
+        #[allow(clippy::expect_used)]
         let update_sub = {
             let tx = tx.clone();
             let storage = storage.clone();
@@ -107,11 +111,19 @@ impl Room {
         self.tx.subscribe()
     }
 
+    /// A poisoned lock (a panic while it was held) still guards a usable
+    /// state: every mutation is one atomic yrs apply, so keep serving.
+    fn lock_state(&self) -> MutexGuard<'_, RoomState> {
+        self.state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
     /// Frames sent to a client right after it connects: the server's state
     /// vector (the client answers with what the server misses) and the
     /// currently known presence states.
     pub fn hello(&self) -> Vec<Vec<u8>> {
-        let state = self.state.lock().expect("room lock");
+        let state = self.lock_state();
         let sv = state.awareness.doc().transact().state_vector();
         let mut frames = vec![Message::Sync(SyncMessage::SyncStep1(sv)).encode_v1()];
         if let Ok(update) = state.awareness.update() {
@@ -138,7 +150,7 @@ impl Room {
             .map_err(|e| format!("bad frame: {e}"))?;
         let mut replies = Vec::new();
         let mut resync_requested = false;
-        let mut state = self.state.lock().expect("room lock");
+        let mut state = self.lock_state();
         for message in messages {
             match message {
                 Message::Sync(SyncMessage::SyncStep1(sv)) => {
@@ -207,7 +219,7 @@ impl Room {
     /// Prunes the presence of a disconnected client's ids, broadcasts the
     /// removal to the room, and takes the chance to compact the log.
     pub fn disconnect(&self, presence_clients: &[u64]) {
-        let mut state = self.state.lock().expect("room lock");
+        let mut state = self.lock_state();
         for &id in presence_clients {
             state.awareness.remove_state(ClientID::new(id));
         }
@@ -279,6 +291,8 @@ fn retry_stash(state: &mut RoomState) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
     use super::*;
     use yrs::{GetString, Map, Text};
 

@@ -73,7 +73,7 @@ fn to_base36(mut value: u64) -> String {
         value /= 36;
     }
     digits.reverse();
-    String::from_utf8(digits).expect("base36 digits are ascii")
+    digits.into_iter().map(char::from).collect()
 }
 
 fn from_base36(s: &str) -> Option<u64> {
