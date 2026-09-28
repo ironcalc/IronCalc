@@ -400,6 +400,7 @@ dependencies = [
  "ironcalc",
  "ironcalc_base",
  "itertools",
+ "quick-xml",
  "roxmltree",
  "serde",
  "serde_json",
@@ -765,6 +766,15 @@ checksum = "a3a8f29db331e28c332c63496cfcbb822aca3d7320bc08b655d7fd0c29c50ede"
 dependencies = [
  "pyo3",
  "serde",
+]
+
+[[package]]
+name = "quick-xml"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1004a344b30a54e2ee58d66a71b32d2db2feb0a31f9a2d302bf0536f15de2a33"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]

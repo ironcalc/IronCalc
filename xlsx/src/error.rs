@@ -51,6 +51,18 @@ impl From<roxmltree::Error> for XlsxError {
     }
 }
 
+impl From<quick_xml::Error> for XlsxError {
+    fn from(error: quick_xml::Error) -> Self {
+        XlsxError::Xml(error.to_string())
+    }
+}
+
+impl From<quick_xml::events::attributes::AttrError> for XlsxError {
+    fn from(error: quick_xml::events::attributes::AttrError) -> Self {
+        XlsxError::Xml(error.to_string())
+    }
+}
+
 impl XlsxError {
     pub fn user_message(&self) -> String {
         match &self {
