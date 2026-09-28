@@ -513,10 +513,10 @@ mod test {
         let mut a = UserModel::<Stable>::new_empty_with_session("a", "en", "UTC", "es", 1).unwrap();
         let mut b = peer(2);
         a.set_user_input(0, 1, 1, "5").unwrap();
-        a.set_user_input(0, 1, 2, "=SUM(A1,1)").unwrap();
-        a.add_conditional_formatting(0, "A1:A5", formula_rule("=SUM($A$1,0)>0", fill("#FF0000")))
+        a.set_user_input(0, 1, 2, "=SUMA(A1,1)").unwrap();
+        a.add_conditional_formatting(0, "A1:A5", formula_rule("=SUMA($A$1,0)>0", fill("#FF0000")))
             .unwrap();
-        a.new_defined_name("plus1", None, "=LAMBDA(x,SUM(x,1))")
+        a.new_defined_name("plus1", None, "=LAMBDA(x,SUMA(x,1))")
             .unwrap();
         a.set_user_input(0, 2, 2, "=plus1(A1)").unwrap();
         deliver(&mut a, &mut b);

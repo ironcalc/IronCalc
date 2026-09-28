@@ -418,8 +418,9 @@ impl CollabModel<'_> {
     }
 
     /// Parses `formula` as the user typed it, anchored at the cell it goes into, retrying with a
-    /// closing parenthesis exactly as the ordinal path does. What comes back is the node of the
-    /// English text, as the ordinal model's stored R1C1 string would give.
+    /// closing parenthesis exactly as the ordinal path does. The node is bound as parsed: what it
+    /// binds to carries no language (a builtin is a code, a literal its value), and a trip through
+    /// text would cost a number every digit past the fifteenth.
     fn parse_at(&mut self, i: usize, row: i32, column: i32, formula: &str) -> Node {
         let context = CellReferenceRC {
             sheet: self.workbook.worksheets[i].get_name(),
@@ -433,11 +434,7 @@ impl CollabModel<'_> {
                 node = retry;
             }
         }
-        if let Node::ParseErrorKind { .. } = node {
-            return node;
-        }
-        let english = to_english_string(&node, &context);
-        self.parse_internal_formula(&english, &context)
+        node
     }
 
     /// A formula bound as if typed into (`sheet`, `row`, `column`).
