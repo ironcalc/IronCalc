@@ -266,10 +266,23 @@ impl SheetData {
         let Some(row_data) = self.row_or_insert(row) else {
             return;
         };
-        row_data.cells.clear();
-        for (column, cell) in cells {
-            row_data.insert(column, cell);
-        }
+        // Collected at its exact size: a row grown cell by cell from empty
+        // starts with room for four, and a sheet with a million short rows
+        // paid for that four times over.
+        let mut cells: Vec<(i32, Cell)> = cells.into_iter().collect();
+        cells.sort_by_key(|(column, _)| *column);
+        // Of two cells in the same column the later one stays: it is moved
+        // into the slot of the earlier one, which `dedup_by` then keeps.
+        cells.dedup_by(|later, earlier| {
+            if later.0 == earlier.0 {
+                std::mem::swap(&mut later.1, &mut earlier.1);
+                true
+            } else {
+                false
+            }
+        });
+        cells.shrink_to_fit();
+        row_data.cells = cells;
     }
 }
 
