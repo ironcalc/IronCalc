@@ -1,7 +1,7 @@
-use std::io::Read;
+use std::io::{BufReader, Read};
 
+use super::xml::XmlNode;
 use ironcalc_base::types::{Table, TableColumn, TableStyleInfo};
-use roxmltree::Node;
 
 use crate::error::XlsxError;
 
@@ -26,16 +26,11 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
     path: &str,
     sheet_name: &str,
 ) -> Result<Table, XlsxError> {
-    let mut file = archive.by_name(path)?;
-    let mut text = String::new();
-    file.read_to_string(&mut text)?;
-    let document = roxmltree::Document::parse(&text)?;
+    let file = archive.by_name(path)?;
+    let document = XmlNode::parse(BufReader::new(file))?;
 
     // table
-    let table = document
-        .root()
-        .first_child()
-        .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
+    let table = &document;
 
     // Name and display name are normally the same and are unique in a workbook
     // They also need to be different from any defined name
@@ -107,7 +102,7 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
     let auto_filter = table
         .descendants()
         .filter(|n| n.has_tag_name("autoFilter"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
 
     let has_filters = if let Some(filter) = auto_filter.first() {
         filter.children().count() > 0
@@ -119,7 +114,7 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
     let table_column = table
         .descendants()
         .filter(|n| n.has_tag_name("tableColumn"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     let mut columns = Vec::new();
     for table_column in table_column {
         let column_name = table_column.attribute("name").ok_or_else(|| {
@@ -172,16 +167,16 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
     let table_info = table
         .descendants()
         .filter(|n| n.has_tag_name("tableInfo"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     let style_info = match table_info.first() {
         Some(node) => {
             let name = node.attribute("name").map(|s| s.to_string());
             TableStyleInfo {
                 name,
-                show_first_column: get_bool_false(*node, "showFirstColumn"),
-                show_last_column: get_bool_false(*node, "showLastColumn"),
-                show_row_stripes: get_bool(*node, "showRowStripes"),
-                show_column_stripes: get_bool_false(*node, "showColumnStripes"),
+                show_first_column: get_bool_false(node, "showFirstColumn"),
+                show_last_column: get_bool_false(node, "showLastColumn"),
+                show_row_stripes: get_bool(node, "showRowStripes"),
+                show_column_stripes: get_bool_false(node, "showColumnStripes"),
             }
         }
         None => TableStyleInfo {

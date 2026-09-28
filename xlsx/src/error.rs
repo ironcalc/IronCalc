@@ -45,12 +45,6 @@ impl From<ParseFloatError> for XlsxError {
     }
 }
 
-impl From<roxmltree::Error> for XlsxError {
-    fn from(error: roxmltree::Error) -> Self {
-        XlsxError::Xml(error.to_string())
-    }
-}
-
 impl From<quick_xml::Error> for XlsxError {
     fn from(error: quick_xml::Error) -> Self {
         XlsxError::Xml(error.to_string())

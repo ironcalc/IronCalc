@@ -1,34 +1,27 @@
 #![allow(clippy::unwrap_used)]
 
+use super::xml::XmlNode;
 use ironcalc_base::colors::get_indexed_color;
-use roxmltree::{ExpandedName, Node};
 
 use crate::error::XlsxError;
 
 use ironcalc_base::types::{Color, Theme};
 
-pub(crate) fn get_number(node: Node, s: &str) -> i32 {
+pub(crate) fn get_number(node: &XmlNode, s: &str) -> i32 {
     node.attribute(s).unwrap_or("0").parse::<i32>().unwrap_or(0)
 }
 
 #[inline]
-pub(super) fn get_attribute<'a, 'n, 'm, N>(
-    node: &'a Node,
-    attr_name: N,
-) -> Result<&'a str, XlsxError>
-where
-    N: Into<ExpandedName<'n, 'm>>,
-{
-    let attr_name = attr_name.into();
+pub(super) fn get_attribute<'a>(node: &'a XmlNode, attr_name: &str) -> Result<&'a str, XlsxError> {
     node.attribute(attr_name)
-        .ok_or_else(|| XlsxError::Xml(format!("Missing \"{attr_name:?}\" XML attribute")))
+        .ok_or_else(|| XlsxError::Xml(format!("Missing \"{attr_name}\" XML attribute")))
 }
 
-pub(super) fn get_value_or_default(node: &Node, tag_name: &str, default: &str) -> String {
+pub(super) fn get_value_or_default(node: &XmlNode, tag_name: &str, default: &str) -> String {
     let application_nodes = node
         .children()
         .filter(|n| n.has_tag_name(tag_name))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     if application_nodes.len() == 1 {
         application_nodes[0].text().unwrap_or(default).to_string()
     } else {
@@ -36,7 +29,7 @@ pub(super) fn get_value_or_default(node: &Node, tag_name: &str, default: &str) -
     }
 }
 
-pub(super) fn get_color(node: Node, theme: &Theme) -> Result<Color, XlsxError> {
+pub(super) fn get_color(node: &XmlNode, theme: &Theme) -> Result<Color, XlsxError> {
     get_color_indexed(node, theme, None)
 }
 
@@ -46,7 +39,7 @@ pub(super) fn get_color(node: Node, theme: &Theme) -> Result<Color, XlsxError> {
 /// case, no override) keeps the legacy default indexed palette. An out-of-range or malformed
 /// override entry also falls back to the default palette.
 pub(super) fn get_color_indexed(
-    node: Node,
+    node: &XmlNode,
     _theme: &Theme,
     indexed: Option<&[String]>,
 ) -> Result<Color, XlsxError> {
@@ -118,7 +111,7 @@ pub(super) fn get_color_indexed(
 /// `default` is returned when the attribute is absent or holds an unrecognised value — for
 /// `xsd:boolean` attributes with a schema default of `false` (e.g. `customHeight`, `wrapText`),
 /// callers pass `false`.
-fn get_bool_with_default(node: Node, s: &str, default: bool) -> bool {
+fn get_bool_with_default(node: &XmlNode, s: &str, default: bool) -> bool {
     parse_bool_with_default(node.attribute(s), default)
 }
 
@@ -142,12 +135,12 @@ pub(super) fn parse_bool_with_default(value: Option<&str>, default: bool) -> boo
     }
 }
 
-pub(super) fn get_bool(node: Node, s: &str) -> bool {
+pub(super) fn get_bool(node: &XmlNode, s: &str) -> bool {
     // defaults to true
     get_bool_with_default(node, s, true)
 }
 
-pub(super) fn get_bool_false(node: Node, s: &str) -> bool {
+pub(super) fn get_bool_false(node: &XmlNode, s: &str) -> bool {
     // defaults to false
     get_bool_with_default(node, s, false)
 }
@@ -156,7 +149,6 @@ pub(super) fn get_bool_false(node: Node, s: &str) -> bool {
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
-    use roxmltree::Document;
 
     // The attributes these helpers read are typed `xsd:boolean` in ECMA-376 SpreadsheetML, whose
     // lexical space (W3C XML Schema Part 2 §3.2.2) is exactly {`true`, `false`, `1`, `0`}. So all
@@ -169,8 +161,8 @@ mod tests {
 
     #[test]
     fn get_bool_false_accepts_all_xsd_boolean_forms() {
-        let doc = Document::parse(XML).unwrap();
-        let node = doc.root_element();
+        let doc = XmlNode::parse_str(XML).unwrap();
+        let node = &doc;
         // Truthy xsd:boolean literals (Excel `1`, ECMA-376 `true`, case/whitespace lenient).
         assert!(get_bool_false(node, "one"));
         assert!(get_bool_false(node, "t"));
@@ -191,8 +183,8 @@ mod tests {
 
     #[test]
     fn get_bool_accepts_all_xsd_boolean_forms() {
-        let doc = Document::parse(XML).unwrap();
-        let node = doc.root_element();
+        let doc = XmlNode::parse_str(XML).unwrap();
+        let node = &doc;
         // Truthy xsd:boolean literals.
         assert!(get_bool(node, "one"));
         assert!(get_bool(node, "t"));

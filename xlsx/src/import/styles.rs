@@ -4,7 +4,9 @@ use ironcalc_base::types::{
     Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Color, Dxf,
     DxfFont, Fill, Font, FontScheme, HorizontalAlignment, NumFmt, Styles, Theme, VerticalAlignment,
 };
-use roxmltree::Node;
+use std::io::BufReader;
+
+use super::xml::XmlNode;
 
 use crate::error::XlsxError;
 
@@ -14,7 +16,7 @@ use super::util::{get_attribute, get_bool, get_bool_false, get_color_indexed, ge
 /// styleSheet root as `#RRGGBB` strings positioned by index. Returns `None` when the file
 /// supplies no override (the common case), so callers keep the legacy default indexed palette.
 /// A malformed entry becomes an empty string, which the colour resolver treats as "fall back".
-fn parse_indexed_colors(style_sheet: Node) -> Option<Vec<String>> {
+fn parse_indexed_colors(style_sheet: &XmlNode) -> Option<Vec<String>> {
     let colors = style_sheet.children().find(|n| n.has_tag_name("colors"))?;
     let indexed = colors
         .children()
@@ -41,7 +43,7 @@ fn parse_indexed_colors(style_sheet: Node) -> Option<Vec<String>> {
 }
 
 fn get_border(
-    node: Node,
+    node: &XmlNode,
     name: &str,
     theme: &Theme,
     indexed: Option<&[String]>,
@@ -51,7 +53,7 @@ fn get_border(
     let border_nodes = node
         .children()
         .filter(|n| n.has_tag_name(name))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     if border_nodes.len() == 1 {
         let border = border_nodes[0];
         style = match border.attribute("style") {
@@ -73,7 +75,7 @@ fn get_border(
         let color_node = border
             .children()
             .filter(|n| n.has_tag_name("color"))
-            .collect::<Vec<Node>>();
+            .collect::<Vec<&XmlNode>>();
         if color_node.len() == 1 {
             color = get_color_indexed(color_node[0], theme, indexed)?;
         } else {
@@ -89,14 +91,9 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
     theme: &Theme,
 ) -> Result<Styles, XlsxError> {
-    let mut file = archive.by_name("xl/styles.xml")?;
-    let mut text = String::new();
-    file.read_to_string(&mut text)?;
-    let doc = roxmltree::Document::parse(&text)?;
-    let style_sheet = doc
-        .root()
-        .first_child()
-        .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
+    let file = archive.by_name("xl/styles.xml")?;
+    let doc = XmlNode::parse(BufReader::new(file))?;
+    let style_sheet = &doc;
 
     // The workbook's `<colors><indexedColors>` override (if any), applied to every `indexed=`
     // fill/font/border colour below so the file's palette wins over the legacy default one.
@@ -107,7 +104,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let num_fmts_nodes = style_sheet
         .children()
         .filter(|n| n.has_tag_name("numFmts"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     if num_fmts_nodes.len() == 1 {
         for num_fmt in num_fmts_nodes[0].children() {
             let num_fmt_id = get_number(num_fmt, "numFmtId");
@@ -123,7 +120,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let font_nodes = style_sheet
         .children()
         .filter(|n| n.has_tag_name("fonts"))
-        .collect::<Vec<Node>>()[0];
+        .collect::<Vec<&XmlNode>>()[0];
     for font in font_nodes.children() {
         let mut sz = 11;
         let mut name = "Inter".to_string();
@@ -142,7 +139,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         let mut family = 2;
         let mut scheme = FontScheme::default();
         for feature in font.children() {
-            match feature.tag_name().name() {
+            match feature.tag_name() {
                 "sz" => {
                     sz = feature
                         .attribute("val")
@@ -209,12 +206,12 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let fill_nodes = style_sheet
         .children()
         .filter(|n| n.has_tag_name("fills"))
-        .collect::<Vec<Node>>()[0];
+        .collect::<Vec<&XmlNode>>()[0];
     for fill in fill_nodes.children() {
         let pattern_fill = fill
             .children()
             .filter(|n| n.has_tag_name("patternFill"))
-            .collect::<Vec<Node>>();
+            .collect::<Vec<&XmlNode>>();
         if pattern_fill.len() != 1 {
             // safety belt
             // Some fills do not have a patternFill, but they have gradientFill
@@ -226,7 +223,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         let mut fg_color = Color::None;
         let mut bg_color = Color::None;
         for feature in pattern_fill.children() {
-            match feature.tag_name().name() {
+            match feature.tag_name() {
                 "fgColor" => {
                     fg_color = get_color_indexed(feature, theme, indexed)?;
                 }
@@ -253,7 +250,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let border_nodes = style_sheet
         .children()
         .filter(|n| n.has_tag_name("borders"))
-        .collect::<Vec<Node>>()[0];
+        .collect::<Vec<&XmlNode>>()[0];
     for border in border_nodes.children() {
         let diagonal_up = get_bool_false(border, "diagonal_up");
         let diagonal_down = get_bool_false(border, "diagonal_down");
@@ -277,7 +274,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let cell_style_xfs_nodes = style_sheet
         .children()
         .filter(|n| n.has_tag_name("cellStyleXfs"))
-        .collect::<Vec<Node>>()[0];
+        .collect::<Vec<&XmlNode>>()[0];
     for xfs in cell_style_xfs_nodes.children() {
         let num_fmt_id = get_number(xfs, "numFmtId");
         let font_id = get_number(xfs, "fontId");
@@ -309,9 +306,9 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let cell_style_nodes = style_sheet
         .children()
         .filter(|n| n.has_tag_name("cellStyles"))
-        .collect::<Vec<Node>>()[0];
+        .collect::<Vec<&XmlNode>>()[0];
     for cell_style in cell_style_nodes.children() {
-        let name = get_attribute(&cell_style, "name")?.to_string();
+        let name = get_attribute(cell_style, "name")?.to_string();
         let xf_id = get_number(cell_style, "xfId");
         let builtin_id = get_number(cell_style, "builtinId");
         // NB: A builtin style could be hidden (this is removed in the UI)
@@ -332,7 +329,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let cell_xfs_nodes = style_sheet
         .children()
         .filter(|n| n.has_tag_name("cellXfs"))
-        .collect::<Vec<Node>>()[0];
+        .collect::<Vec<&XmlNode>>()[0];
     for xfs in cell_xfs_nodes.children() {
         // `xfId` is optional on a cellXfs <xf> (it references cellStyleXfs;
         // many Excel/LibreOffice files omit it). Default to 0 when absent.
@@ -359,7 +356,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         let alignment_nodes = xfs
             .children()
             .filter(|n| n.has_tag_name("alignment"))
-            .collect::<Vec<Node>>();
+            .collect::<Vec<&XmlNode>>();
         let alignment = if alignment_nodes.len() == 1 {
             let alignment_node = alignment_nodes[0];
             let wrap_text = get_bool_false(alignment_node, "wrapText");
@@ -430,7 +427,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
 }
 
 fn load_dxfs(
-    style_sheet: Node,
+    style_sheet: &XmlNode,
     theme: &Theme,
     indexed: Option<&[String]>,
 ) -> Result<Vec<Dxf>, XlsxError> {
@@ -438,14 +435,11 @@ fn load_dxfs(
     let dxfs_nodes = style_sheet
         .children()
         .filter(|n| n.has_tag_name("dxfs"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     if dxfs_nodes.is_empty() {
         return Ok(dxfs);
     }
     for dxf_node in dxfs_nodes[0].children() {
-        if !dxf_node.is_element() {
-            continue;
-        }
         dxfs.push(parse_dxf(dxf_node, theme, indexed)?);
     }
     Ok(dxfs)
@@ -455,7 +449,7 @@ fn load_dxfs(
 /// Matches children by local tag name, so it also works on namespaced
 /// `<x14:dxf>` nodes found in conditional-formatting `extLst` extensions.
 pub(super) fn parse_dxf(
-    dxf_node: Node,
+    dxf_node: &XmlNode,
     theme: &Theme,
     indexed: Option<&[String]>,
 ) -> Result<Dxf, XlsxError> {
@@ -466,11 +460,11 @@ pub(super) fn parse_dxf(
     let mut alignment = None;
 
     for child in dxf_node.children() {
-        match child.tag_name().name() {
+        match child.tag_name() {
             "font" => {
                 let mut f = DxfFont::default();
                 for feat in child.children() {
-                    match feat.tag_name().name() {
+                    match feat.tag_name() {
                         "color" => {
                             f.color = get_color_indexed(feat, theme, indexed)?;
                         }
@@ -503,13 +497,13 @@ pub(super) fn parse_dxf(
                 let pattern_fill_nodes = child
                     .children()
                     .filter(|n| n.has_tag_name("patternFill"))
-                    .collect::<Vec<Node>>();
+                    .collect::<Vec<&XmlNode>>();
                 if pattern_fill_nodes.len() == 1 {
                     let pf = pattern_fill_nodes[0];
                     let mut fg_color = Color::None;
                     let mut bg_color = Color::None;
                     for feat in pf.children() {
-                        match feat.tag_name().name() {
+                        match feat.tag_name() {
                             "fgColor" => fg_color = get_color_indexed(feat, theme, indexed)?,
                             "bgColor" => bg_color = get_color_indexed(feat, theme, indexed)?,
                             _ => {}
@@ -659,15 +653,15 @@ mod indexed_color_tests {
     #[test]
     fn parse_indexed_colors_reads_override_or_none() {
         let with = styles_xml(OVERRIDE);
-        let doc = roxmltree::Document::parse(&with).unwrap();
-        let palette = parse_indexed_colors(doc.root_element()).unwrap();
+        let doc = XmlNode::parse_str(&with).unwrap();
+        let palette = parse_indexed_colors(&doc).unwrap();
         assert_eq!(palette.len(), 15);
         assert_eq!(palette[13], "#FFD931");
         assert_eq!(palette[14], "#FE634D");
 
         let without = styles_xml("");
-        let doc = roxmltree::Document::parse(&without).unwrap();
-        assert!(parse_indexed_colors(doc.root_element()).is_none());
+        let doc = XmlNode::parse_str(&without).unwrap();
+        assert!(parse_indexed_colors(&doc).is_none());
     }
 
     // `get_color_indexed` precedence + guards, independent of the file path.
@@ -676,8 +670,8 @@ mod indexed_color_tests {
         let theme = Theme::default();
         let palette = vec!["#000000".to_string(), "#FFFFFF".to_string()];
         let resolve = |xml: &str| {
-            let doc = roxmltree::Document::parse(xml).unwrap();
-            get_color_indexed(doc.root_element(), &theme, Some(&palette)).unwrap()
+            let doc = XmlNode::parse_str(xml).unwrap();
+            get_color_indexed(&doc, &theme, Some(&palette)).unwrap()
         };
         // In-range index -> the override slot.
         assert_eq!(

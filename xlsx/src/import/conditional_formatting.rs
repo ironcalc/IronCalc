@@ -2,11 +2,11 @@
 
 use std::collections::HashMap;
 
+use super::xml::XmlNode;
 use ironcalc_base::cf_types::{
     icon_set_icons, CfRule, Cfvo, ColorScaleThreshold, ConditionalFormatting, Icon, IconThreshold,
     PeriodType, TextOperator, ValueOperator,
 };
-use roxmltree::Node;
 
 use crate::error::XlsxError;
 
@@ -15,7 +15,7 @@ use ironcalc_base::types::{Color, Dxf, Theme};
 use super::styles::parse_dxf;
 use super::util::{get_attribute, get_color};
 
-fn parse_cfvo(node: Node) -> Result<Cfvo, XlsxError> {
+fn parse_cfvo(node: &XmlNode) -> Result<Cfvo, XlsxError> {
     let val = node.attribute("val").unwrap_or("0");
     match node.attribute("type").unwrap_or("num") {
         "min" => Ok(Cfvo::Min),
@@ -33,7 +33,7 @@ fn parse_cfvo(node: Node) -> Result<Cfvo, XlsxError> {
 
 /// Parses an x14-namespace cfvo node where autoMin/autoMax map to `None`
 /// (automatic axis) and the value lives in a child `<xm:f>` element.
-fn parse_cfvo_x14(node: Node) -> Option<Cfvo> {
+fn parse_cfvo_x14(node: &XmlNode) -> Option<Cfvo> {
     let cfvo_type = node.attribute("type").unwrap_or("num");
     // autoMin / autoMax → None signals "use automatic axis"
     if cfvo_type == "autoMin" || cfvo_type == "autoMax" {
@@ -66,7 +66,7 @@ struct DataBarExt {
 
 /// Pre-parses the worksheet-level `<extLst>` for x14 extended data bar rules.
 /// Returns a map keyed by the x14:id GUID (e.g. "{7896903A-...}").
-fn parse_x14_data_bars(ws: Node, theme: &Theme) -> HashMap<String, DataBarExt> {
+fn parse_x14_data_bars(ws: &XmlNode, theme: &Theme) -> HashMap<String, DataBarExt> {
     let mut map = HashMap::new();
     for ext_lst in ws.children().filter(|n| n.has_tag_name("extLst")) {
         for ext in ext_lst.children().filter(|n| n.has_tag_name("ext")) {
@@ -192,7 +192,7 @@ fn rating_icon_color(icon_set_attr: &str) -> (Icon, Color) {
 /// Unlike data bars (see [`parse_x14_data_bars`]), these rules are not merged
 /// into a simple counterpart: they own their range (`<xm:sqref>`) and format.
 fn parse_x14_standalone_rules(
-    ws: Node,
+    ws: &XmlNode,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
 ) -> Result<Vec<ConditionalFormatting>, XlsxError> {
@@ -247,7 +247,7 @@ fn parse_x14_standalone_rules(
 
 /// Builds a [`CfRule`] from an x14 `iconSet` cfRule node, or `None` if the node
 /// is malformed / references an unknown icon set.
-fn parse_x14_icon_set_rule(rule: Node) -> Option<CfRule> {
+fn parse_x14_icon_set_rule(rule: &XmlNode) -> Option<CfRule> {
     let is_node = rule.children().find(|n| n.has_tag_name("iconSet"))?;
 
     let icon_set_attr = is_node.attribute("iconSet").unwrap_or("3TrafficLights1");
@@ -334,7 +334,7 @@ fn parse_x14_icon_set_rule(rule: Node) -> Option<CfRule> {
 /// Builds a [`CfRule::Formula`] from an x14 `expression` cfRule node. The inline
 /// `<x14:dxf>` format is appended to `dxfs` and referenced back by index.
 fn parse_x14_expression_rule(
-    rule: Node,
+    rule: &XmlNode,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
 ) -> Result<CfRule, XlsxError> {
@@ -417,7 +417,7 @@ fn rating_count(icon_set_attr: &str) -> Option<u32> {
 }
 
 pub(super) fn load_conditional_formatting(
-    ws: Node,
+    ws: &XmlNode,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
 ) -> Result<Vec<ConditionalFormatting>, XlsxError> {
@@ -428,7 +428,7 @@ pub(super) fn load_conditional_formatting(
         .children()
         .filter(|n| n.has_tag_name("conditionalFormatting"))
     {
-        let range = get_attribute(&cf, "sqref")?.to_string();
+        let range = get_attribute(cf, "sqref")?.to_string();
 
         for cf_rule in cf.children().filter(|n| n.has_tag_name("cfRule")) {
             let priority = cf_rule
@@ -449,7 +449,7 @@ pub(super) fn load_conditional_formatting(
 
             let rule = match cf_type {
                 "colorScale" => {
-                    let cs_nodes: Vec<Node> = cf_rule
+                    let cs_nodes: Vec<&XmlNode> = cf_rule
                         .children()
                         .filter(|n| n.has_tag_name("colorScale"))
                         .collect();
@@ -459,7 +459,7 @@ pub(super) fn load_conditional_formatting(
                     let mut cfvo_list: Vec<Cfvo> = Vec::new();
                     let mut color_list: Vec<Color> = Vec::new();
                     for child in cs_nodes[0].children() {
-                        match child.tag_name().name() {
+                        match child.tag_name() {
                             "cfvo" => cfvo_list.push(parse_cfvo(child)?),
                             "color" => {
                                 let c = get_color(child, theme)?;
@@ -548,7 +548,7 @@ pub(super) fn load_conditional_formatting(
                     }
                 }
                 "dataBar" => {
-                    let db_nodes: Vec<Node> = cf_rule
+                    let db_nodes: Vec<&XmlNode> = cf_rule
                         .children()
                         .filter(|n| n.has_tag_name("dataBar"))
                         .collect();
@@ -560,7 +560,7 @@ pub(super) fn load_conditional_formatting(
                     let mut simple_cfvos: Vec<Cfvo> = Vec::new();
                     let mut positive_color = Color::None;
                     for child in db.children() {
-                        match child.tag_name().name() {
+                        match child.tag_name() {
                             "cfvo" => simple_cfvos.push(parse_cfvo(child)?),
                             "color" => {
                                 let c = get_color(child, theme)?;
@@ -605,7 +605,7 @@ pub(super) fn load_conditional_formatting(
                     }
                 }
                 "iconSet" => {
-                    let is_nodes: Vec<Node> = cf_rule
+                    let is_nodes: Vec<&XmlNode> = cf_rule
                         .children()
                         .filter(|n| n.has_tag_name("iconSet"))
                         .collect();
@@ -619,13 +619,13 @@ pub(super) fn load_conditional_formatting(
 
                     // Collect cfvo nodes.
                     // is_strict=true → >= (gte="1", default); is_strict=false → > (gte="0")
-                    let cfvo_nodes: Vec<Node> = is_node
+                    let cfvo_nodes: Vec<&XmlNode> = is_node
                         .children()
                         .filter(|n| n.has_tag_name("cfvo"))
                         .collect();
                     let cfvo_vec: Vec<Cfvo> = cfvo_nodes
                         .iter()
-                        .map(|n| parse_cfvo(*n))
+                        .map(|n| parse_cfvo(n))
                         .collect::<Result<Vec<_>, _>>()?;
                     let is_strict_vec: Vec<bool> = cfvo_nodes
                         .iter()
@@ -742,8 +742,8 @@ pub(super) fn load_conditional_formatting(
 mod tests {
     use super::*;
 
-    fn parse_ws(xml: &str) -> roxmltree::Document<'_> {
-        roxmltree::Document::parse(xml).expect("invalid test XML")
+    fn parse_ws(xml: &str) -> XmlNode {
+        XmlNode::parse_str(xml).expect("invalid test XML")
     }
 
     fn dummy_theme() -> Theme {
@@ -781,7 +781,7 @@ mod tests {
             </ext></extLst>
         </worksheet>"#;
         let doc = parse_ws(xml);
-        let ws = doc.root_element();
+        let ws = &doc;
         let mut dxfs: Vec<Dxf> = Vec::new();
         let rules = load_conditional_formatting(ws, &dummy_theme(), &mut dxfs).unwrap();
 
@@ -831,7 +831,7 @@ mod tests {
             </conditionalFormatting>
         </worksheet>"#;
         let doc = parse_ws(xml);
-        let ws = doc.root_element();
+        let ws = &doc;
         let rules = load_conditional_formatting(ws, &dummy_theme(), &mut Vec::new()).unwrap();
         assert_eq!(rules.len(), 3);
         // Excel priority=1 (most important) must map to the highest IronCalc number (3).
@@ -865,7 +865,7 @@ mod tests {
             </conditionalFormatting>
         </worksheet>"#;
         let doc = parse_ws(xml);
-        let ws = doc.root_element();
+        let ws = &doc;
         let rules = load_conditional_formatting(ws, &dummy_theme(), &mut Vec::new()).unwrap();
         assert_eq!(rules.len(), 1);
         // Single rule: max+1-priority = 5+1-5 = 1
@@ -882,7 +882,7 @@ mod tests {
             </conditionalFormatting>
         </worksheet>"#;
         let doc = parse_ws(xml);
-        let ws = doc.root_element();
+        let ws = &doc;
         let rules = load_conditional_formatting(ws, &dummy_theme(), &mut Vec::new()).unwrap();
         assert_eq!(rules.len(), 2);
         let above = rules

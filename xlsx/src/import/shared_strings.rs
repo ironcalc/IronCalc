@@ -1,6 +1,6 @@
-use std::io::Read;
+use std::io::{BufReader, Read};
 
-use roxmltree::Node;
+use super::xml::XmlNode;
 
 use crate::error::XlsxError;
 
@@ -11,19 +11,19 @@ pub(crate) fn read_shared_strings<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
 ) -> Result<Vec<String>, XlsxError> {
     match archive.by_name("xl/sharedStrings.xml") {
-        Ok(mut file) => {
-            let mut text = String::new();
-            file.read_to_string(&mut text)?;
-            read_shared_strings_from_string(&text)
-        }
+        Ok(file) => read_shared_strings_from_xml(XmlNode::parse(BufReader::new(file))?),
         Err(_e) => Ok(Vec::new()),
     }
 }
 
+#[cfg(test)]
 fn read_shared_strings_from_string(text: &str) -> Result<Vec<String>, XlsxError> {
-    let doc = roxmltree::Document::parse(text)?;
+    read_shared_strings_from_xml(XmlNode::parse(text.as_bytes())?)
+}
+
+fn read_shared_strings_from_xml(doc: XmlNode) -> Result<Vec<String>, XlsxError> {
     let mut shared_strings = Vec::new();
-    let nodes: Vec<Node> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
+    let nodes: Vec<&XmlNode> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
     for node in nodes {
         let text = node
             .descendants()

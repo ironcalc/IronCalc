@@ -1,7 +1,7 @@
-use std::io::Read;
+use std::io::{BufReader, Read};
 
+use super::xml::XmlNode;
 use ironcalc_base::types::Theme;
-use roxmltree::Node;
 
 use crate::error::XlsxError;
 
@@ -46,10 +46,8 @@ fn try_load<R: Read + std::io::Seek>(
     archive: &mut zip::ZipArchive<R>,
     path: &str,
 ) -> Result<Theme, XlsxError> {
-    let mut file = archive.by_name(path)?;
-    let mut text = String::new();
-    file.read_to_string(&mut text)?;
-    let doc = roxmltree::Document::parse(&text)?;
+    let file = archive.by_name(path)?;
+    let doc = XmlNode::parse(BufReader::new(file))?;
 
     let scheme = doc
         .descendants()
@@ -73,8 +71,8 @@ fn try_load<R: Read + std::io::Seek>(
     };
 
     for (tag, set) in &SLOTS {
-        if let Some(slot) = scheme.children().find(|n| n.has_tag_name(*tag)) {
-            if let Some(hex) = read_color(&slot) {
+        if let Some(slot) = scheme.children().find(|n| n.has_tag_name(tag)) {
+            if let Some(hex) = read_color(slot) {
                 set(&mut theme, hex);
             }
         }
@@ -83,9 +81,9 @@ fn try_load<R: Read + std::io::Seek>(
     Ok(theme)
 }
 
-fn read_color(slot: &Node) -> Option<String> {
-    for child in slot.children().filter(|n| n.is_element()) {
-        match child.tag_name().name() {
+fn read_color(slot: &XmlNode) -> Option<String> {
+    for child in slot.children() {
+        match child.tag_name() {
             "srgbClr" => {
                 if let Some(val) = child.attribute("val") {
                     return Some(format_hex(val));

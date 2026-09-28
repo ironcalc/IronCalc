@@ -3,9 +3,8 @@
 //! `sheetData` is nearly all of a worksheet's XML, and reading it as a tree
 //! costs many times its size in memory. The reader below walks the worksheet
 //! part once with `quick-xml`: cells inside `sheetData` become `Cell`s row by
-//! row, and every other element is copied verbatim into a small XML document
-//! (the worksheet without its cells) that the rest of the importer reads as a
-//! tree, as before.
+//! row, and every other element goes into a small tree (the worksheet without
+//! its cells) that the rest of the importer reads.
 
 use std::collections::HashMap;
 use std::io::BufRead;
@@ -21,13 +20,25 @@ use super::worksheets::{
     find_or_add_formula, from_a1_to_rc, get_cell_from_excel, parse_cell_reference, parse_range,
     CellArrayKind,
 };
+use super::xml::{attribute_value_of, reference_of, XmlNode, XmlTreeBuilder};
+use quick_xml::XmlVersion;
+
+// sheetData
+// <row r="1" spans="1:15" x14ac:dyDescent="0.35">
+//     <c r="A1" t="s">
+//         <v>0</v>
+//     </c>
+//     <c r="D1">
+//         <f>C1+1</f>
+//     </c>
+// </row>
 
 const DEFAULT_ROW_HEIGHT: f64 = 14.5;
 
 /// What `read_sheet_data` reads from a worksheet part.
 pub(super) struct SheetDataXml {
-    /// The worksheet XML with the `sheetData` element removed.
-    pub(super) skeleton: Vec<u8>,
+    /// The worksheet with the `sheetData` element removed.
+    pub(super) worksheet: XmlNode,
     pub(super) sheet_data: SheetData,
     /// The rows that carry a height, a style or a flag.
     pub(super) rows: Vec<Row>,
@@ -48,45 +59,22 @@ enum Tag {
 
 fn tag_of(element: &BytesStart) -> Tag {
     match element.local_name().as_ref() {
-        b"row" => Tag::Row,
-        b"c" => Tag::Cell,
-        b"v" => Tag::Value,
-        b"f" => Tag::Formula,
-        b"is" => Tag::InlineString,
-        b"t" => Tag::Text,
+        "row" => Tag::Row,
+        "c" => Tag::Cell,
+        "v" => Tag::Value,
+        "f" => Tag::Formula,
+        "is" => Tag::InlineString,
+        "t" => Tag::Text,
         _ => Tag::Other,
     }
 }
 
 fn is_sheet_data(element: &BytesStart) -> bool {
-    element.local_name().as_ref() == b"sheetData"
+    element.local_name().as_ref() == "sheetData"
 }
 
 fn is_sheet_data_end(element: &BytesEnd) -> bool {
-    element.local_name().as_ref() == b"sheetData"
-}
-
-/// XML end-of-line handling (XML 1.0, section 2.11): a parser hands the
-/// application `\r\n` and a lone `\r` as `\n`. A tree parser does it for us;
-/// the pull parser gives the raw bytes. None if there is nothing to change.
-fn normalize_line_endings(raw: &[u8]) -> Option<String> {
-    if !raw.contains(&b'\r') {
-        return None;
-    }
-    let mut result = Vec::with_capacity(raw.len());
-    let mut i = 0;
-    while i < raw.len() {
-        if raw[i] == b'\r' {
-            result.push(b'\n');
-            if raw.get(i + 1) == Some(&b'\n') {
-                i += 1;
-            }
-        } else {
-            result.push(raw[i]);
-        }
-        i += 1;
-    }
-    Some(String::from_utf8_lossy(&result).into_owned())
+    element.local_name().as_ref() == "sheetData"
 }
 
 /// A `<row>` while its cells are being read.
@@ -116,6 +104,7 @@ struct FormulaXml {
 #[derive(Default)]
 struct CellXml {
     reference: String,
+    /// The style index, the default style being 0.
     style: i32,
     /// The `t` attribute.
     cell_type: Option<String>,
@@ -123,9 +112,15 @@ struct CellXml {
     is_dynamic_array: bool,
     /// The `vm` attribute.
     value_metadata: Option<String>,
-    /// The text of `<v>`; None if there is no `<v>`.
+    /// The text of the value child `<v>`; None if there is no `<v>`.
     value: Option<String>,
-    /// The joined text of the `<t>` elements under `<is>`; None if there is no `<is>`.
+    /// The joined text of the `<t>` elements under `<is>`; None if there is
+    /// no `<is>`.
+    /// <c r="A1" t="inlineStr">
+    ///   <is>
+    ///     <t>Hello, World!</t>
+    ///   </is>
+    /// </c>
     rich_text: Option<String>,
     formula: Option<FormulaXml>,
 }
@@ -169,23 +164,17 @@ impl SheetDataReader<'_, '_> {
                     self.close(tag)?;
                 }
             }
-            Event::Text(text) => match normalize_line_endings(text) {
-                Some(normalized) => {
-                    let text =
-                        quick_xml::escape::unescape(&normalized).map_err(quick_xml::Error::from)?;
-                    self.text(&text);
-                }
-                None => {
-                    let text = text.unescape()?;
-                    self.text(&text);
-                }
-            },
+            Event::Text(text) => {
+                let text = text.xml_content(XmlVersion::Implicit1_0);
+                self.text(&text);
+            }
             Event::CData(data) => {
-                let text = String::from_utf8_lossy(data);
-                match normalize_line_endings(text.as_bytes()) {
-                    Some(normalized) => self.text(&normalized),
-                    None => self.text(&text),
-                }
+                let text = data.xml_content(XmlVersion::Implicit1_0);
+                self.text(&text);
+            }
+            Event::GeneralRef(reference) => {
+                let text = reference_of(reference)?;
+                self.text(&text);
             }
             _ => {}
         }
@@ -211,12 +200,12 @@ impl SheetDataReader<'_, '_> {
                     let mut formula = FormulaXml::default();
                     for attribute in element.attributes() {
                         let attribute = attribute?;
-                        let value = attribute.unescape_value()?;
+                        let value = attribute_value_of(&attribute)?;
                         match attribute.key.as_ref() {
-                            b"t" => formula.kind = Some(value.into_owned()),
-                            b"ref" => formula.reference = Some(value.into_owned()),
-                            b"si" => formula.shared_index = Some(value.into_owned()),
-                            b"ca" => formula.calculate_always = &*value == "1",
+                            "t" => formula.kind = Some(value.into_owned()),
+                            "ref" => formula.reference = Some(value.into_owned()),
+                            "si" => formula.shared_index = Some(value.into_owned()),
+                            "ca" => formula.calculate_always = &*value == "1",
                             _ => {}
                         }
                     }
@@ -267,8 +256,10 @@ impl SheetDataReader<'_, '_> {
 
     fn start_row(&mut self, element: &BytesStart) -> Result<(), XlsxError> {
         // <row r="1" spans="1:15" ht="30" customHeight="1" s="3" customFormat="1" hidden="1">
-        // `spans` is an optimization hint IronCalc does not use.
-        // Unused attributes: thickBot, thickTop, ph, collapsed, outlineLevel
+        // `r` is the row number, 1-indexed; `ht` the height of the row.
+        // `spans` is not used in IronCalc at the moment (it's an optimization).
+        // Unused attributes:
+        // * thickBot, thickTop, ph, collapsed, outlineLevel
         let mut index = None;
         let mut height = DEFAULT_ROW_HEIGHT;
         let mut has_height_attribute = false;
@@ -278,17 +269,17 @@ impl SheetDataReader<'_, '_> {
         let mut hidden = false;
         for attribute in element.attributes() {
             let attribute = attribute?;
-            let value = attribute.unescape_value()?;
+            let value = attribute_value_of(&attribute)?;
             match attribute.key.as_ref() {
-                b"r" => index = Some(value.parse::<i32>()?),
-                b"ht" => {
+                "r" => index = Some(value.parse::<i32>()?),
+                "ht" => {
                     has_height_attribute = true;
                     height = value.parse::<f64>().unwrap_or(DEFAULT_ROW_HEIGHT);
                 }
-                b"customHeight" => custom_height = parse_bool_with_default(Some(&value), false),
-                b"s" => style = value.parse::<i32>().unwrap_or(0),
-                b"customFormat" => custom_format = parse_bool_with_default(Some(&value), false),
-                b"hidden" => hidden = parse_bool_with_default(Some(&value), false),
+                "customHeight" => custom_height = parse_bool_with_default(Some(&value), false),
+                "s" => style = value.parse::<i32>().unwrap_or(0),
+                "customFormat" => custom_format = parse_bool_with_default(Some(&value), false),
+                "hidden" => hidden = parse_bool_with_default(Some(&value), false),
                 _ => {}
             }
         }
@@ -346,16 +337,16 @@ impl SheetDataReader<'_, '_> {
         let mut has_reference = false;
         for attribute in element.attributes() {
             let attribute = attribute?;
-            let value = attribute.unescape_value()?;
+            let value = attribute_value_of(&attribute)?;
             match attribute.key.as_ref() {
-                b"r" => {
+                "r" => {
                     has_reference = true;
                     cell.reference = value.into_owned();
                 }
-                b"s" => cell.style = value.parse::<i32>().unwrap_or(0),
-                b"t" => cell.cell_type = Some(value.into_owned()),
-                b"cm" => cell.is_dynamic_array = &*value == "1",
-                b"vm" => cell.value_metadata = Some(value.into_owned()),
+                "s" => cell.style = value.parse::<i32>().unwrap_or(0),
+                "t" => cell.cell_type = Some(value.into_owned()),
+                "cm" => cell.is_dynamic_array = &*value == "1",
+                "vm" => cell.value_metadata = Some(value.into_owned()),
                 _ => {}
             }
         }
@@ -423,6 +414,10 @@ impl SheetDataReader<'_, '_> {
         //   <f ca="1"/>
         //   <v>20</v>
         // </c>
+        // <c r="C19" s="3">
+        //   <f ca="1"/>
+        //   <v>41</v>
+        // </c>
         // aca: Always Calculate Array
         // ca: Calculate Always
         // Those are hints Excel uses to always calculate volatiles
@@ -444,7 +439,9 @@ impl SheetDataReader<'_, '_> {
             {
                 // A daughter cell of a shared formula (<f t="shared" ca="1" si="1"/>) is
                 // also empty and may carry ca="1"; only an untyped <f ca="1"/> is a
-                // volatile spill placeholder: <f ca="1"/>
+                // volatile spill placeholder.
+                // This is a volatile formula that needs to be recalculated at each calculation.
+                // <f ca="1"/>
                 formula_type = "hint-volatile";
             }
             let formula_text = formula.text.unwrap_or_default();
@@ -595,7 +592,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     shared_strings: &mut Vec<String>,
 ) -> Result<SheetDataXml, XlsxError> {
     let mut reader = quick_xml::Reader::from_reader(reader);
-    let mut writer = quick_xml::Writer::new(Vec::new());
+    let mut tree = XmlTreeBuilder::new();
     let mut buffer = Vec::new();
     let mut in_sheet_data = false;
     let mut state = SheetDataReader {
@@ -626,12 +623,12 @@ pub(super) fn read_sheet_data<R: BufRead>(
             }
             Event::Empty(element) if !in_sheet_data && is_sheet_data(element) => {}
             _ if in_sheet_data => state.process(&event)?,
-            _ => writer.write_event(&event)?,
+            _ => tree.push(&event)?,
         }
         buffer.clear();
     }
     Ok(SheetDataXml {
-        skeleton: writer.into_inner(),
+        worksheet: tree.finish()?,
         sheet_data: state.sheet_data,
         rows: state.rows,
         shared_formulas: state.shared_formulas,
