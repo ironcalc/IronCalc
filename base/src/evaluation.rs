@@ -484,6 +484,11 @@ impl<'a, A: Position> Model<'a, A> {
     /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
     /// is marked, so there is nothing of it to read or to contradict.
     pub fn evaluate(&mut self) {
+        // Where spills are derived the order of the anchors is too: kept across evaluations
+        // it would depend on the history of the replica.
+        if A::CSE_SPILLS {
+            self.evaluation.anchor_order.clear();
+        }
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
@@ -635,13 +640,19 @@ impl<'a, A: Position> Model<'a, A> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
             for (row, column, cell) in worksheet.cells() {
-                if matches!(
-                    cell,
+                // A CSE anchor goes with them where its covered cells are derived too.
+                let spills = match cell {
                     Cell::ArrayFormula {
                         kind: ArrayKind::Dynamic,
                         ..
-                    }
-                ) {
+                    } => true,
+                    Cell::ArrayFormula {
+                        kind: ArrayKind::Cse,
+                        ..
+                    } => A::CSE_SPILLS,
+                    _ => false,
+                };
+                if spills {
                     found.push(CellReferenceIndex {
                         sheet: sheet as u32,
                         row,

@@ -38,9 +38,11 @@ use crate::formatter::format::parse_formatted_number;
 use crate::formatter::lexer::is_likely_date_number_format;
 use crate::links::{detect_link_target, CellLinkView, THEME_COLOR_HYPERLINK};
 use crate::locale::get_locale;
+use crate::model::CellStructure;
 use crate::new_empty::is_valid_sheet_name;
 use crate::types::{
-    Cell, Col, Color, Comment, Link, Position, RangeRef, SheetState, Style, StyleIncludes, Theme,
+    ArrayKind, Cell, Col, Color, Comment, FormulaValue, Link, Position, RangeRef, SheetState,
+    Style, StyleIncludes, Theme,
 };
 use crate::tz::Tz;
 use crate::user_model::update_style;
@@ -408,11 +410,29 @@ impl CollabModel<'_> {
                 .get(*f as usize)
                 .cloned()
                 .map(CellInput::Formula),
-            Cell::ArrayFormula { f, .. } => sheet
+            Cell::ArrayFormula {
+                f,
+                kind: ArrayKind::Dynamic,
+                ..
+            } => sheet
                 .shared_formulas
                 .get(*f as usize)
                 .cloned()
                 .map(CellInput::Array),
+            Cell::ArrayFormula {
+                f,
+                kind: ArrayKind::Cse,
+                r: (width, height),
+                ..
+            } => sheet
+                .shared_formulas
+                .get(*f as usize)
+                .cloned()
+                .map(|formula| CellInput::Cse {
+                    formula,
+                    width: *width,
+                    height: *height,
+                }),
             Cell::EmptyCell { .. } | Cell::SpillCell { .. } => None,
         }
     }
@@ -752,8 +772,14 @@ impl CollabModel<'_> {
         let row = Stable::row_ordinal(&sheet.index, &at.0)?;
         let column = Stable::col_ordinal(&sheet.index, &at.1)?;
         // An array anchor re-binds like any other formula cell; only its input variant differs.
-        let f = match sheet.cell(row, column)? {
-            Cell::CellFormula { f, .. } | Cell::ArrayFormula { f, .. } => *f,
+        let (f, cse) = match sheet.cell(row, column)? {
+            Cell::ArrayFormula {
+                f,
+                kind: ArrayKind::Cse,
+                r,
+                ..
+            } => (*f, Some(*r)),
+            Cell::CellFormula { f, .. } | Cell::ArrayFormula { f, .. } => (*f, None),
             _ => return None,
         };
         // Lowering already turned the tokens that now resolve into live nodes; a reference whose
@@ -765,10 +791,18 @@ impl CollabModel<'_> {
         if sheet.shared_formulas.get(f as usize) == Some(&bound) {
             return None;
         }
+        let value = match cse {
+            Some((width, height)) => CellInput::Cse {
+                formula: bound,
+                width,
+                height,
+            },
+            None => Self::formula_input(&node, bound),
+        };
         Some(Patch::SetCellValue {
             sheet: sheet.sheet_id,
             at: at.clone(),
-            value: Some(Self::formula_input(&node, bound)),
+            value: Some(value),
             ts: None,
             prev: Box::new(self.cell_input(i, at)),
         })
@@ -922,6 +956,7 @@ impl CollabModel<'_> {
                 return Err("Cannot edit a cell that is part of a merged cell".to_string());
             }
         }
+        self.prepare_local_write(sheet, row, column)?;
         let style = self.get_style_for_cell(sheet, row, column)?;
         let patches = self.input_patches(sheet, row, column, &value, style)?;
         self.commit_local(patches);
@@ -989,6 +1024,7 @@ impl CollabModel<'_> {
     /// Clears the contents of a cell, keeping its formatting.
     pub fn cell_clear_contents(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
         self.check_cell(sheet, row, column)?;
+        self.prepare_local_write(sheet, row, column)?;
         let style = self.get_style_for_cell(sheet, row, column)?;
         let patches = self.write_patches(sheet, row, column, None, style)?;
         self.commit_local(patches);
@@ -1004,6 +1040,7 @@ impl CollabModel<'_> {
         value: &str,
     ) -> Result<(), String> {
         self.check_cell(sheet, row, column)?;
+        self.prepare_local_write(sheet, row, column)?;
         let mut style = self.get_style_for_cell(sheet, row, column)?;
         style.quote_prefix = common::value_needs_quoting(value, self.language);
         let input = Some(CellInput::Text(value.to_string()));
@@ -1021,6 +1058,7 @@ impl CollabModel<'_> {
         value: bool,
     ) -> Result<(), String> {
         self.check_cell(sheet, row, column)?;
+        self.prepare_local_write(sheet, row, column)?;
         let mut style = self.get_style_for_cell(sheet, row, column)?;
         style.quote_prefix = false;
         let patches =
@@ -1038,6 +1076,7 @@ impl CollabModel<'_> {
         value: f64,
     ) -> Result<(), String> {
         self.check_cell(sheet, row, column)?;
+        self.prepare_local_write(sheet, row, column)?;
         let mut style = self.get_style_for_cell(sheet, row, column)?;
         style.quote_prefix = false;
         let patches =
@@ -1055,6 +1094,7 @@ impl CollabModel<'_> {
         formula: String,
     ) -> Result<(), String> {
         let i = self.check_cell(sheet, row, column)?;
+        self.prepare_local_write(sheet, row, column)?;
         let mut style = self.get_style_for_cell(sheet, row, column)?;
         style.quote_prefix = false;
         let Some(body) = self.formula_without_prefix(&formula) else {
@@ -1076,10 +1116,141 @@ impl CollabModel<'_> {
     /// Clears a cell's contents *and* its formatting.
     pub fn cell_clear_all(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
         let i = self.check_cell(sheet, row, column)?;
+        self.prepare_local_write(sheet, row, column)?;
         let id = self.sheet_of(sheet)?;
         let (at, mut patches) = self.resolve_cell(i, id, row, column);
         patches.extend(self.clear_patches(i, id, at, true));
         self.commit_local(patches);
+        Ok(())
+    }
+
+    /// Sets a CSE (legacy) array formula over the `width` × `height` range anchored at (`row`,
+    /// `column`). In collab model CSE is modeled similar to dynamic spills.
+    pub fn set_user_array_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+        value: &str,
+    ) -> Result<(), String> {
+        let i = self.check_cell(sheet, row, column)?;
+        if width < 1
+            || height < 1
+            || width > LAST_COLUMN - column + 1
+            || height > LAST_ROW - row + 1
+        {
+            return Err("Invalid array formula range".to_string());
+        }
+        let (last_row, last_column) = (row + height - 1, column + width - 1);
+        if self.workbook.worksheets[i]
+            .merged_ranges()
+            .any(|(r1, c1, r2, c2)| {
+                r1 <= last_row && row <= r2 && c1 <= last_column && column <= c2
+            })
+        {
+            return Err("Cannot set an array formula over merged cells".to_string());
+        }
+        self.prepare_local_write(sheet, row, column)?;
+        let Some(formula) = value.strip_prefix('=') else {
+            let mut patches = Vec::new();
+            for r in row..=last_row {
+                for c in column..=last_column {
+                    let style = self.get_style_for_cell(sheet, r, c)?;
+                    patches.extend(self.input_patches(sheet, r, c, value, style)?);
+                }
+            }
+            self.commit_local(patches);
+            return Ok(());
+        };
+        // A CSE array whatever static analysis says: `=1+1` over a range fills the range.
+        let node = self.parse_at(i, row, column, formula);
+        let mut style = self.get_style_for_cell(sheet, row, column)?;
+        style.quote_prefix = false;
+        let cell = CellReferenceIndex { sheet, row, column };
+        if let Some(units) = self.compute_node_units(&node, &cell) {
+            style.num_fmt = units.get_num_fmt();
+        }
+        let mut plan = MintPlan::default();
+        let bound = self
+            .bind_formula(&node, sheet, row, column, &mut plan)
+            .map_err(|err| format!("Invalid formula: {err}"))?;
+        let mut patches = self.mint_patches(&plan);
+        let input = CellInput::Cse {
+            formula: bound,
+            width,
+            height,
+        };
+        patches.extend(self.write_patches(sheet, row, column, Some(input), style)?);
+        // A covered cell holding nothing authored needs no write, and no key.
+        let id = self.sheet_of(sheet)?;
+        for r in row..=last_row {
+            for c in column..=last_column {
+                if (r, c) == (row, column) {
+                    continue;
+                }
+                let index = &self.workbook.worksheets[i].index;
+                let (Some(row_key), Some(col_key)) =
+                    (Stable::row_at(index, r), Stable::col_at(index, c))
+                else {
+                    continue;
+                };
+                let at = (row_key, col_key);
+                if self.cell_input(i, &at).is_none() {
+                    continue;
+                }
+                let mut clear = self.clear_patches(i, id, at, false);
+                for patch in &mut clear {
+                    if let Patch::SetCellStyle { props, .. } = patch {
+                        for prop in props.iter_mut() {
+                            if let Property::QuotePrefix(quoted) = prop {
+                                *quoted = false;
+                            }
+                        }
+                    }
+                }
+                patches.extend(clear);
+            }
+        }
+        self.commit_local(patches);
+        Ok(())
+    }
+
+    /// The twin of `Model::prepare_cell_for_user_input` for a local write into (`sheet`, `row`,
+    /// `column`). Checks if CSE and dynamic spills are allowed.
+    fn prepare_local_write(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        let i = sheet as usize;
+        match self.get_cell_structure(sheet, row, column)? {
+            CellStructure::SingleCell => {}
+            CellStructure::ArrayFormula {
+                range: (width, height),
+            } => {
+                if width > 1 || height > 1 {
+                    return Err(
+                        "Cannot write in a cell that is part of an array formula".to_string()
+                    );
+                }
+            }
+            CellStructure::SpillArray { .. } => {
+                return Err("Cannot write in a cell that is part of an array formula".to_string());
+            }
+            CellStructure::DynamicFormula { range } => {
+                self.workbook.worksheets[i]
+                    .index
+                    .spills
+                    .remove_spill((row, column), range);
+            }
+            CellStructure::SpillDynamic { anchor, range } => {
+                let ws = &mut self.workbook.worksheets[i];
+                ws.index.spills.remove_spill(anchor, range);
+                // Re-spills on the next evaluation, as the ordinal anchor does.
+                if let Some(Cell::ArrayFormula { r, v, .. }) = ws.cell_mut(anchor.0, anchor.1) {
+                    *r = (1, 1);
+                    *v = FormulaValue::Unevaluated;
+                }
+            }
+        }
         Ok(())
     }
 
@@ -2171,11 +2342,7 @@ impl CollabModel<'_> {
     /// The keys `count` rows or columns inserted at ordinal `at` take, together with whatever had
     /// to be materialized to reach that far. Empty when the axis has no room to name them.
     fn insert_keys(index: &FractionalIndex, at: i32, count: i32) -> Vec<FractionalKey> {
-        let (at, count) = (at as usize, count as usize);
-        if at > index.len() {
-            return index.plan_virtual(at - 1 + count);
-        }
-        index.create_keys(at - 1, count).collect()
+        index.plan_insert(at as usize - 1, count as usize)
     }
 
     /// Everything the rows `keys` name is about to lose, so that undo can put it back — including
@@ -2724,7 +2891,10 @@ impl CollabModel<'_> {
         // one naming the source *by id* has to be pointed at the copy instead.
         let mut content = self.sheet_content(i);
         for (_, input) in &mut content.cell_values {
-            if let CellInput::Formula(formula) | CellInput::Array(formula) = input {
+            if let CellInput::Formula(formula)
+            | CellInput::Array(formula)
+            | CellInput::Cse { formula, .. } = input
+            {
                 formula.retarget_sheet(source_id, id);
             }
         }
@@ -3459,10 +3629,6 @@ unsupported! { &self
     get_sheet_markup(sheet: u32) -> String;
 }
 
-unsupported! { &mut self
-    set_user_array_formula(sheet: u32, row: i32, column: i32, width: i32, height: i32, value: &str) -> ();
-}
-
 #[cfg(test)]
 mod test {
     #![allow(clippy::unwrap_used)]
@@ -3953,13 +4119,22 @@ mod test {
         }
         a.flush();
         let before = projection(&a);
-        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 3); // total rows: 3
+        // The rows are empty, so what tells a move is which row sits where.
+        let rows = |a: &CollabModel<'_>| -> Vec<FractionalKey> {
+            a.workbook.worksheets[0]
+                .index
+                .rows
+                .view()
+                .cloned()
+                .collect()
+        };
+        let row = crate::collab::fractional_index::virtual_key;
+        assert_eq!(rows(&a), [row(1), row(2), row(3)]);
 
         a.move_rows_action(0, 6, 1, -1).unwrap(); // row 6 -> 5
         let moved = a.flush();
-        let after = projection(&a);
-        assert_ne!(after, before);
-        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 6); // total rows: 6 (after move)
+        let after = [row(1), row(2), row(3), row(4), row(6), row(5)];
+        assert_eq!(rows(&a), after);
 
         let invert = |commits: &[Commit]| -> Vec<Patch> {
             commits
@@ -3971,13 +4146,14 @@ mod test {
         a.commit_local(invert(&moved));
         let undone = a.flush();
         assert_eq!(projection(&a), before);
-        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 3); // total rows: 3 (after undo)
+        // The move is taken back. The rows it materialized are virtual: those stay, empty.
+        assert_eq!(rows(&a), [row(1), row(2), row(3), row(4), row(5), row(6)]);
 
         // Redo is the inverse of the inverse.
         a.commit_local(invert(&undone));
         a.flush();
-        assert_eq!(projection(&a), after);
-        assert_eq!(a.workbook.worksheets[0].index.rows.len(), 6); // total rows: 6 (after redo)
+        assert_eq!(projection(&a), before);
+        assert_eq!(rows(&a), after);
     }
 
     /// What a replica shows, which is what an undo has to restore: contents and formatting by
@@ -3991,25 +4167,35 @@ mod test {
                 "{} {:?} {:?} {} {:?} {:?}\n",
                 ws.name, ws.color, ws.state, ws.show_grid_lines, ws.merged_cells, ws.comments
             );
+            // What a row and a column nobody ever reached report.
+            let plain_column = (model.get_column_width(sheet, LAST_COLUMN), Ok(false));
+            let plain_row = (model.get_row_height(sheet, LAST_ROW), Ok(false));
+            let plain_cell = (Ok(String::new()), Ok(None));
             for column in 1..=Stable::col_count(&ws.index) {
-                out += &format!(
-                    "c{column} {:?} {:?}\n",
+                let shown = (
                     model.get_column_width(sheet, column),
-                    model.is_column_hidden(sheet, column)
+                    model.is_column_hidden(sheet, column),
                 );
+                if shown != plain_column {
+                    out += &format!("c{column} {:?} {:?}\n", shown.0, shown.1);
+                }
             }
             for row in 1..=Stable::row_count(&ws.index) {
-                out += &format!(
-                    "r{row} {:?} {:?}\n",
+                let shown = (
                     model.get_row_height(sheet, row),
-                    model.is_row_hidden(sheet, row)
+                    model.is_row_hidden(sheet, row),
                 );
+                if shown != plain_row {
+                    out += &format!("r{row} {:?} {:?}\n", shown.0, shown.1);
+                }
                 for column in 1..=Stable::col_count(&ws.index) {
-                    out += &format!(
-                        "{row},{column} {:?} {:?}\n",
+                    let shown = (
                         model.get_localized_cell_content(sheet, row, column),
-                        model.get_cell_style_or_none(sheet, row, column)
+                        model.get_cell_style_or_none(sheet, row, column),
                     );
+                    if shown != plain_cell {
+                        out += &format!("{row},{column} {:?} {:?}\n", shown.0, shown.1);
+                    }
                 }
             }
         }
@@ -4146,6 +4332,165 @@ mod test {
         assert_eq!(b.get_formatted_cell_value(0, 2, 1), Ok("keep".to_string()));
         assert_eq!(b.get_formatted_cell_value(0, 2, 2), Ok("999".to_string()));
         assert_eq!(b.workbook, a.workbook);
+    }
+
+    #[test]
+    fn undo_keeps_what_a_peer_wrote_concurrently() {
+        let mut a = UserModel::<Stable>::from_model(CollabModel::new(1));
+        let mut b = UserModel::<Stable>::from_model(CollabModel::new(2));
+        a.new_sheet().unwrap();
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+
+        for row in 1..=3 {
+            a.set_user_input(0, row, 2, &format!("{}", row * 5))
+                .unwrap(); // A: B1:B3=5,10,15
+        }
+        a.set_user_input(0, 1, 1, "a1").unwrap(); // A: A1=a1
+        b.set_user_input(0, 2, 1, "7").unwrap(); // B: A2=7, materializing rows 1-2 and column A
+        let (from_a, from_b) = (a.flush_send_queue(), b.flush_send_queue());
+        b.apply_external_diffs(&from_a).unwrap();
+        a.apply_external_diffs(&from_b).unwrap();
+
+        fn shown(model: &UserModel<'static, Stable>, column: i32) -> Vec<String> {
+            (1..=3)
+                .map(|row| model.get_formatted_cell_value(0, row, column).unwrap())
+                .collect()
+        }
+        for model in [&a, &b] {
+            assert_eq!(shown(model, 1), ["a1", "7", ""]); // A1,A2,A3=a1,7,
+        }
+
+        // all rows/cols created are virtual, make sure that undo/redo doesn't destroy them
+
+        b.undo().unwrap(); // undo A2=7
+        a.apply_external_diffs(&b.flush_send_queue()).unwrap();
+        for model in [&a, &b] {
+            assert_eq!(shown(model, 1), ["a1", "", ""]); // A1,A2,A3=a1,,
+            assert_eq!(shown(model, 2), ["5", "10", "15"]); // B1,B2,B3=5,10,15
+            let index = &model.get_model().workbook.worksheets[0].index;
+            assert_eq!((index.rows.len(), index.cols.len()), (3, 2));
+        }
+
+        b.redo().unwrap(); // redo A2=7
+        a.apply_external_diffs(&b.flush_send_queue()).unwrap();
+        for model in [&a, &b] {
+            assert_eq!(shown(model, 1), ["a1", "7", ""]); // A1,A2,A3=a1,7,
+            assert_eq!(shown(model, 2), ["5", "10", "15"]); // B1,B2,B3=5,10,15
+        }
+        assert_eq!(b.get_model().workbook, a.get_model().workbook);
+    }
+
+    #[test]
+    fn undo_of_a_user_insert_takes_the_rows_back() {
+        let mut a = UserModel::<Stable>::from_model(CollabModel::new(1));
+        let mut b = UserModel::<Stable>::from_model(CollabModel::new(2));
+        a.new_sheet().unwrap();
+        for row in 1..=3 {
+            a.set_user_input(0, row, 1, &format!("{row}")).unwrap(); // A1,A2,A3=1,2,3
+        }
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+
+        fn shown(model: &UserModel<'static, Stable>) -> Vec<String> {
+            (1..=5)
+                .map(|row| model.get_formatted_cell_value(0, row, 1).unwrap())
+                .collect()
+        }
+        a.insert_rows(0, 2, 2).unwrap(); // between rows 1 and 2
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        for model in [&a, &b] {
+            assert_eq!(shown(model), ["1", "", "", "2", "3"]); // 2 empty rows inserted by A
+            assert_eq!(model.get_model().workbook.worksheets[0].index.rows.len(), 5);
+        }
+
+        a.undo().unwrap(); // undo insert 2 rows
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        for model in [&a, &b] {
+            // we undo A insert 2 rows - this should destroy them (they are non-virtual)
+            assert_eq!(shown(model), ["1", "2", "3", "", ""]);
+            assert_eq!(model.get_model().workbook.worksheets[0].index.rows.len(), 3);
+        }
+        assert_eq!(b.get_model().workbook, a.get_model().workbook);
+    }
+
+    /// Rows inserted past the last one are the author's like any other, so undo takes them back.
+    /// The rows it had to materialize on the way are virtual, and stay.
+    #[test]
+    fn undo_of_an_insert_past_the_tail_takes_the_rows_back() {
+        use crate::collab::fractional_index::virtual_ordinal;
+
+        let mut a = UserModel::<Stable>::from_model(CollabModel::new(1));
+        let mut b = UserModel::<Stable>::from_model(CollabModel::new(2));
+        a.new_sheet().unwrap();
+        a.set_user_input(0, 1, 1, "1").unwrap(); // A1=1
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+
+        fn rows(model: &UserModel<'static, Stable>) -> Vec<Option<u32>> {
+            let index = &model.get_model().workbook.worksheets[0].index.rows;
+            index.view().map(virtual_ordinal).collect()
+        }
+        a.insert_rows(0, 5, 2).unwrap(); // rows 5 and 6, past the only row
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        for model in [&a, &b] {
+            // Rows 2 to 4 are materialized, 5 and 6 inserted.
+            assert_eq!(
+                rows(model),
+                [Some(1), Some(2), Some(3), Some(4), None, None]
+            );
+        }
+
+        a.undo().unwrap();
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        for model in [&a, &b] {
+            assert_eq!(rows(model), [Some(1), Some(2), Some(3), Some(4)]);
+            assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+        }
+
+        a.redo().unwrap();
+        b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        for model in [&a, &b] {
+            assert_eq!(
+                rows(model),
+                [Some(1), Some(2), Some(3), Some(4), None, None]
+            );
+        }
+        assert_eq!(b.get_model().workbook, a.get_model().workbook);
+    }
+
+    /// An insert means the same past the last row as inside the sheet: what a peer wrote at that
+    /// row meanwhile moves down with it.
+    #[test]
+    fn insert_past_the_tail_displaces_a_concurrent_write() {
+        fn execute(rows_before: i32) {
+            let mut a = UserModel::<Stable>::from_model(CollabModel::new(1));
+            let mut b = UserModel::<Stable>::from_model(CollabModel::new(2));
+            a.new_sheet().unwrap();
+            for row in 1..=rows_before {
+                a.set_user_input(0, row, 1, &format!("{row}")).unwrap();
+            }
+            b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+
+            a.insert_rows(0, 5, 2).unwrap(); // A: two rows above row 5
+            b.set_user_input(0, 5, 1, "b5").unwrap(); // B: A5=b5
+            let (from_a, from_b) = (a.flush_send_queue(), b.flush_send_queue());
+            b.apply_external_diffs(&from_a).unwrap();
+            a.apply_external_diffs(&from_b).unwrap();
+
+            for model in [&a, &b] {
+                let shown: Vec<String> = (5..=7)
+                    .map(|row| model.get_formatted_cell_value(0, row, 1).unwrap())
+                    .collect();
+                assert_eq!(shown, ["", "", "b5"], "rows before: {rows_before}");
+            }
+            assert_eq!(
+                b.get_model().workbook,
+                a.get_model().workbook,
+                "rows before: {rows_before}"
+            );
+        }
+
+        execute(6); // inside the sheet
+        execute(4); // right after the last row
+        execute(1); // well past it
     }
 
     #[test]

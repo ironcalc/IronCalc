@@ -439,6 +439,10 @@ pub trait Position: sealed::Sealed + Sized + Clone {
     ) -> Result<(), String>;
     /// Drops every spilled cell of the sheet, before a full re-evaluation rebuilds them.
     fn drop_spills(_sheet: &mut Worksheet<Self>) {}
+    /// Whether a CSE array's covered cells are derived like a dynamic spill:
+    /// - `false` for Ordinal
+    /// - `true` for Stable
+    const CSE_SPILLS: bool = false;
 
     /// The AST the formula interned at `index` on `sheet` is *shown* as:
     /// 1. For [Ordinal] is pretty much identity function.

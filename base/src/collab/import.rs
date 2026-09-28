@@ -19,8 +19,8 @@ use crate::expressions::types::CellReferenceRC;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::types::{
-    Cell, Col, Comment, MergedCell, Ordinal, Position, RangeRef, Row, SheetData, StyleIncludes,
-    Styles, Workbook, Worksheet,
+    ArrayKind, Cell, Col, Comment, MergedCell, Ordinal, Position, RangeRef, Row, SheetData,
+    StyleIncludes, Styles, Workbook, Worksheet,
 };
 
 /// How far the sheet reaches on each axis.
@@ -313,16 +313,19 @@ impl CollabModel<'static> {
             let id = model.workbook.worksheets[i].sheet_id;
             let mut plan = MintPlan::default();
             let mut writes = Vec::new();
-            // A CSE anchor comes over as a dynamic one: stable addressing has no CSE arrays.
+            // An array anchor keeps its kind, and a CSE one its declared extent (`None` for a plain
+            // formula).
             let formulas = ws
                 .sheet_data
                 .cells()
                 .filter_map(|(row, column, cell)| match cell {
-                    Cell::CellFormula { f, .. } => Some((row, column, *f, false)),
-                    Cell::ArrayFormula { f, .. } => Some((row, column, *f, true)),
+                    Cell::CellFormula { f, .. } => Some((row, column, *f, None)),
+                    Cell::ArrayFormula { f, kind, r, .. } => {
+                        Some((row, column, *f, Some((kind.clone(), *r))))
+                    }
                     _ => None,
                 });
-            for (row, column, f, is_array) in formulas {
+            for (row, column, f, array) in formulas {
                 let Some(text) = ws.shared_formulas.get(f as usize).cloned() else {
                     continue;
                 };
@@ -330,10 +333,14 @@ impl CollabModel<'static> {
                 let bound = model
                     .bind_formula(&node, sheet, row, column, &mut plan)
                     .map_err(|err| format!("Invalid formula \"{text}\": {err}"))?;
-                let value = if is_array {
-                    CellInput::Array(bound)
-                } else {
-                    CellInput::Formula(bound)
+                let value = match array {
+                    None => CellInput::Formula(bound),
+                    Some((ArrayKind::Dynamic, _)) => CellInput::Array(bound),
+                    Some((ArrayKind::Cse, (width, height))) => CellInput::Cse {
+                        formula: bound,
+                        width,
+                        height,
+                    },
                 };
                 writes.push(Patch::SetCellValue {
                     sheet: id,
@@ -981,5 +988,29 @@ mod test {
             assert!(!a3.font.b && !a3.font.i);
             assert_eq!(a3.fill.color, strong.fill.color);
         }
+    }
+
+    #[test]
+    fn cse_array_imports_as_cse() {
+        let mut m = Model::new_empty("import", "en", "UTC", "en").unwrap();
+        for row in 1..=3 {
+            m.set_user_input(0, row, 2, format!("{}", row * 5)).unwrap(); // B1:B3=5,10,15
+        }
+        m.set_user_array_formula(0, 1, 1, 1, 3, "=B1:B3*2").unwrap(); // A1:A3 (CSE)
+        m.evaluate();
+
+        let mut a = CollabModel::from_workbook_with_session(m.workbook.clone(), "en", 1).unwrap();
+        a.evaluate();
+        compare(&m, &a, 3, 2, "import");
+        assert!(matches!(
+            a.workbook.worksheets[0].cell(1, 1),
+            Some(Cell::ArrayFormula {
+                kind: ArrayKind::Cse,
+                r: (1, 3),
+                ..
+            })
+        ));
+        assert_eq!(a.get_formatted_cell_value(0, 3, 1).unwrap(), "30"); // A3=30
+        assert!(a.workbook.worksheets[0].stored_cell(3, 1).is_none());
     }
 }

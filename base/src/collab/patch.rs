@@ -42,7 +42,7 @@
 
 use crate::cf_types::CfRule;
 use crate::collab::formula::StableFormula;
-use crate::collab::fractional_index::FractionalKey;
+use crate::collab::fractional_index::{virtual_ordinal, FractionalKey};
 use crate::collab::log::Timestamp;
 use crate::collab::model::{Stable, StableCellAddress, StableLink, StableRange};
 use crate::collab::DynError;
@@ -95,12 +95,23 @@ pub fn decode_patches(bytes: &[u8]) -> Result<Vec<Patch>, DynError> {
 /// matching delete, and a delete into the matching insert followed by restores of the snapshot's
 /// state and cells. What does not, and is dropped:
 ///
+/// - an insert of [virtual keys](virtual_ordinal): those are not the author's. Every replica
+///   reaching that far mints the same ones, so a peer may hold content under them that this
+///   replica has not seen, and deleting them would take it along. They stay, empty,
 /// - `DeleteSheet` with no [`SheetRestore`] captured — a user-initiated delete still takes no
 ///   snapshot, so only the one an `AddSheet` inverted into puts its sheet back,
 /// - anything whose `prev` came off the wire, where it decodes as the default.
 ///
 /// Content restores replay at the stamp they were captured with, via the `ts` field, so a
 /// concurrent newer edit to a restored cell survives the undo.
+/// The keys of an insert its author minted, which are the ones its inverse may delete.
+fn inserted_by_a_session(keys: &[FractionalKey]) -> Vec<FractionalKey> {
+    keys.iter()
+        .filter(|key| virtual_ordinal(key).is_none()) // non-virtual keys
+        .cloned()
+        .collect()
+}
+
 pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
     let mut out = Vec::new();
     for patch in patches.iter().rev() {
@@ -135,34 +146,46 @@ pub fn invert_patches(patches: &[Patch]) -> Vec<Patch> {
                     });
                 }
             }
-            Patch::InsertRows { sheet, keys } => out.push(Patch::DeleteRows {
-                sheet: *sheet,
-                keys: keys.clone(),
-                prev: keys
-                    .iter()
-                    .map(|k| RowSnapshot {
-                        key: k.clone(),
-                        state: RowState::default(),
-                        props: Vec::new(),
-                        cell_values: Vec::new(),
-                        cell_styles: Vec::new(),
-                    })
-                    .collect(),
-            }),
-            Patch::InsertColumns { sheet, keys } => out.push(Patch::DeleteColumns {
-                sheet: *sheet,
-                keys: keys.clone(),
-                prev: keys
-                    .iter()
-                    .map(|k| ColumnSnapshot {
-                        key: k.clone(),
-                        state: ColState::default(),
-                        props: Vec::new(),
-                        cell_values: Vec::new(),
-                        cell_styles: Vec::new(),
-                    })
-                    .collect(),
-            }),
+            Patch::InsertRows { sheet, keys } => {
+                let keys = inserted_by_a_session(keys);
+                if keys.is_empty() {
+                    continue;
+                }
+                out.push(Patch::DeleteRows {
+                    sheet: *sheet,
+                    prev: keys
+                        .iter()
+                        .map(|k| RowSnapshot {
+                            key: k.clone(),
+                            state: RowState::default(),
+                            props: Vec::new(),
+                            cell_values: Vec::new(),
+                            cell_styles: Vec::new(),
+                        })
+                        .collect(),
+                    keys,
+                })
+            }
+            Patch::InsertColumns { sheet, keys } => {
+                let keys = inserted_by_a_session(keys);
+                if keys.is_empty() {
+                    continue;
+                }
+                out.push(Patch::DeleteColumns {
+                    sheet: *sheet,
+                    prev: keys
+                        .iter()
+                        .map(|k| ColumnSnapshot {
+                            key: k.clone(),
+                            state: ColState::default(),
+                            props: Vec::new(),
+                            cell_values: Vec::new(),
+                            cell_styles: Vec::new(),
+                        })
+                        .collect(),
+                    keys,
+                })
+            }
             Patch::SetRowProperty {
                 sheet,
                 row,
@@ -1364,6 +1387,13 @@ pub enum CellInput {
     Error(Error),
     Formula(StableFormula),
     Array(StableFormula),
+    /// A CSE (legacy) array anchor. Its extent is declared by the author rather than computed, so
+    /// it travels with the formula; the covered cells are derived like a dynamic spill.
+    Cse {
+        formula: StableFormula,
+        width: i32,
+        height: i32,
+    },
 }
 
 #[cfg(test)]
@@ -1483,6 +1513,17 @@ mod test {
                 sheet: 7,
                 at: (key(1), key(3)),
                 value: Some(CellInput::Array(formula())),
+                ts: None,
+                prev: Box::default(),
+            },
+            Patch::SetCellValue {
+                sheet: 7,
+                at: (key(1), key(3)),
+                value: Some(CellInput::Cse {
+                    formula: formula(),
+                    width: 2,
+                    height: 3,
+                }),
                 ts: None,
                 prev: Box::default(),
             },
@@ -1644,6 +1685,55 @@ mod test {
                 prev: None,
             },
         ]
+    }
+
+    #[test]
+    fn invert_keeps_virtual_keys() {
+        use crate::collab::fractional_index::virtual_key;
+
+        // non-virtual key creator
+        let session = |byte: u8| FractionalKey::from([0, 0, byte, 0, 0, 0, 1].as_slice());
+        // returns keys of columns and rows to be deleted by undo
+        let deleted = |patches: &[Patch]| -> Vec<Vec<FractionalKey>> {
+            invert_patches(patches)
+                .into_iter()
+                .map(|patch| match patch {
+                    Patch::DeleteRows { keys, prev, .. } => {
+                        assert_eq!(prev.len(), keys.len());
+                        keys
+                    }
+                    Patch::DeleteColumns { keys, prev, .. } => {
+                        assert_eq!(prev.len(), keys.len());
+                        keys
+                    }
+                    other => panic!("wrong variant: {other:?}"),
+                })
+                .collect()
+        };
+        let insert = |keys: Vec<FractionalKey>| {
+            [
+                Patch::InsertRows {
+                    sheet: 7,
+                    keys: keys.clone(),
+                },
+                Patch::InsertColumns { sheet: 7, keys },
+            ]
+        };
+
+        // session produces non-virtual keys
+        assert!(virtual_ordinal(&session(3)).is_none());
+        // undo over virtual keys returns no action
+        assert!(deleted(&insert(vec![virtual_key(1), virtual_key(2)])).is_empty());
+        // non-virtual keys can be undone
+        assert_eq!(
+            deleted(&insert(vec![session(3), session(5)])),
+            [[session(3), session(5)], [session(3), session(5)]]
+        );
+        // undo on mix of virtual and non-virtual keys returns only non-virtual ones
+        assert_eq!(
+            deleted(&insert(vec![virtual_key(1), session(3), virtual_key(2)])),
+            [[session(3)], [session(3)]]
+        );
     }
 
     #[test]

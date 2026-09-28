@@ -31,7 +31,8 @@ use crate::collab::patch::{
 };
 use crate::collab::DynError;
 use crate::constants::{
-    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
+    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW,
+    ROW_HEIGHT_FACTOR,
 };
 use crate::expressions::parser::stringify::to_english_string;
 use crate::expressions::parser::{static_analysis::run_static_analysis_on_node, Node};
@@ -340,6 +341,18 @@ fn build_cell(
             s: style,
             r: (1, 1),
             kind: ArrayKind::Dynamic,
+            v: FormulaValue::Unevaluated,
+        },
+        // A nonsensical extent from the wire is clamped to the grid rather than trusted.
+        CellInput::Cse {
+            formula,
+            width,
+            height,
+        } => Cell::ArrayFormula {
+            f: intern_formula(&mut sheet.shared_formulas, formula),
+            s: style,
+            r: ((*width).clamp(1, LAST_COLUMN), (*height).clamp(1, LAST_ROW)),
+            kind: ArrayKind::Cse,
             v: FormulaValue::Unevaluated,
         },
     }
@@ -1465,7 +1478,10 @@ impl CollabModel<'_> {
         put_cell(sheet, at, cell);
         // use [CollabSession::unresolved] to remember the names of object that couldn't be mapped
         // to their IDs
-        if let CellInput::Formula(formula) | CellInput::Array(formula) = value {
+        if let CellInput::Formula(formula)
+        | CellInput::Array(formula)
+        | CellInput::Cse { formula, .. } = value
+        {
             let id = self.workbook.worksheets[i].sheet_id;
             for name in formula.text_names() {
                 self.local

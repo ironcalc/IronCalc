@@ -2332,8 +2332,10 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
     /// Undoes the last local action and evaluates the model if needed.
     pub fn undo(&mut self) -> Result<(), String> {
         if let Some(step) = self.state.undo_stack.pop() {
-            self.model
-                .commit_local(crate::collab::patch::invert_patches(&step));
+            let inverse = crate::collab::patch::invert_patches(&step);
+            if !inverse.is_empty() {
+                self.model.commit_local(inverse);
+            }
             self.model.reconcile_merges();
             self.state.redo_stack.push(step);
             self.evaluate_if_not_paused();
@@ -2960,8 +2962,12 @@ impl<'a> UserModel<'a, crate::collab::model::Stable> {
         height: i32,
         formula: &str,
     ) -> Result<(), String> {
-        self.model
-            .set_user_array_formula(sheet, row, column, width, height, formula)
+        self.tracked(|s| {
+            s.model
+                .set_user_array_formula(sheet, row, column, width, height, formula)
+        })?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Returns all Excel built-in named styles as `(name, Style)` pairs.

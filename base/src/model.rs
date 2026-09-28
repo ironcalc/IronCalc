@@ -938,6 +938,37 @@ impl<'a, A: Position> Model<'a, A> {
         Some(value.clone())
     }
 
+    /// Whether something other than the anchor's own spill sits in the `width` × `height` range
+    /// anchored at (`row`, `column`), so the array cannot spill into it.
+    fn spill_blocked(&self, sheet: u32, row: i32, column: i32, width: i32, height: i32) -> bool {
+        let worksheet = &self.workbook.worksheets[sheet as usize];
+        for r in row..row + height {
+            for c in column..column + width {
+                if r == row && c == column {
+                    continue;
+                }
+                // Merged cells always block spilling.
+                if worksheet.merged_range_containing(r, c).is_some() {
+                    return true;
+                }
+                // A cell blocks spilling only if it is occupied by something other than
+                // an empty cell or a spill cell that already belongs to this formula.
+                let blocking = worksheet
+                    .cell(r, c)
+                    .map(|cell| match cell {
+                        Cell::EmptyCell { .. } => false,
+                        Cell::SpillCell { a, .. } if *a == (row, column) => false,
+                        _ => true,
+                    })
+                    .unwrap_or(false);
+                if blocking {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Sets `result` in the formula cell at `cell_reference`, which `cell`
     /// describes (see `FormulaCell`)
     /// If the result is an array it will spill over other cells
@@ -954,6 +985,42 @@ impl<'a, A: Position> Model<'a, A> {
         let original_range = cell.array;
         let s = cell.s;
         let formula = cell.f;
+        // A blocked CSE range shows #SPILL! on the anchor alone and keeps its declared extent,
+        // whatever the result: sent down the scalar path, the error would fill the covered cells.
+        if let Some((false, (width, height))) = original_range {
+            if A::CSE_SPILLS
+                && (row + height - 1 > LAST_ROW
+                    || column + width - 1 > LAST_COLUMN
+                    || self.spill_blocked(sheet, row, column, width, height))
+            {
+                let o = self
+                    .cell_reference_to_string(&cell_reference)
+                    .unwrap_or_default();
+                let anchor = Cell::ArrayFormula {
+                    f: formula,
+                    s,
+                    r: (width, height),
+                    kind: ArrayKind::Cse,
+                    v: FormulaValue::Error {
+                        ei: Error::SPILL,
+                        o,
+                        m: "Cannot spill array result".to_string(),
+                    },
+                };
+                return self.workbook.worksheets[sheet as usize].update_cell(row, column, anchor);
+            }
+            // Where the covered cells are derived, writing them can contradict a read made
+            // earlier in the pass, as a dynamic spill does: the pass restarts with the anchor first.
+            if A::CSE_SPILLS {
+                let writes: Vec<CellKey> = (row..row + height)
+                    .flat_map(|r| (column..column + width).map(move |c| (sheet, r, c)))
+                    .filter(|&(_, r, c)| (r, c) != (row, column))
+                    .collect();
+                if self.spill_contradicts_a_read(cell_reference, &writes, &[]) {
+                    return Ok(());
+                }
+            }
+        }
         // Handle array results separately: they always return early, writing all cells
         // themselves. By dispatching here we avoid needing an unreachable arm in the
         // `new_cell` match below.
@@ -1024,7 +1091,12 @@ impl<'a, A: Position> Model<'a, A> {
                             };
                             // The cells are created on demand: a structural
                             // operation may have moved the array without them.
-                            self.workbook.worksheets[sheet as usize].update_cell(r, c, new_cell)?;
+                            let worksheet = &mut self.workbook.worksheets[sheet as usize];
+                            if r == row && c == column {
+                                worksheet.update_cell(r, c, new_cell)?;
+                            } else {
+                                worksheet.write_spill(r, c, new_cell)?;
+                            }
                         }
                     }
                     // All cells (anchor + spills) have been written above.
@@ -1147,7 +1219,7 @@ impl<'a, A: Position> Model<'a, A> {
                         continue;
                     }
                     let existing_style = ws.get_style(r, c);
-                    ws.update_cell(
+                    ws.write_spill(
                         r,
                         c,
                         Cell::SpillCell {

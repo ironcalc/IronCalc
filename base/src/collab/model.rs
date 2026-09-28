@@ -53,6 +53,8 @@ impl Position for Stable {
     type Formula = StableFormula;
     type Link = StableLink;
 
+    const CSE_SPILLS: bool = true;
+
     fn row_ordinal(idx: &SheetIndexes, key: &FractionalKey) -> Option<i32> {
         idx.rows.position_of(key).map(|p| p as i32 + 1)
     }

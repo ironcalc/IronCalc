@@ -169,6 +169,30 @@ impl FractionalIndex {
             .collect()
     }
 
+    /// The keys an insert of `count` elements before position `at` (0-based) takes, in order.
+    /// If `at` points past the threshold of materialized keys, a series of virtual keys will be
+    /// returned, followed by a `count` of session-specific fractional keys.
+    pub fn plan_insert(&self, at: usize, count: usize) -> Vec<FractionalKey> {
+        let mut keys = self.plan_virtual(at);
+        let run: Vec<FractionalKey> = if at < self.len() {
+            self.create_keys(at, count).collect()
+        } else {
+            let from = self.watermark.max(self.implied_watermark());
+            let next = virtual_key(from + keys.len() as u32 + 1);
+            let lo: &[u8] = match (keys.last(), self.active.last()) {
+                (Some(key), _) => key.position(),
+                (None, Some(e)) => e.key.position(),
+                (None, None) => &[],
+            };
+            CreateKeys::between(self, lo, next.position(), count).collect()
+        };
+        if run.len() != count {
+            return Vec::new(); // the gap cannot name the run
+        }
+        keys.extend(run);
+        keys
+    }
+
     /// The ordinal the highest *filed* position already stands for. A virtual key has to sort past
     /// every key in the index, and [Self::watermark] only counts the ones virtual mints handed out.
     fn implied_watermark(&self) -> u32 {
@@ -178,8 +202,9 @@ impl FractionalIndex {
             (None, Some(m)) => m.key.position(),
             (None, None) => &[],
         };
+        let prefix = highest.len().min(3); // virtual position is three bytes
         let mut buf = [0, 0, 0, 0];
-        buf[1..(1 + highest.len())].copy_from_slice(highest);
+        buf[1..(1 + prefix)].copy_from_slice(&highest[..prefix]);
         u32::from_be_bytes(buf) / 2
     }
 
@@ -1198,6 +1223,41 @@ mod test {
             .filter(|e| fi.position_of(&e.key).is_none())
             .map(|e| e.key.clone())
             .collect()
+    }
+
+    #[test]
+    fn plan_insert_past_the_tail() {
+        let (mut fi, keys) = virtual_index(2); // [v1, v2]
+        let ordinals = |keys: &[FractionalKey]| -> Vec<Option<u32>> {
+            keys.iter().map(virtual_ordinal).collect()
+        };
+
+        // Inside the index: nothing to materialize
+        let inside = fi.plan_insert(1, 2); // [v1, s1, s2, v2]
+        assert_eq!(ordinals(&inside), [None, None]);
+        assert!(keys[0] < inside[0] && inside[0] < inside[1] && inside[1] < keys[1]);
+
+        // Right after the last element: nothing to materialize either.
+        let at_the_end = fi.plan_insert(2, 1); // [v1, v2, s1]
+        assert_eq!(ordinals(&at_the_end), [None]);
+        assert!(keys[1] < at_the_end[0] && at_the_end[0] < virtual_key(3));
+
+        // Two elements before position 4: rows 3 and 4 are materialized
+        let past = fi.plan_insert(4, 2); // [v1, v2, v3, v4, s1, s2]
+        assert_eq!(ordinals(&past), [Some(3), Some(4), None, None]);
+        assert!(virtual_key(4) < past[2] && past[2] < past[3] && past[3] < virtual_key(5));
+
+        for key in &past {
+            fi.insert_key_at(key.clone(), at(2));
+        }
+        // materialized: [v1, v2, v3, v4, s1, s2]
+        assert_eq!(
+            ordinals(&identity_order(&fi)),
+            [Some(1), Some(2), Some(3), Some(4), None, None]
+        );
+        // The run's keys are longer than a virtual one, and the last in the index: the next
+        // virtual key still sorts past them, and is the one the run was kept below.
+        assert_eq!(fi.plan_virtual(7), [virtual_key(5)]);
     }
 
     /// A delete is invertible: an insert of the same key stamped past it puts the element back where

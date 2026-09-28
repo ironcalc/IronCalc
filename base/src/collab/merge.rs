@@ -505,15 +505,20 @@ mod tests {
         let mut a = UserModel::new_empty_with_session("model", "en", "UTC", "en", 1).unwrap();
         let mut b = UserModel::new_empty_with_session("model", "en", "UTC", "en", 2).unwrap();
         b.apply_external_diffs(&a.flush_send_queue()).unwrap();
-        let rows_before = a.model.workbook.worksheets[0].index.rows.len();
-
         a.merge_cells(&area(20, 1, 2, 2)).unwrap();
         b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+        let rows_reached = a.model.workbook.worksheets[0].index.rows.len();
+        assert_eq!(rows_reached, 21);
+
         a.undo().unwrap();
         b.apply_external_diffs(&a.flush_send_queue()).unwrap();
         for m in [&a, &b] {
             assert!(m.get_merged_cells(0).unwrap().is_empty());
-            assert_eq!(m.model.workbook.worksheets[0].index.rows.len(), rows_before);
+            // The rows the merge materialized are virtual, anybody's: undo leaves them, empty.
+            assert_eq!(
+                m.model.workbook.worksheets[0].index.rows.len(),
+                rows_reached
+            );
         }
     }
 
