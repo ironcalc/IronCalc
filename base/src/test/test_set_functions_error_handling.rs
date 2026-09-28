@@ -350,6 +350,8 @@ fn test_worksheet_set_cell_with_error() {
     assert_eq!(update_result, Err("Incorrect row or column".to_string()));
 }
 
+// Writes a raw cell through the ordinal worksheet; `collab-test` has no equivalent.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_cell_clear_contents() {
     let mut model = new_empty_model();

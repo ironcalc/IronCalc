@@ -7,6 +7,8 @@ use crate::test::util::TestModel;
 #[cfg(not(feature = "collab-test"))]
 use crate::{constants::DEFAULT_ROW_HEIGHT, types::Col};
 
+// Expects an overflow past the last column, a bound `collab-test`'s column keys do not have.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_insert_columns() {
     let mut model = new_empty_model();

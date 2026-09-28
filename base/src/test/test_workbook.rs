@@ -21,6 +21,8 @@ fn workbook_worksheets_info() {
     );
 }
 
+// Sheet ids are session-dependent hashes in `collab-test`, not ordinals.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn workbook_worksheets_ids_and_names() {
     let mut model = new_empty_model();

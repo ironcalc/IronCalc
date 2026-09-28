@@ -37,6 +37,9 @@ fn french() {
     assert_eq!(model._get_text("D1"), *"FAUX");
 }
 
+// Input is normalized through English text in `collab-test`, where an English builtin's name
+// typed under another language binds as that builtin.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn spanish() {
     let mut model = new_empty_model();
