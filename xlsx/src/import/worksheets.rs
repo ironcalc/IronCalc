@@ -3,7 +3,11 @@
 use ironcalc_base::expressions::parser::{
     new_parser_english, static_analysis::add_implicit_intersection, Parser,
 };
-use std::{collections::HashMap, io::Read, num::ParseIntError};
+use std::{
+    collections::HashMap,
+    io::{BufReader, Read},
+    num::ParseIntError,
+};
 
 use ironcalc_base::{
     expressions::{
@@ -14,7 +18,7 @@ use ironcalc_base::{
     },
     types::{
         ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, Link, MergedCell,
-        Row, SheetData, SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
+        SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
 use roxmltree::Node;
@@ -25,6 +29,7 @@ use crate::error::XlsxError;
 use super::{
     conditional_formatting::load_conditional_formatting,
     shared_strings::decode_xlsx_escapes,
+    sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
     util::{get_attribute, get_bool_false, get_color, get_number},
 };
@@ -69,7 +74,7 @@ impl WorkbookXML {
     }
 }
 
-fn parse_cell_reference(cell: &str) -> Result<(i32, i32), String> {
+pub(super) fn parse_cell_reference(cell: &str) -> Result<(i32, i32), String> {
     if let Some(r) = parse_reference_a1(cell) {
         Ok((r.row, r.column))
     } else {
@@ -77,7 +82,7 @@ fn parse_cell_reference(cell: &str) -> Result<(i32, i32), String> {
     }
 }
 
-fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
+pub(super) fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
     let parts: Vec<&str> = range.split(':').collect();
     if parts.len() == 1 {
         if let Some(r) = parse_reference_a1(parts[0]) {
@@ -316,7 +321,7 @@ fn parse_reference(s: &str) -> Result<CellReferenceRC, ParseReferenceError> {
     })
 }
 
-fn from_a1_to_rc(
+pub(super) fn from_a1_to_rc(
     formula: String,
     parser: &mut Parser,
     context: String,
@@ -336,7 +341,7 @@ fn from_a1_to_rc(
 /// adding it to them if it is new. `lookup` maps each formula to its index, so
 /// that a sheet with many different formulas is not searched from the start
 /// for every one of them; placeholders are not in it.
-fn find_or_add_formula(
+pub(super) fn find_or_add_formula(
     formula: String,
     shared_formulas: &mut Vec<String>,
     lookup: &mut HashMap<String, i32>,
@@ -350,7 +355,7 @@ fn find_or_add_formula(
     index
 }
 
-enum CellArrayKind {
+pub(super) enum CellArrayKind {
     None,
     DynamicArray(i32, i32),
     ArrayFormula(i32, i32),
@@ -358,7 +363,7 @@ enum CellArrayKind {
 
 // FIXME
 #[allow(clippy::too_many_arguments)]
-fn get_cell_from_excel(
+pub(super) fn get_cell_from_excel(
     cell_value: Option<&str>,
     value_metadata: Option<&str>,
     cell_type: &str,
@@ -871,20 +876,30 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let sheet_id = settings.id;
     let state = &settings.state;
 
-    let mut file = archive.by_name(path)?;
-    let mut text = String::new();
-    file.read_to_string(&mut text)?;
-    let doc = roxmltree::Document::parse(&text)?;
+    let file = archive.by_name(path)?;
+    // One parser for the whole sheet: building one clones the defined names
+    // and tables, which is far too much to do once per formula cell.
+    let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables.clone());
+    // The cells are streamed; what is left of the worksheet is small and is
+    // read as a tree.
+    let SheetDataXml {
+        skeleton,
+        mut sheet_data,
+        rows,
+        shared_formulas,
+    } = read_sheet_data(
+        BufReader::new(file),
+        sheet_name,
+        &mut parser,
+        shared_strings,
+    )?;
+    let skeleton = String::from_utf8(skeleton)
+        .map_err(|error| XlsxError::Xml(format!("Worksheet is not valid UTF-8: {error}")))?;
+    let doc = roxmltree::Document::parse(&skeleton)?;
     let ws = doc
         .root()
         .first_child()
         .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
-    let mut shared_formulas = Vec::new();
-    // One parser for the whole sheet: building one clones the defined names
-    // and tables, which is far too much to do once per formula cell.
-    let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables.clone());
-    // Where each of them is, see `find_or_add_formula`
-    let mut formula_lookup: HashMap<String, i32> = HashMap::new();
 
     let dimension = load_dimension(ws);
 
@@ -892,364 +907,6 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let cols = load_columns(ws)?;
     let color = load_sheet_color(ws, theme)?;
-
-    // sheetData
-    // <row r="1" spans="1:15" x14ac:dyDescent="0.35">
-    //     <c r="A1" t="s">
-    //         <v>0</v>
-    //     </c>
-    //     <c r="D1">
-    //         <f>C1+1</f>
-    //     </c>
-    // </row>
-
-    // holds the row heights
-    let mut rows = Vec::new();
-    let mut sheet_data = SheetData::new();
-    let sheet_data_nodes = ws
-        .children()
-        .filter(|n| n.has_tag_name("sheetData"))
-        .collect::<Vec<Node>>()[0];
-
-    let default_row_height = 14.5;
-
-    // Map from the formula index in Excel to the index in IronCalc
-    let mut index_map = HashMap::new();
-
-    // Cells part of an array formula
-    let mut array_cell = HashMap::new();
-
-    for row in sheet_data_nodes.children() {
-        // This is the row number 1-indexed
-        let mut row_index = match get_attribute(&row, "r") {
-            Ok(s) => Some(s.parse::<i32>()?),
-            Err(_) => None,
-        };
-        // `spans` is not used in IronCalc at the moment (it's an optimization)
-        // let spans = row.attribute("spans");
-        // This is the height of the row
-        let has_height_attribute;
-        let height = match row.attribute("ht") {
-            Some(s) => {
-                has_height_attribute = true;
-                s.parse::<f64>().unwrap_or(default_row_height)
-            }
-            None => {
-                has_height_attribute = false;
-                default_row_height
-            }
-        };
-        let custom_height = get_bool_false(row, "customHeight");
-        // The height of the row is always the visible height of the row
-        // If custom_height is false that means the height was calculated automatically:
-        // for example because a cell has many lines or a larger font
-
-        let row_style = match row.attribute("s") {
-            Some(s) => s.parse::<i32>().unwrap_or(0),
-            None => 0,
-        };
-        let custom_format = get_bool_false(row, "customFormat");
-        let hidden = get_bool_false(row, "hidden");
-
-        if let Some(row_index) = row_index {
-            if custom_height || custom_format || row_style != 0 || has_height_attribute || hidden {
-                rows.push(Row {
-                    r: row_index,
-                    height,
-                    s: row_style,
-                    custom_height,
-                    custom_format,
-                    hidden,
-                });
-            }
-        }
-
-        // Unused attributes:
-        // * thickBot, thickTop, ph, collapsed, outlineLevel
-
-        let mut data_row = HashMap::new();
-
-        // 18.3.1.4 c (Cell)
-        // Child Elements:
-        // * v: Cell value
-        // * is: Rich Text Inline
-        // * f: Formula
-        // Attributes:
-        // r: reference. A1 style
-        // s: style index
-        // t: cell type
-        // cm: cell metadata (used for dynamic arrays)
-        // vm: value metadata (used for #SPILL! and #CALC! errors)
-        // ph: Show Phonetic, unused
-        for cell in row.children() {
-            let cell_ref = get_attribute(&cell, "r")?;
-            let (r_index, column_index) = parse_cell_reference(cell_ref).map_err(XlsxError::Xml)?;
-            // Update the row_index if it was not set before
-            if row_index.is_none() {
-                row_index = Some(r_index);
-            }
-
-            let value_metadata = cell.attribute("vm");
-
-            // We check the value "v" child.
-            let vs: Vec<Node> = cell.children().filter(|n| n.has_tag_name("v")).collect();
-            let cell_value = if vs.len() == 1 {
-                Some(vs[0].text().unwrap_or(""))
-            } else {
-                None
-            };
-
-            // <c r="A1" t="inlineStr">
-            //   <is>
-            //     <t>Hello, World!</t>
-            //   </is>
-            // </c>
-            let cell_rich_text_nodes: Vec<Node> =
-                cell.children().filter(|n| n.has_tag_name("is")).collect();
-            let cell_rich_text = if cell_rich_text_nodes.is_empty() {
-                None
-            } else {
-                let texts: Vec<String> = cell_rich_text_nodes[0]
-                    .descendants()
-                    .filter(|n| n.has_tag_name("t"))
-                    .filter_map(|n| n.text())
-                    .map(|s| s.to_string())
-                    .collect();
-
-                Some(texts.join(""))
-            };
-
-            let cell_metadata = cell.attribute("cm");
-            let is_dynamic_array = cell_metadata == Some("1");
-
-            // type, the default type being "n" for number
-            // If the cell does not have a value is an empty cell
-            let cell_type = match cell.attribute("t") {
-                Some(t) => t,
-                None => {
-                    if cell_value.is_none() {
-                        "empty"
-                    } else {
-                        "n"
-                    }
-                }
-            };
-
-            // style index, the default style is 0
-            let cell_style = match cell.attribute("s") {
-                Some(s) => s.parse::<i32>().unwrap_or(0),
-                None => 0,
-            };
-
-            // Check for formula
-            // In Excel some formulas are shared and some are not, but in IronCalc all formulas are shared
-            // A cell with a "non-shared" formula is like:
-            // <c r="E3">
-            //   <f>C2+1</f>
-            //   <v>3</v>
-            // </c>
-            // A cell with a shared formula will be either an "anchor" cell:
-            // <c r="D2">
-            //   <f t="shared" ref="D2:D3" si="0">C2+1</f>
-            //   <v>3</v>
-            // </c>
-            // Or a child cell:
-            // <c r="D3">
-            //   <f t="shared" si="0"/>
-            //   <v>4</v>
-            // </c>
-            // In IronCalc two cells have the same formula iff the R1C1 representation is the same
-            // TODO: This algorithm could end up with "repeated" shared formulas
-            //       We could solve that with a second transversal.
-
-            // In Excel a volatile spill formula might have an f element in the spilled cells.
-            // But it is not a shared formula. For example:
-            // <c r="A19" s="3" cm="1">
-            //   <f t="array" aca="1" ref="A19:C21" ca="1">_xlfn.RANDARRAY(3,3, 0, 100,TRUE)</f>
-            //   <v>52</v>
-            // </c>
-            // <c r="B19" s="3">
-            //   <f ca="1"/>
-            //   <v>20</v>
-            // </c>
-            // <c r="C19" s="3">
-            //   <f ca="1"/>
-            //   <v>41</v>
-            // </c>
-            // aca: Always Calculate Array
-            // ca: Calculate Always
-            // Those are hints Excel uses to always calculate volatiles
-            // We do not use those in IronCalc
-            let fs: Vec<Node> = cell.children().filter(|n| n.has_tag_name("f")).collect();
-            let mut formula_index = -1;
-            let mut array_kind = CellArrayKind::None;
-            if fs.len() == 1 {
-                // formula types:
-                // 18.18.6 ST_CellFormulaType (Formula Type)
-                // array (Array Formula) Formula is an array formula.
-                // dataTable (Table Formula) Formula is a data table formula.
-                // normal (Normal) Formula is a regular cell formula. (Default)
-                // shared (Shared Formula) Formula is part of a shared formula.
-                let formula_node = fs[0];
-                let mut formula_type = formula_node.attribute("t").unwrap_or("normal");
-                let formula_ref = formula_node.attribute("ref");
-                if formula_type == "normal"
-                    && formula_node.attribute("ca") == Some("1")
-                    && formula_node.text().is_none()
-                    && !formula_node.children().any(|n| n.is_element())
-                {
-                    // A daughter cell of a shared formula (<f t="shared" ca="1" si="1"/>) is
-                    // also empty and may carry ca="1"; only an untyped <f ca="1"/> is a
-                    // volatile spill placeholder.
-                    // This is a volatile formula that needs to be recalculated at each calculation.
-                    // exit the if statement
-                    // <f ca="1"/>
-                    formula_type = "hint-volatile";
-                }
-                match formula_type {
-                    "shared" => {
-                        // We have a shared formula
-                        let si = get_attribute(&formula_node, "si")?;
-                        let si = si.parse::<i32>()?;
-                        match formula_ref {
-                            Some(_) => {
-                                // It's the anchor cell. We do not use the ref attribute in IronCalc
-                                let formula = formula_node.text().unwrap_or("").to_string();
-                                let context = format!("{sheet_name}!{cell_ref}");
-                                let formula = from_a1_to_rc(formula, &mut parser, context, false)?;
-                                match index_map.get(&si) {
-                                    Some(index) => {
-                                        // The index for that formula already exists meaning we bumped into a daughter cell first:
-                                        // it holds a placeholder, which the formula replaces. (Inserting
-                                        // it there instead would move every formula after it, and the
-                                        // cells that already point at them would point at the wrong one.)
-                                        formula_index = *index;
-                                        formula_lookup
-                                            .entry(formula.clone())
-                                            .or_insert(formula_index);
-                                        if let Some(slot) =
-                                            shared_formulas.get_mut(formula_index as usize)
-                                        {
-                                            *slot = formula;
-                                        }
-                                    }
-                                    None => {
-                                        // We haven't met any of the daughter cells
-                                        // If the formula is already present that index is used
-                                        formula_index = find_or_add_formula(
-                                            formula,
-                                            &mut shared_formulas,
-                                            &mut formula_lookup,
-                                        );
-                                        index_map.insert(si, formula_index);
-                                    }
-                                }
-                            }
-                            None => {
-                                // It's a daughter cell
-                                match index_map.get(&si) {
-                                    Some(index) => {
-                                        formula_index = *index;
-                                    }
-                                    None => {
-                                        // Haven't bumped into the anchor cell yet. We insert a placeholder.
-                                        // Note that it is perfectly possible that the formula of the anchor cell
-                                        // is already in the set of array formulas. This will lead to the above mention duplicity.
-                                        // This is not a problem
-                                        let placeholder = "".to_string();
-                                        shared_formulas.push(placeholder);
-                                        formula_index = shared_formulas.len() as i32 - 1;
-                                        index_map.insert(si, formula_index);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    "dataTable" => {
-                        return Err(XlsxError::NotImplemented("data table formulas".to_string()));
-                    }
-                    "array" => {
-                        let range = match formula_ref {
-                            Some(r) => r,
-                            None => {
-                                return Err(XlsxError::Xml(
-                                    "Array formulas must have a ref attribute".to_string(),
-                                ))
-                            }
-                        };
-                        // The reference is the set of cell it spills into.
-                        let (row1, column1, row2, column2) = parse_range(range)
-                            .map_err(|_| XlsxError::Xml(format!("Invalid range: {}", range)))?;
-                        // (row1, colum1) has to be this cell. We need to mark all the other ones as part of the array formula
-                        if row1 != r_index || column1 != column_index {
-                            return Err(XlsxError::Xml(
-                                "The first cell of the range of an array formula must be the anchor cell".to_string(),
-                            ));
-                        }
-                        for r in row1..=row2 {
-                            for c in column1..=column2 {
-                                if r == row1 && c == column1 {
-                                    // skip the anchor cell
-                                    continue;
-                                }
-                                array_cell.insert((r, c), (r_index, column_index));
-                            }
-                        }
-                        if is_dynamic_array {
-                            array_kind =
-                                CellArrayKind::DynamicArray(column2 - column1 + 1, row2 - row1 + 1);
-                        } else {
-                            array_kind =
-                                CellArrayKind::ArrayFormula(column2 - column1 + 1, row2 - row1 + 1);
-                        }
-                        let formula = formula_node.text().unwrap_or("").to_string();
-                        let context = format!("{sheet_name}!{cell_ref}");
-                        let formula = from_a1_to_rc(formula, &mut parser, context, true)?;
-
-                        formula_index =
-                            find_or_add_formula(formula, &mut shared_formulas, &mut formula_lookup);
-                    }
-                    "normal" => {
-                        // Its a cell with a simple formula
-                        let formula = formula_node.text().unwrap_or("").to_string();
-                        let context = format!("{sheet_name}!{cell_ref}");
-                        let formula = from_a1_to_rc(formula, &mut parser, context, false)?;
-
-                        formula_index =
-                            find_or_add_formula(formula, &mut shared_formulas, &mut formula_lookup);
-                    }
-                    "hint-volatile" => {}
-                    _ => {
-                        return Err(XlsxError::Xml(format!(
-                            "Invalid formula type {formula_type:?}.",
-                        )));
-                    }
-                }
-            }
-            let anchor_cell = array_cell.get(&(r_index, column_index)).cloned();
-            let cell = get_cell_from_excel(
-                cell_value,
-                value_metadata,
-                cell_type,
-                cell_style,
-                formula_index,
-                sheet_name,
-                cell_ref,
-                shared_strings,
-                cell_rich_text,
-                anchor_cell,
-                array_kind,
-            );
-            data_row.insert(column_index, cell);
-        }
-        if let Some(row_index) = row_index {
-            sheet_data.set_row(row_index, data_row);
-        } else {
-            return Err(XlsxError::Xml(
-                "Row without a row index (r attribute)".to_string(),
-            ));
-        }
-    }
 
     let merged_cells = load_merge_cells(ws)?;
 

@@ -119,7 +119,13 @@ pub(super) fn get_color_indexed(
 /// `xsd:boolean` attributes with a schema default of `false` (e.g. `customHeight`, `wrapText`),
 /// callers pass `false`.
 fn get_bool_with_default(node: Node, s: &str, default: bool) -> bool {
-    match node.attribute(s) {
+    parse_bool_with_default(node.attribute(s), default)
+}
+
+/// The value of an `xsd:boolean` attribute, or `default` if it is absent or
+/// not a valid literal.
+pub(super) fn parse_bool_with_default(value: Option<&str>, default: bool) -> bool {
+    match value {
         Some(value) => {
             let value = value.trim();
             if value == "1" || value.eq_ignore_ascii_case("true") {
