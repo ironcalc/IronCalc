@@ -9,6 +9,7 @@ use std::{
     num::ParseIntError,
 };
 
+use super::xml::XmlNode;
 use ironcalc_base::{
     expressions::{
         parser::{stringify::to_rc_format, DefinedNameS},
@@ -21,7 +22,6 @@ use ironcalc_base::{
         SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
-use roxmltree::Node;
 use thiserror::Error;
 
 use crate::error::XlsxError;
@@ -116,12 +116,12 @@ mod test {
     }
 }
 
-fn load_dimension(ws: Node) -> String {
+fn load_dimension(ws: &XmlNode) -> String {
     // <dimension ref="A1:O18"/>
     let application_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("dimension"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     if application_nodes.len() == 1 {
         application_nodes[0]
             .attribute("ref")
@@ -132,7 +132,7 @@ fn load_dimension(ws: Node) -> String {
     }
 }
 
-fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
+fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
     // cols
     // <cols>
     //     <col min="5" max="5" width="38.26953125" customWidth="1"/>
@@ -143,14 +143,14 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
     let columns = ws
         .children()
         .filter(|n| n.has_tag_name("cols"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     if columns.len() == 1 {
         for col in columns[0].children() {
-            let min = get_attribute(&col, "min")?;
+            let min = get_attribute(col, "min")?;
             let min = min.parse::<i32>()?;
-            let max = get_attribute(&col, "max")?;
+            let max = get_attribute(col, "max")?;
             let max = max.parse::<i32>()?;
-            let width = get_attribute(&col, "width")?;
+            let width = get_attribute(col, "width")?;
             let width = width.parse::<f64>()?;
             let custom_width = get_bool_false(col, "customWidth");
             let hidden = get_bool_false(col, "hidden");
@@ -170,7 +170,7 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
     Ok(cols)
 }
 
-fn load_merge_cells(ws: Node) -> Result<Vec<MergedCell>, XlsxError> {
+fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {
     // 18.3.1.55 Merge Cells
     // <mergeCells count="1">
     //    <mergeCell ref="K7:L10"/>
@@ -182,13 +182,13 @@ fn load_merge_cells(ws: Node) -> Result<Vec<MergedCell>, XlsxError> {
     let merge_cells_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("mergeCells"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     if merge_cells_nodes.len() == 1 {
         for merge_cell in merge_cells_nodes[0]
             .children()
             .filter(|n| n.has_tag_name("mergeCell"))
         {
-            let reference = get_attribute(&merge_cell, "ref")?;
+            let reference = get_attribute(merge_cell, "ref")?;
             let Ok((row, column, last_row, last_column)) = parse_range(reference) else {
                 continue;
             };
@@ -214,7 +214,7 @@ fn load_merge_cells(ws: Node) -> Result<Vec<MergedCell>, XlsxError> {
     Ok(merged_cells)
 }
 
-fn load_sheet_color(ws: Node, theme: &Theme) -> Result<Color, XlsxError> {
+fn load_sheet_color(ws: &XmlNode, theme: &Theme) -> Result<Color, XlsxError> {
     // <sheetPr>
     //     <tabColor theme="5" tint="-0.249977111117893"/>
     // </sheetPr>
@@ -222,12 +222,12 @@ fn load_sheet_color(ws: Node, theme: &Theme) -> Result<Color, XlsxError> {
     let sheet_pr = ws
         .children()
         .filter(|n| n.has_tag_name("sheetPr"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     if sheet_pr.len() == 1 {
         let tabs = sheet_pr[0]
             .children()
             .filter(|n| n.has_tag_name("tabColor"))
-            .collect::<Vec<Node>>();
+            .collect::<Vec<&XmlNode>>();
         if tabs.len() == 1 {
             color = get_color(tabs[0], theme)?;
         }
@@ -240,18 +240,13 @@ fn load_comments<R: Read + std::io::Seek>(
     path: &str,
 ) -> Result<Vec<Comment>, XlsxError> {
     let mut comments = Vec::new();
-    let mut file = archive.by_name(path)?;
-    let mut text = String::new();
-    file.read_to_string(&mut text)?;
-    let doc = roxmltree::Document::parse(&text)?;
-    let ws = doc
-        .root()
-        .first_child()
-        .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
+    let file = archive.by_name(path)?;
+    let doc = XmlNode::parse(BufReader::new(file))?;
+    let ws = &doc;
     let comment_list = ws
         .children()
         .filter(|n| n.has_tag_name("commentList"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     if comment_list.len() == 1 {
         for comment in comment_list[0].children() {
             let text = comment
@@ -260,7 +255,7 @@ fn load_comments<R: Read + std::io::Seek>(
                 .map(|n| n.text().unwrap().to_string())
                 .collect::<Vec<String>>()
                 .join("");
-            let cell_ref = get_attribute(&comment, "ref")?.to_string();
+            let cell_ref = get_attribute(comment, "ref")?.to_string();
             // TODO: Read author_name from the list of authors
             let author_name = "".to_string();
             comments.push(Comment {
@@ -602,30 +597,25 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     if file.is_err() {
         return Ok((comments, hyperlinks));
     }
-    let mut text = String::new();
-    file.unwrap().read_to_string(&mut text)?;
-    let doc = roxmltree::Document::parse(&text)?;
+    let doc = XmlNode::parse(BufReader::new(file?))?;
 
     let rels = doc
-        .root()
-        .first_child()
-        .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?
         .children()
         .filter(|n| n.has_tag_name("Relationship"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     for rel in rels {
-        let t = get_attribute(&rel, "Type")?.to_string();
+        let t = get_attribute(rel, "Type")?.to_string();
         if t.ends_with("comments") {
-            let mut target = get_attribute(&rel, "Target")?.to_string();
+            let mut target = get_attribute(rel, "Target")?.to_string();
             // Target="../comments1.xlsx"
             target.replace_range(..2, v[0]);
             comments = load_comments(archive, &target)?;
         } else if t.ends_with("hyperlink") {
-            let id = get_attribute(&rel, "Id")?.to_string();
-            let target = get_attribute(&rel, "Target")?.to_string();
+            let id = get_attribute(rel, "Id")?.to_string();
+            let target = get_attribute(rel, "Target")?.to_string();
             hyperlinks.insert(id, target);
         } else if t.ends_with("table") {
-            let mut target = get_attribute(&rel, "Target")?.to_string();
+            let mut target = get_attribute(rel, "Target")?.to_string();
 
             let path = if let Some(p) = target.strip_prefix('/') {
                 p.to_string()
@@ -657,7 +647,7 @@ const MAX_HYPERLINK_RANGE_CELLS: i64 = 10_000;
 /// (`hyperlink_rels`), internal links have a `location` attribute instead.
 /// The `display` attribute is skipped: the displayed text is the content of the cell.
 fn load_hyperlinks(
-    ws: Node,
+    ws: &XmlNode,
     hyperlink_rels: &HashMap<String, String>,
 ) -> Result<HashMap<(i32, i32), Link>, XlsxError> {
     let mut links = HashMap::new();
@@ -665,17 +655,17 @@ fn load_hyperlinks(
         .children()
         .filter(|n| n.has_tag_name("hyperlinks"))
         .flat_map(|n| n.children().filter(|n| n.has_tag_name("hyperlink")))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
     for node in hyperlink_nodes {
-        let cell_ref = get_attribute(&node, "ref")?;
+        let cell_ref = get_attribute(node, "ref")?;
         // Although it is normally a single cell, the ref can be a range like "B2:C3"
         let (row_start, column_start, row_end, column_end) =
             parse_range(cell_ref).map_err(XlsxError::Xml)?;
         let tooltip = node.attribute("tooltip").map(str::to_string);
-        let rel_id = node.attribute((
+        let rel_id = node.attribute_ns(
             "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
             "id",
-        ));
+        );
         let link = match rel_id {
             Some(rel_id) => {
                 let target = match hyperlink_rels.get(rel_id) {
@@ -741,7 +731,7 @@ impl Default for SheetView {
     }
 }
 
-fn get_sheet_view(ws: Node) -> SheetView {
+fn get_sheet_view(ws: &XmlNode) -> SheetView {
     // <sheetViews>
     //   <sheetView workbookViewId="0">
     //     <selection activeCell="E10" sqref="E10"/>
@@ -771,7 +761,7 @@ fn get_sheet_view(ws: Node) -> SheetView {
     let sheet_views = ws
         .children()
         .filter(|n| n.has_tag_name("sheetViews"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
 
     // We are only expecting one `sheetViews` element. Otherwise return a default
     if sheet_views.len() != 1 {
@@ -781,7 +771,7 @@ fn get_sheet_view(ws: Node) -> SheetView {
     let sheet_view = sheet_views[0]
         .children()
         .filter(|n| n.has_tag_name("sheetView"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
 
     // We are only expecting one `sheetView` element. Otherwise return a default
     if sheet_view.len() != 1 {
@@ -795,7 +785,7 @@ fn get_sheet_view(ws: Node) -> SheetView {
     let pane = sheet_view
         .children()
         .filter(|n| n.has_tag_name("pane"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
 
     // 18.18.53 ST_PaneState (Pane State)
     // frozen, frozenSplit, split
@@ -811,7 +801,7 @@ fn get_sheet_view(ws: Node) -> SheetView {
     let selections = sheet_view
         .children()
         .filter(|n| n.has_tag_name("selection"))
-        .collect::<Vec<Node>>();
+        .collect::<Vec<&XmlNode>>();
 
     if let Some(selection) = selections.last() {
         let active_cell = match selection.attribute("activeCell").map(parse_cell_reference) {
@@ -883,7 +873,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     // The cells are streamed; what is left of the worksheet is small and is
     // read as a tree.
     let SheetDataXml {
-        skeleton,
+        worksheet,
         mut sheet_data,
         rows,
         shared_formulas,
@@ -893,13 +883,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         &mut parser,
         shared_strings,
     )?;
-    let skeleton = String::from_utf8(skeleton)
-        .map_err(|error| XlsxError::Xml(format!("Worksheet is not valid UTF-8: {error}")))?;
-    let doc = roxmltree::Document::parse(&skeleton)?;
-    let ws = doc
-        .root()
-        .first_child()
-        .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
+    let ws = &worksheet;
 
     let dimension = load_dimension(ws);
 
@@ -1069,6 +1053,8 @@ mod tests {
 
     use ironcalc_base::types::Link;
 
+    use crate::import::xml::XmlNode;
+
     use crate::import::worksheets::{load_hyperlinks, parse_reference};
 
     #[test]
@@ -1091,8 +1077,8 @@ mod tests {
                 <hyperlink ref="F1" r:id="rId9"/>
             </hyperlinks>
         </worksheet>"#;
-        let doc = roxmltree::Document::parse(xml).unwrap();
-        let ws = doc.root().first_child().unwrap();
+        let doc = XmlNode::parse_str(xml).unwrap();
+        let ws = &doc;
         // no relationships: the r:id hyperlink is dangling
         let rels = HashMap::new();
 
