@@ -36,6 +36,9 @@ fn test_worksheet_dimension_single_cell() {
     );
 }
 
+// Ordinal variant keeps empty cells after clear.
+// Stable variant removes cells that don't have value nor style on them, so the dimensions shrink.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_dimension_single_cell_set_empty() {
     let mut model = new_empty_model();

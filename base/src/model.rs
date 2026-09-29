@@ -3945,6 +3945,13 @@ mod tests {
     fn test_get_cell() {
         let mut model = new_empty_model();
         model._set("A1", "35");
+        // A2 holds a number, in bold
+        model._set("A2", "12");
+        let mut style = model.get_style_for_cell(0, 2, 1).expect("Invalid cell");
+        style.font.b = true;
+        model.set_cell_style(0, 2, 1, &style).expect("Invalid cell");
+        let bold = model.get_cell_style_index(0, 2, 1).expect("Invalid cell");
+        assert_ne!(bold, 0);
         model._set("A2", "");
         let worksheet = model.workbook.worksheet(0).expect("Invalid sheet");
 
@@ -3954,7 +3961,7 @@ mod tests {
         );
 
         // Clears the content of A2 but not the style
-        assert_eq!(worksheet.cell(2, 1), Some(&Cell::EmptyCell { s: 0 }));
+        assert_eq!(worksheet.cell(2, 1), Some(&Cell::EmptyCell { s: bold }));
         assert_eq!(worksheet.cell(3, 1), None)
     }
 

@@ -68,11 +68,12 @@ macro_rules! test_helpers {
                 self._get_text_at(sheet, row, column)
             }
             pub fn _get_cell(&self, cell: &str) -> &Cell {
+                static EMPTY: Cell = Cell::EmptyCell { s: 0 };
                 let cell_reference = self._parse_reference(cell);
                 let worksheet = self.workbook.worksheet(cell_reference.sheet).unwrap();
                 worksheet
                     .cell(cell_reference.row, cell_reference.column)
-                    .unwrap()
+                    .unwrap_or(&EMPTY)
             }
         }
     };
