@@ -722,3 +722,145 @@ fn test_fn_eomonth_wrong_arguments() {
     assert_eq!(model._get_text("A2"), *"46112");
     assert_eq!(model._get_text("A3"), *"#ERROR!");
 }
+
+#[test]
+fn test_time_function() {
+    let mut model = new_empty_model();
+
+    // Basic functionality
+    model._set("A1", "=TIME(12, 30, 45)"); // Basic time
+    model._set("A2", "=TIME(12, 0, 0)"); // Noon
+    model._set("A3", "=TIME(0, 0, 0)"); // Midnight
+
+    // Error cases
+    model._set("A4", "=TIME(-1, 30, 45)"); // Invalid hour
+    model._set("A5", "=TIME(12, -1, 45)"); // Negative minutes wrap to previous hour
+    model._set("A6", "=TIME(12, 30, -1)"); // Negative seconds wrap to previous minute
+
+    // Wrong argument count
+    model._set("A7", "=TIME(12)");
+    model._set("A8", "=TIME(12, 30)");
+    model._set("A9", "=TIME(12, 30, 45, 0)");
+
+    model.evaluate();
+
+    // Basic functionality
+    assert_eq!(model._get_text("A1"), *"0.521354167");
+    assert_eq!(model._get_text("A2"), *"0.5");
+    assert_eq!(model._get_text("A3"), *"0");
+
+    // Error cases
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"0.499826389");
+    assert_eq!(model._get_text("A6"), *"0.520821759");
+
+    // Wrong argument count
+    assert_eq!(model._get_text("A7"), *"#ERROR!");
+    assert_eq!(model._get_text("A8"), *"#ERROR!");
+    assert_eq!(model._get_text("A9"), *"#ERROR!");
+}
+
+#[test]
+fn test_hour_function() {
+    let mut model = new_empty_model();
+
+    // Basic functionality
+    model._set("A1", "=HOUR(TIME(16, 30, 45))"); // Basic time
+    model._set("A2", "=HOUR(0.5)"); // Noon
+    model._set("A3", "=HOUR(0)"); // Midnight
+
+    // Error cases
+    model._set("A4", "=HOUR(-1)"); // Negative serial
+    model._set("A5", "=HOUR(\"abc\")"); // Non-numeric text
+    model._set("A6", "=HOUR(1/0)"); // Error propagates
+
+    // Wrong argument count
+    model._set("A7", "=HOUR()");
+    model._set("A8", "=HOUR(0.5, 1)");
+
+    model.evaluate();
+
+    // Basic functionality
+    assert_eq!(model._get_text("A1"), *"16");
+    assert_eq!(model._get_text("A2"), *"12");
+    assert_eq!(model._get_text("A3"), *"0");
+
+    // Error cases
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
+
+    // Wrong argument count
+    assert_eq!(model._get_text("A7"), *"#ERROR!");
+    assert_eq!(model._get_text("A8"), *"#ERROR!");
+}
+
+#[test]
+fn test_minute_function() {
+    let mut model = new_empty_model();
+
+    // Basic functionality
+    model._set("A1", "=MINUTE(TIME(16, 30, 45))"); // Basic time
+    model._set("A2", "=MINUTE(0.5)"); // Noon
+    model._set("A3", "=MINUTE(TIME(12, 59, 59))"); // Last minute of the hour
+
+    // Error cases
+    model._set("A4", "=MINUTE(-1)"); // Negative serial
+    model._set("A5", "=MINUTE(\"abc\")"); // Non-numeric text
+    model._set("A6", "=MINUTE(1/0)"); // Error propagates
+
+    // Wrong argument count
+    model._set("A7", "=MINUTE()");
+    model._set("A8", "=MINUTE(0.5, 1)");
+
+    model.evaluate();
+
+    // Basic functionality
+    assert_eq!(model._get_text("A1"), *"30");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A3"), *"59");
+
+    // Error cases
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
+
+    // Wrong argument count
+    assert_eq!(model._get_text("A7"), *"#ERROR!");
+    assert_eq!(model._get_text("A8"), *"#ERROR!");
+}
+
+#[test]
+fn test_second_function() {
+    let mut model = new_empty_model();
+
+    // Basic functionality
+    model._set("A1", "=SECOND(TIME(16, 30, 45))"); // Basic time
+    model._set("A2", "=SECOND(0.5)"); // Noon
+    model._set("A3", "=SECOND(TIME(12, 59, 59))"); // Last second of the minute
+
+    // Error cases
+    model._set("A4", "=SECOND(-1)"); // Negative serial
+    model._set("A5", "=SECOND(\"abc\")"); // Non-numeric text
+    model._set("A6", "=SECOND(1/0)"); // Error propagates
+
+    // Wrong argument count
+    model._set("A7", "=SECOND()");
+    model._set("A8", "=SECOND(0.5, 1)");
+
+    model.evaluate();
+
+    // Basic functionality
+    assert_eq!(model._get_text("A1"), *"45");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A3"), *"59");
+
+    // Error cases
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
+
+    // Wrong argument count
+    assert_eq!(model._get_text("A7"), *"#ERROR!");
+    assert_eq!(model._get_text("A8"), *"#ERROR!");
+}
