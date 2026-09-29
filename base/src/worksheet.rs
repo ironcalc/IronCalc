@@ -151,16 +151,23 @@ impl<A: Position> Worksheet<A> {
         let mut row_range: Option<(i32, i32)> = None;
         let mut column_range: Option<(i32, i32)> = None;
 
-        for (row_index, column_index, _) in self.cells() {
+        for (row_index, column_index, cell) in self.cells() {
+            // CSE at the boundary max expand the dimensions
+            let (width, height) = match cell {
+                Cell::ArrayFormula { r, .. } => (r.0.max(1), r.1.max(1)),
+                _ => (1, 1),
+            };
+            let last_row = row_index + height - 1;
+            let last_column = column_index + width - 1;
             row_range = if let Some((current_min, current_max)) = row_range {
-                Some((current_min.min(row_index), current_max.max(row_index)))
+                Some((current_min.min(row_index), current_max.max(last_row)))
             } else {
-                Some((row_index, row_index))
+                Some((row_index, last_row))
             };
             column_range = if let Some((current_min, current_max)) = column_range {
-                Some((current_min.min(column_index), current_max.max(column_index)))
+                Some((current_min.min(column_index), current_max.max(last_column)))
             } else {
-                Some((column_index, column_index))
+                Some((column_index, last_column))
             };
         }
 

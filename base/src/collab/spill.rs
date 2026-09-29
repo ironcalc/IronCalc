@@ -146,6 +146,57 @@ pub(crate) mod test {
     }
 
     #[test]
+    fn dimension_covers_spilled_cells() {
+        use crate::worksheet::WorksheetDimension;
+
+        fn dimension(model: &Peer) -> WorksheetDimension {
+            model.get_model().workbook.worksheets[0].dimension()
+        }
+        fn rows_and_columns(max_row: i32, max_column: i32) -> WorksheetDimension {
+            WorksheetDimension {
+                min_row: 1,
+                min_column: 1,
+                max_row,
+                max_column,
+            }
+        }
+        let (mut a, mut b) = (peer(1), peer(2));
+        a.new_sheet().unwrap();
+        a.set_user_input(0, 1, 1, "=SEQUENCE(3)").unwrap(); // A1:A3=1,2,3 (3x1)
+        a.set_user_input(0, 1, 3, "=SUM(A:A)").unwrap(); // C1 (3x3)
+        a.set_user_input(0, 2, 3, "=COUNT(A:A)").unwrap(); // C2 (3x3)
+        deliver(&mut a, &mut b);
+        for model in [&a, &b] {
+            assert_eq!(dimension(model), rows_and_columns(3, 3));
+            assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "6");
+            assert_eq!(model.get_formatted_cell_value(0, 2, 3).unwrap(), "3");
+        }
+
+        b.set_user_array_formula(0, 5, 4, 2, 3, "=1+1").unwrap(); // D5:E7=2 (7x5)
+        b.set_user_input(0, 3, 3, "=SUM(E:E)").unwrap(); // C3
+        deliver(&mut b, &mut a);
+        for model in [&a, &b] {
+            assert_eq!(dimension(model), rows_and_columns(7, 5));
+            assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "6");
+        }
+
+        // Blocked, the dynamic array draws its anchor alone. Freed, it reaches as far again.
+        b.set_user_input(0, 2, 1, "7").unwrap(); // A2=7
+        deliver(&mut b, &mut a);
+        for model in [&a, &b] {
+            assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "#SPILL!");
+            assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "#SPILL!");
+        }
+        b.set_user_input(0, 2, 1, "").unwrap();
+        deliver(&mut b, &mut a);
+        for model in [&a, &b] {
+            assert_eq!(dimension(model), rows_and_columns(7, 5));
+            assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "6");
+        }
+        converged(&a, &b);
+    }
+
+    #[test]
     fn concurrent_edit_versus_spill_both_orders() {
         fn execute(anchor_first: bool) {
             let (mut a, mut b) = (peer(1), peer(2));
