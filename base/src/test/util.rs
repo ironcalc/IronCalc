@@ -21,6 +21,7 @@ pub fn new_empty_model() -> TestModel<'static> {
 #[cfg(feature = "collab-test")]
 pub fn new_empty_model() -> TestModel<'static> {
     let mut model = crate::collab::model::CollabModel::new(1);
+    model.workbook.name = "model".to_string();
     model.new_sheet();
     model
 }
