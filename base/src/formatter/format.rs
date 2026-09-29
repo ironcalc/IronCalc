@@ -434,11 +434,16 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             }
             let tokens = &p.tokens;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
-            // p.precision is the number of significant digits _after_ the decimal point
-            value = to_precision(
-                value,
-                (p.precision as usize) + format!("{}", value.abs().floor()).len(),
-            );
+            // p.precision is the number of significant digits _after_ the decimal point.
+            // Round to (decimals wanted + digits of the integer part) significant
+            // figures. A leading 0 is not a digit: 0.96 shown with one decimal is 1.0,
+            // and the carry must reach the integer part here, before it is split off.
+            let int_digits = if value.abs() < 1.0 {
+                0
+            } else {
+                format!("{}", value.abs().floor()).len()
+            };
+            value = to_precision(value, ((p.precision as usize) + int_digits).max(1));
             let mut value_abs = value.abs();
             let mut exponent_part: Vec<char> = vec![];
             let mut exponent_is_negative = value_abs < 10.0;
