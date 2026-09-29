@@ -146,6 +146,30 @@ pub(crate) mod test {
     }
 
     #[test]
+    fn markup_is_the_same_on_every_replica() {
+        let (mut a, mut b) = (peer(1), peer(2));
+        a.new_sheet().unwrap();
+        a.set_user_input(0, 1, 1, "=SEQUENCE(3)").unwrap(); // A: A1:A3=1,2,3
+        a.set_user_input(0, 1, 3, "=SUM(A:A)").unwrap(); // A: C1
+        deliver(&mut a, &mut b);
+        b.set_user_array_formula(0, 5, 1, 2, 2, "=1+1").unwrap(); // B: A5:B6=2
+        deliver(&mut b, &mut a);
+
+        let expected = "=SEQUENCE(3)||=SUM(A:A)\n2||\n3||\n||\n=1+1|2|\n2|2|";
+        for model in [&a, &b] {
+            assert_eq!(model.get_model().get_sheet_markup(0).unwrap(), expected);
+        }
+
+        // Blocked, an array is its anchor alone: what blocks it shows instead.
+        a.set_user_input(0, 2, 1, "x").unwrap(); // A: A2=x (blocks sequence)
+        deliver(&mut a, &mut b);
+        let expected = "=SEQUENCE(3)||=SUM(A:A)\nx||\n||\n||\n=1+1|2|\n2|2|";
+        for model in [&a, &b] {
+            assert_eq!(model.get_model().get_sheet_markup(0).unwrap(), expected);
+        }
+    }
+
+    #[test]
     fn dimension_covers_spilled_cells() {
         use crate::worksheet::WorksheetDimension;
 

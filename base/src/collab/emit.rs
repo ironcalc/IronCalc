@@ -3597,37 +3597,7 @@ impl CollabModel<'_> {
     }
 }
 
-/// Calls phase 5b does not answer. They validate nothing and change nothing: the caller gets an
-/// error rather than an edit that would never reach a peer.
-macro_rules! unsupported {
-    (&self $( $name:ident ( $( $arg:ident : $ty:ty ),* ) -> $ret:ty; )*) => {
-        impl CollabModel<'_> {
-            $(
-                #[allow(unused_variables, clippy::too_many_arguments)]
-                pub fn $name(&self, $( $arg: $ty ),*) -> Result<$ret, String> {
-                    Err(UNSUPPORTED.to_string())
-                }
-            )*
-        }
-    };
-    (&mut self $( $name:ident ( $( $arg:ident : $ty:ty ),* ) -> $ret:ty; )*) => {
-        impl CollabModel<'_> {
-            $(
-                #[allow(unused_variables, clippy::too_many_arguments)]
-                pub fn $name(&mut self, $( $arg: $ty ),*) -> Result<$ret, String> {
-                    Err(UNSUPPORTED.to_string())
-                }
-            )*
-        }
-    };
-}
-
-/// What every stub above returns. Shared with the `UserModel<Stable>` stubs.
 pub(crate) const UNSUPPORTED: &str = "unsupported in collab mode";
-
-unsupported! { &self
-    get_sheet_markup(sheet: u32) -> String;
-}
 
 #[cfg(test)]
 mod test {

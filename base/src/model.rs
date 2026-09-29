@@ -3312,17 +3312,6 @@ impl<'a, A: Position> Model<'a, A> {
             .transpose();
         style
     }
-}
-
-/// Document mutation and construction: ordinal addressing only.
-impl<'a> Model<'a> {
-    /// Returns an internal binary representation of the workbook
-    ///
-    /// See also:
-    /// * [Model::from_bytes]
-    pub fn to_bytes(&self) -> Vec<u8> {
-        bitcode::encode(&self.workbook)
-    }
 
     /// Returns markup representation of the given `sheet`.
     pub fn get_sheet_markup(&self, sheet: u32) -> Result<String, String> {
@@ -3350,6 +3339,17 @@ impl<'a> Model<'a> {
         }
 
         Ok(rows.join("\n"))
+    }
+}
+
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
+    /// Returns an internal binary representation of the workbook
+    ///
+    /// See also:
+    /// * [Model::from_bytes]
+    pub fn to_bytes(&self) -> Vec<u8> {
+        bitcode::encode(&self.workbook)
     }
 
     /// Sets the number of frozen rows to `frozen_rows` in the workbook.
