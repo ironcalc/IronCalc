@@ -7,6 +7,7 @@ mod test_cell;
 mod test_cell_clear_contents;
 mod test_circular_references;
 mod test_column_width;
+mod test_count_arrays;
 mod test_criteria;
 mod test_database;
 mod test_date_and_time;
