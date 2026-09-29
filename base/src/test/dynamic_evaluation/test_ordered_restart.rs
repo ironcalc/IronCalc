@@ -8,9 +8,9 @@
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::test::util::new_empty_model;
-use crate::Model;
+use crate::test::util::TestModel;
 
-fn anchor_order(model: &Model) -> Vec<String> {
+fn anchor_order(model: &TestModel) -> Vec<String> {
     model
         .evaluation
         .anchor_order
@@ -19,11 +19,11 @@ fn anchor_order(model: &Model) -> Vec<String> {
         .collect()
 }
 
-fn restarts(model: &Model) -> u32 {
+fn restarts(model: &TestModel) -> u32 {
     model.evaluation.restarts_in_last_evaluation
 }
 
-impl Model<'_> {
+impl TestModel<'_> {
     fn _cell_name(&self, cell: CellReferenceIndex) -> String {
         let column = (b'A' + (cell.column - 1) as u8) as char;
         format!("{column}{}", cell.row)
