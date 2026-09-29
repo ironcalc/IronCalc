@@ -209,6 +209,56 @@ pub enum CfRule {
     },
 }
 
+impl CfRule {
+    /// The dxf id embedded in the rule, for the rule kinds that carry one.
+    pub(crate) fn dxf_id(&self) -> Option<u32> {
+        match self {
+            CfRule::CellIs { dxf_id, .. }
+            | CfRule::Formula { dxf_id, .. }
+            | CfRule::Text { dxf_id, .. }
+            | CfRule::TimePeriod { dxf_id, .. }
+            | CfRule::DuplicateValues { dxf_id, .. }
+            | CfRule::UniqueValues { dxf_id, .. }
+            | CfRule::Blanks { dxf_id, .. }
+            | CfRule::NotBlanks { dxf_id, .. }
+            | CfRule::Errors { dxf_id, .. }
+            | CfRule::NoErrors { dxf_id, .. }
+            | CfRule::AboveAverage { dxf_id, .. }
+            | CfRule::BelowAverage { dxf_id, .. }
+            | CfRule::Top10 { dxf_id, .. }
+            | CfRule::Bottom10 { dxf_id, .. } => Some(*dxf_id),
+            CfRule::ColorScale { .. }
+            | CfRule::DataBar { .. }
+            | CfRule::IconSet { .. }
+            | CfRule::IconRating { .. } => None,
+        }
+    }
+
+    /// Sets the embedded dxf id; no-op for rule kinds without one.
+    pub(crate) fn set_dxf_id(&mut self, id: u32) {
+        match self {
+            CfRule::CellIs { dxf_id, .. }
+            | CfRule::Formula { dxf_id, .. }
+            | CfRule::Text { dxf_id, .. }
+            | CfRule::TimePeriod { dxf_id, .. }
+            | CfRule::DuplicateValues { dxf_id, .. }
+            | CfRule::UniqueValues { dxf_id, .. }
+            | CfRule::Blanks { dxf_id, .. }
+            | CfRule::NotBlanks { dxf_id, .. }
+            | CfRule::Errors { dxf_id, .. }
+            | CfRule::NoErrors { dxf_id, .. }
+            | CfRule::AboveAverage { dxf_id, .. }
+            | CfRule::BelowAverage { dxf_id, .. }
+            | CfRule::Top10 { dxf_id, .. }
+            | CfRule::Bottom10 { dxf_id, .. } => *dxf_id = id,
+            CfRule::ColorScale { .. }
+            | CfRule::DataBar { .. }
+            | CfRule::IconSet { .. }
+            | CfRule::IconRating { .. } => {}
+        }
+    }
+}
+
 /// User-facing input type for creating or updating a CF rule.
 /// Mirrors `CfRule` but dxf-based variants carry a `Dxf` format
 /// instead of a `dxf_id` index.  Non-dxf variants (ColorScale, DataBar,

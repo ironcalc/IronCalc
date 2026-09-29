@@ -629,14 +629,21 @@ impl<'a> UserModel<'a> {
         }]);
 
         let sheet_count = self.model.workbook.worksheets.len() as u32;
-        // If we are deleting the last sheet we need to change the selected sheet
-        if sheet == sheet_count - 1 && sheet_count > 1 {
-            if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
-                view.sheet = sheet_count - 2;
-            };
-        }
-
         self.model.delete_sheet(sheet)?;
+        // Keep the selected sheet valid: sheets after the deleted one slide
+        // down by one; the deleted sheet's successor takes its place (or the
+        // previous sheet, when the last one goes).
+        let selected = self.get_selected_sheet();
+        let new_selected = if selected > sheet {
+            selected - 1
+        } else if selected == sheet {
+            sheet.min(sheet_count.saturating_sub(2))
+        } else {
+            selected
+        };
+        if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+            view.sheet = new_selected;
+        }
         Ok(())
     }
 
@@ -683,9 +690,12 @@ impl<'a> UserModel<'a> {
         if sheet_index == new_index {
             return Ok(());
         }
-        let selected = self.get_selected_sheet();
+        // Resolve the selection before touching the model so that nothing can
+        // fail half-way (a stale, out-of-range selection is clamped).
+        let selected = self.get_selected_sheet().min(sheet_count - 1);
+        let new_selected = selected_sheet_after_move(selected, sheet_index, new_index);
         self.model.move_sheet(sheet_index, new_index)?;
-        self.set_selected_sheet(selected_sheet_after_move(selected, sheet_index, new_index))?;
+        self.set_selected_sheet(new_selected)?;
         self.push_diff_list(vec![Diff::MoveSheet {
             sheet_index,
             new_index,

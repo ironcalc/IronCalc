@@ -228,14 +228,13 @@ impl<'a> UserModel<'a> {
                             self.model
                                 .set_cell_style(*sheet, *row, *column, &Style::default())?;
                         } else {
-                            let area = Area {
-                                sheet: *sheet,
-                                row: *row,
-                                column: *column,
-                                width: 1,
-                                height: 1,
-                            };
-                            self.model.range_clear_all(&area)?;
+                            // A style-only undo: drop the (empty, styled) cell
+                            // but keep everything that is not a style — a
+                            // link on an empty cell must survive it.
+                            self.model
+                                .workbook
+                                .worksheet_mut(*sheet)?
+                                .remove_cell(*row, *column)?;
                         }
                     }
                 }
