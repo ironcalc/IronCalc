@@ -110,6 +110,20 @@ struct RegressionData {
     x: Vec<Vec<f64>>,
     /// Number of X columns
     p: usize,
+    /// known_y is one row: each column is an observation (and each row of
+    /// known_x a variable)
+    by_row: bool,
+}
+
+fn transpose(m: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+    let columns = m.first().map_or(0, |r| r.len());
+    (0..columns)
+        .map(|c| {
+            m.iter()
+                .map(|row| row.get(c).copied().unwrap_or(0.0))
+                .collect()
+        })
+        .collect()
 }
 
 impl<'a> Model<'a> {
@@ -123,6 +137,7 @@ impl<'a> Model<'a> {
     ) -> Result<RegressionData, CalcResult> {
         // Collect Y
         let y_raw = self.collect_matrix_from_node(y_arg, cell)?;
+        let by_row = y_raw.len() == 1 && y_raw.first().map_or(0, |r| r.len()) > 1;
         let y: Vec<f64> = y_raw.into_iter().flatten().collect();
         let n = y.len();
 
@@ -134,6 +149,8 @@ impl<'a> Model<'a> {
             ));
         }
 
+        // A left-out known_x (TREND(y,,new_x)) is 1, 2, 3...
+        let x_arg = x_arg.filter(|node| !matches!(node, Node::EmptyArgKind));
         let (x, p) = match x_arg {
             None => {
                 // Auto-generate x = 1, 2, ..., n (single column)
@@ -142,6 +159,7 @@ impl<'a> Model<'a> {
             }
             Some(x_node) => {
                 let x_mat = self.collect_matrix_from_node(x_node, cell)?;
+                let x_mat = if by_row { transpose(x_mat) } else { x_mat };
                 let rows = x_mat.len();
                 let p = if rows > 0 { x_mat[0].len() } else { 0 };
 
@@ -157,7 +175,7 @@ impl<'a> Model<'a> {
             }
         };
 
-        Ok(RegressionData { y, x, p })
+        Ok(RegressionData { y, x, p, by_row })
     }
 
     /// Collect all values from a node as a 2D matrix (rows × cols).
@@ -574,6 +592,7 @@ impl<'a> Model<'a> {
         // Collect new_x values (or use known_x if omitted)
         let new_x_mat = if args.len() >= 3 {
             match self.collect_matrix_from_node(&args[2], cell) {
+                Ok(m) if data.by_row => transpose(m),
                 Ok(m) => m,
                 Err(e) => return e,
             }
@@ -589,6 +608,9 @@ impl<'a> Model<'a> {
             })
             .collect();
 
+        if data.by_row {
+            return CalcResult::Array(vec![predicted.into_iter().flatten().collect()]);
+        }
         CalcResult::Array(predicted)
     }
 
@@ -640,6 +662,7 @@ impl<'a> Model<'a> {
 
         let new_x_mat = if args.len() >= 3 {
             match self.collect_matrix_from_node(&args[2], cell) {
+                Ok(m) if data.by_row => transpose(m),
                 Ok(m) => m,
                 Err(e) => return e,
             }
@@ -655,6 +678,9 @@ impl<'a> Model<'a> {
             })
             .collect();
 
+        if data.by_row {
+            return CalcResult::Array(vec![predicted.into_iter().flatten().collect()]);
+        }
         CalcResult::Array(predicted)
     }
 }
