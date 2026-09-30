@@ -117,11 +117,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut fonts = Vec::new();
-    let font_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("fonts"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for font in font_nodes.children() {
+    let font_nodes = style_sheet.children().find(|n| n.has_tag_name("fonts"));
+    for font in font_nodes.iter().flat_map(|n| n.children()) {
         let mut sz = 11;
         let mut name = "Inter".to_string();
         // NOTE: In Excel you can have simple underline or double underline
@@ -203,11 +200,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut fills = Vec::new();
-    let fill_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("fills"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for fill in fill_nodes.children() {
+    let fill_nodes = style_sheet.children().find(|n| n.has_tag_name("fills"));
+    for fill in fill_nodes.iter().flat_map(|n| n.children()) {
         let pattern_fill = fill
             .children()
             .filter(|n| n.has_tag_name("patternFill"))
@@ -247,11 +241,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut borders = Vec::new();
-    let border_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("borders"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for border in border_nodes.children() {
+    let border_nodes = style_sheet.children().find(|n| n.has_tag_name("borders"));
+    for border in border_nodes.iter().flat_map(|n| n.children()) {
         let diagonal_up = get_bool_false(border, "diagonal_up");
         let diagonal_down = get_bool_false(border, "diagonal_down");
         let left = get_border(border, "left", theme, indexed)?;
@@ -273,9 +264,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let mut cell_style_xfs = Vec::new();
     let cell_style_xfs_nodes = style_sheet
         .children()
-        .filter(|n| n.has_tag_name("cellStyleXfs"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for xfs in cell_style_xfs_nodes.children() {
+        .find(|n| n.has_tag_name("cellStyleXfs"));
+    for xfs in cell_style_xfs_nodes.iter().flat_map(|n| n.children()) {
         let num_fmt_id = get_number(xfs, "numFmtId");
         let font_id = get_number(xfs, "fontId");
         let fill_id = get_number(xfs, "fillId");
@@ -305,9 +295,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let mut style_names = HashMap::new();
     let cell_style_nodes = style_sheet
         .children()
-        .filter(|n| n.has_tag_name("cellStyles"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for cell_style in cell_style_nodes.children() {
+        .find(|n| n.has_tag_name("cellStyles"));
+    for cell_style in cell_style_nodes.iter().flat_map(|n| n.children()) {
         let name = get_attribute(cell_style, "name")?.to_string();
         let xf_id = get_number(cell_style, "xfId");
         let builtin_id = get_number(cell_style, "builtinId");
@@ -326,11 +315,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut cell_xfs = Vec::new();
-    let cell_xfs_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("cellXfs"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for xfs in cell_xfs_nodes.children() {
+    let cell_xfs_nodes = style_sheet.children().find(|n| n.has_tag_name("cellXfs"));
+    for xfs in cell_xfs_nodes.iter().flat_map(|n| n.children()) {
         // `xfId` is optional on a cellXfs <xf> (it references cellStyleXfs;
         // many Excel/LibreOffice files omit it). Default to 0 when absent.
         let xf_id = xfs
@@ -414,7 +400,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
 
     let dxfs = load_dxfs(style_sheet, theme, indexed)?;
 
-    Ok(Styles {
+    let mut styles = Styles {
         num_fmts,
         fonts,
         fills,
@@ -423,7 +409,58 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         cell_xfs,
         cell_styles,
         dxfs,
-    })
+    };
+    complete_styles(&mut styles);
+    Ok(styles)
+}
+
+/// Every list of a stylesheet is optional (`minOccurs="0"`), and files written by
+/// other tools leave some of them out. Empty lists get the defaults of a new
+/// workbook, and ids that point past the end of a list are reset to 0, so that
+/// looking a style up never indexes out of bounds.
+fn complete_styles(styles: &mut Styles) {
+    let defaults = Styles::default();
+    if styles.fonts.is_empty() {
+        styles.fonts = defaults.fonts;
+    }
+    if styles.fills.is_empty() {
+        styles.fills = defaults.fills;
+    }
+    if styles.borders.is_empty() {
+        styles.borders = defaults.borders;
+    }
+    if styles.cell_style_xfs.is_empty() {
+        styles.cell_style_xfs = defaults.cell_style_xfs;
+    }
+    if styles.cell_xfs.is_empty() {
+        styles.cell_xfs = defaults.cell_xfs;
+    }
+    if styles.cell_styles.is_empty() {
+        styles.cell_styles = defaults.cell_styles;
+    }
+    let fix = |id: &mut i32, len: usize| {
+        if *id < 0 || *id as usize >= len {
+            *id = 0;
+        }
+    };
+    let fonts = styles.fonts.len();
+    let fills = styles.fills.len();
+    let borders = styles.borders.len();
+    let cell_style_xfs = styles.cell_style_xfs.len();
+    for xf in &mut styles.cell_style_xfs {
+        fix(&mut xf.font_id, fonts);
+        fix(&mut xf.fill_id, fills);
+        fix(&mut xf.border_id, borders);
+    }
+    for xf in &mut styles.cell_xfs {
+        fix(&mut xf.font_id, fonts);
+        fix(&mut xf.fill_id, fills);
+        fix(&mut xf.border_id, borders);
+        fix(&mut xf.xf_id, cell_style_xfs);
+    }
+    for style in &mut styles.cell_styles {
+        fix(&mut style.xf_id, cell_style_xfs);
+    }
 }
 
 fn load_dxfs(
