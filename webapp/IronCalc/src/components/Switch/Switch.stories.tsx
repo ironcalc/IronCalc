@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
+import { useArgs } from "storybook/preview-api";
 import type { SwitchProperties } from "./Switch";
 import { Switch } from "./Switch";
 
@@ -13,8 +14,6 @@ function SwitchStory({ checked = false, ...props }: SwitchStoryProps) {
   return <Switch {...props} checked={value} onChange={setValue} />;
 }
 
-const defaultArgs: SwitchStoryProps = {};
-
 const meta = {
   title: "Components/Switch",
   component: SwitchStory,
@@ -22,11 +21,11 @@ const meta = {
     layout: "centered",
   },
   tags: ["autodocs"],
-  args: defaultArgs,
+  args: { checked: false, disabled: false, label: "" },
   argTypes: {
     checked: {
       control: "boolean",
-      description: "Initial state of the switch",
+      description: "State of the switch",
     },
     disabled: {
       control: "boolean",
@@ -50,17 +49,20 @@ const Column = ({ children }: { children: React.ReactNode }) => (
 );
 
 export const Default: Story = {
-  args: defaultArgs,
-  render: () => (
-    <Column>
-      <SwitchStory checked />
-      <SwitchStory />
-    </Column>
-  ),
+  render: function DefaultStory({ checked = false, ...args }) {
+    const [, updateArgs] = useArgs();
+    return (
+      <Switch
+        {...args}
+        checked={checked}
+        onChange={(value) => updateArgs({ checked: value })}
+      />
+    );
+  },
 };
 
 export const WithLabel: Story = {
-  args: defaultArgs,
+  parameters: { controls: { disable: true } },
   render: () => (
     <Column>
       <SwitchStory label="On" checked />
@@ -70,7 +72,7 @@ export const WithLabel: Story = {
 };
 
 export const Disabled: Story = {
-  args: defaultArgs,
+  parameters: { controls: { disable: true } },
   render: () => (
     <Column>
       <SwitchStory label="On" checked disabled />
