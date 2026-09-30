@@ -49,8 +49,8 @@ function EditorHarness() {
         height: 22,
         lineHeight: "22px",
         fontFamily: "monospace",
-        border: "1px solid #ccc",
-        background: "#fff",
+        border: "1px solid var(--palette-grey-300)",
+        background: "var(--palette-common-white)",
       }}
     >
       {/* Mirrors FormulaBar's editor wrapper: clicking it starts an edit. */}
@@ -105,4 +105,4 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const FormulaBarEditor: Story = {};
+export const Default: Story = {};

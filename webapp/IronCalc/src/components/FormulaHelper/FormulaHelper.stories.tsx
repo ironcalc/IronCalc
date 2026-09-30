@@ -98,6 +98,8 @@ function FormulaHelperPlayground() {
             padding: "8px",
             fontSize: "var(--typography-font-size)",
             fontFamily: "var(--typography-font-family)",
+            background: "var(--palette-common-white)",
+            color: "var(--palette-common-black)",
             border: "2px solid var(--palette-primary-main)",
             outline:
               "3px solid color-mix(in srgb, var(--palette-primary-main) 20%, transparent)",
@@ -132,4 +134,4 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Playground: Story = {};
+export const Default: Story = {};
