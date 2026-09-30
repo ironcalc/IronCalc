@@ -14,6 +14,7 @@ const ICON_NAMES = [
   "TriangleDown",
   "Circle",
   "Rhombus",
+  "Triangle",
   "Flag",
   "Check",
   "Cross",

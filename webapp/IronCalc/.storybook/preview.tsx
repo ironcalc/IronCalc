@@ -21,7 +21,7 @@ function PreviewProviders({
   locale: string;
 }) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const themeVariables = themes[themeName];
+  const themeVariables = themes[themeName] ?? themes.default;
 
   useEffect(() => {
     document.body.style.backgroundColor =
