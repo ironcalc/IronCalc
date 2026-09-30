@@ -15,6 +15,7 @@ use std::hash::Hash;
 
 use crate::cf_types::{CfRule, ConditionalFormatting};
 use crate::collab::bind::Host;
+use crate::collab::codec::CodecError;
 use crate::collab::formula::StableFormula;
 use crate::collab::fractional_index::{virtual_key, FractionalIndex, FractionalKey};
 use crate::collab::hlc::Hlc;
@@ -53,7 +54,7 @@ impl Consumer for CollabModel<'_> {
         Hlc::sync(commit.hlc);
         let ts = commit.timestamp();
         for patch in &commit.patches {
-            self.apply_patch(patch, &ts);
+            self.apply_patch(patch, &ts)?;
         }
         self.resync_derived(&commit.patches);
         Ok(())
@@ -872,11 +873,11 @@ impl CollabModel<'_> {
         }
     }
 
-    pub(crate) fn apply_patch(&mut self, patch: &Patch, ts: &Timestamp) {
+    pub(crate) fn apply_patch(&mut self, patch: &Patch, ts: &Timestamp) -> Result<(), CodecError> {
         if let Some(sheet) = patch.target_sheet() {
             if let Some(timestamp) = self.workbook.meta.sheet_existence.get(&sheet) {
                 if ts < timestamp && self.sheet_index(sheet).is_some() {
-                    return;
+                    return Ok(());
                 }
             }
         }
@@ -889,7 +890,7 @@ impl CollabModel<'_> {
                 ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let ts = at_ts.as_ref().unwrap_or(ts);
                 let index = &mut self.workbook.worksheets[i].index;
@@ -897,7 +898,7 @@ impl CollabModel<'_> {
                 if !wins(&mut index.registers.cell_values, at, ts)
                     || cell_deleted(index, at, ts.hlc)
                 {
-                    return;
+                    return Ok(());
                 }
                 self.write_cell(i, at, value.as_ref());
             }
@@ -909,7 +910,7 @@ impl CollabModel<'_> {
                 ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let ts = at_ts.as_ref().unwrap_or(ts);
                 let index = &mut self.workbook.worksheets[i].index;
@@ -920,7 +921,7 @@ impl CollabModel<'_> {
                     ts,
                 );
                 if won.is_empty() || cell_deleted(index, at, ts.hlc) {
-                    return;
+                    return Ok(());
                 }
                 let reference = won.iter().find_map(|p| match p {
                     Property::StyleRef(id) => Some(*id),
@@ -947,7 +948,7 @@ impl CollabModel<'_> {
             }
             Patch::InsertRows { sheet, keys } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let index = &mut self.workbook.worksheets[i].index;
                 for key in keys {
@@ -959,7 +960,7 @@ impl CollabModel<'_> {
             }
             Patch::InsertColumns { sheet, keys } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let index = &mut self.workbook.worksheets[i].index;
                 for key in keys {
@@ -971,7 +972,7 @@ impl CollabModel<'_> {
             }
             Patch::DeleteRows { sheet, keys, .. } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let Workbook {
                     worksheets, styles, ..
@@ -1015,7 +1016,7 @@ impl CollabModel<'_> {
             }
             Patch::DeleteColumns { sheet, keys, .. } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let Workbook {
                     worksheets, styles, ..
@@ -1040,7 +1041,7 @@ impl CollabModel<'_> {
             }
             Patch::MoveRows { sheet, moves, .. } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let index = &mut self.workbook.worksheets[i].index;
                 for (source, dest) in moves {
@@ -1049,7 +1050,7 @@ impl CollabModel<'_> {
             }
             Patch::MoveColumns { sheet, moves, .. } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let index = &mut self.workbook.worksheets[i].index;
                 for (source, dest) in moves {
@@ -1064,7 +1065,7 @@ impl CollabModel<'_> {
                 ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let ts = at_ts.as_ref().unwrap_or(ts);
                 let index = &mut self.workbook.worksheets[i].index;
@@ -1076,7 +1077,7 @@ impl CollabModel<'_> {
                 };
                 let won = winning(&mut index.registers.rows, |k| (row.clone(), k), props, ts);
                 if row_deleted || won.is_empty() {
-                    return;
+                    return Ok(());
                 }
                 let own = self.workbook.worksheets[i]
                     .rows
@@ -1108,13 +1109,13 @@ impl CollabModel<'_> {
                 ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let ts = at_ts.as_ref().unwrap_or(ts);
                 let registers = &mut self.workbook.worksheets[i].index.registers;
                 let won = winning(&mut registers.col_spans, |k| (span.clone(), k), props, ts);
                 if won.is_empty() {
-                    return;
+                    return Ok(());
                 }
                 let own = self.workbook.worksheets[i]
                     .cols
@@ -1144,11 +1145,11 @@ impl CollabModel<'_> {
                 ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let sheet = &mut self.workbook.worksheets[i];
                 if !wins(&mut sheet.index.registers.merges, range, ts) {
-                    return;
+                    return Ok(());
                 }
                 let at = sheet.merged_cells.iter().position(|r| r == range);
                 match (merged, at) {
@@ -1163,11 +1164,11 @@ impl CollabModel<'_> {
                 sheet, at, comment, ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let sheet = &mut self.workbook.worksheets[i];
                 if !wins(&mut sheet.index.registers.comments, at, ts) {
-                    return;
+                    return Ok(());
                 }
                 let found = sheet.comments.iter().position(|c| &c.cell_ref == at);
                 match (comment, found) {
@@ -1183,12 +1184,12 @@ impl CollabModel<'_> {
                 sheet, at, link, ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let id = self.workbook.worksheets[i].sheet_id;
                 let sheet = &mut self.workbook.worksheets[i];
                 if !wins(&mut sheet.index.registers.links, at, ts) {
-                    return;
+                    return Ok(());
                 }
                 match link {
                     Some(link) => {
@@ -1216,7 +1217,7 @@ impl CollabModel<'_> {
                 content,
             } => {
                 if !wins(&mut self.workbook.meta.sheet_existence, id, ts) {
-                    return;
+                    return Ok(());
                 }
                 self.workbook
                     .meta
@@ -1248,14 +1249,14 @@ impl CollabModel<'_> {
                     self.workbook.worksheets.push(sheet);
                     if let Some(content) = content {
                         let i = self.workbook.worksheets.len() - 1;
-                        self.seed_sheet(i, content, ts);
+                        self.seed_sheet(i, content, ts)?;
                     }
                 }
                 self.sort_sheets();
             }
             Patch::DeleteSheet { sheet, .. } => {
                 if !wins(&mut self.workbook.meta.sheet_existence, sheet, ts) {
-                    return;
+                    return Ok(());
                 }
                 if let Some(i) = self.sheet_index(*sheet) {
                     self.workbook.worksheets.remove(i);
@@ -1265,7 +1266,7 @@ impl CollabModel<'_> {
                 sheet, property, ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 if let SheetProperty::Position(position) = property {
                     // Tab order outlives the sheet, so its guard rides in `sheet_positions` rather
@@ -1278,19 +1279,19 @@ impl CollabModel<'_> {
                         .or_default()
                         .merge(position.clone(), ts)
                     {
-                        return;
+                        return Ok(());
                     }
                     self.sort_sheets();
-                    return;
+                    return Ok(());
                 }
                 if let SheetProperty::Name(name) = property {
                     // The display name is derived, so a rename only files what the user authored.
                     self.file_sheet_name(*sheet, name, ts);
-                    return;
+                    return Ok(());
                 }
                 let registers = &mut self.workbook.worksheets[i].index.registers;
                 if !wins(&mut registers.props, &property.kind(), ts) {
-                    return;
+                    return Ok(());
                 }
                 let sheet = &mut self.workbook.worksheets[i];
                 match property {
@@ -1306,7 +1307,7 @@ impl CollabModel<'_> {
             }
             Patch::SetWorkbookProperty { property, .. } => {
                 if !wins(&mut self.workbook.meta.props, &property.kind(), ts) {
-                    return;
+                    return Ok(());
                 }
                 match property {
                     WorkbookProperty::Theme(theme) => self.workbook.theme = (**theme).clone(),
@@ -1353,16 +1354,16 @@ impl CollabModel<'_> {
                 ranges,
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let registers = &mut self.workbook.worksheets[i].index.registers;
                 let rule_wins = wins(&mut registers.cf, &(key.clone(), CfPropKind::Rule), ts);
                 let ranges_win = wins(&mut registers.cf, &(key.clone(), CfPropKind::Ranges), ts);
                 if !rule_wins || !ranges_win {
-                    return;
+                    return Ok(());
                 }
                 if cf_slot(&self.workbook.worksheets[i], key).is_some() {
-                    return;
+                    return Ok(());
                 }
                 let cf_rule = self.install_rule(i, key, rule);
                 let sheet = &mut self.workbook.worksheets[i];
@@ -1376,7 +1377,7 @@ impl CollabModel<'_> {
             }
             Patch::DeleteConditionalFormat { sheet, key, .. } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let sheet = &mut self.workbook.worksheets[i];
                 // The guards stay: they keep a concurrent edit from resurrecting the rule.
@@ -1394,7 +1395,7 @@ impl CollabModel<'_> {
                 ..
             } => {
                 let Some(i) = self.sheet_index(*sheet) else {
-                    return;
+                    return Ok(());
                 };
                 let sheet = &mut self.workbook.worksheets[i];
                 if let CfProperty::Priority(position) = property {
@@ -1407,20 +1408,20 @@ impl CollabModel<'_> {
                         .or_default()
                         .merge(position.clone(), ts)
                     {
-                        return; // outdated patch
+                        return Ok(()); // outdated patch
                     }
                     rank_cf(sheet);
-                    return;
+                    return Ok(());
                 }
                 if !wins(
                     &mut sheet.index.registers.cf,
                     &(key.clone(), property.kind()),
                     ts,
                 ) {
-                    return;
+                    return Ok(());
                 }
                 let Some(at) = cf_slot(sheet, key) else {
-                    return;
+                    return Ok(());
                 };
                 match property {
                     CfProperty::Rule(rule) => {
@@ -1434,6 +1435,7 @@ impl CollabModel<'_> {
                 }
             }
         }
+        Ok(())
     }
 
     /// Turns a wire rule into a stored one with interning for deduplication.
@@ -1531,7 +1533,12 @@ impl CollabModel<'_> {
     }
 
     /// Fills a freshly created sheet from the payload an `AddSheet` carried.
-    fn seed_sheet(&mut self, i: usize, content: &SheetContent, ts: &Timestamp) {
+    fn seed_sheet(
+        &mut self,
+        i: usize,
+        content: &SheetContent,
+        ts: &Timestamp,
+    ) -> Result<(), CodecError> {
         let suffix = self.suffix();
         let sheet = &mut self.workbook.worksheets[i];
         sheet.state = content.state.clone();
@@ -1542,10 +1549,8 @@ impl CollabModel<'_> {
 
         match &content.index {
             SheetIndexSeed::Encoded { rows, columns } => {
-                sheet.index.rows =
-                    FractionalIndex::decode(rows, suffix).expect("malformed bitcode payload");
-                sheet.index.cols =
-                    FractionalIndex::decode(columns, suffix).expect("malformed bitcode payload");
+                sheet.index.rows = FractionalIndex::decode(rows, suffix)?;
+                sheet.index.cols = FractionalIndex::decode(columns, suffix)?;
             }
             SheetIndexSeed::Extent { rows, columns } => {
                 // The used extent first: index ordinals are list positions, so an imported sheet needs
@@ -1710,6 +1715,7 @@ impl CollabModel<'_> {
                     .insert((id, at.clone()));
             }
         }
+        Ok(())
     }
 
     fn seed_row(&mut self, i: usize, key: &FractionalKey, state: &RowState, ts: &Timestamp) {

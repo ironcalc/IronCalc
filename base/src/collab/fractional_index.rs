@@ -22,6 +22,7 @@ pub const VIRTUAL_SESSION: [u8; SESSION_SUFFIX_LEN] = [0; SESSION_SUFFIX_LEN];
 /// It is session-free and deterministic, so two replicas materializing "row 5" independently mint the
 /// same key and their edits meet in the same cell. Positions are spaced two apart so that a key can
 /// always be minted between two consecutive virtual ones.
+#[allow(clippy::expect_used)]
 pub fn virtual_key(ordinal: u32) -> FractionalKey {
     let position = (2 * ordinal).to_be_bytes();
     let mut buf = KeyBuf::from(&position[1..]);
@@ -218,6 +219,10 @@ impl FractionalIndex {
 
     pub fn len(&self) -> usize {
         self.active.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.active.is_empty()
     }
 
     pub fn get(&self, index: usize) -> Option<&Entry> {
@@ -985,6 +990,7 @@ impl Buffer for FractionalIndexEncoder {
 
 impl Encoder<FractionalIndex> for FractionalIndexEncoder {
     #[inline]
+    #[allow(clippy::expect_used)]
     fn encode(&mut self, t: &FractionalIndex) {
         let bytes = t.encode().expect("fractional index cannot be encoded");
         Encoder::<[u8]>::encode(&mut self.0, &bytes);
@@ -1010,6 +1016,7 @@ impl<'a> Decoder<'a, FractionalIndex> for FractionalIndexDecoder<'a> {
     /// On a malformed payload: bitcode wants all validation in [`View::populate`], which cannot see
     /// the entry tables. Untrusted input should come in through `serde`, which reports the error.
     #[inline]
+    #[allow(clippy::expect_used)]
     fn decode(&mut self) -> FractionalIndex {
         let bytes: Vec<u8> = self.0.decode();
         FractionalIndex::decode(&bytes, Default::default()).expect("malformed bitcode payload")
@@ -1106,6 +1113,7 @@ impl CreateKeys {
     /// gap; one byte holds 255.
     const RUN_WIDTH: usize = INLINE_CAP - SESSION_SUFFIX_LEN;
 
+    #[allow(clippy::expect_used)]
     fn new(index: &FractionalIndex, i: usize, count: usize) -> Self {
         let (lo, hi) = FractionalIndex::neighbours(&index.active, i)
             .expect("cannot mint fractional keys past the end of the index");
@@ -1150,7 +1158,7 @@ impl CreateKeys {
         // A stride of 2 leaves a free position between consecutive keys, so a later insert between
         // two of them lands at this same width — which at [RUN_WIDTH] is the difference between an
         // inline key and a heap allocation.
-        let stride = if gap_capacity(lo, hi, width) >= 2 * count as u128 + 1 {
+        let stride = if gap_capacity(lo, hi, width) > 2 * count as u128 {
             2
         } else {
             1
@@ -1185,6 +1193,7 @@ impl Iterator for CreateKeys {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::unwrap_used)]
     use super::{
         gap_capacity, virtual_key, virtual_ordinal, Entry, FractionalIndex, FractionalKey, Hlc,
     };

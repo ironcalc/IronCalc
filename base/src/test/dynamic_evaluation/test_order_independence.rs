@@ -23,8 +23,8 @@
 // shows a #CIRC! or a #SPILL!, only 3 and 4 are required.
 
 use crate::test::util::new_empty_model;
-use crate::types::{Cell, FormulaValue};
 use crate::test::util::TestModel;
+use crate::types::{Cell, FormulaValue};
 
 const ROWS: i32 = 5;
 const COLS: i32 = 5;

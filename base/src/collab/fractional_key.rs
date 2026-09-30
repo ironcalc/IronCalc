@@ -175,6 +175,7 @@ impl FractionalKey {
 
     /// Layout of the heap block backing a key of `len` bytes: refcount followed by the payload.
     #[inline]
+    #[allow(clippy::expect_used)]
     fn heap_layout(len: usize) -> Layout {
         // The payload is `u8`, so it needs no padding after the header and the layout is exact.
         Layout::from_size_align(HEADER + len, std::mem::align_of::<AtomicUsize>())
@@ -338,6 +339,7 @@ impl AsRef<[u8]> for FractionalKey {
 /// and all of them panic past [`MAX_KEY_LEN`] — use [`FractionalKey::try_from_bytes`] for input
 /// whose length you do not control.
 impl From<&[u8]> for FractionalKey {
+    #[allow(clippy::expect_used)]
     fn from(bytes: &[u8]) -> Self {
         Self::try_from_bytes(bytes).expect("fractional key too long")
     }
@@ -476,6 +478,7 @@ impl<'a> Decoder<'a, FractionalKey> for FractionalKeyDecoder<'a> {
     /// `pub(crate)` fields, so this is the one entry point that cannot report [`KeyTooLong`] as an
     /// error. Untrusted input should come in through `serde`, which rejects it cleanly.
     #[inline]
+    #[allow(clippy::expect_used)]
     fn decode(&mut self) -> FractionalKey {
         let bytes: Vec<u8> = self.0.decode();
         FractionalKey::try_from_bytes(&bytes).expect("malformed bitcode payload")
@@ -488,6 +491,7 @@ impl<'a> Decode<'a> for FractionalKey {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::unwrap_used)]
     use super::{FractionalKey, KeyTooLong, INLINE_CAP, MAX_KEY_LEN};
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};

@@ -50,7 +50,7 @@ impl MergeEntry {
 impl Eq for MergeEntry {}
 impl PartialEq for MergeEntry {
     fn eq(&self, other: &Self) -> bool {
-        self.cmp(&other) == Ordering::Equal
+        self.cmp(other) == Ordering::Equal
     }
 }
 impl PartialOrd for MergeEntry {

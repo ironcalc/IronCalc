@@ -1398,7 +1398,7 @@ pub enum CellInput {
 
 #[cfg(test)]
 mod test {
-    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
     use crate::collab::formula::StableToken;
     use crate::collab::hlc::Hlc;

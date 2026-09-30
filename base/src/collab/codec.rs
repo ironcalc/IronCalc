@@ -422,17 +422,19 @@ fn read_modified_at_column(input: &mut &[u8], count: usize) -> Result<Vec<Hlc>, 
     let mut out = Vec::with_capacity(count.min(input.len()).max(1));
     let absolute =
         u64::try_from(read_ivarint(input)?).map_err(|_| CodecError::TimestampOverflow)?;
-    out.push(Hlc::new(absolute));
+    let mut previous = Hlc::new(absolute);
+    out.push(previous);
     while out.len() < count {
         let delta = read_ivarint(input)?;
-        let previous = *out.last().expect("slot 0 is pushed above");
         if delta == REPEAT_MARKER {
             let run = read_run_length(input, count - out.len())?;
             out.extend(std::iter::repeat_n(previous, run));
         } else {
-            let next = u64::try_from(previous.get() as i128 + delta as i128)
-                .map_err(|_| CodecError::TimestampOverflow)?;
-            out.push(Hlc::new(next));
+            previous = Hlc::new(
+                u64::try_from(previous.get() as i128 + delta as i128)
+                    .map_err(|_| CodecError::TimestampOverflow)?,
+            );
+            out.push(previous);
         }
     }
     // Receive rule: the stamps of a loaded index are stamps this replica has now seen. Syncing the
@@ -674,6 +676,7 @@ fn be_u64(bytes: &[u8]) -> u64 {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use crate::collab::fractional_index::FractionalIndex;
 

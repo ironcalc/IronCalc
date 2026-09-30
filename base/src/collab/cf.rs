@@ -628,7 +628,7 @@ mod test {
                 .iter()
                 .map(|cf| cf.cf_rule.clone())
                 .collect::<Vec<_>>()
-        };
+        }
         assert_eq!(
             stored(&imported).len(),
             source.workbook.worksheets[0].conditional_formatting.len()

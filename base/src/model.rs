@@ -3088,7 +3088,6 @@ impl<'a, A: Position> Model<'a, A> {
         }
         cells
     }
-
 }
 
 /// Document mutation and construction: ordinal addressing only.

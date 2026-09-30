@@ -109,11 +109,7 @@ impl Position for Stable {
         sheet.sheet_data.get(&r)?.get(&c)
     }
 
-    fn stored_cell_mut(
-        sheet: &mut Worksheet<Stable>,
-        row: i32,
-        column: i32,
-    ) -> Option<&mut Cell> {
+    fn stored_cell_mut(sheet: &mut Worksheet<Stable>, row: i32, column: i32) -> Option<&mut Cell> {
         let r = Self::row_at(&sheet.index, row)?;
         let c = Self::col_at(&sheet.index, column)?;
         sheet.sheet_data.get_mut(&r)?.get_mut(&c)
@@ -573,6 +569,7 @@ impl CollabModel<'static> {
     /// `session` is this replica's identity and the suffix of every [`FractionalKey`] it mints, so
     /// it must be non-zero: the all-zero suffix is
     /// [`virtual_key`](crate::collab::fractional_index::virtual_key)'s.
+    #[allow(clippy::expect_used)]
     pub fn new(session: SessionId) -> Self {
         debug_assert!(session != 0, "session 0 is reserved for virtual keys");
         let locale = get_default_locale();

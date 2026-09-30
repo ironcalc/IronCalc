@@ -408,8 +408,7 @@ pub trait Position: sealed::Sealed + Sized + Clone {
 
     // Cell storage, by ordinal. Per-representation because `SheetData` is.
     fn stored_cell(sheet: &Worksheet<Self>, row: i32, column: i32) -> Option<&Cell>;
-    fn stored_cell_mut(sheet: &mut Worksheet<Self>, row: i32, column: i32)
-        -> Option<&mut Cell>;
+    fn stored_cell_mut(sheet: &mut Worksheet<Self>, row: i32, column: i32) -> Option<&mut Cell>;
     fn store_cell(
         sheet: &mut Worksheet<Self>,
         row: i32,
@@ -1490,6 +1489,7 @@ impl Theme {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::unwrap_used)]
     use super::*;
     #[test]
     fn test_is_valid_hex_color() {

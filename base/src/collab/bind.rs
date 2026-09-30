@@ -870,7 +870,7 @@ impl CollabModel<'_> {
 
 #[cfg(test)]
 mod test {
-    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::unwrap_used, clippy::panic)]
     use super::*;
     use crate::collab::patch::invert_patches;
     use crate::expressions::parser::stringify::to_rc_format;

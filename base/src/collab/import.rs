@@ -58,6 +58,7 @@ pub(crate) fn used_extent(ws: &Worksheet) -> (i32, i32) {
 /// The seed payload an `AddSheet` carries for `ws`.
 /// The key the rule at storage index `at` takes: the same shape
 /// [`CollabModel::add_conditional_formatting`] mints, so the order is the file's order.
+#[allow(clippy::expect_used)]
 pub(crate) fn cf_key(at: usize, suffix: &[u8]) -> FractionalKey {
     let mut buf = KeyBuf::from(&(2 * (at as u32 + 1)).to_be_bytes()[1..]);
     buf.extend_from_slice(suffix);
@@ -726,7 +727,7 @@ mod test {
             .iter()
             .map(|r| (r.r, r.height, r.hidden, r.custom_height, r.custom_format))
             .collect();
-        rows.sort_by(|a, b| a.0.cmp(&b.0));
+        rows.sort_by_key(|a| a.0);
         rows
     }
 
@@ -736,7 +737,7 @@ mod test {
             .iter()
             .map(|c| (c.min, c.max, c.width, c.custom_width, c.hidden))
             .collect();
-        cols.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+        cols.sort_by_key(|a| (a.0, a.1));
         cols
     }
 

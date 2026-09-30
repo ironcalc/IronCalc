@@ -57,11 +57,13 @@ impl CollabModel<'_> {
     ///
     /// One mutator call is one commit, minting one [`Hlc`]: every register it writes ends up with
     /// the same [`Timestamp`], which is what keeps the author's guard table equal to its peers'.
+    #[allow(clippy::expect_used)]
     pub(crate) fn commit_local(&mut self, patches: Vec<Patch>) {
         let hlc = Hlc::now();
         let ts = Timestamp::new(hlc, self.local.session);
         for patch in &patches {
-            self.apply_patch(patch, &ts);
+            self.apply_patch(patch, &ts)
+                .expect("locally minted patches apply");
         }
         self.resync_derived(&patches);
         self.local.pending.push(Commit {
@@ -112,6 +114,7 @@ impl CollabModel<'_> {
 
     /// A tab-order key past every sheet this replica has seen. The session suffix separates two
     /// replicas appending concurrently, so the order stays total.
+    #[allow(clippy::expect_used)]
     pub(crate) fn sheet_position(&self) -> FractionalKey {
         let slot = self.workbook.meta.sheet_existence.len() as u32 + 1;
         let mut buf = KeyBuf::from(&(2 * slot).to_be_bytes()[1..]);
@@ -154,6 +157,7 @@ impl CollabModel<'_> {
 
     /// The key row `row` of worksheet `i` answers to, appending to `patches` whatever has to be
     /// materialized first for it to exist.
+    #[allow(clippy::expect_used)]
     fn row_key(&self, i: usize, id: SheetId, row: i32, patches: &mut Vec<Patch>) -> FractionalKey {
         let index = &self.workbook.worksheets[i].index;
         match Stable::row_at(index, row) {
@@ -168,6 +172,7 @@ impl CollabModel<'_> {
     }
 
     /// [`Self::row_key`] for a column.
+    #[allow(clippy::expect_used)]
     fn col_key(
         &self,
         i: usize,
@@ -459,6 +464,7 @@ impl CollabModel<'_> {
 
     /// A formula bound as if typed into (`sheet`, `row`, `column`).
     #[cfg(test)]
+    #[allow(clippy::expect_used)]
     pub(crate) fn bind_text(
         &mut self,
         sheet: u32,
@@ -989,6 +995,7 @@ impl CollabModel<'_> {
     /// The link typed text attaches when it looks like a URL or an email, as
     /// `Model::auto_link_cell` does; a quote prefix prevents it. A new link also puts the link
     /// style on `style`, so it lands in the same write. `None` when nothing links.
+    #[allow(clippy::too_many_arguments)]
     fn auto_link(
         &self,
         i: usize,
@@ -2305,7 +2312,7 @@ impl CollabModel<'_> {
         let w = &self.workbook.worksheets[i];
         let at = Stable::row_at(&w.index, row)
             .zip(Stable::col_at(&w.index, column))
-            .expect("the cell holding the link resolves");
+            .ok_or("The cell holding the link does not resolve")?;
         self.commit_local(vec![Patch::SetCellLink {
             sheet: id,
             at,
@@ -2481,6 +2488,7 @@ impl CollabModel<'_> {
 
     /// The whole of worksheet `i` as a payload: what an `AddSheet` seeds a copy from, and what the
     /// undo of a delete puts back. Keys are carried as they are — the copy addresses the same rows.
+    #[allow(clippy::expect_used)]
     fn sheet_content(&self, i: usize) -> SheetContent {
         let sheet = &self.workbook.worksheets[i];
         let mut cell_values = Vec::new();
@@ -3011,6 +3019,7 @@ impl CollabModel<'_> {
     /// The id a name authored as `(scope, name)` takes: the hash of both, salted past any name
     /// already live here — so creating one under a name a rename freed does not land on the
     /// renamed name.
+    #[allow(clippy::expect_used)]
     fn new_defined_name_id(&self, scope: Option<SheetId>, name: &str) -> DefinedNameId {
         let live = |id: &DefinedNameId| {
             self.workbook
@@ -3277,6 +3286,7 @@ impl CollabModel<'_> {
 
     /// Create [FractionalKey] that can be used as a stable conditional formatting rule identity
     /// or priority order.
+    #[allow(clippy::expect_used)]
     fn cf_key(&self, i: usize) -> FractionalKey {
         let registers = &self.workbook.worksheets[i].index.registers;
         let nil = FractionalKey::NULL;
@@ -3420,7 +3430,7 @@ impl CollabModel<'_> {
         let at = ranked
             .iter()
             .position(|(_, k)| k == &key)
-            .expect("the rule is in the order");
+            .ok_or("The rule is not in the conditional formatting order")?;
         let current = ranked[at].0.clone();
 
         let nil = FractionalKey::NULL;
@@ -3480,6 +3490,7 @@ impl CollabModel<'_> {
 impl CollabModel<'_> {
     /// The id a style authored as `name` takes: the hash of the name, salted past any style already
     /// live here — so creating one under a name a rename freed does not land on the renamed style.
+    #[allow(clippy::expect_used)]
     fn new_style_id(&self, name: &str) -> NamedStyleId {
         let live = |id: &NamedStyleId| {
             self.workbook
@@ -3601,7 +3612,7 @@ pub(crate) const UNSUPPORTED: &str = "unsupported in collab mode";
 
 #[cfg(test)]
 mod test {
-    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::unwrap_used, clippy::panic)]
     use super::*;
     use crate::collab::log::{SessionId, Snapshot};
     use crate::collab::patch::invert_patches;
@@ -5327,7 +5338,7 @@ mod test {
             cells.sort();
             cells
         };
-        assert_eq!(cells(&sb), cells(&sa));
+        assert_eq!(cells(sb), cells(sa));
         for row in 1..=6 {
             for col in 1..=6 {
                 assert_eq!(
@@ -6028,6 +6039,39 @@ mod test {
             b.workbook.worksheets[1].index.cols,
             a.workbook.worksheets[1].index.cols
         );
+    }
+
+    #[test]
+    fn malformed_sheet_index_payload_is_an_error_not_a_panic() {
+        use crate::collab::log::Consumer;
+        let mut a = CollabModel::new(1);
+        a.new_sheet();
+        a.duplicate_sheet(0).unwrap();
+        let mut commits = a.flush();
+        let tampered = commits
+            .iter_mut()
+            .position(|commit| {
+                commit.patches.iter_mut().any(|patch| match patch {
+                    Patch::AddSheet {
+                        content: Some(content),
+                        ..
+                    } => {
+                        content.index = SheetIndexSeed::Encoded {
+                            rows: vec![0xff],
+                            columns: vec![0xff],
+                        };
+                        true
+                    }
+                    _ => false,
+                })
+            })
+            .unwrap();
+
+        let mut b = CollabModel::new(2);
+        for commit in &commits[..tampered] {
+            b.apply(commit).unwrap();
+        }
+        assert!(b.apply(&commits[tampered]).is_err());
     }
 
     /// The undo of a delete restores the index too, so nothing shifts.

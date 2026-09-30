@@ -18,8 +18,8 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
-use crate::types::{ArrayKind, Cell, FormulaValue, SpillValue};
 use crate::test::util::TestModel;
+use crate::types::{ArrayKind, Cell, FormulaValue, SpillValue};
 
 fn name(sheet: u32, row: i32, column: i32) -> String {
     let mut col = String::new();

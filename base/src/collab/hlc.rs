@@ -137,6 +137,7 @@ impl<'a> Decode<'a> for Hlc {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     /// The clock is process-global, so this asserts only what holds whatever else the test binary

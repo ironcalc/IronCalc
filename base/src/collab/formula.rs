@@ -374,6 +374,7 @@ impl<'a> View<'a> for FunctionDecoder<'a> {
 
 impl<'a> Decoder<'a, Function> for FunctionDecoder<'a> {
     #[inline]
+    #[allow(clippy::expect_used)]
     fn decode(&mut self) -> Function {
         function_from_code(self.0.decode()).expect("code checked in populate")
     }
@@ -385,6 +386,7 @@ impl<'a> Decode<'a> for Function {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use crate::collab::fractional_index::virtual_key;
 
