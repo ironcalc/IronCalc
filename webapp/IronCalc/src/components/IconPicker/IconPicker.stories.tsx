@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import IconPicker from "./IconPicker";
+import { useArgs } from "storybook/preview-api";
+import IconPicker, { iconSpecFor } from "./IconPicker";
 
 const ICON_NAMES = [
   "ArrowUp",
@@ -31,18 +32,22 @@ interface IconPickerStoryProps {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontFamily: "monospace",
+  fontFamily: "var(--typography-font-family)",
   fontSize: 12,
   color: "var(--palette-grey-600)",
   minWidth: 100,
 };
 
-function IconPickerStory({ value: initialValue, color }: IconPickerStoryProps) {
-  const [value, setValue] = useState<string>(initialValue);
+function IconPickerStory({ value, color }: IconPickerStoryProps) {
+  const [, updateArgs] = useArgs();
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: 16 }}>
-      <div style={{ width: 32, height: 28 }}>
-        <IconPicker value={value} color={color} onChange={setValue} />
+      <div style={{ width: 28, height: 28 }}>
+        <IconPicker
+          value={value}
+          color={color}
+          onChange={(name) => updateArgs({ value: name })}
+        />
       </div>
       <span style={labelStyle}>{value}</span>
     </div>
@@ -52,13 +57,14 @@ function IconPickerStory({ value: initialValue, color }: IconPickerStoryProps) {
 const meta = {
   title: "Components/IconPicker",
   component: IconPickerStory,
+  render: IconPickerStory,
   parameters: {
     layout: "centered",
   },
   tags: ["autodocs"],
   args: {
     value: "Star",
-    color: "#FFD700",
+    color: "#F2994A",
   },
   argTypes: {
     value: {
@@ -80,10 +86,11 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const MultipleColors: Story = {
+  parameters: { controls: { disable: true } },
   render: function MultipleColorsStory() {
-    const [icon1, setIcon1] = useState("ArrowUp");
-    const [icon2, setIcon2] = useState("Check");
-    const [icon3, setIcon3] = useState("Star");
+    const [icon1, setIcon1] = useState("Check");
+    const [icon2, setIcon2] = useState("Star");
+    const [icon3, setIcon3] = useState("Heart");
 
     const rows: [string, string, (v: string) => void][] = [
       ["#8CB354", icon1, setIcon1],
@@ -114,7 +121,7 @@ export const MultipleColors: Story = {
                 flexShrink: 0,
               }}
             />
-            <div style={{ width: 32, height: 28 }}>
+            <div style={{ width: 28, height: 28 }}>
               <IconPicker value={value} color={color} onChange={onChange} />
             </div>
             <span style={labelStyle}>{value}</span>
@@ -126,51 +133,23 @@ export const MultipleColors: Story = {
 };
 
 export const AllIcons: Story = {
-  render: function AllIconsStory() {
-    const [selected, setSelected] = useState("Star");
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
-          padding: 16,
-        }}
-      >
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {ICON_NAMES.map((name) => (
-            <div
-              key={name}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <div style={{ width: 32, height: 28 }}>
-                <IconPicker
-                  value={name}
-                  color={selected === name ? "#2196F3" : "#666666"}
-                  onChange={setSelected}
-                />
-              </div>
-              <span
-                style={{
-                  fontFamily: "monospace",
-                  fontSize: 9,
-                  color: "var(--palette-grey-500)",
-                }}
-              >
-                {name}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div style={{ fontSize: 12, color: "var(--palette-grey-600)" }}>
-          Selected: <strong>{selected}</strong>
-        </div>
-      </div>
-    );
-  },
+  argTypes: { value: { table: { disable: true } } },
+  render: ({ color }) => (
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: 8, padding: 16 }}
+    >
+      {ICON_NAMES.map((name) => {
+        const { Icon, filled } = iconSpecFor(name);
+        return (
+          <div
+            key={name}
+            style={{ display: "flex", alignItems: "center", gap: 12 }}
+          >
+            <Icon size={16} color={color} fill={filled ? color : "none"} />
+            <span style={labelStyle}>{name}</span>
+          </div>
+        );
+      })}
+    </div>
+  ),
 };
