@@ -562,8 +562,7 @@ impl<'a> Model<'a> {
             }
             Err(s) => return s,
         };
-        let scale = 10.0_f64.powf(number_of_digits);
-        CalcResult::Number((value * scale).round() / scale)
+        round_result(value, number_of_digits, Rounding::Nearest, cell)
     }
 
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -584,12 +583,7 @@ impl<'a> Model<'a> {
             }
             Err(s) => return s,
         };
-        let scale = 10.0_f64.powf(number_of_digits);
-        if value > 0.0 {
-            CalcResult::Number((value * scale).ceil() / scale)
-        } else {
-            CalcResult::Number((value * scale).floor() / scale)
-        }
+        round_result(value, number_of_digits, Rounding::AwayFromZero, cell)
     }
 
     pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -610,12 +604,7 @@ impl<'a> Model<'a> {
             }
             Err(s) => return s,
         };
-        let scale = 10.0_f64.powf(number_of_digits);
-        if value > 0.0 {
-            CalcResult::Number((value * scale).floor() / scale)
-        } else {
-            CalcResult::Number((value * scale).ceil() / scale)
-        }
+        round_result(value, number_of_digits, Rounding::TowardZero, cell)
     }
 
     // (number, divisor)
@@ -939,7 +928,7 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
+            Ok(f) => to_precision(f, 15),
             Err(s) => return s,
         };
         let num_digits = if args.len() == 2 {
@@ -956,18 +945,7 @@ impl<'a> Model<'a> {
         } else {
             0.0
         };
-        if !(-15.0..=15.0).contains(&num_digits) {
-            return CalcResult::Number(value);
-        }
-        let v = if value >= 0.0 {
-            f64::floor(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
-        } else {
-            f64::ceil(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
-        };
-        if value.is_finite() && v.is_infinite() {
-            return CalcResult::Number(value);
-        }
-        CalcResult::Number(v)
+        round_result(value, num_digits, Rounding::TowardZero, cell)
     }
 
     single_number_fn!(fn_log10, |f| if f <= 0.0 {
@@ -1274,5 +1252,58 @@ impl<'a> Model<'a> {
             result *= (n + t) / (t + 1.0);
         }
         CalcResult::Number(result)
+    }
+}
+
+/// How ROUND, ROUNDUP, ROUNDDOWN and TRUNC round.
+#[derive(Clone, Copy)]
+enum Rounding {
+    Nearest,
+    AwayFromZero,
+    TowardZero,
+}
+
+/// `value` (already at 15 significant digits) rounded at `digits` decimals (an
+/// integer, negative for tens, hundreds, ...).
+///
+/// Like Excel, the scaled value is taken at 15 significant digits before rounding,
+/// so binary noise does not cross a rounding boundary: 1.005 * 100 is
+/// 100.49999999999999 in binary, and ROUND(1.005, 2) is 1.01.
+///
+/// Returns `None` when the result is not a finite number (ROUNDUP of a nonzero
+/// number to a multiple of 10^309 or more).
+fn round_to_digits(value: f64, digits: f64, mode: Rounding) -> Option<f64> {
+    let scale = 10f64.powf(digits);
+    if scale == 0.0 {
+        // Every finite number is less than half a unit at this position.
+        return match mode {
+            Rounding::AwayFromZero if value != 0.0 => None,
+            _ => Some(0.0),
+        };
+    }
+    let scaled = value * scale;
+    if !scaled.is_finite() {
+        // The position is past the last digit a number this large has.
+        return Some(value);
+    }
+    let scaled = to_precision(scaled, 15);
+    let rounded = match mode {
+        Rounding::Nearest => scaled.round(),
+        Rounding::AwayFromZero if value > 0.0 => scaled.ceil(),
+        Rounding::AwayFromZero => scaled.floor(),
+        Rounding::TowardZero => scaled.trunc(),
+    };
+    let result = rounded / scale;
+    result.is_finite().then_some(result)
+}
+
+fn round_result(value: f64, digits: f64, mode: Rounding, cell: CellReferenceIndex) -> CalcResult {
+    match round_to_digits(value, digits, mode) {
+        Some(v) => CalcResult::Number(v),
+        None => CalcResult::Error {
+            error: Error::NUM,
+            origin: cell,
+            message: "Result is too large".to_string(),
+        },
     }
 }
