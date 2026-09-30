@@ -46,11 +46,7 @@ function ColorPickerStory({ theme: themeName }: ColorPickerStoryProps) {
     };
   }, []);
 
-  if (!themes) {
-    return <div>Loading...</div>;
-  }
-
-  const theme = themes.find((t) => t.name === themeName) ?? themes[0];
+  const theme = themes?.find((t) => t.name === themeName) ?? themes?.[0];
 
   return (
     <>
@@ -65,16 +61,21 @@ function ColorPickerStory({ theme: themeName }: ColorPickerStoryProps) {
           height: 0,
         }}
       />
-      <ColorPicker
-        color={color}
-        defaultColor="#000000"
-        title={t("color_picker.default")}
-        onChange={setColor}
-        onClose={() => {}}
-        anchorEl={anchorRef}
-        open={true}
-        theme={theme}
-      />
+      {/* The picker portals next to the anchor, so the anchor must mount first */}
+      {theme ? (
+        <ColorPicker
+          color={color}
+          defaultColor="#000000"
+          title={t("color_picker.default")}
+          onChange={setColor}
+          onClose={() => {}}
+          anchorEl={anchorRef}
+          open={true}
+          theme={theme}
+        />
+      ) : (
+        <div>Loading...</div>
+      )}
     </>
   );
 }
