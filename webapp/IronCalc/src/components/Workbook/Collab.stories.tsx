@@ -64,6 +64,18 @@ function Pane({
   );
 }
 
+// The session-bound signatures exist only in the collab wasm build (`make collab`).
+const CollabModel = Model as unknown as {
+  new (
+    name: string,
+    locale: string,
+    timezone: string,
+    languageId: string,
+    session: number,
+  ): Model;
+  fromBytes(bytes: Uint8Array, session: number): Model;
+};
+
 function CollabDemo() {
   const [models, setModels] = useState<[Model, Model] | null>(null);
   const [revisions, setRevisions] = useState<[number, number]>([0, 0]);
@@ -80,8 +92,8 @@ function CollabDemo() {
 
     async function start() {
       await init();
-      const a = new Model("demo", "en", "UTC", "en", 1);
-      const b = Model.from_bytes(a.toBytes(), 2);
+      const a = new CollabModel("demo", "en", "UTC", "en", 1);
+      const b = CollabModel.fromBytes(a.toBytes(), 2);
       if (!cancelled) {
         setModels([a, b]);
       }

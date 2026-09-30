@@ -37,7 +37,7 @@ pub fn virtual_ordinal(key: &FractionalKey) -> Option<u32> {
         return None;
     }
     let n = u32::from_be_bytes([0, position[0], position[1], position[2]]);
-    if n == 0 || n % 2 != 0 {
+    if n == 0 || !n.is_multiple_of(2) {
         return None;
     }
     Some(n / 2)
@@ -1863,7 +1863,7 @@ mod test {
                 i,
                 Entry {
                     key,
-                    modified_at: Hlc::new(1_700_000_000_000 << 16),
+                    modified_at: PAST,
                     moved: FractionalKey::NULL,
                 },
             );
