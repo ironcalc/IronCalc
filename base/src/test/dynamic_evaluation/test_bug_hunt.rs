@@ -12,10 +12,10 @@ use crate::cell::CellValue;
 use crate::expressions::types::Area;
 
 use crate::test::util::new_empty_model;
-use crate::Model;
+use crate::test::util::TestModel;
 use crate::UserModel;
 
-fn number(model: &Model, cell: &str) -> f64 {
+fn number(model: &TestModel, cell: &str) -> f64 {
     match model.get_cell_value_by_ref(cell) {
         Ok(CellValue::Number(n)) => n,
         other => panic!("{cell} is not a number: {other:?}"),
@@ -776,7 +776,7 @@ fn range_clear_over_spill_area_then_reenter() {
 // History dependence of cycle verdicts (found by test_history_independence)
 // ═══════════════════════════════════════════════════════════════════════════
 
-fn snapshot(model: &Model, cells: &[&str]) -> Vec<String> {
+fn snapshot(model: &TestModel, cells: &[&str]) -> Vec<String> {
     cells.iter().map(|c| model._get_text(c)).collect()
 }
 

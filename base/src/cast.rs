@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -55,7 +56,7 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
     }
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
         match s.trim().parse::<f64>() {
             Ok(f) => Some(f),

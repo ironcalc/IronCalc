@@ -15,17 +15,16 @@ use crate::{
     model::{FmtSettings, Model},
     types::{
         Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
-        MergedCell, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
+        MergedCell, Ordinal, Position, SheetProperties, SheetState, Style, StyleIncludes, Theme,
+        VerticalAlignment,
     },
 };
 
-use crate::user_model::history::{
-    ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
-};
+use crate::user_model::history::{ColumnData, Diff, DiffList, DiffType, QueueDiffs, RowData};
 
 use super::border_utils::is_max_border;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum CellArrayStructure {
     // It's just a single cell
     SingleCell,
@@ -96,7 +95,11 @@ fn vertical(value: &str) -> Result<VerticalAlignment, String> {
     }
 }
 
-fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Style, String> {
+pub(crate) fn update_style(
+    old_value: &Style,
+    style_path: &str,
+    value: &str,
+) -> Result<Style, String> {
     let mut style = old_value.clone();
     match style_path {
         "font.b" => {
@@ -183,6 +186,12 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
     Ok(style)
 }
 
+/// The columns row `row` currently holds a cell in, left to right. A key the index no longer
+/// addresses names no position, and is skipped.
+fn row_columns<A: Position>(worksheet: &crate::types::Worksheet<A>, row: i32) -> Vec<i32> {
+    A::stored_columns_in_row(worksheet, row)
+}
+
 /// # A wrapper around [`Model`] for a spreadsheet end user.
 /// UserModel is a wrapper around Model with undo/redo history, _diffs_, automatic evaluation and view management.
 ///
@@ -209,10 +218,10 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 /// # Ok(())
 /// # }
 /// ```
-pub struct UserModel<'a> {
-    pub(crate) model: Model<'a>,
-    history: History,
-    send_queue: Vec<QueueDiffs>,
+pub struct UserModel<'a, A: Position = Ordinal> {
+    pub(crate) model: Model<'a, A>,
+    /// Wrapper state that is not part of the workbook, e.g. the undo/redo history.
+    state: A::UserState,
     pause_evaluation: bool,
 }
 
@@ -237,23 +246,14 @@ pub(crate) fn selected_sheet_after_move(selected: u32, from: u32, to: u32) -> u3
     }
 }
 
-impl<'a> Debug for UserModel<'a> {
+impl<'a, A: Position> Debug for UserModel<'a, A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UserModel").finish()
     }
 }
 
+// The ordinal, diff-based surface: mutators record history and queue diffs to send.
 impl<'a> UserModel<'a> {
-    /// Creates a user model from an existing model
-    pub fn from_model(model: Model) -> UserModel {
-        UserModel {
-            model,
-            history: History::default(),
-            send_queue: vec![],
-            pause_evaluation: false,
-        }
-    }
-
     /// Creates a new UserModel.
     ///
     /// See also:
@@ -265,12 +265,7 @@ impl<'a> UserModel<'a> {
         language_id: &'a str,
     ) -> Result<UserModel<'a>, String> {
         let model = Model::new_empty(name, locale_id, timezone, language_id)?;
-        Ok(UserModel {
-            model,
-            history: History::default(),
-            send_queue: vec![],
-            pause_evaluation: false,
-        })
+        Ok(UserModel::from_model(model))
     }
 
     /// Creates a model from it's internal representation
@@ -279,12 +274,7 @@ impl<'a> UserModel<'a> {
     /// * [Model::from_bytes]
     pub fn from_bytes(s: &[u8], language_id: &'a str) -> Result<UserModel<'a>, String> {
         let model = Model::from_bytes(s, language_id)?;
-        Ok(UserModel {
-            model,
-            history: History::default(),
-            send_queue: vec![],
-            pause_evaluation: false,
-        })
+        Ok(UserModel::from_model(model))
     }
 
     /// Returns the internal representation of a model
@@ -295,37 +285,14 @@ impl<'a> UserModel<'a> {
         self.model.to_bytes()
     }
 
-    /// Returns the internal model
-    pub fn get_model(&self) -> &Model<'_> {
-        &self.model
-    }
-
-    /// Returns the workbook name
-    pub fn get_name(&self) -> String {
-        self.model.workbook.name.clone()
-    }
-
-    /// Sets the name of a workbook
-    pub fn set_name(&mut self, name: &str) {
-        let old_value = self.model.workbook.name.clone();
-        if old_value == name {
-            return;
-        }
-        self.push_diff_list(vec![Diff::SetWorkbookName {
-            old_value,
-            new_value: name.to_string(),
-        }]);
-        self.model.workbook.name = name.to_string();
-    }
-
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
     ///
     /// See also:
     /// * [UserModel::redo]
     pub fn undo(&mut self) -> Result<(), String> {
-        if let Some(diff_list) = self.history.undo() {
+        if let Some(diff_list) = self.state.history.undo() {
             self.apply_undo_diff_list(&diff_list)?;
-            self.send_queue.push(QueueDiffs {
+            self.state.send_queue.push(QueueDiffs {
                 r#type: DiffType::Undo,
                 list: diff_list.clone(),
             });
@@ -338,9 +305,9 @@ impl<'a> UserModel<'a> {
     /// See also:
     /// * [UserModel::redo]
     pub fn redo(&mut self) -> Result<(), String> {
-        if let Some(diff_list) = self.history.redo() {
+        if let Some(diff_list) = self.state.history.redo() {
             self.apply_diff_list(&diff_list)?;
-            self.send_queue.push(QueueDiffs {
+            self.state.send_queue.push(QueueDiffs {
                 r#type: DiffType::Redo,
                 list: diff_list.clone(),
             });
@@ -350,41 +317,13 @@ impl<'a> UserModel<'a> {
 
     /// Returns true if there are items to be undone
     pub fn can_undo(&self) -> bool {
-        !self.history.undo_stack.is_empty()
+        !self.state.history.undo_stack.is_empty()
     }
 
     /// Returns true if there are items to be redone
     pub fn can_redo(&self) -> bool {
-        !self.history.redo_stack.is_empty()
+        !self.state.history.redo_stack.is_empty()
     }
-
-    /// Pauses automatic evaluation.
-    ///
-    /// See also:
-    /// * [UserModel::evaluate]
-    /// * [UserModel::resume_evaluation]
-    pub fn pause_evaluation(&mut self) {
-        self.pause_evaluation = true;
-    }
-
-    /// Resumes automatic evaluation.
-    ///
-    /// See also:
-    /// * [UserModel::evaluate]
-    /// * [UserModel::pause_evaluation]
-    pub fn resume_evaluation(&mut self) {
-        self.pause_evaluation = false;
-    }
-
-    /// Forces an evaluation of the model
-    ///
-    /// See also:
-    /// * [Model::evaluate]
-    /// * [UserModel::pause_evaluation]
-    pub fn evaluate(&mut self) {
-        self.model.evaluate()
-    }
-
     /// Returns the list of pending diffs and removes them from the queue
     ///
     /// This is used together with [apply_external_diffs](UserModel::apply_external_diffs) to keep two remote models
@@ -394,8 +333,8 @@ impl<'a> UserModel<'a> {
     /// * [UserModel::apply_external_diffs]
     pub fn flush_send_queue(&mut self) -> Vec<u8> {
         // This can never fail :O:
-        let q = bitcode::encode(&self.send_queue);
-        self.send_queue = vec![];
+        let q = bitcode::encode(&self.state.send_queue);
+        self.state.send_queue = vec![];
         q
     }
 
@@ -521,73 +460,6 @@ impl<'a> UserModel<'a> {
             new_value: Box::new(new_link),
         });
         Ok(())
-    }
-
-    /// Returns the content of a cell
-    ///
-    /// See also:
-    /// * [Model::get_localized_cell_content]
-    #[inline]
-    pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
-        self.model.get_localized_cell_content(sheet, row, column)
-    }
-
-    /// Returns completion information for a formula being edited in a cell.
-    ///
-    /// `formula` is the raw cell input (it may start with `=`) and `cursor` is a
-    /// char offset into it.
-    ///
-    /// See also:
-    /// * [Model::formula_completion]
-    #[inline]
-    pub fn formula_completion(
-        &mut self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-        formula: &str,
-        cursor: usize,
-    ) -> Result<CompletionContext, String> {
-        self.model
-            .formula_completion(sheet, row, column, formula, cursor)
-    }
-
-    /// Cycles the references touched by the cursor through the four
-    /// absolute/relative states, Excel F4 style: A1 -> $A$1 -> A$1 -> $A1 -> A1.
-    /// Returns the new text together with the new cursor start and end.
-    ///
-    /// See also:
-    /// * [Model::cycle_reference]
-    #[inline]
-    pub fn cycle_reference(
-        &self,
-        value: &str,
-        start: usize,
-        end: usize,
-    ) -> Result<(String, i32, i32), String> {
-        self.model.cycle_reference(value, start, end)
-    }
-
-    /// Returns the formatted value of a cell
-    ///
-    /// See also:
-    /// * [Model::get_formatted_cell_value]
-    #[inline]
-    pub fn get_formatted_cell_value(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<String, String> {
-        self.model.get_formatted_cell_value(sheet, row, column)
-    }
-
-    /// Returns the type of the cell
-    ///
-    /// See also
-    /// * [Model::get_cell_type]
-    pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> Result<CellType, String> {
-        self.model.get_cell_type(sheet, row, column)
     }
 
     /// Adds new sheet
@@ -1518,42 +1390,6 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
-    /// Gets the height of a row
-    ///
-    /// See also:
-    /// * [Model::get_row_height]
-    #[inline]
-    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
-        self.model.get_row_height(sheet, row)
-    }
-
-    /// Gets the width of a column
-    ///
-    /// See also:
-    /// * [Model::get_column_width]
-    #[inline]
-    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
-        self.model.get_column_width(sheet, column)
-    }
-
-    /// Returns the number of frozen rows in the sheet
-    ///
-    /// See also:
-    /// * [Model::get_frozen_rows_count()]
-    #[inline]
-    pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
-        self.model.get_frozen_rows_count(sheet)
-    }
-
-    /// Returns the number of frozen columns in the sheet
-    ///
-    /// See also:
-    /// * [Model::get_frozen_columns_count()]
-    #[inline]
-    pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
-        self.model.get_frozen_columns_count(sheet)
-    }
-
     /// Sets the number of frozen rows in sheet
     ///
     /// See also:
@@ -1804,151 +1640,17 @@ impl<'a> UserModel<'a> {
         self.push_diff_list(diff_list);
         Ok(())
     }
-
-    /// Returns the style for a cell
-    ///
-    /// Cells share a border, so the left border of B1 is the right border of A1
-    /// In the object structure the borders of the cells might be difference,
-    /// We always pick the "heaviest" border.
-    ///
-    /// See also:
-    /// * [Model::get_style_for_cell]
-    pub fn get_cell_style(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
-        let mut style = self.model.get_style_for_cell(sheet, row, column)?;
-
-        // We need to check if the adjacent cells have a "heavier" border
-        let border_top = if row > 1 {
-            self.model
-                .get_style_for_cell(sheet, row - 1, column)?
-                .border
-                .bottom
-        } else {
-            None
-        };
-
-        let border_right = if column < LAST_COLUMN {
-            self.model
-                .get_style_for_cell(sheet, row, column + 1)?
-                .border
-                .left
-        } else {
-            None
-        };
-
-        let border_bottom = if row < LAST_ROW {
-            self.model
-                .get_style_for_cell(sheet, row + 1, column)?
-                .border
-                .top
-        } else {
-            None
-        };
-
-        let border_left = if column > 1 {
-            self.model
-                .get_style_for_cell(sheet, row, column - 1)?
-                .border
-                .right
-        } else {
-            None
-        };
-
-        if is_max_border(style.border.top.as_ref(), border_top.as_ref()) {
-            style.border.top = border_top;
+    /// Sets the name of a workbook
+    pub fn set_name(&mut self, name: &str) {
+        let old_value = self.model.workbook.name.clone();
+        if old_value == name {
+            return;
         }
-
-        if is_max_border(style.border.right.as_ref(), border_right.as_ref()) {
-            style.border.right = border_right;
-        }
-
-        if is_max_border(style.border.bottom.as_ref(), border_bottom.as_ref()) {
-            style.border.bottom = border_bottom;
-        }
-
-        if is_max_border(style.border.left.as_ref(), border_left.as_ref()) {
-            style.border.left = border_left;
-        }
-
-        Ok(style)
-    }
-
-    /// Returns the full extended style for a cell, including any conditional formatting overlay.
-    ///
-    /// Identical border-adjacency logic as [`Self::get_cell_style`] but applied to the CF-overlaid style.
-    /// Use this when you need icon-set or data-bar decorations in addition to the base style.
-    pub fn get_extended_cell_style(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<ExtendedStyle, String> {
-        let mut extended = self.model.get_extended_style_for_cell(sheet, row, column)?;
-
-        let border_top = if row > 1 {
-            self.model
-                .get_style_for_cell(sheet, row - 1, column)?
-                .border
-                .bottom
-        } else {
-            None
-        };
-
-        let border_right = if column < LAST_COLUMN {
-            self.model
-                .get_style_for_cell(sheet, row, column + 1)?
-                .border
-                .left
-        } else {
-            None
-        };
-
-        let border_bottom = if row < LAST_ROW {
-            self.model
-                .get_style_for_cell(sheet, row + 1, column)?
-                .border
-                .top
-        } else {
-            None
-        };
-
-        let border_left = if column > 1 {
-            self.model
-                .get_style_for_cell(sheet, row, column - 1)?
-                .border
-                .right
-        } else {
-            None
-        };
-
-        if is_max_border(extended.style.border.top.as_ref(), border_top.as_ref()) {
-            extended.style.border.top = border_top;
-        }
-
-        if is_max_border(extended.style.border.right.as_ref(), border_right.as_ref()) {
-            extended.style.border.right = border_right;
-        }
-
-        if is_max_border(
-            extended.style.border.bottom.as_ref(),
-            border_bottom.as_ref(),
-        ) {
-            extended.style.border.bottom = border_bottom;
-        }
-
-        if is_max_border(extended.style.border.left.as_ref(), border_left.as_ref()) {
-            extended.style.border.left = border_left;
-        }
-
-        Ok(extended)
-    }
-
-    /// Returns information about the sheets
-    ///
-    /// See also:
-    /// * [Model::get_worksheets_properties]
-    #[inline]
-    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
-        self.model.get_worksheets_properties()
+        self.push_diff_list(vec![Diff::SetWorkbookName {
+            old_value,
+            new_value: name.to_string(),
+        }]);
+        self.model.workbook.name = name.to_string();
     }
 
     /// Sets the workbook theme.
@@ -1960,17 +1662,6 @@ impl<'a> UserModel<'a> {
             old_value: Box::new(old_value),
             new_value: Box::new(new_value),
         }]);
-    }
-
-    /// Returns the current workbook theme.
-    pub fn get_theme(&self) -> Theme {
-        self.model.get_theme()
-    }
-
-    /// Resolves a `Color` value to a CSS hex string using the current workbook theme.
-    /// Returns an empty string for `Color::None`.
-    pub fn resolve_color(&self, color: &Color) -> String {
-        color.to_rgb(&self.model.workbook.theme)
     }
 
     /// Set the gid lines in the worksheet to visible (`true`) or hidden (`false`)
@@ -1985,123 +1676,6 @@ impl<'a> UserModel<'a> {
         }]);
         Ok(())
     }
-
-    /// Returns true in the grid lines for
-    pub fn get_show_grid_lines(&self, sheet: u32) -> Result<bool, String> {
-        Ok(self.model.workbook.worksheet(sheet)?.show_grid_lines)
-    }
-
-    /// Returns the largest column in the row less than a column whose cell has a non empty value.
-    /// If there are none it returns `None`.
-    /// This is useful when rendering a part of a worksheet to know which cells spill over
-    pub fn get_last_non_empty_in_row_before_column(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<Option<i32>, String> {
-        let worksheet = self.model.workbook.worksheet(sheet)?;
-        let mut last_column = None;
-        // From left to right
-        for (col, cell) in worksheet.sheet_data.cells_in_row(row) {
-            if col < column {
-                if matches!(cell, Cell::EmptyCell { .. }) {
-                    continue;
-                }
-                last_column = Some(col);
-            }
-        }
-        Ok(last_column)
-    }
-
-    /// Returns the smallest column in the row larger than "column" whose cell has a non empty value.
-    /// If there are none it returns `None`.
-    /// This is useful when rendering a part of a worksheet to know which cells spill over
-    pub fn get_first_non_empty_in_row_after_column(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<Option<i32>, String> {
-        let worksheet = self.model.workbook.worksheet(sheet)?;
-        // From left to right
-        for (col, cell) in worksheet.sheet_data.cells_in_row(row) {
-            if col > column {
-                if matches!(cell, Cell::EmptyCell { .. }) {
-                    continue;
-                }
-                return Ok(Some(col));
-            }
-        }
-        Ok(None)
-    }
-
-    /// Returns the geometric structure of a cell
-    pub fn get_cell_array_structure(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<CellArrayStructure, String> {
-        let cell = self
-            .model
-            .workbook
-            .worksheet(sheet)?
-            .cell(row, column)
-            .cloned()
-            .unwrap_or_default();
-        match cell {
-            Cell::EmptyCell { .. }
-            | Cell::BooleanCell { .. }
-            | Cell::NumberCell { .. }
-            | Cell::ErrorCell { .. }
-            | Cell::SharedString { .. }
-            | Cell::CellFormula { .. } => Ok(CellArrayStructure::SingleCell),
-            Cell::SpillCell { a, .. } => {
-                let (m_row, m_column) = a;
-                let m_cell = self
-                    .model
-                    .workbook
-                    .worksheet(sheet)?
-                    .cell(m_row, m_column)
-                    .cloned()
-                    .unwrap_or_default();
-                let (width, height, is_dynamic) = match m_cell {
-                    Cell::ArrayFormula {
-                        r,
-                        kind: ArrayKind::Dynamic,
-                        ..
-                    } => (r.0, r.1, true),
-                    Cell::ArrayFormula {
-                        r,
-                        kind: ArrayKind::Cse,
-                        ..
-                    } => (r.0, r.1, false),
-                    _ => return Err("Invalid structure".to_string()),
-                };
-                if is_dynamic {
-                    Ok(CellArrayStructure::DynamicChild(
-                        m_row, m_column, width, height,
-                    ))
-                } else {
-                    Ok(CellArrayStructure::ArrayChild(
-                        m_row, m_column, width, height,
-                    ))
-                }
-            }
-            Cell::ArrayFormula {
-                r,
-                kind: ArrayKind::Dynamic,
-                ..
-            } => Ok(CellArrayStructure::DynamicAnchor(r.0, r.1)),
-            Cell::ArrayFormula {
-                r,
-                kind: ArrayKind::Cse,
-                ..
-            } => Ok(CellArrayStructure::ArrayAnchor(r.0, r.1)),
-        }
-    }
-
     /// Sets an array formula in the given range.
     pub fn set_user_array_formula(
         &mut self,
@@ -2142,12 +1716,6 @@ impl<'a> UserModel<'a> {
         self.evaluate_if_not_paused();
         Ok(())
     }
-
-    /// Returns the list of defined names
-    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String)> {
-        self.model.get_defined_name_list()
-    }
-
     /// Delete an existing defined name
     pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
         let old_value = self.model.get_defined_name_formula(name, scope)?;
@@ -2218,16 +1786,6 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
-    /// validates a new defined name
-    pub fn is_valid_defined_name(
-        &mut self,
-        name: &str,
-        scope: Option<u32>,
-        formula: &str,
-    ) -> Result<Option<u32>, String> {
-        self.model.is_valid_defined_name(name, scope, formula)
-    }
-
     /// Sets the timezone for the model
     pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
         let diff_list = vec![Diff::SetTimezone {
@@ -2247,33 +1805,10 @@ impl<'a> UserModel<'a> {
         self.push_diff_list(diff_list);
         self.model.set_locale(locale)
     }
-
-    /// Gets the timezone of the model
-    pub fn get_timezone(&self) -> String {
-        self.model.get_timezone()
-    }
-
-    /// Gets the locale of the model
-    pub fn get_locale(&self) -> String {
-        self.model.get_locale()
-    }
-
-    /// Get the language for the model
-    pub fn get_language(&self) -> String {
-        self.model.get_language()
-    }
-
     /// Sets the language for the model
     pub fn set_language(&mut self, language: &str) -> Result<(), String> {
         self.model.set_language(language)
     }
-
-    /// Gets the formatting settings for the model
-    pub fn get_fmt_settings(&self) -> FmtSettings {
-        self.model.get_fmt_settings()
-    }
-
-    // **** Private methods ****** //
 
     /// Returns a snapshot diff of the merged cells of the sheet when the
     /// current list differs from `old_merged_cells`, and nothing otherwise.
@@ -2302,17 +1837,1289 @@ impl<'a> UserModel<'a> {
     }
 
     pub(crate) fn push_diff_list(&mut self, diff_list: DiffList) {
-        self.send_queue.push(QueueDiffs {
+        self.state.send_queue.push(QueueDiffs {
             r#type: DiffType::Redo,
             list: diff_list.clone(),
         });
-        self.history.push(diff_list);
+        self.state.history.push(diff_list);
+    }
+}
+
+// The representation-independent surface, shared by the ordinal and collab models.
+impl<'a, A: Position> UserModel<'a, A> {
+    /// Gets the height of a row
+    ///
+    /// See also:
+    /// * [Model::get_row_height]
+    #[inline]
+    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
+        self.model.get_row_height(sheet, row)
+    }
+
+    /// Gets the width of a column
+    ///
+    /// See also:
+    /// * [Model::get_column_width]
+    #[inline]
+    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
+        self.model.get_column_width(sheet, column)
+    }
+
+    /// Returns the number of frozen rows in the sheet
+    ///
+    /// See also:
+    /// * [Model::get_frozen_rows_count()]
+    #[inline]
+    pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
+        self.model.get_frozen_rows_count(sheet)
+    }
+
+    /// Returns the number of frozen columns in the sheet
+    ///
+    /// See also:
+    /// * [Model::get_frozen_columns_count()]
+    #[inline]
+    pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
+        self.model.get_frozen_columns_count(sheet)
+    }
+
+    /// Returns information about the sheets
+    ///
+    /// See also:
+    /// * [Model::get_worksheets_properties]
+    #[inline]
+    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
+        self.model.get_worksheets_properties()
+    }
+
+    /// Returns the current workbook theme.
+    pub fn get_theme(&self) -> Theme {
+        self.model.get_theme()
+    }
+
+    /// validates a new defined name
+    pub fn is_valid_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<Option<u32>, String> {
+        self.model.is_valid_defined_name(name, scope, formula)
+    }
+
+    /// Returns the largest column in the row less than a column whose cell has a non empty value.
+    /// If there are none it returns `None`.
+    /// This is useful when rendering a part of a worksheet to know which cells spill over
+    pub fn get_last_non_empty_in_row_before_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, String> {
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let mut last_column = None;
+        for col in row_columns::<A>(worksheet, row) {
+            if col < column {
+                if let Some(cell) = worksheet.cell(row, col) {
+                    if matches!(cell, Cell::EmptyCell { .. }) {
+                        continue;
+                    }
+                }
+                last_column = Some(col);
+            }
+        }
+        Ok(last_column)
+    }
+
+    /// Returns the smallest column in the row larger than "column" whose cell has a non empty value.
+    /// If there are none it returns `None`.
+    /// This is useful when rendering a part of a worksheet to know which cells spill over
+    pub fn get_first_non_empty_in_row_after_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, String> {
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        for col in row_columns::<A>(worksheet, row) {
+            if col > column {
+                if let Some(cell) = worksheet.cell(row, col) {
+                    if matches!(cell, Cell::EmptyCell { .. }) {
+                        continue;
+                    }
+                }
+                return Ok(Some(col));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Creates a user model from an existing model
+    pub fn from_model(model: Model<'a, A>) -> UserModel<'a, A> {
+        UserModel {
+            model,
+            state: Default::default(),
+            pause_evaluation: false,
+        }
+    }
+
+    /// Returns the internal model
+    pub fn get_model(&self) -> &Model<'_, A> {
+        &self.model
+    }
+
+    /// Returns the workbook name
+    pub fn get_name(&self) -> String {
+        self.model.workbook.name.clone()
+    }
+
+    /// Pauses automatic evaluation.
+    ///
+    /// See also:
+    /// * [UserModel::evaluate]
+    /// * [UserModel::resume_evaluation]
+    pub fn pause_evaluation(&mut self) {
+        self.pause_evaluation = true;
+    }
+
+    /// Resumes automatic evaluation.
+    ///
+    /// See also:
+    /// * [UserModel::evaluate]
+    /// * [UserModel::pause_evaluation]
+    pub fn resume_evaluation(&mut self) {
+        self.pause_evaluation = false;
+    }
+
+    /// Forces an evaluation of the model
+    ///
+    /// See also:
+    /// * [Model::evaluate]
+    /// * [UserModel::pause_evaluation]
+    pub fn evaluate(&mut self) {
+        self.model.evaluate()
     }
 
     pub(super) fn evaluate_if_not_paused(&mut self) {
         if !self.pause_evaluation {
             self.model.evaluate();
         }
+    }
+    /// Returns the content of a cell
+    ///
+    /// See also:
+    /// * [Model::get_cell_content]
+    #[inline]
+    pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
+        self.model.get_localized_cell_content(sheet, row, column)
+    }
+
+    /// Returns completion information for a formula being edited in a cell.
+    ///
+    /// `formula` is the raw cell input (it may start with `=`) and `cursor` is a
+    /// char offset into it.
+    ///
+    /// See also:
+    /// * [Model::formula_completion]
+    #[inline]
+    pub fn formula_completion(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+        cursor: usize,
+    ) -> Result<CompletionContext, String> {
+        self.model
+            .formula_completion(sheet, row, column, formula, cursor)
+    }
+
+    /// Cycles the references touched by the cursor through the four
+    /// absolute/relative states, Excel F4 style: A1 -> $A$1 -> A$1 -> $A1 -> A1.
+    /// Returns the new text together with the new cursor start and end.
+    ///
+    /// See also:
+    /// * [Model::cycle_reference]
+    #[inline]
+    pub fn cycle_reference(
+        &self,
+        value: &str,
+        start: usize,
+        end: usize,
+    ) -> Result<(String, i32, i32), String> {
+        self.model.cycle_reference(value, start, end)
+    }
+
+    /// Returns the formatted value of a cell
+    ///
+    /// See also:
+    /// * [Model::get_formatted_cell_value]
+    #[inline]
+    pub fn get_formatted_cell_value(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<String, String> {
+        self.model.get_formatted_cell_value(sheet, row, column)
+    }
+
+    /// Returns the type of the cell
+    ///
+    /// See also
+    /// * [Model::get_cell_type]
+    pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> Result<CellType, String> {
+        self.model.get_cell_type(sheet, row, column)
+    }
+    /// Returns the style for a cell
+    ///
+    /// Cells share a border, so the left border of B1 is the right border of A1
+    /// In the object structure the borders of the cells might be difference,
+    /// We always pick the "heaviest" border.
+    ///
+    /// See also:
+    /// * [Model::get_style_for_cell]
+    pub fn get_cell_style(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
+        let mut style = self.model.get_style_for_cell(sheet, row, column)?;
+
+        // We need to check if the adjacent cells have a "heavier" border
+        let border_top = if row > 1 {
+            self.model
+                .get_style_for_cell(sheet, row - 1, column)?
+                .border
+                .bottom
+        } else {
+            None
+        };
+
+        let border_right = if column < LAST_COLUMN {
+            self.model
+                .get_style_for_cell(sheet, row, column + 1)?
+                .border
+                .left
+        } else {
+            None
+        };
+
+        let border_bottom = if row < LAST_ROW {
+            self.model
+                .get_style_for_cell(sheet, row + 1, column)?
+                .border
+                .top
+        } else {
+            None
+        };
+
+        let border_left = if column > 1 {
+            self.model
+                .get_style_for_cell(sheet, row, column - 1)?
+                .border
+                .right
+        } else {
+            None
+        };
+
+        if is_max_border(style.border.top.as_ref(), border_top.as_ref()) {
+            style.border.top = border_top;
+        }
+
+        if is_max_border(style.border.right.as_ref(), border_right.as_ref()) {
+            style.border.right = border_right;
+        }
+
+        if is_max_border(style.border.bottom.as_ref(), border_bottom.as_ref()) {
+            style.border.bottom = border_bottom;
+        }
+
+        if is_max_border(style.border.left.as_ref(), border_left.as_ref()) {
+            style.border.left = border_left;
+        }
+
+        Ok(style)
+    }
+
+    /// Returns the full extended style for a cell, including any conditional formatting overlay.
+    ///
+    /// Identical border-adjacency logic as [`get_cell_style`] but applied to the CF-overlaid style.
+    /// Use this when you need icon-set or data-bar decorations in addition to the base style.
+    pub fn get_extended_cell_style(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<ExtendedStyle, String> {
+        let mut extended = self.model.get_extended_style_for_cell(sheet, row, column)?;
+
+        let border_top = if row > 1 {
+            self.model
+                .get_style_for_cell(sheet, row - 1, column)?
+                .border
+                .bottom
+        } else {
+            None
+        };
+
+        let border_right = if column < LAST_COLUMN {
+            self.model
+                .get_style_for_cell(sheet, row, column + 1)?
+                .border
+                .left
+        } else {
+            None
+        };
+
+        let border_bottom = if row < LAST_ROW {
+            self.model
+                .get_style_for_cell(sheet, row + 1, column)?
+                .border
+                .top
+        } else {
+            None
+        };
+
+        let border_left = if column > 1 {
+            self.model
+                .get_style_for_cell(sheet, row, column - 1)?
+                .border
+                .right
+        } else {
+            None
+        };
+
+        if is_max_border(extended.style.border.top.as_ref(), border_top.as_ref()) {
+            extended.style.border.top = border_top;
+        }
+
+        if is_max_border(extended.style.border.right.as_ref(), border_right.as_ref()) {
+            extended.style.border.right = border_right;
+        }
+
+        if is_max_border(
+            extended.style.border.bottom.as_ref(),
+            border_bottom.as_ref(),
+        ) {
+            extended.style.border.bottom = border_bottom;
+        }
+
+        if is_max_border(extended.style.border.left.as_ref(), border_left.as_ref()) {
+            extended.style.border.left = border_left;
+        }
+
+        Ok(extended)
+    }
+    /// Resolves a `Color` value to a CSS hex string using the current workbook theme.
+    /// Returns an empty string for `Color::None`.
+    pub fn resolve_color(&self, color: &Color) -> String {
+        color.to_rgb(&self.model.workbook.theme)
+    }
+    /// Returns true in the grid lines for
+    pub fn get_show_grid_lines(&self, sheet: u32) -> Result<bool, String> {
+        Ok(self.model.workbook.worksheet(sheet)?.show_grid_lines)
+    }
+    /// Returns the geometric structure of a cell
+    pub fn get_cell_array_structure(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<CellArrayStructure, String> {
+        let cell = self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .cell(row, column)
+            .cloned()
+            .unwrap_or_default();
+        match cell {
+            Cell::EmptyCell { .. }
+            | Cell::BooleanCell { .. }
+            | Cell::NumberCell { .. }
+            | Cell::ErrorCell { .. }
+            | Cell::SharedString { .. }
+            | Cell::CellFormula { .. } => Ok(CellArrayStructure::SingleCell),
+            Cell::SpillCell { a, .. } => {
+                let (m_row, m_column) = a;
+                let m_cell = self
+                    .model
+                    .workbook
+                    .worksheet(sheet)?
+                    .cell(m_row, m_column)
+                    .cloned()
+                    .unwrap_or_default();
+                let (width, height, is_dynamic) = match m_cell {
+                    Cell::ArrayFormula {
+                        r,
+                        kind: ArrayKind::Dynamic,
+                        ..
+                    } => (r.0, r.1, true),
+                    Cell::ArrayFormula {
+                        r,
+                        kind: ArrayKind::Cse,
+                        ..
+                    } => (r.0, r.1, false),
+                    _ => return Err("Invalid structure".to_string()),
+                };
+                if is_dynamic {
+                    Ok(CellArrayStructure::DynamicChild(
+                        m_row, m_column, width, height,
+                    ))
+                } else {
+                    Ok(CellArrayStructure::ArrayChild(
+                        m_row, m_column, width, height,
+                    ))
+                }
+            }
+            Cell::ArrayFormula {
+                r,
+                kind: ArrayKind::Dynamic,
+                ..
+            } => Ok(CellArrayStructure::DynamicAnchor(r.0, r.1)),
+            Cell::ArrayFormula {
+                r,
+                kind: ArrayKind::Cse,
+                ..
+            } => Ok(CellArrayStructure::ArrayAnchor(r.0, r.1)),
+        }
+    }
+    /// Returns the list of defined names
+    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String)> {
+        self.model.get_defined_name_list()
+    }
+    /// Gets the timezone of the model
+    pub fn get_timezone(&self) -> String {
+        self.model.get_timezone()
+    }
+
+    /// Gets the locale of the model
+    pub fn get_locale(&self) -> String {
+        self.model.get_locale()
+    }
+
+    /// Get the language for the model
+    pub fn get_language(&self) -> String {
+        self.model.get_language()
+    }
+    /// Gets the formatting settings for the model
+    pub fn get_fmt_settings(&self) -> FmtSettings {
+        self.model.get_fmt_settings()
+    }
+}
+
+/// The collaborative surface: the same calls as the ordinal wrapper, delegating to the
+/// patch-emitting mutators. Every mutator runs through [`tracked`](Self::tracked), which turns the
+/// commits it emitted into one undo step.
+#[cfg(feature = "collab")]
+impl<'a> UserModel<'a, crate::collab::model::Stable> {
+    /// Runs one user action and records the commits it emitted as a single undo step, newest last.
+    /// An action that failed or changed nothing records nothing.
+    pub(super) fn tracked<T>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let from = self.model.local.pending.len();
+        let out = f(self)?;
+        let step: Vec<crate::collab::patch::Patch> = self.model.local.pending[from..]
+            .iter()
+            .flat_map(|commit| commit.patches.iter().cloned())
+            .collect();
+        if !step.is_empty() {
+            self.state.undo_stack.push(step);
+            self.state.redo_stack.clear();
+        }
+        Ok(out)
+    }
+
+    /// Undoes the last local action and evaluates the model if needed.
+    pub fn undo(&mut self) -> Result<(), String> {
+        if let Some(step) = self.state.undo_stack.pop() {
+            let inverse = crate::collab::patch::invert_patches(&step);
+            if !inverse.is_empty() {
+                self.model.commit_local(inverse);
+            }
+            self.model.reconcile_merges();
+            self.state.redo_stack.push(step);
+            self.evaluate_if_not_paused();
+        }
+        Ok(())
+    }
+
+    /// Redoes the last undone action, by committing its patches again under a fresh stamp.
+    pub fn redo(&mut self) -> Result<(), String> {
+        if let Some(step) = self.state.redo_stack.pop() {
+            self.model.commit_local(step.clone());
+            self.model.reconcile_merges();
+            self.state.undo_stack.push(step);
+            self.evaluate_if_not_paused();
+        }
+        Ok(())
+    }
+
+    /// Returns true if there are items to be undone
+    pub fn can_undo(&self) -> bool {
+        !self.state.undo_stack.is_empty()
+    }
+
+    /// Returns true if there are items to be redone
+    pub fn can_redo(&self) -> bool {
+        !self.state.redo_stack.is_empty()
+    }
+
+    /// Returns the commits produced locally since the last call, encoded for transport.
+    ///
+    /// See also:
+    /// * [UserModel::apply_external_diffs]
+    pub fn flush_send_queue(&mut self) -> Vec<u8> {
+        bitcode::encode(&self.model.flush())
+    }
+
+    /// Applies commits authored by other replicas. They are somebody else's history, so they never
+    /// touch our undo stacks.
+    ///
+    /// See also:
+    /// * [UserModel::flush_send_queue]
+    pub fn apply_external_diffs(&mut self, diff_list_str: &[u8]) -> Result<(), String> {
+        use crate::collab::log::Commit;
+        // Malformed bytes can panic inside the bitcode decoder; hardening it is deferred.
+        let commits: Vec<Commit> =
+            bitcode::decode(diff_list_str).map_err(|_| "Error parsing diff list".to_string())?;
+        self.model
+            .apply_batch(&commits)
+            .map_err(|e| e.to_string())?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Set the input in a cell
+    pub fn set_user_input(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+    ) -> Result<(), String> {
+        if !is_valid_column_number(column) {
+            return Err("Invalid column".to_string());
+        }
+        if !is_valid_row(row) {
+            return Err("Invalid row".to_string());
+        }
+        self.tracked(|s| {
+            s.model
+                .set_user_input(sheet, row, column, value.to_string())?;
+            s.evaluate_if_not_paused();
+            // The auto-fit the ordinal wrapper does, as its own commit.
+            let style = s.model.get_style_for_cell(sheet, row, column)?;
+            let line_count = value.split('\n').count() as f64;
+            let row_height = s.model.get_row_height(sheet, row)?;
+            let font_size = style.font.sz as f64;
+            let cell_height = (line_count - 1.0) * font_size * 1.5 + 8.0 + font_size;
+            if cell_height > row_height {
+                s.model.set_row_height(sheet, row, cell_height)?;
+            }
+            Ok(())
+        })
+    }
+
+    /// Adds new sheet
+    pub fn new_sheet(&mut self) -> Result<(), String> {
+        self.tracked(|s| {
+            let (_name, index) = s.model.new_sheet();
+            s.set_selected_sheet(index)
+        })
+    }
+
+    /// Duplicates a sheet by index, placing the copy right after it and selecting it.
+    pub fn duplicate_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        self.tracked(|s| {
+            let (_name, new_index) = s.model.duplicate_sheet(sheet)?;
+            s.set_selected_sheet(new_index)
+        })
+    }
+
+    /// Deletes sheet by index
+    pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        self.model.workbook.worksheet(sheet)?;
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        // If we are deleting the last sheet we need to change the selected sheet
+        if sheet == sheet_count - 1 && sheet_count > 1 {
+            if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+                view.sheet = sheet_count - 2;
+            };
+        }
+        self.tracked(|s| s.model.delete_sheet(sheet))
+    }
+
+    /// Renames a sheet by index
+    pub fn rename_sheet(&mut self, sheet: u32, new_name: &str) -> Result<(), String> {
+        if self.model.workbook.worksheet(sheet)?.name == new_name {
+            return Ok(());
+        }
+        self.tracked(|s| s.model.rename_sheet_by_index(sheet, new_name))
+    }
+
+    /// Moves the worksheet at `sheet_index` to `new_index`, the selection following the sheet.
+    pub fn move_sheet(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        if sheet_index >= sheet_count {
+            return Err(format!("Invalid sheet index {sheet_index}"));
+        }
+        if new_index >= sheet_count {
+            return Err(format!("Invalid target index {new_index}"));
+        }
+        if sheet_index == new_index {
+            return Ok(());
+        }
+        let selected = self.get_selected_sheet();
+        self.tracked(|s| s.model.move_sheet(sheet_index, new_index))?;
+        // Selection is view state, so it stays outside the undo step.
+        self.set_selected_sheet(selected_sheet_after_move(selected, sheet_index, new_index))
+    }
+
+    /// Hides sheet by index
+    pub fn hide_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        for index in 1..sheet_count {
+            let sheet_index = (sheet + index) % sheet_count;
+            if self.model.workbook.worksheet(sheet_index)?.state == SheetState::Visible {
+                if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+                    view.sheet = sheet_index;
+                };
+                break;
+            }
+        }
+        self.tracked(|s| s.model.set_sheet_state(sheet, SheetState::Hidden))
+    }
+
+    /// Un hides sheet by index
+    pub fn unhide_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        self.tracked(|s| s.model.set_sheet_state(sheet, SheetState::Visible))
+    }
+
+    /// Sets sheet color
+    pub fn set_sheet_color(&mut self, sheet: u32, color: &Color) -> Result<(), String> {
+        self.tracked(|s| s.model.set_sheet_color(sheet, color))
+    }
+
+    /// Set the gid lines in the worksheet to visible (`true`) or hidden (`false`)
+    pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<(), String> {
+        self.tracked(|s| s.model.set_show_grid_lines(sheet, show_grid_lines))
+    }
+
+    /// Removes cells contents and style
+    pub fn range_clear_all(&mut self, range: &Area) -> Result<(), String> {
+        self.tracked(|s| s.model.range_clear_all(range))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Deletes the content in cells, but keeps the style
+    pub fn range_clear_contents(&mut self, range: &Area) -> Result<(), String> {
+        self.tracked(|s| s.model.range_clear_contents(range))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Removes cells styles and formatting, but keeps the content
+    pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
+        self.tracked(|s| s.model.range_clear_formatting(range))
+    }
+
+    /// Returns the link attached to cell (`row`, `column`) or `None` if there isn't one.
+    pub fn get_cell_link(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<crate::types::Link>, String> {
+        self.model.get_cell_link(sheet, row, column)
+    }
+
+    /// Returns all the links in the worksheet as a list sorted by (row, column).
+    pub fn get_links_list(&self, sheet: u32) -> Result<Vec<crate::links::CellLinkView>, String> {
+        self.model.get_links_list(sheet)
+    }
+
+    /// Attaches `link` to cell (`row`, `column`), replacing the existing link if there was one.
+    ///
+    /// If `label` is given it becomes the content of the cell. When the cell did not have a link
+    /// before, the link style (underline and the theme hyperlink color) is applied too. The whole
+    /// operation is a single entry in the undo/redo history.
+    pub fn set_cell_link(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        link: crate::types::Link,
+        label: Option<&str>,
+    ) -> Result<(), String> {
+        let is_new_link = self.model.get_cell_link(sheet, row, column)?.is_none();
+        self.tracked(|s| {
+            s.model.set_cell_link(sheet, row, column, link)?;
+            if let Some(label) = label {
+                if label != s.model.get_formatted_cell_value(sheet, row, column)? {
+                    s.model
+                        .set_user_input(sheet, row, column, label.to_string())?;
+                    s.evaluate_if_not_paused();
+                }
+            }
+            if is_new_link {
+                let mut style = s.model.get_style_for_cell(sheet, row, column)?;
+                style.font.u = true;
+                style.font.color = Color::Theme(crate::links::THEME_COLOR_HYPERLINK, 0.0);
+                s.model.set_cell_style(sheet, row, column, &style)?;
+            }
+            Ok(())
+        })
+    }
+
+    /// Removes the link attached to cell (`row`, `column`). It is NOT an error if the cell has no
+    /// link. The cell content and the cell style are left untouched.
+    pub fn delete_cell_link(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        self.tracked(|s| s.model.delete_cell_link(sheet, row, column))
+    }
+
+    /// Updates the range with a cell style.
+    pub fn update_range_style(
+        &mut self,
+        range: &Area,
+        style_path: &str,
+        value: &str,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.update_range_style(range, style_path, value))
+    }
+
+    /// Inserts `row_count` blank rows starting at `row`
+    pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        self.tracked(|s| s.model.insert_rows(sheet, row, row_count))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Inserts `column_count` blank columns starting at `column`
+    pub fn insert_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.insert_columns(sheet, column, column_count))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Deletes `row_count` rows starting at `row`
+    pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        self.tracked(|s| s.model.delete_rows(sheet, row, row_count))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Deletes `column_count` columns starting at `column`
+    pub fn delete_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.delete_columns(sheet, column, column_count))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Moves a column horizontally and adjusts formulas
+    pub fn move_columns_action(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        if delta == 0 || column_count <= 0 {
+            return Ok(());
+        }
+        // Adjust delta to skip hidden columns in the landing zone
+        let mut new_delta = delta;
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        if delta > 0 {
+            for col in column + column_count..=column + column_count + delta {
+                if worksheet.is_column_hidden(col)? {
+                    new_delta += 1;
+                }
+            }
+        } else {
+            for col in column + delta..column {
+                if worksheet.is_column_hidden(col)? {
+                    new_delta -= 1;
+                }
+            }
+        }
+        self.tracked(|s| {
+            s.model
+                .move_columns_action(sheet, column, column_count, new_delta)
+        })?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Moves a group of rows vertically and adjusts formulas
+    pub fn move_rows_action(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        row_count: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        if delta == 0 || row_count <= 0 {
+            return Ok(());
+        }
+        let mut new_delta = delta;
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        if delta > 0 {
+            for r in row + row_count..=row + row_count + delta {
+                if worksheet.is_row_hidden(r)? {
+                    new_delta += 1;
+                }
+            }
+        } else {
+            for r in row + delta..row {
+                if worksheet.is_row_hidden(r)? {
+                    new_delta -= 1;
+                }
+            }
+        }
+        self.tracked(|s| s.model.move_rows_action(sheet, row, row_count, new_delta))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Sets the width of a group of columns in a single commit
+    pub fn set_columns_width(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        width: f64,
+    ) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model
+                .set_columns_width(sheet, column_start, column_end, width)
+        })
+    }
+
+    /// Sets the hidden state of a range of columns in a single commit
+    pub fn set_columns_hidden(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model
+                .set_columns_hidden(sheet, column_start, column_end, hidden)
+        })
+    }
+
+    /// Sets the hidden state of a range of rows in a single commit
+    pub fn set_rows_hidden(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.set_rows_hidden(sheet, row_start, row_end, hidden))
+    }
+
+    /// Sets the height of a range of rows in a single commit
+    pub fn set_rows_height(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        height: f64,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.set_rows_height(sheet, row_start, row_end, height))
+    }
+
+    /// Sets the number of frozen rows in sheet
+    pub fn set_frozen_rows_count(&mut self, sheet: u32, frozen_rows: i32) -> Result<(), String> {
+        self.tracked(|s| s.model.set_frozen_rows(sheet, frozen_rows))
+    }
+
+    /// Sets the number of frozen columns in sheet
+    pub fn set_frozen_columns_count(
+        &mut self,
+        sheet: u32,
+        frozen_columns: i32,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.set_frozen_columns(sheet, frozen_columns))
+    }
+
+    /// Sets the workbook theme.
+    pub fn set_theme(&mut self, theme: Theme) {
+        let _ = self.tracked(|s| {
+            s.model.set_theme(theme);
+            Ok(())
+        });
+    }
+
+    /// Sets the name of a workbook
+    pub fn set_name(&mut self, name: &str) {
+        // The emitter cannot fail, so there is no error to report.
+        let _ = self.tracked(|s| {
+            s.model.set_name(name);
+            Ok(())
+        });
+    }
+
+    /// Sets the timezone for the model
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
+        self.tracked(|s| s.model.set_timezone(timezone))
+    }
+
+    /// Sets the locale for the model
+    pub fn set_locale(&mut self, locale: &str) -> Result<(), String> {
+        self.tracked(|s| s.model.set_locale(locale))
+    }
+
+    /// Create a new defined name
+    pub fn new_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.new_defined_name(name, scope, formula))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Delete an existing defined name
+    pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
+        self.tracked(|s| s.model.delete_defined_name(name, scope))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Updates a defined name
+    pub fn update_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        new_name: &str,
+        new_scope: Option<u32>,
+        new_formula: &str,
+    ) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model
+                .update_defined_name(name, scope, new_name, new_scope, new_formula)
+        })?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Returns the list of all named style names.
+    pub fn get_named_style_list(&self) -> Vec<String> {
+        self.model.get_named_style_list()
+    }
+
+    /// Returns the `Style` associated with the named style.
+    pub fn get_named_style(&self, name: &str) -> Result<Style, String> {
+        self.model.get_named_style(name)
+    }
+
+    /// Creates a new named style. Fails if a style with that name already exists.
+    ///
+    /// A replicated named style includes every formatting category, so `includes` is only
+    /// accepted for API parity with the ordinal model.
+    pub fn create_named_style(
+        &mut self,
+        name: &str,
+        style: &Style,
+        includes: StyleIncludes,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.create_named_style(name, style, includes))
+    }
+
+    /// Returns which formatting categories the named style includes: all of them, for a
+    /// replicated style.
+    pub fn get_named_style_includes(&self, name: &str) -> Result<StyleIncludes, String> {
+        self.model.get_named_style_includes(name)
+    }
+
+    /// Deletes a named style. Cells that used this style keep their formatting.
+    pub fn delete_named_style(&mut self, name: &str) -> Result<(), String> {
+        self.tracked(|s| s.model.delete_named_style(name))
+    }
+
+    /// Updates the formatting and optionally the name of a named style.
+    /// `includes` is only accepted for API parity (see [`Self::create_named_style`]).
+    pub fn update_named_style(
+        &mut self,
+        name: &str,
+        new_name: &str,
+        style: &Style,
+        includes: StyleIncludes,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.update_named_style(name, new_name, style, includes))?;
+        Ok(())
+    }
+
+    /// Adds a new CF rule to `sheet`.
+    pub fn add_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        range: &str,
+        rule: crate::cf_types::CfRuleInput,
+    ) -> Result<(), String> {
+        self.tracked(|s| s.model.add_conditional_formatting(sheet, range, rule))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Removes the CF rule at `index` from `sheet`.
+    pub fn delete_conditional_formatting(&mut self, sheet: u32, index: u32) -> Result<(), String> {
+        self.tracked(|s| s.model.delete_conditional_formatting(sheet, index as usize))?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Replaces the range and rule of the CF entry at `index` on `sheet`.
+    pub fn update_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        index: u32,
+        new_range: &str,
+        new_rule: crate::cf_types::CfRuleInput,
+    ) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model
+                .update_conditional_formatting(sheet, index as usize, new_range, new_rule)
+        })?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Raises the priority of the CF rule at `index` on `sheet`.
+    pub fn raise_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model
+                .raise_conditional_formatting_priority(sheet, index as usize)
+        })?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Lowers the priority of the CF rule at `index` on `sheet`.
+    pub fn lower_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model
+                .lower_conditional_formatting_priority(sheet, index as usize)
+        })?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Returns all CF rules for `sheet`.
+    pub fn get_conditional_formatting_list(
+        &self,
+        sheet: u32,
+    ) -> Result<Vec<crate::cf_types::ConditionalFormattingView>, String> {
+        self.model.get_conditional_formatting_list(sheet)
+    }
+
+    /// Returns the differential format (Dxf) for the CF rule at `index` on `sheet`.
+    pub fn get_dxf_for_conditional_formatting(
+        &self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<Option<crate::types::Dxf>, String> {
+        self.model
+            .get_dxf_for_conditional_formatting(sheet, index as usize)
+    }
+
+    /// Sets the language for the model
+    pub fn set_language(&mut self, language: &str) -> Result<(), String> {
+        self.model.set_language(language)
+    }
+
+    /// Sets an array formula in the given range.
+    pub fn set_user_array_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+        formula: &str,
+    ) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model
+                .set_user_array_formula(sheet, row, column, width, height, formula)
+        })?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Returns all Excel built-in named styles as `(name, Style)` pairs.
+    pub fn get_builtin_named_styles(&self) -> Vec<(String, Style)> {
+        crate::builtin_styles::builtin_named_styles()
+            .into_iter()
+            .map(|(name, style, _)| (name, style))
+            .collect()
+    }
+
+    /// Applies a named style (custom or built-in) to the current selection.
+    /// A built-in that is not in the workbook yet is created first.
+    pub fn on_apply_named_style(&mut self, name: &str) -> Result<(), String> {
+        let view = self.get_selected_view();
+        let sheet = view.sheet;
+        let [row_start, column_start, row_end, column_end] = view.range;
+        self.tracked(|s| {
+            if s.model.workbook.styles.get_xf_id_by_name(name).is_err() {
+                let (style, includes) = crate::builtin_styles::get_builtin_style(name)
+                    .ok_or_else(|| format!("Named style '{name}' not found"))?;
+                s.model.create_named_style(name, &style, includes)?;
+            }
+            for row in row_start..=row_end {
+                for column in column_start..=column_end {
+                    s.model.set_cell_style_by_name(sheet, row, column, name)?;
+                }
+            }
+            Ok(())
+        })
+    }
+
+    // Calls the collab representation does not answer. They change nothing and emit nothing.
+
+    /// Unsupported in collab mode.
+    pub fn copy_to_clipboard(&self) -> Result<super::clipboard::Clipboard, String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn paste_from_clipboard(
+        &mut self,
+        _source_sheet: u32,
+        _source_range: super::clipboard::ClipboardTuple,
+        _clipboard: &super::clipboard::ClipboardData,
+        _is_cut: bool,
+    ) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn paste_csv_string(&mut self, _area: &Area, _csv: &str) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn auto_fill_rows(&mut self, _source_area: &Area, _to_row: i32) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn auto_fill_columns(
+        &mut self,
+        _source_area: &Area,
+        _to_column: i32,
+    ) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn set_area_with_border(
+        &mut self,
+        _range: &Area,
+        _border_area: &BorderArea,
+    ) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+
+    /// Unsupported in collab mode.
+    pub fn on_paste_styles(&mut self, _styles: &[Vec<Style>]) -> Result<(), String> {
+        Err(crate::collab::emit::UNSUPPORTED.to_string())
+    }
+}
+
+/// Construction and persistence, which only make sense for a model that owns its locale.
+#[cfg(feature = "collab")]
+impl UserModel<'static, crate::collab::model::Stable> {
+    /// Creates a workbook holding a default sheet with the static ID.
+    pub fn new_empty_with_session(
+        name: &str,
+        locale_id: &str,
+        timezone: &str,
+        language_id: &str,
+        session: crate::collab::log::SessionId,
+    ) -> Result<UserModel<'static, crate::collab::model::Stable>, String> {
+        let tz = crate::tz::Tz::parse(timezone)?;
+        let locale = crate::locale::get_locale(locale_id)
+            .map_err(|_| format!("Invalid locale: {locale_id}"))?;
+        let language = crate::language::get_language(language_id)
+            .map_err(|_| format!("Invalid language: {language_id}"))?;
+
+        let mut model = crate::collab::model::CollabModel::new(session);
+        // Construction-time configuration, not replicated state: a joining replica gets these
+        // from the snapshot it restores.
+        model.workbook.name = name.to_string();
+        model.workbook.settings.tz = timezone.to_string();
+        model.workbook.settings.locale = locale_id.to_string();
+        model.tz = tz;
+        model.locale = locale;
+        model.language = language;
+        model.parser = crate::expressions::parser::Parser::new(
+            vec![],
+            vec![],
+            HashMap::new(),
+            locale,
+            language,
+        );
+
+        let sheet_name = format!("{}1", model.get_sheet_name());
+        model.insert_sheet(&sheet_name, 0, Some(crate::collab::emit::DEFAULT_SHEET_ID))?;
+        Ok(UserModel::from_model(model))
+    }
+
+    /// Imports an ordinal workbook — an xlsx load, say — as a fresh replica. See
+    /// [`CollabModel::from_workbook_with_session`](crate::collab::model::CollabModel).
+    pub fn from_workbook_with_session(
+        workbook: crate::types::Workbook,
+        language_id: &str,
+        session: crate::collab::log::SessionId,
+    ) -> Result<UserModel<'static, crate::collab::model::Stable>, String> {
+        let model = crate::collab::model::CollabModel::from_workbook_with_session(
+            workbook,
+            language_id,
+            session,
+        )?;
+        Ok(UserModel::from_model(model))
+    }
+
+    /// Returns the internal representation of a model.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        use crate::collab::log::Snapshot;
+        self.model.encode()
+    }
+
+    /// Restores a model from [`to_bytes`](Self::to_bytes).
+    pub fn from_bytes_with_session(
+        bytes: &[u8],
+        session: crate::collab::log::SessionId,
+    ) -> Result<UserModel<'static, crate::collab::model::Stable>, String> {
+        use crate::collab::log::Snapshot;
+        let model =
+            crate::collab::model::CollabModel::decode(bytes, session).map_err(|e| e.to_string())?;
+        Ok(UserModel::from_model(model))
     }
 }
 

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::expressions::utils::parse_reference_a1;
 use crate::formatter::dates::{date_to_serial_number, from_excel_date};
 use crate::{
     calc_result::CalcResult,
@@ -11,42 +10,16 @@ use crate::{
         PeriodType, TextOperator, ValueOperator,
     },
     expressions::types::{CellReferenceIndex, CellReferenceRC},
-    types::{Color, Dxf},
+    types::{Color, Dxf, RangeRef},
     Model,
 };
 
+use crate::types::Position;
 use chrono::{Datelike, Duration, Months, NaiveDate};
 
 // ---------------------------------------------------------------------------
 // Free helper functions for CF evaluation
 // ---------------------------------------------------------------------------
-
-/// Parses a space-separated sqref like "A1:C3 E5" into a list of (row1,col1,row2,col2) tuples.
-fn parse_sqref(sqref: &str) -> Vec<(i32, i32, i32, i32)> {
-    sqref
-        .split_whitespace()
-        .filter_map(parse_range_part)
-        .collect()
-}
-
-fn parse_range_part(s: &str) -> Option<(i32, i32, i32, i32)> {
-    let upper = s.to_uppercase();
-    let parts: Vec<&str> = upper.splitn(2, ':').collect();
-    match parts.len() {
-        1 => {
-            let r = parse_reference_a1(parts[0])?;
-            Some((r.row, r.column, r.row, r.column))
-        }
-        2 => {
-            let r1 = parse_reference_a1(parts[0])?;
-            let r2 = parse_reference_a1(parts[1])?;
-            let (row_min, row_max) = (r1.row.min(r2.row), r1.row.max(r2.row));
-            let (col_min, col_max) = (r1.column.min(r2.column), r1.column.max(r2.column));
-            Some((row_min, col_min, row_max, col_max))
-        }
-        _ => None,
-    }
-}
 
 /// Interpolates a color along the color scale for a given value.
 fn interpolate_color(v: f64, thresholds: &[f64], colors: &[String]) -> String {
@@ -129,7 +102,8 @@ fn cell_value_key(v: &crate::cell::CellValue) -> Option<String> {
     }
 }
 
-impl<'a> Model<'a> {
+/// Conditional formatting evaluation: runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Evaluates all conditional formatting rules for the workbook.
     ///
     /// Iterates every worksheet's CF rules in priority order (lowest priority number,
@@ -139,6 +113,8 @@ impl<'a> Model<'a> {
         self.cf_cache.clear();
         let sheet_count = self.workbook.worksheets.len();
         for sheet_idx in 0..sheet_count {
+            let dim = self.workbook.worksheets[sheet_idx].dimension();
+            let index = self.workbook.worksheets[sheet_idx].index.clone();
             let mut cfs = self.workbook.worksheets[sheet_idx]
                 .conditional_formatting
                 .clone();
@@ -146,7 +122,22 @@ impl<'a> Model<'a> {
             // the first writer into cf_cache wins.
             cfs.sort_by_key(|cf| cf.priority);
             for cf in cfs {
-                let ranges = parse_sqref(&cf.range);
+                // An unbounded axis resolves to the whole grid; evaluation is dense per
+                // cell, so clamp it to the sheet's used range.
+                let ranges: Vec<(i32, i32, i32, i32)> = cf
+                    .ranges
+                    .iter()
+                    .filter_map(|r| {
+                        let (r1, c1, mut r2, mut c2) = A::resolve_range(r, &index)?;
+                        if r.rows.is_none() {
+                            r2 = r2.min(dim.max_row);
+                        }
+                        if r.cols.is_none() {
+                            c2 = c2.min(dim.max_column);
+                        }
+                        Some((r1, c1, r2, c2))
+                    })
+                    .collect();
                 if ranges.is_empty() {
                     continue;
                 }
@@ -1213,11 +1204,11 @@ impl<'a> Model<'a> {
             rating,
         })
     }
+}
 
-    // -----------------------------------------------------------------------
-    // CRUD API for conditional formatting rules
-    // -----------------------------------------------------------------------
-
+/// Conditional formatting authoring: ordinal addressing only.
+/// Rule translation and dxf interning: neither depends on how cells are addressed.
+impl<'a, A: Position> Model<'a, A> {
     /// Appends `dxf` to the workbook's dxf table and returns its new index.
     fn create_dxf(&mut self, dxf: Dxf) -> u32 {
         let id = self.workbook.styles.dxfs.len() as u32;
@@ -1226,167 +1217,12 @@ impl<'a> Model<'a> {
     }
 
     /// Converts a `CfRuleInput` into a stored `CfRule`, creating a dxf entry when a format is provided.
-    fn cf_rule_from_input(&mut self, rule: CfRuleInput) -> CfRule {
-        match rule {
-            CfRuleInput::ColorScale { thresholds } => CfRule::ColorScale { thresholds },
-            CfRuleInput::CellIs {
-                operator,
-                formula,
-                formula2,
-                format,
-                stop_if_true,
-            } => CfRule::CellIs {
-                operator,
-                formula,
-                formula2,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Text {
-                operator,
-                value,
-                format,
-                stop_if_true,
-            } => CfRule::Text {
-                operator,
-                value,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Formula {
-                formula,
-                format,
-                stop_if_true,
-            } => CfRule::Formula {
-                formula,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::TimePeriod {
-                time_period,
-                date1,
-                date2,
-                format,
-                stop_if_true,
-            } => CfRule::TimePeriod {
-                time_period,
-                date1,
-                date2,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::DuplicateValues {
-                format,
-                stop_if_true,
-            } => CfRule::DuplicateValues {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::UniqueValues {
-                format,
-                stop_if_true,
-            } => CfRule::UniqueValues {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Blanks {
-                format,
-                stop_if_true,
-            } => CfRule::Blanks {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::NotBlanks {
-                format,
-                stop_if_true,
-            } => CfRule::NotBlanks {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Errors {
-                format,
-                stop_if_true,
-            } => CfRule::Errors {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::NoErrors {
-                format,
-                stop_if_true,
-            } => CfRule::NoErrors {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::AboveAverage {
-                format,
-                stop_if_true,
-            } => CfRule::AboveAverage {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::BelowAverage {
-                format,
-                stop_if_true,
-            } => CfRule::BelowAverage {
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Top10 {
-                rank,
-                percent,
-                format,
-                stop_if_true,
-            } => CfRule::Top10 {
-                rank,
-                percent,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::Bottom10 {
-                rank,
-                percent,
-                format,
-                stop_if_true,
-            } => CfRule::Bottom10 {
-                rank,
-                percent,
-                dxf_id: self.create_dxf(format),
-                stop_if_true,
-            },
-            CfRuleInput::DataBar {
-                min,
-                max,
-                positive_color,
-                negative_color,
-                is_gradient,
-                show_value,
-            } => CfRule::DataBar {
-                min,
-                max,
-                positive_color,
-                negative_color,
-                is_gradient,
-                show_value,
-            },
-            CfRuleInput::IconSet {
-                thresholds,
-                show_value,
-            } => CfRule::IconSet {
-                thresholds,
-                show_value,
-            },
-            CfRuleInput::IconRating {
-                icon,
-                color,
-                thresholds,
-                show_value,
-            } => CfRule::IconRating {
-                icon,
-                color,
-                thresholds,
-                show_value,
-            },
+    pub(crate) fn cf_rule_from_input(&mut self, rule: CfRuleInput) -> CfRule {
+        let (mut rule, dxf) = rule.split();
+        if let (Some(slot), Some(dxf)) = (rule.dxf_id_mut(), dxf) {
+            *slot = self.create_dxf(dxf);
         }
+        rule
     }
 
     /// The anchor used to parse/stringify a conditional-formatting formula on
@@ -1413,7 +1249,7 @@ impl<'a> Model<'a> {
     /// created), so an invalid formula fails the whole operation without leaving
     /// behind an orphan dxf or storing a non-canonical formula that would later
     /// fail to parse as English.
-    fn cf_rule_input_to_internal(
+    pub(crate) fn cf_rule_input_to_internal(
         &mut self,
         rule: &mut CfRuleInput,
         sheet: u32,
@@ -1533,9 +1369,8 @@ impl<'a> Model<'a> {
         &self,
         sheet: u32,
     ) -> Result<Vec<ConditionalFormattingView>, String> {
-        let mut list: Vec<(usize, ConditionalFormatting)> = self
-            .workbook
-            .worksheet(sheet)?
+        let ws = self.workbook.worksheet(sheet)?;
+        let mut list: Vec<(usize, ConditionalFormatting<A>)> = ws
             .conditional_formatting
             .iter()
             .cloned()
@@ -1546,9 +1381,15 @@ impl<'a> Model<'a> {
         let mut result = Vec::with_capacity(list.len());
         for (index, mut cf) in list {
             self.cf_rule_to_display(&mut cf.cf_rule, sheet);
+            // Ranges are shown as the ordinals they currently denote, whatever they are stored as.
+            let ordinal: Vec<RangeRef> = cf
+                .ranges
+                .iter()
+                .filter_map(|r| A::to_ordinal_range(r, &ws.index))
+                .collect();
             result.push(ConditionalFormattingView {
                 index,
-                range: cf.range,
+                range: RangeRef::to_sqref(&ordinal),
                 cf_rule: cf.cf_rule,
                 priority: cf.priority,
             });
@@ -1587,6 +1428,12 @@ impl<'a> Model<'a> {
         };
         Ok(self.workbook.styles.dxfs.get(dxf_id as usize).cloned())
     }
+}
+
+impl<'a> Model<'a> {
+    // -----------------------------------------------------------------------
+    // CRUD API for conditional formatting rules
+    // -----------------------------------------------------------------------
 
     /// Adds a new CF rule to `sheet`, appended with priority = 1 + current max.
     /// Returns the assigned priority.
@@ -1596,7 +1443,8 @@ impl<'a> Model<'a> {
         range: &str,
         rule: CfRuleInput,
     ) -> Result<u32, String> {
-        if parse_sqref(range).is_empty() {
+        let ranges = RangeRef::parse_sqref(range);
+        if ranges.is_empty() {
             return Err(format!("Invalid conditional formatting range: '{range}'"));
         }
         // Formulas are stored internally in English regardless of the user's
@@ -1614,7 +1462,7 @@ impl<'a> Model<'a> {
             .map(|m| m + 1)
             .unwrap_or(1);
         ws.conditional_formatting.push(ConditionalFormatting {
-            range: range.to_string(),
+            ranges,
             cf_rule: final_rule,
             priority,
         });
@@ -1645,7 +1493,8 @@ impl<'a> Model<'a> {
         new_range: &str,
         new_rule: CfRuleInput,
     ) -> Result<ConditionalFormatting, String> {
-        if parse_sqref(new_range).is_empty() {
+        let new_ranges = RangeRef::parse_sqref(new_range);
+        if new_ranges.is_empty() {
             return Err(format!(
                 "Invalid conditional formatting range: '{new_range}'"
             ));
@@ -1663,7 +1512,7 @@ impl<'a> Model<'a> {
             ));
         }
         let old = ws.conditional_formatting[index].clone();
-        ws.conditional_formatting[index].range = new_range.to_string();
+        ws.conditional_formatting[index].ranges = new_ranges;
         ws.conditional_formatting[index].cf_rule = final_rule;
         Ok(old)
     }

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
 use crate::model::{CellStructure, Model};
-use crate::types::{Alignment, Cell, HorizontalAlignment, MergedCell};
+use crate::types::{Alignment, Cell, HorizontalAlignment, MergedCell, Position};
 
 // Splits `range` into the one-row-tall sub-ranges that "merge across" merges
 // separately.
@@ -197,46 +197,6 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
-    // Full validation of merging `range` without touching the model: the
-    // shape checks of `check_merge_range` plus the single-content-cell rule.
-    // Lets a multi-range merge ("across", "down") be all-or-nothing.
-    pub(crate) fn check_merge(&self, range: &Area) -> Result<(), String> {
-        self.check_merge_range(range)?;
-        self.merge_range_content_cell(range)?;
-        Ok(())
-    }
-
-    // Finds the single cell of `range` with content, if any; merging is not
-    // allowed when more than one cell has content. Spill cells don't count:
-    // they hold values computed by an anchor outside the range, not content
-    // of their own (the spill is blocked and re-evaluated).
-    fn merge_range_content_cell(&self, range: &Area) -> Result<Option<(i32, i32)>, String> {
-        let Area {
-            sheet,
-            row,
-            column,
-            width,
-            height,
-        } = *range;
-        let worksheet = self.workbook.worksheet(sheet)?;
-        let mut content_cell = None;
-        for r in row..row + height {
-            for c in column..column + width {
-                if matches!(
-                    worksheet.cell(r, c),
-                    None | Some(Cell::EmptyCell { .. }) | Some(Cell::SpillCell { .. })
-                ) {
-                    continue;
-                }
-                if content_cell.is_some() {
-                    return Err("Cannot merge cells: more than one cell has content".to_string());
-                }
-                content_cell = Some((r, c));
-            }
-        }
-        Ok(content_cell)
-    }
-
     // Sets horizontal center alignment on every cell of `range` (the style of
     // a merged cell lives on all its cells alike). Used by "merge & center"
     // right after the merge itself.
@@ -255,60 +215,6 @@ impl<'a> Model<'a> {
                 if alignment.horizontal != HorizontalAlignment::Center {
                     alignment.horizontal = HorizontalAlignment::Center;
                     self.set_cell_style(sheet, r, c, &style)?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    // Checks that `range` is a valid merge target: in bounds, more than one
-    // cell and intersecting no existing merged cell or array formula.
-    fn check_merge_range(&self, range: &Area) -> Result<(), String> {
-        let Area {
-            sheet,
-            row,
-            column,
-            width,
-            height,
-        } = *range;
-        if row < 1 || column < 1 || width < 1 || height < 1 {
-            return Err("Invalid range".to_string());
-        }
-        if row + height - 1 > LAST_ROW || column + width - 1 > LAST_COLUMN {
-            return Err("Range is out of bounds".to_string());
-        }
-        if width == 1 && height == 1 {
-            return Err("Cannot merge a single cell".to_string());
-        }
-        let worksheet = self.workbook.worksheet(sheet)?;
-        if let Some(m) = worksheet
-            .merged_cells
-            .iter()
-            .find(|m| m.intersects(row, column, width, height))
-        {
-            return Err(format!(
-                "Range intersects the merged cell at row {}, column {}",
-                m.row, m.column
-            ));
-        }
-        for r in row..row + height {
-            for c in column..column + width {
-                match worksheet.get_cell_structure(r, c)? {
-                    CellStructure::ArrayFormula {
-                        range: (array_width, array_height),
-                    } => {
-                        if array_width > 1 || array_height > 1 {
-                            return Err(
-                                "Cannot merge cells that intersect an array formula".to_string()
-                            );
-                        }
-                    }
-                    CellStructure::SpillArray { .. } => {
-                        return Err(
-                            "Cannot merge cells that intersect an array formula".to_string()
-                        );
-                    }
-                    _ => {}
                 }
             }
         }
@@ -382,6 +288,104 @@ impl<'a> Model<'a> {
     pub fn get_merged_cells(&self, sheet: u32) -> Result<&[MergedCell], String> {
         Ok(&self.workbook.worksheet(sheet)?.merged_cells)
     }
+}
+
+impl<A: Position> Model<'_, A> {
+    // Full validation of merging `range` without touching the model: the
+    // shape checks of `check_merge_range` plus the single-content-cell rule.
+    // Lets a multi-range merge ("across", "down") be all-or-nothing.
+    pub(crate) fn check_merge(&self, range: &Area) -> Result<(), String> {
+        self.check_merge_range(range)?;
+        self.merge_range_content_cell(range)?;
+        Ok(())
+    }
+
+    // Finds the single cell of `range` with content, if any; merging is not
+    // allowed when more than one cell has content. Spill cells don't count:
+    // they hold values computed by an anchor outside the range, not content
+    // of their own (the spill is blocked and re-evaluated).
+    pub(crate) fn merge_range_content_cell(
+        &self,
+        range: &Area,
+    ) -> Result<Option<(i32, i32)>, String> {
+        let Area {
+            sheet,
+            row,
+            column,
+            width,
+            height,
+        } = *range;
+        let worksheet = self.workbook.worksheet(sheet)?;
+        let mut content_cell = None;
+        for r in row..row + height {
+            for c in column..column + width {
+                if matches!(
+                    worksheet.cell(r, c),
+                    None | Some(Cell::EmptyCell { .. }) | Some(Cell::SpillCell { .. })
+                ) {
+                    continue;
+                }
+                if content_cell.is_some() {
+                    return Err("Cannot merge cells: more than one cell has content".to_string());
+                }
+                content_cell = Some((r, c));
+            }
+        }
+        Ok(content_cell)
+    }
+
+    // Checks that `range` is a valid merge target: in bounds, more than one
+    // cell and intersecting no existing merged cell or array formula.
+    pub(crate) fn check_merge_range(&self, range: &Area) -> Result<(), String> {
+        let Area {
+            sheet,
+            row,
+            column,
+            width,
+            height,
+        } = *range;
+        if row < 1 || column < 1 || width < 1 || height < 1 {
+            return Err("Invalid range".to_string());
+        }
+        if row + height - 1 > LAST_ROW || column + width - 1 > LAST_COLUMN {
+            return Err("Range is out of bounds".to_string());
+        }
+        if width == 1 && height == 1 {
+            return Err("Cannot merge a single cell".to_string());
+        }
+        let worksheet = self.workbook.worksheet(sheet)?;
+        if let Some((first_row, first_column, _, _)) =
+            worksheet.merged_ranges().find(|&(r1, c1, r2, c2)| {
+                r1 < row + height && r2 >= row && c1 < column + width && c2 >= column
+            })
+        {
+            return Err(format!(
+                "Range intersects the merged cell at row {first_row}, column {first_column}"
+            ));
+        }
+        for r in row..row + height {
+            for c in column..column + width {
+                match worksheet.get_cell_structure(r, c)? {
+                    CellStructure::ArrayFormula {
+                        range: (array_width, array_height),
+                    } => {
+                        if array_width > 1 || array_height > 1 {
+                            return Err(
+                                "Cannot merge cells that intersect an array formula".to_string()
+                            );
+                        }
+                    }
+                    CellStructure::SpillArray { .. } => {
+                        return Err(
+                            "Cannot merge cells that intersect an array formula".to_string()
+                        );
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(())
+    }
 
     /// Returns the position of (row, column) relative to the merged cells of
     /// the worksheet: not merged, the anchor of a merged range or covered by one.
@@ -392,14 +396,16 @@ impl<'a> Model<'a> {
         column: i32,
     ) -> Result<MergeStructure, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
-        Ok(match worksheet.merged_cell_containing(row, column) {
-            Some(m) if m.row == row && m.column == column => MergeStructure::Anchor {
-                width: m.width,
-                height: m.height,
-            },
-            Some(m) => MergeStructure::Covered {
-                anchor_row: m.row,
-                anchor_column: m.column,
+        Ok(match worksheet.merged_range_containing(row, column) {
+            Some((r, c, last_row, last_column)) if (r, c) == (row, column) => {
+                MergeStructure::Anchor {
+                    width: last_column - c + 1,
+                    height: last_row - r + 1,
+                }
+            }
+            Some((r, c, _, _)) => MergeStructure::Covered {
+                anchor_row: r,
+                anchor_column: c,
             },
             None => MergeStructure::None,
         })

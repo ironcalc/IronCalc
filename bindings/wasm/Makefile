@@ -55,6 +55,15 @@ types.js: types.ts | deps
 deps:
 	pnpm install --frozen-lockfile
 
+# Same as `all`, but builds the collaborative (Stable) model bindings.
+collab: deps
+	wasm-pack build --target web --scope ironcalc --release -- --features collab
+	cp README.pkg.md pkg/README.md
+	pnpm exec tsc types.ts --target esnext --module esnext
+	$(PYTHON) fix_types.py pkg
+	$(PYTHON) fix_package.py pkg
+	rm -f types.js
+
 # The nodejs test builds go to their own out-dirs so they don't clobber the
 # publishable web builds in pkg/ and pkg-xlsx/. They use --dev (no
 # optimizations, no wasm-opt) since they only exist to run the tests.
@@ -72,4 +81,4 @@ clean:
 	rm -rf pkg pkg-xlsx pkg-nodejs pkg-nodejs-xlsx
 	rm -f types.js
 
-.PHONY: all wasm xlsx deps lint clean tests
+.PHONY: all wasm xlsx deps collab lint clean tests

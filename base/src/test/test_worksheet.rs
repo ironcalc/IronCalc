@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
+#[cfg(not(feature = "collab-test"))]
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
-    expressions::types::Area,
-    test::util::new_empty_model,
-    worksheet::{NavigationDirection, WorksheetDimension},
+    worksheet::NavigationDirection,
 };
+use crate::{expressions::types::Area, test::util::new_empty_model, worksheet::WorksheetDimension};
 
 #[test]
 fn test_worksheet_dimension_empty_sheet() {
@@ -36,6 +36,9 @@ fn test_worksheet_dimension_single_cell() {
     );
 }
 
+// Ordinal variant keeps empty cells after clear.
+// Stable variant removes cells that don't have value nor style on them, so the dimensions shrink.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_dimension_single_cell_set_empty() {
     let mut model = new_empty_model();
@@ -50,6 +53,50 @@ fn test_worksheet_dimension_single_cell_set_empty() {
             max_column: 23
         }
     );
+}
+
+/// The cells an array spills into count, and so does what a whole column reads through them.
+#[test]
+fn test_worksheet_dimension_covers_arrays() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(3)"); // A1:A3=1,2,3 (3x1)
+    model._set("C1", "=SUM(A:A)"); // (3x3)
+    model._set("C2", "=COUNT(A:A)"); // (3x3)
+    model.evaluate();
+    assert_eq!(
+        model.workbook.worksheet(0).unwrap().dimension(),
+        WorksheetDimension {
+            min_row: 1,
+            min_column: 1,
+            max_row: 3,
+            max_column: 3
+        }
+    );
+    assert_eq!(model._get_text("C1"), "6");
+    assert_eq!(model._get_text("C2"), "3");
+
+    model.set_user_array_formula(0, 5, 4, 2, 3, "=1+1").unwrap(); // D5:E7=2 (7x5)
+    model.evaluate();
+    assert_eq!(
+        model.workbook.worksheet(0).unwrap().dimension(),
+        WorksheetDimension {
+            min_row: 1,
+            min_column: 1,
+            max_row: 7,
+            max_column: 5
+        }
+    );
+    model._set("C3", "=SUM(E:E)");
+    model.evaluate();
+    assert_eq!(model._get_text("C3"), "6");
+
+    // An array that cannot spill draws its anchor alone.
+    model._set("A2", "7");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#SPILL!");
+    model._set("A2", "");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "6");
 }
 
 #[test]
@@ -168,6 +215,7 @@ fn test_worksheet_dimension_progressive() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_navigate_to_edge_in_direction() {
     let inline_spreadsheet = [

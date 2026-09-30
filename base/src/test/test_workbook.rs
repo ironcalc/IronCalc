@@ -9,17 +9,20 @@ use crate::{
 fn workbook_worksheets_info() {
     let model = new_empty_model();
     let sheets_info = model.get_worksheets_properties();
+    // The id is whatever the sheet was minted with — collaborative ids are hashed, not sequential.
     assert_eq!(
         sheets_info[0],
         SheetProperties {
             name: "Sheet1".to_string(),
             state: "visible".to_string(),
-            sheet_id: 1,
+            sheet_id: model.workbook.worksheets[0].sheet_id,
             color: Color::None
         }
     );
 }
 
+// Sheet ids are session-dependent hashes in `collab-test`, not ordinals.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn workbook_worksheets_ids_and_names() {
     let mut model = new_empty_model();

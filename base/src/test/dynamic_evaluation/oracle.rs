@@ -18,8 +18,8 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::test::util::TestModel;
 use crate::types::{ArrayKind, Cell, FormulaValue, SpillValue};
-use crate::Model;
 
 fn name(sheet: u32, row: i32, column: i32) -> String {
     let mut col = String::new();
@@ -80,7 +80,7 @@ fn describe(result: &CalcResult) -> String {
 
 /// Returns every inconsistency between the stored values and what the
 /// formulas give against the final sheet. Empty means consistent.
-pub(crate) fn violations(model: &mut Model) -> Vec<String> {
+pub(crate) fn violations(model: &mut TestModel) -> Vec<String> {
     let mut out = Vec::new();
     let cells = model.get_all_cells();
     for index in cells {
@@ -174,7 +174,7 @@ pub(crate) fn violations(model: &mut Model) -> Vec<String> {
                     || (0..height).any(|i| {
                         (0..width).any(|j| {
                             (i, j) != (0, 0)
-                                && (ws.merged_cell_containing(row + i, column + j).is_some()
+                                && (ws.merged_range_containing(row + i, column + j).is_some()
                                     || match ws.cell(row + i, column + j) {
                                         None | Some(Cell::EmptyCell { .. }) => false,
                                         Some(Cell::SpillCell { a, .. }) => *a != (row, column),
@@ -421,6 +421,8 @@ mod tests {
         );
     }
 
+    // Removes a raw cell through the ordinal worksheet; `collab-test` has no equivalent.
+    #[cfg(not(feature = "collab-test"))]
     #[test]
     fn missing_spill_cell_is_reported() {
         let mut model = new_empty_model();
