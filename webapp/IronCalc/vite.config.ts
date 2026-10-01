@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
-import pkg from "./package.json";
+import pkg from "./package.json" with { type: "json" };
 
 const EXTERNALS = ["@ironcalc/wasm", ...Object.keys(pkg.peerDependencies)];
 
@@ -16,7 +16,7 @@ function isExternal(id: string): boolean {
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, "src/index.ts"),
+      entry: resolve(import.meta.dirname, "src/index.ts"),
       name: "IronCalc",
       // the proper extensions will be added
       fileName: "ironcalc",
