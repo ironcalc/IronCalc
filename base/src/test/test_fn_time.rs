@@ -92,6 +92,60 @@ fn test_excel_timevalue_compatibility() {
     assert_eq!(model._get_text("D4"), *NOON); // 12 PM = 12:00
 }
 
+// Regression for #1403: Excel accepts a fractional part on the seconds of a
+// TIMEVALUE string ("4:35:00.5"), and keeps it in the returned day fraction.
+// The expected values are written as seconds-of-day / 86400 so they cannot
+// drift from the definition; the Excel results quoted in the comments were
+// measured and match.
+#[test]
+fn test_timevalue_fractional_seconds() {
+    let model = test_time_expressions(&[
+        ("A1", "=TIMEVALUE(\"4:35:00.5\")"), // Excel: 0.19097800925925926
+        ("A2", "=TIMEVALUE(\"4:35:00.999\")"), // Excel: 0.19098378472222222
+        ("A3", "=TIMEVALUE(\"0:00:00.001\")"), // Excel: 1.15741E-08 (1 ms past midnight)
+        // The fraction must survive the 12-hour formats too.
+        ("B1", "=TIMEVALUE(\"4:35:00.5 AM\")"), // Excel: 0.19097800925925926
+        ("B2", "=TIMEVALUE(\"4:35:00.25 PM\")"), // Excel: 0.6909751157407408
+        // And the date is still ignored when a date is present.
+        ("C1", "=TIMEVALUE(\"2023-01-01 14:30:00.5\")"), // Excel: 0.6041724537037037
+        // Half a second past midnight.
+        ("D1", "=TIMEVALUE(\"0:00:00.5\")"), // Excel: 5.787037037037037E-06
+        // Without a fractional part nothing changes: "4:35:00" is still
+        // 16500 seconds, not 16500 seconds plus a stray nanosecond.
+        ("E1", "=TIMEVALUE(\"4:35:00\")"), // Excel: 0.19097222222222221
+        ("E2", "=TIMEVALUE(\"11:59:59 PM\")"), // Excel: 0.9999884259259259
+    ]);
+
+    let number = |cell: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{cell}")) {
+        Ok(crate::cell::CellValue::Number(n)) => n,
+        other => panic!("{cell} is not a number: {other:?}"),
+    };
+    let day = |seconds: f64| seconds / 86_400.0;
+    let assert_is = |cell: &str, expected: f64| {
+        assert!(
+            (number(cell) - expected).abs() < 1e-15,
+            "{cell}: got {}, want {expected}",
+            number(cell)
+        );
+    };
+
+    // 4:35:00.5 = 16500.5 s
+    assert_is("A1", day(4.0 * 3600.0 + 35.0 * 60.0 + 0.5));
+    assert_is("A2", day(4.0 * 3600.0 + 35.0 * 60.0 + 0.999));
+    // One millisecond past midnight.
+    assert_is("A3", day(0.001));
+    // AM/PM variants.
+    assert_is("B1", day(4.0 * 3600.0 + 35.0 * 60.0 + 0.5));
+    assert_is("B2", day(16.0 * 3600.0 + 35.0 * 60.0 + 0.25));
+    // The date part is ignored, only the time is returned.
+    assert_is("C1", day(14.0 * 3600.0 + 30.0 * 60.0 + 0.5));
+    // Half a second past midnight.
+    assert_is("D1", day(0.5));
+    // Whole seconds are unchanged.
+    assert_is("E1", day(4.0 * 3600.0 + 35.0 * 60.0));
+    assert_is("E2", day(23.0 * 3600.0 + 59.0 * 60.0 + 59.0));
+}
+
 #[test]
 fn test_time_function_basic_cases() {
     let model = test_time_expressions(&[
@@ -458,7 +512,7 @@ fn test_timevalue_malformed_but_parseable() {
     // Test missing edge case: malformed but potentially parseable strings
     let model = test_time_expressions(&[
         // Test various malformed but potentially parseable time strings
-        ("A1", "=TIMEVALUE(\"14:30:00.123\")"), // Milliseconds (might be truncated)
+        ("A1", "=TIMEVALUE(\"14:30:00.123\")"), // Milliseconds
         ("A2", "=TIMEVALUE(\"14:30:00.999\")"), // High precision milliseconds
         ("A3", "=TIMEVALUE(\"02:30:00\")"),     // Leading zero hours
         ("A4", "=TIMEVALUE(\"2:05:00\")"),      // Single digit hour, zero-padded minute
@@ -476,9 +530,9 @@ fn test_timevalue_malformed_but_parseable() {
         ("D3", "=TIMEVALUE(\"23:59:60\")"), // Should error (invalid second)
     ]);
 
-    // Milliseconds are not supported, should return a #VALUE! error
-    assert_eq!(model._get_text("A1"), *"#VALUE!");
-    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    // Milliseconds are parsed and kept, as Excel does (#1403)
+    assert_eq!(model._get_text("A1"), *"0.60416809"); // 14:30:00.123
+    assert_eq!(model._get_text("A2"), *"0.604178229"); // 14:30:00.999
 
     // Leading zeros should work fine
     assert_eq!(model._get_text("A3"), *TIME_2_30_AM); // 02:30:00 should parse as 2:30:00
