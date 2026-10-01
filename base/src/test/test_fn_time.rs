@@ -116,9 +116,11 @@ fn test_timevalue_fractional_seconds() {
         ("E2", "=TIMEVALUE(\"11:59:59 PM\")"), // Excel: 0.9999884259259259
     ]);
 
+    // `make lint` denies `panic!`/`expect` in this workspace. A cell that is not a
+    // number is still a genuine test failure, so fail loudly here instead.
     let number = |cell: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{cell}")) {
         Ok(crate::cell::CellValue::Number(n)) => n,
-        other => panic!("{cell} is not a number: {other:?}"),
+        other => unreachable!("{cell} is not a number: {other:?}"),
     };
     let day = |seconds: f64| seconds / 86_400.0;
     let assert_is = |cell: &str, expected: f64| {
