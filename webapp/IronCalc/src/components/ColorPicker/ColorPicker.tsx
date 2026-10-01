@@ -127,6 +127,12 @@ const ColorPicker = ({
     };
   }, [open, isPickerOpen, onClose, anchorEl, panelRef]);
 
+  const selectColor = (colorValue: Color) => {
+    setSelectedColor(colorValue ?? FALLBACK_COLOR);
+    onChange(colorValue);
+    setPickerOpen(false);
+  };
+
   const handleColorSelect = (colorValue: Color, displayHex: string) => {
     if (!recentColors.current.some((r) => colorsEqual(r.color, colorValue))) {
       recentColors.current = [
@@ -134,10 +140,7 @@ const ColorPicker = ({
         ...recentColors.current,
       ].slice(0, MAX_RECENT_COLORS);
     }
-
-    setSelectedColor(colorValue ?? FALLBACK_COLOR);
-    onChange(colorValue);
-    setPickerOpen(false);
+    selectColor(colorValue);
   };
 
   const renderColorSwatch = (
@@ -210,7 +213,7 @@ const ColorPicker = ({
         <button
           type="button"
           className="ic-color-picker__menu-item"
-          onClick={() => handleColorSelect(defaultColor, defaultColor)}
+          onClick={() => selectColor(defaultColor)}
           data-nav-row={0}
           data-nav-col={0}
         >
