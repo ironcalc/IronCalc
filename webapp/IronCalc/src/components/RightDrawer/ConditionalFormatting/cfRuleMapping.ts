@@ -161,7 +161,7 @@ export function dxfToFormatStyle(dxf: Dxf | null | undefined): FormatStyle {
     italic: dxf?.font?.i ?? false,
     underline: dxf?.font?.u ?? false,
     strike: dxf?.font?.strike ?? false,
-    fontColor: dxf?.font?.color ?? "#000000",
+    fontColor: dxf?.font?.color ?? "",
     fillColor: dxf?.fill?.color,
   };
 }
