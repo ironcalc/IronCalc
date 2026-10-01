@@ -7,6 +7,7 @@ import type {
   VerticalAlignment,
 } from "@ironcalc/wasm";
 import type { CSSProperties } from "react";
+import { defaultThemeVariables } from "../../../theme/theme";
 import { NumberFormats } from "../../FormatMenu/formatUtil";
 
 export const HORIZONTAL_JUSTIFY: Partial<Record<HorizontalAlignment, string>> =
@@ -115,7 +116,11 @@ export function getTileStyle(model: Model, style: CellStyle): CSSProperties {
   }
   const tileStyle: CSSProperties = {
     backgroundColor: model.resolveColor(style.fill.color) || undefined,
-    color: model.resolveColor(style.font.color) || undefined,
+    color:
+      model.resolveColor(style.font.color) ||
+      (style.fill.color
+        ? defaultThemeVariables["--palette-sheet-default-text-color"]
+        : undefined),
     fontWeight: style.font.b ? "bold" : undefined,
     fontStyle: style.font.i ? "italic" : undefined,
     textDecoration: decorations.length > 0 ? decorations.join(" ") : undefined,
