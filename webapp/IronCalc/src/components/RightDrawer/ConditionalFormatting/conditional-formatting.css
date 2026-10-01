@@ -166,9 +166,9 @@
   pointer-events: none;
 }
 
+.ic-cf-list-item--selected .ic-cf-list-item-order-chevron,
 .ic-cf-list-item:hover .ic-cf-list-item-order-chevron,
-.ic-cf-list-item:focus-within .ic-cf-list-item-order-chevron,
-.ic-cf-list-item--selected .ic-cf-list-item-order-chevron {
+.ic-cf-list-item:focus-within .ic-cf-list-item-order-chevron {
   opacity: 1;
   pointer-events: auto;
 }
@@ -228,9 +228,9 @@
   pointer-events: none;
 }
 
+.ic-cf-list-item--selected .ic-cf-list-item-icons,
 .ic-cf-list-item:hover .ic-cf-list-item-icons,
-.ic-cf-list-item:focus-within .ic-cf-list-item-icons,
-.ic-cf-list-item--selected .ic-cf-list-item-icons {
+.ic-cf-list-item:focus-within .ic-cf-list-item-icons {
   opacity: 1;
   pointer-events: auto;
 }

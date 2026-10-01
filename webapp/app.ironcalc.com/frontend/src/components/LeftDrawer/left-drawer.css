@@ -280,6 +280,7 @@
   color: var(--palette-grey-500);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: never matches the same svg as the alert button rule */
 .app-ic-drawer-section-title svg {
   width: 12px;
   height: 12px;
@@ -328,6 +329,7 @@
   color: var(--palette-grey-500);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: never matches the same svg as the alert button rule */
 .app-ic-drawer-workbook-icon svg {
   width: 16px;
   height: 16px;
@@ -388,6 +390,16 @@
   transform: rotate(45deg);
 }
 
+.app-ic-drawer-workbook-list--has-checked
+  .app-ic-drawer-workbook-icon--default {
+  display: none;
+}
+
+.app-ic-drawer-workbook-list--has-checked
+  .app-ic-drawer-workbook-icon--checkbox-wrapper {
+  display: flex;
+}
+
 .app-ic-drawer-workbook-icon:hover .app-ic-drawer-workbook-icon--default,
 .app-ic-drawer-workbook-icon:focus-within
   .app-ic-drawer-workbook-icon--default {
@@ -397,16 +409,6 @@
 .app-ic-drawer-workbook-icon:hover
   .app-ic-drawer-workbook-icon--checkbox-wrapper,
 .app-ic-drawer-workbook-icon:focus-within
-  .app-ic-drawer-workbook-icon--checkbox-wrapper {
-  display: flex;
-}
-
-.app-ic-drawer-workbook-list--has-checked
-  .app-ic-drawer-workbook-icon--default {
-  display: none;
-}
-
-.app-ic-drawer-workbook-list--has-checked
   .app-ic-drawer-workbook-icon--checkbox-wrapper {
   display: flex;
 }
@@ -460,6 +462,7 @@
   opacity: 1;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: never matches the same svg as the alert button rule */
 .app-ic-drawer-workbook-ellipsis svg {
   width: 16px;
   height: 16px;

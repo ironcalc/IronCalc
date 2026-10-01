@@ -1,6 +1,7 @@
 {
   "linter": {
     "enabled": true,
+    "domains": { "react": "recommended" },
     "rules": {
       "correctness": { "noUnusedImports": "error" }
     }
