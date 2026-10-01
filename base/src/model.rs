@@ -127,6 +127,19 @@ pub struct FmtSettings {
     pub number_example: String,
 }
 
+/// The top left element of an array, which is what the implicit intersection
+/// operator makes of it.
+fn top_left_of_array(array: &[Vec<ArrayNode>], cell: CellReferenceIndex) -> CalcResult {
+    match array.first().and_then(|row| row.first()) {
+        Some(ArrayNode::Number(n)) => CalcResult::Number(*n),
+        Some(ArrayNode::Boolean(b)) => CalcResult::Boolean(*b),
+        Some(ArrayNode::String(s)) => CalcResult::String(s.clone()),
+        Some(ArrayNode::Error(error)) => CalcResult::new_error(error.clone(), cell, String::new()),
+        Some(ArrayNode::Empty) => CalcResult::EmptyCell,
+        None => CalcResult::new_error(Error::CALC, cell, "Empty array".to_string()),
+    }
+}
+
 fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
     match node {
         ArrayNode::Boolean(b) => FormulaValue::Boolean(b),
@@ -363,6 +376,8 @@ impl<'a> Model<'a> {
                         ),
                     }
                 }
+                // The implicit intersection of an array is its top left element.
+                CalcResult::Array(array) => top_left_of_array(&array, cell),
                 // The implicit intersection of a scalar is the scalar itself.
                 other => other,
             },
@@ -869,10 +884,10 @@ impl<'a> Model<'a> {
             ImplicitIntersection {
                 automatic: _,
                 child,
-            } => {
-                let result = self.evaluate_node_with_reference(child, cell);
-                self.implicit_intersection_to_value(result, cell)
-            }
+            } => match self.evaluate_node_with_reference(child, cell) {
+                CalcResult::Array(array) => top_left_of_array(&array, cell),
+                result => self.implicit_intersection_to_value(result, cell),
+            },
             LambdaDefKind { parameters, body } => {
                 let id = self.get_next_lambda_id();
                 self.lambdas.insert(id, (parameters.clone(), *body.clone()));
