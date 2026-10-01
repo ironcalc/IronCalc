@@ -21,6 +21,8 @@ import {
 type ColorPickerProps = {
   color: Color;
   defaultColor: string;
+  // Swatch for the default option, if different from defaultColor
+  defaultSwatchColor?: string;
   title: string;
   onChange: (color: Color) => void;
   onClose: () => void;
@@ -50,6 +52,7 @@ function colorsEqual(a: Color, b: Color): boolean {
 const ColorPicker = ({
   color,
   defaultColor,
+  defaultSwatchColor = defaultColor,
   title,
   onChange,
   onClose,
@@ -213,7 +216,7 @@ const ColorPicker = ({
         >
           <span
             className="ic-color-picker__menu-item-square"
-            style={{ backgroundColor: defaultColor }}
+            style={{ backgroundColor: defaultSwatchColor }}
             aria-hidden="true"
           />
           <span className="ic-color-picker__menu-item-text">{title}</span>
