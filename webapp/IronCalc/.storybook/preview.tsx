@@ -2,7 +2,11 @@ import type { Preview } from "@storybook/react";
 import { useEffect, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../src/i18n";
-import { darkThemeVariables, defaultThemeVariables } from "../src/theme/theme";
+import {
+  darkThemeVariables,
+  defaultThemeVariables,
+  setThemeVariables,
+} from "../src/theme/theme";
 import "../src/theme/theme.css";
 import "../src/index.css";
 
@@ -44,7 +48,14 @@ function PreviewProviders({
   }
 
   return (
-    <div className="ic-root" style={themeVariables as React.CSSProperties}>
+    <div
+      className="ic-root"
+      ref={(el) => {
+        if (el) {
+          setThemeVariables(themeVariables, el);
+        }
+      }}
+    >
       <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
     </div>
   );
