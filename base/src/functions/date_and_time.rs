@@ -265,6 +265,14 @@ impl WeekendPattern {
     }
 }
 
+// Fraction of a day for a parsed time. The sub-second part is kept, so that
+// TIMEVALUE("4:35:00.5") returns the same value as Excel instead of
+// truncating to the whole second.
+fn time_to_fraction(time: NaiveTime) -> f64 {
+    let seconds = time.num_seconds_from_midnight() as f64 + time.nanosecond() as f64 / 1e9;
+    seconds / SECONDS_PER_DAY_F64
+}
+
 fn parse_time_string(text: &str) -> Option<f64> {
     let text = text.trim();
 
@@ -290,48 +298,66 @@ fn parse_time_string(text: &str) -> Option<f64> {
                     hour
                 };
                 let time = NaiveTime::from_hms_opt(hour_24, 0, 0)?;
-                return Some(time.num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
+                return Some(time_to_fraction(time));
             }
         }
     }
 
-    // Standard patterns
-    let patterns_time = ["%H:%M:%S", "%H:%M", "%I:%M %p", "%I %p", "%I:%M:%S %p"];
+    // Standard patterns. `%.f` makes the fractional part of the seconds
+    // optional and consumes it when present, so each `%S` pattern is paired
+    // with a `%.f` variant rather than being replaced.
+    let patterns_time = [
+        "%H:%M:%S%.f",
+        "%H:%M:%S",
+        "%H:%M",
+        "%I:%M %p",
+        "%I %p",
+        "%I:%M:%S%.f %p",
+        "%I:%M:%S %p",
+    ];
     for p in patterns_time {
         if let Ok(t) = NaiveTime::parse_from_str(text, p) {
-            return Some(t.num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
+            return Some(time_to_fraction(t));
         }
     }
 
     let patterns_dt = [
         // ISO formats
+        "%Y-%m-%d %H:%M:%S%.f",
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%d %H:%M",
+        "%Y-%m-%dT%H:%M:%S%.f",
         "%Y-%m-%dT%H:%M:%S",
         "%Y-%m-%dT%H:%M",
         // Excel-style date formats with AM/PM
-        "%d-%b-%Y %I:%M:%S %p", // "22-Aug-2011 6:35:00 AM"
-        "%d-%b-%Y %I:%M %p",    // "22-Aug-2011 6:35 AM"
-        "%d-%b-%Y %H:%M:%S",    // "22-Aug-2011 06:35:00"
-        "%d-%b-%Y %H:%M",       // "22-Aug-2011 06:35"
+        "%d-%b-%Y %I:%M:%S%.f %p", // "22-Aug-2011 6:35:00.5 AM"
+        "%d-%b-%Y %I:%M:%S %p",    // "22-Aug-2011 6:35:00 AM"
+        "%d-%b-%Y %I:%M %p",       // "22-Aug-2011 6:35 AM"
+        "%d-%b-%Y %H:%M:%S%.f",    // "22-Aug-2011 06:35:00.5"
+        "%d-%b-%Y %H:%M:%S",       // "22-Aug-2011 06:35:00"
+        "%d-%b-%Y %H:%M",          // "22-Aug-2011 06:35"
         // US date formats with AM/PM
-        "%m/%d/%Y %I:%M:%S %p", // "8/22/2011 6:35:00 AM"
-        "%m/%d/%Y %I:%M %p",    // "8/22/2011 6:35 AM"
-        "%m/%d/%Y %H:%M:%S",    // "8/22/2011 06:35:00"
-        "%m/%d/%Y %H:%M",       // "8/22/2011 06:35"
+        "%m/%d/%Y %I:%M:%S%.f %p", // "8/22/2011 6:35:00.5 AM"
+        "%m/%d/%Y %I:%M:%S %p",    // "8/22/2011 6:35:00 AM"
+        "%m/%d/%Y %I:%M %p",       // "8/22/2011 6:35 AM"
+        "%m/%d/%Y %H:%M:%S%.f",    // "8/22/2011 06:35:00.5"
+        "%m/%d/%Y %H:%M:%S",       // "8/22/2011 06:35:00"
+        "%m/%d/%Y %H:%M",          // "8/22/2011 06:35"
         // European date formats with AM/PM
-        "%d/%m/%Y %I:%M:%S %p", // "22/8/2011 6:35:00 AM"
-        "%d/%m/%Y %I:%M %p",    // "22/8/2011 6:35 AM"
-        "%d/%m/%Y %H:%M:%S",    // "22/8/2011 06:35:00"
-        "%d/%m/%Y %H:%M",       // "22/8/2011 06:35"
+        "%d/%m/%Y %I:%M:%S%.f %p", // "22/8/2011 6:35:00.5 AM"
+        "%d/%m/%Y %I:%M:%S %p",    // "22/8/2011 6:35:00 AM"
+        "%d/%m/%Y %I:%M %p",       // "22/8/2011 6:35 AM"
+        "%d/%m/%Y %H:%M:%S%.f",    // "22/8/2011 06:35:00.5"
+        "%d/%m/%Y %H:%M:%S",       // "22/8/2011 06:35:00"
+        "%d/%m/%Y %H:%M",          // "22/8/2011 06:35"
     ];
     for p in patterns_dt {
         if let Ok(dt) = NaiveDateTime::parse_from_str(text, p) {
-            return Some(dt.time().num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
+            return Some(time_to_fraction(dt.time()));
         }
     }
     if let Ok(dt) = DateTime::parse_from_rfc3339(text) {
-        return Some(dt.time().num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
+        return Some(time_to_fraction(dt.time()));
     }
     None
 }
