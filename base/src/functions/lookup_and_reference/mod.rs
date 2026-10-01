@@ -743,7 +743,8 @@ impl<'a> Model<'a> {
 
     // ROW([reference])
     // If reference is not present returns the row of the present cell.
-    // Otherwise returns the row number of reference
+    // Otherwise returns the row number of reference. A reference that spans
+    // several rows gives a column with the number of each of them.
     pub(crate) fn fn_row(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 1 {
             return CalcResult::new_args_number_error(cell);
@@ -752,7 +753,18 @@ impl<'a> Model<'a> {
             return CalcResult::Number(cell.row as f64);
         }
         match self.get_reference(&args[0], cell) {
-            Ok(c) => CalcResult::Number(c.left.row as f64),
+            Ok(c) => {
+                let first = c.left.row.min(c.right.row);
+                let last = c.left.row.max(c.right.row);
+                if first == last {
+                    return CalcResult::Number(first as f64);
+                }
+                CalcResult::Array(
+                    (first..=last)
+                        .map(|row| vec![ArrayNode::Number(row as f64)])
+                        .collect(),
+                )
+            }
             Err(s) => s,
         }
     }
@@ -771,7 +783,8 @@ impl<'a> Model<'a> {
 
     // COLUMN([reference])
     // If reference is not present returns the column of the present cell.
-    // Otherwise returns the column number of reference
+    // Otherwise returns the column number of reference. A reference that spans
+    // several columns gives a row with the number of each of them.
     pub(crate) fn fn_column(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 1 {
             return CalcResult::new_args_number_error(cell);
@@ -781,7 +794,16 @@ impl<'a> Model<'a> {
         }
 
         match self.get_reference(&args[0], cell) {
-            Ok(range) => CalcResult::Number(range.left.column as f64),
+            Ok(range) => {
+                let first = range.left.column.min(range.right.column);
+                let last = range.left.column.max(range.right.column);
+                if first == last {
+                    return CalcResult::Number(first as f64);
+                }
+                CalcResult::Array(vec![(first..=last)
+                    .map(|column| ArrayNode::Number(column as f64))
+                    .collect()])
+            }
             Err(s) => s,
         }
     }
