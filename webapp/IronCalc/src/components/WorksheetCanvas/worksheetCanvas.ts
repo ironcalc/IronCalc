@@ -1126,10 +1126,14 @@ export default class WorksheetCanvas {
       let borderLeftColor = this.getCellGridColor(selectedSheet, fillColor);
       let borderLeftStyle = "thin";
       if (border.left) {
-        borderLeftColor = this.model.resolveColor(border.left.color);
+        borderLeftColor =
+          this.model.resolveColor(border.left.color) ||
+          this.theme.defaultTextColor;
         borderLeftStyle = border.left.style;
       } else if (leftStyle.border.right) {
-        borderLeftColor = this.model.resolveColor(leftStyle.border.right.color);
+        borderLeftColor =
+          this.model.resolveColor(leftStyle.border.right.color) ||
+          this.theme.defaultTextColor;
         borderLeftStyle = leftStyle.border.right.style;
       } else if (fillColor) {
         borderLeftColor = fillColor;
@@ -1188,10 +1192,14 @@ export default class WorksheetCanvas {
     let borderTopColor = this.getCellGridColor(selectedSheet, fillColor);
     let borderTopStyle = "thin";
     if (border.top) {
-      borderTopColor = this.model.resolveColor(border.top.color);
+      borderTopColor =
+        this.model.resolveColor(border.top.color) ||
+        this.theme.defaultTextColor;
       borderTopStyle = border.top.style;
     } else if (topStyle.border.bottom) {
-      borderTopColor = this.model.resolveColor(topStyle.border.bottom.color);
+      borderTopColor =
+        this.model.resolveColor(topStyle.border.bottom.color) ||
+        this.theme.defaultTextColor;
       borderTopStyle = topStyle.border.bottom.style;
     } else if (fillColor) {
       borderTopColor = fillColor;

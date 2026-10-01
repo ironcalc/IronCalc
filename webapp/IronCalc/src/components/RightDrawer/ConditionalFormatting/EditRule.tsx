@@ -118,7 +118,9 @@ const EditRule = ({
       ]
         .filter(Boolean)
         .join(" ") || "none",
-    color: resolveColorToHex(formatStyle.fontColor, currentTheme) || "#000000",
+    color:
+      resolveColorToHex(formatStyle.fontColor, currentTheme) ||
+      "var(--palette-sheet-default-text-color)",
     backgroundColor:
       resolveColorToHex(formatStyle.fillColor, currentTheme) || "transparent",
   };

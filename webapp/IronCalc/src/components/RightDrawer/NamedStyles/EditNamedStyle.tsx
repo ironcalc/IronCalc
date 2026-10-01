@@ -35,7 +35,7 @@ import {
 import { STYLE_OPTIONS as LINE_STYLE_OPTIONS } from "../../BorderPicker/LineStylePicker";
 import { Button } from "../../Button/Button";
 import ColorPicker from "../../ColorPicker/ColorPicker";
-import { resolveColorToHex, themeColor } from "../../ColorPicker/util";
+import { resolveColorToHex } from "../../ColorPicker/util";
 import { NumberFormats } from "../../FormatMenu/formatUtil";
 import { Input } from "../../Input/Input";
 import { Menu } from "../../Menu/Menu";
@@ -244,14 +244,13 @@ const EditNamedStyle = ({
       style.border.left;
     return (firstSide?.style as BorderStyle) || BorderStyle.Thin;
   });
-  const defaultColor = themeColor("--palette-common-black");
   const [borderColor, setBorderColor] = useState<Color>(() => {
     const firstSide =
       style.border.top ??
       style.border.right ??
       style.border.bottom ??
       style.border.left;
-    return firstSide?.color ?? defaultColor;
+    return firstSide?.color ?? "";
   });
   const [fontColorOpen, setFontColorOpen] = useState(false);
   const [fillColorOpen, setFillColorOpen] = useState(false);
@@ -335,7 +334,9 @@ const EditNamedStyle = ({
       return;
     }
     const makeBorderItem = (enabled: boolean) =>
-      enabled ? { style: borderLineStyle, color: borderColor } : undefined;
+      enabled
+        ? { style: borderLineStyle, color: borderColor || undefined }
+        : undefined;
     const newStyle = {
       ...style,
       num_fmt: numFmt,
@@ -361,7 +362,7 @@ const EditNamedStyle = ({
         i: formatStyle.italic || false,
         u: formatStyle.underline || false,
         strike: formatStyle.strike || false,
-        color: formatStyle.fontColor,
+        color: formatStyle.fontColor || undefined,
       },
     };
     // Protection is not editable in this panel, so it is always carried
@@ -545,7 +546,7 @@ const EditNamedStyle = ({
                         resolveColorToHex(
                           formatStyle.fontColor,
                           currentTheme,
-                        ) || defaultColor,
+                        ) || "var(--palette-sheet-default-text-color)",
                     }}
                     onClick={() => setFontColorOpen(true)}
                     aria-label={t("toolbar.font_color")}
@@ -553,7 +554,8 @@ const EditNamedStyle = ({
                 </div>
                 <ColorPicker
                   color={formatStyle.fontColor}
-                  defaultColor={defaultColor}
+                  defaultColor=""
+                  defaultSwatchColor="var(--palette-sheet-default-text-color)"
                   title={t("color_picker.default")}
                   onChange={(color) => {
                     setFormatStyle((current) => ({
@@ -825,7 +827,7 @@ const EditNamedStyle = ({
                       style={{
                         backgroundColor:
                           resolveColorToHex(borderColor, currentTheme) ||
-                          defaultColor,
+                          "var(--palette-sheet-default-text-color)",
                       }}
                       onClick={() => setBorderColorOpen(true)}
                       aria-label={t("toolbar.borders.color")}
@@ -833,7 +835,8 @@ const EditNamedStyle = ({
                   </div>
                   <ColorPicker
                     color={borderColor}
-                    defaultColor={defaultColor}
+                    defaultColor=""
+                    defaultSwatchColor="var(--palette-sheet-default-text-color)"
                     title={t("color_picker.default")}
                     onChange={(color) => {
                       setBorderColor(color);

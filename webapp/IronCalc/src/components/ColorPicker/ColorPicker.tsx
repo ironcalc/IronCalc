@@ -21,6 +21,8 @@ import {
 type ColorPickerProps = {
   color: Color;
   defaultColor: string;
+  // Swatch for the default option, if different from defaultColor
+  defaultSwatchColor?: string;
   title: string;
   onChange: (color: Color) => void;
   onClose: () => void;
@@ -50,6 +52,7 @@ function colorsEqual(a: Color, b: Color): boolean {
 const ColorPicker = ({
   color,
   defaultColor,
+  defaultSwatchColor = defaultColor,
   title,
   onChange,
   onClose,
@@ -124,6 +127,12 @@ const ColorPicker = ({
     };
   }, [open, isPickerOpen, onClose, anchorEl, panelRef]);
 
+  const selectColor = (colorValue: Color) => {
+    setSelectedColor(colorValue ?? FALLBACK_COLOR);
+    onChange(colorValue);
+    setPickerOpen(false);
+  };
+
   const handleColorSelect = (colorValue: Color, displayHex: string) => {
     if (!recentColors.current.some((r) => colorsEqual(r.color, colorValue))) {
       recentColors.current = [
@@ -131,10 +140,7 @@ const ColorPicker = ({
         ...recentColors.current,
       ].slice(0, MAX_RECENT_COLORS);
     }
-
-    setSelectedColor(colorValue ?? FALLBACK_COLOR);
-    onChange(colorValue);
-    setPickerOpen(false);
+    selectColor(colorValue);
   };
 
   const renderColorSwatch = (
@@ -207,13 +213,13 @@ const ColorPicker = ({
         <button
           type="button"
           className="ic-color-picker__menu-item"
-          onClick={() => handleColorSelect(defaultColor, defaultColor)}
+          onClick={() => selectColor(defaultColor)}
           data-nav-row={0}
           data-nav-col={0}
         >
           <span
             className="ic-color-picker__menu-item-square"
-            style={{ backgroundColor: defaultColor }}
+            style={{ backgroundColor: defaultSwatchColor }}
             aria-hidden="true"
           />
           <span className="ic-color-picker__menu-item-text">{title}</span>
