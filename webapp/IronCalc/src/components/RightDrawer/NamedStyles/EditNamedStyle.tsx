@@ -361,7 +361,7 @@ const EditNamedStyle = ({
         i: formatStyle.italic || false,
         u: formatStyle.underline || false,
         strike: formatStyle.strike || false,
-        color: formatStyle.fontColor,
+        color: formatStyle.fontColor || undefined,
       },
     };
     // Protection is not editable in this panel, so it is always carried
@@ -545,7 +545,7 @@ const EditNamedStyle = ({
                         resolveColorToHex(
                           formatStyle.fontColor,
                           currentTheme,
-                        ) || defaultColor,
+                        ) || "var(--palette-sheet-default-text-color)",
                     }}
                     onClick={() => setFontColorOpen(true)}
                     aria-label={t("toolbar.font_color")}
@@ -553,7 +553,8 @@ const EditNamedStyle = ({
                 </div>
                 <ColorPicker
                   color={formatStyle.fontColor}
-                  defaultColor={defaultColor}
+                  defaultColor=""
+                  defaultSwatchColor="var(--palette-sheet-default-text-color)"
                   title={t("color_picker.default")}
                   onChange={(color) => {
                     setFormatStyle((current) => ({
