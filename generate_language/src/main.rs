@@ -285,6 +285,7 @@ pub struct Functions {
     pub delta: String,
     pub gestep: String,
     pub subtotal: String,
+    pub aggregate: String,
     pub exp: String,
     pub fact: String,
     pub factdouble: String,
