@@ -26,9 +26,12 @@ test('npm tarball contains every module imported by wasm.js', () => {
         imports.add(match[1].replace(/^\.\//, ''));
     }
 
-    const [{ files }] = JSON.parse(
+    // npm <= 11 prints a JSON array of packed packages; npm >= 12 prints an
+    // object keyed by package name. Accept both.
+    const parsed = JSON.parse(
         execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: pkgDir })
     );
+    const [{ files }] = Array.isArray(parsed) ? parsed : Object.values(parsed);
     const packed = new Set(files.map((file) => file.path));
 
     assert.ok(packed.has('wasm.js'), 'tarball must contain wasm.js');
