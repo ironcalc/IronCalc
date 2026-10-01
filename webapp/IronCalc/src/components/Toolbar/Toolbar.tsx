@@ -706,7 +706,8 @@ function Toolbar(properties: ToolbarProperties) {
 
         <ColorPicker
           color={properties.fontColor}
-          defaultColor="#000000"
+          defaultColor=""
+          defaultSwatchColor="var(--palette-sheet-default-text-color)"
           title={t("color_picker.default")}
           onChange={(color): void => {
             properties.onTextColorPicked(color);
