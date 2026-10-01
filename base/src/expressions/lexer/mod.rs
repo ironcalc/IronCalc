@@ -184,6 +184,14 @@ impl<'a> Lexer<'a> {
         Ok(())
     }
 
+    /// True if the next character is whitespace: the space between two
+    /// references is the intersection operator.
+    pub fn has_whitespace_ahead(&self) -> bool {
+        self.chars
+            .get(self.position)
+            .is_some_and(|c| c.is_whitespace())
+    }
+
     /// Checks the next token without advancing position
     /// See also [advance_token](Self::advance_token)
     pub fn peek_token(&mut self) -> TokenType {

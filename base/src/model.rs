@@ -366,7 +366,62 @@ impl<'a> Model<'a> {
                 // The implicit intersection of a scalar is the scalar itself.
                 other => other,
             },
+            Node::OpIntersectKind { left, right } => self.get_intersection(left, right, cell),
             _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
+    /// The cells two references share (`A1:C5 B2:D8` is `B2:C5`), or #NULL!
+    /// when they share none.
+    fn get_intersection(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let left_result = self.evaluate_node_with_reference(left, cell);
+        let right_result = self.evaluate_node_with_reference(right, cell);
+        match (left_result, right_result) {
+            (
+                CalcResult::Range {
+                    left: l1,
+                    right: r1,
+                },
+                CalcResult::Range {
+                    left: l2,
+                    right: r2,
+                },
+            ) => {
+                let row1 = l1.row.min(r1.row).max(l2.row.min(r2.row));
+                let row2 = l1.row.max(r1.row).min(l2.row.max(r2.row));
+                let column1 = l1.column.min(r1.column).max(l2.column.min(r2.column));
+                let column2 = l1.column.max(r1.column).min(l2.column.max(r2.column));
+                if l1.sheet != l2.sheet || row1 > row2 || column1 > column2 {
+                    return CalcResult::new_error(
+                        Error::NULL,
+                        cell,
+                        "The references do not intersect".to_string(),
+                    );
+                }
+                CalcResult::Range {
+                    left: CellReferenceIndex {
+                        sheet: l1.sheet,
+                        row: row1,
+                        column: column1,
+                    },
+                    right: CellReferenceIndex {
+                        sheet: l1.sheet,
+                        row: row2,
+                        column: column2,
+                    },
+                }
+            }
+            (error @ CalcResult::Error { .. }, _) | (_, error @ CalcResult::Error { .. }) => error,
+            _ => CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "The space operator needs two references".to_string(),
+            ),
         }
     }
 
@@ -632,6 +687,27 @@ impl<'a> Model<'a> {
                 CalcResult::new_error(Error::REF, cell, "Wrong reference".to_string())
             }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
+            OpIntersectKind { left, right } => {
+                let result = self.get_intersection(left, right, cell);
+                if let CalcResult::Range { left, right } = &result {
+                    self.support
+                        .entry(cell)
+                        .or_default()
+                        .push(CellOrRange::Range((
+                            left.sheet,
+                            left.row,
+                            left.column,
+                            right.row,
+                            right.column,
+                        )));
+                }
+                result
+            }
+            OpUnionKind(_) => CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "A union of references can only be used in a function".to_string(),
+            ),
             WrongRangeKind { .. } => {
                 CalcResult::new_error(Error::REF, cell, "Wrong range".to_string())
             }

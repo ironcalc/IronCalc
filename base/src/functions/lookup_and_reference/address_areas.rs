@@ -121,11 +121,13 @@ impl<'a> Model<'a> {
 
     /// `=AREAS(reference)`
     ///
-    /// Returns the number of areas in a reference. IronCalc does not support
-    /// multi-area references, so this always returns 1.
+    /// Returns the number of areas in a reference: `AREAS((A1,B2:C3))` is 2.
     pub(crate) fn fn_areas(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
+        }
+        if let Node::OpUnionKind(_) = &args[0] {
+            return CalcResult::Number(crate::functions::unions::count_areas(&args[0]) as f64);
         }
         let result = self.evaluate_node_in_context(&args[0], cell);
         if result.is_error() {
