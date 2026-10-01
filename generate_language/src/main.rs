@@ -504,6 +504,8 @@ pub struct Functions {
     pub reduce: String,
     pub scan: String,
     pub makearray: String,
+    pub groupby: String,
+    pub pivotby: String,
     pub address: String,
     pub areas: String,
     pub choosecols: String,

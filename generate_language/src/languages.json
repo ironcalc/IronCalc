@@ -516,7 +516,9 @@
       "seriessum": "SERIESSUM",
       "sumproduct": "SUMPRODUCT",
       "percentof": "PERCENTOF",
-      "encodeurl": "ENCODEURL"
+      "encodeurl": "ENCODEURL",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY"
     }
   },
   "it": {
@@ -1036,7 +1038,9 @@
       "seriessum": "SOMMA.SERIE",
       "sumproduct": "MATR.SOMMA.PRODOTTO",
       "percentof": "PERCENTUALE.DI",
-      "encodeurl": "CODIFICA.URL"
+      "encodeurl": "CODIFICA.URL",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY"
     }
   },
   "fr": {
@@ -1556,7 +1560,9 @@
       "seriessum": "SOMME.SERIE",
       "sumproduct": "SOMMEPROD",
       "percentof": "POURCENTDE",
-      "encodeurl": "URLENCODAGE"
+      "encodeurl": "URLENCODAGE",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY"
     }
   },
   "de": {
@@ -2076,7 +2082,9 @@
       "seriessum": "POTENZREIHE",
       "sumproduct": "SUMMENPRODUKT",
       "percentof": "PROZENTVON",
-      "encodeurl": "URLCODIEREN"
+      "encodeurl": "URLCODIEREN",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY"
     }
   },
   "es": {
@@ -2596,7 +2604,9 @@
       "seriessum": "SUMA.SERIE",
       "sumproduct": "SUMAPRODUCTO",
       "percentof": "PORCENTAJEDE",
-      "encodeurl": "URLCODIF"
+      "encodeurl": "URLCODIF",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY"
     }
   }
 }

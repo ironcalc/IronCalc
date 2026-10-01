@@ -12,6 +12,7 @@ mod database;
 pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
+mod groupby;
 mod information;
 mod logical;
 mod lookup_and_reference;
@@ -47,6 +48,8 @@ pub enum Function {
     Reduce,
     Scan,
     Makearray,
+    Groupby,
+    Pivotby,
 
     // Mathematical and trigonometry
     Abs,
@@ -598,6 +601,8 @@ impl_function_lookup! {
     reduce      => Reduce,
     scan        => Scan,
     makearray   => Makearray,
+    groupby     => Groupby,
+    pivotby     => Pivotby,
 
     // Mathematical and trigonometry
     abs             => Abs,
@@ -1134,6 +1139,8 @@ impl Function {
             Function::Reduce => functions.reduce.clone(),
             Function::Scan => functions.scan.clone(),
             Function::Makearray => functions.makearray.clone(),
+            Function::Groupby => functions.groupby.clone(),
+            Function::Pivotby => functions.pivotby.clone(),
             Function::Abs => functions.abs.clone(),
             Function::Acos => functions.acos.clone(),
             Function::Acosh => functions.acosh.clone(),
@@ -1614,7 +1621,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 496> {
+    pub fn into_iter() -> IntoIter<Function, 498> {
         [
             Function::And,
             Function::False,
@@ -1635,6 +1642,8 @@ impl Function {
             Function::Reduce,
             Function::Scan,
             Function::Makearray,
+            Function::Groupby,
+            Function::Pivotby,
             Function::Sin,
             Function::Cos,
             Function::Tan,
@@ -2155,6 +2164,8 @@ impl Function {
             Function::Reduce => "_xlfn.REDUCE".to_string(),
             Function::Scan => "_xlfn.SCAN".to_string(),
             Function::Makearray => "_xlfn.MAKEARRAY".to_string(),
+            Function::Groupby => "_xlfn.GROUPBY".to_string(),
+            Function::Pivotby => "_xlfn.PIVOTBY".to_string(),
             Function::Xor => "_xlfn.XOR".to_string(),
             Function::Textbefore => "_xlfn.TEXTBEFORE".to_string(),
             Function::Textafter => "_xlfn.TEXTAFTER".to_string(),
@@ -2331,6 +2342,8 @@ impl<'a> Model<'a> {
             Function::Reduce => self.fn_reduce(args, cell),
             Function::Scan => self.fn_scan(args, cell),
             Function::Makearray => self.fn_makearray(args, cell),
+            Function::Groupby => self.fn_groupby(args, cell),
+            Function::Pivotby => self.fn_pivotby(args, cell),
             Function::Log => self.fn_log(args, cell),
             Function::Log10 => self.fn_log10(args, cell),
             Function::Ln => self.fn_ln(args, cell),
