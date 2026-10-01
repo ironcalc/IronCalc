@@ -150,20 +150,19 @@ export function Menu(props: MenuProperties) {
     );
   }
 
-  const clonedTrigger = cloneElement(
-    props.trigger as ReactElement<Record<string, unknown>>,
-    {
-      ref: triggerPosition.triggerRef,
-      onClick: (e: React.MouseEvent) => {
-        (
-          props.trigger?.props as { onClick?: React.MouseEventHandler }
-        ).onClick?.(e);
-        setUncontrolledOpen((current) => !current);
-      },
-      "aria-haspopup": "menu",
-      "aria-expanded": open ? "true" : "false",
+  const trigger = props.trigger as ReactElement<Record<string, unknown>>;
+  const triggerOnClick = trigger.props.onClick as
+    | React.MouseEventHandler
+    | undefined;
+  const clonedTrigger = cloneElement(trigger, {
+    ref: triggerPosition.triggerRef,
+    onClick: (e: React.MouseEvent) => {
+      triggerOnClick?.(e);
+      setUncontrolledOpen((current) => !current);
     },
-  );
+    "aria-haspopup": "menu",
+    "aria-expanded": open ? "true" : "false",
+  });
 
   return (
     <MenuContext.Provider value={{ close, activeSetOpenRef }}>

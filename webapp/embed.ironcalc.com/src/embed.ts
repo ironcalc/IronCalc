@@ -107,7 +107,7 @@ function mount(
     }
 
     const data = event.data;
-    if (!data || data.type !== "ironcalc:ready:v1") {
+    if (data?.type !== "ironcalc:ready:v1") {
       return;
     }
 
