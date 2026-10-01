@@ -32,31 +32,31 @@
     "react-colorful": "^5.6.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.16",
+    "@biomejs/biome": "2.5.15",
     "@napi-rs/canvas": "^1.0.7",
-    "@storybook/react": "^10.4.2",
-    "@storybook/react-vite": "^10.4.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
+    "@storybook/react": "^10.6.1",
+    "@storybook/react-vite": "^10.6.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.0.1",
     "i18next": "^26.3.1",
-    "lucide-react": "^1.17.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-i18next": "^16.5.8",
-    "storybook": "^10.4.2",
+    "lucide-react": "^1.49.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-i18next": "^17.0.15",
+    "storybook": "^10.6.1",
     "ts-node": "^10.9.2",
-    "typescript": "6.0.3",
-    "vite": "^8.0.16",
+    "typescript": "7.0.2",
+    "vite": "^8.3.1",
     "vite-plugin-svgr": "^5.2.0",
-    "vitest": "^4.1.8"
+    "vitest": "^5.0.3"
   },
   "peerDependencies": {
-    "i18next": "^26.3.1",
-    "lucide-react": "^1.17.0",
+    "i18next": "^26.4.2",
+    "lucide-react": "^1.49.0",
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19",
-    "react-i18next": "^16.5.8"
+    "react-i18next": "^17.0.15"
   },
   "files": [
     "dist"
@@ -65,5 +65,8 @@
     "type": "git",
     "url": "git+https://github.com/ironcalc/IronCalc.git",
     "directory": "webapp/IronCalc"
+  },
+  "allowScripts": {
+    "esbuild": false
   }
 }
