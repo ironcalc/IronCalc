@@ -26,7 +26,11 @@ use itertools::Itertools;
 
 use ironcalc_base::{
     expressions::{
-        parser::{static_analysis::StaticResult, stringify::to_excel_string, Node},
+        parser::{
+            static_analysis::StaticResult,
+            stringify::{to_excel_array_formula_string, to_excel_string},
+            Node,
+        },
         types::CellReferenceRC,
         utils::number_to_column,
     },
@@ -156,6 +160,23 @@ fn get_formula_attribute(
         column,
     };
     let formula = &to_excel_string(parsed_formula, &cell_ref);
+    escape_xml(formula).to_string()
+}
+
+/// The formula of an array, CSE or dynamic. It keeps every implicit
+/// intersection: nothing puts them back when the formula is read again.
+fn get_array_formula_attribute(
+    sheet_name: String,
+    row: i32,
+    column: i32,
+    parsed_formula: &Node,
+) -> String {
+    let cell_ref = CellReferenceRC {
+        sheet: sheet_name,
+        row,
+        column,
+    };
+    let formula = &to_excel_array_formula_string(parsed_formula, &cell_ref);
     escape_xml(formula).to_string()
 }
 
@@ -390,7 +411,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = get_formula_attribute(
+                    let formula = get_array_formula_attribute(
                         worksheet.get_name(),
                         row_index,
                         column_index,
@@ -430,7 +451,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = get_formula_attribute(
+                    let formula = get_array_formula_attribute(
                         worksheet.get_name(),
                         row_index,
                         column_index,
@@ -469,7 +490,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = get_formula_attribute(
+                    let formula = get_array_formula_attribute(
                         worksheet.get_name(),
                         row_index,
                         column_index,
@@ -509,7 +530,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = get_formula_attribute(
+                    let formula = get_array_formula_attribute(
                         worksheet.get_name(),
                         row_index,
                         column_index,

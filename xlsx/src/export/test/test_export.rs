@@ -154,6 +154,50 @@ fn test_formulas() {
 }
 
 #[test]
+fn test_array_formulas_keep_implicit_intersection() {
+    // The `@` of an array formula is not put back when the file is read, so it
+    // has to be written. Without it `@A1:A3` in row 2 would be all of A1:A3.
+    let mut model = new_empty_model();
+    model.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+    model.set_user_input(0, 2, 1, "2".to_string()).unwrap();
+    model.set_user_input(0, 3, 1, "3".to_string()).unwrap();
+    // A CSE formula in C2 and one in D2:D3
+    model
+        .set_user_array_formula(0, 2, 3, 1, 1, "=POWER(@A1:A3, 3)")
+        .unwrap();
+    model
+        .set_user_array_formula(0, 2, 4, 1, 2, "=SIN(@A1:A3)+A1:A2")
+        .unwrap();
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 3).unwrap(), "8");
+
+    let temp_file_name = "temp_file_test_array_formulas_intersection.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let mut model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    assert_eq!(
+        model.get_cell_formula(0, 2, 3).unwrap(),
+        Some("=POWER(@A1:A3,3)".to_string())
+    );
+    assert_eq!(
+        model.get_cell_formula(0, 2, 4).unwrap(),
+        Some("=SIN(@A1:A3)+A1:A2".to_string())
+    );
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 3).unwrap(), "8");
+    // sin(2) + 1 and sin(2) + 2
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 4).unwrap(),
+        "1.909297427"
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 3, 4).unwrap(),
+        "2.909297427"
+    );
+}
+
+#[test]
 fn test_sheets() {
     let mut model = new_empty_model();
     model.add_sheet("With space").unwrap();

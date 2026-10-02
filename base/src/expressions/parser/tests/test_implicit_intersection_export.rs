@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::expressions::{
     parser::{
-        stringify::to_excel_string,
+        stringify::{to_excel_array_formula_string, to_excel_string},
         tests::utils::{new_parser, to_english_localized_string},
     },
     types::CellReferenceRC,
@@ -154,4 +154,54 @@ fn nested_redundant_intersections_are_fully_removed() {
     let t = parser.parse("_xlfn.SINGLE(_xlfn.SINGLE(A1:A10))", &cell_reference);
     let excel_formula = to_excel_string(&t, &cell_reference);
     assert_eq!(excel_formula, "A1:A10");
+}
+
+// The formula of an array, CSE or dynamic, is read as it is written: no
+// implicit intersection is added to it. So none is redundant there, and they
+// are all exported. As the formula of a normal cell the same `@` would be
+// dropped, to be added again when read.
+#[test]
+fn array_formulas_keep_every_intersection() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    // (the formula in Excel, in a normal cell, in an array)
+    let cases = [
+        (
+            "POWER(_xlfn.SINGLE(A1:A3),3)",
+            "POWER(A1:A3,3)",
+            "POWER(_xlfn.SINGLE(A1:A3),3)",
+        ),
+        (
+            "SIN(_xlfn.SINGLE(A1:A3))+B1:B3",
+            "SIN(A1:A3)+B1:B3",
+            "SIN(_xlfn.SINGLE(A1:A3))+B1:B3",
+        ),
+        ("_xlfn.SINGLE(A1:A3)", "A1:A3", "_xlfn.SINGLE(A1:A3)"),
+        (
+            "SUM(_xlfn.SINGLE(A1:A3))",
+            "SUM(_xlfn.SINGLE(A1:A3))",
+            "SUM(_xlfn.SINGLE(A1:A3))",
+        ),
+        // Nothing is added to a formula that has none
+        ("POWER(A1:A3,3)", "POWER(A1:A3,3)", "POWER(A1:A3,3)"),
+        ("A1:A3*2", "A1:A3*2", "A1:A3*2"),
+    ];
+    for (excel_input, normal_cell, array) in cases {
+        let t = parser.parse(excel_input, &cell_reference);
+        assert_eq!(
+            to_excel_string(&t, &cell_reference),
+            normal_cell,
+            "`{excel_input}` in a normal cell"
+        );
+        assert_eq!(
+            to_excel_array_formula_string(&t, &cell_reference),
+            array,
+            "`{excel_input}` in an array"
+        );
+    }
 }
