@@ -1066,7 +1066,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Hstack => vec![Signature::Vector; arg_count],
         Function::Hyperlink => args_signature_scalars(arg_count, 1, 1),
         Function::Index => args_signature_index(arg_count),
-        Function::Indirect => args_signature_scalars(arg_count, 1, 0),
+        Function::Indirect => args_signature_scalars(arg_count, 1, 1),
         Function::Lookup => args_signature_lookup(arg_count),
         Function::Match => args_signature_match(arg_count),
         Function::Offset => args_signature_offset(arg_count),
