@@ -501,14 +501,28 @@ impl<'a> Model<'a> {
     /// Coerces a single array element to a number the way a number argument
     /// is: booleans are 0 and 1, text has to read as a number, empties are 0
     /// and errors propagate.
+    ///
+    /// The number is finite. Texts like "NaN" and "inf" read as numbers, but
+    /// they are not positions or counts, and every comparison with a NaN is
+    /// false, so no check of a range would stop one.
     pub(super) fn text_number(&self, node: &ArrayNode) -> Result<f64, Error> {
-        match node {
-            ArrayNode::Number(v) => Ok(*v),
-            ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-            ArrayNode::Empty => Ok(0.0),
-            ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
-            ArrayNode::Error(e) => Err(e.clone()),
+        let number = match node {
+            ArrayNode::Number(v) => *v,
+            ArrayNode::Boolean(b) => {
+                if *b {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            ArrayNode::Empty => 0.0,
+            ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE)?,
+            ArrayNode::Error(e) => return Err(e.clone()),
+        };
+        if !number.is_finite() {
+            return Err(Error::VALUE);
         }
+        Ok(number)
     }
 
     // LEN, LEFT, RIGHT, MID, LOWER, UPPER, TRIM

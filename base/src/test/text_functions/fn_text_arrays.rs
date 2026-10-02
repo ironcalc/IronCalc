@@ -322,3 +322,54 @@ fn a_missing_element_in_an_earlier_argument_comes_first() {
         ["#N/A", "#N/A", "#N/A", "#N/A", ""]
     );
 }
+
+// "NaN" and "inf" are texts that the parser of numbers would take for
+// numbers. They are not numbers these functions can count with.
+
+#[test]
+fn text_that_is_not_a_finite_number() {
+    let mut model = new_empty_model();
+    let formulas = [
+        "=REPLACE(\"abc\", \"NaN\", 1, \"x\")",
+        "=REPLACE(\"abc\", \"nan\", 1, \"x\")",
+        "=REPLACE(\"abc\", 1, \"NaN\", \"x\")",
+        "=REPLACE(\"abc\", \"inf\", 1, \"x\")",
+        "=REPLACE(\"abc\", 1, \"infinity\", \"x\")",
+        "=FIND(\"b\", \"abc\", \"NaN\")",
+        "=FIND(\"b\", \"abc\", \"-inf\")",
+        "=SEARCH(\"b\", \"abc\", \"NaN\")",
+        "=REPT(\"ab\", \"NaN\")",
+        "=REPT(\"\", \"inf\")",
+        "=SUBSTITUTE(\"a-b-c\", \"-\", \"+\", \"NaN\")",
+        "=SUBSTITUTE(\"a-b-c\", \"-\", \"+\", \"inf\")",
+    ];
+    for (r, formula) in formulas.iter().enumerate() {
+        model
+            .set_user_input(0, r as i32 + 1, 1, formula.to_string())
+            .unwrap();
+    }
+    model.evaluate();
+
+    for (r, formula) in formulas.iter().enumerate() {
+        assert_eq!(
+            model._get_text_at(0, r as i32 + 1, 1),
+            "#VALUE!",
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn text_that_is_not_a_finite_number_in_an_array() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REPLACE(\"abc\", {\"NaN\",2,\"inf\"}, 1, \"x\")");
+    model._set("A2", "=FIND(\"b\", \"abcb\", {\"NaN\",3})");
+    model._set("A3", "=REPT(\"ab\", {\"NaN\",2})");
+    model._set("A4", "=SUBSTITUTE(\"a-b-c\", \"-\", \"+\", {\"NaN\",2})");
+    model.evaluate();
+
+    assert_eq!(row(&model, 1, 4), ["#VALUE!", "axc", "#VALUE!", ""]);
+    assert_eq!(row(&model, 2, 3), ["#VALUE!", "4", ""]);
+    assert_eq!(row(&model, 3, 3), ["#VALUE!", "abab", ""]);
+    assert_eq!(row(&model, 4, 3), ["#VALUE!", "a-b+c", ""]);
+}
