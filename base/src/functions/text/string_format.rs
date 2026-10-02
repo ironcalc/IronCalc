@@ -2,9 +2,16 @@
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    cast::array_node_to_string,
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     model::Model,
 };
+
+use super::common::broadcast_text;
 
 fn format_thousands(n: u64) -> String {
     let s = n.to_string();
@@ -191,72 +198,77 @@ impl<'a> Model<'a> {
 
     /// PROPER(text) — Converts text to title case (first letter of each word uppercase).
     pub(crate) fn fn_proper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        let result = proper_case(&s);
-        CalcResult::String(result)
+        self.apply_text_unary(args, cell, proper_case)
     }
 
     /// REPLACE(old_text, start_num, num_chars, new_text)
     /// Replaces num_chars characters starting at start_num (1-indexed) with new_text.
+    /// If any of the arguments is an array it works element by element.
     pub(crate) fn fn_replace(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 4 {
             return CalcResult::new_args_number_error(cell);
         }
-        let old_text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
+        let old_text = match self.text_arg(&args[0], cell) {
+            Ok(o) => o,
             Err(e) => return e,
         };
-        let start_num = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                let n = f.floor() as i64;
-                if n < 1 {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "start_num must be >= 1".to_string(),
-                    );
-                }
-                n as usize
-            }
+        let start_num = match self.text_arg(&args[1], cell) {
+            Ok(o) => o,
             Err(e) => return e,
         };
-        let num_chars = match self.get_number(&args[2], cell) {
-            Ok(f) => {
-                let n = f.floor() as i64;
-                if n < 0 {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "num_chars must be >= 0".to_string(),
-                    );
-                }
-                n as usize
-            }
+        let num_chars = match self.text_arg(&args[2], cell) {
+            Ok(o) => o,
             Err(e) => return e,
         };
-        let new_text = match self.get_string(&args[3], cell) {
-            Ok(s) => s,
+        let new_text = match self.text_arg(&args[3], cell) {
+            Ok(o) => o,
             Err(e) => return e,
         };
-
-        let chars: Vec<char> = old_text.chars().collect();
-        let len = chars.len();
-        // start_num is 1-indexed; clamp to valid range
-        let start = (start_num - 1).min(len);
-        let end = (start + num_chars).min(len);
-        let result: String = chars[..start]
-            .iter()
-            .chain(new_text.chars().collect::<Vec<_>>().iter())
-            .chain(chars[end..].iter())
-            .collect();
-        CalcResult::String(result)
+        broadcast_text(
+            cell,
+            &[&old_text, &start_num, &num_chars, &new_text],
+            |i, j| {
+                replace_element(
+                    old_text.elem(i, j),
+                    self.text_number(start_num.elem(i, j)),
+                    self.text_number(num_chars.elem(i, j)),
+                    new_text.elem(i, j),
+                )
+            },
+        )
     }
+}
+
+/// Computes a single REPLACE result from one element of each argument.
+fn replace_element(
+    old_text: &ArrayNode,
+    start_num: Result<f64, Error>,
+    num_chars: Result<f64, Error>,
+    new_text: &ArrayNode,
+) -> Result<ArrayNode, Error> {
+    let old_text = array_node_to_string(old_text)?;
+    let start_num = start_num?.floor();
+    if start_num < 1.0 {
+        return Err(Error::VALUE);
+    }
+    let num_chars = num_chars?.floor();
+    if num_chars < 0.0 {
+        return Err(Error::VALUE);
+    }
+    let new_text = array_node_to_string(new_text)?;
+
+    let chars: Vec<char> = old_text.chars().collect();
+    let len = chars.len();
+    // start_num is 1-indexed; clamp to valid range
+    let start = (start_num as usize - 1).min(len);
+    let end = start.saturating_add(num_chars as usize).min(len);
+    let result: String = chars[..start]
+        .iter()
+        .copied()
+        .chain(new_text.chars())
+        .chain(chars[end..].iter().copied())
+        .collect();
+    Ok(ArrayNode::String(result))
 }
 
 fn proper_case(s: &str) -> String {

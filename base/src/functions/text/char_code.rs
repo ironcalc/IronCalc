@@ -135,15 +135,9 @@ impl<'a> Model<'a> {
 
     /// CLEAN(text) — Removes all non-printable characters (code points 0-31) from text.
     pub(crate) fn fn_clean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        let cleaned: String = s.chars().filter(|&c| (c as u32) >= 32).collect();
-        CalcResult::String(cleaned)
+        self.apply_text_unary(args, cell, |s| {
+            s.chars().filter(|&c| (c as u32) >= 32).collect()
+        })
     }
 
     /// ASC(text) — For non-DBCS locales, returns text unchanged.
