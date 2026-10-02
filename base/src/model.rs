@@ -811,18 +811,12 @@ impl<'a> Model<'a> {
                 format!("Variable name \"{name}\" not found."),
             ),
             CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
-            UnaryKind { kind, right } => {
-                let r = match self.get_number(right, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
-                };
-                match kind {
-                    OpUnary::Minus => CalcResult::Number(-r),
-                    OpUnary::Percentage => CalcResult::Number(r / 100.0),
-                }
-            }
+            // What they are applied to is turned into a number, and they work
+            // element by element on a range or an array
+            UnaryKind { kind, right } => match kind {
+                OpUnary::Minus => self.apply_number_unary(right, cell, |f| Ok(-f)),
+                OpUnary::Percentage => self.apply_number_unary(right, cell, |f| Ok(f / 100.0)),
+            },
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
             ParseErrorKind {
                 formula, message, ..

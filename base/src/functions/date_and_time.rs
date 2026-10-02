@@ -273,14 +273,11 @@ fn time_to_fraction(time: NaiveTime) -> f64 {
     seconds / SECONDS_PER_DAY_F64
 }
 
-fn parse_time_string(text: &str) -> Option<f64> {
+/// The fraction of the day of a text that is a time and nothing else:
+/// "12:00", "6:35:10", "3:30 PM", "5 pm". This is the text that counts as a
+/// number when one is expected: `="12:00"+0` is 0.5.
+pub(crate) fn parse_time_of_day(text: &str) -> Option<f64> {
     let text = text.trim();
-
-    // First, try custom parsing for edge cases like "24:00:00", "23:60:00", "23:59:60"
-    // that need normalization to match Excel behavior
-    if let Some(time_fraction) = parse_time_with_normalization(text) {
-        return Some(time_fraction);
-    }
 
     // First, try manual parsing for simple "N PM" / "N AM" format (case-insensitive)
     if let Some((hour_str, is_pm)) = parse_simple_am_pm(text) {
@@ -319,6 +316,21 @@ fn parse_time_string(text: &str) -> Option<f64> {
         if let Ok(t) = NaiveTime::parse_from_str(text, p) {
             return Some(time_to_fraction(t));
         }
+    }
+    None
+}
+
+fn parse_time_string(text: &str) -> Option<f64> {
+    let text = text.trim();
+
+    // First, try custom parsing for edge cases like "24:00:00", "23:60:00", "23:59:60"
+    // that need normalization to match Excel behavior
+    if let Some(time_fraction) = parse_time_with_normalization(text) {
+        return Some(time_fraction);
+    }
+
+    if let Some(time_fraction) = parse_time_of_day(text) {
+        return Some(time_fraction);
     }
 
     let patterns_dt = [

@@ -484,10 +484,27 @@ fn to_string_moved(
             to_string_moved(right, move_context, locale, language),
         ),
         UnaryKind { kind, right } => match kind {
-            OpUnary::Minus => format!(
-                "-{}",
-                to_string_moved(right, move_context, locale, language)
-            ),
+            OpUnary::Minus => {
+                let x = to_string_moved(right, move_context, locale, language);
+                // What binds less than the minus needs its parentheses:
+                // `-(A1=B1)` is not `-A1=B1`
+                let needs_parentheses = matches!(
+                    **right,
+                    OpPowerKind { .. }
+                        | OpSumKind { .. }
+                        | OpConcatenateKind { .. }
+                        | CompareKind { .. }
+                        | UnaryKind {
+                            kind: OpUnary::Percentage,
+                            ..
+                        }
+                );
+                if needs_parentheses {
+                    format!("-({x})")
+                } else {
+                    format!("-{x}")
+                }
+            }
             OpUnary::Percentage => format!(
                 "{}%",
                 to_string_moved(right, move_context, locale, language)
