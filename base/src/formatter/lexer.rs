@@ -1,3 +1,5 @@
+use crate::number_format::parse_finite_number;
+
 pub struct Lexer {
     position: usize,
     len: usize,
@@ -192,7 +194,7 @@ impl Lexer {
             }
         }
         self.position = position;
-        chars.parse::<f64>().ok()
+        parse_finite_number(&chars)
     }
 
     fn consume_condition(&mut self) -> Option<(Compare, f64)> {

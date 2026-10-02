@@ -1,3 +1,4 @@
+use crate::number_format::parse_finite_number;
 use crate::{
     calc_result::CalcResult,
     cast::{array_node_to_string, NumberOrArray, StringOrArray, ValueOrArray},
@@ -28,10 +29,7 @@ fn to_f64(value: &ArrayNode) -> Result<f64, Error> {
     match value {
         ArrayNode::Number(f) => Ok(*f),
         ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-        ArrayNode::String(s) => match s.parse::<f64>() {
-            Ok(f) => Ok(f),
-            Err(_) => Err(Error::VALUE),
-        },
+        ArrayNode::String(s) => parse_finite_number(s).ok_or(Error::VALUE),
         ArrayNode::Error(err) => Err(err.clone()),
         ArrayNode::Empty => Ok(0.0),
     }

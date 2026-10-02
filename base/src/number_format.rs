@@ -102,6 +102,17 @@ pub fn get_new_num_fmt_index(num_fmts: &[NumFmt]) -> i32 {
     index
 }
 
+/// Reads a number written with digits: `12`, `-3.5`, `.5`, `1e5`.
+///
+/// It is `str::parse::<f64>` without its two surprises. That one also reads
+/// the words "NaN", "inf" and "infinity", and it turns a number too large to
+/// hold, like `1e400`, into infinity. In a spreadsheet none of those is a
+/// number, they are text: what is read here is always a number one can count
+/// with.
+pub(crate) fn parse_finite_number(text: &str) -> Option<f64> {
+    text.parse::<f64>().ok().filter(|number| number.is_finite())
+}
+
 pub fn to_precision(value: f64, precision: usize) -> f64 {
     if value.is_infinite() || value.is_nan() {
         return value;

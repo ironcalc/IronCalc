@@ -12,6 +12,7 @@ use crate::{
 };
 
 use super::common::broadcast_text;
+use crate::number_format::parse_finite_number;
 
 fn format_thousands(n: u64) -> String {
     let s = n.to_string();
@@ -185,14 +186,14 @@ impl<'a> Model<'a> {
             );
         }
 
-        match cleaned.parse::<f64>() {
-            Ok(mut v) => {
+        match parse_finite_number(&cleaned) {
+            Some(mut v) => {
                 for _ in 0..pct_count {
                     v /= 100.0;
                 }
                 CalcResult::Number(v)
             }
-            Err(_) => CalcResult::new_error(Error::VALUE, cell, "Cannot parse number".to_string()),
+            None => CalcResult::new_error(Error::VALUE, cell, "Cannot parse number".to_string()),
         }
     }
 
