@@ -1,3 +1,4 @@
+use crate::arithmetic::power;
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
 use crate::expressions::parser::ArrayNode;
@@ -1188,45 +1189,42 @@ impl<'a> Model<'a> {
         CalcResult::Number(f64::log(x, y))
     }
 
+    // POWER(number, power)
+    // If the number or the power are arrays it works element by element.
     pub(crate) fn fn_power(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number(&args[0], cell) {
+        let x = match self.get_number_or_array(&args[0], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let y = match self.get_number(&args[1], cell) {
+        let y = match self.get_number_or_array(&args[1], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if x == 0.0 && y == 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Arguments can't be both zero".to_string(),
-            };
+        let (x, y) = match (x, y) {
+            (NumberOrArray::Number(x), NumberOrArray::Number(y)) => (x, y),
+            (x, y) => return self.arithmetic_on_values(x, y, cell, &power),
+        };
+        match power(x, y) {
+            Ok(result) => CalcResult::Number(result),
+            Err(error) => {
+                let message = if x == 0.0 && y == 0.0 {
+                    "Arguments can't be both zero"
+                } else if error == Error::DIV {
+                    "POWER returned infinity"
+                } else {
+                    // This might happen for some combinations of negative base and exponent
+                    "Invalid arguments for POWER"
+                };
+                CalcResult::Error {
+                    error,
+                    origin: cell,
+                    message: message.to_string(),
+                }
+            }
         }
-        if y == 0.0 {
-            return CalcResult::Number(1.0);
-        }
-        let result = x.powf(y);
-        if result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "POWER returned infinity".to_string(),
-            };
-        }
-        if result.is_nan() {
-            // This might happen for some combinations of negative base and exponent
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid arguments for POWER".to_string(),
-            };
-        }
-        CalcResult::Number(result)
     }
 
     pub(crate) fn fn_combin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
