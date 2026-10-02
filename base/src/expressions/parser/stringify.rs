@@ -89,6 +89,19 @@ pub fn to_localized_string(
 /// This is the mode used to export the formula to Excel
 /// Internally the locale and language are always "en"
 pub fn to_excel_string(node: &Node, context: &CellReferenceRC) -> String {
+    excel_string(node, context, false)
+}
+
+/// Like [`to_excel_string`], for the formula of an array, CSE or dynamic.
+///
+/// No implicit intersection is added to the formula of an array when it is
+/// read, by Excel or by the import, so none of its `@` is redundant: they are
+/// all written, as `_xlfn.SINGLE`.
+pub fn to_excel_array_formula_string(node: &Node, context: &CellReferenceRC) -> String {
+    excel_string(node, context, true)
+}
+
+fn excel_string(node: &Node, context: &CellReferenceRC, is_array_formula: bool) -> String {
     #[allow(clippy::expect_used)]
     let locale = get_locale("en").expect("");
     #[allow(clippy::expect_used)]
@@ -98,7 +111,9 @@ pub fn to_excel_string(node: &Node, context: &CellReferenceRC) -> String {
     // automatically on import; the rest are kept as `_xlfn.SINGLE` while
     // stringifying. See `remove_redundant_implicit_intersection`.
     let mut node = node.clone();
-    remove_redundant_implicit_intersection(&mut node, true);
+    if !is_array_formula {
+        remove_redundant_implicit_intersection(&mut node, true);
+    }
     prefix_bound_variables(&mut node, &mut Vec::new());
     stringify(
         &node,
