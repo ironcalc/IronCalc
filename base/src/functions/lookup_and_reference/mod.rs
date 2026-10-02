@@ -866,64 +866,49 @@ impl<'a> Model<'a> {
     }
 
     // INDIRECT(ref_text, [a1])
-    // Returns the reference specified by 'ref_text'
+    // Returns the reference specified by 'ref_text'. It is read in A1 notation
+    // unless 'a1' is FALSE, in which case it is read in R1C1 notation.
     pub(crate) fn fn_indirect(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 2 || args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = self.get_string(&args[0], cell);
-        match value {
-            Ok(s) => {
-                // a1 = FALSE: the text is an R1C1 reference ("R2C3", "R[-1]C")
-                let a1 = match args.get(1) {
-                    None | Some(Node::EmptyArgKind) => true,
-                    Some(node) => match self.get_boolean(node, cell) {
-                        Ok(b) => b,
-                        Err(e) => return e,
-                    },
-                };
-                let s = if a1 {
-                    s
-                } else {
-                    match r1c1_to_a1(&s, cell) {
-                        Some(text) => text,
-                        None => {
-                            return CalcResult::new_error(
-                                Error::REF,
-                                cell,
-                                "Invalid R1C1 reference".to_string(),
-                            )
-                        }
-                    }
-                };
-
-                let parsed_reference = ParsedReference::parse_reference_formula(
-                    Some(cell.sheet),
-                    &s,
-                    self.locale,
-                    |name| self.get_sheet_index_by_name(name),
-                );
-
-                let parsed_reference = match parsed_reference {
-                    Ok(reference) => reference,
-                    Err(message) => {
-                        return CalcResult::Error {
-                            error: Error::REF,
-                            origin: cell,
-                            message,
-                        };
-                    }
-                };
-
-                match parsed_reference {
-                    ParsedReference::CellReference(reference) => CalcResult::Range {
-                        left: reference,
-                        right: reference,
-                    },
-                    ParsedReference::Range(left, right) => CalcResult::Range { left, right },
-                }
+        let ref_text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(v) => return v,
+        };
+        let a1 = if args.len() == 2 {
+            match self.get_boolean(&args[1], cell) {
+                Ok(b) => b,
+                Err(v) => return v,
             }
-            Err(v) => v,
+        } else {
+            true
+        };
+
+        let parsed_reference = if a1 {
+            ParsedReference::parse_reference_formula(
+                Some(cell.sheet),
+                &ref_text,
+                self.locale,
+                |name| self.get_sheet_index_by_name(name),
+            )
+        } else {
+            ParsedReference::parse_r1c1_reference(cell, &ref_text, |name| {
+                self.get_sheet_index_by_name(name)
+            })
+        };
+
+        match parsed_reference {
+            Ok(ParsedReference::CellReference(reference)) => CalcResult::Range {
+                left: reference,
+                right: reference,
+            },
+            Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
+            Err(message) => CalcResult::Error {
+                error: Error::REF,
+                origin: cell,
+                message,
+            },
         }
     }
 
@@ -1083,50 +1068,4 @@ impl<'a> Model<'a> {
             }
         }
     }
-}
-
-/// One R1C1 cell ("R2C3", "R[-1]C[2]", "RC") as A1 text, relative to `cell`.
-fn r1c1_cell_to_a1(text: &str, cell: CellReferenceIndex) -> Option<String> {
-    let upper = text.to_uppercase();
-    let rest = upper.strip_prefix('R')?;
-    let c_at = rest.find('C')?;
-    let (row_part, column_part) = (&rest[..c_at], &rest[c_at + 1..]);
-    let part = |p: &str, current: i32| -> Option<(i32, bool)> {
-        if p.is_empty() {
-            Some((current, false))
-        } else if let Some(inner) = p.strip_prefix('[').and_then(|x| x.strip_suffix(']')) {
-            Some((current + inner.parse::<i32>().ok()?, false))
-        } else {
-            Some((p.parse::<i32>().ok()?, true))
-        }
-    };
-    let (row, absolute_row) = part(row_part, cell.row)?;
-    let (column, absolute_column) = part(column_part, cell.column)?;
-    if !(1..=LAST_ROW).contains(&row) || !(1..=LAST_COLUMN).contains(&column) {
-        return None;
-    }
-    Some(format!(
-        "{}{}{}{}",
-        if absolute_column { "$" } else { "" },
-        crate::expressions::utils::number_to_column(column)?,
-        if absolute_row { "$" } else { "" },
-        row
-    ))
-}
-
-/// An R1C1 reference or range, with an optional sheet name, as A1 text.
-fn r1c1_to_a1(text: &str, cell: CellReferenceIndex) -> Option<String> {
-    let (sheet, reference) = match text.rfind('!') {
-        Some(i) => (&text[..=i], &text[i + 1..]),
-        None => ("", text),
-    };
-    let parts: Option<Vec<String>> = reference
-        .split(':')
-        .map(|p| r1c1_cell_to_a1(p.trim(), cell))
-        .collect();
-    let parts = parts?;
-    if parts.is_empty() || parts.len() > 2 {
-        return None;
-    }
-    Some(format!("{sheet}{}", parts.join(":")))
 }
