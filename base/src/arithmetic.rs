@@ -37,6 +37,42 @@ fn to_f64(value: &ArrayNode) -> Result<f64, Error> {
     }
 }
 
+/// `x` to the power of `y`, as POWER and the operator `^` compute it.
+pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
+    if x == 0.0 && y == 0.0 {
+        return Err(Error::NUM);
+    }
+    if y == 0.0 {
+        return Ok(1.0);
+    }
+    let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
+        // An odd root of a negative number is a real number: the cube root of
+        // -8 is -2. `powf` cannot tell, a third is just another fraction to it.
+        -(-x).powf(y)
+    } else {
+        x.powf(y)
+    };
+    if result.is_infinite() {
+        return Err(Error::DIV);
+    }
+    if result.is_nan() {
+        // A negative number to a power that is not an integer nor an odd root
+        return Err(Error::NUM);
+    }
+    Ok(result)
+}
+
+/// Whether `y` is 1/3, 1/5, -1/7 and so on. A float cannot hold a third, so
+/// this asks whether one over `y` is an odd integer as far as the precision of
+/// a float can tell.
+fn is_one_over_an_odd_integer(y: f64) -> bool {
+    // 2^-48: the last few bits are left to the error of the two divisions
+    const TOLERANCE: f64 = 1.0 / (16_777_216.0 * 16_777_216.0);
+    let inverse = 1.0 / y;
+    let integer = inverse.round();
+    (inverse - integer).abs() <= integer.abs() * TOLERANCE && integer % 2.0 != 0.0
+}
+
 impl<'a> Model<'a> {
     /// Applies `op` element‐wise for arrays/numbers.
     pub(crate) fn handle_arithmetic(
@@ -58,6 +94,17 @@ impl<'a> Model<'a> {
                 return s;
             }
         };
+        self.arithmetic_on_values(l, r, cell, op)
+    }
+
+    /// Applies `op` element‐wise to operands that are already evaluated.
+    pub(crate) fn arithmetic_on_values(
+        &mut self,
+        l: NumberOrArray,
+        r: NumberOrArray,
+        cell: CellReferenceIndex,
+        op: &dyn Fn(f64, f64) -> Result<f64, Error>,
+    ) -> CalcResult {
         match (l, r) {
             // -----------------------------------------------------
             // Case 1: Both are numbers

@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec::Vec;
 
+use crate::arithmetic::power;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -708,9 +709,7 @@ impl<'a> Model<'a> {
                     }
                 }),
             },
-            OpPowerKind { left, right } => {
-                self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1.powf(f2)))
-            }
+            OpPowerKind { left, right } => self.handle_arithmetic(left, right, cell, &power),
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             NamedFunctionKind { name, args, id } => {
                 let lambda_result = if let Some(var_id) = id {
