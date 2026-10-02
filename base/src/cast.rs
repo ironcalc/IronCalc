@@ -1,3 +1,4 @@
+use crate::functions::date_and_time::parse_time_of_day;
 use crate::number_format::parse_finite_number;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -71,7 +72,8 @@ impl<'a> Model<'a> {
                 {
                     return Some(v);
                 }
-                None
+                // Or as a time of the day ("12:00", "3:30 PM")
+                parse_time_of_day(s)
             }
         }
     }

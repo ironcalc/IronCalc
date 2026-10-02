@@ -551,11 +551,14 @@ impl<'a> Parser<'a> {
 
     fn parse_power(&mut self) -> Node {
         let mut next_token = self.lexer.peek_token();
-        let mut sign = 1;
+        // Every minus is kept: two of them do not cancel out, `--x` turns `x`
+        // into a number, which is what it is written for. A plus does nothing
+        // at all, `+x` is `x`, text or boolean as it may be.
+        let mut minus_count = 0;
         while let TokenType::Addition(op) = next_token {
             self.lexer.advance_token();
             if op == token::OpSum::Minus {
-                sign = -sign;
+                minus_count += 1;
             }
             next_token = self.lexer.peek_token();
         }
@@ -564,7 +567,7 @@ impl<'a> Parser<'a> {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        if sign == -1 {
+        for _ in 0..minus_count {
             t = Node::UnaryKind {
                 kind: token::OpUnary::Minus,
                 right: Box::new(t),
