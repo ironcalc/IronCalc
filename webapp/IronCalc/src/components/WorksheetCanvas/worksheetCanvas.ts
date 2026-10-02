@@ -1,5 +1,7 @@
 import type { CellLink, CellStyle, MergedCell, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
+import { defaultThemeVariables } from "../../theme/theme";
+import { isLightColor } from "../ColorPicker/util";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
@@ -451,6 +453,12 @@ export default class WorksheetCanvas {
       // to the theme's default text color rather than leaving it undefined.
       if (style.font.color) {
         color = this.model.resolveColor(style.font.color);
+      } else if (
+        style.fill.color &&
+        !isLightColor(this.theme.backgroundColor)
+      ) {
+        // Fills don't follow the theme, so avoid light-on-light in dark mode
+        color = defaultThemeVariables["--palette-sheet-default-text-color"];
       }
       font = style.font.b ? `bold ${font}` : `400 ${font}`;
       if (style.font.i) {
