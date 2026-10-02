@@ -224,12 +224,17 @@ impl Lexer {
             }
         }
 
-        if let Some(v) = self.consume_number() {
-            if self.read_next_char() == Some(']') {
-                return Some((cmp, v));
-            }
-        } else if self.read_next_char() == Some(']') {
-            return Some((cmp, 0.0));
+        let start = self.position;
+        let value = match self.consume_number() {
+            Some(v) => v,
+            // Without a number, as in `[>]`, the condition compares with 0
+            None if self.position == start => 0.0,
+            // There is something that should be a number and is not one,
+            // like `1e400` that is too large to hold: that is no condition
+            None => return None,
+        };
+        if self.read_next_char() == Some(']') {
+            return Some((cmp, value));
         }
         None
     }

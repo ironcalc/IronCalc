@@ -309,3 +309,58 @@ fn a_calculation_that_overflows_is_an_error() {
         }
     }
 }
+
+#[test]
+fn a_number_that_is_not_finite_cannot_be_set_in_a_cell() {
+    let mut model = new_empty_model();
+    model._set("A1", "7");
+    model._set("B1", "=A1+1");
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        assert!(
+            model.update_cell_with_number(0, 1, 1, value).is_err(),
+            "{value}"
+        );
+        // Also in an empty cell
+        assert!(
+            model.update_cell_with_number(0, 5, 5, value).is_err(),
+            "{value}"
+        );
+        // And straight in the worksheet
+        assert!(
+            model
+                .workbook
+                .worksheet_mut(0)
+                .unwrap()
+                .set_cell_with_number(1, 1, value, 0)
+                .is_err(),
+            "{value}"
+        );
+    }
+    model.evaluate();
+
+    // The cells are as they were
+    assert_eq!(model._get_text("A1"), "7");
+    assert_eq!(model._get_text("B1"), "8");
+    assert_eq!(model.is_empty_cell(0, 5, 5), Ok(true));
+
+    // Any other number can
+    for value in [0.0, -0.0, 1e308, -1e308, f64::MIN_POSITIVE, f64::MAX] {
+        assert_eq!(model.update_cell_with_number(0, 1, 1, value), Ok(()));
+    }
+    model.update_cell_with_number(0, 1, 1, 41.0).unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "42");
+}
+
+#[test]
+fn a_number_too_large_in_a_number_format_is_an_error() {
+    assert_eq!(
+        evaluate(&[
+            "=TEXT(5, \"[>1e400]0.0;0\")",
+            "=TEXT(5, \"[<-1e400]0.0;0\")",
+            "=TEXT(5, \"[>1e308]0.0;0\")",
+            "=TEXT(5, \"[>]0.0;0\")",
+        ]),
+        ["#VALUE!", "#VALUE!", "5.0", "5.0"]
+    );
+}
