@@ -44,6 +44,43 @@ fn condition_scientific() {
 }
 
 #[test]
+fn condition_without_number() {
+    let mut lexer = Lexer::new("[>]");
+    let token = lexer.next_token();
+    assert!(matches!(token, Token::Condition(Compare::GreaterThan, 0.0)));
+    assert!(matches!(lexer.next_token(), Token::EOF));
+}
+
+#[test]
+fn condition_largest_number() {
+    let mut lexer = Lexer::new("[>1e308]");
+    let token = lexer.next_token();
+    assert!(matches!(
+        token,
+        Token::Condition(Compare::GreaterThan, 1e308)
+    ));
+    assert!(matches!(lexer.next_token(), Token::EOF));
+}
+
+// A number too large to hold is not a number, and it is not a missing number
+// either: the condition is not `[>0]`, it is wrong.
+#[test]
+fn condition_number_too_large() {
+    for format in ["[>1e400]", "[<-1e400]", "[=1E+999]", "[>=123e400]0"] {
+        let mut lexer = Lexer::new(format);
+        assert!(matches!(lexer.next_token(), Token::ILLEGAL), "{format}");
+    }
+}
+
+#[test]
+fn condition_number_unfinished() {
+    for format in ["[>-]", "[<.]", "[>-.]"] {
+        let mut lexer = Lexer::new(format);
+        assert!(matches!(lexer.next_token(), Token::ILLEGAL), "{format}");
+    }
+}
+
+#[test]
 fn condition_invalid() {
     let mut lexer = Lexer::new("[<abc]");
     let token = lexer.next_token();

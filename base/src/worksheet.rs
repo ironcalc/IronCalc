@@ -276,6 +276,8 @@ impl Worksheet {
         self.update_cell(row, column, cell)
     }
 
+    /// Sets a number in a cell. The number has to be finite: no cell holds a
+    /// NaN or an infinity, and the cell is left as it was if given one.
     pub fn set_cell_with_number(
         &mut self,
         row: i32,
@@ -283,6 +285,9 @@ impl Worksheet {
         value: f64,
         style: i32,
     ) -> Result<(), String> {
+        if !value.is_finite() {
+            return Err(format!("A cell cannot hold the number {value}"));
+        }
         let cell = Cell::new_number(value, style);
         self.update_cell(row, column, cell)
     }
