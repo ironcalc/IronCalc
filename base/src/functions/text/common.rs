@@ -502,9 +502,10 @@ impl<'a> Model<'a> {
     /// is: booleans are 0 and 1, text has to read as a number, empties are 0
     /// and errors propagate.
     ///
-    /// The number is finite. Texts like "NaN" and "inf" read as numbers, but
-    /// they are not positions or counts, and every comparison with a NaN is
-    /// false, so no check of a range would stop one.
+    /// The number is finite. A calculation that overflowed inside the formula
+    /// can hand over an infinity or a NaN: they are not positions or counts,
+    /// and every comparison with a NaN is false, so no check of a range would
+    /// stop one.
     pub(super) fn text_number(&self, node: &ArrayNode) -> Result<f64, Error> {
         let number = match node {
             ArrayNode::Number(v) => *v,

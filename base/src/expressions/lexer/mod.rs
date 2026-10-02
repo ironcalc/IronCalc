@@ -47,6 +47,7 @@ use std::mem;
 use serde::{Deserialize, Serialize};
 
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
+use crate::number_format::parse_finite_number;
 
 use crate::language::Language;
 use crate::locale::Locale;
@@ -615,9 +616,11 @@ impl<'a> Lexer<'a> {
             }
         }
         self.position = position;
-        match chars.parse::<f64>() {
-            Err(_) => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
-            Ok(v) => Ok(v),
+        // A number too large to hold, like 1e400, is not a number: it would
+        // be infinity, which cannot be written back as a formula.
+        match parse_finite_number(&chars) {
+            None => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
+            Some(v) => Ok(v),
         }
     }
 

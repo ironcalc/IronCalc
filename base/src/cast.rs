@@ -1,3 +1,4 @@
+use crate::number_format::parse_finite_number;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -57,9 +58,9 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
 
 impl<'a> Model<'a> {
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
-        match s.trim().parse::<f64>() {
-            Ok(f) => Some(f),
-            _ => {
+        match parse_finite_number(s.trim()) {
+            Some(f) => Some(f),
+            None => {
                 let currency = &self.locale.currency.symbol;
                 let mut currencies = vec!["$", "€"];
                 if !currencies.iter().any(|e| *e == currency) {

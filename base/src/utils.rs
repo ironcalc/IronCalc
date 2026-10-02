@@ -2,6 +2,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::get_error_by_name;
 use crate::expressions::types::CellReferenceIndex;
 use crate::language::Language;
+use crate::number_format::parse_finite_number;
 
 use crate::{
     expressions::{
@@ -327,7 +328,7 @@ fn parse_r1c1_number(
 ///  * an error (i.e "#VALUE!")
 pub(crate) fn value_needs_quoting(value: &str, language: &Language) -> bool {
     value.starts_with(['=', '+', '-'])
-        || value.parse::<f64>().is_ok()
+        || parse_finite_number(value).is_some()
         || value.to_lowercase().parse::<bool>().is_ok()
         || get_error_by_name(&value.to_uppercase(), language).is_some()
 }

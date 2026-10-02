@@ -1,6 +1,7 @@
 #[cfg(target_arch = "wasm32")]
 use regex_lite as regex;
 
+use crate::number_format::parse_finite_number;
 use crate::{
     calc_result::CalcResult,
     expressions::token::{is_english_error_string, Error},
@@ -15,7 +16,7 @@ use crate::{
 /// must not shadow the simpler number path.
 fn parse_date_criterion(s: &str, locale: &Locale) -> Option<f64> {
     let trimmed = s.trim();
-    if trimmed.is_empty() || trimmed.parse::<f64>().is_ok() {
+    if trimmed.is_empty() || parse_finite_number(trimmed).is_some() {
         return None;
     }
     parse_date(trimmed, locale)
@@ -183,7 +184,7 @@ fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
             false
         }
         CalcResult::String(s) => {
-            if let Ok(f) = s.parse::<f64>() {
+            if let Some(f) = parse_finite_number(s) {
                 if (f - target).abs() < f64::EPSILON {
                     return true;
                 }
@@ -376,7 +377,7 @@ pub(crate) fn build_criteria<'a>(
         CalcResult::String(s) => {
             if let Some(v) = s.strip_prefix("<=") {
                 // TODO: I am not implementing <= ERROR or <= BOOLEAN
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_finite_number(v) {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
@@ -387,7 +388,7 @@ pub(crate) fn build_criteria<'a>(
                 }
             } else if let Some(v) = s.strip_prefix(">=") {
                 // TODO: I am not implementing >= ERROR or >= BOOLEAN
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_finite_number(v) {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
@@ -397,7 +398,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_greater_or_equal_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix("<>") {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_finite_number(v) {
                     Box::new(move |x| result_is_not_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
                     Box::new(move |x| result_is_not_equal_to_bool(x, b))
@@ -418,7 +419,7 @@ pub(crate) fn build_criteria<'a>(
                 }
             } else if let Some(v) = s.strip_prefix('<') {
                 // TODO: I am not implementing < ERROR or < BOOLEAN
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_finite_number(v) {
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
@@ -429,7 +430,7 @@ pub(crate) fn build_criteria<'a>(
                 }
             } else if let Some(v) = s.strip_prefix('>') {
                 // TODO: I am not implementing > ERROR or > BOOLEAN
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_finite_number(v) {
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
@@ -444,7 +445,7 @@ pub(crate) fn build_criteria<'a>(
                 } else {
                     s
                 };
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_finite_number(v) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
                     Box::new(move |x| result_is_equal_to_bool(x, b))
