@@ -1998,6 +1998,176 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// Returns the cells and ranges the formula in a cell refers to directly,
+    /// in the order they appear in the formula and without duplicates.
+    /// A single cell is an area of width and height 1. Defined names that
+    /// stand for a cell or a range are replaced by what they stand for.
+    ///
+    /// References computed while evaluating (`INDIRECT`, `OFFSET`) are not
+    /// included. A cell without a formula has no precedents.
+    ///
+    /// ```rust
+    /// # use ironcalc_base::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
+    /// model.set_user_input(0, 1, 1, "=B1+SUM(C1:D3)".to_string())?;
+    /// let precedents = model.get_cell_precedents(0, 1, 1)?;
+    /// assert_eq!(precedents.len(), 2);
+    /// assert_eq!((precedents[1].column, precedents[1].width, precedents[1].height), (3, 2, 3));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn get_cell_precedents(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Vec<Area>, String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        let formula_index = match worksheet.cell(row, column).and_then(|c| c.get_formula()) {
+            Some(index) => index,
+            None => return Ok(vec![]),
+        };
+        let (node, _) = self
+            .parsed_formulas
+            .get(sheet as usize)
+            .ok_or("missing sheet")?
+            .get(formula_index as usize)
+            .ok_or("missing formula")?;
+        let cell = CellReferenceIndex { sheet, row, column };
+        let mut precedents = Vec::new();
+        self.collect_precedents(node, &cell, &mut precedents);
+        Ok(precedents)
+    }
+
+    fn collect_precedents(&self, node: &Node, cell: &CellReferenceIndex, out: &mut Vec<Area>) {
+        let mut push = |area: Area| {
+            if !out.contains(&area) {
+                out.push(area);
+            }
+        };
+        match node {
+            Node::ReferenceKind {
+                sheet_index,
+                absolute_row,
+                absolute_column,
+                row,
+                column,
+                ..
+            } => {
+                let row = if *absolute_row { *row } else { row + cell.row };
+                let column = if *absolute_column {
+                    *column
+                } else {
+                    column + cell.column
+                };
+                push(Area {
+                    sheet: *sheet_index,
+                    row,
+                    column,
+                    width: 1,
+                    height: 1,
+                });
+            }
+            Node::RangeKind {
+                sheet_index,
+                absolute_row1,
+                absolute_column1,
+                row1,
+                column1,
+                absolute_row2,
+                absolute_column2,
+                row2,
+                column2,
+                ..
+            } => {
+                let r1 = if *absolute_row1 {
+                    *row1
+                } else {
+                    row1 + cell.row
+                };
+                let c1 = if *absolute_column1 {
+                    *column1
+                } else {
+                    column1 + cell.column
+                };
+                let r2 = if *absolute_row2 {
+                    *row2
+                } else {
+                    row2 + cell.row
+                };
+                let c2 = if *absolute_column2 {
+                    *column2
+                } else {
+                    column2 + cell.column
+                };
+                push(Area {
+                    sheet: *sheet_index,
+                    row: r1.min(r2),
+                    column: c1.min(c2),
+                    width: (c2 - c1).abs() + 1,
+                    height: (r2 - r1).abs() + 1,
+                });
+            }
+            Node::DefinedNameKind((name, scope, _)) => {
+                match self.get_parsed_defined_name(name, *scope) {
+                    Ok(Some(ParsedDefinedName::CellReference(reference))) => push(Area {
+                        sheet: reference.sheet,
+                        row: reference.row,
+                        column: reference.column,
+                        width: 1,
+                        height: 1,
+                    }),
+                    Ok(Some(ParsedDefinedName::RangeReference(range))) => push(Area {
+                        sheet: range.left.sheet,
+                        row: range.left.row.min(range.right.row),
+                        column: range.left.column.min(range.right.column),
+                        width: (range.right.column - range.left.column).abs() + 1,
+                        height: (range.right.row - range.left.row).abs() + 1,
+                    }),
+                    _ => {}
+                }
+            }
+            Node::OpRangeKind { left, right }
+            | Node::OpConcatenateKind { left, right }
+            | Node::OpSumKind { left, right, .. }
+            | Node::OpProductKind { left, right, .. }
+            | Node::OpPowerKind { left, right }
+            | Node::CompareKind { left, right, .. } => {
+                self.collect_precedents(left, cell, out);
+                self.collect_precedents(right, cell, out);
+            }
+            Node::UnaryKind { right: child, .. }
+            | Node::ImplicitIntersection { child, .. }
+            | Node::SpillRangeOperator { child }
+            | Node::LambdaDefKind { body: child, .. } => {
+                self.collect_precedents(child, cell, out);
+            }
+            Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
+                for arg in args {
+                    self.collect_precedents(arg, cell, out);
+                }
+            }
+            Node::LambdaCallKind { lambda, args } => {
+                self.collect_precedents(lambda, cell, out);
+                for arg in args {
+                    self.collect_precedents(arg, cell, out);
+                }
+            }
+            Node::BooleanKind(_)
+            | Node::NumberKind(_)
+            | Node::StringKind(_)
+            | Node::WrongReferenceKind { .. }
+            | Node::WrongRangeKind { .. }
+            | Node::ArrayKind(_)
+            | Node::TableNameKind(_)
+            | Node::NamedVariableKind { .. }
+            | Node::ErrorKind(_)
+            | Node::ParseErrorKind { .. }
+            | Node::EmptyArgKind => {}
+        }
+    }
+
     /// Returns the text for the formula in (`sheet`, `row`, `column`) in English if any
     ///
     /// See also:

@@ -348,7 +348,7 @@ export interface SelectedView {
 export interface ClipboardCell {
   text: string;
   style: CellStyle;
-  /** The link attached to the cell, if any */
+  /** The link attached to the cell, when present */
   link?: Link | null;
 }
 
@@ -489,6 +489,12 @@ export declare class Model {
    * the formula if there is one or the raw value otherwise
    */
   getCellContent(sheet: number, row: number, column: number): string
+  /**
+   * Returns the cells and ranges the formula in a cell refers to directly,
+   * as areas. A single cell has width and height 1. A cell without a
+   * formula has no precedents.
+   */
+  getCellPrecedents(sheet: number, row: number, column: number): Array<{ sheet: number; row: number; column: number; width: number; height: number }>
   /** Returns the formula of a cell, if any */
   getCellFormula(sheet: number, row: number, column: number): string | null
   /**
@@ -666,6 +672,12 @@ export declare class UserModel {
    * the formula if there is one or the raw value otherwise
    */
   getCellContent(sheet: number, row: number, column: number): string
+  /**
+   * Returns the cells and ranges the formula in a cell refers to directly,
+   * as areas. A single cell has width and height 1. A cell without a
+   * formula has no precedents.
+   */
+  getCellPrecedents(sheet: number, row: number, column: number): Array<{ sheet: number; row: number; column: number; width: number; height: number }>
   /** Returns the formatted value of a cell (i.e. "$ 5.75") */
   getFormattedCellValue(sheet: number, row: number, column: number): string
   /** Returns the type of the content of a cell */

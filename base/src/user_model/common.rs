@@ -582,6 +582,19 @@ impl<'a> UserModel<'a> {
         self.model.get_formatted_cell_value(sheet, row, column)
     }
 
+    /// Returns the cells and ranges the formula in a cell refers to directly.
+    ///
+    /// See also
+    /// * [Model::get_cell_precedents]
+    pub fn get_cell_precedents(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Vec<Area>, String> {
+        self.model.get_cell_precedents(sheet, row, column)
+    }
+
     /// Returns the type of the cell
     ///
     /// See also

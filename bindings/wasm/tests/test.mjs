@@ -317,3 +317,13 @@ test('Merge cells variants', () => {
     model.undo();
     assert.deepEqual(model.getMergedCells(0), []);
 });
+
+test('getCellPrecedents', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.setUserInput(0, 2, 2, "=A1+SUM(C3:D5)+A1");
+    assert.deepStrictEqual(model.getCellPrecedents(0, 2, 2), [
+        { sheet: 0, row: 1, column: 1, width: 1, height: 1 },
+        { sheet: 0, row: 3, column: 3, width: 2, height: 3 },
+    ]);
+    assert.deepStrictEqual(model.getCellPrecedents(0, 1, 1), []);
+});
