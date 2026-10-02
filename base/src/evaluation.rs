@@ -47,7 +47,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
-use crate::types::{ArrayKind, Cell};
+use crate::types::{ArrayKind, Cell, FormulaValue, IterativeCalculation};
 
 /// The hasher of the maps the evaluation keeps about positions. Their keys are
 /// three small integers and every formula looks several of them up, which
@@ -421,6 +421,13 @@ pub(crate) struct Evaluation {
     /// restart, the cells stay on `stack`, still `Evaluating`, to be run again
     /// from the top once the recursion has unwound.
     pub(crate) unwinding: bool,
+    /// True while an iterative calculation runs. A read that closes a loop then
+    /// gets the value its cell held after the previous recalculation instead of
+    /// `#CIRC!`.
+    pub(crate) iterating: bool,
+    /// Set when a read closed a loop during the current iterative calculation.
+    /// Without one there is nothing to recalculate.
+    pub(crate) loop_met: bool,
 }
 
 /// How deep the recursion may go when nobody has said otherwise, in formulas
@@ -471,6 +478,8 @@ impl Default for Evaluation {
             max_stack: DEFAULT_MAX_STACK,
             stack_base: 0,
             unwinding: false,
+            iterating: false,
+            loop_met: false,
         }
     }
 }
@@ -478,12 +487,55 @@ impl Default for Evaluation {
 impl<'a> Model<'a> {
     /// Evaluates every formula in the workbook.
     ///
+    /// A circular reference evaluates to `#CIRC!`, unless iterative calculation is
+    /// enabled in the workbook settings, see [`Model::set_iterative_calculation`].
+    pub fn evaluate(&mut self) {
+        let settings = self.workbook.settings.iterative_calculation.clone();
+        if settings.enabled {
+            self.evaluate_iteratively(&settings);
+        } else {
+            self.evaluate_once();
+        }
+        self.evaluate_conditional_formatting();
+    }
+
+    /// Evaluates the workbook again and again until the cells settle.
+    ///
+    /// Every pass is a complete evaluation. A formula that reads a cell that is
+    /// still being evaluated gets the value that cell held when the previous
+    /// pass ended, zero if it had none. The passes stop when no cell changed by
+    /// `maximum_change` or more between two of them, or after `maximum_iterations`
+    /// of them. The values of the last pass are kept. A workbook without loops
+    /// needs a single pass.
+    fn evaluate_iteratively(&mut self, settings: &IterativeCalculation) {
+        self.forget_formula_values();
+        self.evaluation.iterating = true;
+        self.evaluation.loop_met = false;
+        let mut previous = self.formula_numbers();
+        let mut restarts = 0;
+        for _ in 0..settings.maximum_iterations.max(1) {
+            self.evaluate_once();
+            restarts += self.evaluation.restarts_in_last_evaluation;
+            if !self.evaluation.loop_met {
+                break;
+            }
+            let current = self.formula_numbers();
+            let change = max_absolute_change(&previous, &current);
+            previous = current;
+            if change < settings.maximum_change.abs() {
+                break;
+            }
+        }
+        self.evaluation.restarts_in_last_evaluation = restarts;
+        self.evaluation.iterating = false;
+    }
+
     /// Runs passes until one completes without a restart. `RestartLog` learns
     /// from each restart, reorders the anchors and marks what it proves
     /// circular; see there for why the loop ends. A marked anchor stores
     /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
     /// is marked, so there is nothing of it to read or to contradict.
-    pub fn evaluate(&mut self) {
+    fn evaluate_once(&mut self) {
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
@@ -510,7 +562,60 @@ impl<'a> Model<'a> {
             self.restore_dynamic_spills(&spills_before);
         }
         self.evaluation.restarts_in_last_evaluation = log.restarts;
-        self.evaluate_conditional_formatting();
+    }
+
+    /// What a cell in a loop contributes to the cell that closes the loop: the
+    /// number or boolean it held after the previous pass, zero for anything else.
+    fn previous_value(&self, cell_reference: CellReferenceIndex) -> CalcResult {
+        match self.fetch_cell(cell_reference) {
+            Some(Cell::CellFormula { v, .. } | Cell::ArrayFormula { v, .. }) => match v {
+                FormulaValue::Number(n) => CalcResult::Number(*n),
+                FormulaValue::Boolean(b) => CalcResult::Boolean(*b),
+                _ => CalcResult::Number(0.0),
+            },
+            _ => CalcResult::Number(0.0),
+        }
+    }
+
+    /// Clears the values of all formulas, so that an iterative calculation always
+    /// starts from zero, whatever the workbook held before.
+    fn forget_formula_values(&mut self) {
+        for worksheet in &mut self.workbook.worksheets {
+            let formulas: Vec<(i32, i32)> = worksheet
+                .sheet_data
+                .cells()
+                .filter(|(_, _, cell)| FormulaCell::of(cell).is_some())
+                .map(|(row, column, _)| (row, column))
+                .collect();
+            for (row, column) in formulas {
+                if let Some(Cell::CellFormula { v, .. } | Cell::ArrayFormula { v, .. }) =
+                    worksheet.sheet_data.cell_mut(row, column)
+                {
+                    *v = FormulaValue::Unevaluated;
+                }
+            }
+        }
+    }
+
+    /// The numeric value of every formula cell.
+    fn formula_numbers(&self) -> HashMap<CellKey, f64> {
+        let mut numbers = HashMap::new();
+        for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
+            for (row, column, cell) in worksheet.sheet_data.cells() {
+                if let Cell::CellFormula {
+                    v: FormulaValue::Number(n),
+                    ..
+                }
+                | Cell::ArrayFormula {
+                    v: FormulaValue::Number(n),
+                    ..
+                } = cell
+                {
+                    numbers.insert((sheet as u32, row, column), *n);
+                }
+            }
+        }
+        numbers
     }
 
     /// Sets how many formulas deep the evaluation may recurse. A formula that
@@ -788,6 +893,10 @@ impl<'a> Model<'a> {
         let key = key(cell_reference);
         match self.evaluation.cells.get(&key) {
             Some(CellState::Evaluating) => {
+                if self.evaluation.iterating {
+                    self.evaluation.loop_met = true;
+                    return self.previous_value(cell_reference);
+                }
                 self.mark_cycle(cell_reference);
                 return circular_reference(cell_reference);
             }
@@ -1103,6 +1212,22 @@ impl<'a> Model<'a> {
         });
         true
     }
+}
+
+/// The largest difference in absolute value between the cells of two passes. A
+/// cell missing from one of them counts as zero.
+fn max_absolute_change(previous: &HashMap<CellKey, f64>, current: &HashMap<CellKey, f64>) -> f64 {
+    let mut change: f64 = 0.0;
+    for (position, value) in current {
+        let before = previous.get(position).copied().unwrap_or(0.0);
+        change = change.max((value - before).abs());
+    }
+    for (position, before) in previous {
+        if !current.contains_key(position) {
+            change = change.max(before.abs());
+        }
+    }
+    change
 }
 
 fn circular_reference(cell_reference: CellReferenceIndex) -> CalcResult {

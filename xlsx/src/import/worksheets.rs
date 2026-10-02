@@ -18,8 +18,8 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, Link, MergedCell,
-        SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
+        ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, IterativeCalculation,
+        Link, MergedCell, SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
 use thiserror::Error;
@@ -44,6 +44,7 @@ pub(crate) struct Sheet {
 pub(crate) struct WorkbookXML {
     pub(crate) worksheets: Vec<Sheet>,
     pub(crate) defined_names: Vec<DefinedName>,
+    pub(crate) iterative_calculation: IterativeCalculation,
 }
 
 pub(crate) struct Relationship {

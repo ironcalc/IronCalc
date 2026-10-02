@@ -5,7 +5,8 @@ use bitcode::{Decode, Encode};
 use crate::{
     cf_types::CfRule,
     types::{
-        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
+        Cell, Col, Color, IterativeCalculation, Link, MergedCell, Row, SheetState, Style,
+        StyleIncludes, Theme, Worksheet,
     },
 };
 
@@ -243,6 +244,10 @@ pub(crate) enum Diff {
     SetTimezone {
         old_value: String,
         new_value: String,
+    },
+    SetIterativeCalculation {
+        old_value: IterativeCalculation,
+        new_value: IterativeCalculation,
     },
     // Named style diffs
     CreateNamedStyle {
