@@ -213,6 +213,23 @@ impl Model {
             .map_err(to_js_error)
     }
 
+    /// Returns the cells and ranges the formula in a cell refers to directly,
+    /// as areas. A single cell has width and height 1. A cell without a
+    /// formula has no precedents.
+    #[wasm_bindgen(js_name = "getCellPrecedents", unchecked_return_type = "Area[]")]
+    pub fn get_cell_precedents(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<JsValue, JsError> {
+        let precedents = self
+            .model
+            .get_cell_precedents(sheet, row, column)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&precedents).map_err(|e| to_js_error(e.to_string()))
+    }
+
     /// Returns completion information for a formula being edited in a cell.
     /// `formula` is the raw cell input (it may start with `=`) and `cursor` is a
     /// char offset into it.

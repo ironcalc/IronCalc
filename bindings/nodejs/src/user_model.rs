@@ -282,6 +282,26 @@ impl UserModel {
       .map_err(to_js_error)
   }
 
+  /// Returns the cells and ranges the formula in a cell refers to directly,
+  /// as areas. A single cell has width and height 1. A cell without a
+  /// formula has no precedents.
+  #[napi(
+    ts_return_type = "Array<{ sheet: number; row: number; column: number; width: number; height: number }>"
+  )]
+  pub fn get_cell_precedents<'e>(
+    &self,
+    env: &'e Env,
+    sheet: u32,
+    row: i32,
+    column: i32,
+  ) -> Result<Unknown<'e>> {
+    let precedents = self
+      .model
+      .get_cell_precedents(sheet, row, column)
+      .map_err(to_js_error)?;
+    env.to_js_value(&precedents).map_err(to_js_error)
+  }
+
   /// Returns the formatted value of a cell (i.e. "$ 5.75")
   #[napi]
   pub fn get_formatted_cell_value(&self, sheet: u32, row: i32, column: i32) -> Result<String> {

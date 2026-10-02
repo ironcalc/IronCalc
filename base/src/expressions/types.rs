@@ -41,7 +41,7 @@ pub struct CellReferenceIndex {
     pub row: i32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Area {
     pub sheet: u32,
     pub row: i32,
