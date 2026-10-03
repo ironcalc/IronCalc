@@ -57,17 +57,6 @@ fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> Calc
     }
 }
 
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
-    match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        _ => ArrayNode::Error(Error::VALUE),
-    }
-}
-
 fn array_node_is_truthy(node: &ArrayNode) -> bool {
     match node {
         ArrayNode::Boolean(b) => *b,
@@ -622,7 +611,10 @@ impl<'a> Model<'a> {
                         cell,
                         "No data returned by FILTER".to_string(),
                     ),
-                    v => CalcResult::Array(vec![vec![calc_result_to_array_node(v)]]),
+                    // The value as it is, not an array holding it: to the
+                    // function that receives it, `""` is a text and not an
+                    // array with a text in it, which MAX for one would ignore.
+                    v => v,
                 }
             } else {
                 CalcResult::new_error(Error::CALC, cell, "No data returned by FILTER".to_string())

@@ -290,6 +290,26 @@ fn filter_no_match_with_if_empty() {
 }
 
 #[test]
+fn filter_if_empty_is_the_value_itself() {
+    // It is not an array holding the value: a text reaches the outer function
+    // as a text, which MAX does not accept, and an array spills.
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("B1", "FALSE");
+    model._set("C1", "=MAX(FILTER(A1:A1,B1:B1,\"\"))");
+    model._set("C2", "=FILTER(A1:A1,B1:B1,7)+1");
+    model._set("C3", "=FILTER(A1:A1,B1:B1,{1,2,3})");
+    model._set("C4", "=FILTER(A1:A1,B1:B1,1/0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C2"), "8");
+    assert_eq!(model._get_text("C3"), "1");
+    assert_eq!(model._get_text("D3"), "2");
+    assert_eq!(model._get_text("E3"), "3");
+    assert_eq!(model._get_text("C4"), "#DIV/0!");
+}
+
+#[test]
 fn filter_multi_column() {
     let mut model = new_empty_model();
     model._set("A1", "Alice");
