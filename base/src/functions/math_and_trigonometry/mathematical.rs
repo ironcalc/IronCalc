@@ -12,70 +12,41 @@ use std::f64::consts::PI;
 
 impl<'a> Model<'a> {
     pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut result = f64::NAN;
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => result = value.min(result),
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    result = value.min(result);
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {
-                                    // We ignore booleans and strings
-                                }
-                            }
-                        }
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for node in row {
-                            match node {
-                                ArrayNode::Number(value) => result = value.min(result),
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: String::new(),
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
-            };
-        }
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Number(0.0);
-        }
-        CalcResult::Number(result)
+        self.min_or_max(args, cell, f64::min)
     }
 
     pub(crate) fn fn_max(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.min_or_max(args, cell, f64::max)
+    }
+
+    /// MIN and MAX: `pick` keeps the one of two numbers the function is after.
+    ///
+    /// In references and arrays only the numbers count; text and booleans are
+    /// ignored. A value given directly as an argument has to be a number:
+    /// booleans and text that reads as a number are converted, any other text
+    /// is an error.
+    fn min_or_max(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        pick: fn(f64, f64) -> f64,
+    ) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => result = value.max(result),
+            // A reference stays a reference, also to a single cell
+            match self.evaluate_node_with_reference(arg, cell) {
+                CalcResult::Number(value) => result = pick(value, result),
+                CalcResult::Boolean(value) => result = pick(if value { 1.0 } else { 0.0 }, result),
+                CalcResult::String(value) => match self.cast_number(&value) {
+                    Some(value) => result = pick(value, result),
+                    None => {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Argument cannot be cast into number".to_string(),
+                        );
+                    }
+                },
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -92,7 +63,7 @@ impl<'a> Model<'a> {
                                 column,
                             }) {
                                 CalcResult::Number(value) => {
-                                    result = value.max(result);
+                                    result = pick(value, result);
                                 }
                                 error @ CalcResult::Error { .. } => return error,
                                 _ => {
@@ -106,7 +77,7 @@ impl<'a> Model<'a> {
                     for row in array {
                         for node in row {
                             match node {
-                                ArrayNode::Number(value) => result = value.max(result),
+                                ArrayNode::Number(value) => result = pick(value, result),
                                 ArrayNode::Error(error) => {
                                     return CalcResult::Error {
                                         error,
@@ -114,15 +85,17 @@ impl<'a> Model<'a> {
                                         message: String::new(),
                                     }
                                 }
-                                _ => {}
+                                _ => {
+                                    // We ignore booleans and strings
+                                }
                             }
                         }
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
+                // An argument left out, as in `MAX(,-1)`, counts as 0
+                CalcResult::EmptyArg => result = pick(0.0, result),
+                CalcResult::EmptyCell | CalcResult::Lambda(_) => {}
             };
         }
         if result.is_nan() || result.is_infinite() {

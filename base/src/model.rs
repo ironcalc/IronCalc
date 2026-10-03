@@ -391,7 +391,31 @@ impl<'a> Model<'a> {
                 // The implicit intersection of a scalar is the scalar itself.
                 other => other,
             },
+            // A variable holds what it was bound to, a reference included
+            Node::NamedVariableKind { .. } => self.variable_value(node, cell),
             _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
+    /// What a variable of a LET or a parameter of a LAMBDA is bound to.
+    fn variable_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        match node {
+            Node::NamedVariableKind { name, id: Some(id) } => {
+                match self.variable_stack.get(&(*id as usize)) {
+                    Some(v) => v.clone(),
+                    None => CalcResult::new_error(
+                        Error::NAME,
+                        cell,
+                        format!("Variable \"{name}\" not found in scope."),
+                    ),
+                }
+            }
+            Node::NamedVariableKind { name, id: None } => CalcResult::new_error(
+                Error::NAME,
+                cell,
+                format!("Variable name \"{name}\" not found."),
+            ),
+            _ => CalcResult::new_error(Error::ERROR, cell, "Not a variable".to_string()),
         }
     }
 
@@ -795,21 +819,13 @@ impl<'a> Model<'a> {
                 cell,
                 format!("table name \"{s}\" not supported."),
             ),
-            NamedVariableKind { name, id: Some(id) } => {
-                match self.variable_stack.get(&(*id as usize)) {
-                    Some(v) => v.clone(),
-                    None => CalcResult::new_error(
-                        Error::NAME,
-                        cell,
-                        format!("Variable \"{name}\" not found in scope."),
-                    ),
-                }
-            }
-            NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
+            // A variable bound to a single cell is that cell's value here,
+            // where a value is wanted; it is the reference itself where a
+            // reference is wanted (see `evaluate_node_with_reference`).
+            NamedVariableKind { .. } => match self.variable_value(node, cell) {
+                CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
+                value => value,
+            },
             CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
             // What they are applied to is turned into a number, and they work
             // element by element on a range or an array
