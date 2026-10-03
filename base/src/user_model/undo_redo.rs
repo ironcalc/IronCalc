@@ -523,6 +523,16 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.set_timezone(old_value)?;
                 }
+                Diff::SetIterativeCalculation {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_iterative_calculation(
+                        old_value.enabled,
+                        old_value.maximum_iterations,
+                        old_value.maximum_change,
+                    );
+                }
                 Diff::SetWorkbookName {
                     old_value,
                     new_value: _,
@@ -980,6 +990,16 @@ impl<'a> UserModel<'a> {
                     new_value,
                 } => {
                     self.model.set_timezone(new_value)?;
+                }
+                Diff::SetIterativeCalculation {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_iterative_calculation(
+                        new_value.enabled,
+                        new_value.maximum_iterations,
+                        new_value.maximum_change,
+                    );
                 }
                 Diff::SetWorkbookName {
                     old_value: _,

@@ -1,12 +1,12 @@
 use std::io::{BufReader, Read};
 
 use super::xml::XmlNode;
-use ironcalc_base::types::{DefinedName, SheetState};
+use ironcalc_base::types::{DefinedName, IterativeCalculation, SheetState};
 
 use crate::error::XlsxError;
 
 use super::{
-    util::get_attribute,
+    util::{get_attribute, parse_bool_with_default},
     worksheets::{Sheet, WorkbookXML},
 };
 
@@ -68,9 +68,28 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
             sheet_id,
         })
     }
+    // The calculation properties
+    let mut iterative_calculation = IterativeCalculation::default();
+    if let Some(calc_pr) = doc.descendants().find(|n| n.has_tag_name("calcPr")) {
+        iterative_calculation.enabled =
+            parse_bool_with_default(calc_pr.attribute("iterate"), false);
+        if let Some(count) = calc_pr
+            .attribute("iterateCount")
+            .and_then(|s| s.trim().parse::<u32>().ok())
+        {
+            iterative_calculation.maximum_iterations = count;
+        }
+        if let Some(delta) = calc_pr
+            .attribute("iterateDelta")
+            .and_then(|s| s.trim().parse::<f64>().ok())
+        {
+            iterative_calculation.maximum_change = delta;
+        }
+    }
     // read the relationships file
     Ok(WorkbookXML {
         worksheets: sheets,
         defined_names,
+        iterative_calculation,
     })
 }

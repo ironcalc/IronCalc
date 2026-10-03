@@ -20,6 +20,7 @@ mod test_fn_formulatext;
 mod test_general;
 mod test_grid_lines;
 mod test_hidden_columns;
+mod test_iterative_calculation;
 mod test_keyboard_navigation;
 mod test_language_switch;
 mod test_last_empty_cell;

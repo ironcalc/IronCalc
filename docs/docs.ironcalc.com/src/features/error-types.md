@@ -104,7 +104,9 @@ For instance, in the cell `A1` the formula `=A1*2` is a circular dependency.
 
 Other spreadsheet engines use circular dependencies to do "loop computations", run "sensitivity analysis" or "goal seek".
 
-IronCalc doesn't support any of those at the moment.
+IronCalc can do this if you turn on iterative calculation in the workbook settings, as Excel does with "Enable iterative calculation". Cells that depend on themselves are then recalculated until the largest change of any cell is smaller than the maximum change, or until the maximum number of iterations is reached. A cell that has no value yet counts as zero. If the values have not settled by then, the last values are kept and there is no error.
+
+In Rust the setting is `Model::set_iterative_calculation(enabled, maximum_iterations, maximum_change)` (also available on `UserModel`). By default it is off, with 100 iterations and a maximum change of 0.001. The setting is saved in the `calcPr` element of xlsx files.
 
 ## IronCalc specific errors
 

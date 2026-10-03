@@ -102,10 +102,35 @@ pub struct Metadata {
     pub last_modified: String, //"2020-11-20T16:24:35"
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+/// Settings for resolving circular references by repeated recalculation.
+///
+/// They mirror the `iterate`, `iterateCount` and `iterateDelta` attributes of the
+/// `calcPr` element of an xlsx file.
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub struct IterativeCalculation {
+    /// When false a circular reference evaluates to `#CIRC!`.
+    pub enabled: bool,
+    /// The most recalculations that are run.
+    pub maximum_iterations: u32,
+    /// Recalculation stops once no cell changes by this much or more.
+    pub maximum_change: f64,
+}
+
+impl Default for IterativeCalculation {
+    fn default() -> Self {
+        IterativeCalculation {
+            enabled: false,
+            maximum_iterations: 100,
+            maximum_change: 0.001,
+        }
+    }
+}
+
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct WorkbookSettings {
     pub tz: String,
     pub locale: String,
+    pub iterative_calculation: IterativeCalculation,
 }
 
 /// A Workbook View tracks of the selected sheet for each view

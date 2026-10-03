@@ -107,6 +107,10 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
 
     let sheets = sheets_str.join("");
     let defined_names = defined_names_str.join("");
+    let iterative_calculation = &workbook.settings.iterative_calculation;
+    let iterate = if iterative_calculation.enabled { 1 } else { 0 };
+    let iterate_count = iterative_calculation.maximum_iterations;
+    let iterate_delta = iterative_calculation.maximum_change;
     format!("{XML_DECLARATION}\n\
     <workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
     <bookViews>
@@ -118,6 +122,6 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
       <definedNames>\
         {defined_names}\
       </definedNames>\
-      <calcPr/>\
+      <calcPr iterate=\"{iterate}\" iterateCount=\"{iterate_count}\" iterateDelta=\"{iterate_delta}\"/>\
     </workbook>")
 }

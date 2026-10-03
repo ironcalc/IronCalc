@@ -3706,6 +3706,36 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
+    /// Sets the iterative calculation settings of the workbook and evaluates it again.
+    ///
+    /// With `enabled` set, the cells that take part in a circular reference are
+    /// recalculated until the largest change of any cell between two recalculations
+    /// is smaller than `maximum_change`, or `maximum_iterations` recalculations have
+    /// run, whichever happens first. A cell that has no value yet counts as zero
+    /// the first time it is read, and a cell that is being calculated contributes the
+    /// value it held after the previous recalculation. There is no error if the values
+    /// do not settle within the limit.
+    ///
+    /// With `enabled` unset, a circular reference evaluates to `#CIRC!`.
+    pub fn set_iterative_calculation(
+        &mut self,
+        enabled: bool,
+        maximum_iterations: u32,
+        maximum_change: f64,
+    ) {
+        self.workbook.settings.iterative_calculation = IterativeCalculation {
+            enabled,
+            maximum_iterations,
+            maximum_change,
+        };
+        self.evaluate();
+    }
+
+    /// Gets the iterative calculation settings of the workbook
+    pub fn get_iterative_calculation(&self) -> IterativeCalculation {
+        self.workbook.settings.iterative_calculation.clone()
+    }
+
     /// Sets the language
     pub fn set_language(&mut self, language_id: &str) -> Result<(), String> {
         let language = match get_language(language_id) {

@@ -15,7 +15,8 @@ use crate::{
     model::{FmtSettings, Model},
     types::{
         Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
-        MergedCell, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
+        IterativeCalculation, MergedCell, SheetProperties, SheetState, Style, Theme,
+        VerticalAlignment,
     },
 };
 
@@ -2246,6 +2247,32 @@ impl<'a> UserModel<'a> {
         }];
         self.push_diff_list(diff_list);
         self.model.set_locale(locale)
+    }
+
+    /// Sets the iterative calculation settings of the workbook. See [Model::set_iterative_calculation]
+    pub fn set_iterative_calculation(
+        &mut self,
+        enabled: bool,
+        maximum_iterations: u32,
+        maximum_change: f64,
+    ) -> Result<(), String> {
+        let diff_list = vec![Diff::SetIterativeCalculation {
+            old_value: self.get_iterative_calculation(),
+            new_value: IterativeCalculation {
+                enabled,
+                maximum_iterations,
+                maximum_change,
+            },
+        }];
+        self.push_diff_list(diff_list);
+        self.model
+            .set_iterative_calculation(enabled, maximum_iterations, maximum_change);
+        Ok(())
+    }
+
+    /// Gets the iterative calculation settings of the workbook
+    pub fn get_iterative_calculation(&self) -> IterativeCalculation {
+        self.model.get_iterative_calculation()
     }
 
     /// Gets the timezone of the model
