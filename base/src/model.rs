@@ -805,11 +805,14 @@ impl<'a> Model<'a> {
                     ),
                 }
             }
-            NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
+            NamedVariableKind { name, id: None } => match self.eta_lambda(name) {
+                Some(lambda) => lambda,
+                None => CalcResult::new_error(
+                    Error::NAME,
+                    cell,
+                    format!("Variable name \"{name}\" not found."),
+                ),
+            },
             CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
             // What they are applied to is turned into a number, and they work
             // element by element on a range or an array
