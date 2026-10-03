@@ -48,8 +48,11 @@ impl<'a> Model<'a> {
         }
 
         for (i, raw_id) in bound_ids.iter().enumerate() {
+            // A reference is passed as a reference, also to a single cell:
+            // the parameter can then go where a reference is wanted, as in
+            // LAMBDA(x, MAX(x))(A1), where the text in A1 does not count
             let val = if i < call_args.len() {
-                self.evaluate_node_in_context(&call_args[i], cell)
+                self.evaluate_node_with_reference(&call_args[i], cell)
             } else {
                 CalcResult::EmptyArg
             };
