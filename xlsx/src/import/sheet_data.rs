@@ -6,6 +6,7 @@
 //! row, and every other element goes into a small tree (the worksheet without
 //! its cells) that the rest of the importer reads.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::BufRead;
 
@@ -81,7 +82,8 @@ fn is_sheet_data_end(element: &BytesEnd) -> bool {
 struct RowXml {
     /// From the `r` attribute, or from the first cell if the row has none.
     index: Option<i32>,
-    cells: HashMap<i32, Cell>,
+    /// With their column, in the order the file gives them.
+    cells: Vec<(i32, Cell)>,
 }
 
 /// An `<f>` element: the formula of a cell.
@@ -107,7 +109,7 @@ struct CellXml {
     /// The style index, the default style being 0.
     style: i32,
     /// The `t` attribute.
-    cell_type: Option<String>,
+    cell_type: Option<Cow<'static, str>>,
     /// The `cm` attribute is "1".
     is_dynamic_array: bool,
     /// The `vm` attribute.
@@ -144,6 +146,23 @@ struct SheetDataReader<'a, 'p> {
     stack: Vec<Tag>,
     row: Option<RowXml>,
     cell: Option<CellXml>,
+
+    /// What the last row and the last cell were read into, kept for the next
+    /// ones: a sheet has millions of cells, and with these none of them
+    /// asks for memory of its own while it is read.
+    row_buffer: Vec<(i32, Cell)>,
+    reference_buffer: String,
+    value_buffer: String,
+}
+
+/// The `t` attribute of a cell. The types there are need no string of their own.
+fn cell_type_of(value: &str) -> Cow<'static, str> {
+    for known in ["b", "d", "e", "inlineStr", "n", "s", "str"] {
+        if value == known {
+            return Cow::Borrowed(known);
+        }
+    }
+    Cow::Owned(value.to_string())
 }
 
 impl SheetDataReader<'_, '_> {
@@ -192,7 +211,9 @@ impl SheetDataReader<'_, '_> {
             Tag::Cell => self.start_cell(element)?,
             Tag::Value => {
                 if let Some(cell) = self.cell.as_mut() {
-                    cell.value = Some(String::new());
+                    let mut value = std::mem::take(&mut self.value_buffer);
+                    value.clear();
+                    cell.value = Some(value);
                 }
             }
             Tag::Formula => {
@@ -300,18 +321,19 @@ impl SheetDataReader<'_, '_> {
         }
         self.row = Some(RowXml {
             index,
-            cells: HashMap::new(),
+            cells: std::mem::take(&mut self.row_buffer),
         });
         Ok(())
     }
 
     fn end_row(&mut self) -> Result<(), XlsxError> {
-        let Some(row) = self.row.take() else {
+        let Some(mut row) = self.row.take() else {
             return Ok(());
         };
         match row.index {
             Some(index) => {
-                self.sheet_data.set_row(index, row.cells);
+                self.sheet_data.set_row(index, row.cells.drain(..));
+                self.row_buffer = row.cells;
                 Ok(())
             }
             None => Err(XlsxError::Xml(
@@ -333,7 +355,11 @@ impl SheetDataReader<'_, '_> {
         // cm: cell metadata (used for dynamic arrays)
         // vm: value metadata (used for #SPILL! and #CALC! errors)
         // ph: Show Phonetic, unused
-        let mut cell = CellXml::default();
+        let mut cell = CellXml {
+            reference: std::mem::take(&mut self.reference_buffer),
+            ..Default::default()
+        };
+        cell.reference.clear();
         let mut has_reference = false;
         for attribute in element.attributes() {
             let attribute = attribute?;
@@ -341,10 +367,11 @@ impl SheetDataReader<'_, '_> {
             match attribute.key.as_ref() {
                 "r" => {
                     has_reference = true;
-                    cell.reference = value.into_owned();
+                    cell.reference.clear();
+                    cell.reference.push_str(&value);
                 }
                 "s" => cell.style = value.parse::<i32>().unwrap_or(0),
-                "t" => cell.cell_type = Some(value.into_owned()),
+                "t" => cell.cell_type = Some(cell_type_of(&value)),
                 "cm" => cell.is_dynamic_array = &*value == "1",
                 "vm" => cell.value_metadata = Some(value.into_owned()),
                 _ => {}
@@ -565,7 +592,7 @@ impl SheetDataReader<'_, '_> {
             }
         }
         let anchor_cell = self.array_cell.get(&(r_index, column_index)).cloned();
-        let cell = get_cell_from_excel(
+        let cell_read = get_cell_from_excel(
             cell.value.as_deref(),
             cell.value_metadata.as_deref(),
             cell_type,
@@ -578,7 +605,11 @@ impl SheetDataReader<'_, '_> {
             anchor_cell,
             array_kind,
         );
-        row.cells.insert(column_index, cell);
+        row.cells.push((column_index, cell_read));
+        self.reference_buffer = cell.reference;
+        if let Some(value) = cell.value {
+            self.value_buffer = value;
+        }
         Ok(())
     }
 }
@@ -608,6 +639,9 @@ pub(super) fn read_sheet_data<R: BufRead>(
         stack: Vec::new(),
         row: None,
         cell: None,
+        row_buffer: Vec::new(),
+        reference_buffer: String::new(),
+        value_buffer: String::new(),
     };
     loop {
         let event = reader.read_event_into(&mut buffer)?;
