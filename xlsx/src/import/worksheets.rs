@@ -15,7 +15,7 @@ use ironcalc_base::{
         parser::{stringify::to_rc_format, DefinedNameS},
         token::{get_error_by_english_name, Error},
         types::CellReferenceRC,
-        utils::{column_to_number, parse_reference_a1},
+        utils::{column_to_number, is_valid_column_number, is_valid_row, parse_reference_a1},
     },
     types::{
         ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, Link, MergedCell,
@@ -74,7 +74,34 @@ impl WorkbookXML {
     }
 }
 
+/// The row and the column of a reference in its plain form, `B12`: up to three
+/// capital letters and then a number. `None` for anything else, which is not
+/// to say that it is wrong.
+fn parse_plain_cell_reference(cell: &str) -> Option<(i32, i32)> {
+    let bytes = cell.as_bytes();
+    let letters = bytes.iter().take_while(|b| b.is_ascii_uppercase()).count();
+    let digits = &bytes[letters..];
+    if !(1..=3).contains(&letters)
+        || !(1..=7).contains(&digits.len())
+        || digits[0] == b'0'
+        || !digits.iter().all(u8::is_ascii_digit)
+    {
+        return None;
+    }
+    let column = bytes[..letters]
+        .iter()
+        .fold(0, |column, b| column * 26 + (b - b'A' + 1) as i32);
+    let row = digits.iter().fold(0, |row, b| row * 10 + (b - b'0') as i32);
+    (is_valid_column_number(column) && is_valid_row(row)).then_some((row, column))
+}
+
 pub(super) fn parse_cell_reference(cell: &str) -> Result<(i32, i32), String> {
+    // Every cell of a sheet says where it is, nearly always in the plain form.
+    // That one is read without the strings the general reader builds on the
+    // way, which with millions of cells were a good part of the import.
+    if let Some(position) = parse_plain_cell_reference(cell) {
+        return Ok(position);
+    }
     if let Some(r) = parse_reference_a1(cell) {
         Ok((r.row, r.column))
     } else {
@@ -102,7 +129,56 @@ pub(super) fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
 
 #[cfg(test)]
 mod test {
+    use super::{parse_plain_cell_reference, parse_reference_a1};
     use crate::import::worksheets::parse_range;
+
+    #[test]
+    fn plain_cell_references_are_read_like_any_other() {
+        let references = [
+            "A1",
+            "B12",
+            "Z9",
+            "AA10",
+            "ACN50257",
+            "XFD1048576",
+            "XFD1",
+            "A1048576",
+            // not in the sheet
+            "XFE1",
+            "A1048577",
+            "ZZZ1",
+            "A9999999",
+            "A0",
+            // not plain, or not a reference
+            "A01",
+            "$A$1",
+            "$A1",
+            "A$1",
+            "a1",
+            "AAAA1",
+            "A",
+            "1",
+            "",
+            "A1B",
+            "A-1",
+            "A1:B2",
+            "Ä1",
+        ];
+        for reference in references {
+            let general = parse_reference_a1(reference).map(|r| (r.row, r.column));
+            // What the plain reader reads is what the general one reads
+            if let Some(position) = parse_plain_cell_reference(reference) {
+                assert_eq!(Some(position), general, "{reference}");
+            }
+        }
+        assert_eq!(parse_plain_cell_reference("B12"), Some((12, 2)));
+        assert_eq!(
+            parse_plain_cell_reference("XFD1048576"),
+            Some((1_048_576, 16_384))
+        );
+        assert_eq!(parse_plain_cell_reference("XFE1"), None);
+        assert_eq!(parse_plain_cell_reference("$A$1"), None);
+    }
 
     #[test]
     fn test_parse_range() {
