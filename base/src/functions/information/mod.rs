@@ -1,5 +1,6 @@
 mod isomitted;
 
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -128,20 +129,32 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match &args[0] {
-            Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. } => {
-                CalcResult::Boolean(true)
+        CalcResult::Boolean(self.gives_reference(&args[0], cell))
+    }
+
+    /// Whether what `node` gives is a reference, as ISREF sees it.
+    fn gives_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+        match node {
+            Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. } => true,
+            // INDEX gives a reference when what it indexes is one, even to a
+            // single cell, where what it gives here is the value. So it is
+            // not what it gives that is looked at, only whether it fails.
+            node @ Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => {
+                args.first()
+                    .is_some_and(|array| self.gives_reference(array, cell))
+                    && !self.evaluate_node_with_reference(node, cell).is_error()
             }
-            Node::FunctionKind { kind, args: _ } => CalcResult::Boolean(kind.returns_reference()),
+            Node::FunctionKind { kind, args: _ } => kind.returns_reference(),
             // A defined name or a variable is a reference if what it stands
             // for is one
-            node @ (Node::DefinedNameKind(_) | Node::NamedVariableKind { .. }) => {
-                CalcResult::Boolean(matches!(
-                    self.evaluate_node_with_reference(node, cell),
-                    CalcResult::Range { .. }
-                ))
-            }
-            _ => CalcResult::Boolean(false),
+            Node::DefinedNameKind(_) | Node::NamedVariableKind { .. } => matches!(
+                self.evaluate_node_with_reference(node, cell),
+                CalcResult::Range { .. }
+            ),
+            _ => false,
         }
     }
 
