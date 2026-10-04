@@ -1,5 +1,5 @@
 use crate::{
-    arithmetic::bcast_idx,
+    arithmetic::{array_of_errors, bcast_idx},
     calc_result::CalcResult,
     cast::{array_node_to_string, calc_result_to_array_node},
     expressions::{
@@ -23,6 +23,11 @@ use crate::{
 pub(super) enum TextArg {
     Scalar(ArrayNode),
     Array(Vec<Vec<ArrayNode>>),
+    /// An argument that is an error. It is broadcast like any other scalar, so
+    /// that next to an array it gives an array of errors. The error is kept
+    /// twice: as the element to broadcast and as it was, to be returned whole
+    /// when no argument is an array.
+    Error(ArrayNode, CalcResult),
 }
 
 /// What an array has beyond its end, when it is used next to a longer one.
@@ -32,7 +37,7 @@ impl TextArg {
     /// The (rows, columns) shape of this argument.
     pub(super) fn dims(&self) -> (usize, usize) {
         match self {
-            TextArg::Scalar(_) => (1, 1),
+            TextArg::Scalar(_) | TextArg::Error(..) => (1, 1),
             TextArg::Array(a) => (a.len(), a.first().map(|r| r.len()).unwrap_or(0)),
         }
     }
@@ -44,7 +49,7 @@ impl TextArg {
     /// the function is an error too, that one comes first.
     pub(super) fn elem(&self, i: usize, j: usize) -> &ArrayNode {
         match self {
-            TextArg::Scalar(n) => n,
+            TextArg::Scalar(n) | TextArg::Error(n, _) => n,
             TextArg::Array(a) => bcast_idx(a.len(), i)
                 .and_then(|ri| a.get(ri))
                 .and_then(|row| bcast_idx(row.len(), j).and_then(|cj| row.get(cj)))
@@ -234,6 +239,12 @@ pub(super) fn broadcast_text(
 
     // All scalars: return a single value.
     if rows <= 1 && cols <= 1 {
+        // An argument that is an error is the result, as it came.
+        for operand in operands {
+            if let TextArg::Error(_, error) = operand {
+                return error.clone();
+            }
+        }
         return match compute(0, 0) {
             Ok(ArrayNode::String(s)) => CalcResult::String(s),
             Ok(ArrayNode::Number(n)) => CalcResult::Number(n),
@@ -375,7 +386,14 @@ impl<'a> Model<'a> {
             CalcResult::Array(arr) => {
                 let format_code = match self.get_string(&args[1], cell) {
                     Ok(s) => s,
-                    Err(e) => return e,
+                    // An error in every element; the ones that already are
+                    // an error keep theirs.
+                    Err(e) => {
+                        return array_of_errors(&arr, e, |node| match node {
+                            ArrayNode::Error(error) => Some(error.clone()),
+                            _ => None,
+                        })
+                    }
                 };
                 let locale = self.locale;
                 let mut output = Vec::with_capacity(arr.len());
@@ -409,12 +427,18 @@ impl<'a> Model<'a> {
                 }
                 CalcResult::Array(output)
             }
+            error @ CalcResult::Error { .. } => error,
             other => {
+                // The format comes before the value is looked at: an error in
+                // it is the result, whatever the value, as for an array
+                let format_code = match self.get_string(&args[1], cell) {
+                    Ok(s) => s,
+                    Err(s) => return s,
+                };
                 let value = match other {
                     CalcResult::Number(f) => f,
                     CalcResult::String(s) => return CalcResult::String(s),
                     CalcResult::Boolean(b) => return CalcResult::Boolean(b),
-                    error @ CalcResult::Error { .. } => return error,
                     CalcResult::Range { .. } => {
                         return CalcResult::Error {
                             error: Error::NIMPL,
@@ -423,11 +447,9 @@ impl<'a> Model<'a> {
                         };
                     }
                     CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
-                    CalcResult::Array(_) | CalcResult::Lambda(_) => unreachable!(),
-                };
-                let format_code = match self.get_string(&args[1], cell) {
-                    Ok(s) => s,
-                    Err(s) => return s,
+                    CalcResult::Error { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                        unreachable!()
+                    }
                 };
                 let d = format_number(value, &format_code, self.locale);
                 if let Some(_e) = d.error {
@@ -654,7 +676,18 @@ impl<'a> Model<'a> {
         cell: CellReferenceIndex,
     ) -> Result<TextArg, CalcResult> {
         match self.evaluate_node_in_context(node, cell) {
-            err @ CalcResult::Error { .. } => Err(err),
+            CalcResult::Error {
+                error,
+                origin,
+                message,
+            } => Ok(TextArg::Error(
+                ArrayNode::Error(error.clone()),
+                CalcResult::Error {
+                    error,
+                    origin,
+                    message,
+                },
+            )),
             CalcResult::Range { left, right } => {
                 Ok(TextArg::Array(self.evaluate_range(left, right)))
             }

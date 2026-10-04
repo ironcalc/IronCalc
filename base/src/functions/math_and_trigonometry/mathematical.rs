@@ -1168,16 +1168,10 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number_or_array(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let y = match self.get_number_or_array(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
+        let x = self.get_number_or_array(&args[0], cell);
+        let y = self.get_number_or_array(&args[1], cell);
         let (x, y) = match (x, y) {
-            (NumberOrArray::Number(x), NumberOrArray::Number(y)) => (x, y),
+            (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => (x, y),
             (x, y) => return self.arithmetic_on_values(x, y, cell, &power),
         };
         match power(x, y) {

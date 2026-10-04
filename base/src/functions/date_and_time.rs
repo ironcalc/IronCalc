@@ -187,7 +187,8 @@ macro_rules! time_part_fn {
     };
 }
 
-use crate::arithmetic::bcast_idx;
+use crate::arithmetic::{array_of_errors, bcast_idx};
+use crate::cast::NumberOrArray;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
@@ -748,17 +749,29 @@ impl<'a> Model<'a> {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        use crate::cast::NumberOrArray;
-
-        let year_na = match self.get_number_or_array(&args[0], cell) {
+        let year_na = self.get_number_or_array(&args[0], cell);
+        let month_na = self.get_number_or_array(&args[1], cell);
+        let day_na = self.get_number_or_array(&args[2], cell);
+        // An argument that is an error is the result, unless another one is
+        // an array: then it is broadcast and every element is an error.
+        let any_array = [&year_na, &month_na, &day_na]
+            .iter()
+            .any(|na| matches!(na, Ok(NumberOrArray::Array(_))));
+        let broadcast_error = |na: Result<NumberOrArray, CalcResult>| match na {
+            Err(CalcResult::Error { error, .. }) if any_array => {
+                Ok(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
+            }
+            other => other,
+        };
+        let year_na = match broadcast_error(year_na) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let month_na = match self.get_number_or_array(&args[1], cell) {
+        let month_na = match broadcast_error(month_na) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let day_na = match self.get_number_or_array(&args[2], cell) {
+        let day_na = match broadcast_error(day_na) {
             Ok(v) => v,
             Err(e) => return e,
         };
@@ -1576,7 +1589,23 @@ impl<'a> Model<'a> {
         let return_type = if args.len() == 2 {
             match self.get_number(&args[1], cell) {
                 Ok(f) => f as i32,
-                Err(s) => return s,
+                Err(error) => {
+                    // The error goes to every element if the dates are an
+                    // array; the ones that are an error keep theirs.
+                    return match self.get_number_or_array(&args[0], cell) {
+                        Ok(NumberOrArray::Array(array)) => {
+                            array_of_errors(&array, error, |node| match node {
+                                ArrayNode::Error(error) => Some(error.clone()),
+                                ArrayNode::String(s) if self.cast_number(s).is_none() => {
+                                    Some(Error::VALUE)
+                                }
+                                _ => None,
+                            })
+                        }
+                        Ok(NumberOrArray::Number(_)) => error,
+                        Err(first) => first,
+                    };
+                }
             }
         } else {
             1
