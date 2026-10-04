@@ -13,6 +13,16 @@ fn references_and_values() {
     model._set("A4", "=ISREF(OFFSET(K1, 1, 0))");
     model._set("A5", "=ISREF(INDIRECT(\"K1\"))");
     model._set("A6", "=ISREF(5)");
+    // INDEX gives a reference when what it indexes is one
+    model._set("A13", "=ISREF(INDEX(K1:K2, 1))");
+    model._set("A14", "=ISREF(INDEX({1,2}, 1))");
+    model._set("A15", "=ISREF(INDEX(K1:K2, 1, 1))");
+    model._set("A16", "=ISREF(INDEX(K1:K2, 0))");
+    model._set("A17", "=ISREF(INDEX(OFFSET(K1, 0, 0, 2, 1), 2))");
+    model._set("A18", "=ISREF(INDEX(SEQUENCE(2), 1))");
+    // Not when INDEX fails
+    model._set("A19", "=ISREF(INDEX(K1:K2, 3))");
+    model._set("A20", "=ISREF(INDEX(K1, 1, 2, 2))");
     model._set("A7", "=ISREF(\"K1\")");
     model._set("A8", "=ISREF(TRUE)");
     model._set("A9", "=ISREF(K1+1)");
@@ -34,6 +44,14 @@ fn references_and_values() {
         ("A10", "FALSE"),
         ("A11", "FALSE"),
         ("A12", "FALSE"),
+        ("A13", "TRUE"),
+        ("A14", "FALSE"),
+        ("A15", "TRUE"),
+        ("A16", "TRUE"),
+        ("A17", "TRUE"),
+        ("A18", "FALSE"),
+        ("A19", "FALSE"),
+        ("A20", "FALSE"),
     ] {
         assert_eq!(model._get_text(cell), expected, "{cell}");
     }
