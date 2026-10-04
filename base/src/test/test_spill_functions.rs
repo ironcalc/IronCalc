@@ -310,6 +310,35 @@ fn filter_if_empty_is_the_value_itself() {
 }
 
 #[test]
+fn filter_if_empty_range_is_its_values() {
+    // A range given as if_empty is not a reference once it leaves FILTER,
+    // just like the rows found are not: what needs a reference does not get
+    // one, what takes values gets them.
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("B1", "FALSE");
+    model._set("D1", "10");
+    model._set("D2", "20");
+    model._set("F1", "=FILTER(A1:A1,B1:B1,D1:D2)");
+    model._set("G1", "=SUM(FILTER(A1:A1,B1:B1,D1:D2))");
+    model._set("G2", "=OFFSET(FILTER(A1:A1,B1:B1,D1:D2),1,0)");
+    model._set("G3", "=ROW(FILTER(A1:A1,B1:B1,D1:D2))");
+    model._set("G4", "=ISREF(FILTER(A1:A1,B1:B1,D1:D2))");
+    // The rows found, for comparison
+    model._set("G5", "=OFFSET(FILTER(D1:D2,D1:D2>0),1,0)");
+    model._set("G6", "=FILTER(A1:A1,B1:B1,D1)+1");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), "10");
+    assert_eq!(model._get_text("F2"), "20");
+    assert_eq!(model._get_text("G1"), "30");
+    assert_eq!(model._get_text("G2"), "#VALUE!");
+    assert_eq!(model._get_text("G3"), "#VALUE!");
+    assert_eq!(model._get_text("G4"), "FALSE");
+    assert_eq!(model._get_text("G5"), "#VALUE!");
+    assert_eq!(model._get_text("G6"), "11");
+}
+
+#[test]
 fn filter_multi_column() {
     let mut model = new_empty_model();
     model._set("A1", "Alice");
