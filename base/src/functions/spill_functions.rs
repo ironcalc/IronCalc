@@ -611,6 +611,11 @@ impl<'a> Model<'a> {
                         cell,
                         "No data returned by FILTER".to_string(),
                     ),
+                    // A range is its values: FILTER gives values, never a
+                    // reference, found or not
+                    CalcResult::Range { left, right } => {
+                        CalcResult::Array(self.evaluate_range(left, right))
+                    }
                     // The value as it is, not an array holding it: to the
                     // function that receives it, `""` is a text and not an
                     // array with a text in it, which MAX for one would ignore.
