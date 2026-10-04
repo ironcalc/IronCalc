@@ -133,6 +133,14 @@ impl<'a> Model<'a> {
                 CalcResult::Boolean(true)
             }
             Node::FunctionKind { kind, args: _ } => CalcResult::Boolean(kind.returns_reference()),
+            // A defined name or a variable is a reference if what it stands
+            // for is one
+            node @ (Node::DefinedNameKind(_) | Node::NamedVariableKind { .. }) => {
+                CalcResult::Boolean(matches!(
+                    self.evaluate_node_with_reference(node, cell),
+                    CalcResult::Range { .. }
+                ))
+            }
             _ => CalcResult::Boolean(false),
         }
     }

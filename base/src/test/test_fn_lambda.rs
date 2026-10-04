@@ -197,3 +197,38 @@ fn a_single_cell_parameter_is_a_value_where_a_value_is_wanted() {
     assert_eq!(model._get_text("D1"), *"");
     assert_eq!(model._get_text("C11"), *"");
 }
+
+// A defined name that stands for a cell is a reference wherever one is
+// wanted, and the cell's value wherever a value is wanted
+#[test]
+fn a_defined_name_for_a_single_cell_is_a_reference() {
+    let mut model = new_empty_model();
+    model._set("K1", "text");
+    model._set("K2", "7");
+    model
+        .new_defined_name("TextCell", None, "Sheet1!$K$1")
+        .unwrap();
+    model
+        .new_defined_name("Later", None, "=LAMBDA(x, x+1)")
+        .unwrap();
+    model._set("A1", "=ROW(TextCell)");
+    model._set("A2", "=COLUMN(TextCell)");
+    model._set("A3", "=OFFSET(TextCell, 1, 0)");
+    model._set("A4", "=ROWS(TextCell)");
+    model._set("A5", "=TextCell&\"!\"");
+    model._set("A6", "=LEN(TextCell)");
+    model._set("A7", "=IF(TextCell=\"text\", 1, 2)");
+    model._set("A8", "=TextCell");
+    model._set("A9", "=Later(1)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"11");
+    assert_eq!(model._get_text("A3"), *"7");
+    assert_eq!(model._get_text("A4"), *"1");
+    assert_eq!(model._get_text("A5"), *"text!");
+    assert_eq!(model._get_text("A6"), *"4");
+    assert_eq!(model._get_text("A7"), *"1");
+    assert_eq!(model._get_text("A8"), *"text");
+    assert_eq!(model._get_text("A9"), *"2");
+}

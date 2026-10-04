@@ -228,3 +228,54 @@ fn an_argument_left_out_counts_as_zero() {
     assert_eq!(model._get_text("A5"), *"0");
     assert_eq!(model._get_text("A6"), *"-1");
 }
+
+// A defined name that stands for a cell is a reference, like the cell itself:
+// the text in it does not count. The same for a name local to a sheet.
+#[test]
+fn defined_names() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set("K1", "text");
+    model._set("K2", "7");
+    model._set("L1", "10");
+    model._set("L2", "20");
+    model
+        .new_defined_name("TextCell", None, "Sheet1!$K$1")
+        .unwrap();
+    model
+        .new_defined_name("NumCell", None, "Sheet1!$K$2")
+        .unwrap();
+    model
+        .new_defined_name("NumCells", None, "Sheet1!$L$1:$L$2")
+        .unwrap();
+    model
+        .new_defined_name("LocalText", Some(0), "Sheet1!$K$1")
+        .unwrap();
+    model._set("A1", "=MAX(TextCell)");
+    model._set("A2", "=MIN(TextCell)");
+    model._set("A3", "=MAX(TextCell, -3)");
+    model._set("A4", "=MAX(NumCell)");
+    model._set("A5", "=MAX(NumCells)");
+    model._set("A6", "=MAX(K1)");
+    model._set("A7", "=MAX(\"text\")");
+    model._set("A8", "=MAX(LocalText)");
+    model._set("A9", "=MIN(LocalText, 3)");
+    model._set("A10", "=MIN(NumCells, NumCell, TextCell)");
+    // From another sheet
+    model._set("Sheet2!A1", "=MAX(TextCell)");
+    model._set("Sheet2!A2", "=MAX(NumCells)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"0");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A3"), *"-3");
+    assert_eq!(model._get_text("A4"), *"7");
+    assert_eq!(model._get_text("A5"), *"20");
+    assert_eq!(model._get_text("A6"), *"0");
+    assert_eq!(model._get_text("A7"), *"#VALUE!");
+    assert_eq!(model._get_text("A8"), *"0");
+    assert_eq!(model._get_text("A9"), *"3");
+    assert_eq!(model._get_text("A10"), *"7");
+    assert_eq!(model._get_text("Sheet2!A1"), *"0");
+    assert_eq!(model._get_text("Sheet2!A2"), *"20");
+}
