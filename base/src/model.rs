@@ -393,6 +393,29 @@ impl<'a> Model<'a> {
             },
             // A variable holds what it was bound to, a reference included
             Node::NamedVariableKind { .. } => self.variable_value(node, cell),
+            // A defined name that stands for a reference is that reference,
+            // to a single cell as well
+            Node::DefinedNameKind((name, scope, _)) => {
+                if let Ok(Some(parsed_defined_name)) = self.get_parsed_defined_name(name, *scope) {
+                    match parsed_defined_name {
+                        ParsedDefinedName::CellReference(reference) => {
+                            return CalcResult::Range {
+                                left: reference,
+                                right: reference,
+                            };
+                        }
+                        ParsedDefinedName::RangeReference(range) => {
+                            return CalcResult::Range {
+                                left: range.left,
+                                right: range.right,
+                            };
+                        }
+                        ParsedDefinedName::LambdaDefinition(..)
+                        | ParsedDefinedName::InvalidDefinedNameFormula => {}
+                    }
+                }
+                self.evaluate_node_in_context(node, cell)
+            }
             _ => self.evaluate_node_in_context(node, cell),
         }
     }

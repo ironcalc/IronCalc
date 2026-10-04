@@ -114,6 +114,7 @@ mod test_fn_datevalue_timevalue;
 mod test_fn_drop_take;
 mod test_fn_fv;
 mod test_fn_isomitted;
+mod test_fn_isref;
 mod test_fn_lambda;
 mod test_fn_let;
 mod test_fn_map_reduce;
