@@ -536,20 +536,20 @@ pub(super) fn get_cell_from_excel(
                         _ => error_name,
                     }
                 }
-                make_cell(FormulaValue::Error {
-                    ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
-                    o: format!("{sheet_name}!{cell_ref}"),
-                    m: cell_value.unwrap_or("#ERROR!").to_string(),
-                })
+                make_cell(FormulaValue::new_error(
+                    get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
+                    format!("{sheet_name}!{cell_ref}"),
+                    cell_value.unwrap_or("#ERROR!").to_string(),
+                ))
             }
             "s" => {
                 // Not implemented
                 println!("Invalid type (s) in {sheet_name}!{cell_ref}");
-                make_cell(FormulaValue::Error {
-                    ei: Error::NIMPL,
-                    o: format!("{sheet_name}!{cell_ref}"),
-                    m: Error::NIMPL.to_string(),
-                })
+                make_cell(FormulaValue::new_error(
+                    Error::NIMPL,
+                    format!("{sheet_name}!{cell_ref}"),
+                    Error::NIMPL.to_string(),
+                ))
             }
             "str" => {
                 // In Excel and in IronCalc all strings in cells result of a formula are *not* shared strings.
@@ -560,11 +560,11 @@ pub(super) fn get_cell_from_excel(
             "d" => {
                 // Not implemented
                 println!("Invalid type (d) in {sheet_name}!{cell_ref}");
-                make_cell(FormulaValue::Error {
-                    ei: Error::NIMPL,
-                    o: format!("{sheet_name}!{cell_ref}"),
-                    m: Error::NIMPL.to_string(),
-                })
+                make_cell(FormulaValue::new_error(
+                    Error::NIMPL,
+                    format!("{sheet_name}!{cell_ref}"),
+                    Error::NIMPL.to_string(),
+                ))
             }
             "inlineStr" => {
                 // NB: This is untested, I don't know of any engine that uses inline strings in formulas
@@ -575,11 +575,11 @@ pub(super) fn get_cell_from_excel(
             _ => {
                 // error
                 println!("Unexpected type ({cell_type}) in {sheet_name}!{cell_ref}");
-                make_cell(FormulaValue::Error {
-                    ei: Error::ERROR,
-                    o: format!("{sheet_name}!{cell_ref}"),
-                    m: Error::ERROR.to_string(),
-                })
+                make_cell(FormulaValue::new_error(
+                    Error::ERROR,
+                    format!("{sheet_name}!{cell_ref}"),
+                    Error::ERROR.to_string(),
+                ))
             }
         }
     }

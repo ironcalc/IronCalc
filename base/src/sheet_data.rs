@@ -305,6 +305,14 @@ mod test {
     }
 
     #[test]
+    fn a_cell_stays_small() {
+        // A sheet of numbers costs this much per cell, whatever the cell holds:
+        // anything that makes the largest kind of cell larger makes them all so.
+        assert!(std::mem::size_of::<Cell>() <= 48);
+        assert!(std::mem::size_of::<(i32, Cell)>() <= 56);
+    }
+
+    #[test]
     fn set_get_replace_remove() {
         let mut data = SheetData::new();
         assert!(data.is_empty());
