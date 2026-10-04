@@ -100,6 +100,7 @@ mod dynamic_evaluation;
 mod logical;
 mod lookup_and_reference;
 mod test_arrays;
+mod test_arrays_and_errors;
 mod test_cell_info_n_sheets;
 mod test_combin_combina;
 mod test_cycle_reference;
