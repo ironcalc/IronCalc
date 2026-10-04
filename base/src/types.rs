@@ -329,11 +329,29 @@ pub enum FormulaValue {
     Text(String),
     Error {
         ei: Error,
-        // Origin cell reference, e.g. "Sheet3!C4"
-        o: String,
-        // Human-readable error message, e.g. "Not implemented function"
-        m: String,
+        // Where the error comes from and what it says. Kept out of line: few
+        // cells hold an error, and every cell is as large as the largest one.
+        d: Box<ErrorDetails>,
     },
+}
+
+/// The origin and the message of an error stored in a formula cell.
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub struct ErrorDetails {
+    // Origin cell reference, e.g. "Sheet3!C4"
+    pub o: String,
+    // Human-readable error message, e.g. "Not implemented function"
+    pub m: String,
+}
+
+impl FormulaValue {
+    /// An error with its origin (a cell reference like "Sheet3!C4") and its message.
+    pub fn new_error(ei: Error, o: String, m: String) -> FormulaValue {
+        FormulaValue::Error {
+            ei,
+            d: Box::new(ErrorDetails { o, m }),
+        }
+    }
 }
 
 /// The value stored in a spill cell (no formula, no origin tracking).

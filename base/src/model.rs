@@ -146,18 +146,12 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
         ArrayNode::Boolean(b) => FormulaValue::Boolean(b),
         // No cell holds a number that is not finite: a calculation that
         // overflows is an error, as it is for the result of a single cell.
-        ArrayNode::Number(n) if !n.is_finite() => FormulaValue::Error {
-            ei: Error::NUM,
-            o: String::new(),
-            m: String::new(),
-        },
+        ArrayNode::Number(n) if !n.is_finite() => {
+            FormulaValue::new_error(Error::NUM, String::new(), String::new())
+        }
         ArrayNode::Number(n) => FormulaValue::Number(n),
         ArrayNode::String(s) => FormulaValue::Text(s),
-        ArrayNode::Error(ei) => FormulaValue::Error {
-            ei,
-            o: String::new(),
-            m: String::new(),
-        },
+        ArrayNode::Error(ei) => FormulaValue::new_error(ei, String::new(), String::new()),
         ArrayNode::Empty => FormulaValue::Number(0.0),
     }
 }
@@ -1027,11 +1021,11 @@ impl<'a> Model<'a> {
                             let new_cell = if r == row && c == column {
                                 let fv = match value {
                                     Some(node) => array_node_to_formula_value(node),
-                                    None => FormulaValue::Error {
-                                        ei: Error::NIMPL,
-                                        o: "".to_string(),
-                                        m: "Unexpected array result".to_string(),
-                                    },
+                                    None => FormulaValue::new_error(
+                                        Error::NIMPL,
+                                        "".to_string(),
+                                        "Unexpected array result".to_string(),
+                                    ),
                                 };
                                 Cell::ArrayFormula {
                                     f: formula,
@@ -1073,11 +1067,11 @@ impl<'a> Model<'a> {
                     let coerced = if array_width == 1 && array_height == 1 {
                         match self.get_value_from_array(array, 1, 1) {
                             Some(node) => array_node_to_formula_value(node),
-                            None => FormulaValue::Error {
-                                ei: Error::VALUE,
-                                o: "".to_string(),
-                                m: "Unexpected array result".to_string(),
-                            },
+                            None => FormulaValue::new_error(
+                                Error::VALUE,
+                                "".to_string(),
+                                "Unexpected array result".to_string(),
+                            ),
                         }
                     } else {
                         // Currently unreachable from normal user formulas: static
@@ -1093,11 +1087,11 @@ impl<'a> Model<'a> {
                              {array_width}x{array_height}); implicit intersection \
                              was expected to collapse it.",
                         );
-                        FormulaValue::Error {
-                            ei: Error::VALUE,
-                            o: "".to_string(),
-                            m: "Array result in scalar context".to_string(),
-                        }
+                        FormulaValue::new_error(
+                            Error::VALUE,
+                            "".to_string(),
+                            "Array result in scalar context".to_string(),
+                        )
                     };
                     *self.workbook.worksheets[sheet as usize]
                         .cell_mut(row, column)
@@ -1139,11 +1133,7 @@ impl<'a> Model<'a> {
                     Ok(s) => s,
                     Err(_) => "".to_string(),
                 };
-                FormulaValue::Error {
-                    ei: error.clone(),
-                    o,
-                    m: message.to_string(),
-                }
+                FormulaValue::new_error(error.clone(), o, message.to_string())
             }
             CalcResult::Range { .. } => {
                 // This should never happen
@@ -1516,15 +1506,15 @@ impl<'a> Model<'a> {
                 ..
             } => CalcResult::String(v.clone()),
             CellFormula {
-                v: FormulaValue::Error { ei, o, m },
+                v: FormulaValue::Error { ei, d },
                 ..
             }
             | ArrayFormula {
-                v: FormulaValue::Error { ei, o, m },
+                v: FormulaValue::Error { ei, d },
                 ..
             } => {
-                if let Some(cell_reference) = self.parse_reference(o) {
-                    CalcResult::new_error(ei.clone(), cell_reference, m.clone())
+                if let Some(cell_reference) = self.parse_reference(&d.o) {
+                    CalcResult::new_error(ei.clone(), cell_reference, d.m.clone())
                 } else {
                     CalcResult::Error {
                         error: ei.clone(),
