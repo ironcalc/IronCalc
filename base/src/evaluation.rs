@@ -5,7 +5,7 @@
 //! * A **pass** is the plain top-down recursion: to evaluate a cell, evaluate
 //!   the cells it reads as it meets them. A cell met while it is already being
 //!   evaluated closes a cycle. Dynamic array anchors are evaluated first, in a
-//!   remembered order, then every cell of every sheet.
+//!   remembered order, then every formula of every sheet.
 //! * A dynamic array writes cells other than its own, and which ones is only
 //!   known once it has run. Anything that read one of those positions earlier
 //!   in the pass read the wrong thing. So the pass records what formulas saw
@@ -47,7 +47,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
-use crate::types::{ArrayKind, Cell};
+use crate::types::{ArrayKind, Cell, Worksheet};
 
 /// The hasher of the maps the evaluation keeps about positions. Their keys are
 /// three small integers and every formula looks several of them up, which
@@ -542,16 +542,33 @@ impl<'a> Model<'a> {
         self.evaluation.max_stack
     }
 
-    /// Every position that holds a cell, in natural `(sheet, row, column)` order.
-    fn all_positions(&self) -> Vec<CellReferenceIndex> {
-        self.get_all_cells()
-            .into_iter()
-            .map(|index| CellReferenceIndex {
-                sheet: index.index,
-                row: index.row,
-                column: index.column,
-            })
-            .collect()
+    /// The sheets that can hold a formula, with their index. A formula cell
+    /// points into the shared formulas of its sheet, so a sheet that has none
+    /// holds only constants: no formula, no anchor, and no spill cell that
+    /// still has one. Such a sheet is not walked at all. In a workbook that is
+    /// mostly data, walking the constants cost more than running the formulas.
+    fn sheets_with_formulas(&self) -> impl Iterator<Item = (u32, &Worksheet)> {
+        self.workbook
+            .worksheets
+            .iter()
+            .enumerate()
+            .filter(|(_, worksheet)| !worksheet.shared_formulas.is_empty())
+            .map(|(sheet, worksheet)| (sheet as u32, worksheet))
+    }
+
+    /// Every formula cell, in natural `(sheet, row, column)` order. The other
+    /// cells are left out: there is nothing to evaluate in a constant, and a
+    /// spill cell holds what its anchor, a formula, writes.
+    fn formula_positions(&self) -> Vec<CellReferenceIndex> {
+        let mut found = Vec::new();
+        for (sheet, worksheet) in self.sheets_with_formulas() {
+            for (row, column, cell) in worksheet.sheet_data.cells() {
+                if FormulaCell::of(cell).is_some() {
+                    found.push(CellReferenceIndex { sheet, row, column });
+                }
+            }
+        }
+        found
     }
 
     /// Every dynamic anchor and every spill cell of a dynamic anchor, as they
@@ -559,16 +576,12 @@ impl<'a> Model<'a> {
     /// cells in.
     fn dynamic_spills(&self) -> Vec<(CellReferenceIndex, Cell)> {
         let mut found = Vec::new();
-        for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
+        for (sheet, worksheet) in self.sheets_with_formulas() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
                 if !matches!(cell, Cell::ArrayFormula { .. } | Cell::SpillCell { .. }) {
                     continue;
                 }
-                let position = CellReferenceIndex {
-                    sheet: sheet as u32,
-                    row,
-                    column,
-                };
+                let position = CellReferenceIndex { sheet, row, column };
                 if self.belongs_to_a_dynamic_array(position, cell) {
                     found.push((position, cell.clone()));
                 }
@@ -633,7 +646,7 @@ impl<'a> Model<'a> {
 
     fn dynamic_anchors_in_natural_order(&self) -> Vec<CellReferenceIndex> {
         let mut found = Vec::new();
-        for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
+        for (sheet, worksheet) in self.sheets_with_formulas() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
                 if matches!(
                     cell,
@@ -642,19 +655,15 @@ impl<'a> Model<'a> {
                         ..
                     }
                 ) {
-                    found.push(CellReferenceIndex {
-                        sheet: sheet as u32,
-                        row,
-                        column,
-                    });
+                    found.push(CellReferenceIndex { sheet, row, column });
                 }
             }
         }
         found
     }
 
-    /// One pass over the workbook: anchors first, then every cell. Returns the
-    /// reason the pass had to be abandoned, if any.
+    /// One pass over the workbook: anchors first, then every formula. Returns
+    /// the reason the pass had to be abandoned, if any.
     fn run_pass(&mut self, circular_anchors: &[CellKey]) -> Option<Restart> {
         let state = &mut self.evaluation;
         state.cells.clear();
@@ -672,9 +681,9 @@ impl<'a> Model<'a> {
         self.clear_lambdas();
 
         let anchors = self.evaluation.anchor_order.clone();
-        let everything = self.all_positions();
+        let formulas = self.formula_positions();
         let mut restart = None;
-        for cell in anchors.into_iter().chain(everything) {
+        for cell in anchors.into_iter().chain(formulas) {
             self.evaluation.root = Some(cell);
             self.evaluate_cell(cell);
             if self.evaluation.restart.is_some() {
