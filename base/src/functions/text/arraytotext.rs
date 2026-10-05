@@ -1,12 +1,13 @@
 // DOLLAR, FIXED, NUMBERVALUE, PROPER, REPLACE, ARRAYTOTEXT
 
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// ARRAYTOTEXT(array, [format])
     /// format=0 (default, concise): values joined with "," (columns) and ";" (rows)
     /// format=1 (strict): same but wrapped in {} and strings are quoted

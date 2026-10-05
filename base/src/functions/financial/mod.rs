@@ -17,6 +17,7 @@ mod financial_bonds;
 mod financial_depreciation;
 mod financial_util;
 
+use crate::types::Position;
 use financial_util::{compute_irr, compute_npv, compute_rate, compute_xirr, compute_xnpv};
 
 // See:
@@ -200,7 +201,7 @@ fn compute_ppmt(
 // All, except for rate are easily solvable in terms of the others.
 // In these formulas the payment (pmt) is normally negative
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     fn get_array_of_numbers_generic(
         &mut self,
         arg: &Node,

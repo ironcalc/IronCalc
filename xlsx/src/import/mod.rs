@@ -160,6 +160,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         tables,
         views,
         theme,
+        meta: Default::default(),
     })
 }
 

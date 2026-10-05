@@ -26,6 +26,7 @@ use crate::{
     utils::ParsedReference,
 };
 
+use crate::types::Position;
 use crate::tz::Tz;
 
 pub const APPLICATION: &str = "IronCalc Sheets";
@@ -76,9 +77,13 @@ impl<'a> Model<'a> {
             views,
             conditional_formatting: vec![],
             links: HashMap::new(),
+            index: Default::default(),
         }
     }
+}
 
+/// Parse machinery: derived evaluation state, built on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     pub fn get_new_sheet_id(&self) -> u32 {
         let mut index = 1;
         let worksheets = &self.workbook.worksheets;
@@ -88,39 +93,17 @@ impl<'a> Model<'a> {
         index + 1
     }
 
-    // This function parses all the internal formulas in all the worksheets
-    // (in the default language ("en") and locale ("en") and the RC format)
-    pub(crate) fn parse_formulas(&mut self) {
-        let locale = self.locale;
+    /// Gets the base name for new sheets
+    fn get_sheet_name(&self) -> String {
         let language = self.language;
-
-        self.parser.set_locale(get_default_locale());
-        self.parser.set_language(get_default_language());
-        self.parser.set_lexer_mode(LexerMode::R1C1);
-        // The lookup of the shared formulas follows the parsed formulas: both
-        // are made from the lists of the sheets, here.
-        self.shared_formula_lookup.clear();
-        let worksheets = &self.workbook.worksheets;
-        for worksheet in worksheets {
-            let shared_formulas = &worksheet.shared_formulas;
-            self.shared_formula_lookup
-                .push(crate::model::build_shared_formula_lookup(shared_formulas));
-            let cell_reference = CellReferenceRC {
-                sheet: worksheet.get_name(),
-                row: 1,
-                column: 1,
-            };
-            let mut parse_formula = Vec::new();
-            for formula in shared_formulas {
-                let t = self.parser.parse(formula, &cell_reference);
-                let static_result = run_static_analysis_on_node(&t);
-                parse_formula.push((std::sync::Arc::new(t), static_result));
-            }
-            self.parsed_formulas.push(parse_formula);
+        match language.code.as_str() {
+            "en" => "Sheet".to_string(),
+            "es" => "Hoja".to_string(),
+            "fr" => "Feuil".to_string(),
+            "de" => "Tabelle".to_string(),
+            "it" => "Foglio".to_string(),
+            _ => "Sheet".to_string(),
         }
-        self.parser.set_lexer_mode(LexerMode::A1);
-        self.parser.set_locale(locale);
-        self.parser.set_language(language);
     }
 
     pub(crate) fn parse_defined_names(&mut self) {
@@ -192,6 +175,55 @@ impl<'a> Model<'a> {
         self.parsed_defined_names = parsed_defined_names;
     }
 
+    pub(crate) fn get_sheet_index_by_sheet_id(&self, sheet_id: u32) -> Option<u32> {
+        let worksheets = &self.workbook.worksheets;
+        for (index, worksheet) in worksheets.iter().enumerate() {
+            if worksheet.sheet_id == sheet_id {
+                return Some(index as u32);
+            }
+        }
+        None
+    }
+}
+
+/// Parsing the stored formulas: their storage form is per addressing scheme, so this is too — the
+/// stable twin lowers instead, in [`crate::collab::apply`].
+impl<'a> Model<'a> {
+    // This function parses all the internal formulas in all the worksheets
+    // (in the default language ("en") and locale ("en") and the RC format)
+    pub(crate) fn parse_formulas(&mut self) {
+        let locale = self.locale;
+        let language = self.language;
+
+        self.parser.set_locale(get_default_locale());
+        self.parser.set_language(get_default_language());
+        self.parser.set_lexer_mode(LexerMode::R1C1);
+        // The lookup of the shared formulas follows the parsed formulas: both
+        // are made from the lists of the sheets, here.
+        self.shared_formula_lookup.clear();
+        let worksheets = &self.workbook.worksheets;
+        for worksheet in worksheets {
+            let shared_formulas = &worksheet.shared_formulas;
+            self.shared_formula_lookup
+                .push(crate::model::build_shared_formula_lookup(shared_formulas));
+            let cell_reference = CellReferenceRC {
+                sheet: worksheet.get_name(),
+                row: 1,
+                column: 1,
+            };
+            let mut parse_formula = Vec::new();
+            for formula in shared_formulas {
+                let t = self.parser.parse(formula, &cell_reference);
+                let static_result = run_static_analysis_on_node(&t);
+                parse_formula.push((std::sync::Arc::new(t), static_result));
+            }
+            self.parsed_formulas.push(parse_formula);
+        }
+        self.parser.set_lexer_mode(LexerMode::A1);
+        self.parser.set_locale(locale);
+        self.parser.set_language(language);
+    }
+
     /// Reparses all formulas and defined names
     pub(crate) fn reset_parsed_structures(&mut self) {
         let defined_names = self.workbook.get_defined_names_with_scope();
@@ -202,19 +234,6 @@ impl<'a> Model<'a> {
         self.parsed_defined_names = HashMap::new();
         self.parse_defined_names();
         self.evaluate();
-    }
-
-    /// Gets the base name for new sheets
-    fn get_sheet_name(&self) -> String {
-        let language = self.language;
-        match language.code.as_str() {
-            "en" => "Sheet".to_string(),
-            "es" => "Hoja".to_string(),
-            "fr" => "Feuil".to_string(),
-            "de" => "Tabelle".to_string(),
-            "it" => "Foglio".to_string(),
-            _ => "Sheet".to_string(),
-        }
     }
 
     /// Adds a sheet with a automatically generated name
@@ -601,16 +620,6 @@ impl<'a> Model<'a> {
         }
     }
 
-    pub(crate) fn get_sheet_index_by_sheet_id(&self, sheet_id: u32) -> Option<u32> {
-        let worksheets = &self.workbook.worksheets;
-        for (index, worksheet) in worksheets.iter().enumerate() {
-            if worksheet.sheet_id == sheet_id {
-                return Some(index as u32);
-            }
-        }
-        None
-    }
-
     /// Creates a new workbook with one empty sheet
     pub fn new_empty(
         name: &'a str,
@@ -678,6 +687,7 @@ impl<'a> Model<'a> {
             tables: HashMap::new(),
             views,
             theme: Default::default(),
+            meta: Default::default(),
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;

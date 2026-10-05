@@ -1,11 +1,12 @@
 use statrs::distribution::{Discrete, DiscreteCDF, Poisson};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // =POISSON.DIST(x, mean, cumulative)
     pub(crate) fn fn_poisson_dist(
         &mut self,

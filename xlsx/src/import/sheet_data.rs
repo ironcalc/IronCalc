@@ -10,7 +10,8 @@ use std::collections::HashMap;
 use std::io::BufRead;
 
 use ironcalc_base::expressions::parser::Parser;
-use ironcalc_base::types::{Cell, Row, SheetData};
+use ironcalc_base::sheet_data::SheetData;
+use ironcalc_base::types::{Cell, Row};
 use quick_xml::events::{BytesEnd, BytesStart, Event};
 
 use crate::error::XlsxError;

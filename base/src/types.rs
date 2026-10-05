@@ -1,8 +1,27 @@
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
 
-use crate::{cf_types::ConditionalFormatting, expressions::token::Error};
+use crate::constants::{COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
+use crate::expressions::parser::Node;
+use crate::model::Model;
+use crate::user_model::OrdinalUserState;
+use crate::{
+    cf_types::ConditionalFormatting,
+    constants::{LAST_COLUMN, LAST_ROW},
+    expressions::{
+        token::Error,
+        utils::{
+            column_to_number, is_valid_column, is_valid_column_number, is_valid_row,
+            number_to_column, parse_reference_a1,
+        },
+    },
+    ROW_HEIGHT_FACTOR,
+};
 
 fn default_as_false() -> bool {
     false
@@ -12,7 +31,7 @@ fn is_false(b: &bool) -> bool {
     !*b
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, Clone, Default)]
 #[serde(untagged)]
 pub enum Color {
     Rgb(String),
@@ -21,6 +40,52 @@ pub enum Color {
     /// No color — equivalent to OOXML `<color auto="1"/>` or absence of `<color>`.
     #[default]
     None,
+}
+
+impl Color {
+    /// Bit pattern of a theme tint, normalised so that equality and hashing agree.
+    ///
+    /// `f64`'s own `==` cannot back an [`Eq`] implementation: it is not reflexive, because
+    /// `NaN != NaN`. A `Color` holding a NaN tint would therefore never compare equal to itself and
+    /// could never be found again once used as a hash key. Normalising collapses every NaN to one
+    /// bit pattern, and `-0.0` to `0.0` so that the two spellings of "no tint" stay equal as they
+    /// are under `f64` comparison.
+    fn tint_key(tint: f64) -> u64 {
+        if tint.is_nan() {
+            f64::NAN.to_bits()
+        } else {
+            (tint + 0.0).to_bits()
+        }
+    }
+}
+
+impl PartialEq for Color {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Color::Rgb(a), Color::Rgb(b)) => a == b,
+            (Color::Theme(a_slot, a_tint), Color::Theme(b_slot, b_tint)) => {
+                a_slot == b_slot && Color::tint_key(*a_tint) == Color::tint_key(*b_tint)
+            }
+            (Color::None, Color::None) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Color {}
+
+impl Hash for Color {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Color::Rgb(rgb) => rgb.hash(state),
+            Color::Theme(slot, tint) => {
+                slot.hash(state);
+                Color::tint_key(*tint).hash(state);
+            }
+            Color::None => {}
+        }
+    }
 }
 
 /// Valid hex colors are #FFAABB
@@ -121,17 +186,21 @@ pub struct WorkbookView {
 
 /// An internal representation of an IronCalc Workbook
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct Workbook {
+pub struct Workbook<A: Position = Ordinal> {
     pub shared_strings: Vec<String>,
     pub defined_names: Vec<DefinedName>,
-    pub worksheets: Vec<Worksheet>,
+    pub worksheets: Vec<Worksheet<A>>,
     pub styles: Styles,
     pub name: String,
     pub settings: WorkbookSettings,
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
+    /// Per-user viewport state, never encoded: it decodes back as empty.
+    #[bitcode(skip)]
     pub views: HashMap<u32, WorkbookView>,
     pub theme: Theme,
+    /// CRDT metadata riding with the document; `()` encodes to zero bytes.
+    pub meta: A::WorkbookMeta,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -145,7 +214,7 @@ pub struct DefinedName {
 /// * state:
 ///   18.18.68 ST_SheetState (Sheet Visibility Types)
 ///   hidden, veryHidden, visible
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub enum SheetState {
     Visible,
     Hidden,
@@ -254,39 +323,484 @@ impl MergedCell {
     }
 }
 
+impl From<&MergedCell> for RangeRef {
+    fn from(m: &MergedCell) -> RangeRef {
+        RangeRef {
+            rows: Some((m.row, m.last_row())),
+            cols: Some((m.column, m.last_column())),
+        }
+    }
+}
+
+impl From<&RangeRef> for MergedCell {
+    /// Unbounded axes span the whole grid.
+    fn from(r: &RangeRef) -> MergedCell {
+        let (row, column, last_row, last_column) = r.resolve();
+        MergedCell {
+            row,
+            column,
+            width: last_column - column + 1,
+            height: last_row - row + 1,
+        }
+    }
+}
+
+pub(crate) mod sealed {
+    pub trait Sealed {}
+}
+
+/// The addressing scheme of the workbook data model: how rows and columns are named.
+///
+/// `Clone` is a supertrait so that the `#[derive]`s on the generic containers, which emit
+/// `A: Clone` bounds, are satisfied by a bare `A: Position`.
+pub trait Position: sealed::Sealed + Sized + Clone {
+    /// Row/column identifier. Bounds are the union of what the containers' derives need.
+    type Key: Clone + Ord + Hash + std::fmt::Debug + Encode + bitcode::DecodeOwned;
+    /// Per-sheet ordering context; `()` for [`Ordinal`].
+    type SheetIndex: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
+    /// How the cells of a sheet are stored.
+    type SheetData: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
+    /// How a merged range is stored: an anchor plus a size ([`MergedCell`]) when
+    /// the addressing is positional, a keyed [`RangeRef`] when it is stable.
+    type MergedCell: Clone + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
+    /// Workbook-wide replication metadata; `()` for [`Ordinal`].
+    type WorkbookMeta: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
+    /// Replica-local state of the [`UserModel`](crate::UserModel) wrapper: undo/redo and whatever
+    /// else the wrapper keeps outside the workbook.
+    type UserState: Default;
+    /// Storage form of a shared formula: R1C1 text under [`Ordinal`], a bound token stream under
+    /// [`Stable`](crate::collab::model::Stable).
+    type Formula: Clone + PartialEq + std::fmt::Debug + Encode + bitcode::DecodeOwned;
+    /// Storage form of a cell hyperlink: a plain [`Link`] under [`Ordinal`], a link whose internal
+    /// location is a bound stream under [`Stable`](crate::collab::model::Stable).
+    type Link: Clone + PartialEq + std::fmt::Debug + Encode + bitcode::DecodeOwned;
+
+    // Key ⇄ ordinal resolution. Ordinals are the 1-based `i32` the rest of the codebase uses;
+    // `None` means the key names nothing in this index any more.
+    fn row_ordinal(idx: &Self::SheetIndex, key: &Self::Key) -> Option<i32>;
+    fn col_ordinal(idx: &Self::SheetIndex, key: &Self::Key) -> Option<i32>;
+    fn row_at(idx: &Self::SheetIndex, ordinal: i32) -> Option<Self::Key>;
+    fn col_at(idx: &Self::SheetIndex, ordinal: i32) -> Option<Self::Key>;
+
+    /// How many rows/columns this index currently addresses. The whole grid under [`Ordinal`].
+    fn row_count(idx: &Self::SheetIndex) -> i32;
+    fn col_count(idx: &Self::SheetIndex) -> i32;
+
+    /// The 1-based ordinal rectangle `(row1, column1, row2, column2)` a range currently denotes,
+    /// or `None` if it collapsed.
+    fn resolve_range(
+        range: &RangeRef<Self>,
+        idx: &Self::SheetIndex,
+    ) -> Option<(i32, i32, i32, i32)>;
+
+    /// The range as ordinals: each corner is the 1-based index its key currently sits at, and an
+    /// unbounded axis stays unbounded. `None` when a corner names nothing any more.
+    fn to_ordinal_range(range: &RangeRef<Self>, idx: &Self::SheetIndex) -> Option<RangeRef>;
+
+    /// The 1-based ordinal rectangle `(row1, column1, row2, column2)` a merged range currently
+    /// covers, or `None` if it collapsed.
+    fn resolve_merged(
+        merged: &Self::MergedCell,
+        idx: &Self::SheetIndex,
+    ) -> Option<(i32, i32, i32, i32)>;
+
+    // Cell storage, by ordinal. Per-representation because `SheetData` is.
+    fn stored_cell(sheet: &Worksheet<Self>, row: i32, column: i32) -> Option<&Cell>;
+    fn stored_cell_mut(sheet: &mut Worksheet<Self>, row: i32, column: i32) -> Option<&mut Cell>;
+    fn store_cell(
+        sheet: &mut Worksheet<Self>,
+        row: i32,
+        column: i32,
+        cell: Cell,
+    ) -> Result<(), String>;
+    /// Every stored cell, in row-major ordinal order.
+    fn stored_cells(sheet: &Worksheet<Self>) -> impl Iterator<Item = (i32, i32, &Cell)>;
+    /// The columns a row holds a cell in, left to right.
+    fn stored_columns_in_row(sheet: &Worksheet<Self>, row: i32) -> Vec<i32>;
+
+    // Row/column metrics. Genuinely per-representation: [`Ordinal`] reads the ranged `Col`/`Row`
+    // records by index, stable addressing resolves a key and its covering spans.
+    fn column_width(sheet: &Worksheet<Self>, column: i32) -> Result<f64, String>;
+    fn is_column_hidden(sheet: &Worksheet<Self>, column: i32) -> Result<bool, String>;
+    fn row_height(sheet: &Worksheet<Self>, row: i32) -> Result<f64, String>;
+    fn is_row_hidden(sheet: &Worksheet<Self>, row: i32) -> Result<bool, String>;
+
+    /// The cell at `(row, column)`: what `sheet_data` holds.
+    fn cell(sheet: &Worksheet<Self>, row: i32, column: i32) -> Option<&Cell>;
+    /// Stores a spilled cell at `(row, column)`.
+    fn write_spill(
+        sheet: &mut Worksheet<Self>,
+        row: i32,
+        column: i32,
+        cell: Cell,
+    ) -> Result<(), String>;
+    /// Drops every spilled cell of the sheet, before a full re-evaluation rebuilds them.
+    fn drop_spills(_sheet: &mut Worksheet<Self>) {}
+    /// Whether a CSE array's covered cells are derived like a dynamic spill:
+    /// - `false` for Ordinal
+    /// - `true` for Stable
+    const CSE_SPILLS: bool = false;
+
+    /// The AST the formula interned at `index` on `sheet` is *shown* as:
+    /// 1. For [Ordinal] is pretty much identity function.
+    /// 2. For [Stable] is a lowered stable references to construct a specific node.
+    fn materialize_formula<'b>(
+        model: &'b Model<Self>,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        index: i32,
+    ) -> Option<std::borrow::Cow<'b, Node>>;
+}
+
+/// Positional addressing: rows and columns are 1-based indices.
+///
+/// A unit marker deriving everything, so that the `#[derive]`s on the generic
+/// containers (which emit `A: Trait` bounds) are satisfiable.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode, Serialize, Deserialize,
+)]
+pub struct Ordinal;
+
+impl sealed::Sealed for Ordinal {}
+
+impl Position for Ordinal {
+    type Key = i32;
+    type SheetIndex = ();
+    type SheetData = crate::sheet_data::SheetData;
+    type MergedCell = MergedCell;
+    type WorkbookMeta = ();
+    type UserState = OrdinalUserState;
+    type Formula = String;
+    type Link = Link;
+
+    // The key *is* the ordinal, so resolution is the identity and there is nothing to bound-check.
+    #[inline]
+    fn row_ordinal(_idx: &(), key: &i32) -> Option<i32> {
+        Some(*key)
+    }
+    #[inline]
+    fn col_ordinal(_idx: &(), key: &i32) -> Option<i32> {
+        Some(*key)
+    }
+    #[inline]
+    fn row_at(_idx: &(), ordinal: i32) -> Option<i32> {
+        Some(ordinal)
+    }
+    #[inline]
+    fn col_at(_idx: &(), ordinal: i32) -> Option<i32> {
+        Some(ordinal)
+    }
+
+    #[inline]
+    fn row_count(_idx: &()) -> i32 {
+        LAST_ROW
+    }
+    #[inline]
+    fn col_count(_idx: &()) -> i32 {
+        LAST_COLUMN
+    }
+    #[inline]
+    fn resolve_merged(merged: &MergedCell, _idx: &()) -> Option<(i32, i32, i32, i32)> {
+        Some((
+            merged.row,
+            merged.column,
+            merged.last_row(),
+            merged.last_column(),
+        ))
+    }
+
+    fn resolve_range(range: &RangeRef, _idx: &()) -> Option<(i32, i32, i32, i32)> {
+        Some(range.resolve())
+    }
+
+    #[inline]
+    fn to_ordinal_range(range: &RangeRef, _idx: &()) -> Option<RangeRef> {
+        Some(range.clone())
+    }
+
+    #[inline]
+    fn stored_cell(sheet: &Worksheet, row: i32, column: i32) -> Option<&Cell> {
+        sheet.sheet_data.cell(row, column)
+    }
+    #[inline]
+    fn stored_cell_mut(sheet: &mut Worksheet, row: i32, column: i32) -> Option<&mut Cell> {
+        sheet.sheet_data.cell_mut(row, column)
+    }
+    #[inline]
+    fn store_cell(sheet: &mut Worksheet, row: i32, column: i32, cell: Cell) -> Result<(), String> {
+        sheet.sheet_data.set_cell(row, column, cell);
+        Ok(())
+    }
+    #[inline]
+    fn stored_cells(sheet: &Worksheet) -> impl Iterator<Item = (i32, i32, &Cell)> {
+        sheet.sheet_data.cells()
+    }
+    #[inline]
+    fn stored_columns_in_row(sheet: &Worksheet, row: i32) -> Vec<i32> {
+        sheet.sheet_data.columns_in_row(row)
+    }
+
+    fn column_width(sheet: &Worksheet, column: i32) -> Result<f64, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        for col in &sheet.cols {
+            if column >= col.min && column <= col.max {
+                if col.hidden {
+                    return Ok(0.0);
+                }
+                if col.custom_width {
+                    return Ok(col.width * COLUMN_WIDTH_FACTOR);
+                }
+                break;
+            }
+        }
+        Ok(DEFAULT_COLUMN_WIDTH)
+    }
+
+    fn is_column_hidden(sheet: &Worksheet, column: i32) -> Result<bool, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        for col in &sheet.cols {
+            if column >= col.min && column <= col.max {
+                return Ok(col.hidden);
+            }
+        }
+        Ok(false)
+    }
+
+    fn row_height(sheet: &Worksheet, row: i32) -> Result<f64, String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        for r in &sheet.rows {
+            if r.r == row {
+                if r.hidden {
+                    return Ok(0.0);
+                }
+                return Ok(r.height * ROW_HEIGHT_FACTOR);
+            }
+        }
+        Ok(DEFAULT_ROW_HEIGHT)
+    }
+
+    fn is_row_hidden(sheet: &Worksheet, row: i32) -> Result<bool, String> {
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        for r in &sheet.rows {
+            if r.r == row {
+                return Ok(r.hidden);
+            }
+        }
+        Ok(false)
+    }
+
+    #[inline]
+    fn cell(sheet: &Worksheet, row: i32, column: i32) -> Option<&Cell> {
+        sheet.stored_cell(row, column)
+    }
+    #[inline]
+    fn write_spill(sheet: &mut Worksheet, row: i32, column: i32, cell: Cell) -> Result<(), String> {
+        sheet.update_cell(row, column, cell)
+    }
+
+    /// The stored node already carries offsets from wherever the formula sits, so it *is* the
+    /// display form.
+    fn materialize_formula<'b>(
+        model: &'b Model,
+        sheet: u32,
+        _row: i32,
+        _column: i32,
+        index: i32,
+    ) -> Option<std::borrow::Cow<'b, Node>> {
+        let (node, _) = model
+            .parsed_formulas
+            .get(sheet as usize)?
+            .get(index as usize)?;
+        Some(std::borrow::Cow::Borrowed(node.as_ref()))
+    }
+}
+
+/// A cell position: (row, column), 1-based.
+pub type CellAddr<A = Ordinal> = (<A as Position>::Key, <A as Position>::Key);
+
+/// A rectangular reference. An axis is a closed 1-based interval, or `None`
+/// meaning the whole axis (full-column `D:D`, full-row `5:7`).
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
+#[serde(bound(
+    serialize = "A::Key: Serialize",
+    deserialize = "A::Key: serde::Deserialize<'de>"
+))]
+pub struct RangeRef<A: Position = Ordinal> {
+    pub rows: Option<(A::Key, A::Key)>,
+    pub cols: Option<(A::Key, A::Key)>,
+}
+
+/// One side of an A1 reference: a column index, a row index, or both.
+fn parse_a1_part(s: &str) -> Option<(Option<i32>, Option<i32>)> {
+    let s = s.replace('$', "");
+    if let Some(r) = parse_reference_a1(&s) {
+        return Some((Some(r.column), Some(r.row)));
+    }
+    if is_valid_column(&s) {
+        return Some((Some(column_to_number(&s).ok()?), None));
+    }
+    let row = s.parse::<i32>().ok()?;
+    is_valid_row(row).then_some((None, Some(row)))
+}
+
+/// `None` when the interval spans the whole axis, so that a bounded storage ref
+/// and its formula shorthand parse to the same value.
+fn unbounded_if_full(span: (i32, i32), last: i32) -> Option<(i32, i32)> {
+    (span != (1, last)).then_some(span)
+}
+
+fn ordered(a: i32, b: i32) -> (i32, i32) {
+    if a <= b {
+        (a, b)
+    } else {
+        (b, a)
+    }
+}
+
+impl RangeRef {
+    pub fn cell(row: i32, column: i32) -> RangeRef {
+        RangeRef {
+            rows: Some((row, row)),
+            cols: Some((column, column)),
+        }
+    }
+
+    /// Parses `A1`, `A1:B2`, full-column `D:F` or full-row `5:7`.
+    /// Case-insensitive, `$` markers are ignored, out-of-bounds is rejected.
+    pub fn parse_a1(s: &str) -> Option<RangeRef> {
+        let s = s.to_uppercase();
+        let Some((left, right)) = s.split_once(':') else {
+            let (column, row) = parse_a1_part(&s)?;
+            return Some(RangeRef::cell(row?, column?));
+        };
+        match (parse_a1_part(left)?, parse_a1_part(right)?) {
+            // A full-span axis is the storage spelling of an unbounded one (`D1:D1048576` = `D:D`).
+            ((Some(c1), Some(r1)), (Some(c2), Some(r2))) => Some(RangeRef {
+                rows: unbounded_if_full(ordered(r1, r2), LAST_ROW),
+                cols: unbounded_if_full(ordered(c1, c2), LAST_COLUMN),
+            }),
+            ((Some(c1), None), (Some(c2), None)) => Some(RangeRef {
+                rows: None,
+                cols: Some(ordered(c1, c2)),
+            }),
+            ((None, Some(r1)), (None, Some(r2))) => Some(RangeRef {
+                rows: Some(ordered(r1, r2)),
+                cols: None,
+            }),
+            _ => None,
+        }
+    }
+
+    /// Canonical A1 rendering: uppercase, no `$`.
+    pub fn to_a1(&self) -> String {
+        match (self.rows, self.cols) {
+            (Some((r1, r2)), None) => format!("{r1}:{r2}"),
+            (None, Some((c1, c2))) => format!(
+                "{}:{}",
+                number_to_column(c1).unwrap_or_default(),
+                number_to_column(c2).unwrap_or_default()
+            ),
+            // Bounded on both axes; a fully unbounded ref renders as the whole grid.
+            _ => self.to_a1_bounded(),
+        }
+    }
+
+    /// A1 rendering for xlsx storage attributes (`ST_Ref`): both corners always
+    /// carry a column and a row, so unbounded axes are expanded to the whole grid.
+    pub fn to_a1_bounded(&self) -> String {
+        let (row1, column1, row2, column2) = self.resolve();
+        let c1 = number_to_column(column1).unwrap_or_default();
+        let c2 = number_to_column(column2).unwrap_or_default();
+        if row1 == row2 && c1 == c2 {
+            format!("{c1}{row1}")
+        } else {
+            format!("{c1}{row1}:{c2}{row2}")
+        }
+    }
+
+    /// Parses a whitespace-separated list of references, skipping invalid parts.
+    pub fn parse_sqref(s: &str) -> Vec<RangeRef> {
+        s.split_whitespace()
+            .filter_map(RangeRef::parse_a1)
+            .collect()
+    }
+
+    pub fn to_sqref(ranges: &[RangeRef]) -> String {
+        ranges
+            .iter()
+            .map(RangeRef::to_a1)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// [`RangeRef::to_a1_bounded`] over a list, for the xlsx `sqref` attribute.
+    pub fn to_sqref_bounded(ranges: &[RangeRef]) -> String {
+        ranges
+            .iter()
+            .map(RangeRef::to_a1_bounded)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// `(row1, column1, row2, column2)` with unbounded axes expanded to the whole grid.
+    pub fn resolve(&self) -> (i32, i32, i32, i32) {
+        let (row1, row2) = self.rows.unwrap_or((1, LAST_ROW));
+        let (column1, column2) = self.cols.unwrap_or((1, LAST_COLUMN));
+        (row1, column1, row2, column2)
+    }
+
+    pub fn contains(&self, row: i32, column: i32) -> bool {
+        let (row1, column1, row2, column2) = self.resolve();
+        (row1..=row2).contains(&row) && (column1..=column2).contains(&column)
+    }
+}
+
 /// Internal representation of a worksheet Excel object
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct Worksheet {
+pub struct Worksheet<A: Position = Ordinal> {
     pub dimension: String,
-    pub cols: Vec<Col>,
-    pub rows: Vec<Row>,
+    pub cols: Vec<Col<A>>,
+    pub rows: Vec<Row<A>>,
     pub name: String,
-    pub sheet_data: SheetData,
-    pub shared_formulas: Vec<String>,
+    pub sheet_data: SheetData<A>,
+    pub shared_formulas: Vec<A::Formula>,
     pub sheet_id: u32,
     pub state: SheetState,
     pub color: Color,
-    pub merged_cells: Vec<MergedCell>,
-    pub comments: Vec<Comment>,
+    pub merged_cells: Vec<A::MergedCell>,
+    pub comments: Vec<Comment<A>>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
+    /// Per-user viewport state, never encoded: it decodes back as empty.
+    #[bitcode(skip)]
     pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
-    pub conditional_formatting: Vec<ConditionalFormatting>,
+    pub conditional_formatting: Vec<ConditionalFormatting<A>>,
     /// Hyperlinks in the worksheet, keyed by (row, column) of the cell they are attached to
-    pub links: HashMap<(i32, i32), Link>,
+    pub links: HashMap<CellAddr<A>, A::Link>,
+    /// The ordering context every key in this sheet resolves against; `()` for [`Ordinal`].
+    pub index: A::SheetIndex,
 }
 
 /// Internal representation of Excel's sheet_data
 /// It is row first and because of this all of our API's should be row first
-pub use crate::sheet_data::SheetData;
+pub type SheetData<A = Ordinal> = <A as Position>::SheetData;
 
 // ECMA-376-1:2016 section 18.3.1.73
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct Row {
+pub struct Row<A: Position = Ordinal> {
     /// Row index
-    pub r: i32,
+    pub r: A::Key,
     pub height: f64,
     pub custom_format: bool,
     pub custom_height: bool,
@@ -294,14 +808,24 @@ pub struct Row {
     pub hidden: bool,
 }
 
+impl<A: Position> Row<A> {
+    pub fn is_empty(&self) -> bool {
+        self.s == 0
+            && !self.custom_format
+            && !self.custom_height
+            && !self.hidden
+            && self.height == DEFAULT_ROW_HEIGHT / ROW_HEIGHT_FACTOR
+    }
+}
+
 // ECMA-376-1:2016 section 18.3.1.13
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct Col {
+pub struct Col<A: Position = Ordinal> {
     // Column definitions are defined on ranges, unlike rows which store unique, per-row entries.
     /// First column affected by this record. Settings apply to column in \[min, max\] range.
-    pub min: i32,
+    pub min: A::Key,
     /// Last column affected by this record. Settings apply to column in \[min, max\] range.
-    pub max: i32,
+    pub max: A::Key,
     pub width: f64,
     pub custom_width: bool,
     pub hidden: bool,
@@ -346,7 +870,7 @@ pub enum SpillValue {
 }
 
 /// Whether an array formula is a CSE (Ctrl+Shift+Enter) formula or a dynamic formula.
-#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, Clone, PartialEq)]
 pub enum ArrayKind {
     /// Ctrl+Shift+Enter array formula: fills a fixed declared range.
     Cse,
@@ -417,12 +941,16 @@ impl Default for Cell {
     }
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
-pub struct Comment {
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[serde(bound(
+    serialize = "A::Key: Serialize",
+    deserialize = "A::Key: serde::Deserialize<'de>"
+))]
+pub struct Comment<A: Position = Ordinal> {
     pub text: String,
     pub author_name: String,
     pub author_id: Option<String>,
-    pub cell_ref: String,
+    pub cell_ref: CellAddr<A>,
 }
 
 // ECMA-376-1:2016 section 18.5.1.2
@@ -535,7 +1063,7 @@ impl Default for Styles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
@@ -577,7 +1105,7 @@ impl Default for NumFmt {
 // ST_FontScheme simple type (§18.18.33).
 // Usually major fonts are used for styles like headings,
 // and minor fonts are used for body and paragraph text.
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "lowercase")]
 #[derive(Default)]
 pub enum FontScheme {
@@ -597,7 +1125,7 @@ impl Display for FontScheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Font {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
@@ -641,14 +1169,14 @@ impl Default for Font {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone, Default)]
 pub struct Fill {
     #[serde(skip_serializing_if = "Color::is_none")]
     #[serde(default)]
     pub color: Color,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "lowercase")]
 #[derive(Default)]
 pub enum HorizontalAlignment {
@@ -687,7 +1215,7 @@ impl Display for HorizontalAlignment {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "lowercase")]
 #[derive(Default)]
 pub enum VerticalAlignment {
@@ -718,7 +1246,7 @@ impl Display for VerticalAlignment {
 }
 
 // 1762
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone, Default)]
 pub struct Alignment {
     #[serde(default)]
     #[serde(skip_serializing_if = "HorizontalAlignment::is_default")]
@@ -825,7 +1353,7 @@ impl Default for CellStyles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, PartialOrd, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, PartialOrd, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum BorderStyle {
     Thin,
@@ -855,7 +1383,7 @@ impl Display for BorderStyle {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct BorderItem {
     pub style: BorderStyle,
     #[serde(skip_serializing_if = "Color::is_none")]
@@ -863,7 +1391,7 @@ pub struct BorderItem {
     pub color: Color,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Hash, Clone, Default)]
 pub struct Border {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
@@ -958,6 +1486,7 @@ impl Theme {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::unwrap_used)]
     use super::*;
     #[test]
     fn test_is_valid_hex_color() {
@@ -973,5 +1502,119 @@ mod test {
         assert!(!is_valid_hex_color("#ffffff "));
         assert!(!is_valid_hex_color("#fff")); // CSS shorthand
         assert!(!is_valid_hex_color("#ffffff00")); // with alpha channel
+    }
+
+    /// The bare names are the `Ordinal` instantiation; purely a compile-time check.
+    #[test]
+    fn types_default_to_ordinal() {
+        fn assert_default(w: Workbook<Ordinal>) -> Workbook {
+            w
+        }
+        fn assert_range_default(r: RangeRef<Ordinal>) -> RangeRef {
+            r
+        }
+        let _ = (assert_default, assert_range_default);
+    }
+
+    fn round_trip(s: &str) -> String {
+        RangeRef::parse_a1(s).unwrap().to_a1()
+    }
+
+    #[test]
+    fn test_range_ref_parse_a1() {
+        assert_eq!(round_trip("A1"), "A1");
+        assert_eq!(round_trip("A1:B2"), "A1:B2");
+        assert_eq!(round_trip("D:D"), "D:D");
+        assert_eq!(round_trip("D:F"), "D:F");
+        assert_eq!(round_trip("5:7"), "5:7");
+        // $ markers ignored, case-insensitive
+        assert_eq!(round_trip("$a$1:$b$2"), "A1:B2");
+        assert_eq!(round_trip("$d:$f"), "D:F");
+        // corners are normalized so that lo <= hi
+        assert_eq!(round_trip("B2:A1"), "A1:B2");
+        assert_eq!(round_trip("F:D"), "D:F");
+        assert_eq!(round_trip("7:5"), "5:7");
+        // a degenerate rect renders without a colon
+        assert_eq!(round_trip("A1:A1"), "A1");
+        // a full-span bounded axis (the storage form) normalizes to unbounded
+        assert_eq!(round_trip("D1:D1048576"), "D:D");
+        assert_eq!(round_trip("A5:XFD7"), "5:7");
+        assert_eq!(RangeRef::parse_a1("D1:D1048576"), RangeRef::parse_a1("D:D"));
+        // the whole grid has no compact form, so it round trips bijectively
+        assert_eq!(round_trip("A1:XFD1048576"), "A1:XFD1048576");
+        assert_eq!(
+            RangeRef::parse_a1("A1:XFD1048576"),
+            Some(RangeRef {
+                rows: None,
+                cols: None
+            })
+        );
+    }
+
+    #[test]
+    fn test_range_ref_to_a1_bounded() {
+        let bounded = |s: &str| RangeRef::parse_a1(s).unwrap().to_a1_bounded();
+        assert_eq!(bounded("D:D"), "D1:D1048576");
+        assert_eq!(bounded("5:7"), "A5:XFD7");
+        assert_eq!(bounded("A1:B2"), "A1:B2");
+        assert_eq!(bounded("C3"), "C3");
+    }
+
+    #[test]
+    fn test_range_ref_parse_a1_invalid() {
+        assert_eq!(RangeRef::parse_a1(""), None);
+        assert_eq!(RangeRef::parse_a1("not_a_range"), None);
+        assert_eq!(RangeRef::parse_a1("!!!!"), None);
+        assert_eq!(RangeRef::parse_a1("A1:"), None);
+        // a bare column or row is not a range
+        assert_eq!(RangeRef::parse_a1("D"), None);
+        assert_eq!(RangeRef::parse_a1("5"), None);
+        // mixed axis kinds
+        assert_eq!(RangeRef::parse_a1("A1:B"), None);
+        assert_eq!(RangeRef::parse_a1("D:5"), None);
+        // out of bounds
+        assert_eq!(RangeRef::parse_a1("A0"), None);
+        assert_eq!(RangeRef::parse_a1("XFE1"), None);
+        assert_eq!(RangeRef::parse_a1("A1048577"), None);
+        assert_eq!(RangeRef::parse_a1("0:3"), None);
+    }
+
+    #[test]
+    fn test_range_ref_sqref() {
+        let ranges = RangeRef::parse_sqref(" a1:b2   $D:$D  garbage 5:7 ");
+        assert_eq!(RangeRef::to_sqref(&ranges), "A1:B2 D:D 5:7");
+        assert!(RangeRef::parse_sqref("").is_empty());
+    }
+
+    #[test]
+    fn test_range_ref_resolve() {
+        assert_eq!(RangeRef::cell(3, 2).resolve(), (3, 2, 3, 2));
+        assert_eq!(
+            RangeRef::parse_a1("D:F").unwrap().resolve(),
+            (1, 4, LAST_ROW, 6)
+        );
+        assert_eq!(
+            RangeRef::parse_a1("5:7").unwrap().resolve(),
+            (5, 1, 7, LAST_COLUMN)
+        );
+    }
+
+    #[test]
+    fn test_range_ref_contains() {
+        let rect = RangeRef::parse_a1("B2:C3").unwrap();
+        assert!(rect.contains(2, 2));
+        assert!(rect.contains(3, 3));
+        assert!(!rect.contains(1, 2));
+        assert!(!rect.contains(2, 4));
+
+        let column = RangeRef::parse_a1("D:D").unwrap();
+        assert!(column.contains(1, 4));
+        assert!(column.contains(LAST_ROW, 4));
+        assert!(!column.contains(1, 5));
+
+        let row = RangeRef::parse_a1("5:7").unwrap();
+        assert!(row.contains(5, 1));
+        assert!(row.contains(7, LAST_COLUMN));
+        assert!(!row.contains(8, 1));
     }
 }
