@@ -36,7 +36,7 @@ pub const IRONCALC_USER: &str = "IronCalc User";
 /// Name cannot be blank, must be shorter than 31 characters.
 /// You can use all alphanumeric characters but not the following special characters:
 /// \ , / , * , ? , : , [ , ].
-fn is_valid_sheet_name(name: &str) -> bool {
+pub(crate) fn is_valid_sheet_name(name: &str) -> bool {
     let invalid = ['\\', '/', '*', '?', ':', '[', ']'];
     !name.is_empty() && name.chars().count() <= 31 && !name.contains(&invalid[..])
 }
@@ -94,7 +94,7 @@ impl<'a, A: Position> Model<'a, A> {
     }
 
     /// Gets the base name for new sheets
-    fn get_sheet_name(&self) -> String {
+    pub(crate) fn get_sheet_name(&self) -> String {
         let language = self.language;
         match language.code.as_str() {
             "en" => "Sheet".to_string(),
@@ -712,6 +712,7 @@ impl<'a> Model<'a> {
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
+            local: Default::default(),
         };
         model.parse_formulas();
         model.evaluate_conditional_formatting();
@@ -719,7 +720,8 @@ impl<'a> Model<'a> {
     }
 }
 
-#[cfg(test)]
+// Sheet creation, duplication and renaming through the ordinal writers.
+#[cfg(all(test, not(feature = "collab-test")))]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;

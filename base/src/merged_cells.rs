@@ -304,7 +304,10 @@ impl<A: Position> Model<'_, A> {
     // allowed when more than one cell has content. Spill cells don't count:
     // they hold values computed by an anchor outside the range, not content
     // of their own (the spill is blocked and re-evaluated).
-    fn merge_range_content_cell(&self, range: &Area) -> Result<Option<(i32, i32)>, String> {
+    pub(crate) fn merge_range_content_cell(
+        &self,
+        range: &Area,
+    ) -> Result<Option<(i32, i32)>, String> {
         let Area {
             sheet,
             row,
@@ -333,7 +336,7 @@ impl<A: Position> Model<'_, A> {
 
     // Checks that `range` is a valid merge target: in bounds, more than one
     // cell and intersecting no existing merged cell or array formula.
-    fn check_merge_range(&self, range: &Area) -> Result<(), String> {
+    pub(crate) fn check_merge_range(&self, range: &Area) -> Result<(), String> {
         let Area {
             sheet,
             row,

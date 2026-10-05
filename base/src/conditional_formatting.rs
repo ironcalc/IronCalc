@@ -1217,7 +1217,7 @@ impl<'a, A: Position> Model<'a, A> {
     }
 
     /// Converts a `CfRuleInput` into a stored `CfRule`, creating a dxf entry when a format is provided.
-    fn cf_rule_from_input(&mut self, rule: CfRuleInput) -> CfRule {
+    pub(crate) fn cf_rule_from_input(&mut self, rule: CfRuleInput) -> CfRule {
         let (mut rule, dxf) = rule.split();
         if let (Some(slot), Some(dxf)) = (rule.dxf_id_mut(), dxf) {
             *slot = self.create_dxf(dxf);
@@ -1249,7 +1249,7 @@ impl<'a, A: Position> Model<'a, A> {
     /// created), so an invalid formula fails the whole operation without leaving
     /// behind an orphan dxf or storing a non-canonical formula that would later
     /// fail to parse as English.
-    fn cf_rule_input_to_internal(
+    pub(crate) fn cf_rule_input_to_internal(
         &mut self,
         rule: &mut CfRuleInput,
         sheet: u32,

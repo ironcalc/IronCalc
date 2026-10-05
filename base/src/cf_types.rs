@@ -209,7 +209,49 @@ pub enum CfRule {
     },
 }
 
+impl Cfvo {
+    fn formula_mut(&mut self) -> Option<&mut String> {
+        match self {
+            Cfvo::Formula(formula) => Some(formula),
+            _ => None,
+        }
+    }
+}
+
 impl CfRule {
+    /// Every formula slot the rule carries, in a fixed order. Stable addressing stores the bound
+    /// form of each slot separately and derives these strings back, so the order is part of the
+    /// wire format and must not change.
+    pub(crate) fn formulas_mut(&mut self) -> Vec<&mut String> {
+        match self {
+            CfRule::CellIs {
+                formula, formula2, ..
+            } => match formula2 {
+                Some(formula2) => vec![formula, formula2],
+                None => vec![formula],
+            },
+            CfRule::Formula { formula, .. } => vec![formula],
+            CfRule::ColorScale { thresholds } => thresholds
+                .iter_mut()
+                .filter_map(|t| t.cfvo.formula_mut())
+                .collect(),
+            CfRule::DataBar { min, max, .. } => min
+                .iter_mut()
+                .chain(max.iter_mut())
+                .filter_map(|cfvo| cfvo.formula_mut())
+                .collect(),
+            CfRule::IconSet { thresholds, .. } => thresholds
+                .iter_mut()
+                .filter_map(|t| t.cfvo.formula_mut())
+                .collect(),
+            CfRule::IconRating { thresholds, .. } => thresholds
+                .iter_mut()
+                .filter_map(|(cfvo, _)| cfvo.formula_mut())
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
     /// The rule's index into the workbook's `dxfs` table, for the kinds that name a format.
     pub(crate) fn dxf_id_mut(&mut self) -> Option<&mut u32> {
         match self {
@@ -232,6 +274,23 @@ impl CfRule {
             | CfRule::IconSet { .. }
             | CfRule::IconRating { .. } => None,
         }
+    }
+
+    /// The format `dxf_id` names in `dxfs`, by value. The id is zeroed: it means nothing outside
+    /// the table it indexed.
+    pub(crate) fn take_dxf(&mut self, dxfs: &[Dxf]) -> Option<Dxf> {
+        let slot = self.dxf_id_mut()?;
+        let dxf = dxfs.get(*slot as usize).cloned();
+        *slot = 0;
+        dxf
+    }
+
+    /// The formula strings in slot order, leaving every slot blank.
+    pub(crate) fn take_formulas(&mut self) -> Vec<String> {
+        self.formulas_mut()
+            .into_iter()
+            .map(std::mem::take)
+            .collect()
     }
 }
 

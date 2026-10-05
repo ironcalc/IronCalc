@@ -365,6 +365,8 @@ pub trait Position: sealed::Sealed + Sized + Clone {
     type MergedCell: Clone + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
     /// Workbook-wide replication metadata; `()` for [`Ordinal`].
     type WorkbookMeta: Clone + Default + std::fmt::Debug + PartialEq + Encode + bitcode::DecodeOwned;
+    /// Replica-local model state, never serialized; `()` for [`Ordinal`].
+    type Local: Default;
     /// Replica-local state of the [`UserModel`](crate::UserModel) wrapper: undo/redo and whatever
     /// else the wrapper keeps outside the workbook.
     type UserState: Default;
@@ -470,6 +472,7 @@ impl Position for Ordinal {
     type SheetData = crate::sheet_data::SheetData;
     type MergedCell = MergedCell;
     type WorkbookMeta = ();
+    type Local = ();
     type UserState = OrdinalUserState;
     type Formula = String;
     type Link = Link;

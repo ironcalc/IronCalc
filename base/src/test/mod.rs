@@ -6,6 +6,10 @@ mod test_ceiling_floor;
 mod test_cell;
 mod test_cell_clear_contents;
 mod test_circular_references;
+#[cfg(feature = "collab")]
+mod test_collab_oracle;
+#[cfg(feature = "collab")]
+mod test_collab_user_model;
 mod test_column_width;
 mod test_criteria;
 mod test_database;
@@ -66,11 +70,15 @@ mod test_set_user_input;
 mod test_shared_formulas;
 mod test_sheet_markup;
 mod test_sheets;
+#[cfg(all(feature = "collab", not(feature = "collab-test")))]
+pub(crate) mod test_stable_projection;
 mod test_statistical_functions;
 mod test_styles;
 mod test_sumsq;
 mod test_trigonometric;
 mod test_true_false;
+#[cfg(feature = "collab")]
+mod test_user_model_oracle;
 mod test_weekday_return_types;
 mod test_weekday_weeknum_isoweeknum;
 mod test_weeknum_return_types;
@@ -142,4 +150,6 @@ mod test_today;
 mod test_trigonometric_reciprocals;
 mod test_types;
 mod text_functions;
+// `UserModel` is ordinal-only.
+#[cfg(not(feature = "collab-test"))]
 mod user_model;

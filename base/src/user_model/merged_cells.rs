@@ -231,6 +231,67 @@ impl UserModel<'_> {
     }
 }
 
+#[cfg(feature = "collab")]
+impl UserModel<'_, crate::collab::model::Stable> {
+    /// Merges the cells of `range` into a single merged cell anchored at its top-left corner.
+    ///
+    /// See also:
+    /// * [UserModel::merge_cells](crate::UserModel::merge_cells)
+    pub fn merge_cells(&mut self, range: &Area) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model.merge_cells(range)?;
+            s.snap_selection_to_merged_area(std::slice::from_ref(range));
+            s.evaluate_if_not_paused();
+            Ok(())
+        })
+    }
+
+    /// Same as [UserModel::merge_cells] but the merged cell is also centered horizontally.
+    pub fn merge_cells_center(&mut self, range: &Area) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model.merge_cells_center(range)?;
+            s.snap_selection_to_merged_area(std::slice::from_ref(range));
+            s.evaluate_if_not_paused();
+            Ok(())
+        })
+    }
+
+    /// Merges each row of `range` separately ("merge across").
+    pub fn merge_cells_across(&mut self, range: &Area) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model.merge_cells_across(range)?;
+            s.snap_selection_to_merged_area(std::slice::from_ref(range));
+            s.evaluate_if_not_paused();
+            Ok(())
+        })
+    }
+
+    /// Merges each column of `range` separately ("merge down").
+    pub fn merge_cells_down(&mut self, range: &Area) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model.merge_cells_down(range)?;
+            s.snap_selection_to_merged_area(std::slice::from_ref(range));
+            s.evaluate_if_not_paused();
+            Ok(())
+        })
+    }
+
+    /// Removes every merged cell that intersects `range`, keeping content and styles.
+    pub fn unmerge_cells(&mut self, range: &Area) -> Result<(), String> {
+        self.tracked(|s| {
+            s.model.unmerge_cells(range)?;
+            s.evaluate_if_not_paused();
+            Ok(())
+        })
+    }
+
+    /// Returns the merged cells of the worksheet as ordinal rectangles, as the UI expects them.
+    /// A stable range whose corners the sheet no longer resolves is skipped.
+    pub fn get_merged_cells(&self, sheet: u32) -> Result<Vec<MergedCell>, String> {
+        self.model.get_merged_cells(sheet)
+    }
+}
+
 impl<A: crate::types::Position> UserModel<'_, A> {
     // A covered cell can never stay selected: if the selected cell is now
     // inside the merged area, select the whole area — all the merged cells of
@@ -238,7 +299,7 @@ impl<A: crate::types::Position> UserModel<'_, A> {
     // the selected cell and the bottom-right cell as the focus (the canonical
     // anchor/focus pair for that range). The scroll position and the
     // selection are left alone on undo.
-    fn snap_selection_to_merged_area(&mut self, ranges: &[Area]) {
+    pub(super) fn snap_selection_to_merged_area(&mut self, ranges: &[Area]) {
         let Some(first) = ranges.first() else {
             return;
         };

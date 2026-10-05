@@ -215,6 +215,8 @@ pub struct Model<'a, A: Position = Ordinal> {
     /// (`parse_formulas`), extended when a formula is added. See
     /// `shared_formula_index`.
     pub(crate) shared_formula_lookup: Vec<SharedFormulaLookup>,
+    /// Replica-local state of the addressing scheme; `()` under ordinal addressing.
+    pub(crate) local: A::Local,
 }
 
 /// Formula text to index in `Worksheet::shared_formulas`, for one sheet.
@@ -488,6 +490,18 @@ impl<'a, A: Position> Model<'a, A> {
         } else {
             english
         })
+    }
+
+    /// The node the stored English text of a user formula parses to.
+    pub(crate) fn user_formula_to_english_node(
+        &mut self,
+        formula: &str,
+        context: &CellReferenceRC,
+    ) -> Result<(Node, bool), String> {
+        let english = self.user_formula_to_internal(formula, context)?;
+        let had_equals = english.starts_with('=');
+        let body = english.strip_prefix('=').unwrap_or(&english);
+        Ok((self.parse_internal_formula(body, context), had_equals))
     }
 
     /// [`Self::user_formula_to_internal`] stopping at the AST, together with whether the author
@@ -1755,6 +1769,7 @@ impl<'a> Model<'a> {
             evaluation: Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
+            local: Default::default(),
         };
 
         model.parse_formulas();
