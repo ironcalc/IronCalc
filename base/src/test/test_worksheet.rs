@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
+#[cfg(not(feature = "collab-test"))]
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
-    expressions::types::Area,
-    test::util::new_empty_model,
-    worksheet::{NavigationDirection, WorksheetDimension},
+    worksheet::NavigationDirection,
 };
+use crate::{expressions::types::Area, test::util::new_empty_model, worksheet::WorksheetDimension};
 
 #[test]
 fn test_worksheet_dimension_empty_sheet() {
@@ -36,6 +36,9 @@ fn test_worksheet_dimension_single_cell() {
     );
 }
 
+// Ordinal variant keeps empty cells after clear.
+// Stable variant removes cells that don't have value nor style on them, so the dimensions shrink.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_dimension_single_cell_set_empty() {
     let mut model = new_empty_model();
@@ -212,6 +215,7 @@ fn test_worksheet_dimension_progressive() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_worksheet_navigate_to_edge_in_direction() {
     let inline_spreadsheet = [

@@ -4,7 +4,7 @@
 
 use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
-use crate::Model;
+use crate::test::util::TestModel;
 
 //         ║    A    |    B    |      C       |
 // ════════╬═════════╪═════════╪══════════════╪
@@ -121,7 +121,7 @@ fn transitive_dependency_on_volatile_spill_is_consistent() {
     model.evaluate();
 
     // Compare the stored numbers, not their formatted text (which is rounded).
-    let number = |model: &Model, cell: &str| match model.get_cell_value_by_ref(cell) {
+    let number = |model: &TestModel, cell: &str| match model.get_cell_value_by_ref(cell) {
         Ok(CellValue::Number(n)) => n,
         other => panic!("{cell} is not a number: {other:?}"),
     };

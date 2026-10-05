@@ -401,6 +401,24 @@ impl Styles {
         self.add_named_cell_style(style_name, xf_id)
     }
 
+    /// Writes the base record of a named style: in place at `slot` when there is one, rewriting it
+    /// as [`Model::update_named_style`] does, otherwise as a new record (with its plain
+    /// representative). Returns the record's `xf_id`.
+    pub(crate) fn set_base_style(
+        &mut self,
+        slot: Option<i32>,
+        style: &Style,
+        includes: StyleIncludes,
+    ) -> i32 {
+        match slot {
+            Some(xf_id) if xf_id >= 0 && (xf_id as usize) < self.cell_style_xfs.len() => {
+                self.rewrite_base_style(xf_id, style, includes);
+                xf_id
+            }
+            _ => self.create_base_style(style, includes),
+        }
+    }
+
     // Rewrites the base record `xf_id` in place and pushes the new components into every
     // `cell_xfs` entry parented to it, except the categories an entry overrides locally (its
     // `apply_*` flags). A quote prefix is never touched: it belongs to the cell's content.
@@ -434,6 +452,37 @@ impl Styles {
             }
             if !cell_xf.apply_alignment {
                 cell_xf.alignment = style.alignment.clone();
+            }
+        }
+    }
+
+    pub(crate) fn get_parented_style_index_or_create(
+        &mut self,
+        style: &Style,
+        xf_id: i32,
+        owned: StyleIncludes,
+    ) -> i32 {
+        let (num_fmt_id, font_id, fill_id, border_id) = self.get_or_create_component_ids(style);
+        let record = CellXfs {
+            xf_id,
+            num_fmt_id,
+            font_id,
+            fill_id,
+            border_id,
+            apply_number_format: owned.number_format,
+            apply_border: owned.border,
+            apply_alignment: owned.alignment,
+            apply_protection: owned.protection,
+            apply_font: owned.font,
+            apply_fill: owned.fill,
+            quote_prefix: style.quote_prefix,
+            alignment: style.alignment.clone(),
+        };
+        match self.cell_xfs.iter().position(|xf| *xf == record) {
+            Some(index) => index as i32,
+            None => {
+                self.cell_xfs.push(record);
+                self.cell_xfs.len() as i32 - 1
             }
         }
     }

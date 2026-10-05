@@ -1,12 +1,16 @@
 #![allow(clippy::unwrap_used)]
-
 use crate::expressions::types::Area;
 use crate::merged_cells::MergeStructure;
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, TestModel};
 use crate::types::{
     Alignment, Border, BorderItem, BorderStyle, Color, HorizontalAlignment, MergedCell, Style,
     VerticalAlignment,
 };
+
+// The merged cells of a sheet, as both models report them.
+fn merges(model: &TestModel, sheet: u32) -> Vec<MergedCell> {
+    model.get_merged_cells(sheet).unwrap().to_vec()
+}
 
 fn area(sheet: u32, row: i32, column: i32, width: i32, height: i32) -> Area {
     Area {
@@ -30,8 +34,8 @@ fn merge_keeps_anchor_content() {
 
     assert_eq!(model._get_text("B2"), "5");
     assert_eq!(
-        model.get_merged_cells(0).unwrap(),
-        &[MergedCell {
+        merges(&model, 0),
+        vec![MergedCell {
             row: 2,
             column: 2,
             width: 2,
@@ -52,7 +56,7 @@ fn merge_with_more_than_one_content_cell_is_rejected() {
         Err("Cannot merge cells: more than one cell has content".to_string())
     );
     // nothing changed
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
     assert_eq!(model._get_text("B2"), "5");
     assert_eq!(model._get_text("C3"), "hello");
 }
@@ -70,8 +74,8 @@ fn merge_moves_the_single_content_cell_to_the_anchor() {
     assert_eq!(model._get_text("B2"), "hello");
     assert_eq!(model._get_text("C3"), "");
     assert_eq!(
-        model.get_merged_cells(0).unwrap(),
-        &[MergedCell {
+        merges(&model, 0),
+        vec![MergedCell {
             row: 2,
             column: 2,
             width: 2,
@@ -158,7 +162,7 @@ fn merge_without_content_copies_the_anchor_style() {
 // #222222, top #333333, bottom #444444) wraps the merged range B2:D4 as a
 // whole: each side runs along the matching edge and the interior has no
 // borders.
-fn assert_outline_wraps_b2_d4(model: &crate::model::Model) {
+fn assert_outline_wraps_b2_d4(model: &TestModel) {
     for row in 2..5 {
         for column in 2..5 {
             let border = model.get_style_for_cell(0, row, column).unwrap().border;
@@ -371,7 +375,7 @@ fn merge_invalid_ranges() {
         model.merge_cells(&area(13, 1, 1, 2, 2)),
         Err("Invalid sheet index".to_string())
     );
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
 }
 
 #[test]
@@ -384,9 +388,10 @@ fn merge_overlap_rejected() {
     assert!(model.merge_cells(&area(0, 1, 1, 6, 6)).is_err());
     // disjoint is fine
     model.merge_cells(&area(0, 4, 4, 2, 2)).unwrap();
-    assert_eq!(model.get_merged_cells(0).unwrap().len(), 2);
+    assert_eq!(merges(&model, 0).len(), 2);
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn merge_over_cse_array_formula_rejected() {
     let mut model = new_empty_model();
@@ -426,6 +431,7 @@ fn covered_cell_write_rejected() {
     assert_eq!(model._get_text("C3"), "43");
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn array_formula_over_merge_rejected() {
     let mut model = new_empty_model();
@@ -442,6 +448,7 @@ fn array_formula_over_merge_rejected() {
     );
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn spill_into_merge_is_spill_error() {
     let mut model = new_empty_model();
@@ -463,6 +470,7 @@ fn spill_into_merge_is_spill_error() {
     assert_eq!(model._get_text("C3"), "30");
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn merge_over_dynamic_spill_children() {
     let mut model = new_empty_model();
@@ -485,6 +493,7 @@ fn merge_over_dynamic_spill_children() {
     assert_eq!(model._get_text("C3"), "30");
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn merge_over_dynamic_anchor_moves_the_formula() {
     let mut model = new_empty_model();
@@ -532,8 +541,8 @@ fn unmerge_intersecting_removes_all_touched() {
     // A range touching only the second merge
     model.unmerge_cells(&area(0, 3, 6, 1, 1)).unwrap();
     assert_eq!(
-        model.get_merged_cells(0).unwrap(),
-        &[MergedCell {
+        merges(&model, 0),
+        vec![MergedCell {
             row: 2,
             column: 2,
             width: 2,
@@ -543,14 +552,14 @@ fn unmerge_intersecting_removes_all_touched() {
 
     // A range covering everything
     model.unmerge_cells(&area(0, 1, 1, 20, 20)).unwrap();
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
 }
 
 #[test]
 fn unmerge_without_merges_is_ok() {
     let mut model = new_empty_model();
     model.unmerge_cells(&area(0, 1, 1, 5, 5)).unwrap();
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
     // an invalid sheet is still an error
     assert!(model.unmerge_cells(&area(13, 1, 1, 5, 5)).is_err());
 }
@@ -588,8 +597,8 @@ fn duplicate_sheet_copies_merges() {
 
     let (_, new_sheet) = model.duplicate_sheet(0).unwrap();
     assert_eq!(
-        model.get_merged_cells(new_sheet).unwrap(),
-        &[MergedCell {
+        merges(&model, new_sheet),
+        vec![MergedCell {
             row: 2,
             column: 2,
             width: 2,
@@ -598,8 +607,8 @@ fn duplicate_sheet_copies_merges() {
     );
     // the copies are independent
     model.unmerge_cells(&area(new_sheet, 2, 2, 2, 2)).unwrap();
-    assert_eq!(model.get_merged_cells(0).unwrap().len(), 1);
-    assert!(model.get_merged_cells(new_sheet).unwrap().is_empty());
+    assert_eq!(merges(&model, 0).len(), 1);
+    assert!(merges(&model, new_sheet).is_empty());
 }
 
 // ── Structural operations ────────────────────────────────────────────────────
@@ -630,7 +639,7 @@ fn insert_rows_displaces_merges() {
         model.merge_cells(&area(0, 2, 2, 2, 3)).unwrap();
         model.insert_rows(0, insert_at, 1).unwrap();
         assert_eq!(
-            model.get_merged_cells(0).unwrap(),
+            merges(&model, 0),
             &[expected],
             "inserting a row at {insert_at}"
         );
@@ -656,8 +665,8 @@ fn delete_rows_displaces_merges() {
         model.merge_cells(&area(0, 2, 2, 2, 3)).unwrap();
         model.delete_rows(0, delete_at, count).unwrap();
         assert_eq!(
-            model.get_merged_cells(0).unwrap(),
-            &expected,
+            merges(&model, 0),
+            expected,
             "deleting {count} row(s) at {delete_at}"
         );
     }
@@ -672,16 +681,16 @@ fn insert_and_delete_columns_displace_merges() {
 
     // insert a column inside: grows
     model.insert_columns(0, 3, 1).unwrap();
-    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 2, 4, 2)]);
+    assert_eq!(merges(&model, 0), vec![merged(2, 2, 4, 2)]);
     // insert a column before: shifts right
     model.insert_columns(0, 1, 1).unwrap();
-    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 3, 4, 2)]);
+    assert_eq!(merges(&model, 0), vec![merged(2, 3, 4, 2)]);
     // delete a column overlapping the left edge: shrinks + shifts
     model.delete_columns(0, 2, 2).unwrap();
-    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 2, 3, 2)]);
+    assert_eq!(merges(&model, 0), vec![merged(2, 2, 3, 2)]);
     // delete all its columns: removed
     model.delete_columns(0, 2, 3).unwrap();
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
 }
 
 #[test]
@@ -690,14 +699,16 @@ fn merge_shrunk_to_single_cell_is_removed() {
     // vertical merge B2:B3
     model.merge_cells(&area(0, 2, 2, 1, 2)).unwrap();
     model.delete_rows(0, 3, 1).unwrap();
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
 
     // horizontal merge B2:C2
     model.merge_cells(&area(0, 2, 2, 2, 1)).unwrap();
     model.delete_columns(0, 3, 1).unwrap();
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
 }
 
+// materializing the index up to LAST_ROW is impractical in the collaborative model
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn insert_rows_clamps_merges_at_the_bottom() {
     let mut model = new_empty_model();
@@ -706,7 +717,7 @@ fn insert_rows_clamps_merges_at_the_bottom() {
     model.merge_cells(&area(0, last_row - 1, 2, 1, 2)).unwrap();
     // the merge is pushed against the edge and collapses to a single cell
     model.insert_rows(0, 1, 1).unwrap();
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
 }
 
 #[test]
@@ -725,7 +736,7 @@ fn move_columns_with_merges() {
     // moving both columns two to the right carries the merge along
     model.move_columns_action(0, 2, 2, 2).unwrap();
     model.evaluate();
-    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 4, 2, 2)]);
+    assert_eq!(merges(&model, 0), vec![merged(2, 4, 2, 2)]);
     assert_eq!(model._get_text("D2"), "5");
     assert_eq!(model._get_text("B2"), "");
 }
@@ -741,7 +752,7 @@ fn move_columns_displaced_zone_shifts_merge() {
     // the merge is fully inside it and shifts one to the left
     model.move_columns_action(0, 2, 1, 4).unwrap();
     model.evaluate();
-    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 3, 2, 2)]);
+    assert_eq!(merges(&model, 0), vec![merged(2, 3, 2, 2)]);
     assert_eq!(model._get_text("C2"), "7");
 }
 
@@ -761,7 +772,7 @@ fn move_rows_with_merges() {
     // moving both rows down carries the merge along
     model.move_rows_action(0, 2, 2, 2).unwrap();
     model.evaluate();
-    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(4, 2, 2, 2)]);
+    assert_eq!(merges(&model, 0), vec![merged(4, 2, 2, 2)]);
     assert_eq!(model._get_text("B4"), "5");
 }
 
@@ -774,7 +785,7 @@ fn merge_center_centers_the_whole_range() {
     model.evaluate();
 
     model.merge_cells_center(&area(0, 2, 2, 2, 2)).unwrap();
-    assert_eq!(model.get_merged_cells(0).unwrap(), &[merged(2, 2, 2, 2)]);
+    assert_eq!(merges(&model, 0), vec![merged(2, 2, 2, 2)]);
     assert_eq!(model._get_text("B2"), "5");
     for cell in ["B2", "C2", "B3", "C3"] {
         let reference = model._parse_reference(cell);
@@ -823,8 +834,8 @@ fn merge_across_merges_each_row() {
     model.merge_cells_across(&area(0, 2, 2, 2, 3)).unwrap();
     model.evaluate();
     assert_eq!(
-        model.get_merged_cells(0).unwrap(),
-        &[merged(2, 2, 2, 1), merged(3, 2, 2, 1), merged(4, 2, 2, 1)]
+        merges(&model, 0),
+        vec![merged(2, 2, 2, 1), merged(3, 2, 2, 1), merged(4, 2, 2, 1)]
     );
     // each row's single content cell moved to its own anchor
     assert_eq!(model._get_text("B2"), "top");
@@ -844,7 +855,7 @@ fn merge_across_is_all_or_nothing() {
         model.merge_cells_across(&area(0, 2, 2, 2, 3)),
         Err("Cannot merge cells: more than one cell has content".to_string())
     );
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
     assert_eq!(model._get_text("B3"), "a");
     assert_eq!(model._get_text("C3"), "b");
 }
@@ -857,7 +868,7 @@ fn merge_across_a_single_column_is_rejected() {
         model.merge_cells_across(&area(0, 2, 2, 1, 3)),
         Err("Cannot merge a single cell".to_string())
     );
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
 }
 
 #[test]
@@ -871,8 +882,8 @@ fn merge_down_merges_each_column() {
     model.merge_cells_down(&area(0, 2, 2, 2, 3)).unwrap();
     model.evaluate();
     assert_eq!(
-        model.get_merged_cells(0).unwrap(),
-        &[merged(2, 2, 1, 3), merged(2, 3, 1, 3)]
+        merges(&model, 0),
+        vec![merged(2, 2, 1, 3), merged(2, 3, 1, 3)]
     );
     assert_eq!(model._get_text("B2"), "left");
     assert_eq!(model._get_text("B3"), "");
@@ -891,7 +902,7 @@ fn merge_down_is_all_or_nothing() {
         model.merge_cells_down(&area(0, 2, 2, 2, 3)),
         Err("Cannot merge cells: more than one cell has content".to_string())
     );
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
     assert_eq!(model._get_text("C2"), "a");
     assert_eq!(model._get_text("C3"), "b");
 }
@@ -904,5 +915,5 @@ fn merge_down_a_single_row_is_rejected() {
         model.merge_cells_down(&area(0, 2, 2, 3, 1)),
         Err("Cannot merge a single cell".to_string())
     );
-    assert!(model.get_merged_cells(0).unwrap().is_empty());
+    assert!(merges(&model, 0).is_empty());
 }

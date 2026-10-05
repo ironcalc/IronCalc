@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::number_format::format_number;
-use crate::test::util::new_empty_model;
-use crate::UserModel;
+#[cfg(not(feature = "collab-test"))]
+use crate::{test::util::new_empty_model, UserModel};
 
 #[test]
 fn test_simple_format() {
@@ -19,6 +19,7 @@ fn test_maximum_zeros() {
     assert_eq!(formatted.text, "1,234.3333333333300000000".to_string());
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_leading_comma_text() {
     let model = new_empty_model();

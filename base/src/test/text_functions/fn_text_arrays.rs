@@ -3,11 +3,11 @@
 //! LEN, TRIM, PROPER, CLEAN, FIND, SEARCH, REPT, SUBSTITUTE and REPLACE work
 //! element by element when any of their arguments is a range or an array.
 
-use crate::model::Model;
 use crate::test::util::new_empty_model;
+use crate::test::util::TestModel;
 
 /// A1:C1 holds three texts
-fn model_with_texts<'a>() -> Model<'a> {
+fn model_with_texts<'a>() -> TestModel<'a> {
     let mut model = new_empty_model();
     model._set("A1", "Hello World");
     model._set("B1", "' ab  c ");
@@ -15,7 +15,7 @@ fn model_with_texts<'a>() -> Model<'a> {
     model
 }
 
-fn row(model: &Model, row: i32, columns: i32) -> Vec<String> {
+fn row(model: &TestModel, row: i32, columns: i32) -> Vec<String> {
     (1..=columns)
         .map(|column| model._get_text_at(0, row, column))
         .collect()
@@ -228,7 +228,7 @@ fn wrong_number_of_arguments() {
 // argument comes first.
 
 /// A1:A9 holds texts, with an error in A6 and another one in A8
-fn model_with_a_column<'a>() -> Model<'a> {
+fn model_with_a_column<'a>() -> TestModel<'a> {
     let mut model = new_empty_model();
     for (r, value) in [
         "Hello",
@@ -251,7 +251,7 @@ fn model_with_a_column<'a>() -> Model<'a> {
     model
 }
 
-fn column(model: &Model, column: i32, rows: i32) -> Vec<String> {
+fn column(model: &TestModel, column: i32, rows: i32) -> Vec<String> {
     (1..=rows)
         .map(|row| model._get_text_at(0, row, column))
         .collect()

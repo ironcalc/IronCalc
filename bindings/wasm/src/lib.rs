@@ -4,6 +4,7 @@ use wasm_bindgen::{
     JsValue,
 };
 
+use ironcalc_base::types::Link;
 use ironcalc_base::{
     cf_types::CfRuleInput,
     colors,
@@ -12,10 +13,18 @@ use ironcalc_base::{
         types::Area,
         utils::{column_to_number, number_to_column, quote_name as quote_name_ic},
     },
-    types::{CellType, Color, Link, Style, StyleIncludes},
+    types::{CellType, Color, Position, Style, StyleIncludes},
     worksheet::NavigationDirection,
-    BorderArea, ClipboardData, UserModel as BaseModel,
+    BorderArea, ClipboardData, UserModel,
 };
+
+/// The addressing scheme, and so the model instantiation, wrapped by these bindings.
+#[cfg(not(feature = "collab"))]
+type Pos = ironcalc_base::types::Ordinal;
+#[cfg(feature = "collab")]
+type Pos = ironcalc_base::collab::model::Stable;
+
+type BaseModel = UserModel<'static, Pos>;
 
 fn to_js_error(error: String) -> JsError {
     JsError::new(&error.to_string())
@@ -109,17 +118,20 @@ impl From<ironcalc_base::FmtSettings> for FmtSettings {
     }
 }
 
+// The collaborative model owns its locale, so only the ordinal constructors need this.
+#[cfg(not(feature = "collab"))]
 fn leak_str(s: &str) -> &'static str {
     Box::leak(s.to_owned().into_boxed_str())
 }
 
 #[wasm_bindgen]
 pub struct Model {
-    model: BaseModel<'static>,
+    model: BaseModel,
 }
 
 #[wasm_bindgen]
 impl Model {
+    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(constructor)]
     pub fn new(
         name: &str,
@@ -136,6 +148,22 @@ impl Model {
         Ok(Model { model })
     }
 
+    /// Collaborative models are bound to a replica session id.
+    #[cfg(feature = "collab")]
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+        session: u32,
+    ) -> Result<Model, JsError> {
+        let model = BaseModel::new_empty_with_session(name, locale, timezone, language_id, session)
+            .map_err(to_js_error)?;
+        Ok(Model { model })
+    }
+
+    #[cfg(not(feature = "collab"))]
     #[wasm_bindgen(js_name = "fromBytes")]
     pub fn from_bytes(bytes: &[u8], language_id: &str) -> Result<Model, JsError> {
         let language_id = leak_str(language_id);
@@ -143,9 +171,16 @@ impl Model {
         Ok(Model { model })
     }
 
+    #[cfg(feature = "collab")]
+    #[wasm_bindgen(js_name = "fromBytes")]
+    pub fn from_bytes(bytes: &[u8], session: u32) -> Result<Model, JsError> {
+        let model = BaseModel::from_bytes_with_session(bytes, session).map_err(to_js_error)?;
+        Ok(Model { model })
+    }
+
     /// Loads a workbook from the bytes of an xlsx file.
     /// Only available in `@ironcalc/wasm-xlsx`.
-    #[cfg(feature = "xlsx")]
+    #[cfg(all(feature = "xlsx", not(feature = "collab")))]
     #[wasm_bindgen(js_name = "fromXlsx")]
     pub fn from_xlsx(
         bytes: &[u8],
@@ -162,6 +197,26 @@ impl Model {
         Ok(Model {
             model: BaseModel::from_model(calc_model),
         })
+    }
+
+    /// Loads a workbook from the bytes of an xlsx file: the import is the
+    /// replica's whole history and ships to peers like any other edit.
+    /// Only available in `@ironcalc/wasm-xlsx`.
+    #[cfg(all(feature = "xlsx", feature = "collab"))]
+    #[wasm_bindgen(js_name = "fromXlsx")]
+    pub fn from_xlsx(
+        bytes: &[u8],
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+        session: u32,
+    ) -> Result<Model, JsError> {
+        let workbook = ironcalc::import::load_from_xlsx_bytes(bytes, name, locale, timezone)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        let model = BaseModel::from_workbook_with_session(workbook, language_id, session)
+            .map_err(to_js_error)?;
+        Ok(Model { model })
     }
 
     pub fn undo(&mut self) -> Result<(), JsError> {
@@ -555,30 +610,27 @@ impl Model {
     // This two are only used when we want to compute the automatic width of a column or height of a row
     #[wasm_bindgen(js_name = "getRowsWithData")]
     pub fn get_rows_with_data(&self, sheet: u32, column: i32) -> Result<Vec<i32>, JsError> {
-        let sheet_data = &self
+        let worksheet = self
             .model
             .get_model()
             .workbook
             .worksheet(sheet)
-            .map_err(to_js_error)?
-            .sheet_data;
-        Ok(sheet_data
-            .rows()
-            .into_iter()
-            .filter(|row| sheet_data.cell(*row, column).is_some())
+            .map_err(to_js_error)?;
+        Ok(Pos::stored_cells(worksheet)
+            .filter(|(_, c, _)| *c == column)
+            .map(|(row, _, _)| row)
             .collect())
     }
 
     #[wasm_bindgen(js_name = "getColumnsWithData")]
     pub fn get_columns_with_data(&self, sheet: u32, row: i32) -> Result<Vec<i32>, JsError> {
-        Ok(self
+        let worksheet = self
             .model
             .get_model()
             .workbook
             .worksheet(sheet)
-            .map_err(to_js_error)?
-            .sheet_data
-            .columns_in_row(row))
+            .map_err(to_js_error)?;
+        Ok(Pos::stored_columns_in_row(worksheet, row))
     }
 
     #[wasm_bindgen(js_name = "updateRangeStyle")]
@@ -988,11 +1040,26 @@ impl Model {
 
     /// Serializes the workbook to xlsx bytes.
     /// Only available in `@ironcalc/wasm-xlsx`.
-    #[cfg(feature = "xlsx")]
+    /// Not available with `collab`: the export reads an ordinal model.
+    #[cfg(all(feature = "xlsx", not(feature = "collab")))]
     #[wasm_bindgen(js_name = "toXlsx")]
     pub fn to_xlsx(&self) -> Result<Vec<u8>, JsError> {
         let writer = std::io::Cursor::new(Vec::new());
         let writer = ironcalc::export::save_xlsx_to_writer(self.model.get_model(), writer)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        Ok(writer.into_inner())
+    }
+
+    /// Serializes the workbook to xlsx bytes.
+    /// Only available in `@ironcalc/wasm-xlsx`.
+    #[cfg(all(feature = "xlsx", feature = "collab"))]
+    #[wasm_bindgen(js_name = "toXlsx")]
+    pub fn to_xlsx(&self) -> Result<Vec<u8>, JsError> {
+        let workbook = self.model.get_model().to_ordinal_workbook();
+        // Stored formulas are English, which is what the exporter writes out.
+        let model = ironcalc_base::Model::from_workbook(workbook, "en").map_err(to_js_error)?;
+        let writer = std::io::Cursor::new(Vec::new());
+        let writer = ironcalc::export::save_xlsx_to_writer(&model, writer)
             .map_err(|e| to_js_error(e.to_string()))?;
         Ok(writer.into_inner())
     }

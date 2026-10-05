@@ -5,12 +5,12 @@
 //! the percentage work element by element on ranges and arrays.
 
 use crate::expressions::types::{Area, CellReferenceIndex};
-use crate::model::Model;
 use crate::test::util::new_empty_model;
+use crate::test::util::TestModel;
 
 /// A1:A4 holds h, e, h, l; B1:B4 holds 1 to 4; C1:C4 holds the text 3, TRUE,
 /// nothing and abc
-fn model_with_data<'a>() -> Model<'a> {
+fn model_with_data<'a>() -> TestModel<'a> {
     let mut model = new_empty_model();
     for (cell, value) in [
         ("A1", "h"),

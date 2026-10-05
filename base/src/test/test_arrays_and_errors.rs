@@ -4,11 +4,11 @@
 //! array of errors, not a single error. So does a function that works element
 //! by element when one argument is an array and another one an error.
 
-use crate::model::Model;
 use crate::test::util::new_empty_model;
+use crate::test::util::TestModel;
 
 /// A1:C2 holds 1, 2, 3 / 4, 5, 6
-fn model_with_numbers<'a>() -> Model<'a> {
+fn model_with_numbers<'a>() -> TestModel<'a> {
     let mut model = new_empty_model();
     for (cell, value) in [
         ("A1", "1"),
@@ -23,7 +23,7 @@ fn model_with_numbers<'a>() -> Model<'a> {
     model
 }
 
-fn row(model: &Model, row: i32, columns: i32) -> Vec<String> {
+fn row(model: &TestModel, row: i32, columns: i32) -> Vec<String> {
     (1..=columns)
         .map(|column| model._get_text_at(0, row, column))
         .collect()

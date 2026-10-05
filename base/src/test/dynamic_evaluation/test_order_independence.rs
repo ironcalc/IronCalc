@@ -23,8 +23,8 @@
 // shows a #CIRC! or a #SPILL!, only 3 and 4 are required.
 
 use crate::test::util::new_empty_model;
+use crate::test::util::TestModel;
 use crate::types::{Cell, FormulaValue};
-use crate::Model;
 
 const ROWS: i32 = 5;
 const COLS: i32 = 5;
@@ -118,7 +118,7 @@ fn shuffled(cells: &[(String, String)], seed: u64) -> Vec<(String, String)> {
     result
 }
 
-pub(super) fn build(cells: &[(String, String)]) -> Model<'static> {
+pub(super) fn build(cells: &[(String, String)]) -> TestModel<'static> {
     let mut model = new_empty_model();
     for (reference, content) in cells {
         model._set(reference, content);
@@ -128,7 +128,7 @@ pub(super) fn build(cells: &[(String, String)]) -> Model<'static> {
 
 /// Text of every cell in a generous area (spills can extend past the input grid),
 /// plus a check that no formula was left unevaluated.
-pub(super) fn snapshot(model: &Model) -> Vec<String> {
+pub(super) fn snapshot(model: &TestModel) -> Vec<String> {
     let mut lines = Vec::new();
     let worksheet = model.workbook.worksheet(0).unwrap();
     for row in 1..=(ROWS + 6) {
