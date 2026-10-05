@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -7,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // ── TRANSPOSE ─────────────────────────────────────────────────────────────
 
     /// `=TRANSPOSE(array)`

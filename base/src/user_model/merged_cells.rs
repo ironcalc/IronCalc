@@ -166,49 +166,6 @@ impl UserModel<'_> {
         Ok(())
     }
 
-    // A covered cell can never stay selected: if the selected cell is now
-    // inside the merged area, select the whole area — all the merged cells of
-    // a multi-range merge ("across", "down") — with the top-left anchor as
-    // the selected cell and the bottom-right cell as the focus (the canonical
-    // anchor/focus pair for that range). The scroll position and the
-    // selection are left alone on undo.
-    fn snap_selection_to_merged_area(&mut self, ranges: &[Area]) {
-        let Some(first) = ranges.first() else {
-            return;
-        };
-        let row = ranges.iter().map(|r| r.row).min().unwrap_or(first.row);
-        let column = ranges
-            .iter()
-            .map(|r| r.column)
-            .min()
-            .unwrap_or(first.column);
-        let last_row = ranges
-            .iter()
-            .map(|r| r.row + r.height - 1)
-            .max()
-            .unwrap_or(first.row);
-        let last_column = ranges
-            .iter()
-            .map(|r| r.column + r.width - 1)
-            .max()
-            .unwrap_or(first.column);
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(first.sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                if view.row >= row
-                    && view.row <= last_row
-                    && view.column >= column
-                    && view.column <= last_column
-                {
-                    view.row = row;
-                    view.column = column;
-                    view.range = [row, column, last_row, last_column];
-                    view.focus_row = last_row;
-                    view.focus_column = last_column;
-                }
-            }
-        }
-    }
-
     /// Removes every merged cell that intersects `range`. The content of the
     /// anchors is kept. Removing no merged cells at all is a no-op.
     ///
@@ -271,5 +228,50 @@ impl UserModel<'_> {
             }
         }
         Ok(diff_list)
+    }
+}
+
+impl<A: crate::types::Position> UserModel<'_, A> {
+    // A covered cell can never stay selected: if the selected cell is now
+    // inside the merged area, select the whole area — all the merged cells of
+    // a multi-range merge ("across", "down") — with the top-left anchor as
+    // the selected cell and the bottom-right cell as the focus (the canonical
+    // anchor/focus pair for that range). The scroll position and the
+    // selection are left alone on undo.
+    fn snap_selection_to_merged_area(&mut self, ranges: &[Area]) {
+        let Some(first) = ranges.first() else {
+            return;
+        };
+        let row = ranges.iter().map(|r| r.row).min().unwrap_or(first.row);
+        let column = ranges
+            .iter()
+            .map(|r| r.column)
+            .min()
+            .unwrap_or(first.column);
+        let last_row = ranges
+            .iter()
+            .map(|r| r.row + r.height - 1)
+            .max()
+            .unwrap_or(first.row);
+        let last_column = ranges
+            .iter()
+            .map(|r| r.column + r.width - 1)
+            .max()
+            .unwrap_or(first.column);
+        if let Ok(worksheet) = self.model.workbook.worksheet_mut(first.sheet) {
+            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
+                if view.row >= row
+                    && view.row <= last_row
+                    && view.column >= column
+                    && view.column <= last_column
+                {
+                    view.row = row;
+                    view.column = column;
+                    view.range = [row, column, last_row, last_column];
+                    view.focus_row = last_row;
+                    view.focus_column = last_column;
+                }
+            }
+        }
     }
 }

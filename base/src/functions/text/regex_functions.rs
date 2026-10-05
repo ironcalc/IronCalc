@@ -3,6 +3,7 @@ use regex::Regex;
 #[cfg(target_arch = "wasm32")]
 use regex_lite::Regex;
 
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -13,7 +14,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// REGEXEXTRACT(text, regular_expression, [return_all])
     ///
     /// Returns the first substring of `text` that matches `regular_expression`.

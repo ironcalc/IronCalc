@@ -1,4 +1,5 @@
 use crate::number_format::parse_finite_number;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     cast::{array_node_to_string, NumberOrArray, StringOrArray, ValueOrArray},
@@ -100,7 +101,7 @@ pub(crate) fn array_of_errors(
     )
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// Applies `op` element‐wise for arrays/numbers.
     pub(crate) fn handle_arithmetic(
         &mut self,

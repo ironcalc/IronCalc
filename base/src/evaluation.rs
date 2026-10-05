@@ -47,7 +47,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
-use crate::types::{ArrayKind, Cell};
+use crate::types::{ArrayKind, Cell, Position};
 
 /// The hasher of the maps the evaluation keeps about positions. Their keys are
 /// three small integers and every formula looks several of them up, which
@@ -475,7 +475,7 @@ impl Default for Evaluation {
     }
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// Evaluates every formula in the workbook.
     ///
     /// Runs passes until one completes without a restart. `RestartLog` learns
@@ -484,6 +484,11 @@ impl<'a> Model<'a> {
     /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
     /// is marked, so there is nothing of it to read or to contradict.
     pub fn evaluate(&mut self) {
+        // Where spills are derived the order of the anchors is too: kept across evaluations
+        // it would depend on the history of the replica.
+        if A::CSE_SPILLS {
+            self.evaluation.anchor_order.clear();
+        }
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
@@ -560,7 +565,7 @@ impl<'a> Model<'a> {
     fn dynamic_spills(&self) -> Vec<(CellReferenceIndex, Cell)> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
+            for (row, column, cell) in worksheet.cells() {
                 if !matches!(cell, Cell::ArrayFormula { .. } | Cell::SpillCell { .. }) {
                     continue;
                 }
@@ -634,14 +639,20 @@ impl<'a> Model<'a> {
     fn dynamic_anchors_in_natural_order(&self) -> Vec<CellReferenceIndex> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
-                if matches!(
-                    cell,
+            for (row, column, cell) in worksheet.cells() {
+                // A CSE anchor goes with them where its covered cells are derived too.
+                let spills = match cell {
                     Cell::ArrayFormula {
                         kind: ArrayKind::Dynamic,
                         ..
-                    }
-                ) {
+                    } => true,
+                    Cell::ArrayFormula {
+                        kind: ArrayKind::Cse,
+                        ..
+                    } => A::CSE_SPILLS,
+                    _ => false,
+                };
+                if spills {
                     found.push(CellReferenceIndex {
                         sheet: sheet as u32,
                         row,
@@ -656,6 +667,11 @@ impl<'a> Model<'a> {
     /// One pass over the workbook: anchors first, then every cell. Returns the
     /// reason the pass had to be abandoned, if any.
     fn run_pass(&mut self, circular_anchors: &[CellKey]) -> Option<Restart> {
+        // Spill cells are derived: every pass rebuilds them from nothing, so a representation
+        // keeping them out of `sheet_data` needs no per-anchor clearing of its own.
+        for worksheet in &mut self.workbook.worksheets {
+            A::drop_spills(worksheet);
+        }
         let state = &mut self.evaluation;
         state.cells.clear();
         state.stack.clear();

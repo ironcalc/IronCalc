@@ -15,6 +15,7 @@ mod ui;
 mod undo_redo;
 
 pub use common::UserModel;
+pub use history::OrdinalUserState;
 
 #[cfg(test)]
 pub use ui::SelectedView;

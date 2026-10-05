@@ -196,9 +196,9 @@ fn formula_value_to_spill_value(v: &FormulaValue) -> SpillValue {
 /// * A list of cells with its status (evaluating, evaluated, not evaluated)
 /// * A dictionary with the shared strings and their indices.
 ///   This is an optimization for large files (~1 million rows)
-pub struct Model<'a> {
+pub struct Model<'a, A: Position = Ordinal> {
     /// A Rust internal representation of an Excel workbook
-    pub workbook: Workbook,
+    pub workbook: Workbook<A>,
     /// A list of parsed formulas. They are shared, not owned, so that the
     /// evaluation can hold on to the formula it is running, while the model is
     /// borrowed mutably, without copying it.
@@ -276,7 +276,7 @@ pub struct CellIndex {
     pub column: i32,
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn get_next_variable_id(&mut self) -> usize {
         let id = self.last_variable_id;
         self.last_variable_id += 1;
@@ -553,6 +553,22 @@ impl<'a> Model<'a> {
         formula: &str,
         context: &CellReferenceRC,
     ) -> Result<String, String> {
+        let (node, had_equals) = self.user_formula_to_node(formula, context)?;
+        let english = to_english_string(&node, context);
+        Ok(if had_equals {
+            format!("={english}")
+        } else {
+            english
+        })
+    }
+
+    /// [`Self::user_formula_to_internal`] stopping at the AST, together with whether the author
+    /// wrote the leading `=` that the stored text keeps.
+    pub(crate) fn user_formula_to_node(
+        &mut self,
+        formula: &str,
+        context: &CellReferenceRC,
+    ) -> Result<(Node, bool), String> {
         let trimmed = formula.trim();
         let had_equals = trimmed.starts_with('=');
         let body = trimmed.strip_prefix('=').unwrap_or(trimmed);
@@ -565,12 +581,7 @@ impl<'a> Model<'a> {
         if let Node::ParseErrorKind { .. } = node {
             return Err(format!("Invalid formula: '{formula}'"));
         }
-        let english = to_english_string(&node, context);
-        Ok(if had_equals {
-            format!("={english}")
-        } else {
-            english
-        })
+        Ok((node, had_equals))
     }
 
     /// Returns completion information for a formula being edited in a cell.
@@ -969,6 +980,37 @@ impl<'a> Model<'a> {
         Some(value.clone())
     }
 
+    /// Whether something other than the anchor's own spill sits in the `width` × `height` range
+    /// anchored at (`row`, `column`), so the array cannot spill into it.
+    fn spill_blocked(&self, sheet: u32, row: i32, column: i32, width: i32, height: i32) -> bool {
+        let worksheet = &self.workbook.worksheets[sheet as usize];
+        for r in row..row + height {
+            for c in column..column + width {
+                if r == row && c == column {
+                    continue;
+                }
+                // Merged cells always block spilling.
+                if worksheet.merged_range_containing(r, c).is_some() {
+                    return true;
+                }
+                // A cell blocks spilling only if it is occupied by something other than
+                // an empty cell or a spill cell that already belongs to this formula.
+                let blocking = worksheet
+                    .cell(r, c)
+                    .map(|cell| match cell {
+                        Cell::EmptyCell { .. } => false,
+                        Cell::SpillCell { a, .. } if *a == (row, column) => false,
+                        _ => true,
+                    })
+                    .unwrap_or(false);
+                if blocking {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Sets `result` in the formula cell at `cell_reference`, which `cell`
     /// describes (see `FormulaCell`)
     /// If the result is an array it will spill over other cells
@@ -985,6 +1027,42 @@ impl<'a> Model<'a> {
         let original_range = cell.array;
         let s = cell.s;
         let formula = cell.f;
+        // A blocked CSE range shows #SPILL! on the anchor alone and keeps its declared extent,
+        // whatever the result: sent down the scalar path, the error would fill the covered cells.
+        if let Some((false, (width, height))) = original_range {
+            if A::CSE_SPILLS
+                && (row + height - 1 > LAST_ROW
+                    || column + width - 1 > LAST_COLUMN
+                    || self.spill_blocked(sheet, row, column, width, height))
+            {
+                let o = self
+                    .cell_reference_to_string(&cell_reference)
+                    .unwrap_or_default();
+                let anchor = Cell::ArrayFormula {
+                    f: formula,
+                    s,
+                    r: (width, height),
+                    kind: ArrayKind::Cse,
+                    v: FormulaValue::Error {
+                        ei: Error::SPILL,
+                        o,
+                        m: "Cannot spill array result".to_string(),
+                    },
+                };
+                return self.workbook.worksheets[sheet as usize].update_cell(row, column, anchor);
+            }
+            // Where the covered cells are derived, writing them can contradict a read made
+            // earlier in the pass, as a dynamic spill does: the pass restarts with the anchor first.
+            if A::CSE_SPILLS {
+                let writes: Vec<CellKey> = (row..row + height)
+                    .flat_map(|r| (column..column + width).map(move |c| (sheet, r, c)))
+                    .filter(|&(_, r, c)| (r, c) != (row, column))
+                    .collect();
+                if self.spill_contradicts_a_read(cell_reference, &writes, &[]) {
+                    return Ok(());
+                }
+            }
+        }
         // Handle array results separately: they always return early, writing all cells
         // themselves. By dispatching here we avoid needing an unreachable arm in the
         // `new_cell` match below.
@@ -1055,7 +1133,12 @@ impl<'a> Model<'a> {
                             };
                             // The cells are created on demand: a structural
                             // operation may have moved the array without them.
-                            self.workbook.worksheets[sheet as usize].update_cell(r, c, new_cell)?;
+                            let worksheet = &mut self.workbook.worksheets[sheet as usize];
+                            if r == row && c == column {
+                                worksheet.update_cell(r, c, new_cell)?;
+                            } else {
+                                worksheet.write_spill(r, c, new_cell)?;
+                            }
                         }
                     }
                     // All cells (anchor + spills) have been written above.
@@ -1178,7 +1261,7 @@ impl<'a> Model<'a> {
                         continue;
                     }
                     let existing_style = ws.get_style(r, c);
-                    ws.update_cell(
+                    ws.write_spill(
                         r,
                         c,
                         Cell::SpillCell {
@@ -1296,7 +1379,7 @@ impl<'a> Model<'a> {
                     if (r, c) == (row, column) {
                         continue;
                     }
-                    if worksheet.merged_cell_containing(r, c).is_some() {
+                    if worksheet.merged_range_containing(r, c).is_some() {
                         blocked = true;
                         continue;
                     }
@@ -1336,23 +1419,24 @@ impl<'a> Model<'a> {
         for r in row..row + height {
             for c in column..column + width {
                 let value = array[(r - row) as usize][(c - column) as usize].clone();
-                let cell = if (r, c) == (row, column) {
-                    Cell::ArrayFormula {
+                // Cells are created on demand: rows and columns may not exist yet.
+                if (r, c) == (row, column) {
+                    let anchor = Cell::ArrayFormula {
                         f: formula,
                         s: style,
                         r: (width, height),
                         kind: ArrayKind::Dynamic,
                         v: array_node_to_formula_value(value),
-                    }
+                    };
+                    worksheet.update_cell(r, c, anchor)?;
                 } else {
-                    Cell::SpillCell {
+                    let spill = Cell::SpillCell {
                         a: (row, column),
                         s: worksheet.get_style(r, c),
                         v: array_node_to_spill_value(value),
-                    }
-                };
-                // Cells are created on demand: rows and columns may not exist yet.
-                worksheet.update_cell(r, c, cell)?;
+                    };
+                    worksheet.write_spill(r, c, spill)?;
+                }
             }
         }
         for (_, r, c) in clears {
@@ -1410,7 +1494,10 @@ impl<'a> Model<'a> {
         }
         Ok(cells)
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Sets the color of the sheet tab.
     ///
     /// # Examples
@@ -1444,18 +1531,16 @@ impl<'a> Model<'a> {
         self.evaluate_conditional_formatting();
     }
 
-    /// Returns the Theme
-    pub fn get_theme(&self) -> Theme {
-        self.workbook.theme.clone()
-    }
-
     /// Makes the grid lines in the sheet visible (`true`) or hidden (`false`)
     pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<(), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         worksheet.show_grid_lines = show_grid_lines;
         Ok(())
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     // Returns the 'single' value of a cell. Not arrays or ranges.
     pub(crate) fn get_cell_value(
         &self,
@@ -1610,7 +1695,6 @@ impl<'a> Model<'a> {
     #[inline(always)]
     pub(crate) fn fetch_cell(&self, cell_reference: CellReferenceIndex) -> Option<&Cell> {
         self.workbook.worksheets[cell_reference.sheet as usize]
-            .sheet_data
             .cell(cell_reference.row, cell_reference.column)
     }
 
@@ -1623,7 +1707,10 @@ impl<'a> Model<'a> {
         }
         None
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Returns a model from an internal binary representation of a workbook
     ///
     /// # Examples
@@ -1732,7 +1819,10 @@ impl<'a> Model<'a> {
 
         Ok(model)
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Parses a reference like "Sheet1!B4" into {0, 2, 4}
     ///
     /// # Examples
@@ -1798,7 +1888,10 @@ impl<'a> Model<'a> {
 
         Some(CellReferenceIndex { sheet, row, column })
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Moves the formula `value` from `source` (in `area`) to `target`.
     ///
     /// # Examples
@@ -1909,8 +2002,10 @@ impl<'a> Model<'a> {
                     self.language,
                 ),
                 Some(i) => {
-                    let (formula, _static_result) =
-                        &self.parsed_formulas[sheet as usize][i as usize];
+                    // Anchored at the cell it lives in, so its relative references keep their
+                    // offsets; the target only picks where those offsets are rendered from.
+                    let formula = &A::materialize_formula(self, sheet, row, column, i)
+                        .ok_or("missing formula")?;
                     let cell_ref = CellReferenceRC {
                         sheet: self.workbook.worksheets[sheet as usize].get_name(),
                         row: target_row,
@@ -2015,11 +2110,7 @@ impl<'a> Model<'a> {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let (formula, _static_result) = &self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
+                    let formula = &A::materialize_formula(self, sheet, row, column, formula_index)
                         .ok_or("missing formula")?;
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
@@ -2051,11 +2142,7 @@ impl<'a> Model<'a> {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let (formula, _static_result) = &self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
+                    let formula = &A::materialize_formula(self, sheet, row, column, formula_index)
                         .ok_or("missing formula")?;
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
@@ -2073,7 +2160,10 @@ impl<'a> Model<'a> {
             None => Ok(None),
         }
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Updates the value of a cell with some text
     /// It does not change the style unless needs to add "quoting"
     ///
@@ -2602,16 +2692,6 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
-    pub(crate) fn get_cell_structure(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<CellStructure, String> {
-        let worksheet = self.workbook.worksheet(sheet)?;
-        worksheet.get_cell_structure(row, column)
-    }
-
     /// The index of a formula among the shared formulas of the sheet, adding
     /// it to them if it is new.
     ///
@@ -2783,6 +2863,57 @@ impl<'a> Model<'a> {
             .worksheet_mut(sheet)?
             .set_cell_with_number(row, column, value, style)
     }
+}
+
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
+    pub(crate) fn get_cell_structure(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<CellStructure, String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        worksheet.get_cell_structure(row, column)
+    }
+
+    // Returns true if for every array formula in the range, the whole spill is included in the range,
+    // false otherwise.
+    pub(crate) fn can_clear_range(&self, range: &Area) -> Result<bool, String> {
+        let sheet = range.sheet;
+        for row in range.row..range.row + range.height {
+            for column in range.column..range.column + range.width {
+                match self.get_cell_structure(sheet, row, column)? {
+                    CellStructure::ArrayFormula { range: r } => {
+                        let (width, height) = r;
+                        if column + width > range.column + range.width
+                            || row + height > range.row + range.height
+                        {
+                            return Ok(false);
+                        }
+                    }
+                    CellStructure::SpillArray {
+                        anchor: a,
+                        range: r,
+                    } => {
+                        let (anchor_row, anchor_column) = a;
+                        let (width, height) = r;
+                        if anchor_column < range.column
+                            || anchor_row < range.row
+                            || anchor_column + width > range.column + range.width
+                            || anchor_row + height > range.row + range.height
+                        {
+                            return Ok(false);
+                        }
+                    }
+                    _ => {
+                        // noop
+                    }
+                }
+            }
+        }
+        Ok(true)
+    }
 
     // Helper function that returns a defined name given the name and scope
     fn get_parsed_defined_name(
@@ -2938,7 +3069,8 @@ impl<'a> Model<'a> {
         };
         match cell.get_formula() {
             Some(formula_index) => {
-                let formula = &self.parsed_formulas[sheet as usize][formula_index as usize].0;
+                let formula = &A::materialize_formula(self, sheet, row, column, formula_index)
+                    .ok_or("missing formula")?;
                 let cell_ref = CellReferenceRC {
                     sheet: worksheet.get_name(),
                     row,
@@ -2987,7 +3119,7 @@ impl<'a> Model<'a> {
     pub fn get_all_cells(&self) -> Vec<CellIndex> {
         let mut cells = Vec::new();
         for (index, sheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, _) in sheet.sheet_data.cells() {
+            for (row, column, _) in sheet.cells_in_order() {
                 cells.push(CellIndex {
                     index: index as u32,
                     row,
@@ -2997,7 +3129,10 @@ impl<'a> Model<'a> {
         }
         cells
     }
+}
 
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Removes the content of every cell in the range but leaves the style.
     ///
     /// See also:
@@ -3059,44 +3194,6 @@ impl<'a> Model<'a> {
                 || column >= range.column + range.width
         });
         Ok(())
-    }
-
-    // Returns true if for every array formula in the range, the whole spill is included in the range,
-    // false otherwise.
-    pub(crate) fn can_clear_range(&self, range: &Area) -> Result<bool, String> {
-        let sheet = range.sheet;
-        for row in range.row..range.row + range.height {
-            for column in range.column..range.column + range.width {
-                match self.get_cell_structure(sheet, row, column)? {
-                    CellStructure::ArrayFormula { range: r } => {
-                        let (width, height) = r;
-                        if column + width > range.column + range.width
-                            || row + height > range.row + range.height
-                        {
-                            return Ok(false);
-                        }
-                    }
-                    CellStructure::SpillArray {
-                        anchor: a,
-                        range: r,
-                    } => {
-                        let (anchor_row, anchor_column) = a;
-                        let (width, height) = r;
-                        if anchor_column < range.column
-                            || anchor_row < range.row
-                            || anchor_column + width > range.column + range.width
-                            || anchor_row + height > range.row + range.height
-                        {
-                            return Ok(false);
-                        }
-                    }
-                    _ => {
-                        // noop
-                    }
-                }
-            }
-        }
-        Ok(true)
     }
 
     /// Deletes a range by removing it from worksheet data. All content and style is removed.
@@ -3222,35 +3319,14 @@ impl<'a> Model<'a> {
         }
         Ok(())
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Returns the style index for cell (`sheet`, `row`, `column`)
     pub fn get_cell_style_index(&self, sheet: u32, row: i32, column: i32) -> Result<i32, String> {
         // First check the cell, then row, the column
-        let cell = self.workbook.worksheet(sheet)?.cell(row, column);
-
-        match cell {
-            Some(cell) => Ok(cell.get_style()),
-            None => {
-                let rows = &self.workbook.worksheet(sheet)?.rows;
-                for r in rows {
-                    if r.r == row {
-                        if r.custom_format {
-                            return Ok(r.s);
-                        }
-                        break;
-                    }
-                }
-                let cols = &self.workbook.worksheet(sheet)?.cols;
-                for c in cols.iter() {
-                    let min = c.min;
-                    let max = c.max;
-                    if column >= min && column <= max {
-                        return Ok(c.style.unwrap_or(0));
-                    }
-                }
-                Ok(0)
-            }
-        }
+        Ok(self.workbook.worksheet(sheet)?.get_style(row, column))
     }
 
     /// Returns the style for cell (`sheet`, `row`, `column`)
@@ -3275,28 +3351,6 @@ impl<'a> Model<'a> {
             .map(|c| self.workbook.styles.get_style(c.get_style()))
             .transpose();
         style
-    }
-
-    /// Returns an internal binary representation of the workbook
-    ///
-    /// See also:
-    /// * [Model::from_bytes]
-    pub fn to_bytes(&self) -> Vec<u8> {
-        bitcode::encode(&self.workbook)
-    }
-
-    /// Returns data about the worksheets
-    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
-        self.workbook
-            .worksheets
-            .iter()
-            .map(|worksheet| SheetProperties {
-                name: worksheet.get_name(),
-                state: worksheet.state.to_string(),
-                color: worksheet.color.clone(),
-                sheet_id: worksheet.sheet_id,
-            })
-            .collect()
     }
 
     /// Returns markup representation of the given `sheet`.
@@ -3326,23 +3380,16 @@ impl<'a> Model<'a> {
 
         Ok(rows.join("\n"))
     }
+}
 
-    /// Returns the number of frozen rows in `sheet`
-    pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
-        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
-            Ok(worksheet.frozen_rows)
-        } else {
-            Err("Invalid sheet".to_string())
-        }
-    }
-
-    /// Return the number of frozen columns in `sheet`
-    pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
-        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
-            Ok(worksheet.frozen_columns)
-        } else {
-            Err("Invalid sheet".to_string())
-        }
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
+    /// Returns an internal binary representation of the workbook
+    ///
+    /// See also:
+    /// * [Model::from_bytes]
+    pub fn to_bytes(&self) -> Vec<u8> {
+        bitcode::encode(&self.workbook)
     }
 
     /// Sets the number of frozen rows to `frozen_rows` in the workbook.
@@ -3379,12 +3426,6 @@ impl<'a> Model<'a> {
         }
     }
 
-    /// Returns the width of a column
-    #[inline]
-    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
-        self.workbook.worksheet(sheet)?.get_column_width(column)
-    }
-
     /// Sets the width of a column
     #[inline]
     pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> Result<(), String> {
@@ -3412,24 +3453,6 @@ impl<'a> Model<'a> {
         self.workbook
             .worksheet_mut(sheet)?
             .set_row_hidden(row, hidden)
-    }
-
-    /// Returns whether a column is hidden
-    #[inline]
-    pub fn is_column_hidden(&self, sheet: u32, column: i32) -> Result<bool, String> {
-        self.workbook.worksheet(sheet)?.is_column_hidden(column)
-    }
-
-    /// Returns whether a row is hidden
-    #[inline]
-    pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
-        self.workbook.worksheet(sheet)?.is_row_hidden(row)
-    }
-
-    /// Returns the height of a row
-    #[inline]
-    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
-        self.workbook.worksheet(sheet)?.row_height(row)
     }
 
     /// Sets the height of a row
@@ -3462,20 +3485,69 @@ impl<'a> Model<'a> {
 
         Ok(())
     }
+}
 
-    /// The context used to parse/stringify defined-name formulas. Defined names
-    /// have no natural anchor cell, so we use the first worksheet's A1.
-    pub(crate) fn defined_name_context(&self) -> CellReferenceRC {
-        CellReferenceRC {
-            sheet: self
-                .workbook
-                .worksheets
-                .first()
-                .map(|ws| ws.get_name())
-                .unwrap_or_else(|| "Sheet1".to_string()),
-            row: 1,
-            column: 1,
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
+    /// Returns data about the worksheets
+    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
+        self.workbook
+            .worksheets
+            .iter()
+            .map(|worksheet| SheetProperties {
+                name: worksheet.get_name(),
+                state: worksheet.state.to_string(),
+                color: worksheet.color.clone(),
+                sheet_id: worksheet.sheet_id,
+            })
+            .collect()
+    }
+
+    /// Returns the number of frozen rows in `sheet`
+    pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
+        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
+            Ok(worksheet.frozen_rows)
+        } else {
+            Err("Invalid sheet".to_string())
         }
+    }
+
+    /// Return the number of frozen columns in `sheet`
+    pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
+        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
+            Ok(worksheet.frozen_columns)
+        } else {
+            Err("Invalid sheet".to_string())
+        }
+    }
+
+    /// Returns the width of a column
+    #[inline]
+    pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
+        self.workbook.worksheet(sheet)?.get_column_width(column)
+    }
+
+    /// Returns whether a column is hidden
+    #[inline]
+    pub fn is_column_hidden(&self, sheet: u32, column: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_column_hidden(column)
+    }
+
+    /// Returns whether a row is hidden
+    #[inline]
+    pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_row_hidden(row)
+    }
+
+    /// Returns the height of a row
+    #[inline]
+    pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
+        self.workbook.worksheet(sheet)?.row_height(row)
+    }
+
+    /// Returns the Theme
+    pub fn get_theme(&self) -> Theme {
+        self.workbook.theme.clone()
     }
 
     /// Validates if a defined name can be created
@@ -3541,6 +3613,24 @@ impl<'a> Model<'a> {
         Ok(sheet_id)
     }
 
+    /// The context used to parse/stringify defined-name formulas. Defined names
+    /// have no natural anchor cell, so we use the first worksheet's A1.
+    pub(crate) fn defined_name_context(&self) -> CellReferenceRC {
+        CellReferenceRC {
+            sheet: self
+                .workbook
+                .worksheets
+                .first()
+                .map(|ws| ws.get_name())
+                .unwrap_or_else(|| "Sheet1".to_string()),
+            row: 1,
+            column: 1,
+        }
+    }
+}
+
+/// Document mutation and construction: ordinal addressing only.
+impl<'a> Model<'a> {
     /// Delete defined name of name and scope
     pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
         let name_upper = name.to_uppercase();
@@ -3744,7 +3834,10 @@ impl<'a> Model<'a> {
         self.evaluate();
         Ok(())
     }
+}
 
+/// Reads and evaluation: everything here runs on any addressing scheme.
+impl<'a, A: Position> Model<'a, A> {
     /// Sets the language
     pub fn set_language(&mut self, language_id: &str) -> Result<(), String> {
         let language = match get_language(language_id) {
@@ -3892,6 +3985,13 @@ mod tests {
     fn test_get_cell() {
         let mut model = new_empty_model();
         model._set("A1", "35");
+        // A2 holds a number, in bold
+        model._set("A2", "12");
+        let mut style = model.get_style_for_cell(0, 2, 1).expect("Invalid cell");
+        style.font.b = true;
+        model.set_cell_style(0, 2, 1, &style).expect("Invalid cell");
+        let bold = model.get_cell_style_index(0, 2, 1).expect("Invalid cell");
+        assert_ne!(bold, 0);
         model._set("A2", "");
         let worksheet = model.workbook.worksheet(0).expect("Invalid sheet");
 
@@ -3901,7 +4001,7 @@ mod tests {
         );
 
         // Clears the content of A2 but not the style
-        assert_eq!(worksheet.cell(2, 1), Some(&Cell::EmptyCell { s: 0 }));
+        assert_eq!(worksheet.cell(2, 1), Some(&Cell::EmptyCell { s: bold }));
         assert_eq!(worksheet.cell(3, 1), None)
     }
 

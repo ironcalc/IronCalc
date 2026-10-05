@@ -7,7 +7,7 @@ use crate::language::Language;
 
 use super::{lexer::LexerError, types::ParsedReference};
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Encode, Decode)]
 pub enum OpCompare {
     LessThan,
     GreaterThan,
@@ -30,7 +30,7 @@ impl fmt::Display for OpCompare {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 pub enum OpUnary {
     Minus,
     Percentage,
@@ -45,7 +45,7 @@ impl fmt::Display for OpUnary {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Encode, Decode)]
 pub enum OpSum {
     Add,
     Minus,
@@ -60,7 +60,7 @@ impl fmt::Display for OpSum {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Encode, Decode)]
 pub enum OpProduct {
     Times,
     Divide,
