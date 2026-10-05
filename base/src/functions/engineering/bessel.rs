@@ -7,12 +7,13 @@ use crate::{
 };
 
 use super::transcendental::{bessel_i, bessel_j, bessel_k, bessel_y};
+use crate::types::Position;
 // https://root.cern/doc/v610/TMath_8cxx_source.html
 
 // Notice that the parameters for Bessel functions in Excel and here have inverted order
 // EXCEL_BESSEL(x, n) => bessel(n, x)
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn fn_besseli(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);

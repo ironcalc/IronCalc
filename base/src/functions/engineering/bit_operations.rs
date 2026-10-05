@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -7,7 +8,7 @@ use crate::{
 // 2^48-1
 const MAX: f64 = 281474976710655.0;
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // BITAND( number1, number2)
     pub(crate) fn fn_bitand(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
