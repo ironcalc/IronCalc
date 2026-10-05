@@ -12,7 +12,7 @@ use crate::{
     cf_types::ConditionalFormatting,
     expressions::types::{Area, CellReferenceIndex},
     model::CellStructure,
-    types::{ArrayKind, Cell, Link, MergedCell, Style},
+    types::{ArrayKind, Cell, Link, MergedCell, RangeRef, Style},
     UserModel,
 };
 
@@ -585,13 +585,13 @@ impl<'a> UserModel<'a> {
                     .clone();
                 {
                     let ws = self.model.workbook.worksheet_mut(cf_sheet)?;
-                    ws.conditional_formatting[cf_idx].range = new_range.clone();
+                    ws.conditional_formatting[cf_idx].ranges = RangeRef::parse_sqref(&new_range);
                     ws.conditional_formatting[cf_idx].cf_rule = new_rule.clone();
                 }
                 diff_list.push(Diff::UpdateConditionalFormatting {
                     sheet: cf_sheet,
                     index: cf_idx as u32,
-                    old_range: old_cf.range,
+                    old_range: RangeRef::to_sqref(&old_cf.ranges),
                     old_rule: Box::new(old_cf.cf_rule),
                     old_priority: old_cf.priority,
                     new_range,
@@ -664,7 +664,7 @@ impl<'a> UserModel<'a> {
                     .worksheet_mut(sheet)?
                     .conditional_formatting
                     .push(ConditionalFormatting {
-                        range: new_range.clone(),
+                        ranges: RangeRef::parse_sqref(&new_range),
                         cf_rule: new_rule.clone(),
                         priority,
                     });

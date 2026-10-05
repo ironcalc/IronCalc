@@ -2,11 +2,12 @@ use statrs::distribution::{Continuous, ContinuousCDF, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::t_dist::sample_var;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // FISHER(x) = 0.5 * ln((1 + x) / (1 - x))
     pub(crate) fn fn_fisher(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {

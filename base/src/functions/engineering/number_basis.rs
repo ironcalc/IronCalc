@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -31,7 +32,7 @@ fn from_binary_to_decimal(value: f64) -> Result<i64, String> {
     Ok(result)
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // BIN2DEC(number)
     pub(crate) fn fn_bin2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {

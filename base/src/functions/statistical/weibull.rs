@@ -1,11 +1,12 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Weibull};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // WEIBULL.DIST(x, alpha, beta, cumulative)
     pub(crate) fn fn_weibull_dist(
         &mut self,
