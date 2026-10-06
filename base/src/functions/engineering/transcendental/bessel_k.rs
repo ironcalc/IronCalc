@@ -4,6 +4,8 @@ use super::bessel_i::bessel_i0;
 use super::bessel_i::bessel_i1;
 
 fn bessel_k0(x: f64) -> f64 {
+    // NB: This is f{32, 64}::consts::EULER_GAMMA
+    #[allow(clippy::approx_constant)]
     let p1 = -0.57721566;
     let p2 = 0.42278420;
     let p3 = 0.23069756;
