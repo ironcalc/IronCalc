@@ -1,5 +1,19 @@
 import initWasm, { Model } from "@ironcalc/wasm";
 import IronCalc from "./IronCalc";
+
+export type {
+  CollabProviderOptions,
+  CollabStatus,
+  CollabWebSocket,
+} from "./collab/CollabProvider";
+export { CollabProvider } from "./collab/CollabProvider";
+export type { CollabCursor } from "./collab/presence";
+export {
+  colorForClient,
+  decodeCursor,
+  decodeCursors,
+} from "./collab/presence";
+
 import i18n from "./i18n";
 import { IronCalcIcon, IronCalcIconWhite, IronCalcLogo } from "./icons";
 

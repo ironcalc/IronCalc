@@ -1,8 +1,14 @@
-import { IconButton, type Model, Tooltip } from "@ironcalc/workbook";
+import {
+  type CollabProvider,
+  IconButton,
+  type Model,
+  Tooltip,
+} from "@ironcalc/workbook";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
+import { CollabControls } from "./Collab/CollabControls";
 import { FileMenu } from "./Navigation/FileMenu";
 import { HelpMenu } from "./Navigation/HelpMenu";
 import { MobileMenu } from "./Navigation/MobileMenu";
@@ -30,6 +36,8 @@ export function FileBar(properties: {
   onLanguageChange: (language: string) => void;
   isDarkMode: boolean;
   onDarkModeChange: (isDark: boolean) => void;
+  collabProvider: CollabProvider | null;
+  onStartCollaboration: () => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
@@ -37,8 +45,22 @@ export function FileBar(properties: {
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
   const { t } = useTranslation();
+  const [, setRemoteNameTick] = useState(0);
+  const collabProvider = properties.collabProvider;
+  const model = properties.model;
+  useEffect(() => {
+    if (!collabProvider) return;
+    // Repaint the title when a remote update changes the workbook name.
+    let lastName = model.getName();
+    return collabProvider.onRemoteUpdate(() => {
+      const name = model.getName();
+      if (name !== lastName) {
+        lastName = name;
+        setRemoteNameTick((tick) => tick + 1);
+      }
+    });
+  }, [collabProvider, model]);
   const handleDownload = async () => {
-    const model = properties.model;
     const bytes = model.toBytes();
     const fileName = model.getName();
     await downloadModel(bytes, fileName);
@@ -115,9 +137,13 @@ export function FileBar(properties: {
           name={properties.model.getName()}
           onNameChange={(name) => {
             properties.model.setName(name);
-            updateNameSelectedWorkbook(properties.model, name).catch((e) =>
-              console.error("Failed saving new name", e),
-            );
+            if (!properties.collabProvider) {
+              // Collab sessions live on the relay server; the "selected"
+              // storage entry is some unrelated local workbook.
+              updateNameSelectedWorkbook(properties.model, name).catch((e) =>
+                console.error("Failed saving new name", e),
+              );
+            }
           }}
           maxWidth={maxTitleWidth}
         />
@@ -125,6 +151,10 @@ export function FileBar(properties: {
       <div ref={spacerRef} className="app-ic-file-bar-spacer" />
       <div className="app-ic-file-bar-right">
         <StorageWarning />
+        <CollabControls
+          provider={properties.collabProvider}
+          onStartCollaboration={properties.onStartCollaboration}
+        />
         <div className="app-ic-file-bar-dialog-container">
           <ShareButton onClick={() => setIsDialogOpen(true)} />
           {isDialogOpen && (
