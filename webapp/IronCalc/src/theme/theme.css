@@ -91,4 +91,7 @@
   --palette-sheet-header-font:
     bold 12px "Inter", "Adjusted Arial Fallback", sans-serif;
   --palette-sheet-cell-array-structure-color: #2f80ed;
+
+  /* inherited by every scrollable descendant, follows the active theme */
+  scrollbar-color: var(--palette-grey-400) var(--palette-common-white);
 }
