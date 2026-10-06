@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use std::borrow::Cow;
 use std::path::Path;
 
 use ironcalc_base::cell::CellValue;
@@ -69,14 +70,14 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
             .worksheet(sheet)
             .unwrap()
             .cell(row, column)
-            .cloned()
+            .map(Cow::into_owned)
             .unwrap_or_default();
         let cell2 = &model2
             .workbook
             .worksheet(sheet)
             .unwrap()
             .cell(row, column)
-            .cloned()
+            .map(Cow::into_owned)
             .unwrap_or_default();
         match (cell1, cell2) {
             (Cell::EmptyCell { .. }, Cell::EmptyCell { .. }) => {}

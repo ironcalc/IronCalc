@@ -16,7 +16,7 @@ fn eval_formula_raw_number(formula: &str) -> Result<f64, String> {
     let mut model = new_empty_model();
     model._set("A1", formula);
     model.evaluate();
-    match model._get_cell("A1") {
+    match &model._get_cell("A1") {
         Cell::NumberCell { v, .. } => Ok(*v),
         Cell::CellFormula {
             v: FormulaValue::Number(v),

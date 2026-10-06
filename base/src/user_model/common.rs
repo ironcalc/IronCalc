@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 
+use std::borrow::Cow;
 use std::{collections::HashMap, fmt::Debug};
 
 use serde::{Deserialize, Serialize};
@@ -442,7 +443,7 @@ impl<'a> UserModel<'a> {
             .workbook
             .worksheet(sheet)?
             .cell(row, column)
-            .cloned();
+            .map(Cow::into_owned);
         // If it is a spill cell we want to save the old value as None, because the value of a spill cell is determined by the anchor cell
         let old_value = if matches!(old_value, Some(Cell::SpillCell { .. })) {
             None
@@ -772,7 +773,7 @@ impl<'a> UserModel<'a> {
                     .workbook
                     .worksheet(sheet)?
                     .cell(row, column)
-                    .cloned();
+                    .map(Cow::into_owned);
                 data_row.push(old_value);
                 let old_style = self.model.get_style_for_cell(sheet, row, column)?;
                 style_row.push(old_style);
@@ -815,7 +816,7 @@ impl<'a> UserModel<'a> {
                     .workbook
                     .worksheet(sheet)?
                     .cell(row, column)
-                    .cloned();
+                    .map(Cow::into_owned);
                 data_row.push(old_value);
             }
             old_value.push(data_row);
@@ -1135,10 +1136,10 @@ impl<'a> UserModel<'a> {
                 .cells_in_row(r)
                 .into_iter()
                 .map(|(k, v)| {
-                    let cell = if let Cell::SpillCell { s, .. } = v {
+                    let cell = if let Cell::SpillCell { s, .. } = &*v {
                         Cell::EmptyCell { s: *s }
                     } else {
-                        v.clone()
+                        v.into_owned()
                     };
                     (k, cell)
                 })
@@ -1213,10 +1214,10 @@ impl<'a> UserModel<'a> {
             let mut data = HashMap::new();
             for row_idx in worksheet.sheet_data.rows() {
                 if let Some(cell) = worksheet.cell(row_idx, c) {
-                    let saved = if let Cell::SpillCell { s, .. } = cell {
+                    let saved = if let Cell::SpillCell { s, .. } = &*cell {
                         Cell::EmptyCell { s: *s }
                     } else {
-                        cell.clone()
+                        cell.into_owned()
                     };
                     data.insert(row_idx, saved);
                 }
@@ -2005,7 +2006,7 @@ impl<'a> UserModel<'a> {
         // From left to right
         for (col, cell) in worksheet.sheet_data.cells_in_row(row) {
             if col < column {
-                if matches!(cell, Cell::EmptyCell { .. }) {
+                if matches!(*cell, Cell::EmptyCell { .. }) {
                     continue;
                 }
                 last_column = Some(col);
@@ -2027,7 +2028,7 @@ impl<'a> UserModel<'a> {
         // From left to right
         for (col, cell) in worksheet.sheet_data.cells_in_row(row) {
             if col > column {
-                if matches!(cell, Cell::EmptyCell { .. }) {
+                if matches!(*cell, Cell::EmptyCell { .. }) {
                     continue;
                 }
                 return Ok(Some(col));
@@ -2048,7 +2049,7 @@ impl<'a> UserModel<'a> {
             .workbook
             .worksheet(sheet)?
             .cell(row, column)
-            .cloned()
+            .map(Cow::into_owned)
             .unwrap_or_default();
         match cell {
             Cell::EmptyCell { .. }
@@ -2064,7 +2065,7 @@ impl<'a> UserModel<'a> {
                     .workbook
                     .worksheet(sheet)?
                     .cell(m_row, m_column)
-                    .cloned()
+                    .map(Cow::into_owned)
                     .unwrap_or_default();
                 let (width, height, is_dynamic) = match m_cell {
                     Cell::ArrayFormula {
@@ -2117,7 +2118,7 @@ impl<'a> UserModel<'a> {
         for r in row..row + height {
             let mut row_vals = Vec::new();
             for c in column..column + width {
-                let cell = ws.cell(r, c).cloned();
+                let cell = ws.cell(r, c).map(Cow::into_owned);
                 // SpillCells are transient — restored by re-evaluation, so store as None.
                 let cell = if matches!(cell, Some(Cell::SpillCell { .. })) {
                     None

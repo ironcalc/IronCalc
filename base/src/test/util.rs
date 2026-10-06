@@ -45,12 +45,13 @@ impl<'a> Model<'a> {
         let CellReferenceIndex { sheet, row, column } = self._parse_reference(cell);
         self._get_text_at(sheet, row, column)
     }
-    pub fn _get_cell(&self, cell: &str) -> &Cell {
+    pub fn _get_cell(&self, cell: &str) -> Cell {
         let cell_reference = self._parse_reference(cell);
         let worksheet = self.workbook.worksheet(cell_reference.sheet).unwrap();
         worksheet
             .cell(cell_reference.row, cell_reference.column)
             .unwrap()
+            .into_owned()
     }
 
     pub fn _cell_clear_contents(

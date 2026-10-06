@@ -225,7 +225,7 @@ pub(crate) fn get_worksheet_xml(
         for (column_index, cell) in worksheet.sheet_data.cells_in_row(row_index) {
             let column_name = number_to_column(column_index).unwrap();
             let cell_name = format!("{column_name}{row_index}");
-            match cell {
+            match &*cell {
                 Cell::EmptyCell { s } => {
                     // they only hold the style
                     let style = get_cell_style_attribute(*s);
