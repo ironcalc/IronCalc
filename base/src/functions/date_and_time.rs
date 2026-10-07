@@ -580,16 +580,47 @@ fn parse_year_simple(year_str: &str) -> Result<i32, String> {
     }
 }
 
+// Returns the whole days in a "H:M", "H:M:S" or "H:M:S.f" time part, so that
+// "24:00:00" rolls a date over to the next day like Excel does. Anything else is 0.
+fn whole_days_in_time(time: &str) -> i32 {
+    let time = squeeze_separator_spaces(time.trim(), &[':']);
+    let parts: Vec<&str> = time.split(':').collect();
+    if parts.len() < 2 || parts.len() > 3 {
+        return 0;
+    }
+    let is_integer = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_digit());
+    if !is_integer(parts[0]) || !is_integer(parts[1]) {
+        return 0;
+    }
+    let (Ok(hours), Ok(minutes)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>()) else {
+        return 0;
+    };
+    let seconds = match parts.get(2) {
+        Some(s) => match s.parse::<f64>() {
+            Ok(v) if v >= 0.0 && s.chars().all(|c| c.is_ascii_digit() || c == '.') => v,
+            _ => return 0,
+        },
+        None => 0.0,
+    };
+    let total_seconds = hours * 3600.0 + minutes * 60.0 + seconds;
+    (total_seconds / 86400.0).floor().min(i32::MAX as f64) as i32
+}
+
 pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
-    // Trim whitespace and discard any time component (e.g., "2024-02-29 06:00" -> "2024-02-29")
+    // Trim whitespace and split off any time component (e.g., "2024-02-29 06:00" -> "2024-02-29").
+    // The time component only counts through its whole days (e.g., "24:00:00" is the next day).
     let squeezed = squeeze_separator_spaces(value.trim(), &['/', '-']);
     let mut date_str = squeezed.as_str();
+    let mut time_str = "";
     if let Some(idx) = date_str.find('T') {
+        time_str = &date_str[idx + 1..];
         date_str = &date_str[..idx];
     }
     if let Some(idx) = date_str.find(' ') {
+        time_str = &date_str[idx + 1..];
         date_str = &date_str[..idx];
     }
+    let extra_days = whole_days_in_time(time_str);
 
     let separator = if date_str.contains('/') {
         '/'
@@ -655,6 +686,7 @@ pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
 
     match date_to_serial_number(day, month, year) {
         Ok(n) => {
+            let n = n.saturating_add(extra_days);
             if !(MINIMUM_DATE_SERIAL_NUMBER..=MAXIMUM_DATE_SERIAL_NUMBER).contains(&n) {
                 Err("Not a valid date".to_string())
             } else {
