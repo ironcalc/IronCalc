@@ -324,20 +324,29 @@ pub(crate) fn parse_time_of_day(text: &str) -> Option<f64> {
 /// Removes the whitespace directly before and after any of the `separators`
 /// and keeps every other space, like Excel does: "2026 - 01 - 01 12:00"
 /// becomes "2026-01-01 12:00" and "3 : 30 PM" becomes "3:30 PM".
+/// Each whitespace run is decided once, when the next non-whitespace character
+/// is reached, so the cost is linear in the length of the text.
 fn squeeze_separator_spaces(text: &str, separators: &[char]) -> String {
-    let chars: Vec<char> = text.chars().collect();
     let mut result = String::with_capacity(text.len());
-    for (idx, &c) in chars.iter().enumerate() {
+    // Byte offset in `text` where the current whitespace run started
+    let mut run_start: Option<usize> = None;
+    for (idx, c) in text.char_indices() {
         if c.is_ascii_whitespace() {
-            let next = chars[idx + 1..].iter().find(|ch| !ch.is_ascii_whitespace());
-            let previous = result.chars().last();
-            if next.is_some_and(|ch| separators.contains(ch))
-                || previous.is_some_and(|ch| separators.contains(&ch))
-            {
-                continue;
+            run_start.get_or_insert(idx);
+            continue;
+        }
+        if let Some(start) = run_start.take() {
+            let after_separator = result.ends_with(separators);
+            if !after_separator && !separators.contains(&c) {
+                result.push_str(&text[start..idx]);
             }
         }
         result.push(c);
+    }
+    if let Some(start) = run_start {
+        if !result.ends_with(separators) {
+            result.push_str(&text[start..]);
+        }
     }
     result
 }
