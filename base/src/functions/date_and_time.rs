@@ -321,8 +321,30 @@ pub(crate) fn parse_time_of_day(text: &str) -> Option<f64> {
     None
 }
 
+/// Removes the whitespace directly before and after any of the `separators`
+/// and keeps every other space, like Excel does: "2026 - 01 - 01 12:00"
+/// becomes "2026-01-01 12:00" and "3 : 30 PM" becomes "3:30 PM".
+fn squeeze_separator_spaces(text: &str, separators: &[char]) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut result = String::with_capacity(text.len());
+    for (idx, &c) in chars.iter().enumerate() {
+        if c.is_ascii_whitespace() {
+            let next = chars[idx + 1..].iter().find(|ch| !ch.is_ascii_whitespace());
+            let previous = result.chars().last();
+            if next.is_some_and(|ch| separators.contains(ch))
+                || previous.is_some_and(|ch| separators.contains(&ch))
+            {
+                continue;
+            }
+        }
+        result.push(c);
+    }
+    result
+}
+
 fn parse_time_string(text: &str) -> Option<f64> {
-    let text = text.trim();
+    let text = squeeze_separator_spaces(text.trim(), &[':']);
+    let text = text.as_str();
 
     // First, try custom parsing for edge cases like "24:00:00", "23:60:00", "23:59:60"
     // that need normalization to match Excel behavior
@@ -551,7 +573,8 @@ fn parse_year_simple(year_str: &str) -> Result<i32, String> {
 
 pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     // Trim whitespace and discard any time component (e.g., "2024-02-29 06:00" -> "2024-02-29")
-    let mut date_str = value.trim();
+    let squeezed = squeeze_separator_spaces(value.trim(), &['/', '-']);
+    let mut date_str = squeezed.as_str();
     if let Some(idx) = date_str.find('T') {
         date_str = &date_str[..idx];
     }
