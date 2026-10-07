@@ -34,3 +34,16 @@ fn timevalue_spaces_around_separators() {
     assert_eq!(model._get_text("A3"), *"0.5");
     assert_eq!(model._get_text("A4"), model._get_text("A5"));
 }
+
+// A long whitespace run next to a separator is removed in one pass.
+#[test]
+fn long_space_runs_around_separators() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TIMEVALUE(\"4\"&REPT(\" \",32000)&\":35\")");
+    model._set("A2", "=TIMEVALUE(\"4:35\")");
+    model._set("A3", "=DATEVALUE(\"2026-\"&REPT(\" \",32000)&\"01-01\")");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), model._get_text("A2"));
+    assert_eq!(model._get_text("A3"), *"46023");
+}
