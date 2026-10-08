@@ -1,6 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
+use super::row::Row;
 use super::*;
+use crate::constants::LAST_ROW;
+use crate::types::Cell;
 
 fn number(v: f64) -> Cell {
     Cell::NumberCell { v, s: 0 }
