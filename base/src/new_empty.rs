@@ -194,6 +194,12 @@ impl<'a> Model<'a> {
 
     /// Reparses all formulas and defined names
     pub(crate) fn reset_parsed_structures(&mut self) {
+        self.reset_parsed_structures_without_evaluating();
+        self.evaluate();
+    }
+
+    /// Reparses all formulas and defined names without evaluating the model
+    pub(crate) fn reset_parsed_structures_without_evaluating(&mut self) {
         let defined_names = self.workbook.get_defined_names_with_scope();
         self.parser
             .set_worksheets_and_names(self.workbook.get_worksheet_names(), defined_names);
@@ -201,7 +207,6 @@ impl<'a> Model<'a> {
         self.parse_formulas();
         self.parsed_defined_names = HashMap::new();
         self.parse_defined_names();
-        self.evaluate();
     }
 
     /// Gets the base name for new sheets
