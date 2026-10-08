@@ -398,3 +398,30 @@ fn test_defined_name_lambda_exports_excel_prefixes() {
     );
     fs::remove_file(temp_file_name).unwrap();
 }
+
+#[test]
+fn auto_filter_round_trips() {
+    let mut model = new_empty_model();
+    model.set_user_input(0, 1, 1, "Name".to_string()).unwrap();
+    model.set_user_input(0, 1, 2, "City".to_string()).unwrap();
+    model.set_user_input(0, 2, 1, "Ada".to_string()).unwrap();
+    model.workbook.worksheets[0].auto_filter = Some("A1:B2".to_string());
+    model.evaluate();
+    let temp_file_name = "temp_file_test_auto_filter.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_eq!(
+        model.workbook.worksheets[0].auto_filter.as_deref(),
+        Some("A1:B2")
+    );
+    fs::remove_file(temp_file_name).unwrap();
+
+    // A sheet without one writes none.
+    let mut model = new_empty_model();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_no_auto_filter.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_eq!(model.workbook.worksheets[0].auto_filter, None);
+    fs::remove_file(temp_file_name).unwrap();
+}

@@ -682,6 +682,12 @@ pub(crate) fn get_worksheet_xml(
 
     let hyperlinks_section = get_hyperlinks_section(worksheet);
 
+    // CT_Worksheet puts autoFilter after sheetData and before mergeCells.
+    let auto_filter = match &worksheet.auto_filter {
+        Some(range) if !range.is_empty() => format!(r#"<autoFilter ref="{}"/>"#, escape_xml(range)),
+        _ => String::new(),
+    };
+
     format!(
         "{XML_DECLARATION}\
 <worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
@@ -695,6 +701,7 @@ pub(crate) fn get_worksheet_xml(
   <sheetData>\
   {sheet_data}\
   </sheetData>\
+  {auto_filter}\
   {merge_cells_section}\
   {cf_sections}\
   {hyperlinks_section}\

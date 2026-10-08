@@ -276,6 +276,9 @@ pub struct Worksheet {
     pub conditional_formatting: Vec<ConditionalFormatting>,
     /// Hyperlinks in the worksheet, keyed by (row, column) of the cell they are attached to
     pub links: HashMap<(i32, i32), Link>,
+    /// The worksheet's AutoFilter range (`<autoFilter ref="A1:C10"/>`), if any.
+    /// Only the range is kept: filter criteria and sort state are not modelled.
+    pub auto_filter: Option<String>,
 }
 
 /// Internal representation of Excel's sheet_data

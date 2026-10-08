@@ -290,6 +290,17 @@ fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {
     Ok(merged_cells)
 }
 
+fn load_auto_filter(ws: &XmlNode) -> Option<String> {
+    // 18.3.1.2 autoFilter (AutoFilter Settings)
+    // <autoFilter ref="A1:C10"/>
+    // Only the range is read; filter criteria are not modelled.
+    ws.children()
+        .find(|n| n.has_tag_name("autoFilter"))
+        .and_then(|n| n.attribute("ref"))
+        .filter(|r| !r.is_empty())
+        .map(|r| r.to_string())
+}
+
 fn load_sheet_color(ws: &XmlNode, theme: &Theme) -> Result<Color, XlsxError> {
     // <sheetPr>
     //     <tabColor theme="5" tint="-0.249977111117893"/>
@@ -998,6 +1009,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
 
     let conditional_formatting = load_conditional_formatting(ws, theme, dxfs)?;
+    let auto_filter = load_auto_filter(ws);
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 
@@ -1047,6 +1059,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             views,
             conditional_formatting,
             links,
+            auto_filter,
         },
         sheet_view.is_selected,
     ))
