@@ -498,7 +498,7 @@ impl<'a> Model<'a> {
             .worksheet(sheet)?
             .cell(source_row, source_column)
         {
-            Some(c) => c.clone(),
+            Some(c) => c.into_owned(),
             None => return Ok(()),
         };
         let style = source_cell.get_style();
@@ -522,7 +522,7 @@ impl<'a> Model<'a> {
                 // been reset by the caller): drop it.
                 let worksheet = self.workbook.worksheet_mut(sheet)?;
                 let live_cse = matches!(
-                    worksheet.cell(a.0, a.1),
+                    worksheet.cell(a.0, a.1).as_deref(),
                     Some(Cell::ArrayFormula { r: (width, height), kind: ArrayKind::Cse, .. })
                         if source_row >= a.0
                             && source_row < a.0 + height
@@ -1244,7 +1244,8 @@ impl<'a> Model<'a> {
                 .workbook
                 .worksheet(sheet)?
                 .cell(r.row, column)
-                .ok_or("Expected Cell to exist")?;
+                .ok_or("Expected Cell to exist")?
+                .into_owned();
             let style_idx = cell.get_style();
             let formula_or_value =
                 self.get_cell_formula(sheet, r.row, column)?
@@ -1258,7 +1259,7 @@ impl<'a> Model<'a> {
 
             let mut array = None;
 
-            match cell {
+            match &cell {
                 Cell::EmptyCell { .. }
                 | Cell::BooleanCell { .. }
                 | Cell::NumberCell { .. }
@@ -1396,14 +1397,15 @@ impl<'a> Model<'a> {
                 .workbook
                 .worksheet(sheet)?
                 .cell(row, *c)
-                .ok_or("Expected Cell to exist")?;
+                .ok_or("Expected Cell to exist")?
+                .into_owned();
             let style_idx = cell.get_style();
             let formula_or_value = self.get_cell_formula(sheet, row, *c)?.unwrap_or_else(|| {
                 cell.get_localized_text(&self.workbook.shared_strings, self.locale, self.language)
             });
             let mut array = None;
 
-            match cell {
+            match &cell {
                 Cell::EmptyCell { .. }
                 | Cell::BooleanCell { .. }
                 | Cell::NumberCell { .. }

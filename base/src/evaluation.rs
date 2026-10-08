@@ -563,7 +563,7 @@ impl<'a> Model<'a> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.sheets_with_formulas() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
-                if FormulaCell::of(cell).is_some() {
+                if FormulaCell::of(&cell).is_some() {
                     found.push(CellReferenceIndex { sheet, row, column });
                 }
             }
@@ -578,12 +578,12 @@ impl<'a> Model<'a> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.sheets_with_formulas() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
-                if !matches!(cell, Cell::ArrayFormula { .. } | Cell::SpillCell { .. }) {
+                if !matches!(*cell, Cell::ArrayFormula { .. } | Cell::SpillCell { .. }) {
                     continue;
                 }
                 let position = CellReferenceIndex { sheet, row, column };
-                if self.belongs_to_a_dynamic_array(position, cell) {
-                    found.push((position, cell.clone()));
+                if self.belongs_to_a_dynamic_array(position, &cell) {
+                    found.push((position, cell.into_owned()));
                 }
             }
         }
@@ -622,7 +622,8 @@ impl<'a> Model<'a> {
                     sheet: position.sheet,
                     row: a.0,
                     column: a.1,
-                }),
+                })
+                .as_deref(),
                 Some(Cell::ArrayFormula {
                     kind: ArrayKind::Dynamic,
                     ..
@@ -649,7 +650,7 @@ impl<'a> Model<'a> {
         for (sheet, worksheet) in self.sheets_with_formulas() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
                 if matches!(
-                    cell,
+                    *cell,
                     Cell::ArrayFormula {
                         kind: ArrayKind::Dynamic,
                         ..
@@ -708,21 +709,30 @@ impl<'a> Model<'a> {
         }
         // The cell is looked at, not cloned: what is needed of it is copied
         // out, and the sheet is free again before anything else is evaluated.
-        let cell = match self.fetch_cell(cell_reference) {
-            None | Some(Cell::EmptyCell { .. }) => {
-                self.record_seen(cell_reference, Seen::Empty);
-                return CalcResult::EmptyCell;
-            }
-            Some(cell) => cell,
-        };
-        if let Cell::SpillCell { a, .. } = cell {
-            let anchor = *a;
-            return self.evaluate_spill_cell(cell_reference, anchor);
+        enum Found {
+            Nothing,
+            Spill((i32, i32)),
+            Formula(FormulaCell),
+            Constant(CalcResult),
         }
-        match FormulaCell::of(cell) {
-            Some(formula_cell) => self.evaluate_formula_cell(cell_reference, formula_cell),
-            // A constant.
-            None => self.get_cell_value(cell, cell_reference),
+        let found = match self.fetch_cell(cell_reference).as_deref() {
+            None | Some(Cell::EmptyCell { .. }) => Found::Nothing,
+            Some(Cell::SpillCell { a, .. }) => Found::Spill(*a),
+            Some(cell) => match FormulaCell::of(cell) {
+                Some(formula_cell) => Found::Formula(formula_cell),
+                None => Found::Constant(self.get_cell_value(cell, cell_reference)),
+            },
+        };
+        match found {
+            Found::Nothing => {
+                self.record_seen(cell_reference, Seen::Empty);
+                CalcResult::EmptyCell
+            }
+            Found::Spill(anchor) => self.evaluate_spill_cell(cell_reference, anchor),
+            Found::Formula(formula_cell) => {
+                self.evaluate_formula_cell(cell_reference, formula_cell)
+            }
+            Found::Constant(value) => value,
         }
     }
 
@@ -741,13 +751,14 @@ impl<'a> Model<'a> {
             row: anchor.0,
             column: anchor.1,
         };
-        let kind = match self.fetch_cell(anchor_reference) {
-            Some(Cell::ArrayFormula { kind, .. }) => kind.clone(),
-            _ => {
-                // An orphan: its anchor is gone. Nothing will ever write it again.
-                self.record_seen(cell_reference, Seen::Empty);
-                return CalcResult::EmptyCell;
-            }
+        let kind = match self.fetch_cell(anchor_reference).as_deref() {
+            Some(Cell::ArrayFormula { kind, .. }) => Some(kind.clone()),
+            _ => None,
+        };
+        let Some(kind) = kind else {
+            // An orphan: its anchor is gone. Nothing will ever write it again.
+            self.record_seen(cell_reference, Seen::Empty);
+            return CalcResult::EmptyCell;
         };
         let anchor_state = self.evaluation.cells.get(&key(anchor_reference)).copied();
         match (kind, anchor_state) {
@@ -857,7 +868,8 @@ impl<'a> Model<'a> {
                 let Some(&top) = self.evaluation.stack.last() else {
                     break;
                 };
-                match self.fetch_cell(top).and_then(FormulaCell::of) {
+                let formula_cell = self.fetch_cell(top).as_deref().and_then(FormulaCell::of);
+                match formula_cell {
                     Some(cell) => {
                         self.run_top(top, cell);
                     }
@@ -960,7 +972,7 @@ impl<'a> Model<'a> {
     /// The value currently stored at a position, empty if there is no cell.
     fn stored_value(&self, cell_reference: CellReferenceIndex) -> CalcResult {
         match self.fetch_cell(cell_reference) {
-            Some(cell) => self.get_cell_value(cell, cell_reference),
+            Some(cell) => self.get_cell_value(&cell, cell_reference),
             None => CalcResult::EmptyCell,
         }
     }

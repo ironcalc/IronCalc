@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 
+use std::borrow::Cow;
 use std::{
     collections::{HashMap, HashSet},
     io::Cursor,
@@ -304,7 +305,7 @@ impl<'a> UserModel<'a> {
                     .workbook
                     .worksheet(sheet)?
                     .cell(target_row, target_column)
-                    .cloned();
+                    .map(Cow::into_owned);
 
                 let old_style =
                     self.model
@@ -443,7 +444,7 @@ impl<'a> UserModel<'a> {
                         .workbook
                         .worksheet(source_sheet)?
                         .cell(row, column)
-                        .cloned();
+                        .map(Cow::into_owned);
 
                     diff_list.push(Diff::RangeClearContents {
                         sheet: source_sheet,
@@ -534,7 +535,7 @@ impl<'a> UserModel<'a> {
                     .workbook
                     .worksheet(ext_sheet)?
                     .cell(ext_row, ext_col)
-                    .cloned();
+                    .map(Cow::into_owned);
                 self.model
                     .set_user_input(ext_sheet, ext_row, ext_col, new_formula.clone())?;
                 diff_list.push(Diff::SetCellValue {
@@ -724,7 +725,7 @@ impl<'a> UserModel<'a> {
             let ws = self.model.workbook.worksheet(sheet)?;
             for r in area.row..area.row + records.len() as i32 {
                 for c in area.column..area.column + max_width {
-                    old_values.insert((r, c), ws.cell(r, c).cloned());
+                    old_values.insert((r, c), ws.cell(r, c).map(Cow::into_owned));
                 }
             }
         }

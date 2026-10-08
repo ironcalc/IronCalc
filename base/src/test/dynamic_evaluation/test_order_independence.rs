@@ -140,7 +140,7 @@ pub(super) fn snapshot(model: &Model) -> Vec<String> {
             | Some(Cell::ArrayFormula {
                 v: FormulaValue::Unevaluated,
                 ..
-            }) = worksheet.cell(row, column)
+            }) = worksheet.cell(row, column).as_deref()
             {
                 lines.push(format!("{}: UNEVALUATED", cell_name(row, column)));
                 continue;
