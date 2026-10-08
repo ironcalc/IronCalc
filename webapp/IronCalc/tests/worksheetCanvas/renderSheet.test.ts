@@ -8,6 +8,7 @@
 
 import { BorderStyle, BorderType, type Model } from "@ironcalc/wasm";
 import { test } from "vitest";
+import { testDarkThemeVars, testThemeVars } from "./fakeDom";
 import { newModel, renderToCanvas } from "./harness";
 import { expectScreenshot } from "./screenshot";
 
@@ -199,4 +200,38 @@ test("wrapped text inside a merged range", async () => {
   model.mergeCells(cell(2, 2, 2, 3));
 
   await expectScreenshot(await renderToCanvas(model), "wrap-inside-merge");
+});
+
+// Cells and borders without a color follow the theme's default text color,
+// so they stay readable in dark mode
+test.each([
+  ["light", testThemeVars],
+  ["dark", testDarkThemeVars],
+])("default text and border colors in %s mode", async (mode, themeVars) => {
+  const model = await newModel();
+  labelTopLeftCell(model);
+  // B2: never styled
+  model.setUserInput(0, 2, 2, "Default text");
+  // B4: colored, then reset to default like the color picker does
+  model.setUserInput(0, 4, 2, "Reset to default");
+  model.updateRangeStyle(cell(4, 2), "font.color", "#C0392B");
+  model.updateRangeStyle(cell(4, 2), "font.color", "");
+  // B6: an explicit color is kept in both themes
+  model.setUserInput(0, 6, 2, "Red text");
+  model.updateRangeStyle(cell(6, 2), "font.color", "#C0392B");
+  // D2:D3: a colored border, then D5:D6 with no color, which must not
+  // inherit the previous stroke color
+  model.setAreaWithBorder(cell(2, 4, 1, 2), {
+    item: { style: BorderStyle.Medium, color: "#1F618D" },
+    type: BorderType.Outer,
+  });
+  model.setAreaWithBorder(cell(5, 4, 1, 2), {
+    item: { style: BorderStyle.Medium },
+    type: BorderType.Outer,
+  });
+
+  await expectScreenshot(
+    await renderToCanvas(model, { themeVars }),
+    `default-colors-${mode}`,
+  );
 });

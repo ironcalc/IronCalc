@@ -169,10 +169,22 @@ export const testThemeVars: Record<string, string> = {
   "--palette-sheet-header-selected-color": "#1b1b1f",
 };
 
+// The cell-area colors of the dark theme (theme.ts)
+export const testDarkThemeVars: Record<string, string> = {
+  ...testThemeVars,
+  "--palette-common-white": "#1e1e1e",
+  "--palette-sheet-grid-color": "#3a3a3a",
+  "--palette-sheet-grid-separator-color": "#3a3a3a",
+  "--palette-sheet-default-text-color": "#e4e4e4",
+};
+
 // worksheetCanvas.ts reads `window.devicePixelRatio` at module load time, so
 // this must run before that module is imported (the harness imports it
 // dynamically afterwards).
-export function installDomGlobals(devicePixelRatio: number): void {
+export function installDomGlobals(
+  devicePixelRatio: number,
+  themeVars = testThemeVars,
+): void {
   Object.assign(globalThis, {
     window: { devicePixelRatio },
     document: {
@@ -181,7 +193,7 @@ export function installDomGlobals(devicePixelRatio: number): void {
       removeEventListener: () => {},
     },
     getComputedStyle: () => ({
-      getPropertyValue: (name: string) => testThemeVars[name] ?? "",
+      getPropertyValue: (name: string) => themeVars[name] ?? "",
     }),
   });
 }
