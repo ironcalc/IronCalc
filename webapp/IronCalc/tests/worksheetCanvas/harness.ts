@@ -47,6 +47,7 @@ export interface RenderOptions {
   // 25px rows
   width?: number;
   height?: number;
+  themeVars?: Record<string, string>;
 }
 
 // Builds the WorksheetCanvas for `model` and renders one frame. Returns the
@@ -57,7 +58,7 @@ export async function renderWorksheet(
   model: Model,
   options: RenderOptions = {},
 ): Promise<{ canvas: Canvas; worksheet: WorksheetCanvas }> {
-  installDomGlobals(DEVICE_PIXEL_RATIO);
+  installDomGlobals(DEVICE_PIXEL_RATIO, options.themeVars);
   // Imported dynamically: the module reads `window` at load time, so the
   // fake DOM globals must be installed first
   const { default: WorksheetCanvas } = await import(
