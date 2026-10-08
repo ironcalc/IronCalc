@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec::Vec;
@@ -1290,7 +1291,7 @@ impl<'a> Model<'a> {
                         blocked = true;
                         continue;
                     }
-                    match worksheet.cell(r, c) {
+                    match worksheet.cell(r, c).as_deref() {
                         None | Some(Cell::EmptyCell { .. }) => {}
                         Some(Cell::SpillCell { a, .. }) if *a == (row, column) => {}
                         Some(Cell::SpillCell { .. }) => {
@@ -1391,7 +1392,7 @@ impl<'a> Model<'a> {
                     continue;
                 }
                 if matches!(
-                    worksheet.cell(r, c),
+                    worksheet.cell(r, c).as_deref(),
                     Some(Cell::SpillCell { a, .. }) if *a == (row, column)
                 ) {
                     cells.push((sheet, r, c));
@@ -1598,7 +1599,7 @@ impl<'a> Model<'a> {
     }
 
     #[inline(always)]
-    pub(crate) fn fetch_cell(&self, cell_reference: CellReferenceIndex) -> Option<&Cell> {
+    pub(crate) fn fetch_cell(&self, cell_reference: CellReferenceIndex) -> Option<Cow<'_, Cell>> {
         self.workbook.worksheets[cell_reference.sheet as usize]
             .sheet_data
             .cell(cell_reference.row, cell_reference.column)
@@ -2856,7 +2857,7 @@ impl<'a> Model<'a> {
             .workbook
             .worksheet(sheet_index)?
             .cell(row, column)
-            .cloned()
+            .map(Cow::into_owned)
             .unwrap_or_default();
         let cell_value = cell.value(&self.workbook.shared_strings, self.language);
         Ok(cell_value)
@@ -3137,7 +3138,7 @@ impl<'a> Model<'a> {
                     r,
                     kind: ArrayKind::Dynamic,
                     ..
-                }) = sheet_data.cell(row, column)
+                }) = sheet_data.cell(row, column).as_deref()
                 {
                     // clear the spill of the dynamic formula
                     let (width, height) = *r;
@@ -3179,7 +3180,7 @@ impl<'a> Model<'a> {
                     s,
                     kind: ArrayKind::Dynamic,
                     ..
-                } = cell
+                } = &*cell
                 {
                     let (width, height) = *r;
                     result.push((row, column, *f, *s, width, height));
@@ -3886,12 +3887,15 @@ mod tests {
         let worksheet = model.workbook.worksheet(0).expect("Invalid sheet");
 
         assert_eq!(
-            worksheet.cell(1, 1),
+            worksheet.cell(1, 1).as_deref(),
             Some(&Cell::NumberCell { v: 35.0, s: 0 })
         );
 
         // Clears the content of A2 but not the style
-        assert_eq!(worksheet.cell(2, 1), Some(&Cell::EmptyCell { s: 0 }));
+        assert_eq!(
+            worksheet.cell(2, 1).as_deref(),
+            Some(&Cell::EmptyCell { s: 0 })
+        );
         assert_eq!(worksheet.cell(3, 1), None)
     }
 

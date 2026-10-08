@@ -26,6 +26,8 @@
 //! read was two hashes and two jumps to unrelated places in memory, which on a
 //! large sheet cost more than running the formulas.
 
+use std::borrow::Cow;
+
 use bitcode::{Decode, Encode};
 
 use crate::constants::LAST_ROW;
@@ -170,12 +172,15 @@ impl SheetData {
             })
     }
 
-    /// The cell at a position, if there is one.
+    /// The cell at a position, if there is one. It is handed out as a
+    /// `Cow` so that how the sheet holds its cells is its own business: a
+    /// sheet that held some of them in another form could make a cell for
+    /// the occasion, and readers would not know. Here it is always borrowed.
     #[inline]
-    pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
+    pub fn cell(&self, row: i32, column: i32) -> Option<Cow<'_, Cell>> {
         let row = self.row(row)?;
         let index = row.position(column).ok()?;
-        Some(&row.cells[index].1)
+        Some(Cow::Borrowed(&row.cells[index].1))
     }
 
     /// The cell at a position, to be changed in place.
@@ -209,12 +214,12 @@ impl SheetData {
 
     /// Every cell of the sheet with its row and column, in natural order:
     /// by row, and within a row by column.
-    pub fn cells(&self) -> impl Iterator<Item = (i32, i32, &Cell)> {
+    pub fn cells(&self) -> impl Iterator<Item = (i32, i32, Cow<'_, Cell>)> {
         self.rows_in_order().flat_map(|(row, row_data)| {
             row_data
                 .cells
                 .iter()
-                .map(move |(column, cell)| (row, *column, cell))
+                .map(move |(column, cell)| (row, *column, Cow::Borrowed(cell)))
         })
     }
 
@@ -232,12 +237,12 @@ impl SheetData {
     }
 
     /// The cells of a row with their column, in ascending order of column.
-    pub fn cells_in_row(&self, row: i32) -> Vec<(i32, &Cell)> {
+    pub fn cells_in_row(&self, row: i32) -> Vec<(i32, Cow<'_, Cell>)> {
         match self.row(row) {
             Some(row_data) => row_data
                 .cells
                 .iter()
-                .map(|(column, cell)| (*column, cell))
+                .map(|(column, cell)| (*column, Cow::Borrowed(cell)))
                 .collect(),
             None => Vec::new(),
         }
@@ -322,7 +327,7 @@ mod test {
         assert!(data.is_empty());
         assert_eq!(data.set_cell(3, 2, number(1.0)), None);
         assert_eq!(data.set_cell(3, 2, number(2.0)), Some(number(1.0)));
-        assert_eq!(data.cell(3, 2), Some(&number(2.0)));
+        assert_eq!(data.cell(3, 2).as_deref(), Some(&number(2.0)));
         assert_eq!(data.cell(3, 1), None);
         assert_eq!(data.cell(4, 2), None);
         *data.cell_mut(3, 2).unwrap() = number(5.0);
@@ -351,7 +356,7 @@ mod test {
         assert_eq!(positions.len(), 23);
         assert_eq!(data.rows(), vec![1, 5, 2000]);
         assert_eq!(data.columns_in_row(5), vec![3, 7]);
-        assert_eq!(data.cell(2000, 13), Some(&number(13.0)));
+        assert_eq!(data.cell(2000, 13).as_deref(), Some(&number(13.0)));
         assert_eq!(data.cells_in_row(2000).len(), 20);
         assert!(data.columns_in_row(6).is_empty());
     }
@@ -376,7 +381,7 @@ mod test {
             vec![(5, number(5.0)), (2, number(2.0)), (5, number(6.0))],
         );
         assert_eq!(data.columns_in_row(4), vec![2, 5]);
-        assert_eq!(data.cell(4, 5), Some(&number(6.0)));
+        assert_eq!(data.cell(4, 5).as_deref(), Some(&number(6.0)));
         assert_eq!(data.cell(4, 1), None);
     }
 

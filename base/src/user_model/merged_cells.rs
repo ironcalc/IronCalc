@@ -1,6 +1,7 @@
 use crate::expressions::types::Area;
 use crate::merged_cells::{merge_across_ranges, merge_down_ranges};
 use crate::types::{Cell, MergedCell};
+use std::borrow::Cow;
 
 use super::{common::UserModel, history::Diff};
 
@@ -101,7 +102,7 @@ impl UserModel<'_> {
         // gained content can be recorded as diffs of its own (redo and
         // external models replay the diffs, not merge_cells).
         let worksheet = self.model.workbook.worksheet(sheet)?;
-        let anchor_old_value = worksheet.cell(range.row, range.column).cloned();
+        let anchor_old_value = worksheet.cell(range.row, range.column).map(Cow::into_owned);
         let anchor_old_link = worksheet.links.get(&(range.row, range.column)).cloned();
 
         // Merging stamps the anchor's style on the whole range: capture the
@@ -123,7 +124,7 @@ impl UserModel<'_> {
         }
 
         let worksheet = self.model.workbook.worksheet(sheet)?;
-        let anchor_new_value = worksheet.cell(range.row, range.column).cloned();
+        let anchor_new_value = worksheet.cell(range.row, range.column).map(Cow::into_owned);
         let anchor_had_content = !matches!(&anchor_old_value, None | Some(Cell::EmptyCell { .. }));
         let anchor_has_content = !matches!(&anchor_new_value, None | Some(Cell::EmptyCell { .. }));
         if !anchor_had_content && anchor_has_content {
@@ -257,7 +258,7 @@ impl UserModel<'_> {
                         new_value: Box::new(None),
                     });
                 }
-                let old_value = worksheet.cell(row, column).cloned();
+                let old_value = worksheet.cell(row, column).map(Cow::into_owned);
                 if matches!(&old_value, None | Some(Cell::EmptyCell { .. })) {
                     continue;
                 }

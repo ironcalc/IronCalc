@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use crate::links::{CellLinkView, THEME_COLOR_HYPERLINK};
@@ -62,7 +63,7 @@ impl UserModel<'_> {
                     .workbook
                     .worksheet(sheet)?
                     .cell(row, column)
-                    .cloned();
+                    .map(Cow::into_owned);
                 // If it is a spill cell we want to save the old value as None, because
                 // the value of a spill cell is determined by the anchor cell
                 let old_value = if matches!(old_value, Some(Cell::SpillCell { .. })) {

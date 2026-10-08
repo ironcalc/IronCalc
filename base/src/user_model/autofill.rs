@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 use crate::{
@@ -329,7 +330,12 @@ impl<'a> UserModel<'a> {
         for (ar, ac, w, h) in anchors {
             for r in ar..ar + h {
                 for c in ac..ac + w {
-                    let cell = self.model.workbook.worksheet(sheet)?.cell(r, c).cloned();
+                    let cell = self
+                        .model
+                        .workbook
+                        .worksheet(sheet)?
+                        .cell(r, c)
+                        .map(Cow::into_owned);
                     saved.insert((r, c), cell);
                 }
             }
@@ -457,7 +463,7 @@ impl<'a> UserModel<'a> {
                         .workbook
                         .worksheet(sheet)
                         .ok()
-                        .and_then(|ws| ws.cell(row, column).cloned())
+                        .and_then(|ws| ws.cell(row, column).map(Cow::into_owned))
                 });
 
                 let source_row = anchor_row + index;
@@ -637,7 +643,7 @@ impl<'a> UserModel<'a> {
                         .workbook
                         .worksheet(sheet)
                         .ok()
-                        .and_then(|ws| ws.cell(row, column).cloned())
+                        .and_then(|ws| ws.cell(row, column).map(Cow::into_owned))
                 });
 
                 let source_column = anchor_column + index;

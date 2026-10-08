@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
@@ -115,7 +116,7 @@ impl<'a> Model<'a> {
                 .workbook
                 .worksheet(sheet)?
                 .cell(source_row, source_column)
-                .cloned();
+                .map(Cow::into_owned);
             match source_cell {
                 Some(Cell::CellFormula { .. }) | Some(Cell::ArrayFormula { .. }) => {
                     // Formulas are stored relative to their cell: re-enter the
@@ -223,7 +224,7 @@ impl<'a> Model<'a> {
         for r in row..row + height {
             for c in column..column + width {
                 if matches!(
-                    worksheet.cell(r, c),
+                    worksheet.cell(r, c).as_deref(),
                     None | Some(Cell::EmptyCell { .. }) | Some(Cell::SpillCell { .. })
                 ) {
                     continue;

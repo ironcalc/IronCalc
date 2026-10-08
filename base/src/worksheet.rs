@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::constants::{self, LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::{is_valid_column_number, is_valid_row};
@@ -33,7 +35,10 @@ impl Worksheet {
         self.name = name.to_string();
     }
 
-    pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
+    /// The cell at a position, if there is one. It is borrowed from the sheet
+    /// if the sheet holds it as a cell, and made for the occasion if it holds
+    /// it as a number (see `SheetData`): either way it reads as a `&Cell`.
+    pub fn cell(&self, row: i32, column: i32) -> Option<Cow<'_, Cell>> {
         self.sheet_data.cell(row, column)
     }
 
@@ -733,7 +738,7 @@ impl Worksheet {
         }
 
         let is_empty = match self.sheet_data.cell(row, column) {
-            Some(cell) => matches!(cell, Cell::EmptyCell { .. }),
+            Some(cell) => matches!(*cell, Cell::EmptyCell { .. }),
             None => true,
         };
 
@@ -756,7 +761,7 @@ impl Worksheet {
             Some(c) => c,
             None => return Err("Cell does not exist.".to_string()),
         };
-        match cell {
+        match &*cell {
             Cell::ArrayFormula { r, .. } => Ok((r.0, r.1)),
             Cell::CellFormula { .. } => Ok((1, 1)),
             _ => Err("Cell does not contain a formula.".to_string()),
@@ -777,7 +782,7 @@ impl Worksheet {
             Some(c) => c,
             None => return Ok(CellStructure::SingleCell),
         };
-        match cell {
+        match &*cell {
             Cell::ArrayFormula {
                 r,
                 kind: ArrayKind::Cse,
@@ -793,7 +798,7 @@ impl Worksheet {
                     Some(c) => c,
                     None => return Err("Invalid spill reference".to_string()),
                 };
-                match anchor_cell {
+                match &*anchor_cell {
                     Cell::ArrayFormula {
                         r,
                         kind: ArrayKind::Cse,

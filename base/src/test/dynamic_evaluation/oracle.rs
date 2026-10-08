@@ -92,12 +92,12 @@ pub(crate) fn violations(model: &mut Model) -> Vec<String> {
             .unwrap()
             .cell(row, column)
             .unwrap()
-            .clone();
+            .into_owned();
 
         // Orphan spill cells.
         if let Cell::SpillCell { a, .. } = &cell {
             let covered = matches!(
-                model.workbook.worksheet(sheet).unwrap().cell(a.0, a.1),
+                model.workbook.worksheet(sheet).unwrap().cell(a.0, a.1).as_deref(),
                 Some(Cell::ArrayFormula { r: (width, height), .. })
                     if row >= a.0 && row < a.0 + height && column >= a.1 && column < a.1 + width
             );
@@ -175,7 +175,7 @@ pub(crate) fn violations(model: &mut Model) -> Vec<String> {
                         (0..width).any(|j| {
                             (i, j) != (0, 0)
                                 && (ws.merged_cell_containing(row + i, column + j).is_some()
-                                    || match ws.cell(row + i, column + j) {
+                                    || match ws.cell(row + i, column + j).as_deref() {
                                         None | Some(Cell::EmptyCell { .. }) => false,
                                         Some(Cell::SpillCell { a, .. }) => *a != (row, column),
                                         Some(_) => true,
@@ -210,7 +210,7 @@ pub(crate) fn violations(model: &mut Model) -> Vec<String> {
                             continue;
                         }
                         let expected = &array[i as usize][j as usize];
-                        match ws.cell(row + i, column + j) {
+                        match ws.cell(row + i, column + j).as_deref() {
                             Some(Cell::SpillCell { a, v, .. })
                                 if *a == (row, column) && spill_matches(v, expected) => {}
                             other => out.push(format!(
@@ -247,7 +247,7 @@ pub(crate) fn violations(model: &mut Model) -> Vec<String> {
                             }
                             continue;
                         }
-                        match ws.cell(row + i, column + j) {
+                        match ws.cell(row + i, column + j).as_deref() {
                             Some(Cell::SpillCell { a, v, .. })
                                 if *a == (row, column) && spill_matches(v, &expected) => {}
                             other => out.push(format!(
@@ -302,7 +302,7 @@ pub(crate) fn violations(model: &mut Model) -> Vec<String> {
                             continue;
                         }
                         let ok = matches!(
-                            ws.cell(row + i, column + j),
+                            ws.cell(row + i, column + j).as_deref(),
                             Some(Cell::SpillCell { a, v, .. })
                                 if *a == (row, column) && spill_matches(v, &match scalar {
                                     CalcResult::Number(n) => ArrayNode::Number(*n),
