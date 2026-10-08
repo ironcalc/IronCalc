@@ -1104,3 +1104,63 @@ fn test_cf_custom_icon_set_round_trip() {
         "thumbs up/down icon set found in imported model (and not expected)"
     );
 }
+
+#[test]
+fn test_cf_text_rule_quotes_round_trip() {
+    // A text rule's value goes inside a string literal in the rule's formula,
+    // so its quotes must be doubled for every operator, not only for Equals.
+    let value = r#"say "hi""#;
+    let mut model = new_empty_model();
+    let operators = [
+        ("A1:A10", TextOperator::Contains),
+        ("B1:B10", TextOperator::DoesNotContain),
+        ("C1:C10", TextOperator::BeginsWith),
+        ("D1:D10", TextOperator::EndsWith),
+    ];
+    for (range, operator) in operators.iter() {
+        model
+            .add_conditional_formatting(
+                0,
+                range,
+                CfRuleInput::Text {
+                    operator: operator.clone(),
+                    value: value.to_string(),
+                    format: fill_dxf("#FFFF00"),
+                    stop_if_true: false,
+                },
+            )
+            .unwrap();
+    }
+    model.evaluate();
+    let temp_file_name = "temp_file_test_cf_text_rule_quotes.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let file = fs::File::open(temp_file_name).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+    let mut sheet = String::new();
+    std::io::Read::read_to_string(
+        &mut archive.by_name("xl/worksheets/sheet1.xml").unwrap(),
+        &mut sheet,
+    )
+    .unwrap();
+    let escaped = "&quot;say &quot;&quot;hi&quot;&quot;&quot;";
+    for expected in [
+        format!("NOT(ISERROR(SEARCH({escaped},A1)))"),
+        format!("ISERROR(SEARCH({escaped},B1))"),
+        format!("LEFT(C1,LEN({escaped}))={escaped}"),
+        format!("RIGHT(D1,LEN({escaped}))={escaped}"),
+    ] {
+        assert!(sheet.contains(&expected), "{expected} not in {sheet}");
+    }
+
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    let rules = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(rules.len(), 4);
+    for rule in rules {
+        match rule.cf_rule {
+            CfRule::Text { value: v, .. } => assert_eq!(v, value),
+            other => panic!("unexpected rule {other:?}"),
+        }
+    }
+    fs::remove_file(temp_file_name).unwrap();
+}
