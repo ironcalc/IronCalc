@@ -158,16 +158,17 @@ fn time_period_formula_str(anchor: &str, period: &PeriodType) -> String {
 }
 
 fn text_formula_str(anchor: &str, op: &TextOperator, value: &str) -> String {
-    // For Equals, double any embedded quotes (Excel formula string escaping)
+    // Every operator puts the value inside a formula string literal, so double
+    // any embedded quotes (Excel formula string escaping) for all of them.
     let escaped = value.replace('"', "\"\"");
     match op {
         TextOperator::Contains => {
-            format!(r#"NOT(ISERROR(SEARCH("{value}",{anchor})))"#)
+            format!(r#"NOT(ISERROR(SEARCH("{escaped}",{anchor})))"#)
         }
         TextOperator::Equals => format!(r#"{anchor}="{escaped}""#),
-        TextOperator::DoesNotContain => format!(r#"ISERROR(SEARCH("{value}",{anchor}))"#),
-        TextOperator::BeginsWith => format!(r#"LEFT({anchor},LEN("{value}"))="{value}""#),
-        TextOperator::EndsWith => format!(r#"RIGHT({anchor},LEN("{value}"))="{value}""#),
+        TextOperator::DoesNotContain => format!(r#"ISERROR(SEARCH("{escaped}",{anchor}))"#),
+        TextOperator::BeginsWith => format!(r#"LEFT({anchor},LEN("{escaped}"))="{escaped}""#),
+        TextOperator::EndsWith => format!(r#"RIGHT({anchor},LEN("{escaped}"))="{escaped}""#),
     }
 }
 
