@@ -169,6 +169,46 @@ impl SheetData {
         }
     }
 
+    /// The cells of a row from `first_column` to `last_column`, both included,
+    /// with their column, in ascending order of column. Reading a stretch of a
+    /// row this way finds the row once, not once per cell.
+    pub fn cells_in_row_between(
+        &self,
+        row: i32,
+        first_column: i32,
+        last_column: i32,
+    ) -> impl Iterator<Item = (i32, Cow<'_, Cell>)> {
+        self.row(row)
+            .map(|row_data| row_data.iter_from(first_column))
+            .into_iter()
+            .flatten()
+            .take_while(move |(column, _)| *column <= last_column)
+    }
+
+    /// The numbers of a row from `first_column` to `last_column`, both
+    /// included, if the row holds them as numbers and nothing else, with none
+    /// missing. `None` is no news about the row: its cells say what it holds.
+    #[inline]
+    pub fn numbers_in_row_between(
+        &self,
+        row: i32,
+        first_column: i32,
+        last_column: i32,
+    ) -> Option<&[f64]> {
+        match self.row(row)? {
+            Row::Numbers {
+                first_column: row_first_column,
+                values,
+                ..
+            } => {
+                let first = Row::offset(*row_first_column, values, first_column)?;
+                let last = Row::offset(*row_first_column, values, last_column)?;
+                values.get(first..=last)
+            }
+            Row::Cells(_) => None,
+        }
+    }
+
     /// Removes every cell of a row, and the row.
     pub fn remove_row(&mut self, row: i32) {
         let Some((chunk_index, index)) = locate(row) else {

@@ -1,5 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
+use std::borrow::Cow;
+
 use super::row::Row;
 use super::*;
 use crate::constants::LAST_ROW;
@@ -57,6 +59,36 @@ fn natural_order_whatever_the_order_of_insertion() {
     assert!(data.columns_in_row(6).is_empty());
 }
 
+#[test]
+fn a_stretch_of_a_row() {
+    let mut data = SheetData::new();
+    // a short row, searched from the left, and a long one, bisected
+    for column in [2, 3, 5, 9] {
+        data.set_cell(1, column, number(column as f64));
+    }
+    for column in (10..=60).step_by(2) {
+        data.set_cell(7, column, number(column as f64));
+    }
+    let columns = |row, first, last| -> Vec<i32> {
+        data.cells_in_row_between(row, first, last)
+            .map(|(column, _)| column)
+            .collect()
+    };
+    assert_eq!(columns(1, 1, 100), vec![2, 3, 5, 9]);
+    assert_eq!(columns(1, 3, 5), vec![3, 5]);
+    assert_eq!(columns(1, 4, 4), Vec::<i32>::new());
+    assert_eq!(columns(1, 6, 8), Vec::<i32>::new());
+    assert_eq!(columns(1, 10, 20), Vec::<i32>::new());
+    assert_eq!(columns(7, 11, 17), vec![12, 14, 16]);
+    assert_eq!(columns(7, 58, 1000), vec![58, 60]);
+    // no such row
+    assert_eq!(columns(2, 1, 100), Vec::<i32>::new());
+    assert_eq!(
+        data.cells_in_row_between(7, 20, 20).next(),
+        Some((20, Cow::Owned(number(20.0))))
+    );
+}
+
 fn is_numbers(data: &SheetData, row: i32) -> bool {
     matches!(data.row(row), Some(Row::Numbers { .. }))
 }
@@ -96,6 +128,16 @@ fn a_row_of_numbers_is_held_as_numbers() {
     assert_eq!(data.cell(1, 7), None);
     assert_eq!(data.columns_in_row(1), vec![3, 4, 5, 6]);
     assert_eq!(data.cells_in_row(1).len(), 4);
+    let between = |first, last| -> Vec<i32> {
+        data.cells_in_row_between(1, first, last)
+            .map(|(column, _)| column)
+            .collect()
+    };
+    assert_eq!(between(1, 100), vec![3, 4, 5, 6]);
+    assert_eq!(between(4, 5), vec![4, 5]);
+    assert_eq!(between(6, 9), vec![6]);
+    assert_eq!(between(7, 9), Vec::<i32>::new());
+    assert_eq!(between(1, 2), Vec::<i32>::new());
     let cells: Vec<(i32, i32)> = data.cells().map(|(r, c, _)| (r, c)).take(5).collect();
     assert_eq!(cells, vec![(1, 3), (1, 4), (1, 5), (1, 6), (2, 1)]);
 
@@ -114,12 +156,22 @@ fn a_row_of_numbers_is_held_as_numbers() {
     for (column, cell) in &row {
         assert_eq!(data.cell(8, *column).as_deref(), Some(cell));
     }
-    let read: Vec<(i32, Cell)> = data
-        .cells_in_row(8)
-        .into_iter()
-        .map(|(column, cell)| (column, cell.into_owned()))
-        .collect();
-    assert_eq!(read, row);
+    for first in 9..=18 {
+        let read: Vec<(i32, Cell)> = data
+            .cells_in_row_between(8, first, 16)
+            .map(|(column, cell)| (column, cell.into_owned()))
+            .collect();
+        let expected: Vec<(i32, Cell)> = row
+            .iter()
+            .filter(|(column, _)| (first..=16).contains(column))
+            .cloned()
+            .collect();
+        assert_eq!(read, expected, "from {first}");
+    }
+    assert_eq!(
+        data.numbers_in_row_between(8, 11, 13),
+        Some(&[11.0, 12.0, 13.0][..])
+    );
     // a number of the style there is in its place: still numbers
     assert_eq!(data.set_cell(8, 11, styled(3, 0)), Some(styled(3, 11)));
     assert_eq!(data.set_cell(8, 12, styled(0, 0)), Some(styled(0, 12)));
@@ -148,6 +200,17 @@ fn a_row_of_numbers_is_held_as_numbers() {
     assert_eq!(data.remove_cell(9, 3), Some(styled(4, 3)));
     assert!(!is_numbers(&data, 9));
     assert_eq!(data.columns_in_row(9), vec![1, 2]);
+
+    // The numbers themselves, when the row holds all that is asked for
+    assert_eq!(
+        data.numbers_in_row_between(1, 4, 6),
+        Some(&[4.0, 5.0, 6.0][..])
+    );
+    assert_eq!(data.numbers_in_row_between(1, 3, 3), Some(&[3.0][..]));
+    assert_eq!(data.numbers_in_row_between(1, 2, 6), None);
+    assert_eq!(data.numbers_in_row_between(1, 3, 7), None);
+    assert_eq!(data.numbers_in_row_between(2, 1, 1), None);
+    assert_eq!(data.numbers_in_row_between(9, 1, 1), None);
 }
 
 #[test]

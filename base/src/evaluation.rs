@@ -475,6 +475,26 @@ impl Default for Evaluation {
     }
 }
 
+impl Evaluation {
+    /// See `Model::record_seen`. Here so that a read can be put on record
+    /// while the sheet it was made in is still borrowed.
+    pub(crate) fn record_seen(&mut self, position: CellReferenceIndex, seen: Seen) {
+        if !self.in_pass {
+            return;
+        }
+        if let Some(root) = self.root {
+            let record = self.seen.entry(key(position)).or_default();
+            let slot = match seen {
+                Seen::Empty => &mut record.empty,
+                Seen::Occupied => &mut record.occupied,
+            };
+            if slot.is_none() {
+                *slot = Some(root);
+            }
+        }
+    }
+}
+
 impl<'a> Model<'a> {
     /// Evaluates every formula in the workbook.
     ///
@@ -995,19 +1015,7 @@ impl<'a> Model<'a> {
     /// evaluating. The first record of each kind is kept. Reads made outside
     /// a pass are nobody's dependency.
     pub(crate) fn record_seen(&mut self, position: CellReferenceIndex, seen: Seen) {
-        if !self.evaluation.in_pass {
-            return;
-        }
-        if let Some(root) = self.evaluation.root {
-            let record = self.evaluation.seen.entry(key(position)).or_default();
-            let slot = match seen {
-                Seen::Empty => &mut record.empty,
-                Seen::Occupied => &mut record.occupied,
-            };
-            if slot.is_none() {
-                *slot = Some(root);
-            }
-        }
+        self.evaluation.record_seen(position, seen);
     }
 
     /// Records that the formula being evaluated depends on every position of a
