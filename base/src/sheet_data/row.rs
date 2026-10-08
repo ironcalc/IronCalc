@@ -189,7 +189,7 @@ impl Row {
 
     /// Where the column is among the numbers of a row of numbers.
     #[inline]
-    fn offset(first_column: i32, values: &[f64], column: i32) -> Option<usize> {
+    pub(super) fn offset(first_column: i32, values: &[f64], column: i32) -> Option<usize> {
         let offset = column as i64 - first_column as i64;
         if (0..values.len() as i64).contains(&offset) {
             Some(offset as usize)
@@ -226,7 +226,7 @@ impl Row {
 
     /// The cells from `first_column` on.
     #[inline]
-    fn iter_from(&self, first_column: i32) -> RowIter<'_> {
+    pub(super) fn iter_from(&self, first_column: i32) -> RowIter<'_> {
         match self {
             Row::Cells(cells) => {
                 let (Ok(start) | Err(start)) = position(cells, first_column);

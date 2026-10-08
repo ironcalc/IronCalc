@@ -131,6 +131,22 @@ fn extract_key_column(data: &[Vec<ArrayNode>], expected_len: usize) -> Option<Ve
     }
 }
 
+/// The transpose of an array: its rows become columns. The values are moved,
+/// not copied, and every row is let go of as soon as it has been read.
+pub(crate) fn transpose_array(data: Vec<Vec<ArrayNode>>) -> Vec<Vec<ArrayNode>> {
+    let num_rows = data.len();
+    let num_cols = data.first().map_or(0, |row| row.len());
+    let mut result: Vec<Vec<ArrayNode>> = (0..num_cols)
+        .map(|_| Vec::with_capacity(num_rows))
+        .collect();
+    for row in data {
+        for (transposed_row, value) in result.iter_mut().zip(row) {
+            transposed_row.push(value);
+        }
+    }
+    result
+}
+
 impl<'a> Model<'a> {
     /// Evaluate a node and convert the result to a 2-D array of ArrayNodes.
     /// Handles Range references, inline Arrays, and scalar values.
@@ -140,6 +156,15 @@ impl<'a> Model<'a> {
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
+        self.result_to_array(result, cell)
+    }
+
+    /// What `eval_to_array` makes of the value of a node.
+    pub(crate) fn result_to_array(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         match result {
             CalcResult::Range { left, right } => Ok(self.evaluate_range(left, right)),
             CalcResult::Array(arr) => Ok(arr),

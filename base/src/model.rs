@@ -1570,13 +1570,85 @@ impl<'a> Model<'a> {
         left: CellReferenceIndex,
         right: CellReferenceIndex,
     ) -> Vec<Vec<ArrayNode>> {
-        let mut result = Vec::new();
-        for r in left.row..=right.row {
-            let mut row_result = Vec::new();
-            for c in left.column..=right.column {
+        let width = (right.column - left.column + 1).max(0) as usize;
+        let height = (right.row - left.row + 1).max(0) as usize;
+        let mut result = Vec::with_capacity(height);
+        for row in left.row..=right.row {
+            let mut row_result = Vec::with_capacity(width);
+            self.read_row(left.sheet, row, left.column, right.column, &mut |value| {
+                row_result.push(value)
+            });
+            result.push(row_result);
+        }
+        result
+    }
+
+    /// The numbers of a range, row by row in one vector, if every cell of it
+    /// holds a number; `None` as soon as a row has anything else in it. For
+    /// the functions that work on matrices of numbers: a large range of data
+    /// is read into the numbers alone, an eighth of what `evaluate_range`
+    /// needs for it.
+    ///
+    /// `None` says nothing about what the range holds: `evaluate_range` then
+    /// reads it again, from the start. What this read of it evaluated stays
+    /// evaluated.
+    pub(crate) fn evaluate_range_of_numbers(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+    ) -> Option<Vec<f64>> {
+        let width = (right.column - left.column + 1).max(0) as usize;
+        let height = (right.row - left.row + 1).max(0) as usize;
+        let mut numbers = Vec::with_capacity(width * height);
+        let mut only_numbers = true;
+        for row in left.row..=right.row {
+            // A row the sheet holds as numbers is copied as it is. Not while
+            // the pass is being abandoned: nothing read then is a value.
+            if self.evaluation.restart.is_none() && !self.evaluation.unwinding {
+                let sheet_data = &self.workbook.worksheets[left.sheet as usize].sheet_data;
+                if let Some(row_numbers) =
+                    sheet_data.numbers_in_row_between(row, left.column, right.column)
+                {
+                    numbers.extend_from_slice(row_numbers);
+                    continue;
+                }
+            }
+            self.read_row(
+                left.sheet,
+                row,
+                left.column,
+                right.column,
+                &mut |value| match value {
+                    ArrayNode::Number(number) => numbers.push(number),
+                    _ => only_numbers = false,
+                },
+            );
+            if !only_numbers {
+                return None;
+            }
+        }
+        Some(numbers)
+    }
+
+    /// Evaluates the cells of a row from `first_column` to `last_column`, in
+    /// order, and hands the value of each to `push`.
+    fn read_row(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        first_column: i32,
+        last_column: i32,
+        push: &mut impl FnMut(ArrayNode),
+    ) {
+        let mut column = first_column;
+        while column <= last_column {
+            // Constants are read straight from the sheet; what is left,
+            // formulas and the cells they write, is evaluated cell by cell.
+            let (stop, resume) = self.read_constants(sheet, row, column, last_column, push);
+            for c in stop..resume {
                 let cell_reference = CellReferenceIndex {
-                    sheet: left.sheet,
-                    row: r,
+                    sheet,
+                    row,
                     column: c,
                 };
                 let value = match self.evaluate_cell(cell_reference) {
@@ -1591,11 +1663,89 @@ impl<'a> Model<'a> {
                         ArrayNode::Error(Error::NIMPL)
                     }
                 };
-                row_result.push(value);
+                push(value);
             }
-            result.push(row_result);
+            column = resume;
         }
-        result
+    }
+
+    /// Reads the cells of a row from `column` on, up to `last_column`, for as
+    /// long as they are constants or hold nothing, and hands their values to
+    /// `push`: exactly what `evaluate_cell` would give for each of them,
+    /// with the row found once instead of once per cell. A range of data is
+    /// read whole this way.
+    ///
+    /// It stops at the first formula or spill cell, which only `evaluate_cell`
+    /// can read, and returns `(stop, resume)`: the cells from `stop` up to
+    /// `resume`, not included, are left to the caller, and reading goes on
+    /// from `resume`. Both are past `last_column` once the row is read. Cells
+    /// are read in order and nothing is read beyond the first formula:
+    /// running it can change what the cells after it hold.
+    fn read_constants(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        last_column: i32,
+        push: &mut impl FnMut(ArrayNode),
+    ) -> (i32, i32) {
+        let evaluation = &mut self.evaluation;
+        if evaluation.restart.is_some() || evaluation.unwinding {
+            // Nothing read now counts, and nothing is put on record: leave
+            // the rest of the row to `evaluate_cell`, which knows.
+            return (column, last_column + 1);
+        }
+        let shared_strings = &self.workbook.shared_strings;
+        let mut cells = self.workbook.worksheets[sheet as usize]
+            .sheet_data
+            .cells_in_row_between(row, column, last_column);
+        let mut next = column;
+        // A position without a cell holds nothing, like an empty cell.
+        let mut read_empty = |from: i32, to: i32, push: &mut dyn FnMut(ArrayNode)| {
+            for column in from..to {
+                evaluation.record_seen(CellReferenceIndex { sheet, row, column }, Seen::Empty);
+                push(ArrayNode::Empty);
+            }
+        };
+        while let Some((c, cell)) = cells.next() {
+            let value = match &*cell {
+                Cell::EmptyCell { .. } => {
+                    read_empty(next, c + 1, push);
+                    next = c + 1;
+                    continue;
+                }
+                Cell::NumberCell { v, .. } => ArrayNode::Number(*v),
+                Cell::BooleanCell { v, .. } => ArrayNode::Boolean(*v),
+                Cell::ErrorCell { ei, .. } => ArrayNode::Error(ei.clone()),
+                Cell::SharedString { si, .. } => match shared_strings.get(*si as usize) {
+                    Some(s) => ArrayNode::String(s.clone()),
+                    None => ArrayNode::Error(Error::ERROR),
+                },
+                Cell::CellFormula { .. } | Cell::ArrayFormula { .. } | Cell::SpillCell { .. } => {
+                    read_empty(next, c, push);
+                    // The formulas that follow it without a gap go with it.
+                    let mut resume = c + 1;
+                    for (following, cell) in cells.by_ref() {
+                        let is_constant = !matches!(
+                            *cell,
+                            Cell::CellFormula { .. }
+                                | Cell::ArrayFormula { .. }
+                                | Cell::SpillCell { .. }
+                        );
+                        if following != resume || is_constant {
+                            break;
+                        }
+                        resume += 1;
+                    }
+                    return (c, resume);
+                }
+            };
+            read_empty(next, c, push);
+            push(value);
+            next = c + 1;
+        }
+        read_empty(next, last_column + 1, push);
+        (last_column + 1, last_column + 1)
     }
 
     #[inline(always)]
