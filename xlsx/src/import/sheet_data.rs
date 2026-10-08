@@ -16,6 +16,7 @@ use quick_xml::events::{BytesEnd, BytesStart, Event};
 
 use crate::error::XlsxError;
 
+use super::shared_strings::SharedStringTable;
 use super::util::parse_bool_with_default;
 use super::worksheets::{
     find_or_add_formula, from_a1_to_rc, get_cell_from_excel, parse_cell_reference, parse_range,
@@ -130,7 +131,7 @@ struct CellXml {
 struct SheetDataReader<'a, 'p> {
     sheet_name: &'a str,
     parser: &'a mut Parser<'p>,
-    shared_strings: &'a mut Vec<String>,
+    shared_strings: &'a mut SharedStringTable,
 
     sheet_data: SheetData,
     rows: Vec<Row>,
@@ -620,7 +621,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     reader: R,
     sheet_name: &str,
     parser: &mut Parser,
-    shared_strings: &mut Vec<String>,
+    shared_strings: &mut SharedStringTable,
 ) -> Result<SheetDataXml, XlsxError> {
     let mut reader = quick_xml::Reader::from_reader(reader);
     let mut tree = XmlTreeBuilder::new();

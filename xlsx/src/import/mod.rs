@@ -29,7 +29,7 @@ use ironcalc_base::{
 
 use crate::error::XlsxError;
 
-use shared_strings::read_shared_strings;
+use shared_strings::{read_shared_strings, SharedStringTable};
 
 use metadata::load_metadata;
 use styles::load_styles;
@@ -96,7 +96,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
 ) -> Result<Workbook, XlsxError> {
     let mut archive = zip::ZipArchive::new(reader)?;
 
-    let mut shared_strings = read_shared_strings(&mut archive)?;
+    let mut shared_strings = SharedStringTable::new(read_shared_strings(&mut archive)?);
     let mut workbook = load_workbook(&mut archive)?;
     let rels = load_relationships(&mut archive)?;
     let theme_path = resolve_theme_path(&rels);
@@ -147,7 +147,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         },
     );
     Ok(Workbook {
-        shared_strings,
+        shared_strings: shared_strings.into_strings(),
         defined_names: workbook.defined_names,
         worksheets,
         styles,
