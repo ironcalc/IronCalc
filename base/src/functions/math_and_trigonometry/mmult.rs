@@ -342,21 +342,22 @@ mod test {
             .collect()
     }
 
-    fn bits(result: CalcResult) -> Vec<Vec<u64>> {
-        match result {
-            CalcResult::Array(array) => array
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|value| match value {
-                            ArrayNode::Number(number) => number.to_bits(),
-                            _ => panic!("not a number"),
-                        })
-                        .collect()
-                })
-                .collect(),
-            _ => panic!("not an array"),
-        }
+    /// The numbers of an array, bit for bit; `None` for anything else.
+    fn bits(result: CalcResult) -> Option<Vec<Vec<u64>>> {
+        let CalcResult::Array(array) = result else {
+            return None;
+        };
+        array
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|value| match value {
+                        ArrayNode::Number(number) => Some(number.to_bits()),
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     // The product of matrices of numbers is, to the last bit, what the
@@ -401,7 +402,11 @@ mod test {
                     };
                     let expected = mmult_arrays(copy(&a).into_array(), copy(&b).into_array(), cell);
                     let product = multiply(a, b, cell);
-                    assert_eq!(bits(product), bits(expected), "{m}x{k} by {k}x{n}");
+                    assert_eq!(
+                        bits(product).unwrap(),
+                        bits(expected).unwrap(),
+                        "{m}x{k} by {k}x{n}"
+                    );
                 }
             }
         }
