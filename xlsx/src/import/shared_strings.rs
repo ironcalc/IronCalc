@@ -1,8 +1,44 @@
+use std::collections::HashMap;
 use std::io::{BufReader, Read};
 
 use super::xml::XmlNode;
 
 use crate::error::XlsxError;
+
+/// The workbook's shared strings while its sheets are read: the list, and an
+/// index from each string to its first position in it. Inline-string and
+/// formula-string (`t="str"`) cells look their text up here; a linear search
+/// of the list per cell made such workbooks quadratic to load.
+pub(crate) struct SharedStringTable {
+    strings: Vec<String>,
+    index: HashMap<String, i32>,
+}
+
+impl SharedStringTable {
+    pub(crate) fn new(strings: Vec<String>) -> SharedStringTable {
+        let mut index = HashMap::with_capacity(strings.len());
+        for (i, s) in strings.iter().enumerate() {
+            // The first occurrence wins, as a search of the list would find it.
+            index.entry(s.clone()).or_insert(i as i32);
+        }
+        SharedStringTable { strings, index }
+    }
+
+    /// The position of `s` in the list, appending it if it is not there yet.
+    pub(crate) fn index_of(&mut self, s: &str) -> i32 {
+        if let Some(i) = self.index.get(s) {
+            return *i;
+        }
+        let i = self.strings.len() as i32;
+        self.strings.push(s.to_string());
+        self.index.insert(s.to_string(), i);
+        i
+    }
+
+    pub(crate) fn into_strings(self) -> Vec<String> {
+        self.strings
+    }
+}
 
 /// Reads the list of shared strings in an Excel workbook
 /// Note than in IronCalc we lose _internal_ styling of a string
@@ -146,5 +182,21 @@ mod tests {
     #[test]
     fn test_decode_xlsx_escapes_nul() {
         assert_eq!(decode_xlsx_escapes("_x0000_"), "\x00");
+    }
+}
+
+#[cfg(test)]
+mod table_tests {
+    use super::SharedStringTable;
+
+    #[test]
+    fn finds_the_first_occurrence_and_appends_new_strings() {
+        let mut table =
+            SharedStringTable::new(vec!["a".to_string(), "b".to_string(), "a".to_string()]);
+        assert_eq!(table.index_of("a"), 0);
+        assert_eq!(table.index_of("b"), 1);
+        assert_eq!(table.index_of("c"), 3);
+        assert_eq!(table.index_of("c"), 3);
+        assert_eq!(table.into_strings(), ["a", "b", "a", "c"]);
     }
 }

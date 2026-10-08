@@ -28,7 +28,7 @@ use crate::error::XlsxError;
 
 use super::{
     conditional_formatting::load_conditional_formatting,
-    shared_strings::decode_xlsx_escapes,
+    shared_strings::{decode_xlsx_escapes, SharedStringTable},
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
     util::{get_attribute, get_bool_false, get_color, get_number},
@@ -453,7 +453,7 @@ pub(super) fn get_cell_from_excel(
     formula_index: i32,
     sheet_name: &str,
     cell_ref: &str,
-    shared_strings: &mut Vec<String>,
+    shared_strings: &mut SharedStringTable,
     rich_text_inline: Option<String>,
     anchor_cell: Option<(i32, i32)>,
     array_kind: CellArrayKind,
@@ -530,12 +530,7 @@ pub(super) fn get_cell_from_excel(
             },
             "str" => {
                 let s = decode_xlsx_escapes(cell_value.unwrap_or(""));
-                let si = if let Some(i) = shared_strings.iter().position(|r| r == &s) {
-                    i
-                } else {
-                    shared_strings.push(s.clone());
-                    shared_strings.len() - 1
-                } as i32;
+                let si = shared_strings.index_of(&s);
 
                 if let Some(anchor) = anchor_cell {
                     Cell::SpillCell {
@@ -557,12 +552,7 @@ pub(super) fn get_cell_from_excel(
             }
             "inlineStr" => {
                 let s = rich_text_inline.unwrap_or_default();
-                let si = if let Some(i) = shared_strings.iter().position(|r| r == &s) {
-                    i
-                } else {
-                    shared_strings.push(s.to_string());
-                    shared_strings.len() - 1
-                } as i32;
+                let si = shared_strings.index_of(&s);
 
                 Cell::SharedString { si, s: cell_style }
             }
@@ -940,7 +930,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     settings: SheetSettings,
     worksheets: &[String],
     tables: &HashMap<String, Table>,
-    shared_strings: &mut Vec<String>,
+    shared_strings: &mut SharedStringTable,
     defined_names: Vec<DefinedNameS>,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
@@ -1057,7 +1047,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     rels: &HashMap<String, Relationship>,
     workbook: &WorkbookXML,
     tables: &mut HashMap<String, Table>,
-    shared_strings: &mut Vec<String>,
+    shared_strings: &mut SharedStringTable,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
 ) -> Result<(Vec<Worksheet>, u32), XlsxError> {
