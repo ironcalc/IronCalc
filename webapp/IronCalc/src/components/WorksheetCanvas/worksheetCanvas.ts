@@ -444,7 +444,9 @@ export default class WorksheetCanvas {
   } {
     const fontSize = style.font?.sz || 13;
     let font = `${fontSize}px ${this.theme.cellFontFamily}`;
-    let color = this.theme.defaultTextColor;
+    let color = style.fill.color
+      ? this.theme.filledCellTextColor
+      : this.theme.defaultTextColor;
 
     if (style.font) {
       // Font.color is optional: a missing color means "use the default" — fall back

@@ -1,3 +1,6 @@
+import { defaultThemeVariables } from "../../theme/theme";
+import { isLightColor } from "../ColorPicker/util";
+
 // Get a 10% transparency of an hex color
 export function hexToRGBA10Percent(colorHex: string): string {
   // Remove the leading hash (#) if present
@@ -68,8 +71,17 @@ function readCSSVar(name: string, style: CSSStyleDeclaration): string {
 
 export function readThemeFromCSS(root: Element): Theme {
   const style = getComputedStyle(root);
+  const backgroundColor = readCSSVar("--palette-common-white", style);
+  const defaultTextColor = readCSSVar(
+    "--palette-sheet-default-text-color",
+    style,
+  );
   return {
-    backgroundColor: readCSSVar("--palette-common-white", style),
+    backgroundColor,
+    // Fills don't follow the theme, so avoid light-on-light in dark mode
+    filledCellTextColor: isLightColor(backgroundColor)
+      ? defaultTextColor
+      : defaultThemeVariables["--palette-sheet-default-text-color"],
     commonWhite: readCSSVar("--palette-common-white", style),
     gridColor: readCSSVar("--palette-sheet-grid-color", style),
     cellFontFamily: readCSSVar(
@@ -94,7 +106,7 @@ export function readThemeFromCSS(root: Element): Theme {
       "--palette-sheet-grid-separator-color",
       style,
     ),
-    defaultTextColor: readCSSVar("--palette-sheet-default-text-color", style),
+    defaultTextColor,
     headerSelectedColor: readCSSVar(
       "--palette-sheet-header-selected-color",
       style,
@@ -116,6 +128,7 @@ export interface Theme {
   headerFont: string;
   gridSeparatorColor: string;
   defaultTextColor: string;
+  filledCellTextColor: string;
   commonWhite: string;
   headerSelectedColor: string;
 }
