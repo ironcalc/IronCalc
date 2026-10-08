@@ -91,7 +91,13 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
     theme: &Theme,
 ) -> Result<Styles, XlsxError> {
-    let file = archive.by_name("xl/styles.xml")?;
+    // OPC does not require a styles part and some generators leave it out:
+    // such a package gets the default styles rather than failing to load.
+    let file = match archive.by_name("xl/styles.xml") {
+        Ok(file) => file,
+        Err(zip::result::ZipError::FileNotFound) => return Ok(Styles::default()),
+        Err(e) => return Err(e.into()),
+    };
     let doc = XmlNode::parse(BufReader::new(file))?;
     let style_sheet = &doc;
 
@@ -701,5 +707,59 @@ mod indexed_color_tests {
             resolve(r#"<c theme="3" tint="0.0"/>"#),
             Color::Theme(3, 0.0)
         );
+    }
+}
+
+#[cfg(test)]
+mod missing_styles_part_tests {
+    use std::io::{Cursor, Write};
+
+    use ironcalc_base::types::Styles;
+
+    use crate::import::load_from_xlsx_bytes;
+
+    // OPC does not require a styles part, and some generators leave it out.
+    fn package_without_styles() -> Vec<u8> {
+        let parts = [
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>"#,
+            ),
+            (
+                "xl/workbook.xml",
+                r#"<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>"#,
+            ),
+            (
+                "xl/_rels/workbook.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>"#,
+            ),
+            (
+                "xl/worksheets/sheet1.xml",
+                r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>42</v></c></row></sheetData></worksheet>"#,
+            ),
+        ];
+        let mut buffer = Vec::new();
+        {
+            let mut zip = zip::ZipWriter::new(Cursor::new(&mut buffer));
+            for (name, text) in parts {
+                zip.start_file(name, zip::write::FileOptions::default())
+                    .unwrap();
+                zip.write_all(text.as_bytes()).unwrap();
+            }
+            zip.finish().unwrap();
+        }
+        buffer
+    }
+
+    #[test]
+    fn a_package_without_a_styles_part_loads_with_default_styles() {
+        let workbook =
+            load_from_xlsx_bytes(&package_without_styles(), "no-styles", "en", "UTC").unwrap();
+        assert_eq!(workbook.styles, Styles::default());
+        assert_eq!(workbook.worksheets.len(), 1);
     }
 }
