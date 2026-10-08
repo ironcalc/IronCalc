@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use super::data_validation::load_data_validations;
 use ironcalc_base::expressions::parser::{
     new_parser_english, static_analysis::add_implicit_intersection, Parser,
 };
@@ -998,6 +999,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
 
     let conditional_formatting = load_conditional_formatting(ws, theme, dxfs)?;
+    let data_validations = load_data_validations(ws);
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 
@@ -1047,6 +1049,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             views,
             conditional_formatting,
             links,
+            data_validations,
         },
         sheet_view.is_selected,
     ))

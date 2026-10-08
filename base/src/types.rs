@@ -276,6 +276,39 @@ pub struct Worksheet {
     pub conditional_formatting: Vec<ConditionalFormatting>,
     /// Hyperlinks in the worksheet, keyed by (row, column) of the cell they are attached to
     pub links: HashMap<(i32, i32), Link>,
+    /// Data validation rules (`<dataValidations>`). They are carried through
+    /// load and save; IronCalc does not evaluate them.
+    pub data_validations: Vec<DataValidation>,
+}
+
+/// One data validation rule.
+/// ECMA-376-1:2016 section 18.3.1.32 (dataValidation) and 18.18.20/21/22
+/// (ST_DataValidationType, ST_DataValidationOperator, ST_DataValidationErrorStyle).
+///
+/// Formulas are kept as written in the file, without a leading `=`. A list
+/// rule's literal options are a quoted string (`"a,b,c"`), as in the file.
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+pub struct DataValidation {
+    /// Space separated list of ranges, e.g. `"B2:B10 D2"`.
+    pub sqref: String,
+    /// `none`, `whole`, `decimal`, `list`, `date`, `time`, `textLength` or `custom`.
+    pub validation_type: String,
+    /// `between` (the default), `notBetween`, `equal`, `notEqual`, `lessThan`,
+    /// `lessThanOrEqual`, `greaterThan` or `greaterThanOrEqual`.
+    pub operator: Option<String>,
+    pub formula1: Option<String>,
+    pub formula2: Option<String>,
+    pub allow_blank: bool,
+    /// NB: in OOXML `showDropDown="1"` *hides* the in-cell drop-down arrow.
+    pub show_drop_down: bool,
+    pub show_input_message: bool,
+    pub show_error_message: bool,
+    /// `stop` (the default), `warning` or `information`.
+    pub error_style: Option<String>,
+    pub error_title: Option<String>,
+    pub error: Option<String>,
+    pub prompt_title: Option<String>,
+    pub prompt: Option<String>,
 }
 
 /// Internal representation of Excel's sheet_data

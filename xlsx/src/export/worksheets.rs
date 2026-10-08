@@ -38,6 +38,7 @@ use ironcalc_base::{
 };
 
 use crate::export::conditional_formatting::get_conditional_formatting_xml;
+use crate::export::data_validation::get_data_validations_xml;
 
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
 
@@ -681,6 +682,8 @@ pub(crate) fn get_worksheet_xml(
         get_conditional_formatting_xml(&worksheet.conditional_formatting);
 
     let hyperlinks_section = get_hyperlinks_section(worksheet);
+    // CT_Worksheet: conditionalFormatting, then dataValidations, then hyperlinks.
+    let data_validations = get_data_validations_xml(&worksheet.data_validations);
 
     format!(
         "{XML_DECLARATION}\
@@ -697,6 +700,7 @@ pub(crate) fn get_worksheet_xml(
   </sheetData>\
   {merge_cells_section}\
   {cf_sections}\
+  {data_validations}\
   {hyperlinks_section}\
   {cf_ext_lst}\
 </worksheet>"

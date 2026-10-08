@@ -398,3 +398,53 @@ fn test_defined_name_lambda_exports_excel_prefixes() {
     );
     fs::remove_file(temp_file_name).unwrap();
 }
+
+#[test]
+fn data_validation_round_trips() {
+    use ironcalc_base::types::DataValidation;
+    let mut model = new_empty_model();
+    model.add_sheet("Lists").unwrap();
+    let rules = vec![
+        DataValidation {
+            sqref: "B2:B10".to_string(),
+            validation_type: "list".to_string(),
+            formula1: Some("\"Open,Closed,Hold\"".to_string()),
+            allow_blank: true,
+            show_error_message: true,
+            error: Some("Pick one".to_string()),
+            ..Default::default()
+        },
+        DataValidation {
+            sqref: "C2:C10 E2".to_string(),
+            validation_type: "whole".to_string(),
+            operator: Some("between".to_string()),
+            formula1: Some("1".to_string()),
+            formula2: Some("10".to_string()),
+            error_style: Some("warning".to_string()),
+            ..Default::default()
+        },
+        DataValidation {
+            sqref: "D2:D10".to_string(),
+            validation_type: "list".to_string(),
+            formula1: Some("Lists!$A$1:$A$3".to_string()),
+            show_input_message: true,
+            prompt_title: Some("Status".to_string()),
+            prompt: Some("Pick a status < 4 characters & \"quoted\"".to_string()),
+            ..Default::default()
+        },
+        DataValidation {
+            sqref: "F2".to_string(),
+            validation_type: "custom".to_string(),
+            formula1: Some("AND(F2>0,F2<B2)".to_string()),
+            ..Default::default()
+        },
+    ];
+    model.workbook.worksheets[0].data_validations = rules.clone();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_data_validation.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_eq!(model.workbook.worksheets[0].data_validations, rules);
+    assert!(model.workbook.worksheets[1].data_validations.is_empty());
+    fs::remove_file(temp_file_name).unwrap();
+}

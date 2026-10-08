@@ -1,4 +1,5 @@
 mod conditional_formatting;
+mod data_validation;
 mod metadata;
 pub(crate) mod shared_strings;
 mod sheet_data;
