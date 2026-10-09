@@ -29,7 +29,7 @@ const DEFAULT_STYLE: FormatStyle = {
   italic: false,
   underline: false,
   strike: false,
-  fontColor: "#000000",
+  fontColor: "",
   fillColor: "",
 };
 
@@ -72,7 +72,9 @@ const FormatStylePicker = ({
       [value.underline ? "underline" : "", value.strike ? "line-through" : ""]
         .filter(Boolean)
         .join(" ") || "none",
-    color: resolveColorToHex(value.fontColor, currentTheme) || "#000000",
+    color:
+      resolveColorToHex(value.fontColor, currentTheme) ||
+      "var(--palette-sheet-default-text-color)",
     backgroundColor:
       resolveColorToHex(value.fillColor, currentTheme) || "transparent",
   };
@@ -121,7 +123,7 @@ const FormatStylePicker = ({
                     style={{
                       backgroundColor:
                         resolveColorToHex(value.fontColor, currentTheme) ||
-                        "#000000",
+                        "var(--palette-sheet-default-text-color)",
                     }}
                   />
                 </>
@@ -183,7 +185,8 @@ const FormatStylePicker = ({
 
       <ColorPicker
         color={value.fontColor}
-        defaultColor="#000000"
+        defaultColor=""
+        defaultSwatchColor="var(--palette-sheet-default-text-color)"
         title={t("color_picker.default")}
         onChange={(color) => {
           onChange({ ...value, fontColor: color });

@@ -348,7 +348,7 @@ const ConditionalFormatting = ({
                       resolveColorToHex(
                         rule.formatStyle.fontColor,
                         currentTheme,
-                      ) || "#000000",
+                      ) || "var(--palette-sheet-default-text-color)",
                     backgroundColor:
                       resolveColorToHex(
                         rule.formatStyle.fillColor,

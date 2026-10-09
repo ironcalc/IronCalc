@@ -27,7 +27,6 @@ import {
 } from "../../icons";
 import { IconButton } from "../Button/IconButton";
 import ColorPicker from "../ColorPicker/ColorPicker";
-import { themeColor } from "../ColorPicker/util";
 import "./border-picker.css";
 import LineStylePicker from "./LineStylePicker";
 
@@ -121,10 +120,7 @@ export default function BorderPicker({
 
   const [position, setPosition] = useState<Position | null>(null);
   const [borderSelected, setBorderSelected] = useState<BorderType | null>(null);
-  const [defaultColor, setDefaultColor] = useState(() =>
-    themeColor("--palette-common-black", anchorEl.current),
-  );
-  const [borderColor, setBorderColor] = useState<Color>(defaultColor);
+  const [borderColor, setBorderColor] = useState<Color>("");
   const [borderStyle, setBorderStyle] = useState(BorderStyle.Thin);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [stylePickerOpen, setStylePickerOpen] = useState(false);
@@ -188,16 +184,14 @@ export default function BorderPicker({
 
   useEffect(() => {
     if (open) {
-      const color = themeColor("--palette-common-black", anchorEl.current);
-      setDefaultColor(color);
-      setBorderColor(color);
       return;
     }
     setBorderSelected(null);
+    setBorderColor("");
     setBorderStyle(BorderStyle.Thin);
     setColorPickerOpen(false);
     setStylePickerOpen(false);
-  }, [open, anchorEl]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -226,7 +220,7 @@ export default function BorderPicker({
     color: Color,
     style: BorderStyle,
   ): void => {
-    onChange({ color, style, border });
+    onChange({ color: color || undefined, style, border });
   };
 
   const toggleBorder = (
@@ -317,7 +311,8 @@ export default function BorderPicker({
           </button>
           <ColorPicker
             color={borderColor}
-            defaultColor={defaultColor}
+            defaultColor=""
+            defaultSwatchColor="var(--palette-sheet-default-text-color)"
             title={t("color_picker.default")}
             onChange={(color) => {
               setBorderColor(color);
