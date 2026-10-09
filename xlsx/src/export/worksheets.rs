@@ -220,7 +220,19 @@ pub(crate) fn get_worksheet_xml(
         row_style_dict.insert(row.r, row.clone());
     }
 
-    for row_index in worksheet.sheet_data.rows() {
+    let mut sheet_data_rows = worksheet.sheet_data.rows();
+
+    // A row can carry a height, a hidden flag or a style and still hold no
+    // cells. It is then not in the sheet data, so without an entry of its own
+    // it would lose those attributes on the round trip.
+    for row_index in row_style_dict.keys() {
+        if !sheet_data_rows.contains(row_index) {
+            sheet_data_rows.push(*row_index);
+        }
+    }
+    sheet_data_rows.sort_unstable();
+
+    for &row_index in &sheet_data_rows {
         let mut row_data_str: Vec<String> = vec![];
         for (column_index, cell) in worksheet.sheet_data.cells_in_row(row_index) {
             let column_name = number_to_column(column_index).unwrap();
