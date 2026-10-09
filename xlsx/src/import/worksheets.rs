@@ -215,6 +215,17 @@ fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
     //     <col min="6" max="6" width="9.1796875" style="1"/>
     //     <col min="8" max="8" width="4" customWidth="1"/>
     // </cols>
+    //
+    // `width` is optional (18.3.1.13): a column without one, e.g.
+    // <col min="2" max="55" hidden="1" style="1"/>, has the sheet's default
+    // width, `<sheetFormatPr defaultColWidth>`, else Excel's own (8.43).
+    let default_width = ws
+        .children()
+        .find(|n| n.has_tag_name("sheetFormatPr"))
+        .and_then(|n| n.attribute("defaultColWidth"))
+        .and_then(|w| w.parse::<f64>().ok())
+        .filter(|w| *w > 0.0)
+        .unwrap_or(8.43);
     let mut cols = Vec::new();
     let columns = ws
         .children()
@@ -226,8 +237,10 @@ fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
             let min = min.parse::<i32>()?;
             let max = get_attribute(col, "max")?;
             let max = max.parse::<i32>()?;
-            let width = get_attribute(col, "width")?;
-            let width = width.parse::<f64>()?;
+            let width = match col.attribute("width") {
+                Some(width) => width.parse::<f64>()?,
+                None => default_width,
+            };
             let custom_width = get_bool_false(col, "customWidth");
             let hidden = get_bool_false(col, "hidden");
             let style = col
@@ -1128,7 +1141,9 @@ mod tests {
 
     use crate::import::xml::XmlNode;
 
-    use crate::import::worksheets::{load_hyperlinks, parse_cell_number, parse_reference};
+    use crate::import::worksheets::{
+        load_columns, load_hyperlinks, parse_cell_number, parse_reference,
+    };
 
     #[test]
     fn cell_numbers_are_finite() {
@@ -1147,6 +1162,30 @@ mod tests {
         assert!(cell_reference.is_ok());
         let cell_reference = cell_reference.unwrap();
         assert_eq!(cell_reference.sheet, "📈 Overview");
+    }
+
+    #[test]
+    fn a_column_without_a_width_has_the_default_width() {
+        let xml = r#"<worksheet>
+            <sheetFormatPr baseColWidth="8" defaultColWidth="9.1640625" defaultRowHeight="12"/>
+            <cols>
+                <col min="1" max="1" width="5.25" customWidth="1"/>
+                <col min="2" max="55" hidden="1" style="1"/>
+            </cols>
+        </worksheet>"#;
+        let cols = load_columns(&XmlNode::parse_str(xml).unwrap()).unwrap();
+        assert_eq!(cols.len(), 2);
+        assert_eq!(cols[0].width, 5.25);
+        assert!(cols[0].custom_width);
+        assert_eq!((cols[1].min, cols[1].max), (2, 55));
+        assert_eq!(cols[1].width, 9.1640625);
+        assert!(!cols[1].custom_width);
+        assert!(cols[1].hidden);
+        assert_eq!(cols[1].style, Some(1));
+
+        let xml = r#"<worksheet><cols><col min="3" max="3" hidden="1"/></cols></worksheet>"#;
+        let cols = load_columns(&XmlNode::parse_str(xml).unwrap()).unwrap();
+        assert_eq!(cols[0].width, 8.43);
     }
 
     #[test]
