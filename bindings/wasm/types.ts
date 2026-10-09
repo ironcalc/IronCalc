@@ -151,6 +151,12 @@ export interface WorksheetProperties {
   state: string;
 }
 
+/** The name and index of a newly created sheet, returned by `newSheet`. */
+export interface NewSheet {
+  name: string;
+  index: number;
+}
+
 /**
  * A cell color value. Matches the Rust `Color` enum serialized with `#[serde(untagged)]`:
  * - `string`           → `Color::Rgb("#RRGGBB")`

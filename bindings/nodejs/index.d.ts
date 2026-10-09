@@ -112,6 +112,11 @@ export interface WorksheetProperties {
   sheet_id: number;
   state: string;
 }
+/** The name and index of a newly created sheet. */
+export interface NewSheet {
+  name: string
+  index: number
+}
 
 export type CellArrayStructure =
   | "SingleCell"
@@ -556,7 +561,7 @@ export declare class Model {
   /** Adds a new sheet with the given name */
   addSheet(sheetName: string): void
   /** Adds a new sheet with an automatically generated name */
-  newSheet(): void
+  newSheet(): NewSheet
   deleteSheet(sheet: number): void
   renameSheet(sheet: number, newName: string): void
   /**
@@ -688,7 +693,7 @@ export declare class UserModel {
   /** Extends the content of the source area right/left until `toColumn` */
   autoFillColumns(sheet: number, startRow: number, startColumn: number, endRow: number, endColumn: number, toColumn: number): void
   /** Adds a new sheet with an automatically generated name */
-  newSheet(): void
+  newSheet(): NewSheet
   deleteSheet(sheet: number): void
   duplicateSheet(sheet: number): void
   hideSheet(sheet: number): void

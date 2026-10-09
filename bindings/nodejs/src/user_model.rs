@@ -12,7 +12,9 @@ use ironcalc::{
   import::{load_from_icalc, load_from_xlsx},
 };
 
-use crate::{area, js_to_color, leak_str, to_js_error, CellType, DefinedName, FmtSettings};
+use crate::{
+  area, js_to_color, leak_str, to_js_error, CellType, DefinedName, FmtSettings, NewSheet,
+};
 
 #[derive(Serialize)]
 struct NamedStyleEntry {
@@ -428,8 +430,12 @@ impl UserModel {
 
   /// Adds a new sheet with an automatically generated name
   #[napi]
-  pub fn new_sheet(&mut self) -> Result<()> {
-    self.model.new_sheet().map_err(to_js_error)
+  pub fn new_sheet(&mut self) -> Result<NewSheet> {
+    self
+      .model
+      .new_sheet()
+      .map(|(name, index)| NewSheet { name, index })
+      .map_err(to_js_error)
   }
 
   #[napi]

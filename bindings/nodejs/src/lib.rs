@@ -76,6 +76,13 @@ pub(crate) struct DefinedName {
   pub formula: String,
 }
 
+/// The name and index of a newly created sheet.
+#[napi(object)]
+pub struct NewSheet {
+  pub name: String,
+  pub index: u32,
+}
+
 // Local mirror of `ironcalc_base::FmtSettings`, which does not implement Serialize
 #[derive(Serialize)]
 pub(crate) struct FmtSettings {
