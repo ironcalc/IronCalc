@@ -409,10 +409,16 @@ fn test_weeknum_function() {
     model._set("A12", "=WEEKNUM()");
     model._set("A13", "=WEEKNUM(44561,1,1)");
 
-    // Error cases - invalid return_type
+    // return_type outside 1..=21 falls back to the default (1), as in Excel
     model._set("A14", "=WEEKNUM(44561,0)");
-    model._set("A15", "=WEEKNUM(44561,3)");
     model._set("A16", "=WEEKNUM(44561,-1)");
+    model._set("A19", "=WEEKNUM(44561,DATE(1995,7,23))");
+    model._set("A20", "=WEEKNUM(DATE(1995,7,23),-2)");
+    model._set("A21", "=WEEKNUM(DATE(2026,1,1),-2)");
+    model._set("A22", "=WEEKNUM(123,DATE(1995,7,23))");
+
+    // Error case - return_type inside 1..=21 that is not a week start
+    model._set("A15", "=WEEKNUM(44561,3)");
 
     // Error cases - invalid dates
     model._set("A17", "=WEEKNUM(-1)");
@@ -440,9 +446,13 @@ fn test_weeknum_function() {
     // Error cases
     assert_eq!(model._get_text("A12"), *"#ERROR!");
     assert_eq!(model._get_text("A13"), *"#ERROR!");
-    assert_eq!(model._get_text("A14"), *"#VALUE!");
+    assert_eq!(model._get_text("A14"), *"53"); // 0 is out of range: default return type
     assert_eq!(model._get_text("A15"), *"#VALUE!");
-    assert_eq!(model._get_text("A16"), *"#VALUE!");
+    assert_eq!(model._get_text("A16"), *"53"); // Negative: default return type
+    assert_eq!(model._get_text("A19"), *"53"); // Too large: default return type
+    assert_eq!(model._get_text("A20"), *"30"); // Jul 23, 1995 (Sunday)
+    assert_eq!(model._get_text("A21"), *"1"); // Jan 1, 2026
+    assert_eq!(model._get_text("A22"), *"18");
     assert_eq!(model._get_text("A17"), *"#NUM!");
     assert_eq!(model._get_text("A18"), *"#NUM!");
 }
