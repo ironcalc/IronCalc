@@ -108,6 +108,7 @@ mod test_cycle_reference;
 mod test_datetime_format;
 mod test_datevalue_rollover;
 mod test_datevalue_timevalue_spaces;
+mod test_defined_names_bulk;
 mod test_escape_quotes;
 mod test_even_odd;
 mod test_exp_sign;
