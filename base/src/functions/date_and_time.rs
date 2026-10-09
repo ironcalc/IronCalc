@@ -1695,6 +1695,9 @@ impl<'a> Model<'a> {
         };
         let return_type = if args.len() == 2 {
             match self.get_number(&args[1], cell) {
+                // Excel falls back to the default return type (1) when the
+                // argument is outside the 1..=21 range it accepts.
+                Ok(f) if !(1..=21).contains(&(f as i32)) => 1,
                 Ok(f) => f as i32,
                 Err(s) => return s,
             }
@@ -1714,7 +1717,9 @@ impl<'a> Model<'a> {
             15 => chrono::Weekday::Fri,
             16 => chrono::Weekday::Sat,
             17 => chrono::Weekday::Sun,
-            x if x <= 0 || x == 3 => {
+            // Out of range return types fall back to the default above, so
+            // only values inside 1..=21 that are not week starts get here.
+            3 => {
                 return CalcResult::new_error(Error::VALUE, cell, "Invalid return_type".to_string())
             }
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
