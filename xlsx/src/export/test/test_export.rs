@@ -398,3 +398,18 @@ fn test_defined_name_lambda_exports_excel_prefixes() {
     );
     fs::remove_file(temp_file_name).unwrap();
 }
+
+#[test]
+fn rows_without_cells_keep_height_and_hidden() {
+    let mut model = new_empty_model();
+    model.set_row_height(0, 1, 40.0).unwrap();
+    model.set_row_hidden(0, 3, true).unwrap();
+    model.set_user_input(0, 2, 1, "1".to_string()).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_rows_without_cells.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_eq!(model.get_row_height(0, 1).unwrap(), 40.0);
+    assert!(model.is_row_hidden(0, 3).unwrap());
+    fs::remove_file(temp_file_name).unwrap();
+}
