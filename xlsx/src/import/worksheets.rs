@@ -208,12 +208,18 @@ fn load_dimension(ws: &XmlNode) -> String {
     }
 }
 
+/// Width in Excel units that the engine renders at its default column width
+/// (90 pixels / a width factor of 9). Recorded for a `<col>` that carries no
+/// `width`, which the schema allows (18.3.1.13).
+const DEFAULT_COLUMN_WIDTH_UNITS: f64 = 10.0;
+
 fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
     // cols
     // <cols>
     //     <col min="5" max="5" width="38.26953125" customWidth="1"/>
     //     <col min="6" max="6" width="9.1796875" style="1"/>
     //     <col min="8" max="8" width="4" customWidth="1"/>
+    //     <col min="2" max="55" hidden="1" style="1"/>
     // </cols>
     let mut cols = Vec::new();
     let columns = ws
@@ -226,9 +232,14 @@ fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
             let min = min.parse::<i32>()?;
             let max = get_attribute(col, "max")?;
             let max = max.parse::<i32>()?;
-            let width = get_attribute(col, "width")?;
-            let width = width.parse::<f64>()?;
-            let custom_width = get_bool_false(col, "customWidth");
+            // `width` is optional (18.3.1.13): a <col> that only sets a style or
+            // hides columns omits it. Excel gives such a column the sheet's
+            // default width, which is what the engine falls back to for a
+            // non-custom width, so record the default here.
+            let (width, custom_width) = match col.attribute("width") {
+                Some(width) => (width.parse::<f64>()?, get_bool_false(col, "customWidth")),
+                None => (DEFAULT_COLUMN_WIDTH_UNITS, false),
+            };
             let hidden = get_bool_false(col, "hidden");
             let style = col
                 .attribute("style")
