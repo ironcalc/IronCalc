@@ -129,6 +129,20 @@
   border-left: 3px solid transparent;
 }
 
+.ic-cf-list-item--moving {
+  animation: ic-cf-slide 0.2s ease-in-out forwards;
+  pointer-events: none;
+}
+
+@keyframes ic-cf-slide {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateY(var(--ic-cf-shift, 0px));
+  }
+}
+
 .ic-cf-list-item--selected {
   padding-left: 16px;
   border-left: 3px solid var(--palette-primary-main);
