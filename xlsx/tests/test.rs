@@ -644,3 +644,25 @@ fn test_workbook_theme_colors() {
         "#C9211E".to_string()
     );
 }
+
+#[test]
+// https://github.com/ironcalc/IronCalc/issues/1505
+// A tint needing 17 significant digits must survive an export/import round-trip.
+// The exporters used `{:.16}`, which truncated e.g. Excel's -0.14996795556505021
+// to -0.1499679555650502 (a different f64). They now use `{tint}` like the
+// conditional-format writer already did.
+fn test_theme_tint_round_trips() {
+    let tint = -0.14996795556505021_f64;
+    let temp_file_name = "temp_file_test_theme_tint.xlsx";
+    let mut model = Model::new_empty("tint_test", "en", "UTC", "en").unwrap();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.color = Color::Theme(4, tint);
+    style.fill.color = Color::Theme(4, tint);
+    model.set_cell_style(0, 1, 1, &style).unwrap();
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let reloaded = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    let got = reloaded.get_style_for_cell(0, 1, 1).unwrap();
+    assert_eq!(got.font.color, Color::Theme(4, tint));
+    assert_eq!(got.fill.color, Color::Theme(4, tint));
+    fs::remove_file(temp_file_name).unwrap();
+}
