@@ -12,7 +12,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
@@ -45,6 +45,13 @@ export interface Rule extends RuleData {
   id: string;
 }
 
+// Reorder animation, defined in conditional-formatting.css.
+const MOVING_CLASS = "ic-cf-list-item--moving";
+const MOVING_ANIMATION = "ic-cf-slide";
+// Keep in sync with the animation duration in the CSS. Only used as a safety
+// net in case the animation events never arrive.
+const MOVING_DURATION_MS = 200;
+
 interface ConditionalFormattingProps {
   onClose: () => void;
   getSelectedArea: () => string;
@@ -66,6 +73,10 @@ const ConditionalFormatting = ({
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOption, setFilterOption] = useState("sheet");
+  const listBodyRef = useRef<HTMLDivElement>(null);
+  // True while a reorder animation is running; further clicks are ignored
+  // until the pending change has been committed.
+  const isReordering = useRef(false);
   const { t } = useTranslation();
 
   function getSanitizedSelectedArea(): string {
@@ -188,9 +199,21 @@ const ConditionalFormatting = ({
     onUpdate();
   };
 
+  const findRowElement = (id: string): HTMLElement | null =>
+    listBodyRef.current?.querySelector<HTMLElement>(`[data-rule-id="${id}"]`) ??
+    null;
+
+  // Swapping two rules visually slides the two rows past each other with a
+  // CSS animation. The model is only changed once the animation has ended,
+  // so the redraw that follows puts the rows where they already appear to
+  // be. The animation is a transform inside the scrollable list, so it is
+  // clipped like any other content and touches nothing outside the widget.
   const handleReorder = (rule: Rule, lower: boolean) => {
+    if (isReordering.current) {
+      return;
+    }
     const index = parseInt(rule.id, 10);
-    const applyReorder = () => {
+    const commit = () => {
       if (lower) {
         model.lowerConditionalFormattingPriority(sheet, index);
       } else {
@@ -198,12 +221,58 @@ const ConditionalFormatting = ({
       }
       onUpdate();
     };
-    // flushSync ensures the DOM is updated before the transition snapshots it.
-    if (typeof document.startViewTransition === "function") {
-      document.startViewTransition(() => flushSync(applyReorder));
-    } else {
-      applyReorder();
+
+    const pos = rules.findIndex((r) => r.id === rule.id);
+    const neighbor = rules[lower ? pos + 1 : pos - 1];
+    const rowEl = findRowElement(rule.id);
+    const neighborEl = neighbor ? findRowElement(neighbor.id) : null;
+    const reducedMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    // No animation when the neighbor is filtered out of the list (nothing
+    // moves on screen) or when the user prefers reduced motion.
+    if (!rowEl || !neighborEl || reducedMotion) {
+      commit();
+      return;
     }
+
+    const rowHeight = rowEl.getBoundingClientRect().height;
+    const neighborHeight = neighborEl.getBoundingClientRect().height;
+    const rowShift = lower ? neighborHeight : -neighborHeight;
+    const neighborShift = lower ? -rowHeight : rowHeight;
+
+    let finished = false;
+    const finish = () => {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      clearTimeout(timer);
+      rowEl.removeEventListener("animationend", onAnimationEvent);
+      rowEl.removeEventListener("animationcancel", onAnimationEvent);
+      isReordering.current = false;
+      // Commit synchronously and drop the transforms in the same task, so the
+      // DOM reorder and the transform removal are painted together.
+      flushSync(commit);
+      for (const el of [rowEl, neighborEl]) {
+        el.classList.remove(MOVING_CLASS);
+        el.style.removeProperty("--ic-cf-shift");
+      }
+    };
+    const onAnimationEvent = (e: AnimationEvent) => {
+      if (e.target === rowEl && e.animationName === MOVING_ANIMATION) {
+        finish();
+      }
+    };
+    rowEl.addEventListener("animationend", onAnimationEvent);
+    rowEl.addEventListener("animationcancel", onAnimationEvent);
+    const timer = setTimeout(finish, MOVING_DURATION_MS + 100);
+
+    isReordering.current = true;
+    rowEl.style.setProperty("--ic-cf-shift", `${rowShift}px`);
+    neighborEl.style.setProperty("--ic-cf-shift", `${neighborShift}px`);
+    rowEl.classList.add(MOVING_CLASS);
+    neighborEl.classList.add(MOVING_CLASS);
   };
 
   if (isEditView) {
@@ -326,6 +395,7 @@ const ConditionalFormatting = ({
             </div>
             {/* biome-ignore lint/a11y/noStaticElementInteractions: prevents search input from losing focus on list click */}
             <div
+              ref={listBodyRef}
               className="ic-cf-list-body"
               onMouseDown={(e) => e.preventDefault()}
             >
@@ -424,8 +494,8 @@ const ConditionalFormatting = ({
                     // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
                     <div
                       key={rule.id}
+                      data-rule-id={rule.id}
                       className={`ic-cf-list-item${isActive ? " ic-cf-list-item--selected" : ""}`}
-                      style={{ viewTransitionName: `ic-cf-rule-${rule.id}` }}
                       // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
                       tabIndex={0}
                       onClick={() => selectRuleRange(rule)}
