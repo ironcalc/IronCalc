@@ -39,6 +39,7 @@ export function FileMenu(props: {
   newModel: () => void;
   newModelFromTemplate: () => void;
   onDownload: () => void;
+  onDownloadPdf?: () => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
   isReadOnly: boolean;
@@ -105,6 +106,9 @@ export function FileMenu(props: {
         <MenuDivider />
         <MenuItem icon={<FileDown />} onClick={() => props.onDownload()}>
           {t("file_bar.file_menu.download")}
+        </MenuItem>
+        <MenuItem icon={<FileDown />} onClick={() => props.onDownloadPdf?.()}>
+          Download (.pdf)
         </MenuItem>
         <MenuItem
           destructive

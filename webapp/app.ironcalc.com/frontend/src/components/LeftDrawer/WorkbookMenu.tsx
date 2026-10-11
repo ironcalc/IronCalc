@@ -13,6 +13,7 @@ interface WorkbookMenuProps {
   isPinned: boolean;
   onOpen: () => void;
   onDownload: () => void;
+  onDownloadPdf?: () => void;
   onPinToggle: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -22,6 +23,7 @@ function WorkbookMenu({
   isPinned,
   onOpen,
   onDownload,
+  onDownloadPdf,
   onPinToggle,
   onDuplicate,
   onDelete,
@@ -43,6 +45,9 @@ function WorkbookMenu({
     >
       <MenuItem icon={<FileDown />} onClick={onDownload}>
         {t("left_drawer.workbook_menu.download")}
+      </MenuItem>
+      <MenuItem icon={<FileDown />} onClick={onDownloadPdf}>
+        Download (.pdf)
       </MenuItem>
       <MenuItem icon={isPinned ? <PinOff /> : <Pin />} onClick={onPinToggle}>
         {isPinned

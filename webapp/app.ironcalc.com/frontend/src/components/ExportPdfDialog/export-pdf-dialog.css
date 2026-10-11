@@ -1,0 +1,450 @@
+.app-ic-epd-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: row;
+  z-index: 1000;
+  animation: app-ic-epd-fade-in 0.15s ease-out;
+  overflow: hidden;
+}
+
+@keyframes app-ic-epd-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   Left side: Live PDF Preview Area (Scroll container with rendered pages)
+   ========================================================================== */
+
+.app-ic-epd-preview-area {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.app-ic-epd-preview-scroll {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 24px 80px 24px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.app-ic-epd-pages-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  transition: filter 0.2s ease, opacity 0.2s ease;
+}
+
+.app-ic-epd-pages-stack--blurred {
+  filter: blur(1.5px);
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+.app-ic-epd-page-card {
+  flex-shrink: 0;
+  position: relative;
+  background-color: #ffffff;
+  border-radius: 2px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.22), 0 1px 4px rgba(0, 0, 0, 0.12);
+  margin-bottom: 28px;
+  overflow: hidden;
+  border: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-ic-epd-page-card:last-child {
+  margin-bottom: 0;
+}
+
+.app-ic-epd-page-canvas {
+  display: block;
+  background-color: #ffffff;
+  border: none;
+  flex-shrink: 0;
+}
+
+.app-ic-epd-preview-initial-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.app-ic-epd-spin {
+  animation: app-ic-epd-spin 1s linear infinite;
+}
+
+@keyframes app-ic-epd-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-ic-epd-preview-error-box {
+  margin: 60px auto;
+  background: rgba(254, 242, 242, 0.95);
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 32px;
+  text-align: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  max-width: 360px;
+  z-index: 10;
+}
+
+.app-ic-epd-preview-error-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--palette-error-main, #eb5757);
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+}
+
+.app-ic-epd-preview-error-msg {
+  font-size: 12px;
+  color: var(--palette-grey-800, #424242);
+  max-width: 320px;
+  word-break: break-word;
+}
+
+.app-ic-epd-retry-btn {
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--palette-grey-300, #e0e0e0);
+  background: var(--palette-common-white, #ffffff);
+  color: var(--palette-common-black, #272525);
+  font-size: 12px;
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.app-ic-epd-retry-btn:hover {
+  border-color: var(--palette-primary-main, #f2994a);
+  color: var(--palette-primary-main, #f2994a);
+}
+
+/* Floating Zoom Controls */
+.app-ic-epd-zoom-controls {
+  position: fixed;
+  bottom: 24px;
+  right: 384px; /* 360px panel width + 24px margin */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 25;
+}
+
+@media (max-width: 840px) {
+  .app-ic-epd-zoom-controls {
+    display: none;
+  }
+}
+
+.app-ic-epd-zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--palette-common-white, #ffffff);
+  color: var(--palette-grey-800, #333333);
+  border: 1px solid var(--palette-grey-300, #e0e0e0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  outline: none;
+}
+
+.app-ic-epd-zoom-btn:hover:not(:disabled) {
+  background: var(--palette-grey-100, #f2f2f2);
+  color: var(--palette-primary-main, #f2994a);
+  border-color: var(--palette-primary-light, #efaa6d);
+}
+
+.app-ic-epd-zoom-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.app-ic-epd-zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Right side: Export Settings Sheet (Matching IronCalc Drawer Style & Palette)
+   ========================================================================== */
+
+.app-ic-epd-panel {
+  width: 360px;
+  max-width: 100vw;
+  height: 100%;
+  flex-shrink: 0;
+  background-color: var(--palette-common-white, #ffffff);
+  color: var(--palette-common-black, #272525);
+  border-left: 1px solid var(--palette-grey-300, #e0e0e0);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  animation: app-ic-epd-slide-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+  font-size: var(--typography-font-size, 12px);
+  user-select: none;
+  z-index: 20;
+}
+
+@keyframes app-ic-epd-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.app-ic-epd-header {
+  height: 48px;
+  padding: 0 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--palette-grey-300, #e0e0e0);
+  background-color: var(--palette-common-white, #ffffff);
+  flex-shrink: 0;
+}
+
+.app-ic-epd-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--palette-grey-900, #333333);
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+}
+
+.app-ic-epd-body {
+  padding: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.app-ic-epd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-ic-epd-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--palette-grey-700, #616161);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+}
+
+.app-ic-epd-select,
+.app-ic-epd-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--palette-input-border, var(--palette-grey-300, #e0e0e0));
+  border-radius: 4px;
+  background-color: var(--palette-input-background, var(--palette-common-white, #ffffff));
+  color: var(--palette-common-black, #272525);
+  font-size: 12px;
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.app-ic-epd-select:hover,
+.app-ic-epd-input:hover {
+  border-color: var(--palette-grey-400, #bdbdbd);
+}
+
+.app-ic-epd-select:focus,
+.app-ic-epd-input:focus {
+  border-color: var(--palette-primary-main, #f2994a);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--palette-primary-main, #f2994a) 25%, transparent);
+}
+
+.app-ic-epd-radio-group {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.app-ic-epd-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--palette-common-black, #272525);
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+}
+
+.app-ic-epd-radio-label input[type="radio"] {
+  cursor: pointer;
+  accent-color: var(--palette-primary-main, #f2994a);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.app-ic-epd-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.app-ic-epd-row-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.app-ic-epd-accordion {
+  border-top: 1px solid var(--palette-grey-300, #e0e0e0);
+  padding-top: 10px;
+  margin-top: 2px;
+}
+
+.app-ic-epd-accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--palette-grey-900, #333333);
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+  padding: 4px 0;
+}
+
+.app-ic-epd-accordion-header:hover {
+  color: var(--palette-primary-main, #f2994a);
+}
+
+.app-ic-epd-accordion-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.app-ic-epd-subheading {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--palette-grey-700, #616161);
+  margin-top: 4px;
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+}
+
+.app-ic-epd-hint {
+  font-size: 11px;
+  color: var(--palette-grey-600, #757575);
+  line-height: 1.4;
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+}
+
+.app-ic-epd-status {
+  padding: 8px 12px;
+  background-color: color-mix(in srgb, var(--palette-primary-main, #f2994a) 10%, transparent);
+  color: var(--palette-primary-dark, #d68742);
+  border: 1px solid color-mix(in srgb, var(--palette-primary-main, #f2994a) 25%, transparent);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-ic-epd-footer {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--palette-grey-300, #e0e0e0);
+  background: var(--palette-common-white, #ffffff);
+  flex-shrink: 0;
+}
+
+.app-ic-epd-page-count {
+  font-size: 12px;
+  color: var(--palette-grey-600, #757575);
+  font-family: var(--typography-font-family, "Inter", sans-serif);
+  font-weight: 500;
+  user-select: none;
+}
+
+.app-ic-epd-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 840px) {
+  .app-ic-epd-preview-area {
+    display: none;
+  }
+  .app-ic-epd-panel {
+    width: 100vw;
+  }
+}
