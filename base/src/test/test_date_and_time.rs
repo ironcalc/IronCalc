@@ -862,6 +862,9 @@ fn test_second_function() {
     // Wrong argument count
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"#ERROR!");
+}
+
+#[test]
 fn test_fn_weekday_weeknum_isoweeknum_day_zero() {
     let mut model = new_empty_model();
 
