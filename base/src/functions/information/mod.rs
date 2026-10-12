@@ -13,12 +13,12 @@ use crate::{
     model::{Model, ParsedDefinedName},
 };
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 fn get_system() -> String {
     std::env::consts::OS.to_string()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 fn get_system() -> String {
     "browser".to_string()
 }

@@ -49,7 +49,7 @@ pub use crate::mock_time::get_milliseconds_since_epoch;
 /// * The JavaScript environment
 /// * Or mocked for tests
 #[cfg(not(any(test, feature = "mock_time")))]
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 #[allow(clippy::expect_used)]
 pub fn get_milliseconds_since_epoch() -> i64 {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -65,7 +65,7 @@ pub fn get_milliseconds_since_epoch() -> i64 {
 /// * The JavaScript environment
 /// * Or mocked for tests
 #[cfg(not(any(test, feature = "mock_time")))]
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub fn get_milliseconds_since_epoch() -> i64 {
     use js_sys::Date;
     Date::now() as i64
