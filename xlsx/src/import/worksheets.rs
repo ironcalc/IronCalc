@@ -208,13 +208,16 @@ fn load_dimension(ws: &XmlNode) -> String {
     }
 }
 
-fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
+fn load_columns(ws: &XmlNode, default_width: f64) -> Result<Vec<Col>, XlsxError> {
     // cols
     // <cols>
     //     <col min="5" max="5" width="38.26953125" customWidth="1"/>
     //     <col min="6" max="6" width="9.1796875" style="1"/>
     //     <col min="8" max="8" width="4" customWidth="1"/>
     // </cols>
+    // NB: `width` is optional (ECMA-376 Part 1, 18.3.1.13): tools that only
+    // set a style or hide columns omit it, in which case Excel applies the
+    // sheet default width instead of rejecting the file (#1509).
     let mut cols = Vec::new();
     let columns = ws
         .children()
@@ -226,8 +229,10 @@ fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
             let min = min.parse::<i32>()?;
             let max = get_attribute(col, "max")?;
             let max = max.parse::<i32>()?;
-            let width = get_attribute(col, "width")?;
-            let width = width.parse::<f64>()?;
+            let width = match col.attribute("width") {
+                Some(width) => width.parse::<f64>()?,
+                None => default_width,
+            };
             let custom_width = get_bool_false(col, "customWidth");
             let hidden = get_bool_false(col, "hidden");
             let style = col
@@ -244,6 +249,25 @@ fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
         }
     }
     Ok(cols)
+}
+
+/// Sheet default column width in Excel character units, from
+/// `<sheetFormatPr defaultColWidth="..."/>` (ECMA-376 Part 1, 18.3.1.81).
+/// Falls back to Excel's own default of 8.43 when the element or the
+/// attribute is absent or unparseable.
+fn get_default_column_width(ws: &XmlNode) -> f64 {
+    const EXCEL_DEFAULT_COLUMN_WIDTH: f64 = 8.43;
+    let format = ws
+        .children()
+        .filter(|n| n.has_tag_name("sheetFormatPr"))
+        .collect::<Vec<&XmlNode>>();
+    if format.len() != 1 {
+        return EXCEL_DEFAULT_COLUMN_WIDTH;
+    }
+    format[0]
+        .attribute("defaultColWidth")
+        .and_then(|w| w.parse::<f64>().ok())
+        .unwrap_or(EXCEL_DEFAULT_COLUMN_WIDTH)
 }
 
 fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {
@@ -962,7 +986,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let sheet_view = get_sheet_view(ws);
 
-    let cols = load_columns(ws)?;
+    let default_column_width = get_default_column_width(ws);
+    let cols = load_columns(ws, default_column_width)?;
     let color = load_sheet_color(ws, theme)?;
 
     let merged_cells = load_merge_cells(ws)?;
@@ -1128,7 +1153,9 @@ mod tests {
 
     use crate::import::xml::XmlNode;
 
-    use crate::import::worksheets::{load_hyperlinks, parse_cell_number, parse_reference};
+    use crate::import::worksheets::{
+        get_default_column_width, load_columns, load_hyperlinks, parse_cell_number, parse_reference,
+    };
 
     #[test]
     fn cell_numbers_are_finite() {
@@ -1147,6 +1174,50 @@ mod tests {
         assert!(cell_reference.is_ok());
         let cell_reference = cell_reference.unwrap();
         assert_eq!(cell_reference.sheet, "📈 Overview");
+    }
+
+    #[test]
+    fn load_columns_missing_width_falls_back_to_sheet_default() {
+        // A <col> without a width attribute is valid OOXML (#1509): Excel
+        // applies the sheet default width instead of rejecting the file.
+        let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+            <sheetFormatPr baseColWidth="8" defaultColWidth="9.1640625" defaultRowHeight="12"/>
+            <cols>
+                <col min="1" max="1" width="5.25" customWidth="1"/>
+                <col min="2" max="55" hidden="1" style="1"/>
+            </cols>
+        </worksheet>"#;
+        let doc = XmlNode::parse_str(xml).unwrap();
+        let ws = &doc;
+
+        assert_eq!(get_default_column_width(ws), 9.1640625);
+        let cols = load_columns(ws, get_default_column_width(ws)).unwrap();
+        assert_eq!(cols.len(), 2);
+        assert_eq!(cols[0].width, 5.25);
+        assert!(cols[0].custom_width);
+        // No width attribute: sheet default applies, and the column is not
+        // marked as custom width.
+        assert_eq!(cols[1].width, 9.1640625);
+        assert!(!cols[1].custom_width);
+        assert!(cols[1].hidden);
+        assert_eq!(cols[1].style, Some(1));
+    }
+
+    #[test]
+    fn load_columns_missing_width_without_sheet_format_uses_excel_default() {
+        let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+            <cols>
+                <col min="3" max="3" style="2"/>
+            </cols>
+        </worksheet>"#;
+        let doc = XmlNode::parse_str(xml).unwrap();
+        let ws = &doc;
+
+        assert_eq!(get_default_column_width(ws), 8.43);
+        let cols = load_columns(ws, get_default_column_width(ws)).unwrap();
+        assert_eq!(cols.len(), 1);
+        assert_eq!(cols[0].width, 8.43);
+        assert!(!cols[0].custom_width);
     }
 
     #[test]
