@@ -79,6 +79,7 @@ mod test_sumsq;
 mod test_trigonometric;
 mod test_true_false;
 mod test_unary_operators;
+mod test_weekday_arg_order;
 mod test_weekday_return_types;
 mod test_weekday_weeknum_isoweeknum;
 mod test_weeknum_return_types;

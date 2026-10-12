@@ -1678,14 +1678,20 @@ impl<'a> Model<'a> {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        // Excel evaluates the date argument before `return_type`, so an invalid
+        // date yields its error even when `return_type` is #DIV/0! or #N/A (#1502).
+        let dates = match self.get_number_or_array(&args[0], cell) {
+            Ok(v) => v,
+            Err(first) => return first,
+        };
         let return_type = if args.len() == 2 {
             match self.get_number(&args[1], cell) {
                 Ok(f) => f as i32,
                 Err(error) => {
                     // The error goes to every element if the dates are an
                     // array; the ones that are an error keep theirs.
-                    return match self.get_number_or_array(&args[0], cell) {
-                        Ok(NumberOrArray::Array(array)) => {
+                    return match dates {
+                        NumberOrArray::Array(array) => {
                             array_of_errors(&array, error, |node| match node {
                                 ArrayNode::Error(error) => Some(error.clone()),
                                 ArrayNode::String(s) if self.cast_number(s).is_none() => {
@@ -1694,16 +1700,16 @@ impl<'a> Model<'a> {
                                 _ => None,
                             })
                         }
-                        Ok(NumberOrArray::Number(_)) => error,
-                        Err(first) => first,
+                        NumberOrArray::Number(_) => error,
                     };
                 }
             }
         } else {
             1
         };
-        // Broadcasts element-wise over a range/array date argument.
-        self.apply_number_unary(&args[0], cell, move |serial| {
+        // Broadcasts element-wise over a range/array date argument. `dates` was
+        // already evaluated above, so we reuse it instead of re-evaluating the node.
+        self.apply_number_unary_value(dates, cell, move |serial| {
             let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
             weekday_number(date, return_type)
         })
