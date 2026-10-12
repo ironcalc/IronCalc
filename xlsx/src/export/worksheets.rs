@@ -220,7 +220,12 @@ pub(crate) fn get_worksheet_xml(
         row_style_dict.insert(row.r, row.clone());
     }
 
-    for row_index in worksheet.sheet_data.rows() {
+    // A row with no cells is still written when it has a height or is hidden.
+    let mut row_indices = worksheet.sheet_data.rows();
+    row_indices.extend(row_style_dict.keys());
+    row_indices.sort_unstable();
+    row_indices.dedup();
+    for row_index in row_indices {
         let mut row_data_str: Vec<String> = vec![];
         for (column_index, cell) in worksheet.sheet_data.cells_in_row(row_index) {
             let column_name = number_to_column(column_index).unwrap();
