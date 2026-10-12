@@ -769,14 +769,39 @@ impl<'a> Model<'a> {
         }
     }
 
-    // ROWS(range)
-    // Returns the number of rows in range
+    // rows_and_columns_shape returns the (rows, columns) dimensions of the
+    // argument of ROWS or COLUMNS.
+    //
+    // A reference keeps the dimensions of the range it points at, so `@`
+    // narrows it first (COLUMNS(@A1:C1) is 1). Any other argument is
+    // evaluated: an array counts its own dimensions and a scalar is 1x1.
+    fn rows_and_columns_shape(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(usize, usize), CalcResult> {
+        let value = self.evaluate_node_with_reference(node, cell);
+        if value.is_error() {
+            return Err(value);
+        }
+        Ok(match value {
+            CalcResult::Range { left, right } => (
+                (right.row - left.row + 1) as usize,
+                (right.column - left.column + 1) as usize,
+            ),
+            CalcResult::Array(rows) => (rows.len(), rows.first().map_or(0, Vec::len)),
+            _ => (1, 1),
+        })
+    }
+
+    // ROWS(reference_or_array)
+    // Returns the number of rows in reference_or_array
     pub(crate) fn fn_rows(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_reference(&args[0], cell) {
-            Ok(c) => CalcResult::Number((c.right.row - c.left.row + 1) as f64),
+        match self.rows_and_columns_shape(&args[0], cell) {
+            Ok((rows, _)) => CalcResult::Number(rows as f64),
             Err(s) => s,
         }
     }
@@ -875,14 +900,14 @@ impl<'a> Model<'a> {
         calc_result_to_array_node(value)
     }
 
-    // COLUMNS(range)
-    // Returns the number of columns in range
+    // COLUMNS(reference_or_array)
+    // Returns the number of columns in reference_or_array
     pub(crate) fn fn_columns(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_reference(&args[0], cell) {
-            Ok(c) => CalcResult::Number((c.right.column - c.left.column + 1) as f64),
+        match self.rows_and_columns_shape(&args[0], cell) {
+            Ok((_, columns)) => CalcResult::Number(columns as f64),
             Err(s) => s,
         }
     }

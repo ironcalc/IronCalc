@@ -380,7 +380,7 @@ fn test_weekday_function() {
 
     // Error cases
     assert_eq!(model._get_text("A7"), *"#ERROR!");
-    assert_eq!(model._get_text("A8"), *"#VALUE!");
+    assert_eq!(model._get_text("A8"), *"#NUM!");
     assert_eq!(model._get_text("A9"), *"#NUM!");
 }
 
@@ -412,7 +412,6 @@ fn test_weeknum_function() {
     // Error cases - invalid return_type
     model._set("A14", "=WEEKNUM(44561,0)");
     model._set("A15", "=WEEKNUM(44561,3)");
-    model._set("A16", "=WEEKNUM(44561,-1)");
 
     // Error cases - invalid dates
     model._set("A17", "=WEEKNUM(-1)");
@@ -440,9 +439,9 @@ fn test_weeknum_function() {
     // Error cases
     assert_eq!(model._get_text("A12"), *"#ERROR!");
     assert_eq!(model._get_text("A13"), *"#ERROR!");
-    assert_eq!(model._get_text("A14"), *"#VALUE!");
-    assert_eq!(model._get_text("A15"), *"#VALUE!");
-    assert_eq!(model._get_text("A16"), *"#VALUE!");
+    assert_eq!(model._get_text("A14"), *"#NUM!");
+    assert_eq!(model._get_text("A15"), *"#NUM!");
+
     assert_eq!(model._get_text("A17"), *"#NUM!");
     assert_eq!(model._get_text("A18"), *"#NUM!");
 }
@@ -863,4 +862,73 @@ fn test_second_function() {
     // Wrong argument count
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"#ERROR!");
+}
+
+#[test]
+fn test_fn_weekday_weeknum_isoweeknum_day_zero() {
+    let mut model = new_empty_model();
+
+    // Date serial 0 is 0 Jan 1900 in Excel, a valid date. We return #NUM! instead.
+    model._set("A1", "=WEEKDAY(0)");
+    model._set("A2", "=WEEKNUM(0)");
+    model._set("A3", "=ISOWEEKNUM(0)");
+
+    // C1 is an empty cell, which is treated as 0.
+    model._set("B1", "=WEEKDAY(C1)");
+    model._set("B2", "=WEEKNUM(C1)");
+    model._set("B3", "=ISOWEEKNUM(C1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+
+    assert_eq!(model._get_text("B1"), *"#NUM!");
+    assert_eq!(model._get_text("B2"), *"#NUM!");
+    assert_eq!(model._get_text("B3"), *"#NUM!");
+}
+
+#[test]
+fn test_fn_weekday_weeknum_isoweeknum_day_one() {
+    let mut model = new_empty_model();
+
+    // Date serial 1 is 31 Dec 1899 in IronCalc (a Sunday in week 53 of 1899)
+    model._set("A1", "=WEEKDAY(1)");
+    model._set("A2", "=WEEKDAY(1, 2)");
+    model._set("A3", "=WEEKNUM(1)");
+    model._set("A4", "=WEEKNUM(1, 2)");
+    model._set("A5", "=WEEKNUM(1, 21)");
+    model._set("A6", "=ISOWEEKNUM(1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"7");
+    assert_eq!(model._get_text("A3"), *"53");
+    assert_eq!(model._get_text("A4"), *"53");
+    assert_eq!(model._get_text("A5"), *"52");
+    assert_eq!(model._get_text("A6"), *"52");
+}
+
+#[test]
+fn test_fn_weeknum_invalid_return_type() {
+    let mut model = new_empty_model();
+
+    // Excel's results for these are not stable across recalculations, so they
+    // cannot be tested from an xlsx file. We follow the documented #NUM!.
+    // Date serial 46023: 1 Jan 2026, 46029: 7 Jan 2026
+    model._set("A1", "=WEEKNUM(46023, -2)");
+    model._set("A2", "=WEEKNUM(46029, -2)");
+    model._set("A3", "=WEEKNUM(46023, 34903)");
+    model._set("A4", "=WEEKNUM(46029, 34903)");
+    model._set("A5", "=WEEKNUM(46023, DATE(1995,7,23))");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
 }

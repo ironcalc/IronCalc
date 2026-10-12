@@ -516,7 +516,8 @@
       "seriessum": "SERIESSUM",
       "sumproduct": "SUMPRODUCT",
       "percentof": "PERCENTOF",
-      "encodeurl": "ENCODEURL"
+      "encodeurl": "ENCODEURL",
+      "ecma_ceiling": "ECMA.CEILING"
     }
   },
   "it": {
@@ -1036,7 +1037,8 @@
       "seriessum": "SOMMA.SERIE",
       "sumproduct": "MATR.SOMMA.PRODOTTO",
       "percentof": "PERCENTUALE.DI",
-      "encodeurl": "CODIFICA.URL"
+      "encodeurl": "CODIFICA.URL",
+      "ecma_ceiling": "ECMA.CEILING"
     }
   },
   "fr": {
@@ -1556,7 +1558,8 @@
       "seriessum": "SOMME.SERIE",
       "sumproduct": "SOMMEPROD",
       "percentof": "POURCENTDE",
-      "encodeurl": "URLENCODAGE"
+      "encodeurl": "URLENCODAGE",
+      "ecma_ceiling": "ECMA.CEILING"
     }
   },
   "de": {
@@ -2076,7 +2079,8 @@
       "seriessum": "POTENZREIHE",
       "sumproduct": "SUMMENPRODUKT",
       "percentof": "PROZENTVON",
-      "encodeurl": "URLCODIEREN"
+      "encodeurl": "URLCODIEREN",
+      "ecma_ceiling": "ECMA.CEILING"
     }
   },
   "es": {
@@ -2596,7 +2600,8 @@
       "seriessum": "SUMA.SERIE",
       "sumproduct": "SUMAPRODUCTO",
       "percentof": "PORCENTAJEDE",
-      "encodeurl": "URLCODIF"
+      "encodeurl": "URLCODIF",
+      "ecma_ceiling": "ECMA.CEILING"
     }
   }
 }

@@ -1,6 +1,6 @@
 use std::fs;
 
-use ironcalc_base::types::StyleIncludes;
+use ironcalc_base::types::{Color, StyleIncludes};
 use ironcalc_base::Model;
 
 use crate::error::XlsxError;
@@ -411,5 +411,24 @@ fn rows_without_cells_keep_height_and_hidden() {
     let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
     assert_eq!(model.get_row_height(0, 1).unwrap(), 40.0);
     assert!(model.is_row_hidden(0, 3).unwrap());
+}
+
+#[test]
+fn theme_tints_keep_every_digit() {
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.color = Color::Theme(4, -0.14996795556505021);
+    model.set_cell_style(0, 1, 1, &style).unwrap();
+    let mut style = model.get_style_for_cell(0, 2, 1).unwrap();
+    style.font.color = Color::Theme(1, -0.0499893185216834);
+    model.set_cell_style(0, 2, 1, &style).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_theme_tints.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    let a1 = model.get_style_for_cell(0, 1, 1).unwrap();
+    let a2 = model.get_style_for_cell(0, 2, 1).unwrap();
+    assert_eq!(a1.font.color, Color::Theme(4, -0.14996795556505021));
+    assert_eq!(a2.font.color, Color::Theme(1, -0.0499893185216834));
     fs::remove_file(temp_file_name).unwrap();
 }

@@ -101,7 +101,6 @@ fn weekday_number(date: chrono::NaiveDate, return_type: i32) -> Result<f64, Erro
             let zero_based = weekday.number_from_monday() - 1; // 0..6, Monday = 0
             ((zero_based + 7 - start) % 7) + 1
         }
-        0 => return Err(Error::VALUE),
         _ => return Err(Error::NUM),
     };
     Ok(num as f64)
@@ -1685,7 +1684,7 @@ impl<'a> Model<'a> {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let serial = match self.get_number(&args[0], cell) {
+        let serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
@@ -1694,7 +1693,7 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
         let return_type = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
+            match self.get_number_no_bools(&args[1], cell) {
                 Ok(f) => f as i32,
                 Err(s) => return s,
             }
@@ -1714,9 +1713,6 @@ impl<'a> Model<'a> {
             15 => chrono::Weekday::Fri,
             16 => chrono::Weekday::Sat,
             17 => chrono::Weekday::Sun,
-            x if x <= 0 || x == 3 => {
-                return CalcResult::new_error(Error::VALUE, cell, "Invalid return_type".to_string())
-            }
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
         };
         let mut first = match chrono::NaiveDate::from_ymd_opt(date.year(), 1, 1) {
