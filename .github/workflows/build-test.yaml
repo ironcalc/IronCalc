@@ -39,6 +39,22 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Rust Tests
         run: make test-rust
+  test-rust-wasi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Add wasm32-wasip2 target
+        run: rustup target add wasm32-wasip2
+      - name: Install Wasmtime
+        uses: bytecodealliance/actions/wasmtime/setup@v1
+      # WASI runs every test on one thread, so the thread-local mock clock that
+      # test_now and test_today set leaks between tests; they are skipped here.
+      - name: Rust Tests (wasm32-wasip2)
+        run: cargo test -p ironcalc_base --target wasm32-wasip2 -- --skip test::test_now --skip test::test_today
+        env:
+          CARGO_TARGET_WASM32_WASIP2_RUNNER: wasmtime run --dir=.
   test-js:
     runs-on: ubuntu-latest
     steps:

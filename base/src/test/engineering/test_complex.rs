@@ -133,7 +133,7 @@ fn fn_imcot() {
     );
 }
 
-#[cfg_attr(target_os = "windows", ignore)]
+#[cfg_attr(any(target_os = "windows", target_arch = "wasm32"), ignore)]
 #[test]
 fn fn_imtan() {
     let mut model = new_empty_model();

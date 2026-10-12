@@ -2,7 +2,7 @@ use crate::functions::Function;
 
 use super::Node;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use regex_lite as regex;
 
 use regex::Regex;
