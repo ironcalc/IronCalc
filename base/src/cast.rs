@@ -199,11 +199,26 @@ impl<'a> Model<'a> {
         op: impl Fn(f64) -> Result<f64, Error>,
     ) -> CalcResult {
         match self.get_number_or_array(node, cell) {
-            Ok(NumberOrArray::Number(f)) => match op(f) {
+            Ok(value) => self.apply_number_unary_value(value, cell, op),
+            Err(e) => e,
+        }
+    }
+
+    /// [`Self::apply_number_unary`] over an already evaluated argument, so a caller
+    /// that had to inspect the value (e.g. WEEKDAY checks the date before reading
+    /// `return_type`) does not pay for evaluating the node twice.
+    pub(crate) fn apply_number_unary_value(
+        &mut self,
+        value: NumberOrArray,
+        cell: CellReferenceIndex,
+        op: impl Fn(f64) -> Result<f64, Error>,
+    ) -> CalcResult {
+        match value {
+            NumberOrArray::Number(f) => match op(f) {
                 Ok(x) => CalcResult::Number(x),
                 Err(e) => CalcResult::new_error(e, cell, String::new()),
             },
-            Ok(NumberOrArray::Array(a)) => {
+            NumberOrArray::Array(a) => {
                 let mut array = Vec::with_capacity(a.len());
                 for row in a {
                     let mut data_row = Vec::with_capacity(row.len());
@@ -231,7 +246,6 @@ impl<'a> Model<'a> {
                 }
                 CalcResult::Array(array)
             }
-            Err(e) => e,
         }
     }
 
