@@ -97,10 +97,22 @@ describe("preferences stay in localStorage", () => {
     expect(storage.loadDefaultLocaleFromStorage()).toBe("fr-FR");
   });
 
-  it("persists dark mode", () => {
-    storage.saveDarkModeInStorage(true);
-    expect(localStorage.getItem("dark_mode")).toBe("true");
-    expect(storage.loadDarkModeFromStorage()).toBe(true);
+  it("persists the theme mode", () => {
+    storage.saveThemeModeInStorage("dark");
+    expect(localStorage.getItem("dark_mode")).toBe("dark");
+    expect(storage.loadThemeModeFromStorage()).toBe("dark");
+    storage.saveThemeModeInStorage("system");
+    expect(storage.loadThemeModeFromStorage()).toBe("system");
+  });
+
+  it("defaults the theme mode to system and reads the legacy booleans", () => {
+    expect(storage.loadThemeModeFromStorage()).toBe("system");
+    localStorage.setItem("dark_mode", "true");
+    expect(storage.loadThemeModeFromStorage()).toBe("dark");
+    localStorage.setItem("dark_mode", "false");
+    expect(storage.loadThemeModeFromStorage()).toBe("light");
+    localStorage.setItem("dark_mode", "garbage");
+    expect(storage.loadThemeModeFromStorage()).toBe("system");
   });
 
   it("keeps the selected uuid in localStorage", async () => {
