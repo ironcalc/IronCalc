@@ -1,5 +1,10 @@
 import type { Model } from "@ironcalc/wasm";
-import { forwardRef, useEffect, useImperativeHandle } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+} from "react";
 import { I18nextProvider } from "react-i18next";
 import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
@@ -35,7 +40,7 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
       return () => root.classList.remove("ic-root");
     }, [root]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
       if (themeVariables) {
         setThemeVariables(themeVariables, root);
         return () => unsetThemeVariables(root);
