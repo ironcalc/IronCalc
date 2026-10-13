@@ -1671,14 +1671,14 @@ fn bootstrap_sheet(
     let mut cell_style_writes: Vec<(String, Style)> = Vec::new();
     let mut edge_marks: Vec<(u32, u32)> = Vec::new();
     for (row, column, cell) in ws.sheet_data.cells() {
-        if matches!(cell, Cell::SpillCell { .. }) {
+        if matches!(*cell, Cell::SpillCell { .. }) {
             continue;
         }
         let (row_id, col_id) = (
             EntityId::Original(row as u32),
             EntityId::Original(column as u32),
         );
-        if !matches!(cell, Cell::EmptyCell { .. }) {
+        if !matches!(*cell, Cell::EmptyCell { .. }) {
             let content = read_cell_for_doc(um, sheet_index, row, column, sheet_id, resolver)?;
             if !content.is_empty() {
                 maps.cells
@@ -2954,7 +2954,7 @@ fn write_final_state(
         let mut style_writes: Vec<(String, Style)> = Vec::new();
         let mut edge_marks: Vec<(EntityId, EntityId)> = Vec::new();
         for (row, column, cell) in ws.sheet_data.cells() {
-            if matches!(cell, Cell::SpillCell { .. }) {
+            if matches!(*cell, Cell::SpillCell { .. }) {
                 continue;
             }
             let (Some(_), Some(_)) = (
@@ -2967,7 +2967,7 @@ fn write_final_state(
                 EntityId::Original(row as u32),
                 EntityId::Original(column as u32),
             );
-            if !matches!(cell, Cell::EmptyCell { .. }) {
+            if !matches!(*cell, Cell::EmptyCell { .. }) {
                 let content = read_cell_for_doc(um, sheet, row, column, *sheet_id, &resolver)?;
                 if !content.is_empty() {
                     maps.cells
@@ -3779,7 +3779,7 @@ fn read_cell_for_doc(
     resolver: &DocResolver,
 ) -> Result<String, String> {
     let ws = um.model.workbook.worksheet(sheet)?;
-    match ws.cell(row, column) {
+    match ws.cell(row, column).as_deref() {
         None | Some(Cell::EmptyCell { .. }) | Some(Cell::SpillCell { .. }) => Ok(String::new()),
         Some(cell) => {
             if cell.get_formula().is_some() {
@@ -4569,7 +4569,11 @@ fn write_fresh_cells(
         };
         let (row, column) = (row as i32, column as i32);
         let fresh = matches!(
-            um.model.workbook.worksheet(sheet)?.cell(row, column),
+            um.model
+                .workbook
+                .worksheet(sheet)?
+                .cell(row, column)
+                .as_deref(),
             None | Some(Cell::EmptyCell { .. })
         );
         if !fresh {
