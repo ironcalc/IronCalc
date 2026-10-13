@@ -165,7 +165,7 @@ export const testThemeVars: Record<string, string> = {
   "--palette-sheet-header-font":
     'bold 12px "Inter", "Adjusted Arial Fallback", sans-serif',
   "--palette-sheet-grid-separator-color": "#a0a0a0",
-  "--palette-sheet-default-text-color": "#333333",
+  "--palette-sheet-default-text-color": "#2E414D",
   "--palette-sheet-header-selected-color": "#1b1b1f",
 };
 
