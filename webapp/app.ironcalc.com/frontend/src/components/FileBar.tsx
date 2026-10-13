@@ -10,7 +10,7 @@ import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareWorkbook/ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbook/ShareDialog";
 import { StorageWarning } from "./StorageWarning";
-import { updateNameSelectedWorkbook } from "./storage";
+import { type ThemeMode, updateNameSelectedWorkbook } from "./storage";
 import { useWindowWidth } from "./useWindowWidth";
 import { WorkbookTitle } from "./WorkbookTitle";
 
@@ -28,8 +28,8 @@ export function FileBar(properties: {
   isDrawerOpen: boolean;
   setIsDrawerOpen: (open: boolean) => void;
   onLanguageChange: (language: string) => void;
-  isDarkMode: boolean;
-  onDarkModeChange: (isDark: boolean) => void;
+  themeMode: ThemeMode;
+  onThemeModeChange: (mode: ThemeMode) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
@@ -83,8 +83,8 @@ export function FileBar(properties: {
           onModelUpload={properties.onModelUpload}
           onDelete={properties.onDelete}
           onLanguageChange={properties.onLanguageChange}
-          isDarkMode={properties.isDarkMode}
-          onDarkModeChange={properties.onDarkModeChange}
+          themeMode={properties.themeMode}
+          onThemeModeChange={properties.onThemeModeChange}
         />
       ) : (
         <div className="app-ic-file-bar-desktop-menu">
@@ -99,8 +99,8 @@ export function FileBar(properties: {
             onClose={closeMenus}
             onHover={() => openMenu && setOpenMenu("file")}
             onLanguageChange={properties.onLanguageChange}
-            isDarkMode={properties.isDarkMode}
-            onDarkModeChange={properties.onDarkModeChange}
+            themeMode={properties.themeMode}
+            onThemeModeChange={properties.onThemeModeChange}
           />
           <HelpMenu
             isOpen={openMenu === "help"}

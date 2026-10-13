@@ -105,7 +105,8 @@
       "default_language": "Standardsprache",
       "theme": "Design",
       "theme_light": "Hell",
-      "theme_dark": "Dunkel"
+      "theme_dark": "Dunkel",
+      "theme_system": "System"
     },
     "help_menu": {
       "button": "Hilfe",

@@ -28,15 +28,18 @@ import {
   getShortLocaleCode,
   initStorage,
   isStorageEmpty,
-  loadDarkModeFromStorage,
   loadDefaultLocaleFromStorage,
   loadSelectedModelFromStorage,
-  saveDarkModeInStorage,
+  loadThemeModeFromStorage,
   saveDefaultLocaleInStorage,
   saveModelToStorage,
   saveSelectedModelInStorage,
+  saveThemeModeInStorage,
   selectModelFromStorage,
   subscribeToStorage,
+  systemPrefersDark,
+  type ThemeMode,
+  watchSystemDarkMode,
 } from "./components/storage";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
@@ -46,7 +49,13 @@ function App() {
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(loadDarkModeFromStorage);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(
+    loadThemeModeFromStorage,
+  );
+  const [systemIsDark, setSystemIsDark] = useState(systemPrefersDark);
+  useEffect(() => watchSystemDarkMode(setSystemIsDark), []);
+  const isDarkMode =
+    themeMode === "system" ? systemIsDark : themeMode === "dark";
 
   const ironCalcRef = useRef<IronCalcHandle>(null);
   // Guards against overlapping autosaves and repeated error alerts.
@@ -77,9 +86,9 @@ function App() {
     }
   };
 
-  const handleDarkModeChange = (isDark: boolean) => {
-    setIsDarkMode(isDark);
-    saveDarkModeInStorage(isDark);
+  const handleThemeModeChange = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    saveThemeModeInStorage(mode);
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Run only for i18n.language dependency
@@ -254,8 +263,8 @@ function App() {
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
           onLanguageChange={handleLanguageChange}
-          isDarkMode={isDarkMode}
-          onDarkModeChange={handleDarkModeChange}
+          themeMode={themeMode}
+          onThemeModeChange={handleThemeModeChange}
         />
         <IronCalc
           model={model}

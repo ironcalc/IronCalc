@@ -105,7 +105,8 @@
       "default_language": "Langue par défaut",
       "theme": "Thème",
       "theme_light": "Clair",
-      "theme_dark": "Sombre"
+      "theme_dark": "Sombre",
+      "theme_system": "Système"
     },
     "help_menu": {
       "button": "Aide",

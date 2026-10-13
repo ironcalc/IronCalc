@@ -21,6 +21,7 @@ import {
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
+import type { ThemeMode } from "../storage";
 import UploadFileDialog from "../UploadFileDialog/UploadFileDialog";
 import { useModelsMetadata, useSelectedUuid } from "../useStorage";
 
@@ -33,10 +34,11 @@ const LANGUAGES = [
   ["it-IT", "Italiano"],
 ] as const;
 
-const THEMES = [
-  [false, "file_bar.file_menu.theme_light"],
-  [true, "file_bar.file_menu.theme_dark"],
-] as const;
+const THEMES: [ThemeMode, string][] = [
+  ["light", "file_bar.file_menu.theme_light"],
+  ["dark", "file_bar.file_menu.theme_dark"],
+  ["system", "file_bar.file_menu.theme_system"],
+];
 
 interface MobileMenuProps {
   newModel: () => void;
@@ -45,8 +47,8 @@ interface MobileMenuProps {
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
   onLanguageChange: (language: string) => void;
-  isDarkMode: boolean;
-  onDarkModeChange: (isDark: boolean) => void;
+  themeMode: ThemeMode;
+  onThemeModeChange: (mode: ThemeMode) => void;
 }
 
 export function MobileMenu(props: MobileMenuProps) {
@@ -129,11 +131,11 @@ export function MobileMenu(props: MobileMenuProps) {
         </MenuItemWithSubmenu>
         <MenuItemWithSubmenu
           icon={<Sun />}
-          submenu={THEMES.map(([isDark, labelKey]) => (
+          submenu={THEMES.map(([mode, labelKey]) => (
             <MenuItem
               key={labelKey}
-              checked={props.isDarkMode === isDark}
-              onClick={() => props.onDarkModeChange(isDark)}
+              checked={props.themeMode === mode}
+              onClick={() => props.onThemeModeChange(mode)}
             >
               {t(labelKey)}
             </MenuItem>
