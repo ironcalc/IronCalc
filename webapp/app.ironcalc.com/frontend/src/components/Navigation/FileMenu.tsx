@@ -31,9 +31,9 @@ const LANGUAGES = [
 ] as const;
 
 const THEMES: [ThemeMode, string][] = [
-  ["light", "file_bar.file_menu.theme_light"],
-  ["dark", "file_bar.file_menu.theme_dark"],
-  ["system", "file_bar.file_menu.theme_system"],
+  ["light", "file_bar.file_menu.appearance_light"],
+  ["dark", "file_bar.file_menu.appearance_dark"],
+  ["system", "file_bar.file_menu.appearance_system"],
 ];
 
 export function FileMenu(props: {
@@ -144,7 +144,7 @@ export function FileMenu(props: {
             </MenuItem>
           ))}
         >
-          {t("file_bar.file_menu.theme")}
+          {t("file_bar.file_menu.appearance")}
         </MenuItemWithSubmenu>
       </Menu>
 
