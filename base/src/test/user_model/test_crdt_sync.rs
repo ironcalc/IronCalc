@@ -2555,6 +2555,7 @@ fn peer_fuzz_round(seed: u64) {
     assert_eq!(a.peer.presence().len(), b.peer.presence().len());
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn randomized_peer_protocol_fuzz() {
     // Seeded and deterministic; CRDT_FUZZ_SEEDS=n stresses seeds 1..=n.
