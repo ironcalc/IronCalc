@@ -103,10 +103,10 @@
         "cancel_button": "Abbrechen"
       },
       "default_language": "Standardsprache",
-      "theme": "Design",
-      "theme_light": "Hell",
-      "theme_dark": "Dunkel",
-      "theme_system": "System"
+      "appearance": "Erscheinungsbild",
+      "appearance_light": "Hell",
+      "appearance_dark": "Dunkel",
+      "appearance_system": "System"
     },
     "help_menu": {
       "button": "Hilfe",

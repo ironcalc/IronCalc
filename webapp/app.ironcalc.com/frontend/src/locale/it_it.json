@@ -103,10 +103,10 @@
         "cancel_button": "Annulla"
       },
       "default_language": "Lingua predefinita",
-      "theme": "Tema",
-      "theme_light": "Chiaro",
-      "theme_dark": "Scuro",
-      "theme_system": "Sistema"
+      "appearance": "Aspetto",
+      "appearance_light": "Chiaro",
+      "appearance_dark": "Scuro",
+      "appearance_system": "Sistema"
     },
     "help_menu": {
       "button": "Aiuto",
