@@ -723,6 +723,36 @@ fn test_fn_eomonth_wrong_arguments() {
 }
 
 #[test]
+fn test_fn_eomonth_out_of_bounds_returns_num() {
+    // Regression for #1390: EOMONTH must return #NUM! (not panic / wrap) when the
+    // result would fall outside Excel's supported date range, including when the
+    // months argument alone is far outside i32.
+    let mut model = new_empty_model();
+
+    // Beyond maximum date (Dec 31 9999)
+    model._set("A1", "=EOMONTH(DATE(9999,12,1), 1)");
+    // +12000 months lands on 3023-03-31 — still inside Excel's range (was a panic)
+    model._set("A2", "=EOMONTH(DATE(2023,3,2), 12000)");
+    // -12000 months lands before 1900 — #NUM! (was a panic)
+    model._set("A3", "=EOMONTH(DATE(2023,3,2), -12000)");
+    // Months that do not fit in i32 — #NUM! (was a panic via chrono Add)
+    model._set("A4", "=EOMONTH(DATE(2023,3,2), 1E+15)");
+    model._set("A5", "=EOMONTH(DATE(2023,3,2), -1E+15)");
+    // A still-valid shift near the edge continues to work
+    model._set("A6", "=EOMONTH(DATE(2023,3,2), 1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"410258"); // 3023-03-31
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+    // 2023-04-30
+    assert_eq!(model._get_text("A6"), *"45046");
+}
+
+#[test]
 fn test_time_function() {
     let mut model = new_empty_model();
 

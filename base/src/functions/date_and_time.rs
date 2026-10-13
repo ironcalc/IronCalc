@@ -776,6 +776,15 @@ impl<'a> Model<'a> {
         let months = match self.get_number_no_bools(&args[1], cell) {
             Ok(c) => {
                 let t = c.trunc();
+                // Reject months that cannot be represented as i32 — Excel returns #NUM!
+                // for these, and casting would saturate then panic in chrono's Add<Months>.
+                if !t.is_finite() || t > i32::MAX as f64 || t < i32::MIN as f64 {
+                    return CalcResult::Error {
+                        error: Error::NUM,
+                        origin: cell,
+                        message: "EOMONTH out of bounds".to_string(),
+                    };
+                }
                 t as i32
             }
             Err(s) => return s,
@@ -784,9 +793,19 @@ impl<'a> Model<'a> {
         let months_abs = months.unsigned_abs();
 
         let native_date = if months > 0 {
-            date + Months::new(months_abs)
+            date.checked_add_months(Months::new(months_abs))
         } else {
-            date - Months::new(months_abs)
+            date.checked_sub_months(Months::new(months_abs))
+        };
+        let native_date = match native_date {
+            Some(d) => d,
+            None => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "EOMONTH out of bounds".to_string(),
+                };
+            }
         };
 
         // Instead of calculating the end of month we compute the first day of the following month
@@ -798,7 +817,17 @@ impl<'a> Model<'a> {
             year += 1;
         }
         match date_to_serial_number(1, month, year) {
-            Ok(serial_number) => CalcResult::Number(serial_number as f64 - 1.0),
+            Ok(serial_number) => {
+                let end = serial_number - 1;
+                if !(MINIMUM_DATE_SERIAL_NUMBER..=MAXIMUM_DATE_SERIAL_NUMBER).contains(&end) {
+                    return CalcResult::Error {
+                        error: Error::NUM,
+                        origin: cell,
+                        message: "EOMONTH out of bounds".to_string(),
+                    };
+                }
+                CalcResult::Number(end as f64)
+            }
             Err(message) => CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
