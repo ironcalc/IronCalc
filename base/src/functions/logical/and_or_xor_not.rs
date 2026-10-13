@@ -1,5 +1,6 @@
 use crate::{
     calc_result::CalcResult,
+    cast::ValueOrArray,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -8,17 +9,44 @@ use crate::{
     model::Model,
 };
 
+/// NOT of one element of an array. Coerces the element the way `cast_to_bool`
+/// coerces a scalar argument: 0 is FALSE and any other number TRUE, an empty
+/// value is FALSE, the text "TRUE"/"FALSE" (any case) is read as that boolean,
+/// any other text is `#VALUE!`, and an error is passed through.
+fn not_array_node(node: ArrayNode) -> ArrayNode {
+    match node {
+        ArrayNode::Boolean(b) => ArrayNode::Boolean(!b),
+        ArrayNode::Number(f) => ArrayNode::Boolean(f == 0.0),
+        ArrayNode::Empty => ArrayNode::Boolean(true),
+        ArrayNode::String(s) => match s.to_lowercase().as_str() {
+            "true" => ArrayNode::Boolean(false),
+            "false" => ArrayNode::Boolean(true),
+            _ => ArrayNode::Error(Error::VALUE),
+        },
+        ArrayNode::Error(e) => ArrayNode::Error(e),
+    }
+}
+
 impl<'a> Model<'a> {
     pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.get_boolean(&args[0], cell) {
-                Ok(f) => return CalcResult::Boolean(!f),
-                Err(s) => {
-                    return s;
-                }
-            };
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
         }
-        CalcResult::new_args_number_error(cell)
+        match self.get_value_or_array(&args[0], cell) {
+            // A range, a computed array or a literal list: flip every value and
+            // spill one TRUE/FALSE per input value, as Excel does.
+            Ok(ValueOrArray::Array(array)) => CalcResult::Array(
+                array
+                    .into_iter()
+                    .map(|row| row.into_iter().map(not_array_node).collect())
+                    .collect(),
+            ),
+            Ok(ValueOrArray::Value(value)) => match self.cast_to_bool(value, cell) {
+                Ok(f) => CalcResult::Boolean(!f),
+                Err(s) => s,
+            },
+            Err(s) => s,
+        }
     }
 
     pub(crate) fn fn_and(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
