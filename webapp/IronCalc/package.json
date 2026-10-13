@@ -23,7 +23,9 @@
     "typecheck": "tsc -p tsconfig.test.json",
     "check-write": "biome check --write ./src ./tests .storybook/ *.ts *.json",
     "lint:i18n": "node scripts/lint-i18n.js",
-    "test": "vitest run",
+    "test": "vitest run --exclude tests/worksheetCanvas/renderSheet.test.ts && npm run test:visual",
+    "test:visual": "node scripts/visual-tests.js",
+    "test:visual:update": "node scripts/visual-tests.js --update",
     "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build"
   },
