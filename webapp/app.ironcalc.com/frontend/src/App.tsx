@@ -28,6 +28,7 @@ import {
   getShortLocaleCode,
   initStorage,
   isStorageEmpty,
+  isStoragePersistent,
   loadDefaultLocaleFromStorage,
   loadSelectedModelFromStorage,
   loadThemeModeFromStorage,
@@ -153,6 +154,9 @@ function App() {
           ironCalcRef.current.setLanguage(language);
         }
       }, 0);
+      if (!isStoragePersistent()) {
+        alert(t("errors.storage_unavailable"));
+      }
     }
     start();
   }, [i18n.changeLanguage]);

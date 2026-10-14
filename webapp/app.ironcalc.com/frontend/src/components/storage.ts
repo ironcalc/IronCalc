@@ -26,6 +26,12 @@ const MAX_WORKBOOKS = 50;
 //   - "workbook_bytes" store: the serialized workbook (Uint8Array), keyed by
 //     uuid. Only ever read on demand.
 //
+// If IndexedDB cannot be opened at all (storage disabled by policy, a broken
+// profile) the same operations run against in-memory maps instead, so the app
+// still works for the session; nothing is persisted and `isStoragePersistent`
+// reports it so the UI can say so. localStorage access can throw in the same
+// situations and is treated as empty.
+//
 // Every operation that writes both stores does so in a single transaction so
 // metadata and bytes can never get out of sync. Mutating operations are
 // serialized through a queue so concurrent callers (e.g. the autosave timer
@@ -82,7 +88,15 @@ function openDatabase(): Promise<IDBDatabase> {
     return dbPromise;
   }
   dbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    let request: IDBOpenDBRequest;
+    try {
+      request = indexedDB.open(DB_NAME, DB_VERSION);
+    } catch (e) {
+      // indexedDB missing or access denied
+      dbPromise = null;
+      reject(e);
+      return;
+    }
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(WORKBOOKS_STORE)) {
@@ -92,13 +106,23 @@ function openDatabase(): Promise<IDBDatabase> {
         db.createObjectStore(BYTES_STORE);
       }
     };
+    request.onblocked = () => {
+      // Another tab holds an older version open and is not closing it. The
+      // open completes once that tab goes away; nothing to do but say so.
+      console.warn(
+        "Waiting for other IronCalc tabs to close before the storage can be upgraded",
+      );
+    };
     request.onsuccess = () => {
       const db = request.result;
-      // If another tab upgrades the database, drop our connection so the
-      // next call reopens it.
+      // Another tab (running a newer version of the app) is upgrading the
+      // database. This tab cannot use the database any more and is running
+      // outdated code: the only sensible thing is to reload it.
       db.onversionchange = () => {
         db.close();
         dbPromise = null;
+        alert(i18n.t("errors.storage_upgraded"));
+        window.location.reload();
       };
       resolve(db);
     };
@@ -127,6 +151,56 @@ export async function closeStorage(): Promise<void> {
   }
 }
 
+// The subset of an object store the write operations below use. Implemented
+// by IndexedDB (the normal case) and by plain maps (when IndexedDB is not
+// available).
+interface Store {
+  put(value: unknown, key: string): void;
+  delete(key: string): void;
+  // Calls back with the stored value (undefined if there is none) before the
+  // transaction commits, so the callback can issue further writes.
+  get(key: string, callback: (value: unknown) => void): void;
+}
+
+function idbStore(store: IDBObjectStore): Store {
+  return {
+    put: (value, key) => {
+      store.put(value, key);
+    },
+    delete: (key) => {
+      store.delete(key);
+    },
+    get: (key, callback) => {
+      const request = store.get(key);
+      request.onsuccess = () => callback(request.result);
+    },
+  };
+}
+
+function memoryStore(map: Map<string, unknown>): Store {
+  return {
+    put: (value, key) => {
+      map.set(key, value);
+    },
+    delete: (key) => {
+      map.delete(key);
+    },
+    get: (key, callback) => callback(map.get(key)),
+  };
+}
+
+// False once IndexedDB failed to open: everything lives in the maps below
+// for the rest of the session.
+let persistent = true;
+const memoryWorkbooks = new Map<string, unknown>();
+const memoryBytes = new Map<string, unknown>();
+
+// True if workbooks are saved in IndexedDB; false if the browser gave us no
+// storage and they only live in memory.
+export function isStoragePersistent(): boolean {
+  return persistent;
+}
+
 function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
@@ -145,16 +219,26 @@ function transactionDone(tx: IDBTransaction): Promise<void> {
 // Runs `body` inside a single readwrite transaction spanning both stores and
 // resolves once the transaction has committed.
 async function writeTransaction(
-  body: (workbooks: IDBObjectStore, bytes: IDBObjectStore) => void,
+  body: (workbooks: Store, bytes: Store) => void,
 ): Promise<void> {
+  if (!persistent) {
+    body(memoryStore(memoryWorkbooks), memoryStore(memoryBytes));
+    return;
+  }
   const db = await openDatabase();
   const tx = db.transaction([WORKBOOKS_STORE, BYTES_STORE], "readwrite");
   const done = transactionDone(tx);
-  body(tx.objectStore(WORKBOOKS_STORE), tx.objectStore(BYTES_STORE));
+  body(
+    idbStore(tx.objectStore(WORKBOOKS_STORE)),
+    idbStore(tx.objectStore(BYTES_STORE)),
+  );
   return done;
 }
 
 async function readBytes(uuid: string): Promise<Uint8Array | undefined> {
+  if (!persistent) {
+    return memoryBytes.get(uuid) as Uint8Array | undefined;
+  }
   const db = await openDatabase();
   const tx = db.transaction(BYTES_STORE, "readonly");
   return requestToPromise<Uint8Array | undefined>(
@@ -360,15 +444,50 @@ function serialized<T>(operation: () => Promise<T>): Promise<T> {
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// localStorage helpers
+// ---------------------------------------------------------------------------
+
+// Access can throw (storage disabled by policy, some private modes). The
+// store is then treated as empty and writes are dropped.
+
+export function getLocalItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function setLocalItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn(`Failed to write "${key}" to localStorage`, e);
+  }
+}
+
+function removeLocalItem(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Nothing to remove if there is no storage.
+  }
+}
+
 // Brings localStorage to the current layout: anything written by a different
 // version is wiped. Idempotent and synchronous, so it can (and should) run
 // before the first render, which reads the preferences synchronously.
 export function initLocalStorage(): void {
-  if (localStorage.getItem(STORAGE_VERSION_KEY) === STORAGE_VERSION) {
+  if (getLocalItem(STORAGE_VERSION_KEY) === STORAGE_VERSION) {
     return;
   }
-  localStorage.clear();
-  localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION);
+  try {
+    localStorage.clear();
+  } catch {
+    return;
+  }
+  setLocalItem(STORAGE_VERSION_KEY, STORAGE_VERSION);
 }
 
 // Hydrates the in-memory cache from IndexedDB. Must be awaited once at app
@@ -376,17 +495,42 @@ export function initLocalStorage(): void {
 export async function initStorage(): Promise<void> {
   initLocalStorage();
   try {
-    setMetadataCache(await readAndRepairMetadata());
+    await openDatabase();
+    persistent = true;
   } catch (e) {
-    console.warn("Failed to initialize storage", e);
-    setMetadataCache({});
+    console.warn(
+      "IndexedDB is not available: workbooks will not be saved in this session",
+      e,
+    );
+    persistent = false;
+    memoryWorkbooks.clear();
+    memoryBytes.clear();
   }
+  let metadata: Record<string, WorkbookMetadata> = {};
+  if (persistent) {
+    try {
+      metadata = await readAndRepairMetadata();
+    } catch (e) {
+      // The database opened but could not be checked. Fall back to reading
+      // it as is; a failure there too leaves the list empty, but the
+      // workbooks are still in the database and new ones are still saved.
+      console.warn("Failed to check storage", e);
+      try {
+        metadata = await readAllMetadata();
+      } catch (e2) {
+        console.warn("Failed to read storage", e2);
+      }
+    }
+  }
+  setMetadataCache(metadata);
   // The hint must point at a workbook we know about.
-  const hint = localStorage.getItem(SELECTED_KEY);
+  const hint = getLocalItem(SELECTED_KEY);
   if (hint !== null && !metadataCache[hint]) {
-    localStorage.removeItem(SELECTED_KEY);
+    removeLocalItem(SELECTED_KEY);
   }
-  openChannel();
+  if (persistent) {
+    openChannel();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -442,11 +586,11 @@ export function getLanguageFromLocale(locale: string): string {
 }
 
 export function saveDefaultLocaleInStorage(locale: string) {
-  localStorage.setItem(DEFAULT_LOCALE_KEY, locale);
+  setLocalItem(DEFAULT_LOCALE_KEY, locale);
 }
 
 export function loadDefaultLocaleFromStorage(): string {
-  const lang = localStorage.getItem(DEFAULT_LOCALE_KEY);
+  const lang = getLocalItem(DEFAULT_LOCALE_KEY);
   if (lang) {
     return lang;
   }
@@ -459,11 +603,11 @@ export function loadDefaultLocaleFromStorage(): string {
 export type ThemeMode = "light" | "dark" | "system";
 
 export function saveThemeModeInStorage(mode: ThemeMode) {
-  localStorage.setItem(DARK_MODE_KEY, mode);
+  setLocalItem(DARK_MODE_KEY, mode);
 }
 
 export function loadThemeModeFromStorage(): ThemeMode {
-  const stored = localStorage.getItem(DARK_MODE_KEY);
+  const stored = getLocalItem(DARK_MODE_KEY);
   switch (stored) {
     case "light":
     case "dark":
@@ -508,13 +652,13 @@ export function getSelectedUuid(): string | null {
 
 function setSelectedUuid(uuid: string) {
   activeUuid = uuid;
-  localStorage.setItem(SELECTED_KEY, uuid);
+  setLocalItem(SELECTED_KEY, uuid);
   notify();
 }
 
 function clearSelectedUuid() {
   activeUuid = null;
-  localStorage.removeItem(SELECTED_KEY);
+  removeLocalItem(SELECTED_KEY);
   notify();
 }
 
@@ -687,7 +831,7 @@ async function openNewestWorkbook(): Promise<Model | null> {
 // readable workbook at all.
 export function loadSelectedModelFromStorage(): Promise<Model | null> {
   return serialized(async () => {
-    const hint = localStorage.getItem(SELECTED_KEY);
+    const hint = getLocalItem(SELECTED_KEY);
     if (hint) {
       const model = await openWorkbook(hint);
       if (model) {
@@ -728,9 +872,8 @@ export function saveSelectedModelInStorage(model: Model): Promise<void> {
     const bytes = model.toBytes();
     let recreated: WorkbookMetadata | null = null;
     await writeTransaction((workbooks, bytesStore) => {
-      const existing = workbooks.get(uuid);
-      existing.onsuccess = () => {
-        if (existing.result === undefined) {
+      workbooks.get(uuid, (existing) => {
+        if (existing === undefined) {
           recreated = {
             name: model.getName(),
             createdAt: Date.now(),
@@ -739,7 +882,7 @@ export function saveSelectedModelInStorage(model: Model): Promise<void> {
           workbooks.put(recreated, uuid);
         }
         bytesStore.put(bytes, uuid);
-      };
+      });
     });
     if (recreated) {
       commitMetadata(withMetadata(uuid, recreated));

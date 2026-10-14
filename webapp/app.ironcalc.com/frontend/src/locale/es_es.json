@@ -6,7 +6,9 @@
   "errors": {
     "model_not_found": "Modelo no encontrado o error al cargar",
     "example_not_found": "Archivo de ejemplo no encontrado o error al cargar",
-    "storage_save_failed": "No se han podido guardar los cambios. Puede que el navegador no tenga espacio de almacenamiento."
+    "storage_save_failed": "No se han podido guardar los cambios. Puede que el navegador no tenga espacio de almacenamiento.",
+    "storage_unavailable": "El navegador no permite que IronCalc guarde nada. Sus libros se perderán al cerrar esta pestaña; descargue lo que quiera conservar.",
+    "storage_upgraded": "IronCalc se ha actualizado en otra pestaña. Esta pestaña se recargará."
   },
   "unsaved_bar": {
     "message": "Estás viendo un libro de solo lectura. Guarda una copia para editarlo.",

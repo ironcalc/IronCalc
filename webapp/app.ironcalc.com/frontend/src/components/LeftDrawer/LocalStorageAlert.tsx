@@ -2,18 +2,19 @@ import { IconButton } from "@ironcalc/workbook";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { getLocalItem, setLocalItem } from "../storage";
 
 const ALERT_DISMISSED_KEY = "localStorageAlertDismissed";
 
 function LocalStorageAlert() {
   const { t } = useTranslation();
   const [isAlertVisible, setIsAlertVisible] = useState(
-    () => localStorage.getItem(ALERT_DISMISSED_KEY) !== "true",
+    () => getLocalItem(ALERT_DISMISSED_KEY) !== "true",
   );
 
   const handleClose = () => {
     setIsAlertVisible(false);
-    localStorage.setItem(ALERT_DISMISSED_KEY, "true");
+    setLocalItem(ALERT_DISMISSED_KEY, "true");
   };
 
   if (!isAlertVisible) {

@@ -6,7 +6,9 @@
   "errors": {
     "model_not_found": "Modell nicht gefunden oder Ladefehler",
     "example_not_found": "Beispieldatei nicht gefunden oder Ladefehler",
-    "storage_save_failed": "Ihre Änderungen konnten nicht gespeichert werden. Möglicherweise hat der Browser keinen Speicherplatz mehr."
+    "storage_save_failed": "Ihre Änderungen konnten nicht gespeichert werden. Möglicherweise hat der Browser keinen Speicherplatz mehr.",
+    "storage_unavailable": "Der Browser erlaubt IronCalc nicht, Daten zu speichern. Ihre Arbeitsmappen gehen beim Schließen dieses Tabs verloren; laden Sie herunter, was Sie behalten möchten.",
+    "storage_upgraded": "IronCalc wurde in einem anderen Tab aktualisiert. Dieser Tab wird neu geladen."
   },
   "unsaved_bar": {
     "message": "Sie sehen eine schreibgeschützte Arbeitsmappe. Speichern Sie eine Kopie, um sie zu bearbeiten.",

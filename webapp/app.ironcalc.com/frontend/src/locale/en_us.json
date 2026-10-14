@@ -6,7 +6,9 @@
   "errors": {
     "model_not_found": "Model not found, or failed to load",
     "example_not_found": "Example file not found, or failed to load",
-    "storage_save_failed": "Your changes could not be saved. The browser may be out of storage space."
+    "storage_save_failed": "Your changes could not be saved. The browser may be out of storage space.",
+    "storage_unavailable": "The browser is not letting IronCalc store anything. Your workbooks will be lost when you close this tab; download anything you want to keep.",
+    "storage_upgraded": "IronCalc was updated in another tab. This tab will reload."
   },
   "unsaved_bar": {
     "message": "You're viewing a read-only workbook. Save a copy to edit it.",

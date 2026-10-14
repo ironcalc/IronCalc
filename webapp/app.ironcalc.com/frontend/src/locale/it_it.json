@@ -6,7 +6,9 @@
   "errors": {
     "model_not_found": "Modello non trovato o errore durante il caricamento",
     "example_not_found": "File di esempio non trovato o errore durante il caricamento",
-    "storage_save_failed": "Impossibile salvare le modifiche. Il browser potrebbe aver esaurito lo spazio di archiviazione."
+    "storage_save_failed": "Impossibile salvare le modifiche. Il browser potrebbe aver esaurito lo spazio di archiviazione.",
+    "storage_unavailable": "Il browser non consente a IronCalc di salvare nulla. Le cartelle di lavoro andranno perse alla chiusura di questa scheda; scarica ciò che vuoi conservare.",
+    "storage_upgraded": "IronCalc è stato aggiornato in un'altra scheda. Questa scheda verrà ricaricata."
   },
   "unsaved_bar": {
     "message": "Stai visualizzando una cartella di lavoro di sola lettura. Salva una copia per modificarla.",

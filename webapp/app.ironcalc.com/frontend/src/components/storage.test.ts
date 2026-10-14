@@ -659,6 +659,112 @@ describe("cross-tab synchronization", () => {
   );
 });
 
+describe("without localStorage", () => {
+  function denyLocalStorage() {
+    const deny = () => {
+      throw new DOMException("denied", "SecurityError");
+    };
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(deny);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(deny);
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(deny);
+    vi.spyOn(Storage.prototype, "clear").mockImplementation(deny);
+  }
+
+  it("initializes and reads defaults", async () => {
+    denyLocalStorage();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    storage = await reload();
+    expect(storage.loadThemeModeFromStorage()).toBe("system");
+    expect(storage.loadDefaultLocaleFromStorage()).toMatch(
+      /^[a-z]{2}-[A-Z]{2}$/,
+    );
+    expect(storage.getLocalItem("anything")).toBeNull();
+  });
+
+  it("still saves and opens workbooks", async () => {
+    denyLocalStorage();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    storage = await reload();
+    storage.saveThemeModeInStorage("dark");
+    const model = await storage.createNewModel();
+    const uuid = storage.getSelectedUuid() as string;
+    model.setName("Saved");
+    await storage.saveSelectedModelInStorage(model);
+    expect((await storage.loadModelFromStorage(uuid))?.getName()).toBe("Saved");
+    // The hint could not be written, so the next start opens the newest.
+    vi.restoreAllMocks();
+    storage = await reload();
+    expect(localStorage.getItem("selected")).toBeNull();
+    expect((await storage.loadSelectedModelFromStorage())?.getName()).toBe(
+      "Saved",
+    );
+  });
+});
+
+describe("without IndexedDB", () => {
+  function denyIndexedDB() {
+    vi.spyOn(indexedDB, "open").mockImplementation(() => {
+      throw new DOMException("denied", "SecurityError");
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  }
+
+  it("reports that storage is not persistent", async () => {
+    expect(storage.isStoragePersistent()).toBe(true);
+    denyIndexedDB();
+    storage = await reload();
+    expect(storage.isStoragePersistent()).toBe(false);
+    expect(storage.isStorageEmpty()).toBe(true);
+  });
+
+  it("runs every operation in memory", async () => {
+    denyIndexedDB();
+    storage = await reload();
+    const model = await storage.createNewModel();
+    const uuid = storage.getSelectedUuid() as string;
+    expect(storage.getModelsMetadata()[uuid].name).toBe("Workbook1");
+
+    model.setName("Edited");
+    await storage.saveSelectedModelInStorage(model);
+    expect((await storage.loadModelFromStorage(uuid))?.getName()).toBe(
+      "Edited",
+    );
+
+    await storage.updateNameSelectedWorkbook(model, "Renamed");
+    expect(storage.getModelsMetadata()[uuid].name).toBe("Renamed");
+    await storage.togglePinWorkbook(uuid);
+    expect(storage.isWorkbookPinned(uuid)).toBe(true);
+
+    const copy = await storage.duplicateModel(uuid);
+    expect(copy?.getName()).toBe("Renamed (1)");
+    expect(Object.keys(storage.getModelsMetadata())).toHaveLength(2);
+
+    // Strictly newer than the copy, so it is the one selected after the delete.
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 10_000);
+    await storage.createNewModel();
+    const third = storage.getSelectedUuid() as string;
+    expect(await storage.selectModelFromStorage(uuid)).not.toBeNull();
+    expect(storage.getSelectedUuid()).toBe(uuid);
+    const next = await storage.deleteModelByUuid(uuid);
+    expect(next).not.toBeNull();
+    expect(storage.getSelectedUuid()).toBe(third);
+    expect(storage.getModelsMetadata()[uuid]).toBeUndefined();
+  });
+
+  it("persists nothing", async () => {
+    denyIndexedDB();
+    storage = await reload();
+    await storage.createNewModel();
+    expect(storage.isStorageEmpty()).toBe(false);
+    vi.restoreAllMocks();
+    storage = await reload();
+    expect(storage.isStoragePersistent()).toBe(true);
+    expect(storage.isStorageEmpty()).toBe(true);
+    // The hint written in memory mode points nowhere and is dropped.
+    expect(localStorage.getItem("selected")).toBeNull();
+  });
+});
+
 describe("togglePinWorkbook", () => {
   it("flips and persists the pinned flag", async () => {
     await storage.createNewModel();
