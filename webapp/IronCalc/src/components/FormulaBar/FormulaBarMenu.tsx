@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -26,6 +27,8 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverMaxHeight, setPopoverMaxHeight] = useState<number>();
   const menuId = useId();
 
   const definedNameList = properties.model.getDefinedNameList();
@@ -75,6 +78,29 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
     };
   }, [closeMenu, isMenuOpen]);
 
+  // Keep the popover inside the window, scrolling when the list is longer
+  useLayoutEffect(() => {
+    if (!isMenuOpen) {
+      return;
+    }
+
+    function updateMaxHeight(): void {
+      const popover = popoverRef.current;
+      if (!popover) {
+        return;
+      }
+      const margin = 8; // Safety margin from viewport edges
+      const top = popover.getBoundingClientRect().top;
+      setPopoverMaxHeight(window.innerHeight - top - margin);
+    }
+
+    updateMaxHeight();
+    window.addEventListener("resize", updateMaxHeight);
+    return () => {
+      window.removeEventListener("resize", updateMaxHeight);
+    };
+  }, [isMenuOpen]);
+
   return (
     <div className="ic-formula-bar-menu" ref={rootRef}>
       {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
@@ -88,7 +114,13 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
       </div>
 
       {isMenuOpen ? (
-        <div id={menuId} className="ic-formula-bar-menu-popover" role="menu">
+        <div
+          ref={popoverRef}
+          id={menuId}
+          className="ic-formula-bar-menu-popover"
+          role="menu"
+          style={{ maxHeight: popoverMaxHeight }}
+        >
           {definedNameList.length > 0 ? (
             <>
               {definedNameList.map((definedName) => {

@@ -23,7 +23,9 @@
   top: calc(100% + 4px);
   left: -4px;
   z-index: 1000;
+  box-sizing: border-box;
   max-width: min(400px, calc(100vw - 16px));
+  overflow-y: auto;
   padding: 4px 0;
   border: 1px solid var(--palette-surface-elevated-border);
   border-radius: 8px;

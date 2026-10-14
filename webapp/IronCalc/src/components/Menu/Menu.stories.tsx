@@ -277,6 +277,56 @@ export const WithSubmenu: Story = {
   },
 };
 
+const SHEET_NAMES = Array.from({ length: 60 }, (_, i) => `Sheet${i + 1}`);
+
+function ManyMenuItems() {
+  return (
+    <>
+      <MenuItemWithSubmenu
+        submenu={
+          <>
+            <MenuItem onClick={() => {}}>Option A</MenuItem>
+            <MenuItem onClick={() => {}}>Option B</MenuItem>
+            <MenuItem onClick={() => {}}>Option C</MenuItem>
+          </>
+        }
+      >
+        More
+      </MenuItemWithSubmenu>
+      <MenuDivider />
+      {SHEET_NAMES.map((name) => (
+        <MenuItem key={name} onClick={() => {}}>
+          {name}
+        </MenuItem>
+      ))}
+    </>
+  );
+}
+
+// A menu taller than the window scrolls instead of running off its edge
+export const ManyItems: Story = {
+  args: {
+    trigger: <Button variant="secondary">Open menu</Button>,
+    children: null,
+  },
+  parameters: { layout: "fullscreen" },
+  render: () => (
+    <div>
+      <div style={{ position: "absolute", top: 16, left: 16 }}>
+        <Menu trigger={<Button variant="secondary">Top-left</Button>}>
+          <ManyMenuItems />
+        </Menu>
+      </div>
+
+      <div style={{ position: "absolute", bottom: 16, left: 16 }}>
+        <Menu trigger={<Button variant="secondary">Bottom-left</Button>}>
+          <ManyMenuItems />
+        </Menu>
+      </div>
+    </div>
+  ),
+};
+
 export const ContextMenu: Story = {
   args: {
     open: false,
