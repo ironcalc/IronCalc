@@ -116,6 +116,14 @@ async function rawKeys(): Promise<{
 
 const GOOD = { name: "Good", createdAt: 1000, pinned: false };
 const BYTES = new TextEncoder().encode(JSON.stringify({ name: "Good" }));
+// The fake Model expects JSON, so this fails to deserialize.
+const CORRUPT = new TextEncoder().encode("garbage");
+
+function corruptBytes(uuid: string): Promise<void> {
+  return rawWrite((_workbooks, bytes) => {
+    bytes.put(CORRUPT, uuid);
+  });
+}
 
 let storage: Storage;
 
@@ -413,19 +421,98 @@ describe("loadSelectedModelFromStorage", () => {
     expect(storage.isStorageEmpty()).toBe(false);
   });
 
-  it("clears the selection when bytes cannot be deserialized", async () => {
+  it("removes the workbook and clears the selection when bytes cannot be deserialized", async () => {
     await storage.createNewModel();
     const uuid = storage.getSelectedUuid() as string;
-    // Corrupt the stored bytes: the fake Model expects JSON.
-    const { Model } = await import("@ironcalc/workbook");
-    vi.spyOn(Model, "fromBytes").mockImplementationOnce(() => {
-      throw new Error("bad bytes");
-    });
+    await corruptBytes(uuid);
     const model = await storage.loadSelectedModelFromStorage();
     expect(model).toBeNull();
     expect(storage.getSelectedUuid()).toBeNull();
-    // The workbook is still there.
-    expect(storage.getModelsMetadata()[uuid]).toBeDefined();
+    expect(storage.getModelsMetadata()[uuid]).toBeUndefined();
+    expect(await rawKeys()).toEqual({ workbooks: [], bytes: [] });
+  });
+});
+
+describe("unreadable workbooks are removed when opened", () => {
+  it("selectModelFromStorage returns null, removes it and keeps the selection", async () => {
+    await storage.createNewModel();
+    const first = storage.getSelectedUuid() as string;
+    await storage.createNewModel();
+    const second = storage.getSelectedUuid() as string;
+    await corruptBytes(first);
+    const listener = vi.fn();
+    storage.subscribeToStorage(listener);
+    expect(await storage.selectModelFromStorage(first)).toBeNull();
+    expect(storage.getSelectedUuid()).toBe(second);
+    expect(Object.keys(storage.getModelsMetadata())).toEqual([second]);
+    expect(listener).toHaveBeenCalled();
+    expect((await rawKeys()).bytes).toEqual([second]);
+  });
+
+  it("loadModelFromStorage returns null and removes it", async () => {
+    await storage.createNewModel();
+    const uuid = storage.getSelectedUuid() as string;
+    await corruptBytes(uuid);
+    expect(await storage.loadModelFromStorage(uuid)).toBeNull();
+    expect(storage.isStorageEmpty()).toBe(true);
+    // It was the selected one, so the selection goes too.
+    expect(storage.getSelectedUuid()).toBeNull();
+  });
+
+  it("duplicateModel returns null and removes it", async () => {
+    await storage.createNewModel();
+    const uuid = storage.getSelectedUuid() as string;
+    await corruptBytes(uuid);
+    expect(await storage.duplicateModel(uuid)).toBeNull();
+    expect(storage.isStorageEmpty()).toBe(true);
+  });
+
+  it("removes a workbook whose bytes vanished", async () => {
+    await storage.createNewModel();
+    const uuid = storage.getSelectedUuid() as string;
+    await rawWrite((_workbooks, bytes) => {
+      bytes.delete(uuid);
+    });
+    expect(await storage.loadModelFromStorage(uuid)).toBeNull();
+    expect(storage.isStorageEmpty()).toBe(true);
+    expect(storage.getSelectedUuid()).toBeNull();
+  });
+
+  it("deleting the selected workbook skips unreadable ones", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1000);
+    await storage.createNewModel();
+    const first = storage.getSelectedUuid() as string;
+    vi.spyOn(Date, "now").mockReturnValue(2000);
+    await storage.createNewModel();
+    const second = storage.getSelectedUuid() as string;
+    vi.spyOn(Date, "now").mockReturnValue(3000);
+    await storage.createNewModel();
+    const third = storage.getSelectedUuid() as string;
+    await corruptBytes(second);
+
+    const result = await storage.deleteModelByUuid(third);
+    expect(result?.getName()).toBe("Workbook1");
+    expect(storage.getSelectedUuid()).toBe(first);
+    expect(Object.keys(storage.getModelsMetadata())).toEqual([first]);
+  });
+
+  it("deleting the selected workbook creates a new one when the rest are unreadable", async () => {
+    await storage.createNewModel();
+    const first = storage.getSelectedUuid() as string;
+    await storage.createNewModel();
+    const second = storage.getSelectedUuid() as string;
+    await corruptBytes(first);
+
+    const result = await storage.deleteModelByUuid(second);
+    expect(result?.getName()).toBe("Workbook1");
+    const selected = storage.getSelectedUuid() as string;
+    expect(selected).not.toBe(first);
+    expect(selected).not.toBe(second);
+    expect(Object.keys(storage.getModelsMetadata())).toEqual([selected]);
+    expect(await rawKeys()).toEqual({
+      workbooks: [selected],
+      bytes: [selected],
+    });
   });
 });
 

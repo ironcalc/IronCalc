@@ -31,7 +31,10 @@ const MAX_WORKBOOKS = 50;
 // Still, nothing stops another version of the app (or a crash in the middle
 // of an upgrade) from leaving the database in a state this code does not
 // expect, so `initStorage` checks both stores once at startup and removes
-// anything inconsistent: see `readAndRepairMetadata`.
+// anything inconsistent: see `readAndRepairMetadata`. Bytes are only checked
+// when a workbook is opened: one that fails to deserialize is removed on the
+// spot (see `openWorkbook`). There is no backwards compatibility promise for
+// the byte format yet, so keeping unreadable workbooks around has no value.
 //
 // Components subscribe to changes with `subscribeToStorage` (see
 // useStorage.ts) and are notified whenever the metadata cache or the selected
@@ -524,13 +527,42 @@ function newestUuid(metadata: ModelsMetadata): string | null {
   });
 }
 
-async function loadModel(uuid: string): Promise<Model | null> {
+// Removes a workbook that turned out to be unreadable, together with its
+// selection if it was the selected one.
+async function yankWorkbook(uuid: string, reason: unknown): Promise<void> {
+  console.warn(`Removing unreadable workbook ${uuid}`, reason);
+  try {
+    await writeTransaction((workbooks, bytesStore) => {
+      workbooks.delete(uuid);
+      bytesStore.delete(uuid);
+    });
+  } catch (e) {
+    console.warn(`Failed to remove workbook ${uuid}`, e);
+  }
+  setMetadataCache(withoutMetadata(uuid));
+  if (getSelectedUuid() === uuid) {
+    clearSelectedUuid();
+  }
+}
+
+// The one way to get a Model out of the database. Returns null if there is
+// no such workbook or if it could not be deserialized, in which case the
+// workbook is removed. Must run inside `serialized`.
+async function openWorkbook(uuid: string): Promise<Model | null> {
   const bytes = await readBytes(uuid);
-  if (!bytes) {
+  if (bytes === undefined) {
+    if (metadataCache[uuid]) {
+      await yankWorkbook(uuid, "no bytes");
+    }
     return null;
   }
   const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
-  return Model.fromBytes(bytes, language);
+  try {
+    return Model.fromBytes(bytes, language);
+  } catch (e) {
+    await yankWorkbook(uuid, e);
+    return null;
+  }
 }
 
 // Creates an empty workbook with a fresh name, stores it and selects it.
@@ -549,38 +581,32 @@ export function saveModelToStorage(model: Model): Promise<void> {
   return serialized(() => insertWorkbook(model, model.getName(), true));
 }
 
-// Loads the currently selected workbook. Returns null if there is none or it
-// could not be loaded. A workbook that fails to deserialize is left in place
-// (it may be readable by a future version); only the selection is cleared.
+// Loads the currently selected workbook. Returns null, and clears the
+// selection, if there is none or it could not be loaded.
 export function loadSelectedModelFromStorage(): Promise<Model | null> {
   return serialized(async () => {
     const uuid = getSelectedUuid();
     if (!uuid) {
       return null;
     }
-    try {
-      const model = await loadModel(uuid);
-      if (!model) {
-        clearSelectedUuid();
-      }
-      return model;
-    } catch (e) {
-      console.warn("Failed to load selected model from storage", e);
+    const model = await openWorkbook(uuid);
+    if (!model) {
       clearSelectedUuid();
-      return null;
     }
+    return model;
   });
 }
 
 // Loads a workbook without changing the selection.
 export function loadModelFromStorage(uuid: string): Promise<Model | null> {
-  return serialized(() => loadModel(uuid));
+  return serialized(() => openWorkbook(uuid));
 }
 
-// Loads a workbook and makes it the selected one.
+// Loads a workbook and makes it the selected one. The selection is untouched
+// if the workbook could not be loaded.
 export function selectModelFromStorage(uuid: string): Promise<Model | null> {
   return serialized(async () => {
-    const model = await loadModel(uuid);
+    const model = await openWorkbook(uuid);
     if (model) {
       setSelectedUuid(uuid);
     }
@@ -639,8 +665,8 @@ export function togglePinWorkbook(uuid: string): Promise<void> {
 }
 
 // Deletes a workbook. If it was the selected one, the newest remaining
-// workbook is selected and returned (a new one is created if none is left).
-// Otherwise returns null and the selection is untouched.
+// readable workbook is selected and returned (a new one is created if none is
+// left). Otherwise returns null and the selection is untouched.
 export function deleteModelByUuid(uuid: string): Promise<Model | null> {
   return serialized(async () => {
     const wasSelected = getSelectedUuid() === uuid;
@@ -653,17 +679,20 @@ export function deleteModelByUuid(uuid: string): Promise<Model | null> {
       return null;
     }
     clearSelectedUuid();
-    const newest = newestUuid(metadataCache);
-    if (!newest) {
-      const name = getNewName([]);
-      const model = createModelWithSafeTimezone(name);
-      await insertWorkbook(model, name, true);
-      return model;
+    // Unreadable workbooks are removed by openWorkbook, so each iteration
+    // shrinks the candidates.
+    let newest = newestUuid(metadataCache);
+    while (newest) {
+      const model = await openWorkbook(newest);
+      if (model) {
+        setSelectedUuid(newest);
+        return model;
+      }
+      newest = newestUuid(metadataCache);
     }
-    const model = await loadModel(newest);
-    if (model) {
-      setSelectedUuid(newest);
-    }
+    const name = getNewName([]);
+    const model = createModelWithSafeTimezone(name);
+    await insertWorkbook(model, name, true);
     return model;
   });
 }
@@ -680,12 +709,13 @@ export function deleteSelectedModel(): Promise<Model | null> {
 export function duplicateModel(uuid: string): Promise<Model | null> {
   return serialized(async () => {
     const original = metadataCache[uuid];
-    const bytes = await readBytes(uuid);
-    if (!original || !bytes) {
+    if (!original) {
       return null;
     }
-    const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
-    const duplicated = Model.fromBytes(bytes, language);
+    const duplicated = await openWorkbook(uuid);
+    if (!duplicated) {
+      return null;
+    }
     const existingNames = Object.values(metadataCache).map((m) => m.name);
 
     // Find next available number
