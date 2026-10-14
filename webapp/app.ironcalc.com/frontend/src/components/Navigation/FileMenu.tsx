@@ -108,6 +108,7 @@ export function FileMenu(props: {
         </MenuItem>
         <MenuItem
           destructive
+          disabled={!selectedUuid}
           icon={<Trash2 />}
           onClick={() => setDeleteDialogOpen(true)}
         >
