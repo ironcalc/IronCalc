@@ -285,27 +285,33 @@ describe("initStorage repairs the database", () => {
     expect(await rawKeys()).toEqual({ workbooks: [], bytes: [] });
   });
 
-  it("clears a selection that points at no workbook", async () => {
+  it("clears a selection hint that points at no workbook", async () => {
     await storage.createNewModel();
     localStorage.setItem("selected", "missing");
     storage = await reload();
-    expect(storage.getSelectedUuid()).toBeNull();
+    expect(localStorage.getItem("selected")).toBeNull();
     expect(storage.isStorageEmpty()).toBe(false);
   });
 
-  it("clears the selection of a workbook that was removed as inconsistent", async () => {
+  it("clears the hint of a workbook that was removed as inconsistent", async () => {
     await rawWrite((workbooks) => {
       workbooks.put(GOOD, "a");
     });
     localStorage.setItem("selected", "a");
     storage = await reload();
-    expect(storage.getSelectedUuid()).toBeNull();
+    expect(localStorage.getItem("selected")).toBeNull();
   });
 
-  it("keeps a valid selection", async () => {
+  it("keeps a valid hint and opens it on load", async () => {
+    await storage.createNewModel();
     await storage.createNewModel();
     const uuid = storage.getSelectedUuid();
     storage = await reload();
+    expect(localStorage.getItem("selected")).toBe(uuid);
+    // Nothing is active until a workbook is actually opened.
+    expect(storage.getSelectedUuid()).toBeNull();
+    const model = await storage.loadSelectedModelFromStorage();
+    expect(model?.getName()).toBe("Workbook2");
     expect(storage.getSelectedUuid()).toBe(uuid);
   });
 });
@@ -412,13 +418,40 @@ describe("selectModelFromStorage", () => {
 });
 
 describe("loadSelectedModelFromStorage", () => {
-  it("clears a dangling selection without wiping other data", async () => {
+  it("falls back to the newest workbook when the hint is dangling", async () => {
     await storage.createNewModel();
+    const uuid = storage.getSelectedUuid();
     localStorage.setItem("selected", "missing");
     const model = await storage.loadSelectedModelFromStorage();
-    expect(model).toBeNull();
+    expect(model?.getName()).toBe("Workbook1");
+    expect(storage.getSelectedUuid()).toBe(uuid);
+    expect(localStorage.getItem("selected")).toBe(uuid);
+  });
+
+  it("opens the newest workbook when there is no hint", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1000);
+    await storage.createNewModel();
+    vi.spyOn(Date, "now").mockReturnValue(2000);
+    await storage.createNewModel();
+    const newest = storage.getSelectedUuid();
+    vi.spyOn(Date, "now").mockReturnValue(3000);
+    await storage.createNewModel();
+    // Delete the newest of all so the hint points nowhere after the reload.
+    storage = await reload();
+    localStorage.removeItem("selected");
+    const model = await storage.loadSelectedModelFromStorage();
+    expect(model?.getName()).toBe("Workbook3");
+    expect(storage.getSelectedUuid()).not.toBe(newest);
+    expect(storage.getSelectedUuid()).toBe(
+      Object.keys(storage.getModelsMetadata()).find(
+        (uuid) => storage.getModelsMetadata()[uuid].name === "Workbook3",
+      ),
+    );
+  });
+
+  it("returns null when storage is empty", async () => {
+    expect(await storage.loadSelectedModelFromStorage()).toBeNull();
     expect(storage.getSelectedUuid()).toBeNull();
-    expect(storage.isStorageEmpty()).toBe(false);
   });
 
   it("removes the workbook and clears the selection when bytes cannot be deserialized", async () => {
@@ -514,6 +547,116 @@ describe("unreadable workbooks are removed when opened", () => {
       bytes: [selected],
     });
   });
+});
+
+describe("the active workbook is per tab", () => {
+  it("autosave writes to the workbook this tab opened, not to the shared hint", async () => {
+    const first = await storage.createNewModel();
+    const firstUuid = storage.getSelectedUuid() as string;
+    await storage.createNewModel();
+    const secondUuid = storage.getSelectedUuid() as string;
+    await storage.selectModelFromStorage(firstUuid);
+    // Another tab selects the second workbook.
+    localStorage.setItem("selected", secondUuid);
+
+    first.setName("Edited in this tab");
+    await storage.saveSelectedModelInStorage(first);
+
+    expect((await storage.loadModelFromStorage(firstUuid))?.getName()).toBe(
+      "Edited in this tab",
+    );
+    expect((await storage.loadModelFromStorage(secondUuid))?.getName()).toBe(
+      "Workbook2",
+    );
+  });
+
+  it("autosave does nothing while showing a workbook that is not stored", async () => {
+    const stored = await storage.createNewModel();
+    const uuid = storage.getSelectedUuid() as string;
+    storage = await reload();
+    // Like a shared link: initialized, but nothing opened from storage.
+    expect(storage.getSelectedUuid()).toBeNull();
+    stored.setName("Remote");
+    await storage.saveSelectedModelInStorage(stored);
+    expect((await storage.loadModelFromStorage(uuid))?.getName()).toBe(
+      "Workbook1",
+    );
+    // The hint for the next start is untouched.
+    expect(localStorage.getItem("selected")).toBe(uuid);
+  });
+
+  it("autosave re-creates the workbook if another tab deleted it", async () => {
+    const model = await storage.createNewModel();
+    const uuid = storage.getSelectedUuid() as string;
+    // Another tab deletes it.
+    await rawWrite((workbooks, bytes) => {
+      workbooks.delete(uuid);
+      bytes.delete(uuid);
+    });
+    model.setName("Still editing");
+    await storage.saveSelectedModelInStorage(model);
+    expect(storage.getModelsMetadata()[uuid]).toMatchObject({
+      name: "Still editing",
+      pinned: false,
+    });
+    storage = await reload();
+    expect((await storage.loadModelFromStorage(uuid))?.getName()).toBe(
+      "Still editing",
+    );
+  });
+});
+
+describe("cross-tab synchronization", () => {
+  // A second instance of the module sharing the same database and
+  // localStorage, like another tab.
+  async function openOtherTab(): Promise<Storage> {
+    vi.resetModules();
+    const other: Storage = await import("./storage");
+    await other.initStorage();
+    return other;
+  }
+
+  async function waitFor(condition: () => boolean): Promise<void> {
+    for (let i = 0; i < 50 && !condition(); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(condition()).toBe(true);
+  }
+
+  it.skipIf(typeof BroadcastChannel === "undefined")(
+    "a workbook created in one tab shows up in the other",
+    async () => {
+      const other = await openOtherTab();
+      try {
+        await other.createNewModel();
+        const uuid = other.getSelectedUuid() as string;
+        await waitFor(() => storage.getModelsMetadata()[uuid] !== undefined);
+        expect(storage.getModelsMetadata()[uuid].name).toBe("Workbook1");
+        // Selection is per tab.
+        expect(storage.getSelectedUuid()).toBeNull();
+      } finally {
+        await other.closeStorage();
+      }
+    },
+  );
+
+  it.skipIf(typeof BroadcastChannel === "undefined")(
+    "a workbook deleted in one tab disappears from the other",
+    async () => {
+      await storage.createNewModel();
+      const uuid = storage.getSelectedUuid() as string;
+      const other = await openOtherTab();
+      try {
+        expect(other.getModelsMetadata()[uuid]).toBeDefined();
+        await other.deleteModelByUuid(uuid);
+        await waitFor(() => storage.getModelsMetadata()[uuid] === undefined);
+        // This tab still has it open and keeps saving to it.
+        expect(storage.getSelectedUuid()).toBe(uuid);
+      } finally {
+        await other.closeStorage();
+      }
+    },
+  );
 });
 
 describe("togglePinWorkbook", () => {

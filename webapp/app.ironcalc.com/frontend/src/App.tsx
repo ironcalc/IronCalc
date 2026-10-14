@@ -20,7 +20,6 @@ import {
   uploadFile,
 } from "./components/rpc";
 import {
-  clearSelectedUuid,
   createModelWithSafeTimezone,
   createNewModel,
   deleteModelByUuid,
@@ -106,15 +105,16 @@ function App() {
       const exampleFilename = urlParams.get("example");
       const language = loadDefaultLocaleFromStorage();
       const languageId = getLanguageFromLocale(language);
-      // If there is a model name ?model=modelHash we try to load it
-      // if there is not, or the loading failed we load an empty model
+      // If there is a model name ?model=modelHash we try to load it.
+      // A remote model is shown without being stored: nothing is selected,
+      // so the autosave does nothing and the user's own workbooks are
+      // untouched.
       let loadedModel: Model | null = null;
       if (modelHash) {
         // Get a remote model
         try {
           const model_bytes = await get_model(modelHash);
           loadedModel = Model.fromBytes(model_bytes, languageId);
-          clearSelectedUuid();
         } catch (_e) {
           console.error(_e);
           alert(t("errors.model_not_found"));
@@ -124,7 +124,6 @@ function App() {
         try {
           const model_bytes = await get_documentation_model(exampleFilename);
           loadedModel = Model.fromBytes(model_bytes, languageId);
-          clearSelectedUuid();
         } catch (_e) {
           console.error(_e);
           alert(t("errors.example_not_found"));
@@ -136,17 +135,16 @@ function App() {
         setModel(loadedModel);
         setIsReadOnly(true);
       } else {
-        // try to load from storage
+        // Open the last used workbook, or the newest one. Null means there
+        // is no readable workbook at all: show the welcome dialog over an
+        // unsaved template.
         const result = await loadSelectedModelFromStorage();
         if (result) {
           setModel(result);
-        } else if (isStorageEmpty()) {
+        } else {
           setShowWelcomeDialog(true);
           const createdModel = createModelWithSafeTimezone("template");
           setModel(createdModel);
-        } else {
-          // There are workbooks but none could be selected: start a new one
-          setModel(await createNewModel());
         }
       }
       i18n.changeLanguage(language);

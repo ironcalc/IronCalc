@@ -13,7 +13,10 @@ const MAX_WORKBOOKS = 50;
 //     workbooks themselves there) and stamps the current version.
 //   - "default_locale": UI language
 //   - "dark_mode": theme preference
-//   - "selected": uuid of the workbook currently open
+//   - "selected": uuid of the workbook to open on the next start. It is only
+//     a hint: the workbook a tab actually has open is `activeUuid` below,
+//     which is per tab. Other tabs share localStorage and may change the
+//     hint at any time, so it must never be used to decide where to write.
 //   - "localStorageAlertDismissed": the drawer warning was closed
 //
 // Everything that scales with user data lives in IndexedDB:
@@ -37,14 +40,22 @@ const MAX_WORKBOOKS = 50;
 // the byte format yet, so keeping unreadable workbooks around has no value.
 //
 // Components subscribe to changes with `subscribeToStorage` (see
-// useStorage.ts) and are notified whenever the metadata cache or the selected
+// useStorage.ts) and are notified whenever the metadata cache or the active
 // uuid changes.
+//
+// Other tabs of the app share the database. Every change to the metadata is
+// announced on a BroadcastChannel and the other tabs reload their cache, so
+// the workbook list is the same everywhere. A tab keeps autosaving the
+// workbook it has open even if another tab deletes it: the record is simply
+// re-created, so edits are never silently dropped.
 // ---------------------------------------------------------------------------
 
 const DB_NAME = "ironcalc";
 const DB_VERSION = 1;
 const WORKBOOKS_STORE = "workbooks";
 const BYTES_STORE = "workbook_bytes";
+
+const CHANNEL_NAME = "ironcalc-storage";
 
 const STORAGE_VERSION_KEY = "storage_version";
 const STORAGE_VERSION = "1";
@@ -102,6 +113,8 @@ function openDatabase(): Promise<IDBDatabase> {
 // Closes the open connection (if any). The next storage call reopens it.
 // Mainly useful for tests.
 export async function closeStorage(): Promise<void> {
+  channel?.close();
+  channel = null;
   const pending = dbPromise;
   dbPromise = null;
   if (!pending) {
@@ -168,6 +181,26 @@ function sanitizeMetadata(value: unknown): WorkbookMetadata | null {
         : Date.now(),
     pinned: pinned === true,
   };
+}
+
+// Reads all well-formed metadata without touching the database. Used to
+// refresh the cache after another tab changed something.
+async function readAllMetadata(): Promise<Record<string, WorkbookMetadata>> {
+  const db = await openDatabase();
+  const tx = db.transaction(WORKBOOKS_STORE, "readonly");
+  const store = tx.objectStore(WORKBOOKS_STORE);
+  const [keys, values] = await Promise.all([
+    requestToPromise(store.getAllKeys()),
+    requestToPromise(store.getAll() as IDBRequest<unknown[]>),
+  ]);
+  const result: Record<string, WorkbookMetadata> = {};
+  keys.forEach((key, index) => {
+    const metadata = sanitizeMetadata(values[index]);
+    if (typeof key === "string" && metadata !== null) {
+      result[key] = metadata;
+    }
+  });
+  return result;
 }
 
 function sameMetadata(a: WorkbookMetadata, b: WorkbookMetadata): boolean {
@@ -266,6 +299,45 @@ function setMetadataCache(next: Record<string, WorkbookMetadata>) {
   notify();
 }
 
+// ---------------------------------------------------------------------------
+// Cross-tab synchronization
+// ---------------------------------------------------------------------------
+
+let channel: BroadcastChannel | null = null;
+
+function openChannel(): void {
+  if (channel || typeof BroadcastChannel === "undefined") {
+    return;
+  }
+  channel = new BroadcastChannel(CHANNEL_NAME);
+  channel.onmessage = () => {
+    serialized(refreshMetadata).catch((e) =>
+      console.warn(
+        "Failed to refresh storage after a change in another tab",
+        e,
+      ),
+    );
+  };
+}
+
+// Tells the other tabs that the metadata changed.
+function announceChange(): void {
+  channel?.postMessage("changed");
+}
+
+// Updates the cache after a local change and announces it to the other tabs.
+function commitMetadata(next: Record<string, WorkbookMetadata>) {
+  setMetadataCache(next);
+  announceChange();
+}
+
+// Reloads the cache from the database after another tab changed it. The
+// active workbook is kept even if it is gone from the database: the next
+// autosave re-creates it.
+async function refreshMetadata(): Promise<void> {
+  setMetadataCache(await readAllMetadata());
+}
+
 function withMetadata(
   uuid: string,
   metadata: WorkbookMetadata,
@@ -309,11 +381,12 @@ export async function initStorage(): Promise<void> {
     console.warn("Failed to initialize storage", e);
     setMetadataCache({});
   }
-  // The selection must point at a workbook we know about.
-  const selected = getSelectedUuid();
-  if (selected !== null && !metadataCache[selected]) {
-    clearSelectedUuid();
+  // The hint must point at a workbook we know about.
+  const hint = localStorage.getItem(SELECTED_KEY);
+  if (hint !== null && !metadataCache[hint]) {
+    localStorage.removeItem(SELECTED_KEY);
   }
+  openChannel();
 }
 
 // ---------------------------------------------------------------------------
@@ -420,16 +493,27 @@ export function watchSystemDarkMode(
   return () => query.removeEventListener("change", listener);
 }
 
+// ---------------------------------------------------------------------------
+// Active workbook
+// ---------------------------------------------------------------------------
+
+// The workbook this tab has open, i.e. the one autosave writes to. Null until
+// one is loaded or created, and null while a workbook that is not in storage
+// (a shared link, the welcome template) is shown.
+let activeUuid: string | null = null;
+
 export function getSelectedUuid(): string | null {
-  return localStorage.getItem(SELECTED_KEY);
+  return activeUuid;
 }
 
 function setSelectedUuid(uuid: string) {
+  activeUuid = uuid;
   localStorage.setItem(SELECTED_KEY, uuid);
   notify();
 }
 
-export function clearSelectedUuid() {
+function clearSelectedUuid() {
+  activeUuid = null;
   localStorage.removeItem(SELECTED_KEY);
   notify();
 }
@@ -509,7 +593,7 @@ async function insertWorkbook(
     workbooks.put(metadata, uuid);
     bytesStore.put(bytes, uuid);
   });
-  setMetadataCache(withMetadata(uuid, metadata));
+  commitMetadata(withMetadata(uuid, metadata));
   if (select) {
     setSelectedUuid(uuid);
   }
@@ -539,7 +623,7 @@ async function yankWorkbook(uuid: string, reason: unknown): Promise<void> {
   } catch (e) {
     console.warn(`Failed to remove workbook ${uuid}`, e);
   }
-  setMetadataCache(withoutMetadata(uuid));
+  commitMetadata(withoutMetadata(uuid));
   if (getSelectedUuid() === uuid) {
     clearSelectedUuid();
   }
@@ -581,19 +665,37 @@ export function saveModelToStorage(model: Model): Promise<void> {
   return serialized(() => insertWorkbook(model, model.getName(), true));
 }
 
-// Loads the currently selected workbook. Returns null, and clears the
-// selection, if there is none or it could not be loaded.
+// Opens the newest readable workbook and makes it the active one. Returns
+// null only if no readable workbook is left.
+async function openNewestWorkbook(): Promise<Model | null> {
+  // Unreadable workbooks are removed by openWorkbook, so each iteration
+  // shrinks the candidates.
+  let newest = newestUuid(metadataCache);
+  while (newest) {
+    const model = await openWorkbook(newest);
+    if (model) {
+      setSelectedUuid(newest);
+      return model;
+    }
+    newest = newestUuid(metadataCache);
+  }
+  return null;
+}
+
+// Opens the workbook to show at startup: the one open last time if it is
+// still there, otherwise the newest. Returns null only if storage holds no
+// readable workbook at all.
 export function loadSelectedModelFromStorage(): Promise<Model | null> {
   return serialized(async () => {
-    const uuid = getSelectedUuid();
-    if (!uuid) {
-      return null;
+    const hint = localStorage.getItem(SELECTED_KEY);
+    if (hint) {
+      const model = await openWorkbook(hint);
+      if (model) {
+        setSelectedUuid(hint);
+        return model;
+      }
     }
-    const model = await openWorkbook(uuid);
-    if (!model) {
-      clearSelectedUuid();
-    }
-    return model;
+    return openNewestWorkbook();
   });
 }
 
@@ -614,17 +716,34 @@ export function selectModelFromStorage(uuid: string): Promise<Model | null> {
   });
 }
 
-// Persists the bytes of the selected workbook.
+// Persists the bytes of the active workbook. Does nothing if the tab shows
+// a workbook that is not in storage. If another tab deleted the workbook in
+// the meantime it is re-created, so the edits are not lost.
 export function saveSelectedModelInStorage(model: Model): Promise<void> {
   return serialized(async () => {
-    const uuid = getSelectedUuid();
-    if (!uuid || !metadataCache[uuid]) {
+    const uuid = activeUuid;
+    if (!uuid) {
       return;
     }
     const bytes = model.toBytes();
-    await writeTransaction((_workbooks, bytesStore) => {
-      bytesStore.put(bytes, uuid);
+    let recreated: WorkbookMetadata | null = null;
+    await writeTransaction((workbooks, bytesStore) => {
+      const existing = workbooks.get(uuid);
+      existing.onsuccess = () => {
+        if (existing.result === undefined) {
+          recreated = {
+            name: model.getName(),
+            createdAt: Date.now(),
+            pinned: false,
+          };
+          workbooks.put(recreated, uuid);
+        }
+        bytesStore.put(bytes, uuid);
+      };
     });
+    if (recreated) {
+      commitMetadata(withMetadata(uuid, recreated));
+    }
   });
 }
 
@@ -646,7 +765,7 @@ export function updateNameSelectedWorkbook(
       workbooks.put(metadata, uuid);
       bytesStore.put(bytes, uuid);
     });
-    setMetadataCache(withMetadata(uuid, metadata));
+    commitMetadata(withMetadata(uuid, metadata));
   });
 }
 
@@ -660,7 +779,7 @@ export function togglePinWorkbook(uuid: string): Promise<void> {
     await writeTransaction((workbooks) => {
       workbooks.put(metadata, uuid);
     });
-    setMetadataCache(withMetadata(uuid, metadata));
+    commitMetadata(withMetadata(uuid, metadata));
   });
 }
 
@@ -674,21 +793,14 @@ export function deleteModelByUuid(uuid: string): Promise<Model | null> {
       workbooks.delete(uuid);
       bytesStore.delete(uuid);
     });
-    setMetadataCache(withoutMetadata(uuid));
+    commitMetadata(withoutMetadata(uuid));
     if (!wasSelected) {
       return null;
     }
     clearSelectedUuid();
-    // Unreadable workbooks are removed by openWorkbook, so each iteration
-    // shrinks the candidates.
-    let newest = newestUuid(metadataCache);
-    while (newest) {
-      const model = await openWorkbook(newest);
-      if (model) {
-        setSelectedUuid(newest);
-        return model;
-      }
-      newest = newestUuid(metadataCache);
+    const next = await openNewestWorkbook();
+    if (next) {
+      return next;
     }
     const name = getNewName([]);
     const model = createModelWithSafeTimezone(name);
