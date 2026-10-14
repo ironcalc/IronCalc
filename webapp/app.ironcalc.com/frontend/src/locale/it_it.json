@@ -71,8 +71,8 @@
     "cancel": "Annulla",
     "delete_workbooks_one": "Elimina {{count}} cartella",
     "delete_workbooks_other": "Elimina {{count}} cartelle",
-    "bulk_delete_message_one": "Questa cartella di lavoro verrà eliminata definitivamente.",
-    "bulk_delete_message_other": "{{count}} cartelle di lavoro verranno eliminate definitivamente.",
+    "bulk_delete_message_one": "Questa cartella di lavoro verrà eliminata definitivamente. I link già condivisi continueranno a funzionare.",
+    "bulk_delete_message_other": "{{count}} cartelle di lavoro verranno eliminate definitivamente. I link già condivisi continueranno a funzionare.",
     "select_workbook": "Seleziona {{name}}"
   },
   "file_bar": {
@@ -98,7 +98,7 @@
         "button": "Elimina cartella di lavoro",
         "title": "Sei sicuro?",
         "subtitle": "La cartella di lavoro '{{workbookName}}' verrà eliminata definitivamente.",
-        "warning": "Questa azione non può essere annullata.",
+        "warning": "Questa azione non può essere annullata. I link già condivisi continueranno a funzionare.",
         "confirm_button": "Sì, elimina",
         "cancel_button": "Annulla"
       },
@@ -118,7 +118,7 @@
       "button": "Condividi",
       "copy_url": "Copia URL",
       "copied": "Copiato!",
-      "info_text": "Chiunque abbia il link potrà accedere a una copia di questa cartella di lavoro"
+      "info_text": "Chiunque abbia il link potrà accedere a una copia di questa cartella di lavoro. I link condivisi non possono essere eliminati."
     }
   },
   "loading_screen": {
