@@ -42,7 +42,11 @@ function ShareWorkbookDialog(properties: {
       >
         <div className="app-ic-share-dialog-content">
           <div className="app-ic-share-dialog-qr-wrapper">
-            <QRCodeSVG value={url} />
+            <QRCodeSVG
+              value={url}
+              fgColor="currentColor"
+              bgColor="transparent"
+            />
           </div>
           <div className="app-ic-share-dialog-url-wrapper">
             <Input disabled value={url} />
