@@ -71,8 +71,8 @@
     "cancel": "Annuler",
     "delete_workbooks_one": "Supprimer {{count}} classeur",
     "delete_workbooks_other": "Supprimer {{count}} classeurs",
-    "bulk_delete_message_one": "Ce classeur sera définitivement supprimé.",
-    "bulk_delete_message_other": "{{count}} classeurs seront définitivement supprimés.",
+    "bulk_delete_message_one": "Ce classeur sera définitivement supprimé. Les liens déjà partagés continueront de fonctionner.",
+    "bulk_delete_message_other": "{{count}} classeurs seront définitivement supprimés. Les liens déjà partagés continueront de fonctionner.",
     "select_workbook": "Sélectionner {{name}}"
   },
   "file_bar": {
@@ -98,7 +98,7 @@
         "button": "Supprimer le classeur",
         "title": "Êtes-vous sûr ?",
         "subtitle": "Le classeur '{{workbookName}}' sera définitivement supprimé.",
-        "warning": "Cette action ne peut pas être annulée.",
+        "warning": "Cette action ne peut pas être annulée. Les liens déjà partagés continueront de fonctionner.",
         "confirm_button": "Oui, supprimer",
         "cancel_button": "Annuler"
       },
@@ -118,7 +118,7 @@
       "button": "Partager",
       "copy_url": "Copier l'URL",
       "copied": "Copié !",
-      "info_text": "Toute personne disposant du lien pourra accéder à une copie de ce classeur"
+      "info_text": "Toute personne disposant du lien pourra accéder à une copie de ce classeur. Les liens partagés ne peuvent pas être supprimés."
     }
   },
   "loading_screen": {

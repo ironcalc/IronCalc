@@ -71,8 +71,8 @@
     "cancel": "Abbrechen",
     "delete_workbooks_one": "{{count}} Arbeitsmappe löschen",
     "delete_workbooks_other": "{{count}} Arbeitsmappen löschen",
-    "bulk_delete_message_one": "Diese Arbeitsmappe wird dauerhaft gelöscht.",
-    "bulk_delete_message_other": "{{count}} Arbeitsmappen werden dauerhaft gelöscht.",
+    "bulk_delete_message_one": "Diese Arbeitsmappe wird dauerhaft gelöscht. Bereits geteilte Links funktionieren weiterhin.",
+    "bulk_delete_message_other": "{{count}} Arbeitsmappen werden dauerhaft gelöscht. Bereits geteilte Links funktionieren weiterhin.",
     "select_workbook": "{{name}} auswählen"
   },
   "file_bar": {
@@ -98,7 +98,7 @@
         "button": "Arbeitsmappe löschen",
         "title": "Sind Sie sicher?",
         "subtitle": "Die Arbeitsmappe '{{workbookName}}' wird dauerhaft gelöscht.",
-        "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+        "warning": "Diese Aktion kann nicht rückgängig gemacht werden. Bereits geteilte Links funktionieren weiterhin.",
         "confirm_button": "Ja, löschen",
         "cancel_button": "Abbrechen"
       },
@@ -118,7 +118,7 @@
       "button": "Teilen",
       "copy_url": "URL kopieren",
       "copied": "Kopiert!",
-      "info_text": "Jeder mit dem Link kann auf eine Kopie dieser Arbeitsmappe zugreifen"
+      "info_text": "Jeder mit dem Link kann auf eine Kopie dieser Arbeitsmappe zugreifen. Geteilte Links können nicht gelöscht werden."
     }
   },
   "loading_screen": {
