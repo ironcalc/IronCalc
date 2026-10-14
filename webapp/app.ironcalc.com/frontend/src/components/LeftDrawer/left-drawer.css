@@ -280,7 +280,6 @@
   color: var(--palette-grey-500);
 }
 
-/* biome-ignore lint/style/noDescendingSpecificity: never matches the same svg as the alert button rule */
 .app-ic-drawer-section-title svg {
   width: 12px;
   height: 12px;
@@ -329,7 +328,6 @@
   color: var(--palette-grey-500);
 }
 
-/* biome-ignore lint/style/noDescendingSpecificity: never matches the same svg as the alert button rule */
 .app-ic-drawer-workbook-icon svg {
   width: 16px;
   height: 16px;
@@ -462,7 +460,6 @@
   opacity: 1;
 }
 
-/* biome-ignore lint/style/noDescendingSpecificity: never matches the same svg as the alert button rule */
 .app-ic-drawer-workbook-ellipsis svg {
   width: 16px;
   height: 16px;
