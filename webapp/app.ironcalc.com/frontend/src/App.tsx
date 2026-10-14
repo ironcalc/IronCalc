@@ -41,6 +41,7 @@ import {
   type ThemeMode,
   watchSystemDarkMode,
 } from "./components/storage";
+import { UnsavedWorkbookBar } from "./components/UnsavedWorkbookBar";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
 
@@ -223,6 +224,17 @@ function App() {
     }
   };
 
+  // Stores the open (shared or example) workbook as a new local workbook and
+  // drops the query string, so a refresh opens the copy, not the original.
+  const handleSaveCopy = async () => {
+    try {
+      await saveModelToStorage(model);
+      window.history.replaceState(null, "", window.location.pathname);
+    } catch (e) {
+      reportSaveError(e);
+    }
+  };
+
   // We could use context for model, but the problem is that it should initialized to null.
   // Passing the property down makes sure it is always defined.
 
@@ -266,6 +278,9 @@ function App() {
           themeMode={themeMode}
           onThemeModeChange={handleThemeModeChange}
         />
+        {!showWelcomeDialog && (
+          <UnsavedWorkbookBar onSaveCopy={handleSaveCopy} />
+        )}
         <IronCalc
           model={model}
           ref={ironCalcRef}

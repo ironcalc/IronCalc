@@ -8,6 +8,10 @@
     "example_not_found": "Archivo de ejemplo no encontrado o error al cargar",
     "storage_save_failed": "No se han podido guardar los cambios. Puede que el navegador no tenga espacio de almacenamiento."
   },
+  "unsaved_bar": {
+    "message": "Este libro no está guardado en tu navegador. Los cambios se perderán si no guardas una copia.",
+    "save_copy": "Guardar una copia"
+  },
   "welcome_dialog": {
     "title": "Bienvenido a IronCalc",
     "subtitle": "Comienza con un libro en blanco o una plantilla prediseñada.",
@@ -52,6 +56,7 @@
     "search_workbook": "Buscar libros",
     "search_placeholder": "Buscar libro...",
     "clear_search": "Borrar búsqueda",
+    "empty_state": "Aún no hay libros. Los libros que crees o guardes aparecerán aquí.",
     "search_no_results": "Tu búsqueda no coincide con ningún libro.",
     "pinned": "Fijados",
     "today": "Hoy",

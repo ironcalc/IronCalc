@@ -8,6 +8,10 @@
     "example_not_found": "File di esempio non trovato o errore durante il caricamento",
     "storage_save_failed": "Impossibile salvare le modifiche. Il browser potrebbe aver esaurito lo spazio di archiviazione."
   },
+  "unsaved_bar": {
+    "message": "Questa cartella di lavoro non è salvata nel tuo browser. Le modifiche andranno perse se non ne salvi una copia.",
+    "save_copy": "Salva una copia"
+  },
   "welcome_dialog": {
     "title": "Benvenuto su IronCalc",
     "subtitle": "Inizia con una cartella di lavoro vuota o un modello pronto all'uso.",
@@ -52,6 +56,7 @@
     "search_workbook": "Cerca cartelle di lavoro",
     "search_placeholder": "Cerca cartella di lavoro...",
     "clear_search": "Cancella ricerca",
+    "empty_state": "Ancora nessuna cartella di lavoro. Le cartelle di lavoro che crei o salvi appariranno qui.",
     "search_no_results": "La tua ricerca non corrisponde a nessuna cartella di lavoro.",
     "pinned": "Fissati",
     "today": "Oggi",

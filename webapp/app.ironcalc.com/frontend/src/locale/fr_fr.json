@@ -8,6 +8,10 @@
     "example_not_found": "Fichier d'exemple introuvable ou échec du chargement",
     "storage_save_failed": "Vos modifications n'ont pas pu être enregistrées. Le navigateur n'a peut-être plus d'espace de stockage."
   },
+  "unsaved_bar": {
+    "message": "Ce classeur n'est pas enregistré dans votre navigateur. Les modifications seront perdues si vous n'enregistrez pas une copie.",
+    "save_copy": "Enregistrer une copie"
+  },
   "welcome_dialog": {
     "title": "Bienvenue sur IronCalc",
     "subtitle": "Commencez avec un classeur vierge ou un modèle prêt à l'emploi.",
@@ -52,6 +56,7 @@
     "search_workbook": "Rechercher des classeurs",
     "search_placeholder": "Rechercher un classeur...",
     "clear_search": "Effacer la recherche",
+    "empty_state": "Aucun classeur pour le moment. Les classeurs que vous créez ou enregistrez apparaîtront ici.",
     "search_no_results": "Votre recherche ne correspond à aucun classeur.",
     "pinned": "Épinglés",
     "today": "Aujourd'hui",
