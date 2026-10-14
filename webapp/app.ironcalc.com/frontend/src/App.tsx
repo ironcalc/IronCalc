@@ -313,6 +313,9 @@ function App() {
                 const locale = loadDefaultLocaleFromStorage();
                 const languageId = getLanguageFromLocale(locale);
                 const importedModel = Model.fromBytes(model_bytes, languageId);
+                importedModel.setName(
+                  t(`welcome_dialog.templates.${templateId}`),
+                );
                 await saveModelToStorage(importedModel);
                 setModel(importedModel);
                 break;
@@ -330,6 +333,7 @@ function App() {
           const locale = loadDefaultLocaleFromStorage();
           const languageId = getLanguageFromLocale(locale);
           const importedModel = Model.fromBytes(model_bytes, languageId);
+          importedModel.setName(t(`welcome_dialog.templates.${fileName}`));
           await saveModelToStorage(importedModel);
           setModel(importedModel);
           setTemplatesDialogOpen(false);
