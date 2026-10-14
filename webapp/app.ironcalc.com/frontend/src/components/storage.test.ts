@@ -105,12 +105,8 @@ describe("preferences stay in localStorage", () => {
     expect(storage.loadThemeModeFromStorage()).toBe("system");
   });
 
-  it("defaults the theme mode to system and reads the legacy booleans", () => {
+  it("defaults the theme mode to system for missing or unknown values", () => {
     expect(storage.loadThemeModeFromStorage()).toBe("system");
-    localStorage.setItem("dark_mode", "true");
-    expect(storage.loadThemeModeFromStorage()).toBe("dark");
-    localStorage.setItem("dark_mode", "false");
-    expect(storage.loadThemeModeFromStorage()).toBe("light");
     localStorage.setItem("dark_mode", "garbage");
     expect(storage.loadThemeModeFromStorage()).toBe("system");
   });
@@ -118,6 +114,39 @@ describe("preferences stay in localStorage", () => {
   it("keeps the selected uuid in localStorage", async () => {
     await storage.createNewModel();
     expect(localStorage.getItem("selected")).toBe(storage.getSelectedUuid());
+  });
+});
+
+describe("initLocalStorage", () => {
+  it("stamps the version on a fresh install", () => {
+    expect(localStorage.getItem("storage_version")).toBe("1");
+  });
+
+  it("wipes everything written by another version", () => {
+    localStorage.clear();
+    // Layout of the versions that kept the workbooks in localStorage.
+    const uuid = "7b1a4c7e-1f2d-4a3b-9c8d-0e1f2a3b4c5d";
+    localStorage.setItem("models", JSON.stringify({ [uuid]: { name: "Old" } }));
+    localStorage.setItem(uuid, "AAAA");
+    localStorage.setItem("selected", uuid);
+    localStorage.setItem("dark_mode", "true");
+    storage.initLocalStorage();
+    expect(localStorage.length).toBe(1);
+    expect(localStorage.getItem("storage_version")).toBe("1");
+  });
+
+  it("does nothing once the version matches", () => {
+    localStorage.setItem("dark_mode", "dark");
+    storage.initLocalStorage();
+    expect(localStorage.getItem("dark_mode")).toBe("dark");
+  });
+
+  it("runs as part of initStorage", async () => {
+    localStorage.clear();
+    localStorage.setItem("models", "{}");
+    storage = await reload();
+    expect(localStorage.getItem("models")).toBeNull();
+    expect(localStorage.getItem("storage_version")).toBe("1");
   });
 });
 
@@ -323,10 +352,14 @@ describe("deleteModelByUuid", () => {
   });
 
   it("serializes concurrent deletes", async () => {
+    // Distinct timestamps so "newest remaining" is well defined.
+    vi.spyOn(Date, "now").mockReturnValue(1000);
     await storage.createNewModel();
     const a = storage.getSelectedUuid() as string;
+    vi.spyOn(Date, "now").mockReturnValue(2000);
     await storage.createNewModel();
     const b = storage.getSelectedUuid() as string;
+    vi.spyOn(Date, "now").mockReturnValue(3000);
     await storage.createNewModel();
     const c = storage.getSelectedUuid() as string;
     // Fire without awaiting, like the multi-select delete in the drawer.

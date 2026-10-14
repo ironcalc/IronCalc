@@ -8,9 +8,13 @@ const MAX_WORKBOOKS = 50;
 //
 // Small preferences that must be available synchronously (before the wasm
 // module is initialized or during render) live in localStorage:
+//   - "storage_version": layout version of the keys below. When it does not
+//     match, `initLocalStorage` wipes localStorage (earlier versions kept the
+//     workbooks themselves there) and stamps the current version.
 //   - "default_locale": UI language
 //   - "dark_mode": theme preference
 //   - "selected": uuid of the workbook currently open
+//   - "localStorageAlertDismissed": the drawer warning was closed
 //
 // Everything that scales with user data lives in IndexedDB:
 //   - "workbooks" store: one metadata record per workbook (name, createdAt,
@@ -34,6 +38,8 @@ const DB_VERSION = 1;
 const WORKBOOKS_STORE = "workbooks";
 const BYTES_STORE = "workbook_bytes";
 
+const STORAGE_VERSION_KEY = "storage_version";
+const STORAGE_VERSION = "1";
 const SELECTED_KEY = "selected";
 const DEFAULT_LOCALE_KEY = "default_locale";
 const DARK_MODE_KEY = "dark_mode";
@@ -201,9 +207,21 @@ function serialized<T>(operation: () => Promise<T>): Promise<T> {
   return result;
 }
 
+// Brings localStorage to the current layout: anything written by a different
+// version is wiped. Idempotent and synchronous, so it can (and should) run
+// before the first render, which reads the preferences synchronously.
+export function initLocalStorage(): void {
+  if (localStorage.getItem(STORAGE_VERSION_KEY) === STORAGE_VERSION) {
+    return;
+  }
+  localStorage.clear();
+  localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION);
+}
+
 // Hydrates the in-memory cache from IndexedDB. Must be awaited once at app
 // startup before any of the synchronous getters are used.
 export async function initStorage(): Promise<void> {
+  initLocalStorage();
   try {
     setMetadataCache(await readAllMetadata());
   } catch (e) {
@@ -292,11 +310,6 @@ export function loadThemeModeFromStorage(): ThemeMode {
     case "dark":
     case "system":
       return stored;
-    // values written before the "system" option existed
-    case "true":
-      return "dark";
-    case "false":
-      return "light";
     default:
       return "system";
   }
