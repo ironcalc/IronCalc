@@ -92,6 +92,11 @@ const preview: Preview = {
     },
   },
   parameters: {
+    options: {
+      storySort: {
+        order: ["Components", ["Workbook", "*"]],
+      },
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
