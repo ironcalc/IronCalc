@@ -2,4 +2,5 @@ body {
   inset: 0px;
   margin: 0;
   padding: 0;
+  color: var(--palette-common-black);
 }
