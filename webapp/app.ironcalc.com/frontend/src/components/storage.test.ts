@@ -66,6 +66,57 @@ function deleteDatabase(): Promise<void> {
   });
 }
 
+// Direct access to the database, bypassing the storage module, to set up
+// (and inspect) states the module itself would never produce.
+function rawTransaction<T>(
+  mode: IDBTransactionMode,
+  body: (workbooks: IDBObjectStore, bytes: IDBObjectStore) => T,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("ironcalc", 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction(["workbooks", "workbook_bytes"], mode);
+      const result = body(
+        tx.objectStore("workbooks"),
+        tx.objectStore("workbook_bytes"),
+      );
+      tx.oncomplete = () => {
+        db.close();
+        resolve(result);
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    };
+  });
+}
+
+function rawWrite(
+  body: (workbooks: IDBObjectStore, bytes: IDBObjectStore) => void,
+): Promise<void> {
+  return rawTransaction("readwrite", body);
+}
+
+async function rawKeys(): Promise<{
+  workbooks: IDBValidKey[];
+  bytes: IDBValidKey[];
+}> {
+  const requests = await rawTransaction("readonly", (workbooks, bytes) => ({
+    workbooks: workbooks.getAllKeys(),
+    bytes: bytes.getAllKeys(),
+  }));
+  return {
+    workbooks: requests.workbooks.result,
+    bytes: requests.bytes.result,
+  };
+}
+
+const GOOD = { name: "Good", createdAt: 1000, pinned: false };
+const BYTES = new TextEncoder().encode(JSON.stringify({ name: "Good" }));
+
 let storage: Storage;
 
 beforeEach(async () => {
@@ -147,6 +198,107 @@ describe("initLocalStorage", () => {
     storage = await reload();
     expect(localStorage.getItem("models")).toBeNull();
     expect(localStorage.getItem("storage_version")).toBe("1");
+  });
+});
+
+describe("initStorage repairs the database", () => {
+  it("keeps a consistent workbook untouched", async () => {
+    await rawWrite((workbooks, bytes) => {
+      workbooks.put(GOOD, "a");
+      bytes.put(BYTES, "a");
+    });
+    storage = await reload();
+    expect(storage.getModelsMetadata()).toEqual({ a: GOOD });
+    expect((await storage.loadModelFromStorage("a"))?.getName()).toBe("Good");
+  });
+
+  it("removes metadata that has no bytes", async () => {
+    await rawWrite((workbooks, bytes) => {
+      workbooks.put(GOOD, "a");
+      bytes.put(BYTES, "a");
+      workbooks.put({ ...GOOD, name: "NoBytes" }, "b");
+    });
+    storage = await reload();
+    expect(Object.keys(storage.getModelsMetadata())).toEqual(["a"]);
+    expect((await rawKeys()).workbooks).toEqual(["a"]);
+  });
+
+  it("removes bytes that have no metadata", async () => {
+    await rawWrite((workbooks, bytes) => {
+      workbooks.put(GOOD, "a");
+      bytes.put(BYTES, "a");
+      bytes.put(BYTES, "orphan");
+    });
+    storage = await reload();
+    expect((await rawKeys()).bytes).toEqual(["a"]);
+  });
+
+  it("removes workbooks whose metadata cannot be salvaged", async () => {
+    await rawWrite((workbooks, bytes) => {
+      workbooks.put("not an object", "a");
+      bytes.put(BYTES, "a");
+      workbooks.put({ createdAt: 1, pinned: false }, "b");
+      bytes.put(BYTES, "b");
+      workbooks.put(null, "c");
+      bytes.put(BYTES, "c");
+    });
+    storage = await reload();
+    expect(storage.getModelsMetadata()).toEqual({});
+    expect(await rawKeys()).toEqual({ workbooks: [], bytes: [] });
+  });
+
+  it("fills in missing fields and persists the repaired record", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(4242);
+    await rawWrite((workbooks, bytes) => {
+      workbooks.put({ name: "Partial" }, "a");
+      bytes.put(BYTES, "a");
+      workbooks.put({ name: "Bad", createdAt: "yesterday", pinned: 1 }, "b");
+      bytes.put(BYTES, "b");
+    });
+    storage = await reload();
+    expect(storage.getModelsMetadata()).toEqual({
+      a: { name: "Partial", createdAt: 4242, pinned: false },
+      b: { name: "Bad", createdAt: 4242, pinned: false },
+    });
+    vi.restoreAllMocks();
+    // The repair was written through, not just applied to the cache.
+    storage = await reload();
+    expect(storage.getModelsMetadata().a.createdAt).toBe(4242);
+  });
+
+  it("removes records with non-string keys", async () => {
+    await rawWrite((workbooks, bytes) => {
+      workbooks.put(GOOD, 7);
+      bytes.put(BYTES, 7);
+      bytes.put(BYTES, new Date(0));
+    });
+    storage = await reload();
+    expect(storage.getModelsMetadata()).toEqual({});
+    expect(await rawKeys()).toEqual({ workbooks: [], bytes: [] });
+  });
+
+  it("clears a selection that points at no workbook", async () => {
+    await storage.createNewModel();
+    localStorage.setItem("selected", "missing");
+    storage = await reload();
+    expect(storage.getSelectedUuid()).toBeNull();
+    expect(storage.isStorageEmpty()).toBe(false);
+  });
+
+  it("clears the selection of a workbook that was removed as inconsistent", async () => {
+    await rawWrite((workbooks) => {
+      workbooks.put(GOOD, "a");
+    });
+    localStorage.setItem("selected", "a");
+    storage = await reload();
+    expect(storage.getSelectedUuid()).toBeNull();
+  });
+
+  it("keeps a valid selection", async () => {
+    await storage.createNewModel();
+    const uuid = storage.getSelectedUuid();
+    storage = await reload();
+    expect(storage.getSelectedUuid()).toBe(uuid);
   });
 });
 

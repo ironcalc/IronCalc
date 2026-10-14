@@ -28,6 +28,11 @@ const MAX_WORKBOOKS = 50;
 // serialized through a queue so concurrent callers (e.g. the autosave timer
 // and a delete) cannot interleave.
 //
+// Still, nothing stops another version of the app (or a crash in the middle
+// of an upgrade) from leaving the database in a state this code does not
+// expect, so `initStorage` checks both stores once at startup and removes
+// anything inconsistent: see `readAndRepairMetadata`.
+//
 // Components subscribe to changes with `subscribeToStorage` (see
 // useStorage.ts) and are notified whenever the metadata cache or the selected
 // uuid changes.
@@ -141,18 +146,91 @@ async function readBytes(uuid: string): Promise<Uint8Array | undefined> {
   );
 }
 
-async function readAllMetadata(): Promise<Record<string, WorkbookMetadata>> {
+// Returns a well-formed copy of a stored metadata record, or null if it is
+// beyond repair. A record needs a name; a missing or invalid `createdAt` or
+// `pinned` gets a default.
+function sanitizeMetadata(value: unknown): WorkbookMetadata | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const { name, createdAt, pinned } = value as Record<string, unknown>;
+  if (typeof name !== "string") {
+    return null;
+  }
+  return {
+    name,
+    createdAt:
+      typeof createdAt === "number" && Number.isFinite(createdAt)
+        ? createdAt
+        : Date.now(),
+    pinned: pinned === true,
+  };
+}
+
+function sameMetadata(a: WorkbookMetadata, b: WorkbookMetadata): boolean {
+  return (
+    a.name === b.name && a.createdAt === b.createdAt && a.pinned === b.pinned
+  );
+}
+
+// Reads all workbook metadata and, in the same transaction, brings both
+// stores back to a consistent state:
+//   - a workbook must be keyed by a string, have usable metadata and have
+//     bytes; otherwise it is removed from both stores
+//   - metadata with missing fields is rewritten with defaults
+//   - bytes that belong to no workbook are removed
+// The bytes themselves are not decoded here (that would mean loading every
+// workbook); a workbook whose bytes are corrupt is dealt with when opened.
+async function readAndRepairMetadata(): Promise<
+  Record<string, WorkbookMetadata>
+> {
   const db = await openDatabase();
-  const tx = db.transaction(WORKBOOKS_STORE, "readonly");
-  const store = tx.objectStore(WORKBOOKS_STORE);
-  const [keys, values] = await Promise.all([
-    requestToPromise(store.getAllKeys()),
-    requestToPromise(store.getAll() as IDBRequest<WorkbookMetadata[]>),
+  const tx = db.transaction([WORKBOOKS_STORE, BYTES_STORE], "readwrite");
+  const done = transactionDone(tx);
+  const workbooks = tx.objectStore(WORKBOOKS_STORE);
+  const bytes = tx.objectStore(BYTES_STORE);
+  const [keys, values, bytesKeys] = await Promise.all([
+    requestToPromise(workbooks.getAllKeys()),
+    requestToPromise(workbooks.getAll() as IDBRequest<unknown[]>),
+    requestToPromise(bytes.getAllKeys()),
   ]);
+
+  const bytesKeySet = new Set(bytesKeys.filter((k) => typeof k === "string"));
   const result: Record<string, WorkbookMetadata> = {};
+  let removed = 0;
+  let repaired = 0;
+
   keys.forEach((key, index) => {
-    result[String(key)] = values[index];
+    const metadata =
+      typeof key === "string" && bytesKeySet.has(key)
+        ? sanitizeMetadata(values[index])
+        : null;
+    if (metadata === null) {
+      workbooks.delete(key);
+      removed += 1;
+      return;
+    }
+    const uuid = key as string;
+    if (!sameMetadata(metadata, values[index] as WorkbookMetadata)) {
+      workbooks.put(metadata, uuid);
+      repaired += 1;
+    }
+    result[uuid] = metadata;
   });
+
+  for (const key of bytesKeys) {
+    if (typeof key !== "string" || !(key in result)) {
+      bytes.delete(key);
+      removed += 1;
+    }
+  }
+
+  await done;
+  if (removed > 0 || repaired > 0) {
+    console.warn(
+      `Storage check: removed ${removed} inconsistent record(s), repaired ${repaired}`,
+    );
+  }
   return result;
 }
 
@@ -223,10 +301,15 @@ export function initLocalStorage(): void {
 export async function initStorage(): Promise<void> {
   initLocalStorage();
   try {
-    setMetadataCache(await readAllMetadata());
+    setMetadataCache(await readAndRepairMetadata());
   } catch (e) {
     console.warn("Failed to initialize storage", e);
     setMetadataCache({});
+  }
+  // The selection must point at a workbook we know about.
+  const selected = getSelectedUuid();
+  if (selected !== null && !metadataCache[selected]) {
+    clearSelectedUuid();
   }
 }
 
