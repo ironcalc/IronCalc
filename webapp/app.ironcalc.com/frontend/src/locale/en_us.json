@@ -8,6 +8,10 @@
     "example_not_found": "Example file not found, or failed to load",
     "storage_save_failed": "Your changes could not be saved. The browser may be out of storage space."
   },
+  "unsaved_bar": {
+    "message": "This workbook isn't saved in your browser. Changes will be lost unless you save a copy.",
+    "save_copy": "Save a copy"
+  },
   "welcome_dialog": {
     "title": "Welcome to IronCalc",
     "subtitle": "Start fresh, bring your data, or explore what's possible.",
@@ -52,6 +56,7 @@
     "search_workbook": "Search workbooks",
     "search_placeholder": "Search workbook...",
     "clear_search": "Clear search",
+    "empty_state": "No workbooks yet. Workbooks you create or save will appear here.",
     "search_no_results": "Your search does not match any workbooks.",
     "pinned": "Pinned",
     "today": "Today",

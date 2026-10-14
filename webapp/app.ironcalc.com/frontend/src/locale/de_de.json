@@ -8,6 +8,10 @@
     "example_not_found": "Beispieldatei nicht gefunden oder Ladefehler",
     "storage_save_failed": "Ihre Änderungen konnten nicht gespeichert werden. Möglicherweise hat der Browser keinen Speicherplatz mehr."
   },
+  "unsaved_bar": {
+    "message": "Diese Arbeitsmappe ist nicht in Ihrem Browser gespeichert. Änderungen gehen verloren, wenn Sie keine Kopie speichern.",
+    "save_copy": "Kopie speichern"
+  },
   "welcome_dialog": {
     "title": "Willkommen bei IronCalc",
     "subtitle": "Beginnen Sie mit einer leeren Arbeitsmappe oder einer fertigen Vorlage.",
@@ -52,6 +56,7 @@
     "search_workbook": "Arbeitsmappen durchsuchen",
     "search_placeholder": "Arbeitsmappe suchen...",
     "clear_search": "Suche löschen",
+    "empty_state": "Noch keine Arbeitsmappen. Arbeitsmappen, die Sie erstellen oder speichern, werden hier angezeigt.",
     "search_no_results": "Deine Suche entspricht keinem Arbeitsmappe.",
     "pinned": "Angeheftet",
     "today": "Heute",
