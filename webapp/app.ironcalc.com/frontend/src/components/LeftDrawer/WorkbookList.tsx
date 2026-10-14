@@ -148,7 +148,13 @@ function WorkbookList({
   };
 
   let content: React.ReactNode;
-  if (isSearchMode) {
+  if (Object.keys(modelsMetadata).length === 0) {
+    content = (
+      <div className="app-ic-drawer-no-results">
+        {t("left_drawer.empty_state")}
+      </div>
+    );
+  } else if (isSearchMode) {
     const filteredModels = Object.keys(modelsMetadata)
       .sort((a, b) => modelsMetadata[b].createdAt - modelsMetadata[a].createdAt)
       .filter((uuid) =>
