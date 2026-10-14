@@ -9,7 +9,7 @@
     "storage_save_failed": "Your changes could not be saved. The browser may be out of storage space."
   },
   "unsaved_bar": {
-    "message": "This workbook isn't saved in your browser. Changes will be lost unless you save a copy.",
+    "message": "You're viewing a read-only workbook. Save a copy to edit it.",
     "save_copy": "Save a copy"
   },
   "welcome_dialog": {

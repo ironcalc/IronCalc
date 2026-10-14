@@ -42,6 +42,7 @@ import {
   watchSystemDarkMode,
 } from "./components/storage";
 import { UnsavedWorkbookBar } from "./components/UnsavedWorkbookBar";
+import { useSelectedUuid } from "./components/useStorage";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
 
@@ -59,6 +60,8 @@ function App() {
     themeMode === "system" ? systemIsDark : themeMode === "dark";
 
   const ironCalcRef = useRef<IronCalcHandle>(null);
+  // Workbooks opened from a link stay read-only until a copy is saved
+  const selectedUuid = useSelectedUuid();
   // Guards against overlapping autosaves and repeated error alerts.
   const isSavingRef = useRef(false);
   const saveErrorReportedRef = useRef(false);
@@ -285,6 +288,7 @@ function App() {
           model={model}
           ref={ironCalcRef}
           themeVariables={isDarkMode ? darkThemeVariables : undefined}
+          canEdit={!!selectedUuid}
         />
         {isDrawerOpen && (
           <div

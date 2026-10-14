@@ -9,7 +9,7 @@
     "storage_save_failed": "Impossibile salvare le modifiche. Il browser potrebbe aver esaurito lo spazio di archiviazione."
   },
   "unsaved_bar": {
-    "message": "Questa cartella di lavoro non è salvata nel tuo browser. Le modifiche andranno perse se non ne salvi una copia.",
+    "message": "Stai visualizzando una cartella di lavoro di sola lettura. Salva una copia per modificarla.",
     "save_copy": "Salva una copia"
   },
   "welcome_dialog": {

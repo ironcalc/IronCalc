@@ -9,7 +9,7 @@
     "storage_save_failed": "Vos modifications n'ont pas pu être enregistrées. Le navigateur n'a peut-être plus d'espace de stockage."
   },
   "unsaved_bar": {
-    "message": "Ce classeur n'est pas enregistré dans votre navigateur. Les modifications seront perdues si vous n'enregistrez pas une copie.",
+    "message": "Vous consultez un classeur en lecture seule. Enregistrez une copie pour le modifier.",
     "save_copy": "Enregistrer une copie"
   },
   "welcome_dialog": {
