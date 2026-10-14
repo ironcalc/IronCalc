@@ -305,7 +305,6 @@
 .app-ic-wd-logo-title {
   font-size: calc(var(--typography-font-size) + 2px);
   font-weight: 600;
-  color: var(--palette-common-black);
 }
 
 /* Mobile: only show the actions column, the templates grid moves behind
