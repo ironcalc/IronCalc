@@ -9,7 +9,7 @@
     "storage_save_failed": "Ihre Änderungen konnten nicht gespeichert werden. Möglicherweise hat der Browser keinen Speicherplatz mehr."
   },
   "unsaved_bar": {
-    "message": "Diese Arbeitsmappe ist nicht in Ihrem Browser gespeichert. Änderungen gehen verloren, wenn Sie keine Kopie speichern.",
+    "message": "Sie sehen eine schreibgeschützte Arbeitsmappe. Speichern Sie eine Kopie, um sie zu bearbeiten.",
     "save_copy": "Kopie speichern"
   },
   "welcome_dialog": {

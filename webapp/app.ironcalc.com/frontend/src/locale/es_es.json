@@ -9,7 +9,7 @@
     "storage_save_failed": "No se han podido guardar los cambios. Puede que el navegador no tenga espacio de almacenamiento."
   },
   "unsaved_bar": {
-    "message": "Este libro no está guardado en tu navegador. Los cambios se perderán si no guardas una copia.",
+    "message": "Estás viendo un libro de solo lectura. Guarda una copia para editarlo.",
     "save_copy": "Guardar una copia"
   },
   "welcome_dialog": {

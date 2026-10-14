@@ -21,11 +21,11 @@
   background: transparent;
 }
 
-.app-ic-workbook-title-input:hover {
+.app-ic-workbook-title-input:not(:read-only):hover {
   background-color: var(--palette-grey-100);
 }
 
-.app-ic-workbook-title-input:focus {
+.app-ic-workbook-title-input:not(:read-only):focus {
   outline: 1px solid var(--palette-grey-500);
 }
 
