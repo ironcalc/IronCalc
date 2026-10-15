@@ -23,33 +23,6 @@ body {
   position: relative;
 }
 
-.app-ic-unsaved-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px 6px 16px;
-  background: var(--palette-grey-50);
-  font-family: var(--typography-font-family);
-  font-size: var(--typography-font-size);
-  color: var(--palette-grey-900);
-}
-
-.app-ic-unsaved-bar > svg {
-  width: 16px;
-  min-width: 16px;
-  height: 16px;
-  color: var(--palette-grey-600);
-}
-
-.app-ic-unsaved-bar > span {
-  flex-grow: 1;
-}
-
-.app-ic-unsaved-bar > button {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
 .app-ic-mobile-overlay {
   display: none;
   position: absolute;
