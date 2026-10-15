@@ -62,3 +62,21 @@ fn formulatext_english() {
         Ok("=SUM(1,2,3)".to_string())
     );
 }
+
+#[test]
+fn from_bytes_owned() {
+    let mut model1 = UserModel::from_model(new_empty_model());
+    model1.set_user_input(0, 1, 1, "21").unwrap();
+    model1.set_user_input(0, 1, 2, "=A1*2").unwrap();
+
+    let model2 = UserModel::from_bytes_owned(model1.to_bytes(), "en").unwrap();
+    assert_eq!(
+        model2.get_formatted_cell_value(0, 1, 2),
+        Ok("42".to_string())
+    );
+
+    assert_eq!(
+        &UserModel::from_bytes_owned(b"not a workbook".to_vec(), "en").unwrap_err(),
+        "Error parsing workbook: invalid packing"
+    );
+}

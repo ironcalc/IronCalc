@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { Model } from '../pkg-nodejs-xlsx/wasm.js';
+import { ByteBuffer, Model } from '../pkg-nodejs-xlsx/wasm.js';
 
 const exampleXlsx = readFileSync(
     path.join(
@@ -54,4 +54,22 @@ test('engine APIs still work on the xlsx build', () => {
     const bytes = model.toXlsx();
     const loaded = Model.fromXlsx(bytes, 'Workbook1', 'en', 'UTC', 'en');
     assert.strictEqual(loaded.getFormattedCellValue(0, 1, 2), '70');
+});
+
+test('fromXlsxBuffer loads example.xlsx streamed in chunks', () => {
+    const buffer = new ByteBuffer(exampleXlsx.length);
+    const chunkSize = 4096;
+    for (let offset = 0; offset < exampleXlsx.length; offset += chunkSize) {
+        buffer.append(exampleXlsx.subarray(offset, offset + chunkSize));
+    }
+    const model = Model.fromXlsxBuffer(buffer, 'example', 'en', 'UTC', 'en');
+    const direct = Model.fromXlsx(exampleXlsx, 'example', 'en', 'UTC', 'en');
+    assert.deepEqual(
+        model.getWorksheetsProperties().map((sheet) => sheet.name),
+        direct.getWorksheetsProperties().map((sheet) => sheet.name),
+    );
+    assert.strictEqual(
+        model.getFormattedCellValue(0, 1, 1),
+        direct.getFormattedCellValue(0, 1, 1),
+    );
 });
