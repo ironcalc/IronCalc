@@ -41,6 +41,10 @@ Persistence
 
    Returns the workbook as bytes in the internal binary ic format.
 
+.. method:: UserModel.to_xlsx() -> bytes
+
+   Returns the workbook as bytes in xlsx format.
+
 Collaboration
 ^^^^^^^^^^^^^
 
@@ -112,6 +116,14 @@ Cell values
 
    Returns ``(min_row, max_row, min_column, max_column)`` of the non-empty
    cells; ``(1, 1, 1, 1)`` for an empty sheet.
+
+.. method:: UserModel.cycle_reference(value: str, start: int, end: int) -> (str, int, int)
+
+   Cycles the references touched by the cursor through the four
+   absolute/relative states, Excel F4 style: ``A1 -> $A$1 -> A$1 -> $A1 -> A1``.
+   ``start`` and ``end`` are character offsets of the cursor (or selection) in
+   ``value``. Returns the new text with the new cursor start and end:
+   ``cycle_reference("=A1", 3, 3)`` returns ``("=$A$1", 5, 5)``.
 
 Ranges
 ^^^^^^
@@ -234,6 +246,39 @@ Sheets
 .. method:: UserModel.set_show_grid_lines(sheet: int, show_grid_lines: bool)
 .. method:: UserModel.get_show_grid_lines(sheet: int) -> bool
 
+Merged cells
+^^^^^^^^^^^^
+
+.. method:: UserModel.merge_cells(sheet, start_row, start_column, end_row, end_column)
+
+   Merges the range into a single cell anchored at its top-left corner. At
+   most one cell of the range may have content: it moves to the anchor. Fails
+   if the range is a single cell, intersects an existing merged cell or an
+   array formula, or has more than one cell with content.
+
+.. method:: UserModel.merge_cells_center(sheet, start_row, start_column, end_row, end_column)
+
+   Same as ``merge_cells`` but also centers the content horizontally
+   ("merge & center").
+
+.. method:: UserModel.merge_cells_across(sheet, start_row, start_column, end_row, end_column)
+
+   Merges each row of the range separately ("merge across"). All-or-nothing.
+
+.. method:: UserModel.merge_cells_down(sheet, start_row, start_column, end_row, end_column)
+
+   Merges each column of the range separately ("merge down"). All-or-nothing.
+
+.. method:: UserModel.unmerge_cells(sheet, start_row, start_column, end_row, end_column)
+
+   Removes every merged cell that intersects the range, keeping the content
+   of the anchors. Unmerging nothing is not an error.
+
+.. method:: UserModel.get_merged_cells(sheet: int) -> list[dict]
+
+   One entry per merged cell: ``{"row", "column", "width", "height"}`` where
+   ``(row, column)`` is the anchor cell.
+
 Rows and columns
 ^^^^^^^^^^^^^^^^
 
@@ -255,6 +300,16 @@ Rows and columns
 .. method:: UserModel.set_frozen_columns_count(sheet: int, count: int)
 .. method:: UserModel.get_last_non_empty_in_row_before_column(sheet, row, column) -> int | None
 .. method:: UserModel.get_first_non_empty_in_row_after_column(sheet, row, column) -> int | None
+
+.. method:: UserModel.get_rows_with_data(sheet: int, column: int) -> list[int]
+
+   Rows that have a cell (content or style) in ``column``; useful to compute
+   the automatic width of a column.
+
+.. method:: UserModel.get_columns_with_data(sheet: int, row: int) -> list[int]
+
+   Columns that have a cell (content or style) in ``row``; useful to compute
+   the automatic height of a row.
 
 Defined names
 ^^^^^^^^^^^^^

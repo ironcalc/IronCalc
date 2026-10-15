@@ -20,6 +20,10 @@ Evaluation and persistence
 
 .. method:: Model.save_to_xlsx(file: str)
 .. method:: Model.save_to_icalc(file: str)
+.. method:: Model.to_xlsx() -> bytes
+
+   Returns the workbook as bytes in xlsx format.
+
 .. method:: Model.to_bytes() -> bytes
 
 Setting values
@@ -86,6 +90,11 @@ Getting values
    Returns a markdown-like table of the sheet (formulas, not values), useful
    for debugging and tests.
 
+.. method:: Model.cycle_reference(value: str, start: int, end: int) -> (str, int, int)
+
+   Cycles the references touched by the cursor through the four
+   absolute/relative states, Excel F4 style (see :meth:`UserModel.cycle_reference`).
+
 Styles
 ^^^^^^
 
@@ -140,6 +149,39 @@ Sheets
 
 .. method:: Model.get_worksheets_properties() -> list[dict]
 .. method:: Model.set_show_grid_lines(sheet: int, show_grid_lines: bool)
+
+Merged cells
+^^^^^^^^^^^^
+
+.. method:: Model.merge_cells(sheet, start_row, start_column, end_row, end_column)
+
+   Merges the range into a single cell anchored at its top-left corner. At
+   most one cell of the range may have content: it moves to the anchor. Fails
+   if the range is a single cell, intersects an existing merged cell or an
+   array formula, or has more than one cell with content.
+
+.. method:: Model.merge_cells_center(sheet, start_row, start_column, end_row, end_column)
+
+   Same as ``merge_cells`` but also centers the content horizontally
+   ("merge & center").
+
+.. method:: Model.merge_cells_across(sheet, start_row, start_column, end_row, end_column)
+
+   Merges each row of the range separately ("merge across"). All-or-nothing.
+
+.. method:: Model.merge_cells_down(sheet, start_row, start_column, end_row, end_column)
+
+   Merges each column of the range separately ("merge down"). All-or-nothing.
+
+.. method:: Model.unmerge_cells(sheet, start_row, start_column, end_row, end_column)
+
+   Removes every merged cell that intersects the range, keeping the content
+   of the anchors. Unmerging nothing is not an error.
+
+.. method:: Model.get_merged_cells(sheet: int) -> list[dict]
+
+   One entry per merged cell: ``{"row", "column", "width", "height"}`` where
+   ``(row, column)`` is the anchor cell.
 
 Defined names
 ^^^^^^^^^^^^^

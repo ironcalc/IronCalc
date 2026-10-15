@@ -154,6 +154,20 @@ pub fn get_supported_locales() -> Vec<String> {
     xlsx::base::get_supported_locales()
 }
 
+/// Returns the list of built-in themes (the same shape as `get_theme`/`set_theme`)
+#[pyfunction]
+pub fn get_theme_list(py: Python<'_>) -> PyResult<Bound<'_, PyAny>> {
+    to_python(py, &xlsx::base::themes::builtin_themes())
+}
+
+/// Applies a tint (-1.0 darkest to 1.0 lightest) to a "#RRGGBB" color,
+/// returning the resulting "#RRGGBB" color. This is how theme colors
+/// `[theme, tint]` are resolved.
+#[pyfunction]
+pub fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
+    xlsx::base::colors::hex_with_tint_to_rgb(hex, tint)
+}
+
 // Create methods for the raw API
 
 /// Loads a model from an xlsx file (raw API)
@@ -292,6 +306,8 @@ fn _ironcalc(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(quote_name, m)?)?;
     m.add_function(wrap_pyfunction!(get_all_timezones, m)?)?;
     m.add_function(wrap_pyfunction!(get_supported_locales, m)?)?;
+    m.add_function(wrap_pyfunction!(get_theme_list, m)?)?;
+    m.add_function(wrap_pyfunction!(hex_with_tint_to_rgb, m)?)?;
 
     Ok(())
 }
