@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { downloadModel } from "../rpc";
 import {
   duplicateModel,
   loadModelFromStorage,
   togglePinWorkbook,
 } from "../storage";
 import { useSelectedUuid } from "../useStorage";
+import { downloadXlsx } from "../xlsx";
 
 interface Options {
   setModel: (uuid: string) => void;
@@ -55,7 +55,7 @@ export function useWorkbookMenu({ setModel, onDelete }: Options) {
     try {
       const model = await loadModelFromStorage(uuid);
       if (model) {
-        await downloadModel(model.toBytes(), model.getName());
+        downloadXlsx(model, model.getName());
       }
     } catch (error) {
       console.error("Failed to download workbook:", error);

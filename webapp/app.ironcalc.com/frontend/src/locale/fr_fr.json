@@ -90,12 +90,12 @@
       "new_from_template": "Nouveau à partir d'un modèle",
       "import": {
         "button": "Importer",
-        "title": "Importer un fichier .xlsx",
+        "title": "Importer un fichier .xlsx ou .ic",
         "subtitle": "Glissez-déposez un fichier ici ou",
         "subtitle_link": "cliquez pour parcourir",
         "learn_more": "En savoir plus sur l'importation de fichiers dans IronCalc",
         "close_dialog": "Fermer la boîte de dialogue",
-        "uploading": "Téléchargement de {{fileName}}...",
+        "importing": "Importation de {{fileName}}...",
         "drop_file_here": "Déposez le fichier ici"
       },
       "download": "Télécharger (.xlsx)",

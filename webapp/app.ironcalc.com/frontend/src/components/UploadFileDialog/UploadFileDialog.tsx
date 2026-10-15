@@ -51,7 +51,7 @@ function UploadFileDialog({
 
   const handleFileUpload = (file: File) => {
     setMessage(
-      t("file_bar.file_menu.import.uploading", { fileName: file.name }),
+      t("file_bar.file_menu.import.importing", { fileName: file.name }),
     );
     const reader = new FileReader();
     reader.onload = async () => {
