@@ -201,44 +201,45 @@ function App() {
     );
   }
 
+  // Shows a local (editable) workbook and drops the query string, so a refresh
+  // opens this workbook instead of the shared or example one from the URL.
+  const showLocalModel = (localModel: Model) => {
+    setModel(localModel);
+    setIsReadOnly(false);
+    window.history.replaceState(null, "", window.location.pathname);
+  };
+
   // Handlers for model changes that also update our models state
   const handleNewModel = async () => {
-    const newModel = await createNewModel();
-    setModel(newModel);
-    setIsReadOnly(false);
+    showLocalModel(await createNewModel());
   };
 
   const handleSetModel = async (uuid: string) => {
     const newModel = await selectModelFromStorage(uuid);
     if (newModel) {
-      setModel(newModel);
-      setIsReadOnly(false);
+      showLocalModel(newModel);
     }
   };
 
   const handleDeleteModel = async () => {
     const newModel = await deleteSelectedModel();
     if (newModel) {
-      setModel(newModel);
-      setIsReadOnly(false);
+      showLocalModel(newModel);
     }
   };
 
   const handleDeleteModelByUuid = async (uuid: string) => {
     const newModel = await deleteModelByUuid(uuid);
     if (newModel) {
-      setModel(newModel);
-      setIsReadOnly(false);
+      showLocalModel(newModel);
     }
   };
 
-  // Stores the open (shared or example) workbook as a new local workbook and
-  // drops the query string, so a refresh opens the copy, not the original.
+  // Stores the open (shared or example) workbook as a new local workbook.
   const handleSaveCopy = async () => {
     try {
       await saveModelToStorage(model);
-      setIsReadOnly(false);
-      window.history.replaceState(null, "", window.location.pathname);
+      showLocalModel(model);
     } catch (e) {
       reportSaveError(e);
     }
@@ -272,9 +273,7 @@ function App() {
             const languageId = getLanguageFromLocale(locale);
             const newModel = Model.fromBytes(bytes, languageId);
             await saveModelToStorage(newModel);
-
-            setModel(newModel);
-            setIsReadOnly(false);
+            showLocalModel(newModel);
           }}
           newModel={handleNewModel}
           newModelFromTemplate={() => {
@@ -366,8 +365,7 @@ function App() {
           const importedModel = Model.fromBytes(model_bytes, languageId);
           importedModel.setName(t(`welcome_dialog.templates.${fileName}`));
           await saveModelToStorage(importedModel);
-          setModel(importedModel);
-          setIsReadOnly(false);
+          showLocalModel(importedModel);
           setTemplatesDialogOpen(false);
         }}
       />
