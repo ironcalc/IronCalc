@@ -12,6 +12,9 @@
     "message": "Stai visualizzando una cartella di lavoro di sola lettura. Salva una copia per modificarla.",
     "save_copy": "Salva una copia"
   },
+  "session_only_bar": {
+    "message": "Questa cartella di lavoro è troppo grande per essere salvata nel browser. Le modifiche andranno perse alla chiusura della scheda."
+  },
   "welcome_dialog": {
     "title": "Benvenuto su IronCalc",
     "subtitle": "Inizia con una cartella di lavoro vuota o un modello pronto all'uso.",
