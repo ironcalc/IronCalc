@@ -67,3 +67,14 @@ Utilities
 .. function:: get_supported_locales() -> list[str]
 
    Returns the list of supported locales.
+
+.. function:: get_theme_list() -> list[dict]
+
+   Returns the built-in themes, in the same shape used by ``get_theme`` and
+   ``set_theme``.
+
+.. function:: hex_with_tint_to_rgb(hex: str, tint: float) -> str
+
+   Applies a tint (``-1.0`` darkest to ``1.0`` lightest) to a ``"#RRGGBB"``
+   color and returns the resulting ``"#RRGGBB"`` color. This is how theme
+   colors ``[theme_index, tint]`` are resolved.

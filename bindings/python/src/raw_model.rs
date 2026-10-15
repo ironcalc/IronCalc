@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 
 use xlsx::base::types::{Link, SheetState, Style, Theme};
 use xlsx::base::Model;
-use xlsx::export::{save_to_icalc, save_to_xlsx};
+use xlsx::export::{save_to_icalc, save_to_xlsx, save_xlsx_to_writer};
 
 use crate::types::PyCellType;
 use crate::user_model::DefinedNameEntry;
@@ -33,6 +33,13 @@ impl PyModel {
     /// Returns the workbook as bytes in the internal binary ic format
     pub fn to_bytes(&self) -> Vec<u8> {
         self.model.to_bytes()
+    }
+
+    /// Returns the workbook as bytes in xlsx format
+    pub fn to_xlsx(&self) -> PyResult<Vec<u8>> {
+        let writer = std::io::Cursor::new(Vec::new());
+        let writer = save_xlsx_to_writer(&self.model, writer).map_err(to_py_err)?;
+        Ok(writer.into_inner())
     }
 
     /// Evaluates the workbook
@@ -235,6 +242,22 @@ impl PyModel {
     /// Returns a markdown-like representation of the sheet, useful for debugging
     pub fn get_sheet_markup(&self, sheet: u32) -> PyResult<String> {
         self.model.get_sheet_markup(sheet).map_err(to_py_err)
+    }
+
+    /// Cycles the references touched by the cursor through the four
+    /// absolute/relative states, Excel F4 style: A1 -> $A$1 -> A$1 -> $A1 -> A1.
+    /// `start` and `end` are char offsets of the cursor/selection in `value`.
+    /// Returns the new text together with the new cursor start and end:
+    /// cycle_reference("=A1", 3, 3) returns ("=$A$1", 5, 5)
+    pub fn cycle_reference(
+        &self,
+        value: &str,
+        start: usize,
+        end: usize,
+    ) -> PyResult<(String, i32, i32)> {
+        self.model
+            .cycle_reference(value, start, end)
+            .map_err(to_py_err)
     }
 
     // Styles
@@ -539,6 +562,97 @@ impl PyModel {
     pub fn get_links<'py>(&self, py: Python<'py>, sheet: u32) -> PyResult<Bound<'py, PyAny>> {
         let links = self.model.get_links_list(sheet).map_err(to_py_err)?;
         to_python(py, &links)
+    }
+
+    // Merged cells
+
+    /// Merges the cells of the range into a single merged cell anchored at its
+    /// top-left corner. At most one cell of the range may have content: its
+    /// content, link and style move to the anchor.
+    /// Fails if the range is a single cell, intersects an existing merged cell
+    /// or an array formula, or contains more than one cell with content.
+    pub fn merge_cells(
+        &mut self,
+        sheet: u32,
+        start_row: i32,
+        start_column: i32,
+        end_row: i32,
+        end_column: i32,
+    ) -> PyResult<()> {
+        self.model
+            .merge_cells(&area(sheet, start_row, start_column, end_row, end_column))
+            .map_err(to_py_err)
+    }
+
+    /// Same as `merge_cells` but the merged cell is also centered horizontally
+    /// ("merge & center")
+    pub fn merge_cells_center(
+        &mut self,
+        sheet: u32,
+        start_row: i32,
+        start_column: i32,
+        end_row: i32,
+        end_column: i32,
+    ) -> PyResult<()> {
+        self.model
+            .merge_cells_center(&area(sheet, start_row, start_column, end_row, end_column))
+            .map_err(to_py_err)
+    }
+
+    /// Merges each row of the range separately into a one-row-tall merged cell
+    /// ("merge across"). All-or-nothing: if any row cannot be merged nothing changes.
+    pub fn merge_cells_across(
+        &mut self,
+        sheet: u32,
+        start_row: i32,
+        start_column: i32,
+        end_row: i32,
+        end_column: i32,
+    ) -> PyResult<()> {
+        self.model
+            .merge_cells_across(&area(sheet, start_row, start_column, end_row, end_column))
+            .map_err(to_py_err)
+    }
+
+    /// Merges each column of the range separately into a one-column-wide merged
+    /// cell ("merge down"). All-or-nothing: if any column cannot be merged nothing changes.
+    pub fn merge_cells_down(
+        &mut self,
+        sheet: u32,
+        start_row: i32,
+        start_column: i32,
+        end_row: i32,
+        end_column: i32,
+    ) -> PyResult<()> {
+        self.model
+            .merge_cells_down(&area(sheet, start_row, start_column, end_row, end_column))
+            .map_err(to_py_err)
+    }
+
+    /// Removes every merged cell that intersects the range. The content of the
+    /// anchors is kept. It is not an error if the range has no merged cells.
+    pub fn unmerge_cells(
+        &mut self,
+        sheet: u32,
+        start_row: i32,
+        start_column: i32,
+        end_row: i32,
+        end_column: i32,
+    ) -> PyResult<()> {
+        self.model
+            .unmerge_cells(&area(sheet, start_row, start_column, end_row, end_column))
+            .map_err(to_py_err)
+    }
+
+    /// Returns the merged cells of the sheet as a list of dictionaries
+    /// {"row", "column", "width", "height"} where (row, column) is the anchor
+    pub fn get_merged_cells<'py>(
+        &self,
+        py: Python<'py>,
+        sheet: u32,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let merged_cells = self.model.get_merged_cells(sheet).map_err(to_py_err)?;
+        to_python(py, &merged_cells)
     }
 
     // Defined names
