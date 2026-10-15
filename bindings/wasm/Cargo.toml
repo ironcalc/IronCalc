@@ -1,6 +1,6 @@
 [package]
 name = "wasm"
-version = "0.8.4"
+version = "0.9.0"
 authors = ["Nicolas Hatcher <nicolas@theuniverse.today>"]
 description = "IronCalc Web bindings"
 license = "MIT/Apache-2.0"
@@ -18,8 +18,8 @@ xlsx = ["dep:ironcalc", "dep:time"]
 # Uses `../ironcalc/base` when used locally, and uses
 # the indicated version from crates.io when published.
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
-ironcalc_base = { path = "../../base", version = "0.8" }
-ironcalc = { path = "../../xlsx", version = "0.8", optional = true }
+ironcalc_base = { path = "../../base", version = "0.9" }
+ironcalc = { path = "../../xlsx", version = "0.9", optional = true }
 # zip's `time` feature needs the `time` crate's wasm-bindgen backend to read
 # the clock when writing xlsx archives. Feature-unifying it here keeps that
 # out of the xlsx crate itself.
