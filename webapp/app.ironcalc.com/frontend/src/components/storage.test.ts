@@ -18,6 +18,7 @@ vi.mock("@ironcalc/workbook", () => {
       const { name } = JSON.parse(new TextDecoder().decode(bytes));
       return new Model(name, "en", "UTC", language);
     }
+    free(): void {}
     toBytes(): Uint8Array {
       return new TextEncoder().encode(JSON.stringify({ name: this.name }));
     }

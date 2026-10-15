@@ -1,4 +1,4 @@
-import initWasm, { Model } from "@ironcalc/wasm";
+import initWasm, { ByteBuffer, Model } from "@ironcalc/wasm";
 import IronCalc from "./IronCalc";
 import i18n from "./i18n";
 import { IronCalcIcon, IronCalcIconWhite, IronCalcLogo } from "./icons";
@@ -38,7 +38,7 @@ export { Tooltip } from "./components/Tooltip/Tooltip";
 export type { WorkbookActions } from "./components/Workbook/workbookActions";
 export type { IronCalcHandle } from "./IronCalc";
 export { darkThemeVariables } from "./theme";
-export { IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo, Model };
+export { ByteBuffer, IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo, Model };
 
 export const init: typeof initWasm = async (module_or_path) => {
   const result = initWasm(module_or_path);

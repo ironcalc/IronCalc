@@ -33,7 +33,7 @@ export function FileBar(properties: {
   newModel: () => void;
   newModelFromTemplate: () => void;
   setModel: (key: string) => void;
-  onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
+  onModelUpload: (file: File) => Promise<void>;
   onDelete: () => void;
   isReadOnly: boolean;
   // Large workbook kept in memory only: nothing is saved, shared or exported
