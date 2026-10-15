@@ -42,7 +42,6 @@ import {
   watchSystemDarkMode,
 } from "./components/storage";
 import { UnsavedWorkbookBar } from "./components/UnsavedWorkbookBar";
-import { useSelectedUuid } from "./components/useStorage";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
 
@@ -60,8 +59,10 @@ function App() {
     themeMode === "system" ? systemIsDark : themeMode === "dark";
 
   const ironCalcRef = useRef<IronCalcHandle>(null);
-  // Workbooks opened from a link stay read-only until a copy is saved
-  const selectedUuid = useSelectedUuid();
+  // A workbook opened from a link (?model= or ?example=) stays read-only until
+  // a copy is saved. Any other workbook replaces `model`, which ends it.
+  const [linkedModel, setLinkedModel] = useState<Model | null>(null);
+  const isReadOnly = model !== null && model === linkedModel;
   // Guards against overlapping autosaves and repeated error alerts.
   const isSavingRef = useRef(false);
   const saveErrorReportedRef = useRef(false);
@@ -134,6 +135,7 @@ function App() {
 
       if (loadedModel) {
         setModel(loadedModel);
+        setLinkedModel(loadedModel);
       } else {
         // try to load from storage
         const result = await loadSelectedModelFromStorage();
@@ -232,6 +234,7 @@ function App() {
   const handleSaveCopy = async () => {
     try {
       await saveModelToStorage(model);
+      setLinkedModel(null);
       window.history.replaceState(null, "", window.location.pathname);
     } catch (e) {
       reportSaveError(e);
@@ -275,20 +278,19 @@ function App() {
           }}
           setModel={handleSetModel}
           onDelete={handleDeleteModel}
+          isReadOnly={isReadOnly}
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
           onLanguageChange={handleLanguageChange}
           themeMode={themeMode}
           onThemeModeChange={handleThemeModeChange}
         />
-        {!showWelcomeDialog && (
-          <UnsavedWorkbookBar onSaveCopy={handleSaveCopy} />
-        )}
+        {isReadOnly && <UnsavedWorkbookBar onSaveCopy={handleSaveCopy} />}
         <IronCalc
           model={model}
           ref={ironCalcRef}
           themeVariables={isDarkMode ? darkThemeVariables : undefined}
-          canEdit={!!selectedUuid}
+          canEdit={!isReadOnly}
         />
         {isDrawerOpen && (
           <div
