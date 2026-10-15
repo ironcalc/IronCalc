@@ -9,6 +9,11 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    /* See the alias in vite.config.ts: @ironcalc/workbook is typed against
+       @ironcalc/wasm, this app bundles @ironcalc/wasm-xlsx in its place */
+    "paths": {
+      "@ironcalc/wasm": ["./node_modules/@ironcalc/wasm-xlsx"]
+    },
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",

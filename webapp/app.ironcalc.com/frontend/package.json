@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ironcalc/wasm-xlsx": "file:../../../bindings/wasm/pkg-xlsx",
     "@ironcalc/workbook": "file:../../IronCalc/",
     "i18next": "^26.4.2",
     "lucide-react": "^1.49.0",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.0.1",
