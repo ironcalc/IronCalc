@@ -60,9 +60,8 @@ function App() {
 
   const ironCalcRef = useRef<IronCalcHandle>(null);
   // A workbook opened from a link (?model= or ?example=) stays read-only until
-  // a copy is saved. Any other workbook replaces `model`, which ends it.
-  const [linkedModel, setLinkedModel] = useState<Model | null>(null);
-  const isReadOnly = model !== null && model === linkedModel;
+  // a copy is saved. Every handler that opens another workbook must reset it.
+  const [isReadOnly, setIsReadOnly] = useState(false);
   // Guards against overlapping autosaves and repeated error alerts.
   const isSavingRef = useRef(false);
   const saveErrorReportedRef = useRef(false);
@@ -135,7 +134,7 @@ function App() {
 
       if (loadedModel) {
         setModel(loadedModel);
-        setLinkedModel(loadedModel);
+        setIsReadOnly(true);
       } else {
         // try to load from storage
         const result = await loadSelectedModelFromStorage();
@@ -206,12 +205,14 @@ function App() {
   const handleNewModel = async () => {
     const newModel = await createNewModel();
     setModel(newModel);
+    setIsReadOnly(false);
   };
 
   const handleSetModel = async (uuid: string) => {
     const newModel = await selectModelFromStorage(uuid);
     if (newModel) {
       setModel(newModel);
+      setIsReadOnly(false);
     }
   };
 
@@ -219,6 +220,7 @@ function App() {
     const newModel = await deleteSelectedModel();
     if (newModel) {
       setModel(newModel);
+      setIsReadOnly(false);
     }
   };
 
@@ -226,6 +228,7 @@ function App() {
     const newModel = await deleteModelByUuid(uuid);
     if (newModel) {
       setModel(newModel);
+      setIsReadOnly(false);
     }
   };
 
@@ -234,7 +237,7 @@ function App() {
   const handleSaveCopy = async () => {
     try {
       await saveModelToStorage(model);
-      setLinkedModel(null);
+      setIsReadOnly(false);
       window.history.replaceState(null, "", window.location.pathname);
     } catch (e) {
       reportSaveError(e);
@@ -271,6 +274,7 @@ function App() {
             await saveModelToStorage(newModel);
 
             setModel(newModel);
+            setIsReadOnly(false);
           }}
           newModel={handleNewModel}
           newModelFromTemplate={() => {
@@ -353,6 +357,7 @@ function App() {
           const importedModel = Model.fromBytes(model_bytes, languageId);
           await saveModelToStorage(importedModel);
           setModel(importedModel);
+          setIsReadOnly(false);
           setTemplatesDialogOpen(false);
         }}
       />
