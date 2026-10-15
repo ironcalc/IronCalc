@@ -435,17 +435,45 @@ function getNewName(existingNames: string[]): string {
   return `${baseName}-Infinity`;
 }
 
-export function createModelWithSafeTimezone(name: string): Model {
-  const locale = loadDefaultLocaleFromStorage();
-  const language = locale.split("-")[0];
-  const localeShort = getShortLocaleCode(locale);
+// Builds a model with the browser timezone, falling back to UTC when it cannot
+// be determined or the engine does not recognise it.
+function withSafeTimezone(build: (timezone: string) => Model): Model {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return new Model(name, localeShort, tz, language);
+    return build(tz);
   } catch (e) {
     console.warn("Failed to get timezone, defaulting to UTC", e);
-    return new Model(name, localeShort, "UTC", language);
+    return build("UTC");
   }
+}
+
+export function createModelWithSafeTimezone(name: string): Model {
+  const locale = loadDefaultLocaleFromStorage();
+  const language = getLanguageFromLocale(locale);
+  const localeShort = getShortLocaleCode(locale);
+  return withSafeTimezone((tz) => new Model(name, localeShort, tz, language));
+}
+
+// Imports a workbook file in the browser. An .ic file is already in the
+// engine's own format and is loaded as is; anything else is treated as xlsx
+// (converted through @ironcalc/wasm-xlsx). Either way the workbook is named
+// after the file, minus the extension.
+export function createModelFromFile(
+  bytes: Uint8Array,
+  fileName: string,
+): Model {
+  const locale = loadDefaultLocaleFromStorage();
+  const language = getLanguageFromLocale(locale);
+  if (/\.ic$/i.test(fileName)) {
+    const model = Model.fromBytes(bytes, language);
+    model.setName(fileName.replace(/\.ic$/i, ""));
+    return model;
+  }
+  const name = fileName.replace(/\.xlsx$/i, "");
+  const localeShort = getShortLocaleCode(locale);
+  return withSafeTimezone((tz) =>
+    Model.fromXlsx(bytes, name, localeShort, tz, language),
+  );
 }
 
 // Stores a brand new workbook (bytes + metadata) and optionally selects it.

@@ -18,7 +18,7 @@
     "close_dialog": "Close dialog",
     "new": "New",
     "blank_workbook": "Blank workbook",
-    "import_workbook": "Import .xlsx",
+    "import_workbook": "Import workbook",
     "storage_warning": "<warn>Warning!</warn> This app is a proof of concept, not a finished product. Feel free to explore, share, and upload/download models, but don't share or upload models with sensitive or private data. Data will be deleted periodically. <docsLink>Read more</docsLink>",
     "templates": {
       "choose_template": "Choose a template",
@@ -90,12 +90,12 @@
       "new_from_template": "New from template",
       "import": {
         "button": "Import",
-        "title": "Import an .xlsx file",
+        "title": "Import an .xlsx or .ic file",
         "subtitle": "Drag and drop a file here or",
         "subtitle_link": "click to browse",
         "learn_more": "Learn more about importing files into IronCalc",
         "close_dialog": "Close dialog",
-        "uploading": "Uploading {{fileName}}...",
+        "importing": "Importing {{fileName}}...",
         "drop_file_here": "Drop file here"
       },
       "download": "Download (.xlsx)",

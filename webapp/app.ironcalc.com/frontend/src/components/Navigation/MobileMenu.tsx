@@ -42,7 +42,7 @@ const THEMES: [ThemeMode, string][] = [
 interface MobileMenuProps {
   newModel: () => void;
   newModelFromTemplate: () => void;
-  onDownload: () => Promise<void>;
+  onDownload: () => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
   isReadOnly: boolean;

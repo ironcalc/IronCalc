@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
@@ -14,6 +15,19 @@ export default defineConfig({
     },
   },
   resolve: {
+    // @ironcalc/workbook imports the engine-only @ironcalc/wasm (an external
+    // of its build). This app imports and exports xlsx files in the browser,
+    // so it swaps in @ironcalc/wasm-xlsx, which has the same API plus
+    // `Model.fromXlsx` and `Model.toXlsx`. Only one wasm binary is loaded.
+    // The matching type-level swap is `paths` in tsconfig.app.json.
+    alias: [
+      {
+        find: /^@ironcalc\/wasm$/,
+        replacement: fileURLToPath(
+          new URL('./node_modules/@ironcalc/wasm-xlsx/wasm.js', import.meta.url),
+        ),
+      },
+    ],
     dedupe: Object.keys(workbookPkg.peerDependencies).filter(dep => dep in pkg.dependencies)
   }
 })

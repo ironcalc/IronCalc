@@ -14,13 +14,10 @@ import { useTranslation } from "react-i18next";
 import { FileBar } from "./components/FileBar";
 import LeftDrawer from "./components/LeftDrawer/LeftDrawer";
 import { NoticeBar } from "./components/NoticeBar";
-import {
-  get_documentation_model,
-  get_model,
-  uploadFile,
-} from "./components/rpc";
+import { get_documentation_model, get_model } from "./components/rpc";
 import {
   clearSelectedUuid,
+  createModelFromFile,
   createModelWithSafeTimezone,
   createNewModel,
   deleteModelByUuid,
@@ -269,12 +266,10 @@ function App() {
           model={model}
           ironCalcRef={ironCalcRef}
           onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
-            const blob = await uploadFile(arrayBuffer, fileName);
-
-            const bytes = new Uint8Array(await blob.arrayBuffer());
-            const locale = loadDefaultLocaleFromStorage();
-            const languageId = getLanguageFromLocale(locale);
-            const newModel = Model.fromBytes(bytes, languageId);
+            const newModel = createModelFromFile(
+              new Uint8Array(arrayBuffer),
+              fileName,
+            );
             await saveModelToStorage(newModel);
             showLocalModel(newModel);
           }}
@@ -326,11 +321,10 @@ function App() {
             setTemplatesDialogOpen(true);
           }}
           onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
-            const blob = await uploadFile(arrayBuffer, fileName);
-            const bytes = new Uint8Array(await blob.arrayBuffer());
-            const locale = loadDefaultLocaleFromStorage();
-            const languageId = getLanguageFromLocale(locale);
-            const newModel = Model.fromBytes(bytes, languageId);
+            const newModel = createModelFromFile(
+              new Uint8Array(arrayBuffer),
+              fileName,
+            );
             await saveModelToStorage(newModel);
             setModel(newModel);
           }}

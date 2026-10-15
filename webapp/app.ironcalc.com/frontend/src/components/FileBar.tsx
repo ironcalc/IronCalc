@@ -15,13 +15,13 @@ import { HelpMenu } from "./Navigation/HelpMenu";
 import { InsertMenu } from "./Navigation/InsertMenu";
 import { MobileMenu } from "./Navigation/MobileMenu";
 import { ViewMenu } from "./Navigation/ViewMenu";
-import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareWorkbook/ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbook/ShareDialog";
 import { StorageWarning } from "./StorageWarning";
 import { type ThemeMode, updateNameSelectedWorkbook } from "./storage";
 import { useWindowWidth } from "./useWindowWidth";
 import { WorkbookTitle } from "./WorkbookTitle";
+import { downloadXlsx } from "./xlsx";
 
 import "./file-bar.css";
 
@@ -48,11 +48,9 @@ export function FileBar(properties: {
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
   const { t } = useTranslation();
-  const handleDownload = async () => {
+  const handleDownload = () => {
     const model = properties.model;
-    const bytes = model.toBytes();
-    const fileName = model.getName();
-    await downloadModel(bytes, fileName);
+    downloadXlsx(model, model.getName());
   };
 
   const closeMenus = () => setOpenMenu(null);
