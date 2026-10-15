@@ -213,12 +213,9 @@ function App() {
 
   // Opens an imported .xlsx or .ic file as a new local workbook. Files above
   // MAX_PERSISTED_WORKBOOK_BYTES are not stored, see isSessionOnly.
-  const openImportedFile = async (
-    arrayBuffer: ArrayBuffer,
-    fileName: string,
-  ) => {
-    const newModel = createModelFromFile(new Uint8Array(arrayBuffer), fileName);
-    if (arrayBuffer.byteLength > MAX_PERSISTED_WORKBOOK_BYTES) {
+  const openImportedFile = async (file: File) => {
+    const newModel = await createModelFromFile(file);
+    if (file.size > MAX_PERSISTED_WORKBOOK_BYTES) {
       // Saves and renames go to the selected workbook, so none must be selected
       clearSelectedUuid();
       showLocalModel(newModel);
@@ -335,8 +332,8 @@ function App() {
             setShowWelcomeDialog(false);
             setTemplatesDialogOpen(true);
           }}
-          onModelUpload={async (arrayBuffer, fileName) => {
-            await openImportedFile(arrayBuffer, fileName);
+          onModelUpload={async (file) => {
+            await openImportedFile(file);
             setShowWelcomeDialog(false);
           }}
           onSelectTemplate={async (templateId) => {

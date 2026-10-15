@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert'
-import { Model } from "../pkg-nodejs/wasm.js";
+import * as wasm from "../pkg-nodejs/wasm.js";
+const { Model } = wasm;
 
 const DEFAULT_ROW_HEIGHT = 25;
 
@@ -316,4 +317,34 @@ test('Merge cells variants', () => {
     ]);
     model.undo();
     assert.deepEqual(model.getMergedCells(0), []);
+});
+
+test('fromBuffer loads a workbook streamed in chunks', () => {
+    const { ByteBuffer } = wasm;
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.setUserInput(0, 1, 1, '21');
+    model.setUserInput(0, 1, 2, '=A1*2');
+    const bytes = model.toBytes();
+
+    const buffer = new ByteBuffer(bytes.length);
+    assert.strictEqual(buffer.length, 0);
+    const chunkSize = 7;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        buffer.append(bytes.subarray(offset, offset + chunkSize));
+    }
+    assert.strictEqual(buffer.length, bytes.length);
+
+    const loaded = Model.fromBuffer(buffer, 'en');
+    assert.strictEqual(loaded.getFormattedCellValue(0, 1, 2), '42');
+    // fromBuffer consumes the buffer
+    assert.throws(() => buffer.length);
+});
+
+test('ByteBuffer grows past its initial capacity', () => {
+    const { ByteBuffer } = wasm;
+    const buffer = new ByteBuffer(1);
+    buffer.append(new Uint8Array([1, 2, 3]));
+    buffer.append(new Uint8Array([4]));
+    assert.strictEqual(buffer.length, 4);
+    buffer.free();
 });

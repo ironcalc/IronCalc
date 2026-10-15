@@ -1792,6 +1792,20 @@ impl<'a> Model<'a> {
         Model::from_workbook(workbook, language_id)
     }
 
+    /// Like [Model::from_bytes], but takes ownership of the bytes and releases
+    /// them as soon as the workbook is decoded, before the formulas are parsed.
+    /// This lowers the peak memory use for large workbooks.
+    ///
+    /// See also:
+    /// * [Model::from_bytes]
+    /// * [Model::to_bytes]
+    pub fn from_bytes_owned(bytes: Vec<u8>, language_id: &'a str) -> Result<Model<'a>, String> {
+        let workbook: Workbook =
+            bitcode::decode(&bytes).map_err(|e| format!("Error parsing workbook: {e}"))?;
+        drop(bytes);
+        Model::from_workbook(workbook, language_id)
+    }
+
     /// Returns a model from a Workbook object
     ///
     /// # Examples

@@ -288,6 +288,21 @@ impl<'a> UserModel<'a> {
         })
     }
 
+    /// Creates a model from it's internal representation, taking ownership of
+    /// the bytes so they are released before the formulas are parsed.
+    ///
+    /// See also:
+    /// * [Model::from_bytes_owned]
+    pub fn from_bytes_owned(bytes: Vec<u8>, language_id: &'a str) -> Result<UserModel<'a>, String> {
+        let model = Model::from_bytes_owned(bytes, language_id)?;
+        Ok(UserModel {
+            model,
+            history: History::default(),
+            send_queue: vec![],
+            pause_evaluation: false,
+        })
+    }
+
     /// Returns the internal representation of a model
     ///
     /// See also:

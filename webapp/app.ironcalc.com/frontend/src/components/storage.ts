@@ -1,4 +1,4 @@
-import { Model } from "@ironcalc/workbook";
+import { ByteBuffer, Model } from "@ironcalc/workbook";
 import i18n from "../i18n";
 
 const MAX_WORKBOOKS = 50;
@@ -380,15 +380,16 @@ function getNewName(existingNames: string[]): string {
   return `${baseName}-Infinity`;
 }
 
-// Builds a model with the browser timezone, falling back to UTC when it cannot
-// be determined or the engine does not recognise it.
-function withSafeTimezone(build: (timezone: string) => Model): Model {
+// The browser timezone, or UTC when it cannot be determined or the engine does
+// not recognise it (checked by building an empty model with it).
+function getSafeTimezone(): string {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return build(tz);
+    new Model("probe", "en", tz, "en").free();
+    return tz;
   } catch (e) {
     console.warn("Failed to get timezone, defaulting to UTC", e);
-    return build("UTC");
+    return "UTC";
   }
 }
 
@@ -396,29 +397,48 @@ export function createModelWithSafeTimezone(name: string): Model {
   const locale = loadDefaultLocaleFromStorage();
   const language = getLanguageFromLocale(locale);
   const localeShort = getShortLocaleCode(locale);
-  return withSafeTimezone((tz) => new Model(name, localeShort, tz, language));
+  return new Model(name, localeShort, getSafeTimezone(), language);
+}
+
+// Size of the slices a file is read in. Small enough that the JS side never
+// holds more than one of them, large enough to keep the number of reads low.
+const FILE_CHUNK_BYTES = 8 * 1024 * 1024;
+
+// Copies the file into wasm memory one chunk at a time, so a large file is
+// never held in full on the JS side. The buffer is freed if a read fails.
+async function readFileIntoWasm(file: File): Promise<ByteBuffer> {
+  const buffer = new ByteBuffer(file.size);
+  try {
+    for (let offset = 0; offset < file.size; offset += FILE_CHUNK_BYTES) {
+      const slice = file.slice(offset, offset + FILE_CHUNK_BYTES);
+      buffer.append(new Uint8Array(await slice.arrayBuffer()));
+    }
+  } catch (e) {
+    buffer.free();
+    throw e;
+  }
+  return buffer;
 }
 
 // Imports a workbook file in the browser. An .ic file is already in the
 // engine's own format and is loaded as is; anything else is treated as xlsx
 // (converted through @ironcalc/wasm-xlsx). Either way the workbook is named
 // after the file, minus the extension.
-export function createModelFromFile(
-  bytes: Uint8Array,
-  fileName: string,
-): Model {
+export async function createModelFromFile(file: File): Promise<Model> {
   const locale = loadDefaultLocaleFromStorage();
   const language = getLanguageFromLocale(locale);
-  if (/\.ic$/i.test(fileName)) {
-    const model = Model.fromBytes(bytes, language);
-    model.setName(fileName.replace(/\.ic$/i, ""));
+  const buffer = await readFileIntoWasm(file);
+  // The model constructors consume the buffer, also when they fail
+  if (/\.ic$/i.test(file.name)) {
+    const model = Model.fromBuffer(buffer, language);
+    model.setName(file.name.replace(/\.ic$/i, ""));
     return model;
   }
-  const name = fileName.replace(/\.xlsx$/i, "");
+  const name = file.name.replace(/\.xlsx$/i, "");
   const localeShort = getShortLocaleCode(locale);
-  return withSafeTimezone((tz) =>
-    Model.fromXlsx(bytes, name, localeShort, tz, language),
-  );
+  // The timezone is checked before, since a failed call consumes the buffer
+  const tz = getSafeTimezone();
+  return Model.fromXlsxBuffer(buffer, name, localeShort, tz, language);
 }
 
 // Stores a brand new workbook (bytes + metadata) and optionally selects it.

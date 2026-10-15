@@ -19,7 +19,7 @@ function WelcomeDialog({
 }: {
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
-  onModelUpload: (arrayBuffer: ArrayBuffer, fileName: string) => Promise<void>;
+  onModelUpload: (file: File) => Promise<void>;
   onOpenTemplates: () => void;
 }) {
   const { t } = useTranslation();
@@ -42,9 +42,8 @@ function WelcomeDialog({
     if (!file) {
       return;
     }
-    const arrayBuffer = await file.arrayBuffer();
     // The handler closes the dialog once the workbook is open
-    await onModelUpload(arrayBuffer, file.name);
+    await onModelUpload(file);
   };
 
   return createPortal(

@@ -113,6 +113,45 @@ fn leak_str(s: &str) -> &'static str {
     Box::leak(s.to_owned().into_boxed_str())
 }
 
+/// The bytes of a file, kept in wasm memory and filled from JavaScript chunk by
+/// chunk. This lets a large file be loaded without ever holding it in full on
+/// the JavaScript side and then copying it into wasm memory in one go.
+///
+/// Pass it to `Model.fromBuffer` or `Model.fromXlsxBuffer`, which consume it.
+#[wasm_bindgen]
+pub struct ByteBuffer {
+    bytes: Vec<u8>,
+}
+
+#[wasm_bindgen]
+impl ByteBuffer {
+    /// Creates an empty buffer with room for `capacity` bytes. Throws if that
+    /// much memory is not available, instead of trapping later.
+    #[wasm_bindgen(constructor)]
+    pub fn new(capacity: usize) -> Result<ByteBuffer, JsError> {
+        let mut bytes = Vec::new();
+        bytes
+            .try_reserve_exact(capacity)
+            .map_err(|_| to_js_error(format!("Not enough memory for {capacity} bytes")))?;
+        Ok(ByteBuffer { bytes })
+    }
+
+    /// Appends a chunk of the file
+    pub fn append(&mut self, chunk: &[u8]) -> Result<(), JsError> {
+        self.bytes
+            .try_reserve(chunk.len())
+            .map_err(|_| to_js_error("Not enough memory to append to the buffer".to_string()))?;
+        self.bytes.extend_from_slice(chunk);
+        Ok(())
+    }
+
+    /// Number of bytes appended so far
+    #[wasm_bindgen(getter)]
+    pub fn length(&self) -> usize {
+        self.bytes.len()
+    }
+}
+
 #[wasm_bindgen]
 pub struct Model {
     model: BaseModel<'static>,
@@ -137,9 +176,18 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "fromBytes")]
-    pub fn from_bytes(bytes: &[u8], language_id: &str) -> Result<Model, JsError> {
+    pub fn from_bytes(bytes: Vec<u8>, language_id: &str) -> Result<Model, JsError> {
         let language_id = leak_str(language_id);
-        let model = BaseModel::from_bytes(bytes, language_id).map_err(to_js_error)?;
+        let model = BaseModel::from_bytes_owned(bytes, language_id).map_err(to_js_error)?;
+        Ok(Model { model })
+    }
+
+    /// Loads a workbook from a `ByteBuffer` filled chunk by chunk, consuming
+    /// the buffer. See `ByteBuffer`.
+    #[wasm_bindgen(js_name = "fromBuffer")]
+    pub fn from_buffer(buffer: ByteBuffer, language_id: &str) -> Result<Model, JsError> {
+        let language_id = leak_str(language_id);
+        let model = BaseModel::from_bytes_owned(buffer.bytes, language_id).map_err(to_js_error)?;
         Ok(Model { model })
     }
 
@@ -156,6 +204,30 @@ impl Model {
     ) -> Result<Model, JsError> {
         let workbook = ironcalc::import::load_from_xlsx_bytes(bytes, name, locale, timezone)
             .map_err(|e| to_js_error(e.to_string()))?;
+        let language_id = leak_str(language_id);
+        let calc_model =
+            ironcalc_base::Model::from_workbook(workbook, language_id).map_err(to_js_error)?;
+        Ok(Model {
+            model: BaseModel::from_model(calc_model),
+        })
+    }
+
+    /// Loads a workbook from the bytes of an xlsx file in a `ByteBuffer` filled
+    /// chunk by chunk, consuming the buffer. See `ByteBuffer`.
+    /// Only available in `@ironcalc/wasm-xlsx`.
+    #[cfg(feature = "xlsx")]
+    #[wasm_bindgen(js_name = "fromXlsxBuffer")]
+    pub fn from_xlsx_buffer(
+        buffer: ByteBuffer,
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<Model, JsError> {
+        let workbook =
+            ironcalc::import::load_from_xlsx_bytes(&buffer.bytes, name, locale, timezone)
+                .map_err(|e| to_js_error(e.to_string()))?;
+        drop(buffer);
         let language_id = leak_str(language_id);
         let calc_model =
             ironcalc_base::Model::from_workbook(workbook, language_id).map_err(to_js_error)?;

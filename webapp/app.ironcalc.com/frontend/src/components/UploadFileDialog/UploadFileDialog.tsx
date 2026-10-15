@@ -13,7 +13,7 @@ function UploadFileDialog({
   onModelUpload,
 }: {
   onClose: () => void;
-  onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
+  onModelUpload: (file: File) => Promise<void>;
 }) {
   const [hover, setHover] = useState(false);
   const [message, setMessage] = useState("");
@@ -53,16 +53,11 @@ function UploadFileDialog({
     setMessage(
       t("file_bar.file_menu.import.importing", { fileName: file.name }),
     );
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        await onModelUpload(reader.result as ArrayBuffer, file.name);
-        onClose();
-      } catch (e) {
+    onModelUpload(file)
+      .then(onClose)
+      .catch((e) => {
         setMessage(`${e}`);
-      }
-    };
-    reader.readAsArrayBuffer(file);
+      });
   };
 
   const handleDrop = (event: DragEvent<HTMLElement>) => {

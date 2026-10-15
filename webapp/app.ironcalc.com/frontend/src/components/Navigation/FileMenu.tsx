@@ -40,7 +40,7 @@ export function FileMenu(props: {
   newModel: () => void;
   newModelFromTemplate: () => void;
   onDownload: () => void;
-  onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
+  onModelUpload: (file: File) => Promise<void>;
   onDelete: () => void;
   isReadOnly: boolean;
   canDownload: boolean;
