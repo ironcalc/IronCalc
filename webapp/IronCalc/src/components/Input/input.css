@@ -96,6 +96,10 @@
   color: var(--palette-grey-400);
 }
 
+.ic-input-control > input:disabled::placeholder {
+  color: var(--palette-grey-500);
+}
+
 .ic-input-control.sm > input {
   padding: 0 8px;
 }
