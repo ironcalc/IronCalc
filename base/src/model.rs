@@ -1,7 +1,7 @@
 #![deny(missing_docs)]
 
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::vec::Vec;
 
@@ -3604,6 +3604,73 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
+    /// Adds several defined names at once. Each entry is `(name, scope,
+    /// formula)` with the same meaning as in [`Model::new_defined_name`].
+    ///
+    /// Unlike calling `new_defined_name` once per name, the formulas are
+    /// re-parsed once for the whole batch and the model is not evaluated:
+    /// call [`Model::evaluate`] afterwards if values are needed. A formula in
+    /// the batch may refer to any other name in it. If any entry is invalid,
+    /// none of them is added.
+    pub fn new_defined_names(
+        &mut self,
+        names: &[(String, Option<u32>, String)],
+    ) -> Result<(), String> {
+        let mut taken: HashSet<(String, Option<u32>)> = self
+            .workbook
+            .defined_names
+            .iter()
+            .map(|df| (df.name.to_uppercase(), df.sheet_id))
+            .collect();
+        let mut added = Vec::with_capacity(names.len());
+        for (name, scope, formula) in names {
+            if !is_valid_identifier(name) {
+                return Err(format!("Name: Invalid defined name: {name}"));
+            }
+            let sheet_id = match scope {
+                Some(index) => match self.workbook.worksheet(*index) {
+                    Ok(ws) => Some(ws.sheet_id),
+                    Err(_) => return Err(format!("Scope: Invalid sheet index for {name}")),
+                },
+                None => None,
+            };
+            if !taken.insert((name.to_uppercase(), sheet_id)) {
+                return Err(format!("Name: Defined name already exists: {name}"));
+            }
+            added.push(DefinedName {
+                name: name.to_string(),
+                formula: formula.to_string(),
+                sheet_id,
+            });
+        }
+        let previous = self.workbook.defined_names.len();
+        self.workbook.defined_names.extend(added);
+        // The parser must know every new name before any of their formulas,
+        // which may refer to each other, is checked and converted.
+        self.parser.set_worksheets_and_names(
+            self.workbook.get_worksheet_names(),
+            self.workbook.get_defined_names_with_scope(),
+        );
+        let context = self.defined_name_context();
+        for i in previous..self.workbook.defined_names.len() {
+            let formula = self.workbook.defined_names[i].formula.clone();
+            let converted = self
+                .check_defined_name_formula(&formula)
+                .and_then(|_| self.user_formula_to_internal(&formula, &context));
+            match converted {
+                Ok(internal) => self.workbook.defined_names[i].formula = internal,
+                Err(e) => {
+                    let name = self.workbook.defined_names[i].name.clone();
+                    self.workbook.defined_names.truncate(previous);
+                    self.reset_parsed_structures_without_evaluating();
+                    return Err(format!("{e} (defined name {name})"));
+                }
+            }
+        }
+        self.reset_parsed_structures_without_evaluating();
+        Ok(())
+    }
+
     /// The context used to parse/stringify defined-name formulas. Defined names
     /// have no natural anchor cell, so we use the first worksheet's A1.
     pub(crate) fn defined_name_context(&self) -> CellReferenceRC {
@@ -3645,7 +3712,15 @@ impl<'a> Model<'a> {
             }
         }
 
-        // Make sure the formula is valid — accept cell/range references OR a LAMBDA definition.
+        self.check_defined_name_formula(formula)?;
+
+        Ok(sheet_id)
+    }
+
+    /// Checks that a defined-name formula is a cell/range reference or a
+    /// LAMBDA definition.
+    fn check_defined_name_formula(&mut self, formula: &str) -> Result<(), String> {
+        // Accept — accept cell/range references OR a LAMBDA definition.
         let is_reference =
             common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
                 self.get_sheet_index_by_name(name)
@@ -3678,8 +3753,7 @@ impl<'a> Model<'a> {
                 return Err("Formula: Invalid defined name formula".to_string());
             }
         }
-
-        Ok(sheet_id)
+        Ok(())
     }
 
     /// Delete defined name of name and scope
