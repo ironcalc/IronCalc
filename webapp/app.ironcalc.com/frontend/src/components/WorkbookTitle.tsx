@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useSelectedUuid } from "./useStorage";
 
 import "./workbook-title.css";
 
@@ -16,12 +15,11 @@ export function WorkbookTitle(properties: {
   name: string;
   onNameChange: (name: string) => void;
   maxWidth: number;
+  readOnly: boolean;
 }) {
   const [width, setWidth] = useState(0);
   const [name, setName] = useState(properties.name);
   const mirrorDivRef = useRef<HTMLDivElement>(null);
-  // Workbooks opened from a link can't be renamed until a copy is saved
-  const selectedUuid = useSelectedUuid();
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setName(event.target.value);
@@ -48,7 +46,7 @@ export function WorkbookTitle(properties: {
       <input
         className="app-ic-workbook-title-input"
         value={name}
-        readOnly={!selectedUuid}
+        readOnly={properties.readOnly}
         onChange={handleChange}
         onBlur={(event) => {
           properties.onNameChange(event.target.value);

@@ -46,6 +46,7 @@ interface MobileMenuProps {
   onDownload: () => Promise<void>;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
+  isReadOnly: boolean;
   onLanguageChange: (language: string) => void;
   themeMode: ThemeMode;
   onThemeModeChange: (mode: ThemeMode) => void;
@@ -105,7 +106,7 @@ export function MobileMenu(props: MobileMenuProps) {
         </MenuItem>
         <MenuItem
           destructive
-          disabled={!selectedUuid}
+          disabled={props.isReadOnly}
           icon={<Trash2 />}
           onClick={() => setDeleteDialogOpen(true)}
         >

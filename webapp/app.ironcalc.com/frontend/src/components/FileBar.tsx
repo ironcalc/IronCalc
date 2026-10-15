@@ -25,6 +25,7 @@ export function FileBar(properties: {
   setModel: (key: string) => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
+  isReadOnly: boolean;
   isDrawerOpen: boolean;
   setIsDrawerOpen: (open: boolean) => void;
   onLanguageChange: (language: string) => void;
@@ -82,6 +83,7 @@ export function FileBar(properties: {
           onDownload={handleDownload}
           onModelUpload={properties.onModelUpload}
           onDelete={properties.onDelete}
+          isReadOnly={properties.isReadOnly}
           onLanguageChange={properties.onLanguageChange}
           themeMode={properties.themeMode}
           onThemeModeChange={properties.onThemeModeChange}
@@ -94,6 +96,7 @@ export function FileBar(properties: {
             onModelUpload={properties.onModelUpload}
             onDownload={handleDownload}
             onDelete={properties.onDelete}
+            isReadOnly={properties.isReadOnly}
             isOpen={openMenu === "file"}
             onOpen={() => setOpenMenu("file")}
             onClose={closeMenus}
@@ -120,13 +123,17 @@ export function FileBar(properties: {
             );
           }}
           maxWidth={maxTitleWidth}
+          readOnly={properties.isReadOnly}
         />
       </div>
       <div ref={spacerRef} className="app-ic-file-bar-spacer" />
       <div className="app-ic-file-bar-right">
         <StorageWarning />
         <div className="app-ic-file-bar-dialog-container">
-          <ShareButton onClick={() => setIsDialogOpen(true)} />
+          <ShareButton
+            onClick={() => setIsDialogOpen(true)}
+            disabled={properties.isReadOnly}
+          />
           {isDialogOpen && (
             <ShareWorkbookDialog
               onClose={() => setIsDialogOpen(false)}
