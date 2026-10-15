@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileBar } from "./components/FileBar";
 import LeftDrawer from "./components/LeftDrawer/LeftDrawer";
+import { NoticeBar } from "./components/NoticeBar";
 import {
   get_documentation_model,
   get_model,
@@ -41,7 +42,6 @@ import {
   type ThemeMode,
   watchSystemDarkMode,
 } from "./components/storage";
-import { UnsavedWorkbookBar } from "./components/UnsavedWorkbookBar";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
 
@@ -289,7 +289,13 @@ function App() {
           themeMode={themeMode}
           onThemeModeChange={handleThemeModeChange}
         />
-        {isReadOnly && <UnsavedWorkbookBar onSaveCopy={handleSaveCopy} />}
+        {isReadOnly && (
+          <NoticeBar
+            message={t("unsaved_bar.message")}
+            actionLabel={t("unsaved_bar.save_copy")}
+            onAction={handleSaveCopy}
+          />
+        )}
         <IronCalc
           model={model}
           ref={ironCalcRef}
