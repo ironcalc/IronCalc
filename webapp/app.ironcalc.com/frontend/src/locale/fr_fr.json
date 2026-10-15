@@ -12,6 +12,9 @@
     "message": "Vous consultez un classeur en lecture seule. Enregistrez une copie pour le modifier.",
     "save_copy": "Enregistrer une copie"
   },
+  "session_only_bar": {
+    "message": "Ce classeur est trop volumineux pour être enregistré dans le navigateur. Les modifications seront perdues à la fermeture de l'onglet."
+  },
   "welcome_dialog": {
     "title": "Bienvenue sur IronCalc",
     "subtitle": "Commencez avec un classeur vierge ou un modèle prêt à l'emploi.",

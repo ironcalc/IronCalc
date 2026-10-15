@@ -43,8 +43,8 @@ function WelcomeDialog({
       return;
     }
     const arrayBuffer = await file.arrayBuffer();
+    // The handler closes the dialog once the workbook is open
     await onModelUpload(arrayBuffer, file.name);
-    onClose();
   };
 
   return createPortal(

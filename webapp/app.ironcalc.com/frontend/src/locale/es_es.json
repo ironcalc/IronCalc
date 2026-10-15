@@ -12,6 +12,9 @@
     "message": "Estás viendo un libro de solo lectura. Guarda una copia para editarlo.",
     "save_copy": "Guardar una copia"
   },
+  "session_only_bar": {
+    "message": "Este libro es demasiado grande para guardarse en el navegador. Los cambios se perderán al cerrar la pestaña."
+  },
   "welcome_dialog": {
     "title": "Bienvenido a IronCalc",
     "subtitle": "Comienza con un libro en blanco o una plantilla prediseñada.",

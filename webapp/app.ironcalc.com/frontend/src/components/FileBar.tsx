@@ -36,6 +36,8 @@ export function FileBar(properties: {
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
   isReadOnly: boolean;
+  // Large workbook kept in memory only: nothing is saved, shared or exported
+  isSessionOnly: boolean;
   isDrawerOpen: boolean;
   setIsDrawerOpen: (open: boolean) => void;
   onLanguageChange: (language: string) => void;
@@ -48,6 +50,7 @@ export function FileBar(properties: {
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
   const { t } = useTranslation();
+  const isLocked = properties.isReadOnly || properties.isSessionOnly;
   const handleDownload = () => {
     const model = properties.model;
     downloadXlsx(model, model.getName());
@@ -91,7 +94,8 @@ export function FileBar(properties: {
           onDownload={handleDownload}
           onModelUpload={properties.onModelUpload}
           onDelete={properties.onDelete}
-          isReadOnly={properties.isReadOnly}
+          isReadOnly={isLocked}
+          canDownload={!properties.isSessionOnly}
           onLanguageChange={properties.onLanguageChange}
           themeMode={properties.themeMode}
           onThemeModeChange={properties.onThemeModeChange}
@@ -104,7 +108,8 @@ export function FileBar(properties: {
             onModelUpload={properties.onModelUpload}
             onDownload={handleDownload}
             onDelete={properties.onDelete}
-            isReadOnly={properties.isReadOnly}
+            isReadOnly={isLocked}
+            canDownload={!properties.isSessionOnly}
             isOpen={openMenu === "file"}
             onOpen={() => setOpenMenu("file")}
             onClose={closeMenus}
@@ -167,7 +172,7 @@ export function FileBar(properties: {
             );
           }}
           maxWidth={maxTitleWidth}
-          readOnly={properties.isReadOnly}
+          readOnly={isLocked}
         />
       </div>
       <div ref={spacerRef} className="app-ic-file-bar-spacer" />
@@ -176,7 +181,7 @@ export function FileBar(properties: {
         <div className="app-ic-file-bar-dialog-container">
           <ShareButton
             onClick={() => setIsDialogOpen(true)}
-            disabled={properties.isReadOnly}
+            disabled={isLocked}
           />
           {isDialogOpen && (
             <ShareWorkbookDialog
