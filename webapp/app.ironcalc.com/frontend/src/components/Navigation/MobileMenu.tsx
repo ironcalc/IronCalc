@@ -46,6 +46,7 @@ interface MobileMenuProps {
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
   isReadOnly: boolean;
+  canDownload: boolean;
   onLanguageChange: (language: string) => void;
   themeMode: ThemeMode;
   onThemeModeChange: (mode: ThemeMode) => void;
@@ -100,7 +101,11 @@ export function MobileMenu(props: MobileMenuProps) {
           {t("file_bar.file_menu.import.button")}
         </MenuItem>
         <MenuDivider />
-        <MenuItem icon={<FileDown />} onClick={() => props.onDownload()}>
+        <MenuItem
+          disabled={!props.canDownload}
+          icon={<FileDown />}
+          onClick={() => props.onDownload()}
+        >
           {t("file_bar.file_menu.download")}
         </MenuItem>
         <MenuItem

@@ -54,6 +54,10 @@ function App() {
   // A workbook opened from a link (?model= or ?example=) stays read-only until
   // a copy is saved. Every handler that opens another workbook must reset it.
   const [isReadOnly, setIsReadOnly] = useState(false);
+  // A workbook above MAX_PERSISTED_WORKBOOK_BYTES is kept in memory only:
+  // serializing it for IndexedDB needs more memory than wasm32 allows. It can
+  // be edited, but nothing is saved, shared or exported.
+  const [isSessionOnly, setIsSessionOnly] = useState(false);
   // Guards against overlapping autosaves and repeated error alerts.
   const isSavingRef = useRef(false);
   const saveErrorReportedRef = useRef(false);
@@ -171,7 +175,7 @@ function App() {
   }, [model]);
 
   useEffect(() => {
-    if (!model) return;
+    if (!model || isSessionOnly) return;
     // We try to save the model every second
     const interval = setInterval(() => {
       if (isSavingRef.current) {
@@ -189,7 +193,7 @@ function App() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [model, reportSaveError]);
+  }, [model, isSessionOnly, reportSaveError]);
 
   if (!model) {
     return (
@@ -205,7 +209,26 @@ function App() {
   const showLocalModel = (localModel: Model) => {
     setModel(localModel);
     setIsReadOnly(false);
+    setIsSessionOnly(false);
     window.history.replaceState(null, "", window.location.pathname);
+  };
+
+  // Opens an imported .xlsx or .ic file as a new local workbook. Files above
+  // MAX_PERSISTED_WORKBOOK_BYTES are not stored, see isSessionOnly.
+  const openImportedFile = async (
+    arrayBuffer: ArrayBuffer,
+    fileName: string,
+  ) => {
+    const newModel = createModelFromFile(new Uint8Array(arrayBuffer), fileName);
+    if (arrayBuffer.byteLength > MAX_PERSISTED_WORKBOOK_BYTES) {
+      // Saves and renames go to the selected workbook, so none must be selected
+      clearSelectedUuid();
+      showLocalModel(newModel);
+      setIsSessionOnly(true);
+      return;
+    }
+    await saveModelToStorage(newModel);
+    showLocalModel(newModel);
   };
 
   // Handlers for model changes that also update our models state
@@ -265,14 +288,7 @@ function App() {
         <FileBar
           model={model}
           ironCalcRef={ironCalcRef}
-          onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
-            const newModel = createModelFromFile(
-              new Uint8Array(arrayBuffer),
-              fileName,
-            );
-            await saveModelToStorage(newModel);
-            showLocalModel(newModel);
-          }}
+          onModelUpload={openImportedFile}
           newModel={handleNewModel}
           newModelFromTemplate={() => {
             setTemplatesDialogOpen(true);
@@ -280,6 +296,7 @@ function App() {
           setModel={handleSetModel}
           onDelete={handleDeleteModel}
           isReadOnly={isReadOnly}
+          isSessionOnly={isSessionOnly}
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
           onLanguageChange={handleLanguageChange}
@@ -293,6 +310,7 @@ function App() {
             onAction={handleSaveCopy}
           />
         )}
+        {isSessionOnly && <NoticeBar message={t("session_only_bar.message")} />}
         <IronCalc
           model={model}
           ref={ironCalcRef}
@@ -320,13 +338,9 @@ function App() {
             setShowWelcomeDialog(false);
             setTemplatesDialogOpen(true);
           }}
-          onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
-            const newModel = createModelFromFile(
-              new Uint8Array(arrayBuffer),
-              fileName,
-            );
-            await saveModelToStorage(newModel);
-            setModel(newModel);
+          onModelUpload={async (arrayBuffer, fileName) => {
+            await openImportedFile(arrayBuffer, fileName);
+            setShowWelcomeDialog(false);
           }}
           onSelectTemplate={async (templateId) => {
             switch (templateId) {
@@ -371,6 +385,10 @@ function App() {
 }
 
 const DRAWER_WIDTH = 264;
+// Imported files larger than this are not stored in the browser (session only).
+// A model of that size plus its serialized bytes gets close to the 4GB wasm32
+// memory limit.
+const MAX_PERSISTED_WORKBOOK_BYTES = 200 * 1024 * 1024;
 export const MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE = 768;
 
 export default App;

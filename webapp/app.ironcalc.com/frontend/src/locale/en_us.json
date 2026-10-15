@@ -12,6 +12,9 @@
     "message": "You're viewing a read-only workbook. Save a copy to edit it.",
     "save_copy": "Save a copy"
   },
+  "session_only_bar": {
+    "message": "This workbook is too large to be stored in the browser. Changes are lost when you close the tab."
+  },
   "welcome_dialog": {
     "title": "Welcome to IronCalc",
     "subtitle": "Start fresh, bring your data, or explore what's possible.",

@@ -12,6 +12,9 @@
     "message": "Sie sehen eine schreibgeschützte Arbeitsmappe. Speichern Sie eine Kopie, um sie zu bearbeiten.",
     "save_copy": "Kopie speichern"
   },
+  "session_only_bar": {
+    "message": "Diese Arbeitsmappe ist zu groß, um im Browser gespeichert zu werden. Änderungen gehen beim Schließen des Tabs verloren."
+  },
   "welcome_dialog": {
     "title": "Willkommen bei IronCalc",
     "subtitle": "Beginnen Sie mit einer leeren Arbeitsmappe oder einer fertigen Vorlage.",
