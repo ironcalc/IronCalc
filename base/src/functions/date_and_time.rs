@@ -26,6 +26,59 @@ fn last_day_of_feb(year: i32) -> u32 {
 // leap-year bug") so DAYS360 matches Excel for early-1900 serials. Returns
 // `None` when the serial is outside `0..=MAXIMUM_DATE_SERIAL_NUMBER`, which Excel
 // reports as `#NUM!`.
+
+/// Excel serial for a civil (proleptic Gregorian) date, including the fictional
+/// 29 February 1900 leap day. `1900-01-01` is serial 1.
+fn civil_date_to_excel_serial(year: i32, month: u32, day: u32) -> Result<i32, String> {
+    if year == 1900 && month == 2 && day == 29 {
+        return Ok(60);
+    }
+    let date = match chrono::NaiveDate::from_ymd_opt(year, month, day) {
+        Some(d) => d,
+        None => return Err("EOMONTH out of bounds".to_string()),
+    };
+    let jan1 = chrono::NaiveDate::from_ymd_opt(1900, 1, 1).expect("1900-01-01 is valid");
+    let mut serial = (date - jan1).num_days() as i32 + 1;
+    if date >= chrono::NaiveDate::from_ymd_opt(1900, 3, 1).expect("1900-03-01 is valid") {
+        // Excel inserts a fake 29 Feb 1900 at serial 60; shift later dates by one.
+        serial += 1;
+    }
+    if !(MINIMUM_DATE_SERIAL_NUMBER..=MAXIMUM_DATE_SERIAL_NUMBER).contains(&serial) {
+        return Err("EOMONTH out of bounds".to_string());
+    }
+    Ok(serial)
+}
+
+/// Last day of `year`/`month` as an Excel serial (1900 leap-bug aware).
+fn excel_end_of_month_serial(year: i32, month: u32) -> Result<i32, String> {
+    if year == 1900 && month == 2 {
+        return Ok(60);
+    }
+    let (next_year, next_month) = if month == 12 {
+        (year + 1, 1)
+    } else {
+        (year, month + 1)
+    };
+    let first_next = match chrono::NaiveDate::from_ymd_opt(next_year, next_month, 1) {
+        Some(d) => d,
+        None => return Err("EOMONTH out of bounds".to_string()),
+    };
+    let last = first_next - chrono::Duration::days(1);
+    civil_date_to_excel_serial(last.year(), last.month(), last.day())
+}
+
+/// `EOMONTH` starting at Excel serial 0 ("0 January 1900"): last day of
+/// January 1900 shifted by `months`. See #1409.
+fn eomonth_from_excel_serial_zero(months: i32) -> Result<i32, String> {
+    let month_index = i64::from(months); // 0 = January 1900
+    let year = 1900 + month_index.div_euclid(12);
+    if year < 1900 || year > 9999 {
+        return Err("EOMONTH out of bounds".to_string());
+    }
+    let month = (month_index.rem_euclid(12) + 1) as u32;
+    excel_end_of_month_serial(year as i32, month)
+}
+
 fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
     if !(0..=MAXIMUM_DATE_SERIAL_NUMBER as i64).contains(&serial) {
         return None;
@@ -747,6 +800,15 @@ impl<'a> Model<'a> {
         if args_count != 2 {
             return CalcResult::new_args_number_error(cell);
         }
+        // Excel: an omitted start date (`EOMONTH(, n)`) is #N/A. A blank cell and
+        // serial 0 are valid (`0` January 1900) — see #1409.
+        if matches!(&args[0], Node::EmptyArgKind) {
+            return CalcResult::Error {
+                error: Error::NA,
+                origin: cell,
+                message: "EOMONTH start_date is omitted".to_string(),
+            };
+        }
         let serial_number = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => {
                 let t = c.floor() as i64;
@@ -760,10 +822,6 @@ impl<'a> Model<'a> {
                 t
             }
             Err(s) => return s,
-        };
-        let date = match self.excel_date(serial_number, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
         };
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
             return CalcResult::Error {
@@ -788,6 +846,27 @@ impl<'a> Model<'a> {
                 t as i32
             }
             Err(s) => return s,
+        };
+
+        // Serial 0 is below MINIMUM_DATE_SERIAL_NUMBER (1), but Excel still accepts
+        // it for EOMONTH ("0 January 1900"). Use Excel serial arithmetic so
+        // `EOMONTH(0, 0)` → 31 and `EOMONTH(0, 7)` → 244 (#1409). Chrono's
+        // 1900-01-01 maps to IronCalc serial 2, so the shared excel_date path
+        // cannot express serial 0.
+        if serial_number == 0 {
+            return match eomonth_from_excel_serial_zero(months) {
+                Ok(n) => CalcResult::Number(n as f64),
+                Err(message) => CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message,
+                },
+            };
+        }
+
+        let date = match self.excel_date(serial_number, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
 
         let months_abs = months.unsigned_abs();
