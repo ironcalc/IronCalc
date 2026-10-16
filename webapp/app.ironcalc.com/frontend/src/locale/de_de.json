@@ -22,7 +22,7 @@
     "new": "Neu",
     "blank_workbook": "Leere Arbeitsmappe",
     "import_workbook": "Arbeitsmappe importieren",
-    "storage_warning": "<warn>Achtung!</warn> Diese App ist ein Proof of Concept und kein fertiges Produkt. Sie können Modelle gerne erkunden, teilen sowie hoch- und herunterladen, aber teilen oder laden Sie keine Modelle mit sensiblen oder privaten Daten hoch. Daten werden regelmäßig gelöscht. <docsLink>Mehr erfahren</docsLink>",
+    "storage_warning": "<warn>Achtung!</warn> Diese App ist ein Proof of Concept und kein fertiges Produkt. Ihre Arbeitsmappen werden nur in diesem Browser gespeichert und Ihre Daten verlassen ihn nie. Wenn Sie die Browserdaten löschen, werden sie entfernt. <docsLink>Mehr erfahren</docsLink>",
     "templates": {
       "choose_template": "Vorlage auswählen",
       "templates": "Vorlagen",
@@ -79,14 +79,14 @@
     "cancel": "Abbrechen",
     "delete_workbooks_one": "{{count}} Arbeitsmappe löschen",
     "delete_workbooks_other": "{{count}} Arbeitsmappen löschen",
-    "bulk_delete_message_one": "Diese Arbeitsmappe wird dauerhaft gelöscht. Bereits geteilte Links funktionieren weiterhin.",
-    "bulk_delete_message_other": "{{count}} Arbeitsmappen werden dauerhaft gelöscht. Bereits geteilte Links funktionieren weiterhin.",
+    "bulk_delete_message_one": "Diese Arbeitsmappe wird dauerhaft gelöscht.",
+    "bulk_delete_message_other": "{{count}} Arbeitsmappen werden dauerhaft gelöscht.",
     "select_workbook": "{{name}} auswählen"
   },
   "file_bar": {
     "open_sidebar": "Seitenleiste öffnen",
     "close_sidebar": "Seitenleiste schließen",
-    "cloud_warning": "<warn>Achtung!</warn> Diese App ist ein Proof of Concept und kein fertiges Produkt. Experimentieren, teilen sowie hoch- und herunterladen Sie Modelle gerne, aber teilen oder laden Sie keine Modelle mit sensiblen oder privaten Daten hoch. Daten werden regelmäßig gelöscht.",
+    "cloud_warning": "<warn>Achtung!</warn> Diese App ist ein Proof of Concept und kein fertiges Produkt. Ihre Arbeitsmappen werden nur in diesem Browser gespeichert und Ihre Daten verlassen ihn nie. Wenn Sie die Browserdaten löschen, werden sie entfernt.",
     "file_menu": {
       "button": "Datei",
       "new_blank_workbook": "Neue leere Arbeitsmappe",
@@ -106,7 +106,7 @@
         "button": "Arbeitsmappe löschen",
         "title": "Sind Sie sicher?",
         "subtitle": "Die Arbeitsmappe '{{workbookName}}' wird dauerhaft gelöscht.",
-        "warning": "Diese Aktion kann nicht rückgängig gemacht werden. Bereits geteilte Links funktionieren weiterhin.",
+        "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
         "confirm_button": "Ja, löschen",
         "cancel_button": "Abbrechen"
       },
@@ -194,12 +194,6 @@
       "about": "Über IronCalc",
       "documentation": "Dokumentation",
       "keyboard_shortcuts": "Tastaturkürzel"
-    },
-    "share_popover": {
-      "button": "Teilen",
-      "copy_url": "URL kopieren",
-      "copied": "Kopiert!",
-      "info_text": "Jeder mit dem Link kann auf eine Kopie dieser Arbeitsmappe zugreifen. Geteilte Links können nicht gelöscht werden."
     }
   },
   "loading_screen": {

@@ -97,7 +97,8 @@
   color: var(--palette-grey-600);
 }
 
-.app-ic-file-bar-dialog-container {
-  position: relative;
-  display: inline-block;
+@media (max-width: 600px) {
+  .app-ic-margaret-link-text {
+    display: none;
+  }
 }

@@ -8,6 +8,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
+import { MargaretLink } from "./MargaretLink";
 import { EditMenu } from "./Navigation/EditMenu";
 import { FileMenu } from "./Navigation/FileMenu";
 import { FormatMenu } from "./Navigation/FormatMenu";
@@ -15,8 +16,6 @@ import { HelpMenu } from "./Navigation/HelpMenu";
 import { InsertMenu } from "./Navigation/InsertMenu";
 import { MobileMenu } from "./Navigation/MobileMenu";
 import { ViewMenu } from "./Navigation/ViewMenu";
-import { ShareButton } from "./ShareWorkbook/ShareButton";
-import ShareWorkbookDialog from "./ShareWorkbook/ShareDialog";
 import { StorageWarning } from "./StorageWarning";
 import { type ThemeMode, updateNameSelectedWorkbook } from "./storage";
 import { useWindowWidth } from "./useWindowWidth";
@@ -44,7 +43,6 @@ export function FileBar(properties: {
   themeMode: ThemeMode;
   onThemeModeChange: (mode: ThemeMode) => void;
 }) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const spacerRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
@@ -178,18 +176,7 @@ export function FileBar(properties: {
       <div ref={spacerRef} className="app-ic-file-bar-spacer" />
       <div className="app-ic-file-bar-right">
         <StorageWarning />
-        <div className="app-ic-file-bar-dialog-container">
-          <ShareButton
-            onClick={() => setIsDialogOpen(true)}
-            disabled={isLocked}
-          />
-          {isDialogOpen && (
-            <ShareWorkbookDialog
-              onClose={() => setIsDialogOpen(false)}
-              model={properties.model}
-            />
-          )}
-        </div>
+        <MargaretLink />
       </div>
     </div>
   );

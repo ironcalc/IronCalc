@@ -22,7 +22,7 @@
     "new": "New",
     "blank_workbook": "Blank workbook",
     "import_workbook": "Import workbook",
-    "storage_warning": "<warn>Warning!</warn> This app is a proof of concept, not a finished product. Feel free to explore, share, and upload/download models, but don't share or upload models with sensitive or private data. Data will be deleted periodically. <docsLink>Read more</docsLink>",
+    "storage_warning": "<warn>Warning!</warn> This app is a proof of concept, not a finished product. Your workbooks are stored only in this browser and your data never leaves it. Clearing your browser data will delete them. <docsLink>Read more</docsLink>",
     "templates": {
       "choose_template": "Choose a template",
       "templates": "Templates",
@@ -79,14 +79,14 @@
     "cancel": "Cancel",
     "delete_workbooks_one": "Delete {{count}} workbook",
     "delete_workbooks_other": "Delete {{count}} workbooks",
-    "bulk_delete_message_one": "This workbook will be permanently deleted. Links you've shared will keep working.",
-    "bulk_delete_message_other": "{{count}} workbooks will be permanently deleted. Links you've shared will keep working.",
+    "bulk_delete_message_one": "This workbook will be permanently deleted.",
+    "bulk_delete_message_other": "{{count}} workbooks will be permanently deleted.",
     "select_workbook": "Select {{name}}"
   },
   "file_bar": {
     "open_sidebar": "Open sidebar",
     "close_sidebar": "Close sidebar",
-    "cloud_warning": "<warn>Warning!</warn> This app is a proof of concept, not a finished product. Feel free to explore, share, and upload/download models, but don't share or upload models with sensitive or private data. Data will be deleted periodically.",
+    "cloud_warning": "<warn>Warning!</warn> This app is a proof of concept, not a finished product. Your workbooks are stored only in this browser and your data never leaves it. Clearing your browser data will delete them.",
     "file_menu": {
       "button": "File",
       "new_blank_workbook": "New blank workbook",
@@ -106,7 +106,7 @@
         "button": "Delete workbook",
         "title": "Are you sure?",
         "subtitle": "The workbook '{{workbookName}}' will be permanently deleted.",
-        "warning": "This action cannot be undone. Links you've shared will keep working.",
+        "warning": "This action cannot be undone.",
         "confirm_button": "Yes, delete",
         "cancel_button": "Cancel"
       },
@@ -194,12 +194,6 @@
       "about": "About Ironcalc",
       "documentation": "Documentation",
       "keyboard_shortcuts": "Keyboard Shortcuts"
-    },
-    "share_popover": {
-      "button": "Share",
-      "copy_url": "Copy URL",
-      "copied": "Copied!",
-      "info_text": "Anyone with the link will be able to access a copy of this workbook. Shared links can't be deleted."
     }
   },
   "loading_screen": {
