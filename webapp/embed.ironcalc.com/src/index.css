@@ -9,6 +9,19 @@ body {
   overscroll-behavior: none;
 }
 
+/* Set by App.tsx. The colours mirror --palette-common-white/black in
+   darkThemeVariables so the page matches the workbook before it mounts. */
+html {
+  color-scheme: light;
+  background-color: #fff;
+  color: #272525;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  background-color: #1e1e1e;
+  color: #e8e6e3;
+}
+
 @font-face {
   font-display: swap;
   font-family: "Inter";
