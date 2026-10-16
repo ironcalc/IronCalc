@@ -1,6 +1,7 @@
 use statrs::distribution::{Continuous, ContinuousCDF, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -42,7 +43,7 @@ enum TTestTails {
     TwoTailed,
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // T.DIST(x, deg_freedom, cumulative)
     pub(crate) fn fn_t_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {

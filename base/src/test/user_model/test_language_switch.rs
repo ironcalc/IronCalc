@@ -8,7 +8,7 @@
 use crate::{
     cf_types::{CfRule, CfRuleInput},
     test::user_model::util::new_empty_user_model,
-    types::{Color, Dxf, Fill},
+    types::{Color, Dxf, Fill, RangeRef},
     UserModel,
 };
 
@@ -270,7 +270,7 @@ fn delete_row_displaces_cf_formulas_in_spanish_model() {
     model.delete_rows(0, 3, 1).unwrap();
 
     assert_eq!(
-        model.model.workbook.worksheets[0].conditional_formatting[0].range,
+        RangeRef::to_sqref(&model.model.workbook.worksheets[0].conditional_formatting[0].ranges),
         "A4:A13"
     );
     assert_eq!(stored_cf_formula(&model), "=IF($A4>5.5,TRUE,FALSE)");
@@ -303,7 +303,7 @@ fn delete_column_displaces_cf_formulas_in_spanish_model() {
     model.delete_columns(0, 3, 1).unwrap();
 
     assert_eq!(
-        model.model.workbook.worksheets[0].conditional_formatting[0].range,
+        RangeRef::to_sqref(&model.model.workbook.worksheets[0].conditional_formatting[0].ranges),
         "D1:D10"
     );
     assert_eq!(stored_cf_formula(&model), "=IF($D1>5.5,TRUE,FALSE)");

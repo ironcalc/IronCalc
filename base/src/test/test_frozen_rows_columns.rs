@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used)]
+// Both tests drive the worksheet record directly, which `collab-test` has no writer for.
+#![cfg(not(feature = "collab-test"))]
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::test::util::new_empty_model;

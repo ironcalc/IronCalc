@@ -9,9 +9,12 @@
 // These tests are about the lookup staying in step with the list.
 
 use crate::test::util::new_empty_model;
+#[cfg(not(feature = "collab-test"))]
 use crate::Model;
 
 /// The list and the lookup of a sheet say the same thing.
+// `collab-test` keeps `shared_formulas` as stable formulas, not the lookup's strings.
+#[cfg(not(feature = "collab-test"))]
 #[track_caller]
 fn assert_in_step(model: &Model, sheet: usize) {
     let shared_formulas = &model.workbook.worksheets[sheet].shared_formulas;
@@ -26,6 +29,8 @@ fn assert_in_step(model: &Model, sheet: usize) {
     assert_eq!(lookup.built_from, shared_formulas.len());
 }
 
+// Uses `assert_in_step`, which `collab-test` cannot build.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn the_same_formula_is_kept_once() {
     let mut model = new_empty_model();
@@ -74,6 +79,8 @@ fn many_different_formulas() {
 // twice in the list. The lookup then has fewer entries than the list, which
 // must not make it look out of step: it would be rebuilt for every new
 // formula, and adding many would be quadratic again.
+// Uses `assert_in_step`, which `collab-test` cannot build.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn a_formula_twice_in_the_list_does_not_slow_down_adding_formulas() {
     let mut model = new_empty_model();
@@ -107,6 +114,8 @@ fn a_formula_twice_in_the_list_does_not_slow_down_adding_formulas() {
 
 // Renaming a sheet rewrites the text of every formula that mentions it, in
 // place: the list keeps its length and changes its contents.
+// Uses `assert_in_step`, which `collab-test` cannot build.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn renaming_a_sheet_keeps_the_lookup_in_step() {
     let mut model = new_empty_model();
@@ -132,6 +141,8 @@ fn renaming_a_sheet_keeps_the_lookup_in_step() {
 
 // Adding and deleting sheets moves the sheets that follow: the lookup of a
 // sheet has to move with it.
+// Uses `assert_in_step`, which `collab-test` cannot build.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn adding_and_deleting_sheets_keeps_the_lookups_in_step() {
     let mut model = new_empty_model();
@@ -165,6 +176,8 @@ fn adding_and_deleting_sheets_keeps_the_lookups_in_step() {
 // Nothing is expected to put the lookup out of step, but the list is a public
 // field and the lookup is only an aid. A lookup that disagrees with the list
 // is not believed.
+// Uses `assert_in_step`, which `collab-test` cannot build.
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn a_lookup_out_of_step_is_not_believed() {
     let mut model = new_empty_model();

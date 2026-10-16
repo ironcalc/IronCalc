@@ -1,9 +1,10 @@
 use crate::expressions::types::CellReferenceIndex;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // PROB(x_range, prob_range, lower_limit, [upper_limit])
     // Returns the probability that values in x_range fall between lower_limit and upper_limit.
     pub(crate) fn fn_prob(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

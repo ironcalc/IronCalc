@@ -1,0 +1,767 @@
+#![allow(clippy::unwrap_used)]
+
+use crate::collab::model::{CollabModel, Stable};
+use crate::types::Ordinal;
+use crate::UserModel;
+
+fn pair() -> (UserModel<'static, Ordinal>, UserModel<'static, Stable>) {
+    let ordinal = UserModel::new_empty("model", "en", "UTC", "en").unwrap();
+    let stable = UserModel::new_empty_with_session("model", "en", "UTC", "en", 1).unwrap();
+    (ordinal, stable)
+}
+
+/// Compares everything the two wrappers are expected to answer identically over `rows` × `cols`.
+/// `step` names the call just made, so a failure says which one broke.
+fn compare(o: &UserModel, c: &UserModel<Stable>, rows: i32, cols: i32, step: &str) {
+    for row in 1..=rows {
+        for col in 1..=cols {
+            assert_eq!(
+                c.get_formatted_cell_value(0, row, col),
+                o.get_formatted_cell_value(0, row, col),
+                "value at ({row}, {col}) after {step}"
+            );
+            assert_eq!(
+                c.get_cell_content(0, row, col),
+                o.get_cell_content(0, row, col),
+                "content at ({row}, {col}) after {step}"
+            );
+            assert_eq!(
+                c.get_cell_style(0, row, col),
+                o.get_cell_style(0, row, col),
+                "style at ({row}, {col}) after {step}"
+            );
+        }
+        assert_eq!(
+            c.get_row_height(0, row),
+            o.get_row_height(0, row),
+            "height of row {row} after {step}"
+        );
+    }
+    for col in 1..=cols {
+        assert_eq!(
+            c.get_column_width(0, col),
+            o.get_column_width(0, col),
+            "width of column {col} after {step}"
+        );
+    }
+    assert_eq!(
+        c.get_frozen_rows_count(0),
+        o.get_frozen_rows_count(0),
+        "frozen rows after {step}"
+    );
+    assert_eq!(
+        c.get_frozen_columns_count(0),
+        o.get_frozen_columns_count(0),
+        "frozen columns after {step}"
+    );
+    assert_eq!(
+        c.get_worksheets_properties()
+            .iter()
+            .map(|p| p.name.clone())
+            .collect::<Vec<_>>(),
+        o.get_worksheets_properties()
+            .iter()
+            .map(|p| p.name.clone())
+            .collect::<Vec<_>>(),
+        "sheet names after {step}"
+    );
+}
+
+#[test]
+fn user_model_surface_matches() {
+    let (mut o, mut c) = pair();
+
+    for (row, col, value) in [
+        (1, 1, "10"),
+        (2, 1, "20"),
+        (3, 1, "text"),
+        (1, 2, "=A1+A2"),
+        (2, 2, "=B1*2"),
+        (3, 2, "=CONCAT(A3, \"!\")"),
+    ] {
+        o.set_user_input(0, row, col, value).unwrap();
+        c.set_user_input(0, row, col, value).unwrap();
+    }
+    compare(&o, &c, 4, 3, "set_user_input");
+
+    o.set_rows_height(0, 1, 3, 42.0).unwrap();
+    c.set_rows_height(0, 1, 3, 42.0).unwrap();
+    o.set_columns_width(0, 1, 2, 150.0).unwrap();
+    c.set_columns_width(0, 1, 2, 150.0).unwrap();
+    compare(&o, &c, 4, 3, "plural sizing");
+
+    o.set_frozen_rows_count(0, 1).unwrap();
+    c.set_frozen_rows_count(0, 1).unwrap();
+    o.set_frozen_columns_count(0, 2).unwrap();
+    c.set_frozen_columns_count(0, 2).unwrap();
+    compare(&o, &c, 4, 3, "frozen counts");
+
+    o.insert_rows(0, 2, 2).unwrap();
+    c.insert_rows(0, 2, 2).unwrap();
+    compare(&o, &c, 6, 3, "insert_rows");
+
+    o.delete_rows(0, 2, 1).unwrap();
+    c.delete_rows(0, 2, 1).unwrap();
+    compare(&o, &c, 6, 3, "delete_rows");
+
+    o.rename_sheet(0, "Data").unwrap();
+    c.rename_sheet(0, "Data").unwrap();
+    compare(&o, &c, 6, 3, "rename_sheet");
+
+    o.new_defined_name("total", None, "Data!$A$1").unwrap();
+    c.new_defined_name("total", None, "Data!$A$1").unwrap();
+    o.set_user_input(0, 5, 3, "=total").unwrap();
+    c.set_user_input(0, 5, 3, "=total").unwrap();
+    compare(&o, &c, 6, 3, "defined name");
+    // Something for the clear to remove. The wrapper's styling surface is a later round, so the
+    // style is written on the models themselves.
+    let mut style = o.get_cell_style(0, 1, 1).unwrap();
+    style.font.b = true;
+    for (row, col) in [(1, 1), (2, 2)] {
+        o.model.set_cell_style(0, row, col, &style).unwrap();
+        c.model.set_cell_style(0, row, col, &style).unwrap();
+    }
+    compare(&o, &c, 6, 3, "set_cell_style");
+
+    let range = crate::expressions::types::Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 2,
+        height: 3,
+    };
+    o.range_clear_formatting(&range).unwrap();
+    c.range_clear_formatting(&range).unwrap();
+    compare(&o, &c, 6, 3, "range_clear_formatting");
+}
+
+#[test]
+fn navigation_reads_stable_metrics() {
+    let (mut o, mut c) = pair();
+
+    o.set_rows_height(0, 1, 1, 200.0).unwrap();
+    c.set_rows_height(0, 1, 1, 200.0).unwrap();
+    o.set_columns_hidden(0, 2, 3, true).unwrap();
+    c.set_columns_hidden(0, 2, 3, true).unwrap();
+
+    // The hidden columns are skipped: B and C are gone, so the right arrow lands on D.
+    o.set_selected_cell(1, 1).unwrap();
+    c.set_selected_cell(1, 1).unwrap();
+    o.on_arrow_right().unwrap();
+    c.on_arrow_right().unwrap();
+    assert_eq!(o.get_selected_cell(), (0, 1, 4));
+    assert_eq!(c.get_selected_cell(), o.get_selected_cell());
+
+    o.on_arrow_down().unwrap();
+    c.on_arrow_down().unwrap();
+    assert_eq!(o.get_selected_cell(), (0, 2, 4));
+    assert_eq!(c.get_selected_cell(), o.get_selected_cell());
+
+    // The tall first row is what the scroll offset is made of.
+    assert_eq!(c.get_scroll_y(), o.get_scroll_y());
+    assert_eq!(c.get_column_width(0, 2), Ok(0.0));
+}
+
+#[test]
+fn plural_setters_are_idempotent() {
+    let mut model = CollabModel::new(1);
+    model.new_sheet();
+    let mut user_model = UserModel::<Stable>::from_model(model);
+
+    user_model.set_rows_height(0, 1, 5, 30.0).unwrap();
+    user_model.set_columns_width(0, 1, 4, 120.0).unwrap();
+    user_model.set_rows_hidden(0, 1, 5, true).unwrap();
+
+    assert_eq!(user_model.get_model().local.pending.len(), 4);
+    let pending = user_model.get_model().local.pending.len();
+
+    // The same calls again change nothing
+    user_model.set_rows_height(0, 1, 5, 30.0).unwrap();
+    user_model.set_columns_width(0, 1, 4, 120.0).unwrap();
+    user_model.set_rows_hidden(0, 1, 5, true).unwrap();
+    assert_eq!(user_model.get_model().local.pending.len(), pending);
+}
+
+/// Undoes on both wrappers and checks they still agree — including on what is undoable next.
+fn undo_both(o: &mut UserModel<'_, Ordinal>, c: &mut UserModel<'_, Stable>, step: &str) {
+    assert_eq!(c.can_undo(), o.can_undo(), "can_undo before {step}");
+    o.undo().unwrap();
+    c.undo().unwrap();
+    compare(o, c, 8, 4, step);
+}
+
+/// The mirror of [`undo_both`].
+fn redo_both(o: &mut UserModel<'_, Ordinal>, c: &mut UserModel<'_, Stable>, step: &str) {
+    assert_eq!(c.can_redo(), o.can_redo(), "can_redo before {step}");
+    o.redo().unwrap();
+    c.redo().unwrap();
+    compare(o, c, 8, 4, step);
+}
+
+/// Runs the same call on both wrappers and compares.
+macro_rules! both {
+    ($o:ident, $c:ident, $method:ident($($arg:expr),*), $step:expr) => {{
+        $o.$method($($arg),*).unwrap();
+        $c.$method($($arg),*).unwrap();
+        compare(&$o, &$c, 8, 4, $step);
+    }};
+}
+
+#[test]
+fn undo_redo_matches_ordinal() {
+    let (mut o, mut c) = pair();
+
+    // Undo and redo on an empty history: a no-op on both, not an error.
+    undo_both(&mut o, &mut c, "undo on an empty stack");
+    redo_both(&mut o, &mut c, "redo on an empty stack");
+
+    // A grid, including a multiline value: that one action is a write plus an auto-fit.
+    both!(o, c, set_user_input(0, 1, 1, "10"), "A1");
+    both!(o, c, set_user_input(0, 2, 1, "20"), "A2");
+    both!(o, c, set_user_input(0, 1, 2, "=A1+A2"), "B1");
+    both!(o, c, set_user_input(0, 3, 3, "line1\nline2"), "C3");
+    both!(o, c, insert_rows(0, 2, 2), "insert_rows");
+    both!(o, c, rename_sheet(0, "Data"), "rename_sheet");
+    both!(o, c, set_rows_height(0, 1, 3, 42.0), "set_rows_height");
+    both!(
+        o,
+        c,
+        new_defined_name("total", None, "Data!$A$1"),
+        "new_defined_name"
+    );
+
+    let steps = [
+        "undo new_defined_name",
+        "undo set_rows_height",
+        "undo rename_sheet",
+        "undo insert_rows",
+        "undo C3",
+        "undo B1",
+        "undo A2",
+        "undo A1",
+    ];
+    for step in steps {
+        undo_both(&mut o, &mut c, step);
+    }
+    for step in steps.iter().rev() {
+        redo_both(&mut o, &mut c, step);
+    }
+    assert!(!c.can_redo());
+    assert_eq!(c.can_redo(), o.can_redo());
+    redo_both(&mut o, &mut c, "redo past the top");
+
+    // Partial unwind, then a fresh edit: the redo branch is dropped on both.
+    for step in ["undo 1 of 3", "undo 2 of 3", "undo 3 of 3"] {
+        undo_both(&mut o, &mut c, step);
+    }
+    assert!(c.can_redo() && o.can_redo());
+    both!(o, c, set_user_input(0, 8, 4, "99"), "fresh edit");
+    assert!(!c.can_redo(), "a fresh edit clears the redo branch");
+    assert_eq!(c.can_redo(), o.can_redo());
+    undo_both(&mut o, &mut c, "undo the fresh edit");
+    redo_both(&mut o, &mut c, "redo the fresh edit");
+
+    // Something for the clear to remove. The wrapper's styling surface is a later round, so the
+    // style is written on the models themselves — outside either wrapper's history.
+    let mut style = o.get_cell_style(0, 1, 1).unwrap();
+    style.font.b = true;
+    for (row, col) in [(6, 1), (7, 2)] {
+        o.model.set_cell_style(0, row, col, &style).unwrap();
+        c.model.set_cell_style(0, row, col, &style).unwrap();
+    }
+    let range = crate::expressions::types::Area {
+        sheet: 0,
+        row: 6,
+        column: 1,
+        width: 2,
+        height: 2,
+    };
+    both!(
+        o,
+        c,
+        range_clear_formatting(&range),
+        "range_clear_formatting"
+    );
+    undo_both(&mut o, &mut c, "undo range_clear_formatting");
+    redo_both(&mut o, &mut c, "redo range_clear_formatting");
+    // The unwind stops here: undoing a value write un-materializes its cell under stable
+    // addressing, so a style that outlives the value — and the row itself — does not survive it.
+}
+
+#[test]
+fn redo_relowers_formulas_on_revived_rows() {
+    let mut c = UserModel::new_empty_with_session("model", "en", "UTC", "en", 1).unwrap();
+
+    c.set_user_input(0, 5, 1, "7").unwrap(); // A5=7
+    c.set_user_input(0, 1, 2, "=A5").unwrap(); // B1=A5
+    assert_eq!(c.get_formatted_cell_value(0, 1, 2).unwrap(), "7");
+
+    c.undo().unwrap(); // clears B1
+    c.undo().unwrap(); // clears A5 and deletes row 5's identity
+    let before = c.get_model().local.full_resyncs;
+    c.redo().unwrap(); // revives row 5
+    c.redo().unwrap(); // restores B1's formula over the revived key
+    assert!(
+        c.get_model().local.full_resyncs > before,
+        "a revival must take the structural resync path"
+    );
+    assert_eq!(c.get_formatted_cell_value(0, 1, 2).unwrap(), "7");
+
+    // The same commits arrive at a peer through `apply`: the revival is caught there too.
+    let mut b = UserModel::<Stable>::from_model(CollabModel::new(2));
+    b.apply_external_diffs(&c.flush_send_queue()).unwrap();
+    assert_eq!(b.get_cell_content(0, 1, 2).unwrap(), "=A5");
+    assert_eq!(b.get_formatted_cell_value(0, 1, 2).unwrap(), "7");
+}
+
+#[test]
+fn peers_converge_through_the_wire() {
+    let mut a = UserModel::<Stable>::from_model(CollabModel::new(1));
+    let mut b = UserModel::<Stable>::from_model(CollabModel::new(2));
+
+    a.new_sheet().unwrap();
+    a.set_user_input(0, 1, 1, "10").unwrap(); // A1=10
+    b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+    assert_eq!(b.get_formatted_cell_value(0, 1, 1).unwrap(), "10");
+    // B has nothing of its own to undo.
+    assert!(!b.can_undo() && !b.can_redo());
+
+    a.undo().unwrap(); // clear A1
+    b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+    assert_eq!(b.get_formatted_cell_value(0, 1, 1).unwrap(), "");
+    assert_eq!(a.get_model().workbook, b.get_model().workbook);
+
+    // The race: B writes A1 while A undoes its own earlier write of A1.
+    a.set_user_input(0, 1, 1, "1").unwrap(); // A: A1=1
+    b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+    b.set_user_input(0, 1, 1, "2").unwrap(); // B: A1=2
+    let b_edit = b.flush_send_queue();
+    a.undo().unwrap();
+    let a_undo = a.flush_send_queue();
+    // Delivered in opposite orders; last stamp wins on both.
+    a.apply_external_diffs(&b_edit).unwrap();
+    b.apply_external_diffs(&a_undo).unwrap();
+    assert_eq!(
+        a.get_formatted_cell_value(0, 1, 1),
+        b.get_formatted_cell_value(0, 1, 1)
+    );
+    assert_eq!(a.get_model().workbook, b.get_model().workbook);
+}
+
+#[test]
+fn snapshot_round_trips_into_a_working_replica() {
+    let mut author = UserModel::new_empty_with_session("book", "en", "UTC", "en", 1).unwrap();
+    author.set_user_input(0, 1, 1, "7").unwrap(); // A1=7
+    author.set_user_input(0, 1, 2, "=A1").unwrap(); // B1=A1
+    author.set_rows_height(0, 1, 1, 42.0).unwrap();
+    author.rename_sheet(0, "Data").unwrap();
+    // Nobody was listening: the author's own state is complete without the queue.
+    author.flush_send_queue();
+
+    let mut restored = UserModel::<Stable>::from_bytes_with_session(&author.to_bytes(), 2).unwrap();
+    assert_eq!(restored.get_formatted_cell_value(0, 1, 2).unwrap(), "7");
+    assert_eq!(restored.get_row_height(0, 1).unwrap(), 42.0);
+    assert_eq!(restored.get_worksheets_properties()[0].name, "Data");
+    // Views are local state, absent from the payload, so the restore seeds them.
+    restored.set_selected_cell(3, 2).unwrap();
+    assert_eq!(restored.get_selected_cell(), (0, 3, 2));
+
+    restored.insert_rows(0, 1, 1).unwrap();
+    restored.set_user_input(0, 1, 1, "99").unwrap();
+    author
+        .apply_external_diffs(&restored.flush_send_queue())
+        .unwrap();
+
+    for row in 1..=3 {
+        for col in 1..=2 {
+            assert_eq!(
+                author.get_formatted_cell_value(0, row, col).unwrap(),
+                restored.get_formatted_cell_value(0, row, col).unwrap(),
+                "value at ({row}, {col})"
+            );
+        }
+    }
+    assert_eq!(author.get_formatted_cell_value(0, 1, 1).unwrap(), "99");
+    assert_eq!(author.get_formatted_cell_value(0, 2, 2).unwrap(), "7");
+
+    // The restoring replica mints under its own session, never the author's.
+    let sheet = &restored.get_model().workbook.worksheets[0];
+    let key = <Stable as crate::types::Position>::row_at(&sheet.index, 1).unwrap();
+    assert_eq!(key.split().1, 2u32.to_be_bytes());
+}
+
+#[test]
+fn workbook_name_replicates() {
+    let (mut ordinal, mut stable) = pair();
+    let mut peer = UserModel::new_empty_with_session("model", "en", "UTC", "en", 2).unwrap();
+    assert_eq!(stable.get_name(), ordinal.get_name());
+
+    ordinal.set_name("renamed");
+    stable.set_name("renamed");
+    assert_eq!(stable.get_name(), ordinal.get_name());
+
+    // a second replica learns the name off the wire
+    peer.apply_external_diffs(&stable.flush_send_queue())
+        .unwrap();
+    assert_eq!(peer.get_name(), "renamed");
+
+    // undo restores the previous name, redo puts it back
+    stable.undo().unwrap();
+    assert_eq!(stable.get_name(), "model");
+    stable.redo().unwrap();
+    assert_eq!(stable.get_name(), "renamed");
+
+    peer.apply_external_diffs(&stable.flush_send_queue())
+        .unwrap();
+    assert_eq!(peer.get_name(), "renamed");
+
+    // writing the name it already has emits nothing and records no undo step
+    let pending = stable.get_model().local.pending.len();
+    let can_undo = stable.can_undo();
+    stable.set_name("renamed");
+    assert_eq!(stable.get_model().local.pending.len(), pending);
+    assert_eq!(stable.can_undo(), can_undo);
+}
+
+#[test]
+fn default_sheet_is_concurrently_editable() {
+    let mut a = UserModel::new_empty_with_session("book", "en", "UTC", "en", 1).unwrap();
+    let mut b = UserModel::new_empty_with_session("book", "en", "UTC", "en", 2).unwrap();
+
+    // both peers edit cells of the same sheet
+    a.set_user_input(0, 1, 1, "left").unwrap();
+    b.set_user_input(0, 2, 1, "right").unwrap();
+
+    let from_a = a.flush_send_queue();
+    let from_b = b.flush_send_queue();
+    a.apply_external_diffs(&from_b).unwrap();
+    b.apply_external_diffs(&from_a).unwrap();
+
+    // after sync, only 1 sheet (default one) should exist
+    assert_eq!(a.get_worksheets_properties().len(), 1);
+    for (row, expected) in [(1, "left"), (2, "right")] {
+        assert_eq!(a.get_formatted_cell_value(0, row, 1).unwrap(), expected);
+        assert_eq!(b.get_formatted_cell_value(0, row, 1).unwrap(), expected);
+    }
+
+    // formula written after the merge sees both halves.
+    a.set_user_input(0, 3, 1, "=CONCAT(A1, A2)").unwrap();
+    b.apply_external_diffs(&a.flush_send_queue()).unwrap();
+    assert_eq!(b.get_formatted_cell_value(0, 3, 1).unwrap(), "leftright");
+}
+
+#[test]
+fn update_range_style_matches_ordinal() {
+    use crate::constants::{LAST_COLUMN, LAST_ROW};
+    use crate::expressions::types::Area;
+
+    let (mut o, mut c) = pair();
+    for (row, column, text) in [(1, 1, "a"), (2, 2, "7"), (4, 2, "=1+1")] {
+        o.set_user_input(0, row, column, text).unwrap();
+        c.set_user_input(0, row, column, text).unwrap();
+    }
+
+    // A rectangle over cells with and without a value.
+    let rect = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 2,
+        height: 3,
+    };
+    both!(
+        o,
+        c,
+        update_range_style(&rect, "font.b", "true"),
+        "bold rect"
+    );
+
+    // The same style again changes nothing, so it is not committed.
+    let pending = c.get_model().local.pending.len();
+    c.update_range_style(&rect, "font.b", "true").unwrap();
+    assert_eq!(c.get_model().local.pending.len(), pending);
+
+    // A full row, which the full column below then crosses.
+    let row_3 = Area {
+        sheet: 0,
+        row: 3,
+        column: 1,
+        width: LAST_COLUMN,
+        height: 1,
+    };
+    both!(
+        o,
+        c,
+        update_range_style(&row_3, "fill.color", "#333444"),
+        "fill row 3"
+    );
+
+    // A full column crossing the styled row.
+    let column_b = Area {
+        sheet: 0,
+        row: 1,
+        column: 2,
+        width: 1,
+        height: LAST_ROW,
+    };
+    both!(
+        o,
+        c,
+        update_range_style(&column_b, "font.i", "true"),
+        "italic column B"
+    );
+
+    undo_both(&mut o, &mut c, "undo italic column B");
+    redo_both(&mut o, &mut c, "redo italic column B");
+}
+
+#[test]
+fn dynamic_array_undo_redo_matches_ordinal() {
+    let (mut o, mut c) = pair();
+    // passive peer: it only ever sees what `c` put on the wire, undo and redo included.
+    let mut peer = UserModel::<Stable>::from_model(CollabModel::new(2));
+    macro_rules! sync {
+        () => {
+            peer.apply_external_diffs(&c.flush_send_queue()).unwrap();
+        };
+    }
+
+    both!(o, c, set_user_input(0, 2, 2, "=SEQUENCE(2,2)"), "anchor B2");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 3, 3).unwrap(), "4");
+
+    // C3 is a spill position: writing there blocks the anchor on both.
+    both!(o, c, set_user_input(0, 3, 3, "7"), "block C3");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 2, 2).unwrap(), "#SPILL!");
+
+    undo_both(&mut o, &mut c, "undo block C3");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 3, 3).unwrap(), "4");
+    redo_both(&mut o, &mut c, "redo block C3");
+    sync!();
+    undo_both(&mut o, &mut c, "undo block C3 again");
+    sync!();
+
+    // Overwriting the anchor itself with a scalar formula, and putting it back.
+    both!(o, c, set_user_input(0, 2, 2, "=A1"), "scalar over anchor");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 3, 3).unwrap(), "");
+    undo_both(&mut o, &mut c, "undo scalar over anchor");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 3, 3).unwrap(), "4");
+    redo_both(&mut o, &mut c, "redo scalar over anchor");
+    sync!();
+    undo_both(&mut o, &mut c, "undo scalar over anchor again");
+    sync!();
+
+    // A structural move straight through the spill.
+    both!(o, c, insert_rows(0, 2, 1), "insert a row at the anchor");
+    sync!();
+    undo_both(&mut o, &mut c, "undo insert_rows");
+    sync!();
+    redo_both(&mut o, &mut c, "redo insert_rows");
+    sync!();
+    undo_both(&mut o, &mut c, "undo insert_rows again");
+    sync!();
+
+    // All the way back to an empty sheet, then all the way forward again.
+    undo_both(&mut o, &mut c, "undo anchor B2");
+    sync!();
+    assert_eq!(c.get_formatted_cell_value(0, 2, 2).unwrap(), "");
+    assert!(!c.can_undo() && !o.can_undo());
+    while c.can_redo() {
+        redo_both(&mut o, &mut c, "redo forward");
+        sync!();
+    }
+    // The last redo is the row insert, so the anchor sits at B3 and spills B3:C4.
+    assert_eq!(c.get_formatted_cell_value(0, 3, 2).unwrap(), "1");
+    assert_eq!(c.get_formatted_cell_value(0, 4, 3).unwrap(), "4");
+
+    // The peer only ever replayed the wire, and still shows the same sheet.
+    for row in 1..=8 {
+        for col in 1..=4 {
+            assert_eq!(
+                peer.get_formatted_cell_value(0, row, col).unwrap(),
+                c.get_formatted_cell_value(0, row, col).unwrap(),
+                "peer value at ({row}, {col})"
+            );
+        }
+    }
+}
+
+/// The list a reader sees, with the replica-local `dxf_id` replaced by the format it names: the
+/// two models intern their `dxfs` tables differently, but must show the same rules.
+///
+/// The priority *number* is left out: the list is ordered by it, and stable addressing renumbers
+/// to a dense `1..=n` on every change where the ordinal model leaves gaps a delete opened. What
+/// both have to agree on is the order, which [`cf_compare`] checks is descending on each side.
+macro_rules! cf_shown {
+    ($m:expr) => {
+        $m.get_conditional_formatting_list(0)
+            .unwrap()
+            .into_iter()
+            .map(|mut view| {
+                let dxf = $m
+                    .get_dxf_for_conditional_formatting(0, view.index as u32)
+                    .unwrap();
+                if let Some(slot) = view.cf_rule.dxf_id_mut() {
+                    *slot = 0;
+                }
+                (view.index, view.range, view.cf_rule, dxf)
+            })
+            .collect::<Vec<_>>()
+    };
+}
+
+/// The rules and the rendering they produce, on both models.
+macro_rules! cf_compare {
+    ($o:expr, $c:expr, $step:expr) => {{
+        assert_eq!(cf_shown!($c), cf_shown!($o), "cf list after {}", $step);
+        for model in [
+            $c.get_conditional_formatting_list(0).unwrap(),
+            $o.get_conditional_formatting_list(0).unwrap(),
+        ] {
+            let priorities: Vec<u32> = model.iter().map(|view| view.priority).collect();
+            assert!(
+                priorities.windows(2).all(|w| w[0] > w[1]),
+                "priorities {:?} are not descending after {}",
+                priorities,
+                $step
+            );
+        }
+        for row in 1..=8 {
+            for col in 1..=4 {
+                assert_eq!(
+                    $c.get_extended_cell_style(0, row, col).unwrap().style,
+                    $o.get_extended_cell_style(0, row, col).unwrap().style,
+                    "extended style at ({}, {}) after {}",
+                    row,
+                    col,
+                    $step
+                );
+            }
+        }
+    }};
+}
+
+#[test]
+fn conditional_formatting_undo_redo_matches_ordinal() {
+    use crate::cf_types::{CfRuleInput, ValueOperator};
+    use crate::types::{Color, Dxf, Fill};
+
+    fn fill(color: &str) -> Dxf {
+        Dxf {
+            fill: Some(Fill {
+                color: Color::Rgb(color.to_string()),
+            }),
+            ..Default::default()
+        }
+    }
+    fn formula_rule(formula: &str, color: &str) -> CfRuleInput {
+        CfRuleInput::Formula {
+            formula: formula.to_string(),
+            format: fill(color),
+            stop_if_true: false,
+        }
+    }
+    fn cell_is_gt(threshold: &str, color: &str) -> CfRuleInput {
+        CfRuleInput::CellIs {
+            operator: ValueOperator::GreaterThan,
+            formula: threshold.to_string(),
+            formula2: None,
+            format: fill(color),
+            stop_if_true: false,
+        }
+    }
+
+    let (mut o, mut c) = pair();
+    // passive peer: it only ever sees what `c` put on the wire, undo and redo included.
+    let mut peer = UserModel::<Stable>::from_model(CollabModel::new(2));
+    macro_rules! sync {
+        () => {
+            peer.apply_external_diffs(&c.flush_send_queue()).unwrap();
+        };
+    }
+    /// One call on both models, then the cells, the rules and the rendering compared.
+    macro_rules! cf_both {
+        ($method:ident($($arg:expr),*), $step:expr) => {{
+            both!(o, c, $method($($arg),*), $step);
+            cf_compare!(o, c, $step);
+            sync!();
+        }};
+    }
+    macro_rules! cf_undo {
+        ($step:expr) => {{
+            undo_both(&mut o, &mut c, $step);
+            cf_compare!(o, c, $step);
+            sync!();
+        }};
+    }
+    macro_rules! cf_redo {
+        ($step:expr) => {{
+            redo_both(&mut o, &mut c, $step);
+            cf_compare!(o, c, $step);
+            sync!();
+        }};
+    }
+
+    for row in 1..=5 {
+        cf_both!(set_user_input(0, row, 1, &row.to_string()), "values");
+    }
+
+    cf_both!(
+        add_conditional_formatting(0, "A1:A5", formula_rule("=A1>2", "#FF0000")),
+        "add the formula rule"
+    );
+    cf_undo!("undo add the formula rule");
+    cf_redo!("redo add the formula rule");
+
+    cf_both!(
+        add_conditional_formatting(0, "A1:A5", cell_is_gt("3", "#0000FF")),
+        "add the cell-is rule"
+    );
+    cf_both!(
+        update_conditional_formatting(0, 1, "A2:A5", cell_is_gt("4", "#00FF00")),
+        "update the cell-is rule"
+    );
+    cf_undo!("undo the update");
+    cf_redo!("redo the update");
+
+    cf_both!(raise_conditional_formatting_priority(0, 0), "raise");
+    cf_undo!("undo the raise");
+    cf_redo!("redo the raise");
+
+    cf_both!(lower_conditional_formatting_priority(0, 0), "lower");
+    cf_undo!("undo the lower");
+    cf_redo!("redo the lower");
+
+    cf_both!(delete_conditional_formatting(0, 0), "delete");
+    cf_undo!("undo the delete");
+    cf_redo!("redo the delete");
+
+    cf_both!(insert_rows(0, 1, 2), "insert rows above the rule");
+    cf_undo!("undo the insert");
+    cf_redo!("redo the insert");
+
+    // All the way back, then all the way forward again.
+    while c.can_undo() {
+        cf_undo!("unwind");
+    }
+    assert!(cf_shown!(c).is_empty());
+    while c.can_redo() {
+        cf_redo!("rewind");
+    }
+
+    // The peer only ever replayed the wire, and still shows the same rules and the same rendering.
+    assert_eq!(cf_shown!(peer), cf_shown!(c));
+    for row in 1..=8 {
+        for col in 1..=4 {
+            assert_eq!(
+                peer.get_extended_cell_style(0, row, col).unwrap().style,
+                c.get_extended_cell_style(0, row, col).unwrap().style,
+                "peer extended style at ({row}, {col})"
+            );
+        }
+    }
+}

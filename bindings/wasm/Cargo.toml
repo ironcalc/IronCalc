@@ -13,6 +13,8 @@ crate-type = ["cdylib"]
 [features]
 default = []
 xlsx = ["dep:ironcalc", "dep:time"]
+# Swap the wrapped model to the collaborative (Stable) instantiation.
+collab = []
 
 [dependencies]
 # Uses `../ironcalc/base` when used locally, and uses

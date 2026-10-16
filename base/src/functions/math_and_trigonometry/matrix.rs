@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -98,7 +99,7 @@ fn lu_decompose(mat: &mut [f64], n: usize) -> Result<(f64, Vec<usize>), ()> {
     Ok((sign, swaps))
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // ── MDETERM ───────────────────────────────────────────────────────────────
 
     /// `=MDETERM(array)`

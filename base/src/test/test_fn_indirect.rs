@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::model::Model;
 use crate::test::util::new_empty_model;
+use crate::test::util::TestModel;
 
 /// A1:C2 holds 1, 2, 3 / 4, 5, 6
-fn set_numbers(model: &mut Model, sheet: &str) {
+fn set_numbers(model: &mut TestModel, sheet: &str) {
     for (cell, value) in [
         ("A1", "1"),
         ("B1", "2"),

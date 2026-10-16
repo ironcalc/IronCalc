@@ -1,8 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, TestModel};
 use crate::types::Link;
-use crate::Model;
 
 fn external(target: &str) -> Link {
     Link::External {
@@ -12,7 +11,7 @@ fn external(target: &str) -> Link {
 }
 
 /// Returns the dynamic link in the cell, if any
-fn dynamic_link(model: &Model, row: i32, column: i32) -> Option<Link> {
+fn dynamic_link(model: &TestModel, row: i32, column: i32) -> Option<Link> {
     model
         .get_links_list(0)
         .unwrap()
@@ -34,7 +33,7 @@ fn without_friendly_name_displays_the_location() {
     );
     // dynamic links are not editable: they are not part of the worksheet links
     assert_eq!(model.get_cell_link(0, 1, 1), Ok(None));
-    assert!(model.get_links(0).unwrap().is_empty());
+    assert!(model.get_links_list(0).unwrap().iter().all(|l| l.dynamic));
 }
 
 #[test]
@@ -132,7 +131,7 @@ fn dynamic_links_are_in_the_links_list() {
     assert_eq!((links[1].row, links[1].column), (2, 2));
     assert!(!links[1].dynamic);
     // but the raw worksheet links only contain the explicit one
-    assert_eq!(model.get_links(0).unwrap().len(), 1);
+    assert_eq!(links.iter().filter(|l| !l.dynamic).count(), 1);
 }
 
 #[test]

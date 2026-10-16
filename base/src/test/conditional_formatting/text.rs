@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 use crate::types::Color;
 
+use crate::test::util::TestModel;
 use crate::{
     cf_types::{CfRuleInput, TextOperator},
     test::util::new_empty_model,
@@ -26,7 +27,7 @@ const LANGS: [&str; 7] = [
     "Prolog",
 ];
 
-fn model_with_langs() -> crate::Model<'static> {
+fn model_with_langs() -> TestModel<'static> {
     let mut model = new_empty_model();
     for (i, &lang) in LANGS.iter().enumerate() {
         model
@@ -46,7 +47,7 @@ fn text_rule(operator: TextOperator, value: &str) -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
+fn is_red(model: &TestModel<'static>, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()

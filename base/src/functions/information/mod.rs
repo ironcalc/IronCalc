@@ -1,6 +1,7 @@
 mod isomitted;
 
 use crate::functions::Function;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -23,7 +24,7 @@ fn get_system() -> String {
     "browser".to_string()
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {

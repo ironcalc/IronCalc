@@ -172,7 +172,7 @@ fn mmult_propagates_input_error() {
 // A is 2x3 and B is 3x2, each also written as its transpose:
 //      A: A1:C2    its transpose: A4:B6
 //      B: E1:F3    its transpose: E5:G6
-fn model_with_two_matrices() -> crate::Model<'static> {
+fn model_with_two_matrices() -> crate::test::util::TestModel<'static> {
     let mut model = new_empty_model();
     let a = [[1.5, 2.0, -3.0], [4.0, 0.25, 6.0]];
     let b = [[7.0, 8.0], [-9.0, 10.5], [11.0, 12.0]];

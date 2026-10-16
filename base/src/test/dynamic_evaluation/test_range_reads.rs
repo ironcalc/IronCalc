@@ -7,13 +7,13 @@
 // and so that a whole-column read does not record one entry per cell.
 
 use crate::test::util::new_empty_model;
-use crate::Model;
+use crate::test::util::TestModel;
 
-fn restarts(model: &Model) -> u32 {
+fn restarts(model: &TestModel) -> u32 {
     model.evaluation.restarts_in_last_evaluation
 }
 
-fn anchor_order(model: &Model) -> Vec<String> {
+fn anchor_order(model: &TestModel) -> Vec<String> {
     model
         .evaluation
         .anchor_order

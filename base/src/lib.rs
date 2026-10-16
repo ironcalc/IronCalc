@@ -31,6 +31,8 @@ pub mod builtin_styles;
 pub mod calc_result;
 pub mod cell;
 pub mod cf_types;
+#[cfg(feature = "collab")]
+pub mod collab;
 pub mod colors;
 pub mod expressions;
 pub mod formatter;
@@ -78,5 +80,6 @@ pub use model::FmtSettings;
 pub use model::Model;
 pub use user_model::BorderArea;
 pub use user_model::ClipboardData;
+pub use user_model::OrdinalUserState;
 pub use user_model::UserModel;
 pub use utils::get_all_timezones;

@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 use crate::types::Color;
 
+use crate::test::util::TestModel;
 use crate::{
     cf_types::{CfRuleInput, ValueOperator},
     test::util::new_empty_model,
@@ -16,7 +17,7 @@ use crate::{
 //   row 7 → 64  (Threadripper 3990X)
 const CORES: [i32; 7] = [1, 2, 4, 8, 16, 32, 64];
 
-fn model_with_cores() -> crate::Model<'static> {
+fn model_with_cores() -> TestModel<'static> {
     let mut model = new_empty_model();
     for (i, &v) in CORES.iter().enumerate() {
         model
@@ -37,7 +38,7 @@ fn cell_is(operator: ValueOperator, formula: &str, formula2: Option<&str>) -> Cf
     }
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
+fn is_red(model: &TestModel<'static>, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()
@@ -253,4 +254,48 @@ fn inverted_ranges() {
         !is_red(&model, 4),
         "row 4 (8 cores) should not match NotEqual 8"
     );
+}
+
+#[test]
+fn test_full_column_range() {
+    let mut model = model_with_cores();
+    // Unbounded axis: evaluation clamps it to the used range instead of the whole grid.
+    model
+        .add_conditional_formatting(0, "A:A", cell_is(ValueOperator::Equal, "8", None))
+        .unwrap();
+    model.evaluate();
+
+    assert!(is_red(&model, 4), "row 4 (8 cores) should match Equal 8");
+    for row in [1, 2, 3, 5, 6, 7] {
+        assert!(!is_red(&model, row), "row {row} should not match Equal 8");
+    }
+}
+
+#[test]
+fn test_full_column_range_excel_form() {
+    let mut model = model_with_cores();
+    // Excel stores a whole-column rule bounded; it normalizes to the unbounded form.
+    model
+        .add_conditional_formatting(0, "A1:A1048576", cell_is(ValueOperator::Equal, "8", None))
+        .unwrap();
+    model.evaluate();
+
+    assert!(is_red(&model, 4), "row 4 (8 cores) should match Equal 8");
+    for row in [1, 2, 3, 5, 6, 7] {
+        assert!(!is_red(&model, row), "row {row} should not match Equal 8");
+    }
+}
+
+#[test]
+fn test_full_row_range() {
+    let mut model = model_with_cores();
+    model
+        .add_conditional_formatting(0, "4:4", cell_is(ValueOperator::Equal, "8", None))
+        .unwrap();
+    model.evaluate();
+
+    assert!(is_red(&model, 4), "row 4 (8 cores) should match Equal 8");
+    for row in [1, 2, 3, 5, 6, 7] {
+        assert!(!is_red(&model, row), "row {row} should not match Equal 8");
+    }
 }

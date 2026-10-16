@@ -4,9 +4,9 @@
 //! like 1e400, is not a number either. None of them is ever read as a number,
 //! and no cell ever holds a number that is not finite.
 
-use crate::model::Model;
 use crate::number_format::parse_finite_number;
 use crate::test::util::new_empty_model;
+use crate::test::util::TestModel;
 use crate::types::CellType;
 
 /// The texts that the parser of numbers of the language takes for numbers
@@ -25,7 +25,7 @@ const WORDS: [&str; 12] = [
     "-infinity",
 ];
 
-fn row(model: &Model, row: i32, columns: i32) -> Vec<String> {
+fn row(model: &TestModel, row: i32, columns: i32) -> Vec<String> {
     (1..=columns)
         .map(|column| model._get_text_at(0, row, column))
         .collect()

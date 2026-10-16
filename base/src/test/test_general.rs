@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 use crate::types::Color;
 
+#[cfg(not(feature = "collab-test"))]
 use crate::constants::DEFAULT_ROW_HEIGHT;
 
 use crate::cell::CellValue;
@@ -99,11 +100,16 @@ fn test_get_sheet_index_by_sheet_id() {
     let mut model = new_empty_model();
     model.new_sheet();
 
-    assert_eq!(model.get_sheet_index_by_sheet_id(1), Some(0));
-    assert_eq!(model.get_sheet_index_by_sheet_id(2), Some(1));
-    assert_eq!(model.get_sheet_index_by_sheet_id(1337), None);
+    // Collaborative ids are hashed rather than sequential, so ask the sheets what theirs are.
+    let ids: Vec<u32> = model.workbook.get_worksheet_ids();
+    assert_eq!(ids.len(), 2);
+    assert_eq!(model.get_sheet_index_by_sheet_id(ids[0]), Some(0));
+    assert_eq!(model.get_sheet_index_by_sheet_id(ids[1]), Some(1));
+    let unused = (1..).find(|id| !ids.contains(id)).unwrap();
+    assert_eq!(model.get_sheet_index_by_sheet_id(unused), None);
 }
 
+#[cfg(not(feature = "collab-test"))]
 #[test]
 fn test_set_row_height() {
     let mut model = new_empty_model();

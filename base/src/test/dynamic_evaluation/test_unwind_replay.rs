@@ -7,12 +7,12 @@
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::test::util::new_empty_model;
-use crate::Model;
+use crate::test::util::TestModel;
 
 use super::test_order_independence::{build, describe, random_sheet, snapshot};
 
 /// `column(i) = column(i+1) + 0` for rows `1..n`, and `last` in row `n`.
-fn reverse_chain(model: &mut Model, column: &str, n: i32, last: &str) {
+fn reverse_chain(model: &mut TestModel, column: &str, n: i32, last: &str) {
     for row in 1..n {
         model._set(
             &format!("{column}{row}"),

@@ -1,4 +1,6 @@
 target/*
+.vscode/*
+.idea/*
 **/node_modules/**
 docs/ironcalc.dev/dist/
 bindings/python/docs/_static/logo-light.svg

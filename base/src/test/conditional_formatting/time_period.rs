@@ -5,6 +5,7 @@ use crate::types::Color;
 // the cell values are always relative to "today" at evaluation time.  This makes
 // every assertion deterministic regardless of when the tests run.
 
+use crate::test::util::TestModel;
 use crate::{
     cf_types::{CfRuleInput, PeriodType},
     test::util::new_empty_model,
@@ -20,7 +21,7 @@ fn period_rule(period: PeriodType) -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
+fn is_red(model: &TestModel<'static>, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()
@@ -31,7 +32,7 @@ fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
 }
 
 // Sets a formula in A{row} and returns the model after evaluating it.
-fn set_formula(model: &mut crate::Model<'static>, row: i32, formula: &str) {
+fn set_formula(model: &mut TestModel<'static>, row: i32, formula: &str) {
     model
         .set_user_input(0, row, 1, formula.to_string())
         .unwrap();
@@ -308,7 +309,7 @@ fn between_rule(period: PeriodType, date1: &str, date2: &str) -> CfRuleInput {
     }
 }
 
-fn set_between_test_dates(model: &mut crate::Model<'static>) {
+fn set_between_test_dates(model: &mut TestModel<'static>) {
     set_formula(model, 1, "=DATE(2025,4,23)"); // before the interval
     set_formula(model, 2, "=DATE(2025,4,25)"); // left endpoint
     set_formula(model, 3, "=DATE(2025,4,27)"); // inside
@@ -317,7 +318,7 @@ fn set_between_test_dates(model: &mut crate::Model<'static>) {
     model.evaluate();
 }
 
-fn assert_between_highlights(model: &crate::Model<'static>, negated: bool) {
+fn assert_between_highlights(model: &TestModel<'static>, negated: bool) {
     for (row, inside) in [(1, false), (2, true), (3, true), (4, true), (5, false)] {
         assert_eq!(
             is_red(model, row),

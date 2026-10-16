@@ -12,6 +12,7 @@ use crate::{
 };
 
 use super::util::compare_values;
+use crate::types::Position;
 
 /// Compare two sort keys following Excel's rules:
 ///   Numbers < Strings < Booleans < Errors < Empty cells
@@ -147,7 +148,7 @@ pub(crate) fn transpose_array(data: Vec<Vec<ArrayNode>>) -> Vec<Vec<ArrayNode>> 
     result
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// Evaluate a node and convert the result to a 2-D array of ArrayNodes.
     /// Handles Range references, inline Arrays, and scalar values.
     pub(crate) fn eval_to_array(
