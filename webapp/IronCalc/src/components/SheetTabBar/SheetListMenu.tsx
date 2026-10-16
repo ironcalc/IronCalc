@@ -4,7 +4,7 @@ import type { SheetOptions } from "./types";
 import "./sheet-list-menu.css";
 
 function isWhiteColor(color: string): boolean {
-  return ["#FFF", "#FFFFFF"].includes(color);
+  return !color || ["#FFF", "#FFFFFF"].includes(color);
 }
 
 interface SheetListMenuProps {
