@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -8,7 +9,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// `=TEXTSPLIT(text, col_delimiter, [row_delimiter], [ignore_empty], [match_mode], [pad_with])`
     ///
     /// Splits text into a 2-D array using column and/or row delimiters.
