@@ -55,9 +55,10 @@ types.js: types.ts | deps
 deps:
 	pnpm install --frozen-lockfile
 
-# Same as `all`, but builds the collaborative (Stable) model bindings.
+# Builds the collaborative (Stable) model bindings into pkg/, with the xlsx
+# import/export included so the collab demo story can load files.
 collab: deps
-	wasm-pack build --target web --scope ironcalc --release -- --features collab
+	wasm-pack build --target web --scope ironcalc --release -- --features collab,xlsx
 	cp README.pkg.md pkg/README.md
 	pnpm exec tsc types.ts --target esnext --module esnext
 	$(PYTHON) fix_types.py pkg
