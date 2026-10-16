@@ -6,6 +6,7 @@ mod map_reduce;
 mod scan;
 mod switch;
 
+use crate::types::Position;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
@@ -91,7 +92,7 @@ fn array_node_to_bool(node: &ArrayNode) -> Result<bool, ArrayNode> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn fn_true(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             CalcResult::Boolean(true)

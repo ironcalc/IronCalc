@@ -1,11 +1,12 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::math_and_trigonometry::array_size::check_array_size;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// `=SEQUENCE(rows, [cols], [start], [step])`
     ///
     /// Returns a 2-D array of sequential numbers.

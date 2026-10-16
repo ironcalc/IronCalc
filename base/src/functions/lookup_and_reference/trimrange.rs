@@ -1,3 +1,4 @@
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
@@ -19,7 +20,7 @@ fn col_is_empty(data: &[Vec<ArrayNode>], col: usize) -> bool {
     data.iter().all(|row| row.get(col).is_none_or(is_blank))
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     /// `=TRIMRANGE(range, [trim_rows], [trim_cols])`
     ///
     /// Trims blank rows and/or columns from the outer edges of a range or array.

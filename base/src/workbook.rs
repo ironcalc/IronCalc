@@ -2,7 +2,7 @@ use std::vec::Vec;
 
 use crate::{expressions::parser::DefinedNameS, types::*};
 
-impl Workbook {
+impl<A: Position> Workbook<A> {
     pub fn get_worksheet_names(&self) -> Vec<String> {
         self.worksheets
             .iter()
@@ -16,13 +16,13 @@ impl Workbook {
             .collect()
     }
 
-    pub fn worksheet(&self, worksheet_index: u32) -> Result<&Worksheet, String> {
+    pub fn worksheet(&self, worksheet_index: u32) -> Result<&Worksheet<A>, String> {
         self.worksheets
             .get(worksheet_index as usize)
             .ok_or_else(|| "Invalid sheet index".to_string())
     }
 
-    pub fn worksheet_mut(&mut self, worksheet_index: u32) -> Result<&mut Worksheet, String> {
+    pub fn worksheet_mut(&mut self, worksheet_index: u32) -> Result<&mut Worksheet<A>, String> {
         self.worksheets
             .get_mut(worksheet_index as usize)
             .ok_or_else(|| "Invalid sheet index".to_string())

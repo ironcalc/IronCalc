@@ -5,12 +5,13 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::number_format::{to_excel_precision, to_precision};
 use crate::single_number_fn;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 use std::f64::consts::PI;
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.min_or_max(args, cell, f64::min)
     }

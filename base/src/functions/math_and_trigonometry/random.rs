@@ -1,6 +1,7 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::math_and_trigonometry::array_size::check_array_size;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -16,7 +17,7 @@ fn random() -> f64 {
     Math::random()
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn fn_rand(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !args.is_empty() {
             return CalcResult::new_args_number_error(cell);

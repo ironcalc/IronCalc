@@ -1,11 +1,12 @@
 use statrs::distribution::{Discrete, DiscreteCDF, Hypergeometric};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::types::Position;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // =HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)
     pub(crate) fn fn_hyp_geom_dist(
         &mut self,

@@ -1,5 +1,6 @@
 use crate::functions::date_and_time::parse_time_of_day;
 use crate::number_format::parse_finite_number;
+use crate::types::Position;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -57,7 +58,7 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
     }
 }
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
         match parse_finite_number(s.trim()) {
             Some(f) => Some(f),

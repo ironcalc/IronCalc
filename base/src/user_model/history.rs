@@ -353,6 +353,14 @@ impl History {
     }
 }
 
+/// The [`UserModel`](crate::UserModel) state an ordinal workbook keeps: the undo/redo history and
+/// the diffs waiting to be sent to peers.
+#[derive(Default)]
+pub struct OrdinalUserState {
+    pub(crate) history: History,
+    pub(crate) send_queue: Vec<QueueDiffs>,
+}
+
 #[derive(Clone, Encode, Decode)]
 pub enum DiffType {
     Undo,

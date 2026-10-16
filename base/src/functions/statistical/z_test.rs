@@ -2,9 +2,10 @@ use statrs::distribution::{ContinuousCDF, Normal};
 
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::types::Position;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     // Z.TEST(array, x, [sigma])
     pub(crate) fn fn_z_test(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // 2 or 3 arguments

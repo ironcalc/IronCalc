@@ -2,9 +2,10 @@ use statrs::distribution::{ContinuousCDF, Normal};
 
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::types::Position;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
-impl<'a> Model<'a> {
+impl<'a, A: Position> Model<'a, A> {
     pub(crate) fn fn_gauss(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
