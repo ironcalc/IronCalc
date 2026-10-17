@@ -54,6 +54,12 @@ pub fn cldr_to_excel_date_format(cldr_pattern: &str) -> String {
             // Italian-style with slashes
             m.insert("dd/MM/yy", "dd/mm/yy");
 
+            // Croatian-style with spaces and a trailing dot
+            m.insert("EEEE, d. MMMM y.", "dddd, d. mmmm yyyy.");
+            m.insert("d. MMMM y.", "d. mmmm yyyy.");
+            m.insert("d. MMM y.", "d. mmm yyyy.");
+            m.insert("dd. MM. y.", "dd. mm. yyyy.");
+
             m
         })
         .get(cldr_pattern)
