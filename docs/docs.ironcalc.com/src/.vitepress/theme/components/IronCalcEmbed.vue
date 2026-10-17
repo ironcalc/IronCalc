@@ -3,13 +3,33 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { useData } from "vitepress";
+import { onMounted, ref, watch } from "vue";
+
+type IronCalcEmbedTheme = "light" | "dark" | "system";
+
+declare global {
+  interface Window {
+    IronCalcEmbed?: {
+      mount: (
+        target: HTMLElement,
+        options: {
+          workbookBytes: ArrayBuffer;
+          style?: Partial<CSSStyleDeclaration>;
+          theme?: IronCalcEmbedTheme;
+        },
+      ) => HTMLIFrameElement;
+      setTheme: (iframe: HTMLIFrameElement, theme: IronCalcEmbedTheme) => void;
+    };
+  }
+}
 
 const props = defineProps<{
   src: string; // e.g. "/examples/fv.ic"
 }>();
 
 const container = ref<HTMLElement | null>(null);
+const { isDark } = useData();
 
 async function loadScript() {
   if (window.IronCalcEmbed) return;
@@ -28,6 +48,8 @@ onMounted(async () => {
   if (!container.value) return;
 
   await loadScript();
+  const embed = window.IronCalcEmbed;
+  if (!embed) return;
 
   const response = await fetch(props.src);
   if (!response.ok) {
@@ -35,14 +57,18 @@ onMounted(async () => {
   }
   const workbookBytes = await response.arrayBuffer();
 
-  window.IronCalcEmbed.mount(container.value, {
+  const iframe = embed.mount(container.value, {
     workbookBytes,
+    theme: isDark.value ? "dark" : "light",
     style: {
       width: "100%",
       height: "600px",
-      border: "1px solid #e5e5e5",
+      border: "1px solid var(--vp-c-divider)",
       borderRadius: "8px",
     },
   });
+
+  // Follow the site's appearance toggle.
+  watch(isDark, (dark) => embed.setTheme(iframe, dark ? "dark" : "light"));
 });
 </script>

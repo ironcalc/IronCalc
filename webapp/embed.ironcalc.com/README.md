@@ -29,6 +29,7 @@ This powers <https://embed.ironcalc.com/embed.js>
 
     IronCalcEmbed.mount("#sheet", {
       workbookBytes,
+      theme: "system", // "light" (default), "dark" or "system"
       style: {
         width: "100%",
         height: "600px",
@@ -40,6 +41,24 @@ This powers <https://embed.ironcalc.com/embed.js>
 
   main();
 </script>
+```
+
+## 🌗 Dark mode
+
+Pass `theme` to `mount` to pick the colour scheme of the spreadsheet:
+
+- `"light"` (default)
+- `"dark"`
+- `"system"` follows the visitor's OS preference (`prefers-color-scheme`)
+
+If your site has its own light/dark toggle, keep the spreadsheet in sync with
+`setTheme`, which takes the iframe returned by `mount`:
+
+```js
+const iframe = IronCalcEmbed.mount("#sheet", { workbookBytes, theme: "light" });
+
+// later, when the visitor switches your site to dark mode
+IronCalcEmbed.setTheme(iframe, "dark");
 ```
 
 At the moment you can create an `ic` workbook using the `xlsx_2_icalc` utility
