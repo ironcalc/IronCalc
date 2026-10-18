@@ -193,19 +193,17 @@ impl UserModel<'_> {
             .map(|r| r.column + r.width - 1)
             .max()
             .unwrap_or(first.column);
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(first.sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                if view.row >= row
-                    && view.row <= last_row
-                    && view.column >= column
-                    && view.column <= last_column
-                {
-                    view.row = row;
-                    view.column = column;
-                    view.range = [row, column, last_row, last_column];
-                    view.focus_row = last_row;
-                    view.focus_column = last_column;
-                }
+        if let Ok(view) = self.sheet_view_mut(first.sheet) {
+            if view.row >= row
+                && view.row <= last_row
+                && view.column >= column
+                && view.column <= last_column
+            {
+                view.row = row;
+                view.column = column;
+                view.range = [row, column, last_row, last_column];
+                view.focus_row = last_row;
+                view.focus_column = last_column;
             }
         }
     }

@@ -21,7 +21,7 @@ use std::{
 };
 
 use ironcalc_base::expressions::utils::number_to_column;
-use ironcalc_base::types::Workbook;
+use ironcalc_base::types::{SheetState, Workbook};
 use ironcalc_base::{get_milliseconds_since_epoch, Model};
 
 use self::xml_constants::XML_DECLARATION;
@@ -75,10 +75,13 @@ pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
 
 pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<W, XlsxError> {
     let workbook = &model.workbook;
-    let selected_sheet = match workbook.views.get(&0) {
-        Some(view) => view.sheet,
-        _ => 0,
-    };
+    // IronCalc does not keep track of the selected sheet: the active tab is
+    // the first visible sheet.
+    let selected_sheet = workbook
+        .worksheets
+        .iter()
+        .position(|ws| ws.state == SheetState::Visible)
+        .unwrap_or(0) as u32;
     let mut zip = zip::ZipWriter::new(writer);
 
     let options = zip::write::FileOptions::default();

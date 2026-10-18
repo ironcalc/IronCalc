@@ -23,7 +23,7 @@ use ironcalc_base::{
         parser::{new_parser_english, stringify::to_english_string},
         types::CellReferenceRC,
     },
-    types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
+    types::{Metadata, Workbook, WorkbookSettings},
     Model,
 };
 
@@ -106,7 +106,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     // stored in x14 `extLst` extensions carry inline `<x14:dxf>` formats that we
     // append to `styles.dxfs`, referencing them back by index from the rule.
     let mut styles = load_styles(&mut archive, &theme)?;
-    let (worksheets, selected_sheet) = load_sheets(
+    let worksheets = load_sheets(
         &mut archive,
         &rels,
         &workbook,
@@ -137,15 +137,6 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
             }
         }
     };
-    let mut views = HashMap::new();
-    views.insert(
-        0,
-        WorkbookView {
-            sheet: selected_sheet,
-            window_width: 800,
-            window_height: 600,
-        },
-    );
     Ok(Workbook {
         shared_strings: shared_strings.into_strings(),
         defined_names: workbook.defined_names,
@@ -158,7 +149,6 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         },
         metadata,
         tables,
-        views,
         theme,
     })
 }

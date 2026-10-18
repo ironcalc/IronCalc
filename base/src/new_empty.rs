@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 use crate::{
     calc_result::Range,
-    constants::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH},
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -19,10 +18,7 @@ use crate::{
     language::{get_default_language, get_language},
     locale::{get_default_locale, get_locale},
     model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
-    types::{
-        DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
-        WorksheetView,
-    },
+    types::{DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, Worksheet},
     utils::ParsedReference,
 };
 
@@ -42,22 +38,7 @@ fn is_valid_sheet_name(name: &str) -> bool {
 
 impl<'a> Model<'a> {
     /// Creates a new worksheet. Note that it does not check if the name or the sheet_id exists
-    fn new_empty_worksheet(name: &str, sheet_id: u32, view_ids: &[&u32]) -> Worksheet {
-        let mut views = HashMap::new();
-        for id in view_ids {
-            views.insert(
-                **id,
-                WorksheetView {
-                    row: 1,
-                    column: 1,
-                    range: [1, 1, 1, 1],
-                    focus_row: 1,
-                    focus_column: 1,
-                    top_row: 1,
-                    left_column: 1,
-                },
-            );
-        }
+    fn new_empty_worksheet(name: &str, sheet_id: u32) -> Worksheet {
         Worksheet {
             cols: vec![],
             rows: vec![],
@@ -73,7 +54,6 @@ impl<'a> Model<'a> {
             frozen_columns: 0,
             frozen_rows: 0,
             show_grid_lines: true,
-            views,
             conditional_formatting: vec![],
             links: HashMap::new(),
         }
@@ -235,8 +215,7 @@ impl<'a> Model<'a> {
         let sheet_name = format!("{base_name}{index}");
         // Now we need a sheet_id
         let sheet_id = self.get_new_sheet_id();
-        let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
-        let worksheet = Model::new_empty_worksheet(&sheet_name, sheet_id, &view_ids);
+        let worksheet = Model::new_empty_worksheet(&sheet_name, sheet_id);
         self.workbook.worksheets.push(worksheet);
         self.reset_parsed_structures();
         (sheet_name, self.workbook.worksheets.len() as u32 - 1)
@@ -267,8 +246,7 @@ impl<'a> Model<'a> {
             Some(id) => id,
             None => self.get_new_sheet_id(),
         };
-        let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
-        let worksheet = Model::new_empty_worksheet(sheet_name, sheet_id, &view_ids);
+        let worksheet = Model::new_empty_worksheet(sheet_name, sheet_id);
         if sheet_index as usize > self.workbook.worksheets.len() {
             return Err("Sheet index out of range".to_string());
         }
@@ -352,8 +330,8 @@ impl<'a> Model<'a> {
         let new_sheet_id = self.get_new_sheet_id();
 
         // Clone the worksheet wholesale: this brings over cells, styles, merge
-        // cells, comments, conditional formatting, the tab color, frozen panes,
-        // the views and the shared formulas.
+        // cells, comments, conditional formatting, the tab color, frozen panes
+        // and the shared formulas.
         let mut new_worksheet = self.workbook.worksheet(source_index)?.clone();
         new_worksheet.name = new_name.clone();
         new_worksheet.sheet_id = new_sheet_id;
@@ -637,16 +615,6 @@ impl<'a> Model<'a> {
         // "2020-08-06T21:20:53Z
         let now = dt.format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
-        let mut views = HashMap::new();
-        views.insert(
-            0,
-            WorkbookView {
-                sheet: 0,
-                window_width: DEFAULT_WINDOW_WIDTH,
-                window_height: DEFAULT_WINDOW_HEIGHT,
-            },
-        );
-
         let sheet_name = match language.code.as_str() {
             "en" => "Sheet1".to_string(),
             "es" => "Hoja1".to_string(),
@@ -660,7 +628,7 @@ impl<'a> Model<'a> {
         let workbook = Workbook {
             shared_strings: vec![],
             defined_names: vec![],
-            worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, &[&0])],
+            worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1)],
             styles: Default::default(),
             name: name.to_string(),
             settings: WorkbookSettings {
@@ -676,7 +644,6 @@ impl<'a> Model<'a> {
                 last_modified: now,
             },
             tables: HashMap::new(),
-            views,
             theme: Default::default(),
         };
         let parsed_formulas = Vec::new();
@@ -694,7 +661,6 @@ impl<'a> Model<'a> {
             locale,
             language,
             tz,
-            view_id: 0,
             variable_stack: HashMap::new(),
             last_variable_id: 0,
             lambdas: HashMap::new(),

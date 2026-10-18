@@ -1,9 +1,11 @@
 #![deny(missing_docs)]
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    constants::{LAST_COLUMN, LAST_ROW},
+    constants::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH, LAST_COLUMN, LAST_ROW},
     expressions::utils::{is_valid_column_number, is_valid_row},
     worksheet::NavigationDirection,
 };
@@ -21,7 +23,98 @@ pub struct SelectedView {
     pub left_column: i32,
 }
 
+/// The selection and scroll position of a worksheet as seen by the user.
+///
+/// This is runtime state of the [UserModel]: it is not part of the workbook,
+/// it is not serialized and it is not saved to disk.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct WorksheetView {
+    /// The row index of the currently selected cell (the anchor of the selection).
+    pub(crate) row: i32,
+    /// The column index of the currently selected cell (the anchor of the selection).
+    pub(crate) column: i32,
+    /// The selected range in the worksheet, specified as [start_row, start_column, end_row, end_column].
+    /// Always normalized (start <= end). This is derived state: the bounding box of the
+    /// anchor and the focus, grown so it never covers a merged cell partially.
+    pub(crate) range: [i32; 4],
+    /// The row of the focus: the moving corner of the selection, the one that
+    /// keyboard- or pointer-extending the selection displaces. It is not
+    /// necessarily a corner of `range` (extending over merged cells grows the
+    /// range beyond the anchor-focus bounding box).
+    pub(crate) focus_row: i32,
+    /// The column of the focus.
+    pub(crate) focus_column: i32,
+    /// The row index of the topmost visible cell in the worksheet view.
+    pub(crate) top_row: i32,
+    /// The column index of the leftmost visible cell in the worksheet view.
+    pub(crate) left_column: i32,
+}
+
+impl Default for WorksheetView {
+    fn default() -> Self {
+        WorksheetView {
+            row: 1,
+            column: 1,
+            range: [1, 1, 1, 1],
+            focus_row: 1,
+            focus_column: 1,
+            top_row: 1,
+            left_column: 1,
+        }
+    }
+}
+
+/// What the user is looking at: the selected sheet, the size of the window and
+/// the view of every worksheet.
+///
+/// This is runtime state of the [UserModel]: it is not part of the workbook
+/// and it is not serialized. A workbook always opens on its first sheet with
+/// A1 selected.
+pub(crate) struct WorkbookView {
+    /// The index of the currently selected sheet.
+    pub(crate) sheet: u32,
+    /// The current width of the window
+    pub(crate) window_width: i64,
+    /// The current height of the window
+    pub(crate) window_height: i64,
+    /// The view of each worksheet, keyed by `sheet_id` (stable across sheet
+    /// insertions, deletions and moves). A sheet without an entry has the
+    /// default view.
+    pub(crate) sheets: HashMap<u32, WorksheetView>,
+}
+
+impl Default for WorkbookView {
+    fn default() -> Self {
+        WorkbookView {
+            sheet: 0,
+            window_width: DEFAULT_WINDOW_WIDTH,
+            window_height: DEFAULT_WINDOW_HEIGHT,
+            sheets: HashMap::new(),
+        }
+    }
+}
+
 impl<'a> UserModel<'a> {
+    /// Returns the view of the worksheet with index `sheet` (a copy).
+    /// Fails if there is no such worksheet.
+    pub(crate) fn sheet_view(&self, sheet: u32) -> Result<WorksheetView, String> {
+        let sheet_id = self.model.workbook.worksheet(sheet)?.sheet_id;
+        Ok(self.view.sheets.get(&sheet_id).copied().unwrap_or_default())
+    }
+
+    /// Returns a mutable reference to the view of the worksheet with index
+    /// `sheet`, creating the default view if the sheet has none yet.
+    /// Fails if there is no such worksheet.
+    pub(crate) fn sheet_view_mut(&mut self, sheet: u32) -> Result<&mut WorksheetView, String> {
+        let sheet_id = self.model.workbook.worksheet(sheet)?.sheet_id;
+        Ok(self.view.sheets.entry(sheet_id).or_default())
+    }
+
+    // The view of the selected sheet
+    fn selected_sheet_view(&self) -> Result<WorksheetView, String> {
+        self.sheet_view(self.view.sheet)
+    }
+
     // The UI renders every row and column at a whole number of pixels
     // (the canvas rounds each size before drawing), so all the scroll and
     // visibility arithmetic in this module must accumulate the rounded
@@ -53,6 +146,21 @@ impl<'a> UserModel<'a> {
             Some(m) => [m.row, m.column, m.last_row(), m.last_column()],
             None => [row, column, row, column],
         })
+    }
+
+    // Selects a single cell: the anchor, the focus and the range all collapse
+    // on (row, column), or on its merged range when the cell is merged.
+    fn select_single_cell(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        // Landing inside a merged cell selects its anchor
+        let (row, column) = self.merge_anchor(sheet, row, column)?;
+        let range = self.single_cell_range(sheet, row, column)?;
+        let view = self.sheet_view_mut(sheet)?;
+        view.row = row;
+        view.column = column;
+        view.range = range;
+        view.focus_row = row;
+        view.focus_column = column;
+        Ok(())
     }
 
     // The selected range for a selection anchored at (anchor_row, anchor_column)
@@ -151,56 +259,40 @@ impl<'a> UserModel<'a> {
 
     /// Returns the selected sheet index
     pub fn get_selected_sheet(&self) -> u32 {
-        if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        }
+        self.view.sheet
     }
 
     /// Returns the selected cell
     pub fn get_selected_cell(&self) -> (u32, i32, i32) {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
-        if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
-            if let Some(view) = worksheet.views.get(&self.model.view_id) {
-                return (sheet, view.row, view.column);
-            }
+        let sheet = self.view.sheet;
+        match self.sheet_view(sheet) {
+            Ok(view) => (sheet, view.row, view.column),
+            // return a safe default
+            Err(_) => (0, 1, 1),
         }
-        // return a safe default
-        (0, 1, 1)
     }
 
     /// Returns selected view
     pub fn get_selected_view(&self) -> SelectedView {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
-        if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
-            if let Some(view) = worksheet.views.get(&self.model.view_id) {
-                return SelectedView {
-                    sheet,
-                    row: view.row,
-                    column: view.column,
-                    range: view.range,
-                    top_row: view.top_row,
-                    left_column: view.left_column,
-                };
-            }
-        }
-        // return a safe default
-        SelectedView {
-            sheet: 0,
-            row: 1,
-            column: 1,
-            range: [1, 1, 1, 1],
-            top_row: 1,
-            left_column: 1,
+        let sheet = self.view.sheet;
+        match self.sheet_view(sheet) {
+            Ok(view) => SelectedView {
+                sheet,
+                row: view.row,
+                column: view.column,
+                range: view.range,
+                top_row: view.top_row,
+                left_column: view.left_column,
+            },
+            // return a safe default
+            Err(_) => SelectedView {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                range: [1, 1, 1, 1],
+                top_row: 1,
+                left_column: 1,
+            },
         }
     }
 
@@ -209,19 +301,13 @@ impl<'a> UserModel<'a> {
         if self.model.workbook.worksheet(sheet).is_err() {
             return Err(format!("Invalid worksheet index {sheet}"));
         }
-        if let Some(view) = self.model.workbook.views.get_mut(&0) {
-            view.sheet = sheet;
-        }
+        self.view.sheet = sheet;
         Ok(())
     }
 
     /// Sets the selected cell for the current view. Note that this also sets the selected range
     pub fn set_selected_cell(&mut self, row: i32, column: i32) -> Result<(), String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
+        let sheet = self.view.sheet;
         if !is_valid_column_number(column) {
             return Err(format!("Invalid column: '{column}'"));
         }
@@ -233,18 +319,7 @@ impl<'a> UserModel<'a> {
         }
         // A covered cell can never be selected: snap to the anchor and select
         // the whole merged range.
-        let (row, column) = self.merge_anchor(sheet, row, column)?;
-        let range = self.single_cell_range(sheet, row, column)?;
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&0) {
-                view.row = row;
-                view.column = column;
-                view.range = range;
-                view.focus_row = row;
-                view.focus_column = column;
-            }
-        }
-        Ok(())
+        self.select_single_cell(sheet, row, column)
     }
 
     /// Sets the selected range. Note that the selected cell must be in the selected range.
@@ -255,11 +330,7 @@ impl<'a> UserModel<'a> {
         end_row: i32,
         end_column: i32,
     ) -> Result<(), String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
+        let sheet = self.view.sheet;
 
         if !is_valid_column_number(start_column) {
             return Err(format!("Invalid column: '{start_column}'"));
@@ -277,13 +348,8 @@ impl<'a> UserModel<'a> {
         if self.model.workbook.worksheet(sheet).is_err() {
             return Err(format!("Invalid worksheet index {sheet}"));
         }
-        let (selected_row, selected_column) = {
-            let worksheet = self.model.workbook.worksheet(sheet)?;
-            match worksheet.views.get(&self.model.view_id) {
-                Some(view) => (view.row, view.column),
-                None => return Ok(()),
-            }
-        };
+        let view = self.sheet_view(sheet)?;
+        let (selected_row, selected_column) = (view.row, view.column);
         // The selected cell must be inside the range. It is not necessarily on
         // a corner: extending a selection over merged cells can grow the range
         // past the selected cell on any side.
@@ -323,13 +389,10 @@ impl<'a> UserModel<'a> {
         } else {
             self.grow_range_over_merged_cells(sheet, [min_row, min_column, max_row, max_column])?
         };
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&0) {
-                view.range = range;
-                view.focus_row = focus_row;
-                view.focus_column = focus_column;
-            }
-        }
+        let view = self.sheet_view_mut(sheet)?;
+        view.range = range;
+        view.focus_row = focus_row;
+        view.focus_column = focus_column;
         Ok(())
     }
 
@@ -339,34 +402,21 @@ impl<'a> UserModel<'a> {
     /// rows and columns, and the selected range is recomputed from the anchor
     /// and the new focus.
     pub fn on_expand_selected_range(&mut self, key: &str) -> Result<(), String> {
-        let (sheet, window_width, window_height) =
-            if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-                (
-                    view.sheet,
-                    view.window_width as f64,
-                    view.window_height as f64,
-                )
-            } else {
-                return Ok(());
-            };
-        let (selected_row, selected_column, focus_row, focus_column, range, top_row, left_column) =
-            if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
-                if let Some(view) = worksheet.views.get(&self.model.view_id) {
-                    (
-                        view.row,
-                        view.column,
-                        view.focus_row,
-                        view.focus_column,
-                        view.range,
-                        view.top_row,
-                        view.left_column,
-                    )
-                } else {
-                    return Ok(());
-                }
-            } else {
-                return Ok(());
-            };
+        let sheet = self.view.sheet;
+        let window_width = self.view.window_width as f64;
+        let window_height = self.view.window_height as f64;
+        let Ok(view) = self.sheet_view(sheet) else {
+            return Ok(());
+        };
+        let (selected_row, selected_column, focus_row, focus_column, range, top_row, left_column) = (
+            view.row,
+            view.column,
+            view.focus_row,
+            view.focus_column,
+            view.range,
+            view.top_row,
+            view.left_column,
+        );
         let [row_start, column_start, row_end, column_end] = range;
         if ["ArrowUp", "ArrowDown"].contains(&key) && row_start == 1 && row_end == LAST_ROW {
             // full column selected, nothing to do
@@ -479,13 +529,10 @@ impl<'a> UserModel<'a> {
             new_focus_row,
             new_focus_column,
         )?;
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.range = new_range;
-                view.focus_row = new_focus_row;
-                view.focus_column = new_focus_column;
-            }
-        }
+        let view = self.sheet_view_mut(sheet)?;
+        view.range = new_range;
+        view.focus_row = new_focus_row;
+        view.focus_column = new_focus_column;
         Ok(())
     }
 
@@ -495,11 +542,7 @@ impl<'a> UserModel<'a> {
         top_row: i32,
         left_column: i32,
     ) -> Result<(), String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
+        let sheet = self.view.sheet;
 
         if !is_valid_column_number(left_column) {
             return Err(format!("Invalid column: '{left_column}'"));
@@ -510,74 +553,45 @@ impl<'a> UserModel<'a> {
         if self.model.workbook.worksheet(sheet).is_err() {
             return Err(format!("Invalid worksheet index {sheet}"));
         }
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&0) {
-                view.top_row = top_row;
-                view.left_column = left_column;
-            }
-        }
+        let view = self.sheet_view_mut(sheet)?;
+        view.top_row = top_row;
+        view.left_column = left_column;
         Ok(())
     }
 
     /// Sets the width of the window
     pub fn set_window_width(&mut self, window_width: f64) {
-        if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
-            view.window_width = window_width as i64;
-        };
+        self.view.window_width = window_width as i64;
     }
 
     /// Gets the width of the window
     pub fn get_window_width(&mut self) -> Result<i64, String> {
-        if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
-            return Ok(view.window_width);
-        };
-        Err("View not found".to_string())
+        Ok(self.view.window_width)
     }
 
     /// Sets the height of the window
     pub fn set_window_height(&mut self, window_height: f64) {
-        if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
-            view.window_height = window_height as i64;
-        };
+        self.view.window_height = window_height as i64;
     }
 
     /// Gets the height of the window
     pub fn get_window_height(&mut self) -> Result<i64, String> {
-        if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
-            return Ok(view.window_height);
-        };
-        Err("View not found".to_string())
+        Ok(self.view.window_height)
     }
 
     /// User presses right arrow
     pub fn on_arrow_right(&mut self) -> Result<(), String> {
-        let (sheet, window_width) =
-            if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-                (view.sheet, view.window_width)
-            } else {
-                return Err("View not found".to_string());
-            };
-        let worksheet = match self.model.workbook.worksheet(sheet) {
-            Ok(s) => s,
-            Err(_) => return Err("Worksheet not found".to_string()),
-        };
-        let view = match worksheet.views.get(&self.model.view_id) {
-            Some(s) => s,
-            None => return Err("View not found".to_string()),
-        };
+        let sheet = self.view.sheet;
+        let window_width = self.view.window_width;
+        let view = self.selected_sheet_view()?;
+        let worksheet = self.model.workbook.worksheet(sheet)?;
         // Leaving a merged cell starts past its last column
         let row = view.row;
         let mut new_column = match worksheet.merged_cell_containing(row, view.column) {
             Some(m) => m.last_column() + 1,
             None => view.column + 1,
         };
-        while new_column <= LAST_COLUMN
-            && self
-                .model
-                .workbook
-                .worksheet(sheet)?
-                .is_column_hidden(new_column)?
-        {
+        while new_column <= LAST_COLUMN && worksheet.is_column_hidden(new_column)? {
             new_column += 1;
         }
         if !is_valid_column_number(new_column) {
@@ -590,157 +604,78 @@ impl<'a> UserModel<'a> {
             width += self.ui_column_width(sheet, column)?;
             column += 1;
         }
-        // Landing inside a merged cell selects its anchor
-        let (new_row, new_column) = self.merge_anchor(sheet, row, new_column)?;
-        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.row = new_row;
-                view.column = new_column;
-                view.range = new_range;
-                view.focus_row = new_row;
-                view.focus_column = new_column;
-                if width > window_width as f64 {
-                    view.left_column += 1;
-                }
-            }
+        self.select_single_cell(sheet, row, new_column)?;
+        if width > window_width as f64 {
+            self.sheet_view_mut(sheet)?.left_column += 1;
         }
         Ok(())
     }
 
     /// User presses left arrow
     pub fn on_arrow_left(&mut self) -> Result<(), String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            return Err("View not found".to_string());
-        };
-        let worksheet = match self.model.workbook.worksheet(sheet) {
-            Ok(s) => s,
-            Err(_) => return Err("Worksheet not found".to_string()),
-        };
-        let view = match worksheet.views.get(&self.model.view_id) {
-            Some(s) => s,
-            None => return Err("View not found".to_string()),
-        };
+        let sheet = self.view.sheet;
+        let view = self.selected_sheet_view()?;
+        let worksheet = self.model.workbook.worksheet(sheet)?;
         // Leaving a merged cell starts before its first column
         let row = view.row;
         let mut new_column = match worksheet.merged_cell_containing(row, view.column) {
             Some(m) => m.column - 1,
             None => view.column - 1,
         };
-        while new_column >= 1
-            && self
-                .model
-                .workbook
-                .worksheet(sheet)?
-                .is_column_hidden(new_column)?
-        {
+        while new_column >= 1 && worksheet.is_column_hidden(new_column)? {
             new_column -= 1;
         }
         if !is_valid_column_number(new_column) {
             return Ok(());
         }
-        // Landing inside a merged cell selects its anchor
-        let (new_row, new_column) = self.merge_anchor(sheet, row, new_column)?;
-        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
-        // if the column is not fully visible we 'scroll' right until it is
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.row = new_row;
-                view.column = new_column;
-                view.range = new_range;
-                view.focus_row = new_row;
-                view.focus_column = new_column;
-                if new_column < view.left_column {
-                    view.left_column = new_column;
-                }
-            }
+        self.select_single_cell(sheet, row, new_column)?;
+        // if the column is not fully visible we 'scroll' left until it is
+        let view = self.sheet_view_mut(sheet)?;
+        if view.column < view.left_column {
+            view.left_column = view.column;
         }
         Ok(())
     }
 
     /// User presses up arrow key
     pub fn on_arrow_up(&mut self) -> Result<(), String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            return Err("View not found".to_string());
-        };
-        let worksheet = match self.model.workbook.worksheet(sheet) {
-            Ok(s) => s,
-            Err(_) => return Err("Worksheet not found".to_string()),
-        };
-        let view = match worksheet.views.get(&self.model.view_id) {
-            Some(s) => s,
-            None => return Err("View not found".to_string()),
-        };
+        let sheet = self.view.sheet;
+        let view = self.selected_sheet_view()?;
+        let worksheet = self.model.workbook.worksheet(sheet)?;
         // Leaving a merged cell starts above its first row
         let column = view.column;
         let mut new_row = match worksheet.merged_cell_containing(view.row, column) {
             Some(m) => m.row - 1,
             None => view.row - 1,
         };
-        while new_row >= 1
-            && self
-                .model
-                .workbook
-                .worksheet(sheet)?
-                .is_row_hidden(new_row)?
-        {
+        while new_row >= 1 && worksheet.is_row_hidden(new_row)? {
             new_row -= 1;
         }
         if !is_valid_row(new_row) {
             return Ok(());
         }
-        // Landing inside a merged cell selects its anchor
-        let (new_row, new_column) = self.merge_anchor(sheet, new_row, column)?;
-        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
-        // if the column is not fully visible we 'scroll' right until it is
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.row = new_row;
-                view.column = new_column;
-                view.range = new_range;
-                view.focus_row = new_row;
-                view.focus_column = new_column;
-                if new_row < view.top_row {
-                    view.top_row = new_row;
-                }
-            }
+        self.select_single_cell(sheet, new_row, column)?;
+        // if the row is not fully visible we 'scroll' up until it is
+        let view = self.sheet_view_mut(sheet)?;
+        if view.row < view.top_row {
+            view.top_row = view.row;
         }
         Ok(())
     }
 
     /// User presses down arrow key
     pub fn on_arrow_down(&mut self) -> Result<(), String> {
-        let (sheet, window_height) =
-            if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-                (view.sheet, view.window_height)
-            } else {
-                return Err("View not found".to_string());
-            };
-        let worksheet = match self.model.workbook.worksheet(sheet) {
-            Ok(s) => s,
-            Err(_) => return Err("Worksheet not found".to_string()),
-        };
-        let view = match worksheet.views.get(&self.model.view_id) {
-            Some(s) => s,
-            None => return Err("View not found".to_string()),
-        };
+        let sheet = self.view.sheet;
+        let window_height = self.view.window_height;
+        let view = self.selected_sheet_view()?;
+        let worksheet = self.model.workbook.worksheet(sheet)?;
         // Leaving a merged cell starts below its last row
         let column = view.column;
         let mut new_row = match worksheet.merged_cell_containing(view.row, column) {
             Some(m) => m.last_row() + 1,
             None => view.row + 1,
         };
-        while new_row <= LAST_ROW
-            && self
-                .model
-                .workbook
-                .worksheet(sheet)?
-                .is_row_hidden(new_row)?
-        {
+        while new_row <= LAST_ROW && worksheet.is_row_hidden(new_row)? {
             new_row += 1;
         }
         if !is_valid_row(new_row) {
@@ -753,20 +688,9 @@ impl<'a> UserModel<'a> {
             height += self.ui_row_height(sheet, row)?;
             row += 1;
         }
-        // Landing inside a merged cell selects its anchor
-        let (new_row, new_column) = self.merge_anchor(sheet, new_row, column)?;
-        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.row = new_row;
-                view.column = new_column;
-                view.range = new_range;
-                view.focus_row = new_row;
-                view.focus_column = new_column;
-                if height > window_height as f64 {
-                    view.top_row += 1;
-                }
-            }
+        self.select_single_cell(sheet, new_row, column)?;
+        if height > window_height as f64 {
+            self.sheet_view_mut(sheet)?.top_row += 1;
         }
         Ok(())
     }
@@ -774,19 +698,8 @@ impl<'a> UserModel<'a> {
     // TODO: This function should be memoized
     /// Returns the x-coordinate of the cell in the top left corner
     pub fn get_scroll_x(&self) -> Result<f64, String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            return Err("View not found".to_string());
-        };
-        let worksheet = match self.model.workbook.worksheet(sheet) {
-            Ok(s) => s,
-            Err(_) => return Err("Worksheet not found".to_string()),
-        };
-        let view = match worksheet.views.get(&self.model.view_id) {
-            Some(s) => s,
-            None => return Err("View not found".to_string()),
-        };
+        let sheet = self.view.sheet;
+        let view = self.selected_sheet_view()?;
         let mut scroll_x = 0.0;
         for column in 1..view.left_column {
             scroll_x += self.ui_column_width(sheet, column)?;
@@ -797,19 +710,8 @@ impl<'a> UserModel<'a> {
     // TODO: This function should be memoized
     /// Returns the y-coordinate of the cell in the top left corner
     pub fn get_scroll_y(&self) -> Result<f64, String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            return Err("View not found".to_string());
-        };
-        let worksheet = match self.model.workbook.worksheet(sheet) {
-            Ok(s) => s,
-            Err(_) => return Err("Worksheet not found".to_string()),
-        };
-        let view = match worksheet.views.get(&self.model.view_id) {
-            Some(s) => s,
-            None => return Err("View not found".to_string()),
-        };
+        let sheet = self.view.sheet;
+        let view = self.selected_sheet_view()?;
         let mut scroll_y = 0.0;
         for row in 1..view.top_row {
             scroll_y += self.ui_row_height(sheet, row)?;
@@ -820,20 +722,9 @@ impl<'a> UserModel<'a> {
     /// User presses page down.
     /// The `top_row` is now the first row that is not fully visible
     pub fn on_page_down(&mut self) -> Result<(), String> {
-        let (sheet, window_height) =
-            if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-                (view.sheet, view.window_height)
-            } else {
-                return Err("View not found".to_string());
-            };
-        let worksheet = match self.model.workbook.worksheet(sheet) {
-            Ok(s) => s,
-            Err(_) => return Err("Worksheet not found".to_string()),
-        };
-        let view = match worksheet.views.get(&self.model.view_id) {
-            Some(s) => s,
-            None => return Err("View not found".to_string()),
-        };
+        let sheet = self.view.sheet;
+        let window_height = self.view.window_height;
+        let view = self.selected_sheet_view()?;
         let mut last_row = view.top_row;
         let mut height = self.ui_row_height(sheet, last_row)?;
         while height <= window_height as f64 {
@@ -844,38 +735,16 @@ impl<'a> UserModel<'a> {
             return Ok(());
         }
         let row_delta = view.row - view.top_row;
-        // Landing inside a merged cell selects its anchor
-        let (new_row, new_column) = self.merge_anchor(sheet, last_row + row_delta, view.column)?;
-        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.top_row = last_row;
-                view.row = new_row;
-                view.column = new_column;
-                view.range = new_range;
-                view.focus_row = new_row;
-                view.focus_column = new_column;
-            }
-        }
+        self.select_single_cell(sheet, last_row + row_delta, view.column)?;
+        self.sheet_view_mut(sheet)?.top_row = last_row;
         Ok(())
     }
 
     /// On page up. tis needs to be the inverse of page down
     pub fn on_page_up(&mut self) -> Result<(), String> {
-        let (sheet, window_height) =
-            if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-                (view.sheet, view.window_height as f64)
-            } else {
-                return Err("View not found".to_string());
-            };
-        let worksheet = match self.model.workbook.worksheet(sheet) {
-            Ok(s) => s,
-            Err(_) => return Err("Worksheet not found".to_string()),
-        };
-        let view = match worksheet.views.get(&self.model.view_id) {
-            Some(s) => s,
-            None => return Err("View not found".to_string()),
-        };
+        let sheet = self.view.sheet;
+        let window_height = self.view.window_height as f64;
+        let view = self.selected_sheet_view()?;
 
         let mut first_row = view.top_row;
         let mut height = self.ui_row_height(sheet, first_row)?;
@@ -885,44 +754,21 @@ impl<'a> UserModel<'a> {
         }
 
         let row_delta = view.row - view.top_row;
-        // Landing inside a merged cell selects its anchor
-        let (new_row, new_column) = self.merge_anchor(sheet, first_row + row_delta, view.column)?;
-        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.top_row = first_row;
-                view.row = new_row;
-                view.column = new_column;
-                view.range = new_range;
-                view.focus_row = new_row;
-                view.focus_column = new_column;
-            }
-        }
+        self.select_single_cell(sheet, first_row + row_delta, view.column)?;
+        self.sheet_view_mut(sheet)?.top_row = first_row;
         Ok(())
     }
 
     /// We extend the selection to cell (target_row, target_column)
     pub fn on_area_selecting(&mut self, target_row: i32, target_column: i32) -> Result<(), String> {
-        let (sheet, window_width, window_height) =
-            if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-                (
-                    view.sheet,
-                    view.window_width as f64,
-                    view.window_height as f64,
-                )
-            } else {
-                return Ok(());
-            };
+        let sheet = self.view.sheet;
+        let window_width = self.view.window_width as f64;
+        let window_height = self.view.window_height as f64;
+        let Ok(view) = self.sheet_view(sheet) else {
+            return Ok(());
+        };
         let (selected_row, selected_column, top_row, left_column) =
-            if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
-                if let Some(view) = worksheet.views.get(&self.model.view_id) {
-                    (view.row, view.column, view.top_row, view.left_column)
-                } else {
-                    return Ok(());
-                }
-            } else {
-                return Ok(());
-            };
+            (view.row, view.column, view.top_row, view.left_column);
         let frozen_rows = self.model.get_frozen_rows_count(sheet)?;
         let frozen_columns = self.model.get_frozen_columns_count(sheet)?;
 
@@ -974,19 +820,12 @@ impl<'a> UserModel<'a> {
             target_row,
             target_column,
         )?;
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.range = range;
-                view.focus_row = target_row;
-                view.focus_column = target_column;
-                if new_top_row != top_row {
-                    view.top_row = new_top_row;
-                }
-                if new_left_column != left_column {
-                    view.left_column = new_left_column;
-                }
-            }
-        }
+        let view = self.sheet_view_mut(sheet)?;
+        view.range = range;
+        view.focus_row = target_row;
+        view.focus_column = target_column;
+        view.top_row = new_top_row;
+        view.left_column = new_left_column;
 
         Ok(())
     }
@@ -996,20 +835,11 @@ impl<'a> UserModel<'a> {
         &mut self,
         direction: NavigationDirection,
     ) -> Result<(), String> {
-        let (sheet, window_height, window_width) =
-            if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-                (view.sheet, view.window_height, view.window_width)
-            } else {
-                return Err("View not found".to_string());
-            };
-        let worksheet = match self.model.workbook.worksheet(sheet) {
-            Ok(s) => s,
-            Err(_) => return Err("Worksheet not found".to_string()),
-        };
-        let view = match worksheet.views.get(&self.model.view_id) {
-            Some(s) => s,
-            None => return Err("View not found".to_string()),
-        };
+        let sheet = self.view.sheet;
+        let window_height = self.view.window_height;
+        let window_width = self.view.window_width;
+        let view = self.selected_sheet_view()?;
+        let worksheet = self.model.workbook.worksheet(sheet)?;
         let row = view.row;
         let column = view.column;
         if !is_valid_row(row) || !is_valid_column_number(column) {
@@ -1068,21 +898,10 @@ impl<'a> UserModel<'a> {
             }
         }
 
-        // Landing inside a merged cell selects its anchor
-        let (new_row, new_column) = self.merge_anchor(sheet, new_row, new_column)?;
-        let new_range = self.single_cell_range(sheet, new_row, new_column)?;
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.row = new_row;
-                view.column = new_column;
-                view.range = new_range;
-                view.focus_row = new_row;
-                view.focus_column = new_column;
-
-                view.top_row = top_row;
-                view.left_column = left_column;
-            }
-        }
+        self.select_single_cell(sheet, new_row, new_column)?;
+        let view = self.sheet_view_mut(sheet)?;
+        view.top_row = top_row;
+        view.left_column = left_column;
         Ok(())
     }
 }

@@ -19,7 +19,7 @@ use ironcalc_base::{
     },
     types::{
         ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, Link, MergedCell,
-        SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
+        SheetState, SpillValue, Table, Theme, Worksheet,
     },
 };
 use thiserror::Error;
@@ -805,24 +805,16 @@ fn load_hyperlinks(
 }
 
 struct SheetView {
-    is_selected: bool,
-    selected_row: i32,
-    selected_column: i32,
     frozen_columns: i32,
     frozen_rows: i32,
-    range: [i32; 4],
     show_grid_lines: bool,
 }
 
 impl Default for SheetView {
     fn default() -> Self {
         Self {
-            is_selected: false,
-            selected_row: 1,
-            selected_column: 1,
             frozen_rows: 0,
             frozen_columns: 0,
-            range: [1, 1, 1, 1],
             show_grid_lines: true,
         }
     }
@@ -849,7 +841,8 @@ fn get_sheet_view(ws: &XmlNode) -> SheetView {
     // bottomLeft, bottomRight, topLeft, topRight
 
     // NB: bottomLeft is used when only rows are frozen, etc
-    // IronCalc ignores all those.
+    // IronCalc ignores all those, as well as the selection and the selected
+    // tab: a workbook always opens on its first sheet at A1.
 
     let mut frozen_rows = 0;
     let mut frozen_columns = 0;
@@ -876,7 +869,6 @@ fn get_sheet_view(ws: &XmlNode) -> SheetView {
     }
 
     let sheet_view = sheet_view[0];
-    let is_selected = sheet_view.attribute("tabSelected").unwrap_or("0") == "1";
     let show_grid_lines = sheet_view.attribute("showGridLines").unwrap_or("1") == "1";
 
     let pane = sheet_view
@@ -895,46 +887,10 @@ fn get_sheet_view(ws: &XmlNode) -> SheetView {
             frozen_rows = get_number(pane[0], "ySplit");
         }
     }
-    let selections = sheet_view
-        .children()
-        .filter(|n| n.has_tag_name("selection"))
-        .collect::<Vec<&XmlNode>>();
-
-    if let Some(selection) = selections.last() {
-        let active_cell = match selection.attribute("activeCell").map(parse_cell_reference) {
-            Some(Ok(s)) => Some(s),
-            _ => None,
-        };
-        let sqref = match selection.attribute("sqref").map(parse_range) {
-            Some(Ok(s)) => Some(s),
-            _ => None,
-        };
-
-        let (selected_row, selected_column, row1, column1, row2, column2) =
-            match (active_cell, sqref) {
-                (Some(cell), Some(range)) => (cell.0, cell.1, range.0, range.1, range.2, range.3),
-                (Some(cell), None) => (cell.0, cell.1, cell.0, cell.1, cell.0, cell.1),
-                (None, Some(range)) => (range.0, range.1, range.0, range.1, range.2, range.3),
-                _ => (1, 1, 1, 1, 1, 1),
-            };
-
-        SheetView {
-            frozen_rows,
-            frozen_columns,
-            selected_row,
-            selected_column,
-            is_selected,
-            show_grid_lines,
-            range: [row1, column1, row2, column2],
-        }
-    } else {
-        SheetView {
-            frozen_rows,
-            frozen_columns,
-            is_selected,
-            show_grid_lines,
-            ..Default::default()
-        }
+    SheetView {
+        frozen_rows,
+        frozen_columns,
+        show_grid_lines,
     }
 }
 
@@ -958,7 +914,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     defined_names: Vec<DefinedNameS>,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
-) -> Result<(Worksheet, bool), XlsxError> {
+) -> Result<Worksheet, XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
     let state = &settings.state;
@@ -1016,55 +972,24 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 
-    let mut views = HashMap::new();
-    // The focus (the moving corner of the selection) is not in the file: use
-    // the corner of the range opposite the selected cell on each axis.
-    let [range_start_row, range_start_column, range_end_row, range_end_column] = sheet_view.range;
-    let focus_row = if sheet_view.selected_row == range_end_row {
-        range_start_row
-    } else {
-        range_end_row
-    };
-    let focus_column = if sheet_view.selected_column == range_end_column {
-        range_start_column
-    } else {
-        range_end_column
-    };
-    views.insert(
-        0,
-        WorksheetView {
-            row: sheet_view.selected_row,
-            column: sheet_view.selected_column,
-            range: sheet_view.range,
-            focus_row,
-            focus_column,
-            top_row: 1,
-            left_column: 1,
-        },
-    );
-
-    Ok((
-        Worksheet {
-            dimension,
-            cols,
-            rows,
-            shared_formulas,
-            sheet_data,
-            name: sheet_name.to_string(),
-            sheet_id,
-            state: state.to_owned(),
-            color,
-            merged_cells,
-            comments: settings.comments,
-            frozen_rows: sheet_view.frozen_rows,
-            frozen_columns: sheet_view.frozen_columns,
-            show_grid_lines: sheet_view.show_grid_lines,
-            views,
-            conditional_formatting,
-            links,
-        },
-        sheet_view.is_selected,
-    ))
+    Ok(Worksheet {
+        dimension,
+        cols,
+        rows,
+        shared_formulas,
+        sheet_data,
+        name: sheet_name.to_string(),
+        sheet_id,
+        state: state.to_owned(),
+        color,
+        merged_cells,
+        comments: settings.comments,
+        frozen_rows: sheet_view.frozen_rows,
+        frozen_columns: sheet_view.frozen_columns,
+        show_grid_lines: sheet_view.show_grid_lines,
+        conditional_formatting,
+        links,
+    })
 }
 
 pub(super) fn load_sheets<R: Read + std::io::Seek>(
@@ -1075,7 +1000,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     shared_strings: &mut SharedStringTable,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
-) -> Result<(Vec<Worksheet>, u32), XlsxError> {
+) -> Result<Vec<Worksheet>, XlsxError> {
     // load comments, tables and hyperlink relationships
     let mut sheet_rels = HashMap::new();
     for sheet in &workbook.worksheets {
@@ -1097,8 +1022,6 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     // load all sheets
     let worksheets: &Vec<String> = &workbook.worksheets.iter().map(|s| s.name.clone()).collect();
     let mut sheets = Vec::new();
-    let mut selected_sheet = 0;
-    let mut sheet_index = 0;
 
     let defined_names = workbook.get_defined_names_with_scope();
 
@@ -1124,7 +1047,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 comments: comments.to_vec(),
                 hyperlink_rels: hyperlink_rels.clone(),
             };
-            let (s, is_selected) = load_sheet(
+            let s = load_sheet(
                 archive,
                 &path,
                 settings,
@@ -1135,14 +1058,10 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 theme,
                 dxfs,
             )?;
-            if is_selected {
-                selected_sheet = sheet_index;
-            }
             sheets.push(s);
-            sheet_index += 1;
         }
     }
-    Ok((sheets, selected_sheet))
+    Ok(sheets)
 }
 
 #[cfg(test)]

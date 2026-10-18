@@ -1,7 +1,5 @@
 #![allow(clippy::unwrap_used)]
 
-use std::collections::HashMap;
-
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
     test::util::new_empty_model,
@@ -106,10 +104,10 @@ fn set_selected_cell_errors() {
 
 #[test]
 fn set_selected_cell_errors_wrong_sheet() {
-    let mut model = new_empty_model();
-    // forcefully set a wrong index
-    model.workbook.views.get_mut(&0).unwrap().sheet = 2;
+    let model = new_empty_model();
     let mut model = UserModel::from_model(model);
+    // forcefully set a wrong index
+    model.view.sheet = 2;
     // It's returning the wrong number
     assert_eq!(model.get_selected_sheet(), 2);
 
@@ -180,14 +178,52 @@ fn set_visible_cell_errors() {
 }
 
 #[test]
-fn errors_no_views() {
-    let mut model = new_empty_model();
-    // forcefully remove the view
-    model.workbook.views = HashMap::new();
-    // also in the sheet
-    model.workbook.worksheets[0].views = HashMap::new();
+fn new_sheets_start_at_a1() {
+    let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    // get methods will return defaults
+    model.set_selected_cell(5, 6).unwrap();
+    model.set_top_left_visible_cell(20, 10).unwrap();
+
+    // A new sheet has the default view
+    model.new_sheet().unwrap();
+    assert_eq!(model.get_selected_sheet(), 1);
+    assert_eq!(
+        model.get_selected_view(),
+        SelectedView {
+            sheet: 1,
+            row: 1,
+            column: 1,
+            range: [1, 1, 1, 1],
+            top_row: 1,
+            left_column: 1
+        }
+    );
+
+    // Each sheet keeps its own view
+    model.set_selected_sheet(0).unwrap();
+    assert_eq!(
+        model.get_selected_view(),
+        SelectedView {
+            sheet: 0,
+            row: 5,
+            column: 6,
+            range: [5, 6, 5, 6],
+            top_row: 20,
+            left_column: 10
+        }
+    );
+}
+
+#[test]
+fn the_view_is_not_serialized() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.new_sheet().unwrap();
+    model.set_selected_cell(5, 6).unwrap();
+    model.set_top_left_visible_cell(20, 10).unwrap();
+
+    // Opening the workbook again starts at the first sheet, A1
+    let model = UserModel::from_bytes(&model.to_bytes(), "en").unwrap();
     assert_eq!(model.get_selected_sheet(), 0);
     assert_eq!(model.get_selected_cell(), (0, 1, 1));
     assert_eq!(
@@ -201,11 +237,6 @@ fn errors_no_views() {
             left_column: 1
         }
     );
-
-    // set methods won't complain. but won't work either
-    model.set_selected_sheet(0).unwrap();
-    model.set_selected_cell(5, 6).unwrap();
-    assert_eq!(model.get_selected_cell(), (0, 1, 1));
 }
 
 #[test]

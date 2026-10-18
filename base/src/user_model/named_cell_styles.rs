@@ -112,20 +112,8 @@ impl<'a> UserModel<'a> {
         }
 
         // Resolve the selection range.
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            return Ok(());
-        };
-        let range = if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
-            if let Some(view) = worksheet.views.get(&self.model.view_id) {
-                view.range
-            } else {
-                return Ok(());
-            }
-        } else {
-            return Ok(());
-        };
+        let sheet = self.view.sheet;
+        let range = self.sheet_view(sheet)?.range;
 
         let [row_start, column_start, row_end, column_end] = range;
         for row in row_start..=row_end {

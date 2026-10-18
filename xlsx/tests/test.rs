@@ -33,16 +33,9 @@ fn test_example() {
     // One is not not imported and one is hidden
     assert_eq!(expected_names, names);
 
-    assert_eq!(workbook.views[&0].sheet, 7);
-
-    // Test selection:
     // First sheet (Sheet1)
-    // E13 and E13:N20
     assert_eq!(ws[0].frozen_rows, 0);
     assert_eq!(ws[0].frozen_columns, 0);
-    assert_eq!(ws[0].views[&0].row, 13);
-    assert_eq!(ws[0].views[&0].column, 5);
-    assert_eq!(ws[0].views[&0].range, [13, 5, 20, 14]);
 }
 
 #[test]
@@ -52,7 +45,7 @@ fn test_load_from_xlsx_bytes() {
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes).unwrap();
     let workbook = load_from_xlsx_bytes(&bytes, "home", "en", "UTC").unwrap();
-    assert_eq!(workbook.views[&0].sheet, 7);
+    assert_eq!(workbook.worksheets.len(), 10);
 }
 
 #[test]
@@ -118,16 +111,9 @@ fn test_save_to_xlsx() {
     let workbook = model.workbook;
     let ws = &workbook.worksheets;
 
-    assert_eq!(workbook.views[&0].sheet, 7);
-
-    // Test selection:
     // First sheet (Sheet1)
-    // E13 and E13:N20
     assert_eq!(ws[0].frozen_rows, 0);
     assert_eq!(ws[0].frozen_columns, 0);
-    assert_eq!(ws[0].views[&0].row, 13);
-    assert_eq!(ws[0].views[&0].column, 5);
-    assert_eq!(ws[0].views[&0].range, [13, 5, 20, 14]);
     // TODO: can we show it is the 'same' model?
     fs::remove_file(temp_file_name).unwrap();
 }
