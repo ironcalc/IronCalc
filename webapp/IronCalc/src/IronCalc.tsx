@@ -4,6 +4,7 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
+  useState,
 } from "react";
 import { I18nextProvider } from "react-i18next";
 import Workbook from "./components/Workbook/Workbook.tsx";
@@ -32,6 +33,9 @@ export interface IronCalcHandle {
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
   ({ themeVariables, model, rootContainer, canEdit = true }, ref) => {
     const root = rootContainer ?? document.body;
+    // One for the component's lifetime: a new one per render would drop the
+    // cell being edited whenever the parent re-renders
+    const [workbookState] = useState(() => new WorkbookState());
     useEffect(() => {
       if (root.classList.contains("ic-root")) {
         console.warn("rootContainer already in use:", root);
@@ -62,7 +66,7 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
         <I18nextProvider i18n={i18n}>
           <Workbook
             model={model}
-            workbookState={new WorkbookState()}
+            workbookState={workbookState}
             canEdit={canEdit}
           />
         </I18nextProvider>
