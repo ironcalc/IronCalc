@@ -814,6 +814,55 @@ impl Model {
             .map_err(to_js_error)
     }
 
+    /// Returns the comment attached to the cell or undefined if there isn't one.
+    #[wasm_bindgen(
+        js_name = "getCellComment",
+        unchecked_return_type = "Comment | undefined"
+    )]
+    pub fn get_cell_comment(&self, sheet: u32, row: i32, column: i32) -> Result<JsValue, JsError> {
+        let comment = self
+            .model
+            .get_cell_comment(sheet, row, column)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&comment).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Returns all the comments in the worksheet.
+    #[wasm_bindgen(js_name = "getComments", unchecked_return_type = "Comment[]")]
+    pub fn get_comments(&self, sheet: u32) -> Result<JsValue, JsError> {
+        let comments = self.model.get_comments(sheet).map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(comments).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Attaches a comment to a cell, replacing the existing one if there was one.
+    /// A single undo step.
+    #[wasm_bindgen(js_name = "setCellComment")]
+    pub fn set_cell_comment(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        text: &str,
+        author_name: &str,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_cell_comment(sheet, row, column, text, author_name)
+            .map_err(to_js_error)
+    }
+
+    /// Removes the comment attached to the cell. It is not an error if the cell has none.
+    #[wasm_bindgen(js_name = "deleteCellComment")]
+    pub fn delete_cell_comment(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .delete_cell_comment(sheet, row, column)
+            .map_err(to_js_error)
+    }
+
     /// Returns all the links in the worksheet sorted by (row, column).
     #[wasm_bindgen(js_name = "getLinks", unchecked_return_type = "CellLink[]")]
     pub fn get_links(&self, sheet: u32) -> Result<JsValue, JsError> {

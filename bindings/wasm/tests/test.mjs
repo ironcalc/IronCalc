@@ -198,6 +198,36 @@ test("move columns", () => {
     assert.strictEqual(model.getCellContent(0, 7, 5), "=SUM(G3:G7)");
 });
 
+test('Cell comments', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.strictEqual(model.getCellComment(0, 2, 3), undefined);
+    assert.deepEqual(model.getComments(0), []);
+
+    model.setCellComment(0, 2, 3, "Rent & deposit", "Ann");
+    const comment = model.getCellComment(0, 2, 3);
+    assert.strictEqual(comment.text, "Rent & deposit");
+    assert.strictEqual(comment.author_name, "Ann");
+    assert.strictEqual(comment.cell_ref, "C2");
+    assert.strictEqual(model.getComments(0).length, 1);
+
+    // comments follow their cells
+    model.insertRows(0, 1, 1);
+    assert.strictEqual(model.getCellComment(0, 3, 3).text, "Rent & deposit");
+
+    // comments are undoable
+    model.undo();
+    model.undo();
+    assert.strictEqual(model.getCellComment(0, 2, 3), undefined);
+    model.redo();
+    assert.strictEqual(model.getCellComment(0, 2, 3).text, "Rent & deposit");
+
+    model.deleteCellComment(0, 2, 3);
+    assert.strictEqual(model.getCellComment(0, 2, 3), undefined);
+
+    // invalid cell
+    assert.throws(() => model.setCellComment(0, 0, 1, "x", ""));
+});
+
 test('Cell links', () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     assert.strictEqual(model.getCellLink(0, 2, 2), undefined);

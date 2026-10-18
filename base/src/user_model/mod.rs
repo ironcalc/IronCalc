@@ -4,6 +4,7 @@ mod autofill;
 mod border;
 mod border_utils;
 mod clipboard;
+mod comments;
 mod common;
 mod conditional_formatting;
 pub(crate) mod history;
