@@ -3,6 +3,7 @@
 mod autofill;
 mod border;
 mod border_utils;
+mod cells_block;
 mod clipboard;
 mod common;
 mod conditional_formatting;
@@ -19,5 +20,6 @@ pub use common::UserModel;
 #[cfg(test)]
 pub use ui::SelectedView;
 
+pub use cells_block::{CellText, CellsBlock, FillRun};
 pub use clipboard::ClipboardData;
 pub use common::BorderArea;

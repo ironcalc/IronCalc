@@ -1,5 +1,11 @@
 import type { Model } from "@ironcalc/wasm";
-import { type PointerEvent, type RefObject, useCallback, useRef } from "react";
+import {
+  type PointerEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { isInReferenceMode } from "../Editor/util";
 import type { Cell } from "../types";
 import {
@@ -35,7 +41,34 @@ interface PointerEvents {
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
+  onPointerCancel: (event: PointerEvent) => void;
+  /** True while a finger (or pen) is down on the sheet */
+  isTouchDown: () => boolean;
 }
+
+/**
+ * On touch devices a finger on the sheet pans it, like in the native
+ * spreadsheet apps, so the gesture is only resolved once we know what it is:
+ *
+ * - a tap (lift without moving) selects the cell, row or column under it,
+ * - a drag pans the sheet (the browser's native scroll),
+ * - a hold of `TOUCH_HOLD_MS` without moving selects the cell and turns the
+ *   rest of the touch into a selection drag, as a mouse drag would.
+ *
+ * `begin` is the mouse `pointerdown` logic, run when the gesture resolves to
+ * a tap or a hold.
+ */
+interface TouchGesture {
+  pointerId: number;
+  x: number;
+  y: number;
+  timer: ReturnType<typeof setTimeout>;
+  begin: () => void;
+}
+
+const TOUCH_HOLD_MS = 500;
+// A finger never holds perfectly still: moves up to this distance are a hold
+const TOUCH_SLOP_PX = 10;
 
 const usePointer = (options: PointerSettings): PointerEvents => {
   const isSelecting = useRef(false);
@@ -44,23 +77,75 @@ const usePointer = (options: PointerSettings): PointerEvents => {
   const initialRowRef = useRef<number | null>(null);
   const isSelectingColumns = useRef(false);
   const initialColumnRef = useRef<number | null>(null);
+  const touchGesture = useRef<TouchGesture | null>(null);
+  const touchDown = useRef(false);
+
+  const isDragging = useCallback(
+    (): boolean =>
+      isSelecting.current ||
+      isInsertingRef.current ||
+      isSelectingRows.current ||
+      isSelectingColumns.current,
+    [],
+  );
+
+  const cancelTouchGesture = useCallback((): void => {
+    const gesture = touchGesture.current;
+    if (gesture) {
+      clearTimeout(gesture.timer);
+      touchGesture.current = null;
+    }
+  }, []);
+
+  const releasePointer = useCallback(
+    (pointerId: number): void => {
+      const element = options.worksheetElement.current;
+      // A tap selects on pointerup, when the touch pointer is already going
+      // away and may have lost (or never got) its capture
+      if (element?.hasPointerCapture(pointerId)) {
+        element.releasePointerCapture(pointerId);
+      }
+    },
+    [options],
+  );
+
+  useEffect(() => {
+    const element = options.worksheetElement.current;
+    if (!element) {
+      return;
+    }
+    // Once a hold has turned the touch into a selection drag the finger must
+    // not pan the sheet. `touch-action` cannot be changed mid-gesture, but
+    // cancelling the touch moves keeps the browser from starting the pan.
+    // React registers touch listeners as passive, hence the native listener.
+    const onTouchMove = (event: TouchEvent): void => {
+      if (isDragging() && event.cancelable) {
+        event.preventDefault();
+      }
+    };
+    element.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => {
+      element.removeEventListener("touchmove", onTouchMove);
+      cancelTouchGesture();
+    };
+  }, [options.worksheetElement, isDragging, cancelTouchGesture]);
 
   const onPointerMove = useCallback(
     (event: PointerEvent): void => {
-      // Range selections are disabled on non-mouse devices. Use touch move only
-      // to scroll for now.
-      if (event.pointerType !== "mouse") {
+      const gesture = touchGesture.current;
+      if (gesture && gesture.pointerId === event.pointerId) {
+        // The finger moved before the hold resolved: this is a pan, which the
+        // browser handles (and confirms with a pointercancel)
+        if (
+          Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) >
+          TOUCH_SLOP_PX
+        ) {
+          cancelTouchGesture();
+        }
         return;
       }
 
-      if (
-        !(
-          isSelecting.current ||
-          isInsertingRef.current ||
-          isSelectingRows.current ||
-          isSelectingColumns.current
-        )
-      ) {
+      if (!isDragging()) {
         return;
       }
       const { canvasElement, model, worksheetCanvas, refresh } = options;
@@ -178,37 +263,55 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         refresh();
       }
     },
-    [options],
+    [options, isDragging, cancelTouchGesture],
   );
 
   const onPointerUp = useCallback(
     (event: PointerEvent): void => {
+      const gesture = touchGesture.current;
+      if (gesture && gesture.pointerId === event.pointerId) {
+        // A tap: select what is under the finger, as a click would. The
+        // drag state it sets is cleared right below, as for a mouse click
+        // released in place.
+        cancelTouchGesture();
+        gesture.begin();
+      }
+      if (event.pointerType !== "mouse") {
+        touchDown.current = false;
+      }
       if (isSelecting.current) {
-        const { worksheetElement } = options;
         isSelecting.current = false;
-        worksheetElement.current?.releasePointerCapture(event.pointerId);
+        releasePointer(event.pointerId);
         options.onAreaSelected();
       } else if (isInsertingRef.current) {
-        const { worksheetElement } = options;
         isInsertingRef.current = false;
-        worksheetElement.current?.releasePointerCapture(event.pointerId);
+        releasePointer(event.pointerId);
       } else if (isSelectingRows.current) {
-        const { worksheetElement } = options;
         isSelectingRows.current = false;
         initialRowRef.current = null;
-        worksheetElement.current?.releasePointerCapture(event.pointerId);
+        releasePointer(event.pointerId);
       } else if (isSelectingColumns.current) {
-        const { worksheetElement } = options;
         isSelectingColumns.current = false;
         initialColumnRef.current = null;
-        worksheetElement.current?.releasePointerCapture(event.pointerId);
+        releasePointer(event.pointerId);
       }
     },
-    [options],
+    [options, cancelTouchGesture, releasePointer],
   );
 
-  const onPointerDown = useCallback(
-    (event: PointerEvent) => {
+  const onPointerCancel = useCallback(
+    (event: PointerEvent): void => {
+      // The browser took the touch for a pan (or the system interrupted it)
+      cancelTouchGesture();
+      onPointerUp(event);
+    },
+    [onPointerUp, cancelTouchGesture],
+  );
+
+  // The mouse `pointerdown`: selects what is under the pointer and starts the
+  // drag that may follow. On touch it runs once the gesture is resolved.
+  const beginPointerDown = useCallback(
+    (event: PointerEvent): void => {
       const target = event.target as HTMLElement;
       if (target.className === "column-resize-handle") {
         // we are resizing a column
@@ -380,10 +483,39 @@ const usePointer = (options: PointerSettings): PointerEvents => {
     [options],
   );
 
+  const onPointerDown = useCallback(
+    (event: PointerEvent): void => {
+      if (event.pointerType !== "mouse") {
+        touchDown.current = true;
+        cancelTouchGesture();
+        touchGesture.current = {
+          pointerId: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+          timer: setTimeout(() => {
+            if (touchGesture.current?.pointerId !== event.pointerId) {
+              return;
+            }
+            // A hold: select now and keep the drag state so that moving the
+            // finger extends the selection
+            touchGesture.current = null;
+            beginPointerDown(event);
+          }, TOUCH_HOLD_MS),
+          begin: () => beginPointerDown(event),
+        };
+        return;
+      }
+      beginPointerDown(event);
+    },
+    [beginPointerDown, cancelTouchGesture],
+  );
+
   return {
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onPointerCancel,
+    isTouchDown: () => touchDown.current,
   };
 };
 
