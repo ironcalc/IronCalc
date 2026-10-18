@@ -90,6 +90,61 @@ fn test_numbervalue_error() {
     assert_eq!(model._get_text("A1"), "#VALUE!");
 }
 
+#[test]
+fn test_numbervalue_empty_text() {
+    // An empty string, or a blank cell, is 0
+    let mut model = new_empty_model();
+    model._set("A1", "=NUMBERVALUE(\"\")");
+    model._set("A2", "=NUMBERVALUE(\"   \")");
+    model._set("A3", "=NUMBERVALUE(B1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0");
+    assert_eq!(model._get_text("A2"), "0");
+    assert_eq!(model._get_text("A3"), "0");
+}
+
+#[test]
+fn test_numbervalue_ignores_spaces() {
+    // Spaces are ignored anywhere in the text, not just at the ends
+    let mut model = new_empty_model();
+    model._set("A1", "=NUMBERVALUE(\" 3 000 \")");
+    model._set("A2", "=NUMBERVALUE(\"1 234,5\", \",\", \".\")");
+    model._set("A3", "=NUMBERVALUE(\"- 5 %\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3000");
+    assert_eq!(model._get_text("A2"), "1234.5");
+    assert_eq!(model._get_text("A3"), "-0.05");
+}
+
+#[test]
+fn test_numbervalue_separators_first_character() {
+    // Only the first character of each separator argument is used
+    let mut model = new_empty_model();
+    model._set("A1", "=NUMBERVALUE(\"1.234,5\", \",;\", \".;\")");
+    model._set("A2", "=NUMBERVALUE(\"2,5\", \",.\", \" \")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1234.5");
+    assert_eq!(model._get_text("A2"), "2.5");
+}
+
+#[test]
+fn test_numbervalue_group_separator_position() {
+    // A group separator before the decimal separator is ignored,
+    // one after it is an error
+    let mut model = new_empty_model();
+    model._set("A1", "=NUMBERVALUE(\"1,2,3.5\")");
+    model._set("A2", "=NUMBERVALUE(\"1.000,5\")");
+    model._set("A3", "=NUMBERVALUE(\"1,000.5,0\")");
+    model._set("A4", "=NUMBERVALUE(\"1.2.3\")");
+    model._set("A5", "=NUMBERVALUE(\"9%%\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "123.5");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "0.0009");
+}
+
 // ── PROPER ────────────────────────────────────────────────────────────────────
 
 #[test]
