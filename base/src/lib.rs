@@ -44,6 +44,8 @@ pub mod types;
 pub mod worksheet;
 
 pub use crate::constants::COLUMN_WIDTH_FACTOR;
+pub use crate::constants::DEFAULT_COLUMN_WIDTH;
+pub use crate::constants::DEFAULT_ROW_HEIGHT;
 pub use crate::constants::ROW_HEIGHT_FACTOR;
 
 mod actions;
@@ -77,6 +79,9 @@ pub use model::get_milliseconds_since_epoch;
 pub use model::FmtSettings;
 pub use model::Model;
 pub use user_model::BorderArea;
+pub use user_model::CellText;
+pub use user_model::CellsBlock;
 pub use user_model::ClipboardData;
+pub use user_model::FillRun;
 pub use user_model::UserModel;
 pub use utils::get_all_timezones;

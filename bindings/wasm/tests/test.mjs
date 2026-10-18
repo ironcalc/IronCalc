@@ -33,6 +33,43 @@ test('Row height', () => {
     assert.strictEqual(model.getRowHeight(0, 3), 320);
 });
 
+test('Row and column sizes', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.deepStrictEqual(model.getRowSizes(0), { default_size: 25, runs: [] });
+    assert.deepStrictEqual(model.getColumnSizes(0), { default_size: 90, runs: [] });
+
+    model.setRowsHeight(0, 3, 4, 40);
+    model.setRowsHidden(0, 6, 6, true);
+    model.setColumnsWidth(0, 2, 3, 120);
+    model.setColumnsHidden(0, 5, 5, true);
+
+    assert.deepStrictEqual(model.getRowSizes(0), {
+        default_size: 25,
+        runs: [
+            { first: 3, last: 3, size: 40 },
+            { first: 4, last: 4, size: 40 },
+            { first: 6, last: 6, size: 0 },
+        ],
+    });
+    const columns = model.getColumnSizes(0);
+    assert.strictEqual(columns.default_size, 90);
+    // The engine keeps one record per column
+    assert.deepStrictEqual(columns.runs, [
+        { first: 2, last: 2, size: 120 },
+        { first: 3, last: 3, size: 120 },
+        { first: 5, last: 5, size: 0 },
+    ]);
+    // The runs agree with the per-row and per-column queries
+    for (let i = 1; i <= 8; i += 1) {
+        const row = model.getRowSizes(0).runs.find((r) => r.first <= i && i <= r.last);
+        assert.strictEqual(row ? row.size : 25, model.getRowHeight(0, i));
+        const column = columns.runs.find((c) => c.first <= i && i <= c.last);
+        assert.strictEqual(column ? column.size : 90, model.getColumnWidth(0, i));
+    }
+
+    assert.throws(() => model.getRowSizes(3));
+});
+
 test('Evaluates correctly', (t) => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.setUserInput(0, 1, 1, "23");
@@ -316,4 +353,39 @@ test('Merge cells variants', () => {
     ]);
     model.undo();
     assert.deepEqual(model.getMergedCells(0), []);
+});
+
+test('Cells block', () => {
+    let model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.setUserInput(0, 1, 1, 'hello');
+    model.setUserInput(0, 2, 2, '=1+1');
+    model.updateRangeStyle({ sheet: 0, row: 2, column: 1, width: 1, height: 1 }, 'fill.fg_color', '#FF0000');
+
+    // A1:B2
+    const block = model.getCellsBlock(0, 1, 1, 2, 2);
+    assert.strictEqual(block.row, 1);
+    assert.strictEqual(block.column, 1);
+    assert.strictEqual(block.width, 2);
+    assert.strictEqual(block.height, 2);
+    // A1, B1, B2 are plain and share a style; A2 has its own
+    assert.strictEqual(block.styles.length, 2);
+    assert.strictEqual(block.style_indices.length, 4);
+    assert.strictEqual(block.style_indices[0], block.style_indices[1]);
+    assert.strictEqual(block.style_indices[1], block.style_indices[3]);
+    assert.notStrictEqual(block.style_indices[2], block.style_indices[0]);
+    const a2 = block.styles[block.style_indices[2]];
+    assert.strictEqual(a2.style.fill.color, '#FF0000');
+    assert.deepStrictEqual(a2, model.getCellStyle(0, 2, 1));
+    assert.deepStrictEqual(block.texts, [
+        { row: 1, column: 1, text: 'hello', cell_type: 2 },
+        { row: 2, column: 2, text: '2', cell_type: 1 },
+    ]);
+    assert.deepStrictEqual(block.fills, [
+        { row: 1, column: 1, width: 2, color: '' },
+        { row: 2, column: 1, width: 1, color: '#FF0000' },
+        { row: 2, column: 2, width: 1, color: '' },
+    ]);
+
+    assert.throws(() => model.getCellsBlock(0, 1, 1, 0, 1));
+    assert.throws(() => model.getCellsBlock(3, 1, 1, 1, 1));
 });

@@ -1,10 +1,10 @@
 #![deny(missing_docs)]
 
 /// Default column width in pixels
-pub(crate) const DEFAULT_COLUMN_WIDTH: f64 = 90.0;
+pub const DEFAULT_COLUMN_WIDTH: f64 = 90.0;
 
 /// Default row height in pixels
-pub(crate) const DEFAULT_ROW_HEIGHT: f64 = 25.0;
+pub const DEFAULT_ROW_HEIGHT: f64 = 25.0;
 
 /// A column width of Excel value `w` will result in `w * COLUMN_WIDTH_FACTOR` pixels
 pub const COLUMN_WIDTH_FACTOR: f64 = 9.0;
