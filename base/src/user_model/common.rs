@@ -25,6 +25,7 @@ use crate::user_model::history::{
 };
 
 use super::border_utils::is_max_border;
+use super::ui::WorkbookView;
 
 #[derive(Serialize, Deserialize)]
 pub enum CellArrayStructure {
@@ -215,6 +216,10 @@ pub struct UserModel<'a> {
     history: History,
     send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
+    /// What the user is looking at: selected sheet, selection and scroll
+    /// position of each sheet, window size. Runtime state only: it is not
+    /// part of the workbook and is not serialized.
+    pub(crate) view: WorkbookView,
 }
 
 /// Given the index of the currently selected sheet, returns the index that same
@@ -252,6 +257,7 @@ impl<'a> UserModel<'a> {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            view: WorkbookView::default(),
         }
     }
 
@@ -271,6 +277,7 @@ impl<'a> UserModel<'a> {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            view: WorkbookView::default(),
         })
     }
 
@@ -285,6 +292,7 @@ impl<'a> UserModel<'a> {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            view: WorkbookView::default(),
         })
     }
 
@@ -623,6 +631,7 @@ impl<'a> UserModel<'a> {
     /// * [Model::delete_sheet]
     pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
+        let sheet_id = worksheet.sheet_id;
 
         self.push_diff_list(vec![Diff::DeleteSheet {
             sheet,
@@ -632,12 +641,11 @@ impl<'a> UserModel<'a> {
         let sheet_count = self.model.workbook.worksheets.len() as u32;
         // If we are deleting the last sheet we need to change the selected sheet
         if sheet == sheet_count - 1 && sheet_count > 1 {
-            if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
-                view.sheet = sheet_count - 2;
-            };
+            self.view.sheet = sheet_count - 2;
         }
 
         self.model.delete_sheet(sheet)?;
+        self.view.sheets.remove(&sheet_id);
         Ok(())
     }
 
@@ -704,9 +712,7 @@ impl<'a> UserModel<'a> {
         for index in 1..sheet_count {
             let sheet_index = (sheet + index) % sheet_count;
             if self.model.workbook.worksheet(sheet_index)?.state == SheetState::Visible {
-                if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
-                    view.sheet = sheet_index;
-                };
+                self.view.sheet = sheet_index;
                 break;
             }
         }
@@ -1397,43 +1403,39 @@ impl<'a> UserModel<'a> {
             self.model.set_column_hidden(sheet, column, hidden)?;
         }
         // If we are hiding columns we might need to adjust the selected column
-        if hidden {
-            if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
-                if view.sheet == sheet {
-                    // We select the next visible column
-                    let mut column = column_end + 1;
-                    while self
-                        .model
-                        .workbook
-                        .worksheet(sheet)?
-                        .is_column_hidden(column)?
-                    {
-                        column += 1;
-                        if column > LAST_COLUMN {
-                            break;
-                        }
-                    }
-                    if column > LAST_COLUMN {
-                        // We select the previous visible column
-                        column = column_start - 1;
-                        while self
-                            .model
-                            .workbook
-                            .worksheet(sheet)?
-                            .is_column_hidden(column)?
-                        {
-                            column -= 1;
-                            if column <= 0 {
-                                // We can't find a visible column
-                                column = 1;
-                                break;
-                            }
-                        }
-                    }
-                    self.set_selected_cell(1, column)?;
-                    self.set_selected_range(1, column, LAST_ROW, column)?;
+        if hidden && self.view.sheet == sheet {
+            // We select the next visible column
+            let mut column = column_end + 1;
+            while self
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .is_column_hidden(column)?
+            {
+                column += 1;
+                if column > LAST_COLUMN {
+                    break;
                 }
-            };
+            }
+            if column > LAST_COLUMN {
+                // We select the previous visible column
+                column = column_start - 1;
+                while self
+                    .model
+                    .workbook
+                    .worksheet(sheet)?
+                    .is_column_hidden(column)?
+                {
+                    column -= 1;
+                    if column <= 0 {
+                        // We can't find a visible column
+                        column = 1;
+                        break;
+                    }
+                }
+            }
+            self.set_selected_cell(1, column)?;
+            self.set_selected_range(1, column, LAST_ROW, column)?;
         }
         self.push_diff_list(diff_list);
         Ok(())
@@ -1461,33 +1463,29 @@ impl<'a> UserModel<'a> {
             self.model.set_row_hidden(sheet, row, hidden)?;
         }
         // Select the next visible row if needed
-        if hidden {
-            if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
-                if view.sheet == sheet {
-                    // We select the next visible row
-                    let mut row = row_end + 1;
-                    while self.model.workbook.worksheet(sheet)?.is_row_hidden(row)? {
-                        row += 1;
-                        if row > LAST_ROW {
-                            break;
-                        }
-                    }
-                    if row > LAST_ROW {
-                        // We select the previous visible row
-                        row = row_start - 1;
-                        while self.model.workbook.worksheet(sheet)?.is_row_hidden(row)? {
-                            row -= 1;
-                            if row <= 0 {
-                                // We can't find a visible row
-                                row = 1;
-                                break;
-                            }
-                        }
-                    }
-                    self.set_selected_cell(row, 1)?;
-                    self.set_selected_range(row, 1, row, LAST_COLUMN)?;
+        if hidden && self.view.sheet == sheet {
+            // We select the next visible row
+            let mut row = row_end + 1;
+            while self.model.workbook.worksheet(sheet)?.is_row_hidden(row)? {
+                row += 1;
+                if row > LAST_ROW {
+                    break;
                 }
-            };
+            }
+            if row > LAST_ROW {
+                // We select the previous visible row
+                row = row_start - 1;
+                while self.model.workbook.worksheet(sheet)?.is_row_hidden(row)? {
+                    row -= 1;
+                    if row <= 0 {
+                        // We can't find a visible row
+                        row = 1;
+                        break;
+                    }
+                }
+            }
+            self.set_selected_cell(row, 1)?;
+            self.set_selected_range(row, 1, row, LAST_COLUMN)?;
         }
         self.push_diff_list(diff_list);
         Ok(())
@@ -1591,20 +1589,8 @@ impl<'a> UserModel<'a> {
     pub fn on_paste_styles(&mut self, styles: &[Vec<Style>]) -> Result<(), String> {
         let styles_height = styles.len() as i32;
         let styles_width = styles[0].len() as i32;
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            return Ok(());
-        };
-        let range = if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
-            if let Some(view) = worksheet.views.get(&self.model.view_id) {
-                view.range
-            } else {
-                return Ok(());
-            }
-        } else {
-            return Ok(());
-        };
+        let sheet = self.view.sheet;
+        let range = self.sheet_view(sheet)?.range;
 
         // If the pasted area is smaller than the selected area we increase it
         let [row_start, column_start, row_end, column_end] = range;
@@ -1631,13 +1617,10 @@ impl<'a> UserModel<'a> {
         self.push_diff_list(diff_list);
 
         // select the pasted range
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
-                view.range = [row_start, column_start, last_row, last_column];
-                view.focus_row = last_row;
-                view.focus_column = last_column;
-            }
-        }
+        let view = self.sheet_view_mut(sheet)?;
+        view.range = [row_start, column_start, last_row, last_column];
+        view.focus_row = last_row;
+        view.focus_column = last_column;
         Ok(())
     }
 

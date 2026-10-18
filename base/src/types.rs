@@ -108,17 +108,6 @@ pub struct WorkbookSettings {
     pub locale: String,
 }
 
-/// A Workbook View tracks of the selected sheet for each view
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct WorkbookView {
-    /// The index of the currently selected sheet.
-    pub sheet: u32,
-    /// The current width of the window
-    pub window_width: i64,
-    /// The current height of the window
-    pub window_height: i64,
-}
-
 /// An internal representation of an IronCalc Workbook
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Workbook {
@@ -130,7 +119,6 @@ pub struct Workbook {
     pub settings: WorkbookSettings,
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
-    pub views: HashMap<u32, WorkbookView>,
     pub theme: Theme,
 }
 
@@ -160,32 +148,6 @@ impl Display for SheetState {
             SheetState::VeryHidden => write!(formatter, "veryHidden"),
         }
     }
-}
-
-/// Represents the state of the worksheet as seen by the user. This includes
-/// details such as the currently selected cell, the visible range, and the
-/// position of the viewport.
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct WorksheetView {
-    /// The row index of the currently selected cell (the anchor of the selection).
-    pub row: i32,
-    /// The column index of the currently selected cell (the anchor of the selection).
-    pub column: i32,
-    /// The selected range in the worksheet, specified as [start_row, start_column, end_row, end_column].
-    /// Always normalized (start <= end). This is derived state: the bounding box of the
-    /// anchor and the focus, grown so it never covers a merged cell partially.
-    pub range: [i32; 4],
-    /// The row of the focus: the moving corner of the selection, the one that
-    /// keyboard- or pointer-extending the selection displaces. It is not
-    /// necessarily a corner of `range` (extending over merged cells grows the
-    /// range beyond the anchor-focus bounding box).
-    pub focus_row: i32,
-    /// The column of the focus.
-    pub focus_column: i32,
-    /// The row index of the topmost visible cell in the worksheet view.
-    pub top_row: i32,
-    /// The column index of the leftmost visible cell in the worksheet view.
-    pub left_column: i32,
 }
 
 /// Represents a hyperlink in the worksheet, which can be either external or internal.
@@ -270,7 +232,6 @@ pub struct Worksheet {
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
-    pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
     pub conditional_formatting: Vec<ConditionalFormatting>,

@@ -612,25 +612,9 @@ pub(crate) fn get_worksheet_xml(
         ""
     };
 
-    let mut active_cell = "A1".to_string();
-    let mut sqref = "A1".to_string();
-
-    let views = &worksheet.views;
-    if let Some(view) = views.get(&0) {
-        let range = view.range;
-        let row = view.row;
-        let column = view.column;
-        let column_name = number_to_column(column).unwrap_or("A".to_string());
-        active_cell = format!("{column_name}{row}");
-
-        let column_start = number_to_column(range[1]).unwrap_or("A".to_string());
-        let column_end = number_to_column(range[3]).unwrap_or("A".to_string());
-        if range[0] == range[2] && range[1] == range[3] {
-            sqref = format!("{column_start}{}", range[0]);
-        } else {
-            sqref = format!("{}{}:{}{}", column_start, range[0], column_end, range[2]);
-        }
-    }
+    // IronCalc does not keep track of the selection: it is always A1.
+    let active_cell = "A1";
+    let sqref = "A1";
 
     let merge_cells_section = if merged_cells_count > 0 {
         format!(

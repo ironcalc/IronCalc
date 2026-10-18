@@ -315,7 +315,6 @@ pub(crate) enum Diff {
         old_value: Vec<MergedCell>,
         new_value: Vec<MergedCell>,
     },
-    // FIXME: we are missing SetViewDiffs
 }
 
 pub(crate) type DiffList = Vec<Diff>;
