@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 mod _rels;
+mod comments;
 mod conditional_formatting;
 mod doc_props;
 mod dxfs_styles;
@@ -39,12 +40,23 @@ fn get_content_types_xml(workbook: &Workbook) -> String {
         r#"<Default Extension="xml" ContentType="application/xml"/>"#.to_string(),
         r#"<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>"#.to_string(),
     ];
-    for worksheet in 0..workbook.worksheets.len() {
+    if workbook.worksheets.iter().any(|w| !w.comments.is_empty()) {
+        content.push(
+            r#"<Default Extension="vml" ContentType="application/vnd.openxmlformats-officedocument.vmlDrawing"/>"#.to_string(),
+        );
+    }
+    for (index, worksheet) in workbook.worksheets.iter().enumerate() {
         let sheet = format!(
             r#"<Override PartName="/xl/worksheets/sheet{}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>"#,
-            worksheet + 1
+            index + 1
         );
         content.push(sheet);
+        if !worksheet.comments.is_empty() {
+            content.push(format!(
+                r#"<Override PartName="/xl/comments{}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/>"#,
+                index + 1
+            ));
+        }
     }
     content.push(
         r#"<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>"#.to_string(),
@@ -122,10 +134,24 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.write_all(workbook_xml_rels::get_workbook_xml_rels(workbook).as_bytes())?;
 
     zip.add_directory("xl/worksheets", options)?;
-    // sheet rels parts (one per sheet with external hyperlinks)
+    // sheet rels parts (one per sheet with external hyperlinks or comments)
     let mut has_worksheet_rels = false;
+    let mut has_drawings = false;
     for (sheet_index, worksheet) in workbook.worksheets.iter().enumerate() {
-        if let Some(rels_xml) = worksheets::get_worksheet_xml_rels(worksheet) {
+        let id = sheet_index + 1;
+        if let Some(comments_xml) = comments::get_comments_xml(worksheet) {
+            zip.start_file(format!("xl/comments{id}.xml"), options)?;
+            zip.write_all(comments_xml.as_bytes())?;
+        }
+        if let Some(vml_xml) = comments::get_vml_drawing_xml(worksheet, id) {
+            if !has_drawings {
+                zip.add_directory("xl/drawings", options)?;
+                has_drawings = true;
+            }
+            zip.start_file(format!("xl/drawings/vmlDrawing{id}.vml"), options)?;
+            zip.write_all(vml_xml.as_bytes())?;
+        }
+        if let Some(rels_xml) = worksheets::get_worksheet_xml_rels(worksheet, id) {
             if !has_worksheet_rels {
                 zip.add_directory("xl/worksheets/_rels", options)?;
                 has_worksheet_rels = true;
