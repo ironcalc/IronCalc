@@ -152,30 +152,69 @@ impl<'a> Model<'a> {
             ",".to_string()
         };
 
-        if decimal_sep.is_empty() || decimal_sep == group_sep {
+        // Only the first character of each separator is used
+        let decimal_sep = match decimal_sep.chars().next() {
+            Some(c) => c,
+            None => {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid separators".to_string())
+            }
+        };
+        let group_sep = group_sep.chars().next();
+        if group_sep == Some(decimal_sep) {
             return CalcResult::new_error(Error::VALUE, cell, "Invalid separators".to_string());
         }
 
-        let trimmed = text.trim();
+        // Spaces are ignored anywhere in the text, and an empty text is 0
+        let text: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+        if text.is_empty() {
+            return CalcResult::Number(0.0);
+        }
 
         // Handle percentage suffix
         let (trimmed, pct_count) = {
-            let mut t = trimmed;
+            let mut t = text.as_str();
             let mut count = 0u32;
             while t.ends_with('%') {
                 t = &t[..t.len() - 1];
                 count += 1;
             }
-            (t.trim_end(), count)
+            (t, count)
         };
 
         if trimmed.is_empty() {
             return CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string());
         }
 
-        // Remove group separators, replace decimal separator with '.'
-        let cleaned = trimmed.replace(&group_sep, "");
-        let cleaned = cleaned.replace(&decimal_sep, ".");
+        // Group separators are ignored before the decimal separator,
+        // but are not allowed after it
+        let (integer_part, fraction_part) = match trimmed.split_once(decimal_sep) {
+            Some((integer_part, fraction_part)) => (integer_part, Some(fraction_part)),
+            None => (trimmed, None),
+        };
+        let integer_part: String = integer_part
+            .chars()
+            .filter(|&c| Some(c) != group_sep)
+            .collect();
+        let cleaned = match fraction_part {
+            Some(fraction_part) => {
+                if fraction_part.contains(decimal_sep) {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Multiple decimal separators".to_string(),
+                    );
+                }
+                if group_sep.is_some_and(|g| fraction_part.contains(g)) {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Group separator after the decimal separator".to_string(),
+                    );
+                }
+                format!("{integer_part}.{fraction_part}")
+            }
+            None => integer_part,
+        };
 
         // Reject if more than one '.' after replacement
         if cleaned.matches('.').count() > 1 {
