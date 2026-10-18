@@ -21,6 +21,7 @@ import {
 } from "./constants";
 import { attachOutlineHandle } from "./outlineHandle";
 import {
+  cellTextColor,
   computeWrappedLines,
   hexToRGBA10Percent,
   readThemeFromCSS,
@@ -452,7 +453,10 @@ export default class WorksheetCanvas {
       // Font.color is optional: a missing color means "use the default" — fall back
       // to the theme's default text color rather than leaving it undefined.
       if (style.font.color) {
-        color = this.model.resolveColor(style.font.color);
+        const resolved = this.model.resolveColor(style.font.color);
+        color = style.fill.color
+          ? resolved
+          : cellTextColor(style.font.color, resolved, this.theme);
       }
       font = style.font.b ? `bold ${font}` : `400 ${font}`;
       if (style.font.i) {

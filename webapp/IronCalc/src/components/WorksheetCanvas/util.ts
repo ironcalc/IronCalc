@@ -1,4 +1,43 @@
+import type { Color } from "@ironcalc/wasm";
 import { defaultThemeVariables } from "../../theme/theme";
+
+/** Whether a `#RRGGBB` background is dark, by its relative luminance. */
+export function isDarkBackground(colorHex: string): boolean {
+  const hex = colorHex.replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+    return false;
+  }
+  const [red, green, blue] = [0, 2, 4].map(
+    (i) => Number.parseInt(hex.substring(i, i + 2), 16) / 255,
+  );
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue < 0.5;
+}
+
+/**
+ * The color to draw an unfilled cell's text in. A workbook's automatic text color is
+ * the theme's "Text 1" or plain black: Excel and openpyxl write `theme="1"`, Google
+ * Sheets often `rgb="FF000000"`. On a dark background either one is invisible, so
+ * there it follows the theme's text color instead, as Office's dark mode does. Every
+ * other color is the author's choice and is kept. Filled cells keep their colors,
+ * because fills don't follow the theme.
+ *
+ * @param color    The cell's font color, `undefined` when it has none.
+ * @param resolved The color resolved to `#RRGGBB` by `model.resolveColor`.
+ */
+export function cellTextColor(
+  color: Color,
+  resolved: string,
+  theme: Pick<Theme, "backgroundColor" | "defaultTextColor">,
+): string {
+  if (!isDarkBackground(theme.backgroundColor)) {
+    return resolved;
+  }
+  const isText1 = Array.isArray(color) && color[0] === 1 && color[1] === 0;
+  if (isText1 || resolved.toLowerCase() === "#000000") {
+    return theme.defaultTextColor;
+  }
+  return resolved;
+}
 
 // Get a 10% transparency of an hex color
 export function hexToRGBA10Percent(colorHex: string): string {

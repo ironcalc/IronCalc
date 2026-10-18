@@ -235,3 +235,29 @@ test.each([
     `default-colors-${mode}`,
   );
 });
+
+// A workbook's automatic text color is the theme's Text 1 as Excel writes it or
+// plain black as Google Sheets does. On a dark background it follows the theme's
+// text color, except on a fill, which doesn't follow the theme
+test.each([
+  ["light", testThemeVars],
+  ["dark", testDarkThemeVars],
+])("automatic text color in %s mode", async (mode, themeVars) => {
+  const model = await newModel();
+  labelTopLeftCell(model);
+  model.setUserInput(0, 2, 2, "Text 1");
+  model.updateRangeStyle(cell(2, 2), "font.color", "[1, 0]");
+  model.setUserInput(0, 4, 2, "Black");
+  model.updateRangeStyle(cell(4, 2), "font.color", "#000000");
+  model.setUserInput(0, 6, 2, "Text 1 on a fill");
+  model.updateRangeStyle(cell(6, 2), "font.color", "[1, 0]");
+  model.updateRangeStyle(cell(6, 2), "fill.color", "#FFF2CC");
+  // Text 1 lightened is a gray the author chose, kept in both
+  model.setUserInput(0, 8, 2, "Text 1, lighter");
+  model.updateRangeStyle(cell(8, 2), "font.color", "[1, 0.5]");
+
+  await expectScreenshot(
+    await renderToCanvas(model, { themeVars }),
+    `automatic-text-${mode}`,
+  );
+});
