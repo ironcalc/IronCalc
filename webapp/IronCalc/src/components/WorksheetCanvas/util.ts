@@ -13,30 +13,60 @@ export function isDarkBackground(colorHex: string): boolean {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue < 0.5;
 }
 
+// Light text for a dark background: the theme's own when the theme is dark,
+// white otherwise
+function lightTextColor(
+  theme: Pick<Theme, "backgroundColor" | "defaultTextColor">,
+): string {
+  return isDarkBackground(theme.backgroundColor)
+    ? theme.defaultTextColor
+    : "#FFFFFF";
+}
+
 /**
- * The color to draw an unfilled cell's text in. A workbook's automatic text color is
- * the theme's "Text 1" or plain black: Excel and openpyxl write `theme="1"`, Google
- * Sheets often `rgb="FF000000"`. On a dark background either one is invisible, so
- * there it follows the theme's text color instead, as Office's dark mode does. Every
- * other color is the author's choice and is kept. Filled cells keep their colors,
- * because fills don't follow the theme.
+ * The color to draw a cell's text in when its font has a color. A workbook's
+ * automatic text color is the theme's "Text 1" or plain black: Excel and openpyxl
+ * write `theme="1"`, Google Sheets often `rgb="FF000000"`. On a dark background,
+ * the cell's fill or else the sheet's, either one is invisible, so there it is
+ * drawn light instead, as Office's dark mode does. On a light background, and for
+ * every other color, which is the author's choice, the color is kept.
  *
- * @param color    The cell's font color, `undefined` when it has none.
+ * @param color    The cell's font color.
  * @param resolved The color resolved to `#RRGGBB` by `model.resolveColor`.
+ * @param fill     The cell's fill resolved to `#RRGGBB`, or null if it has none.
  */
 export function cellTextColor(
   color: Color,
   resolved: string,
   theme: Pick<Theme, "backgroundColor" | "defaultTextColor">,
+  fill: string | null,
 ): string {
-  if (!isDarkBackground(theme.backgroundColor)) {
+  const isText1 = Array.isArray(color) && color[0] === 1 && color[1] === 0;
+  const isAutomatic = isText1 || resolved.toLowerCase() === "#000000";
+  if (!isAutomatic || !isDarkBackground(fill ?? theme.backgroundColor)) {
     return resolved;
   }
-  const isText1 = Array.isArray(color) && color[0] === 1 && color[1] === 0;
-  if (isText1 || resolved.toLowerCase() === "#000000") {
+  return lightTextColor(theme);
+}
+
+/**
+ * The color to draw a cell's text in when its font has none: the theme's text
+ * color, or on a fill, which doesn't follow the theme, the light theme's text
+ * color, or light text when the fill is dark.
+ */
+export function defaultCellTextColor(
+  theme: Pick<
+    Theme,
+    "backgroundColor" | "defaultTextColor" | "filledCellTextColor"
+  >,
+  fill: string | null,
+): string {
+  if (fill === null) {
     return theme.defaultTextColor;
   }
-  return resolved;
+  return isDarkBackground(fill)
+    ? lightTextColor(theme)
+    : theme.filledCellTextColor;
 }
 
 // Get a 10% transparency of an hex color

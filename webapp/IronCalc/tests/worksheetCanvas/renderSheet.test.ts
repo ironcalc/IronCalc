@@ -237,8 +237,8 @@ test.each([
 });
 
 // A workbook's automatic text color is the theme's Text 1 as Excel writes it or
-// plain black as Google Sheets does. On a dark background it follows the theme's
-// text color, except on a fill, which doesn't follow the theme
+// plain black as Google Sheets does. It is drawn light on a dark background, the
+// cell's fill or else the sheet's, and kept on a light one
 test.each([
   ["light", testThemeVars],
   ["dark", testDarkThemeVars],
@@ -252,6 +252,10 @@ test.each([
   model.setUserInput(0, 6, 2, "Text 1 on a fill");
   model.updateRangeStyle(cell(6, 2), "font.color", "[1, 0]");
   model.updateRangeStyle(cell(6, 2), "fill.color", "#FFF2CC");
+  // On a dark fill it is light, in both themes
+  model.setUserInput(0, 6, 4, "Dark fill");
+  model.updateRangeStyle(cell(6, 4), "font.color", "[1, 0]");
+  model.updateRangeStyle(cell(6, 4), "fill.color", "#3D1616");
   // Text 1 lightened is a gray the author chose, kept in both
   model.setUserInput(0, 8, 2, "Text 1, lighter");
   model.updateRangeStyle(cell(8, 2), "font.color", "[1, 0.5]");
