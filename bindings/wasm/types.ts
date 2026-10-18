@@ -15,6 +15,22 @@ export interface MergedCell {
   height: number;
 }
 
+// Consecutive rows or columns (`first..=last`, 1-based) sharing a size in
+// pixels. A hidden row or column has size 0.
+export interface SizeRun {
+  first: number;
+  last: number;
+  size: number;
+}
+
+// The sizes along one axis of a sheet (its rows or its columns): the runs
+// with a non-default size. Everything not covered by a run has
+// `default_size`. See `Model.getRowSizes` and `Model.getColumnSizes`.
+export interface AxisSizes {
+  default_size: number;
+  runs: SizeRun[];
+}
+
 export enum BorderType {
   All = "All",
   Inner = "Inner",
