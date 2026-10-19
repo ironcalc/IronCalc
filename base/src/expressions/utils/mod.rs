@@ -14,12 +14,22 @@ pub fn column_to_number(column: &str) -> Result<i32, String> {
         return Err("Column identifier must be ASCII.".to_string());
     }
 
-    let mut column_number = 0;
+    let mut column_number: i32 = 0;
     for character in column.chars() {
         if !character.is_ascii_uppercase() {
             return Err("Column identifier can use only A-Z characters".to_string());
         }
-        column_number = column_number * 26 + ((character as i32) - 64);
+        // A column token is unbounded in length, so the accumulation can leave the
+        // `i32` range before `is_valid_column_number` gets a chance to reject it.
+        // Checked arithmetic keeps an oversized token an error instead of a panic in
+        // overflow-checked builds or a silently wrong column in release builds.
+        column_number = match column_number
+            .checked_mul(26)
+            .and_then(|number| number.checked_add((character as i32) - 64))
+        {
+            Some(number) => number,
+            None => return Err("Column is not valid.".to_string()),
+        };
     }
 
     match is_valid_column_number(column_number) {
