@@ -84,7 +84,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
         .unwrap_or(0) as u32;
     let mut zip = zip::ZipWriter::new(writer);
 
-    let options = zip::write::FileOptions::default();
+    let options = zip::write::SimpleFileOptions::default();
 
     // root folder
     zip.start_file("[Content_Types].xml", options)?;
