@@ -299,6 +299,7 @@ function App() {
           model={model}
           ref={ironCalcRef}
           themeVariables={isDarkMode ? darkThemeVariables : undefined}
+          colorScheme={isDarkMode ? "dark" : "light"}
           canEdit={!isReadOnly}
         />
         {isDrawerOpen && (

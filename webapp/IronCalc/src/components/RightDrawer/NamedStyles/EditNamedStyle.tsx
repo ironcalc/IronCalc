@@ -32,10 +32,10 @@ import {
   BorderRightIcon,
   BorderTopIcon,
 } from "../../../icons";
+import { useResolveColor } from "../../../theme/colorScheme";
 import { STYLE_OPTIONS as LINE_STYLE_OPTIONS } from "../../BorderPicker/LineStylePicker";
 import { Button } from "../../Button/Button";
 import ColorPicker from "../../ColorPicker/ColorPicker";
-import { resolveColorToHex } from "../../ColorPicker/util";
 import { NumberFormats } from "../../FormatMenu/formatUtil";
 import { Input } from "../../Input/Input";
 import { Menu } from "../../Menu/Menu";
@@ -93,15 +93,15 @@ interface PreviewOptions {
   borderColor: Color;
 }
 
+// `resolveColor` maps a workbook color to the one shown on screen
 function formatStyleToPreview(
   formatStyle: FormatStyle,
-  currentTheme: IronCalcTheme,
+  resolveColor: (color: Color) => string,
   options: PreviewOptions,
 ): CSSProperties {
   const preview: CSSProperties = {};
   if (options.includeFill) {
-    preview.backgroundColor =
-      resolveColorToHex(formatStyle.fillColor, currentTheme) || undefined;
+    preview.backgroundColor = resolveColor(formatStyle.fillColor) || undefined;
   }
   if (options.includeFont) {
     const decorations: string[] = [];
@@ -111,8 +111,7 @@ function formatStyleToPreview(
     if (formatStyle.strike) {
       decorations.push("line-through");
     }
-    preview.color =
-      resolveColorToHex(formatStyle.fontColor, currentTheme) || undefined;
+    preview.color = resolveColor(formatStyle.fontColor) || undefined;
     preview.fontWeight = formatStyle.bold ? "bold" : undefined;
     preview.fontStyle = formatStyle.italic ? "italic" : undefined;
     preview.textDecoration =
@@ -126,7 +125,7 @@ function formatStyleToPreview(
     const { top, right, bottom, left } = options.borderSides;
     const borderCss = borderStyleToCss(
       options.borderLineStyle,
-      resolveColorToHex(options.borderColor, currentTheme),
+      resolveColor(options.borderColor),
     );
     // Draw each side explicitly so the box-shadow never doubles a real border.
     preview.boxShadow = "none";
@@ -166,6 +165,7 @@ const EditNamedStyle = ({
   onClose,
 }: EditNamedStyleProps) => {
   const { t } = useTranslation();
+  const resolveColor = useResolveColor(currentTheme);
 
   const getDefaultName = () => {
     if (initialName) {
@@ -401,7 +401,7 @@ const EditNamedStyle = ({
         <div className="ic-edit-style-header-box">
           <div
             className="ic-edit-style-preview"
-            style={formatStyleToPreview(formatStyle, currentTheme, {
+            style={formatStyleToPreview(formatStyle, resolveColor, {
               includeFont,
               includeFill,
               includeAlignment,
@@ -543,10 +543,8 @@ const EditNamedStyle = ({
                     className="ic-edit-style-swatch"
                     style={{
                       backgroundColor:
-                        resolveColorToHex(
-                          formatStyle.fontColor,
-                          currentTheme,
-                        ) || "var(--palette-sheet-default-text-color)",
+                        resolveColor(formatStyle.fontColor) ||
+                        "var(--palette-sheet-default-text-color)",
                     }}
                     onClick={() => setFontColorOpen(true)}
                     aria-label={t("toolbar.font_color")}
@@ -596,8 +594,7 @@ const EditNamedStyle = ({
                   className="ic-edit-style-swatch"
                   style={{
                     backgroundColor:
-                      resolveColorToHex(formatStyle.fillColor, currentTheme) ||
-                      "transparent",
+                      resolveColor(formatStyle.fillColor) || "transparent",
                   }}
                   onClick={() => setFillColorOpen(true)}
                   aria-label={t("toolbar.fill_color")}
@@ -794,10 +791,7 @@ const EditNamedStyle = ({
                               )?.previewClassName ?? "thin"
                             }`}
                             style={{
-                              color: resolveColorToHex(
-                                borderColor,
-                                currentTheme,
-                              ),
+                              color: resolveColor(borderColor),
                             }}
                           />
                         </button>
@@ -813,7 +807,7 @@ const EditNamedStyle = ({
                         <span
                           className={`ic-line-preview ${option.previewClassName}`}
                           style={{
-                            color: resolveColorToHex(borderColor, currentTheme),
+                            color: resolveColor(borderColor),
                           }}
                         />
                       </MenuItem>
@@ -826,7 +820,7 @@ const EditNamedStyle = ({
                       className="ic-edit-style-swatch"
                       style={{
                         backgroundColor:
-                          resolveColorToHex(borderColor, currentTheme) ||
+                          resolveColor(borderColor) ||
                           "var(--palette-sheet-default-text-color)",
                       }}
                       onClick={() => setBorderColorOpen(true)}

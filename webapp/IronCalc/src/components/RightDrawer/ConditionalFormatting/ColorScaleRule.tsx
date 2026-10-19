@@ -2,10 +2,10 @@ import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { Check, SquareMousePointer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useResolveColor } from "../../../theme/colorScheme";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
-import { resolveColorToHex } from "../../ColorPicker/util";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
@@ -156,6 +156,7 @@ const StopRow = ({
   currentTheme,
 }: StopRowProps) => {
   const { t } = useTranslation();
+  const resolveColor = useResolveColor(currentTheme);
   const [colorOpen, setColorOpen] = useState(false);
   const colorRef = useRef<HTMLButtonElement>(null);
 
@@ -206,7 +207,7 @@ const StopRow = ({
                 type="button"
                 className="ic-cs-color-swatch"
                 style={{
-                  backgroundColor: resolveColorToHex(stop.color, currentTheme),
+                  backgroundColor: resolveColor(stop.color),
                 }}
                 onClick={() => setColorOpen(true)}
                 aria-label={label}
@@ -214,7 +215,7 @@ const StopRow = ({
             </div>
             <ColorPicker
               color={stop.color}
-              defaultColor={resolveColorToHex(stop.color, currentTheme)}
+              defaultColor={resolveColor(stop.color)}
               title={t("color_picker.default")}
               onChange={(c) => {
                 onChange({ ...stop, color: c });
@@ -243,6 +244,7 @@ const ColorScaleRule = ({
   currentTheme,
 }: ColorScaleRuleProps) => {
   const { t } = useTranslation();
+  const resolveColor = useResolveColor(currentTheme);
   const [selected, setSelected] = useState<string>(PRESETS[0].id);
   const [minimum, setMinimum] = useState<ColorScaleStop>(
     initialValues?.minimum ?? {
@@ -281,15 +283,15 @@ const ColorScaleRule = ({
     const midColor =
       midpoint.type === "none"
         ? interpolateColor(
-            resolveColorToHex(minimum.color, currentTheme),
-            resolveColorToHex(maximum.color, currentTheme),
+            resolveColor(minimum.color),
+            resolveColor(maximum.color),
             0.5,
           )
-        : resolveColorToHex(midpoint.color, currentTheme);
+        : resolveColor(midpoint.color);
     onPreviewChange?.([
-      resolveColorToHex(minimum.color, currentTheme),
+      resolveColor(minimum.color),
       midColor,
-      resolveColorToHex(maximum.color, currentTheme),
+      resolveColor(maximum.color),
     ]);
   }, [
     minimum.color,
@@ -297,7 +299,7 @@ const ColorScaleRule = ({
     midpoint.type,
     maximum.color,
     onPreviewChange,
-    currentTheme,
+    resolveColor,
   ]);
 
   const isStopValid = (stop: ColorScaleStop) =>
@@ -358,7 +360,11 @@ const ColorScaleRule = ({
                   type="button"
                   aria-pressed={selected === preset.id}
                   className="ic-fsp-preset"
-                  style={{ background: steppedGradient(preset.colors) }}
+                  style={{
+                    background: steppedGradient(
+                      preset.colors.map(resolveColor),
+                    ),
+                  }}
                   onClick={() => {
                     setSelected(preset.id);
                     applyPreset(preset.colors);

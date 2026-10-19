@@ -40,6 +40,7 @@ function SheetTabBar(props: SheetTabBarProps) {
         index,
         name: s.name,
         color: s.color,
+        hasColor: s.hasColor,
         sheetId: s.sheetId,
       };
     })

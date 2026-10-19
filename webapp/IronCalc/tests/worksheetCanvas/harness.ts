@@ -13,6 +13,7 @@ import {
 } from "../../src/components/WorksheetCanvas/constants";
 import type WorksheetCanvas from "../../src/components/WorksheetCanvas/worksheetCanvas";
 import { WorkbookState } from "../../src/components/workbookState";
+import type { ColorScheme } from "../../src/theme/colorScheme";
 import { FakeCanvasElement, FakeElement, installDomGlobals } from "./fakeDom";
 
 // Rendered at 2x, like a retina display: crisper screenshots to review
@@ -48,6 +49,8 @@ export interface RenderOptions {
   width?: number;
   height?: number;
   themeVars?: Record<string, string>;
+  // "dark" shows every workbook color inverted (theme/invertColor.ts)
+  colorScheme?: ColorScheme;
 }
 
 // Builds the WorksheetCanvas for `model` and renders one frame. Returns the
@@ -86,6 +89,7 @@ export async function renderWorksheet(
     width,
     height,
     workbookState: new WorkbookState(),
+    colorScheme: options.colorScheme,
     elements: {
       canvas: canvasElement as unknown as HTMLCanvasElement,
       cellOutline: div(),

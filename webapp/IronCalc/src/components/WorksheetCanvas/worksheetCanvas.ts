@@ -1,5 +1,12 @@
-import type { CellLink, CellStyle, MergedCell, Model } from "@ironcalc/wasm";
+import type {
+  CellLink,
+  CellStyle,
+  Color,
+  MergedCell,
+  Model,
+} from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
+import { type ColorScheme, toDisplayHex } from "../../theme/colorScheme";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
@@ -32,6 +39,8 @@ export interface CanvasSettings {
   width: number;
   height: number;
   workbookState: WorkbookState;
+  // In "dark" every workbook color is shown inverted (see theme/invertColor.ts)
+  colorScheme?: ColorScheme;
   elements: {
     canvas: HTMLCanvasElement;
     cellOutline: HTMLDivElement;
@@ -108,6 +117,8 @@ export default class WorksheetCanvas {
 
   model: Model;
 
+  colorScheme: ColorScheme;
+
   rowGuide: HTMLDivElement;
 
   columnHeaders: HTMLDivElement;
@@ -153,6 +164,7 @@ export default class WorksheetCanvas {
     this.height = options.height;
     this.ctx = this.setContext();
     this.workbookState = options.workbookState;
+    this.colorScheme = options.colorScheme ?? "light";
     this.editor = options.elements.editor;
     this.refresh = options.refresh;
 
@@ -437,6 +449,12 @@ export default class WorksheetCanvas {
     return left;
   }
 
+  // Resolves a workbook color against the workbook theme and maps it to the
+  // color shown on screen in the current color scheme ("" when absent)
+  private displayColor(color: Color): string {
+    return toDisplayHex(this.model.resolveColor(color), this.colorScheme);
+  }
+
   private getFontStyle(style: CellStyle): {
     font: string;
     color: string;
@@ -444,15 +462,13 @@ export default class WorksheetCanvas {
   } {
     const fontSize = style.font?.sz || 13;
     let font = `${fontSize}px ${this.theme.cellFontFamily}`;
-    let color = style.fill.color
-      ? this.theme.filledCellTextColor
-      : this.theme.defaultTextColor;
+    let color = this.theme.defaultTextColor;
 
     if (style.font) {
       // Font.color is optional: a missing color means "use the default" — fall back
       // to the theme's default text color rather than leaving it undefined.
       if (style.font.color) {
-        color = this.model.resolveColor(style.font.color);
+        color = this.displayColor(style.font.color);
       }
       font = style.font.b ? `bold ${font}` : `400 ${font}`;
       if (style.font.i) {
@@ -1029,7 +1045,7 @@ export default class WorksheetCanvas {
 
     let backgroundColor = this.theme.backgroundColor;
     if (style.fill.color) {
-      backgroundColor = this.model.resolveColor(style.fill.color);
+      backgroundColor = this.displayColor(style.fill.color);
     }
     const context = this.ctx;
     context.fillStyle = backgroundColor;
@@ -1038,19 +1054,19 @@ export default class WorksheetCanvas {
     // CF overlays rendered on top of the background.
     if (extended.data_bar) {
       renderDataBar(context, x, y, width, height, extended.data_bar, (c) =>
-        this.model.resolveColor(c),
+        this.displayColor(c),
       );
     }
     if (extended.icon) {
       const iconSize = style.font?.sz ? style.font.sz * 1.2 : 16;
       renderIcon(context, x, y, height, extended.icon, iconSize, (c) =>
-        this.model.resolveColor(c),
+        this.displayColor(c),
       );
     }
     if (extended.rating) {
       const iconSize = style.font?.sz ? style.font.sz * 1.2 : 16;
       renderRating(context, x, y, height, extended.rating, iconSize, (c) =>
-        this.model.resolveColor(c),
+        this.displayColor(c),
       );
     }
 
@@ -1090,7 +1106,7 @@ export default class WorksheetCanvas {
       r,
       c,
     ).style;
-    return style.fill.color ? this.model.resolveColor(style.fill.color) : null;
+    return style.fill.color ? this.displayColor(style.fill.color) : null;
   }
 
   // Draws the left border of cell (row, column) from (x, y) to (x, y + height)
@@ -1129,12 +1145,11 @@ export default class WorksheetCanvas {
       let borderLeftStyle = "thin";
       if (border.left) {
         borderLeftColor =
-          this.model.resolveColor(border.left.color) ||
-          this.theme.defaultTextColor;
+          this.displayColor(border.left.color) || this.theme.defaultTextColor;
         borderLeftStyle = border.left.style;
       } else if (leftStyle.border.right) {
         borderLeftColor =
-          this.model.resolveColor(leftStyle.border.right.color) ||
+          this.displayColor(leftStyle.border.right.color) ||
           this.theme.defaultTextColor;
         borderLeftStyle = leftStyle.border.right.style;
       } else if (fillColor) {
@@ -1195,12 +1210,11 @@ export default class WorksheetCanvas {
     let borderTopStyle = "thin";
     if (border.top) {
       borderTopColor =
-        this.model.resolveColor(border.top.color) ||
-        this.theme.defaultTextColor;
+        this.displayColor(border.top.color) || this.theme.defaultTextColor;
       borderTopStyle = border.top.style;
     } else if (topStyle.border.bottom) {
       borderTopColor =
-        this.model.resolveColor(topStyle.border.bottom.color) ||
+        this.displayColor(topStyle.border.bottom.color) ||
         this.theme.defaultTextColor;
       borderTopStyle = topStyle.border.bottom.style;
     } else if (fillColor) {

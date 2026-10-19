@@ -1,3 +1,4 @@
+import { useDisplayHex } from "../../../theme/colorScheme";
 import type { ThemeData } from "./EditTheme";
 
 function polarToCartesian(
@@ -28,35 +29,39 @@ interface ThemePreviewProps {
   className: string;
 }
 
-const ThemePreview = ({ theme, className }: ThemePreviewProps) => (
-  <div
-    className={className}
-    style={
-      {
-        backgroundColor: theme.bgColor,
-        color: theme.textColor,
-        "--theme-bg": theme.bgColor,
-      } as React.CSSProperties
-    }
-  >
-    <div className="ic-theme-preview-inner">
-      <span>Aa</span>
-      <svg
-        viewBox="0 0 28 28"
-        className="ic-theme-preview-pie"
-        aria-hidden="true"
-      >
-        {theme.accentColors.map((color, i) => (
-          <path
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length array, order never changes
-            key={i}
-            d={sectorPath(14, 14, 13, i * 60, (i + 1) * 60)}
-            fill={color}
-          />
-        ))}
-      </svg>
+const ThemePreview = ({ theme, className }: ThemePreviewProps) => {
+  const displayHex = useDisplayHex();
+  const bgColor = displayHex(theme.bgColor);
+  return (
+    <div
+      className={className}
+      style={
+        {
+          backgroundColor: bgColor,
+          color: displayHex(theme.textColor),
+          "--theme-bg": bgColor,
+        } as React.CSSProperties
+      }
+    >
+      <div className="ic-theme-preview-inner">
+        <span>Aa</span>
+        <svg
+          viewBox="0 0 28 28"
+          className="ic-theme-preview-pie"
+          aria-hidden="true"
+        >
+          {theme.accentColors.map((color, i) => (
+            <path
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length array, order never changes
+              key={i}
+              d={sectorPath(14, 14, 13, i * 60, (i + 1) * 60)}
+              fill={displayHex(color)}
+            />
+          ))}
+        </svg>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default ThemePreview;

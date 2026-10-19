@@ -24,11 +24,11 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useDisplayHex, useResolveColor } from "../../../theme/colorScheme";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { Checkbox } from "../../Checkbox/Checkbox";
 import ColorPicker from "../../ColorPicker/ColorPicker";
-import { resolveColorToHex } from "../../ColorPicker/util";
 import IconPicker, { iconSpecFor } from "../../IconPicker/IconPicker";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
@@ -366,6 +366,7 @@ interface IconSetSwatchProps {
 
 const IconSetSwatch = ({ preset, selected, onClick }: IconSetSwatchProps) => {
   const size = preset.icons.length >= 5 ? 12 : 14;
+  const displayHex = useDisplayHex();
   return (
     <button
       type="button"
@@ -379,8 +380,8 @@ const IconSetSwatch = ({ preset, selected, onClick }: IconSetSwatchProps) => {
           <Icon
             key={color + String(i)}
             size={size}
-            color={color}
-            fill={filled ? color : "none"}
+            color={displayHex(color)}
+            fill={filled ? displayHex(color) : "none"}
             style={style}
           />
         ))}
@@ -447,6 +448,7 @@ const IconSetsRule = ({
   currentTheme,
 }: IconSetsRuleProps) => {
   const { t } = useTranslation();
+  const resolveColor = useResolveColor(currentTheme);
 
   const initialMode: Mode = initialValues?.rating ? "rating" : "preset";
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -488,12 +490,13 @@ const IconSetsRule = ({
 
   useEffect(() => {
     if (mode === "preset") {
-      onPreviewChange?.(selectedPreset.icons[0]);
+      const icon = selectedPreset.icons[0];
+      onPreviewChange?.({ ...icon, color: resolveColor(icon.color) });
     } else {
       const spec = iconSpecFor(ratingIcon);
       onPreviewChange?.({
         Icon: spec.Icon,
-        color: resolveColorToHex(ratingColor, currentTheme),
+        color: resolveColor(ratingColor),
         filled: spec.filled,
       });
     }
@@ -503,7 +506,7 @@ const IconSetsRule = ({
     ratingColor,
     ratingIcon,
     onPreviewChange,
-    currentTheme,
+    resolveColor,
   ]);
 
   const typeOptions = THRESHOLD_TYPE_OPTIONS.map((v) => ({
@@ -719,7 +722,7 @@ const IconSetsRule = ({
                       <div className="ic-input-control md ic-cs-color-swatch-wrapper">
                         <IconPicker
                           value={threshold.iconName}
-                          color={resolveColorToHex(iconColor, currentTheme)}
+                          color={resolveColor(iconColor)}
                           onChange={(name) =>
                             updateThreshold(i, { iconName: name })
                           }
@@ -734,10 +737,7 @@ const IconSetsRule = ({
                           type="button"
                           className="ic-cs-color-swatch"
                           style={{
-                            backgroundColor: resolveColorToHex(
-                              threshold.color,
-                              currentTheme,
-                            ),
+                            backgroundColor: resolveColor(threshold.color),
                           }}
                           onClick={() => setColorOpenIndex(i)}
                           aria-label={t("color_picker.title")}
@@ -745,10 +745,7 @@ const IconSetsRule = ({
                       </div>
                       <ColorPicker
                         color={threshold.color}
-                        defaultColor={resolveColorToHex(
-                          threshold.color,
-                          currentTheme,
-                        )}
+                        defaultColor={resolveColor(threshold.color)}
                         title={t("color_picker.default")}
                         onChange={(c) => {
                           updateThreshold(i, { color: c });
@@ -822,7 +819,7 @@ const IconSetsRule = ({
                       >
                         <IconPicker
                           value={ratingIcon}
-                          color={resolveColorToHex(ratingColor, currentTheme)}
+                          color={resolveColor(ratingColor)}
                           onChange={setRatingIcon}
                         />
                       </div>
@@ -834,10 +831,7 @@ const IconSetsRule = ({
                           type="button"
                           className="ic-cs-color-swatch"
                           style={{
-                            backgroundColor: resolveColorToHex(
-                              ratingColor,
-                              currentTheme,
-                            ),
+                            backgroundColor: resolveColor(ratingColor),
                           }}
                           onClick={
                             i === 0 ? () => setRatingColorOpen(true) : undefined
@@ -848,10 +842,7 @@ const IconSetsRule = ({
                       {i === 0 && (
                         <ColorPicker
                           color={ratingColor}
-                          defaultColor={resolveColorToHex(
-                            ratingColor,
-                            currentTheme,
-                          )}
+                          defaultColor={resolveColor(ratingColor)}
                           title={t("color_picker.default")}
                           onChange={handleRatingColorChange}
                           onClose={() => setRatingColorOpen(false)}

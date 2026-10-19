@@ -34,6 +34,8 @@ import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 import "./workbook.css";
+import { useDisplayHex } from "../../theme/colorScheme";
+import { isWhiteColor } from "../ColorPicker/util";
 import { LinkDialog } from "../LinkDialog/LinkDialog";
 import { Alert } from "../Modal";
 
@@ -84,12 +86,15 @@ const Workbook = (props: {
     setDrawerOpen(true);
   }, []);
 
+  const displayHex = useDisplayHex();
   const worksheets = model.getWorksheetsProperties();
   const info = worksheets.map(
     ({ name, color, sheet_id, state }: WorksheetProperties) => {
+      const resolved = model.resolveColor(color);
       return {
         name,
-        color: model.resolveColor(color) || "var(--palette-common-white)",
+        color: resolved ? displayHex(resolved) : "var(--palette-common-white)",
+        hasColor: resolved !== "" && !isWhiteColor(resolved),
         sheetId: sheet_id,
         state,
       };

@@ -3,10 +3,6 @@ import { MenuItem } from "../Menu/MenuItem";
 import type { SheetOptions } from "./types";
 import "./sheet-list-menu.css";
 
-function isWhiteColor(color: string): boolean {
-  return ["#FFF", "#FFFFFF"].includes(color);
-}
-
 interface SheetListMenuProps {
   onSheetSelected: (index: number) => void;
   sheetOptionsList: SheetOptions[];
@@ -19,7 +15,7 @@ const SheetListMenu = ({
   selectedIndex,
 }: SheetListMenuProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const hasColors = sheetOptionsList.some((tab) => !isWhiteColor(tab.color));
+  const hasColors = sheetOptionsList.some((tab) => tab.hasColor);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {

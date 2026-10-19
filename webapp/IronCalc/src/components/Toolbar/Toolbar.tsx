@@ -51,11 +51,11 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowMiddleFromLine } from "../../icons";
+import { useResolveColor } from "../../theme/colorScheme";
 import BorderPicker from "../BorderPicker/BorderPicker";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
 import ColorPicker from "../ColorPicker/ColorPicker";
-import { resolveColorToHex } from "../ColorPicker/util";
 import FormatMenu from "../FormatMenu/FormatMenu";
 import {
   decreaseDecimalPlaces,
@@ -149,6 +149,7 @@ function Toolbar(properties: ToolbarProperties) {
   const { t } = useTranslation();
 
   const { canEdit, currentTheme, mergeCellsState } = properties;
+  const resolveColor = useResolveColor(currentTheme);
 
   useEffect(() => {
     setFontSizeInput(`${properties.fontSize}`);
@@ -450,7 +451,7 @@ function Toolbar(properties: ToolbarProperties) {
                     className="ic-toolbar-color-line"
                     style={{
                       backgroundColor:
-                        resolveColorToHex(properties.fontColor, currentTheme) ||
+                        resolveColor(properties.fontColor) ||
                         "var(--palette-sheet-default-text-color)",
                     }}
                   />
@@ -473,7 +474,7 @@ function Toolbar(properties: ToolbarProperties) {
                     className="ic-toolbar-color-line"
                     style={{
                       backgroundColor:
-                        resolveColorToHex(properties.fillColor, currentTheme) ||
+                        resolveColor(properties.fillColor) ||
                         "var(--palette-common-white)",
                     }}
                   />

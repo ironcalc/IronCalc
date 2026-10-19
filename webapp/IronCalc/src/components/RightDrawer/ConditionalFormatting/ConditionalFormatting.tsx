@@ -15,9 +15,9 @@ import {
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { useResolveColor } from "../../../theme/colorScheme";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
-import { resolveColorToHex } from "../../ColorPicker/util";
 import {
   isRangeInRanges,
   isValidRanges,
@@ -69,6 +69,7 @@ const ConditionalFormatting = ({
   model,
   currentTheme,
 }: ConditionalFormattingProps) => {
+  const resolveColor = useResolveColor(currentTheme);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -415,15 +416,10 @@ const ConditionalFormatting = ({
 
                   const previewStyle: React.CSSProperties = {
                     color:
-                      resolveColorToHex(
-                        rule.formatStyle.fontColor,
-                        currentTheme,
-                      ) || "var(--palette-sheet-default-text-color)",
+                      resolveColor(rule.formatStyle.fontColor) ||
+                      "var(--palette-sheet-default-text-color)",
                     backgroundColor:
-                      resolveColorToHex(
-                        rule.formatStyle.fillColor,
-                        currentTheme,
-                      ) || "transparent",
+                      resolveColor(rule.formatStyle.fillColor) || "transparent",
                     fontWeight: rule.formatStyle.bold ? "bold" : "normal",
                     fontStyle: rule.formatStyle.italic ? "italic" : "normal",
                     textDecoration:
@@ -441,28 +437,13 @@ const ConditionalFormatting = ({
                       ? steppedGradient(
                           rule.colorScale.midpoint.type === "none"
                             ? [
-                                resolveColorToHex(
-                                  rule.colorScale.minimum.color,
-                                  currentTheme,
-                                ),
-                                resolveColorToHex(
-                                  rule.colorScale.maximum.color,
-                                  currentTheme,
-                                ),
+                                resolveColor(rule.colorScale.minimum.color),
+                                resolveColor(rule.colorScale.maximum.color),
                               ]
                             : [
-                                resolveColorToHex(
-                                  rule.colorScale.minimum.color,
-                                  currentTheme,
-                                ),
-                                resolveColorToHex(
-                                  rule.colorScale.midpoint.color,
-                                  currentTheme,
-                                ),
-                                resolveColorToHex(
-                                  rule.colorScale.maximum.color,
-                                  currentTheme,
-                                ),
+                                resolveColor(rule.colorScale.minimum.color),
+                                resolveColor(rule.colorScale.midpoint.color),
+                                resolveColor(rule.colorScale.maximum.color),
                               ],
                         )
                       : undefined;
@@ -477,17 +458,17 @@ const ConditionalFormatting = ({
                       const spec = iconSpecFor(rule.iconSets.rating.icon);
                       return {
                         Icon: spec.Icon,
-                        color: resolveColorToHex(
-                          rule.iconSets.rating.color,
-                          currentTheme,
-                        ),
+                        color: resolveColor(rule.iconSets.rating.color),
                         filled: spec.filled,
                         backendName: rule.iconSets.rating.icon,
                       };
                     }
-                    return ALL_PRESETS.find(
+                    const icon = ALL_PRESETS.find(
                       (p) => p.id === rule.iconSets?.presetId,
                     )?.icons[0];
+                    return icon
+                      ? { ...icon, color: resolveColor(icon.color) }
+                      : undefined;
                   })();
 
                   return (
@@ -546,10 +527,8 @@ const ConditionalFormatting = ({
                         {isDataBars && rule.dataBars ? (
                           <DataBarMiniChart
                             color={
-                              resolveColorToHex(
-                                rule.dataBars.positiveColor,
-                                currentTheme,
-                              ) || rule.dataBars.color
+                              resolveColor(rule.dataBars.positiveColor) ||
+                              resolveColor(rule.dataBars.color)
                             }
                             gradient={rule.dataBars.gradient}
                           />

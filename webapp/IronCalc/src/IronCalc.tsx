@@ -16,10 +16,18 @@ import {
   setThemeVariables,
   unsetThemeVariables,
 } from "./theme";
+import { type ColorScheme, ColorSchemeContext } from "./theme/colorScheme";
 
 interface IronCalcProperties {
   model: Model;
   themeVariables?: PartialIronCalcThemeVariables;
+  /**
+   * "dark" shows every workbook color (fills, fonts, borders, conditional
+   * formats, tab colors, theme accents...) inverted for a dark background,
+   * while the workbook itself keeps its light-mode colors. Pair it with
+   * `darkThemeVariables` for the chrome. Defaults to "light".
+   */
+  colorScheme?: ColorScheme;
   rootContainer?: HTMLElement | null;
   /** When false, renders without the toolbar, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
@@ -30,7 +38,16 @@ export interface IronCalcHandle {
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
-  ({ themeVariables, model, rootContainer, canEdit = true }, ref) => {
+  (
+    {
+      themeVariables,
+      colorScheme = "light",
+      model,
+      rootContainer,
+      canEdit = true,
+    },
+    ref,
+  ) => {
     const root = rootContainer ?? document.body;
     useEffect(() => {
       if (root.classList.contains("ic-root")) {
@@ -60,11 +77,13 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
     return (
       <div className="ic-widget">
         <I18nextProvider i18n={i18n}>
-          <Workbook
-            model={model}
-            workbookState={new WorkbookState()}
-            canEdit={canEdit}
-          />
+          <ColorSchemeContext.Provider value={colorScheme}>
+            <Workbook
+              model={model}
+              workbookState={new WorkbookState()}
+              canEdit={canEdit}
+            />
+          </ColorSchemeContext.Provider>
         </I18nextProvider>
       </div>
     );

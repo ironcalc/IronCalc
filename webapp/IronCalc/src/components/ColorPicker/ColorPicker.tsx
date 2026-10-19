@@ -7,6 +7,11 @@ import { createAnchoredPortal } from "../createAnchoredPortal";
 import { getFocusableElements } from "../util";
 import "./color-picker.css";
 import type { Color, IronCalcTheme } from "@ironcalc/wasm";
+import {
+  fromDisplayHex,
+  toDisplayHex,
+  useColorScheme,
+} from "../../theme/colorScheme";
 import useAnchorPosition, { type Placement } from "./useAnchorPosition";
 import useKeyDown from "./useKeyDown";
 import {
@@ -70,8 +75,13 @@ const ColorPicker = ({
     placement,
   );
 
+  // Workbook (light-mode) colors with their resolved hex; shown through `display`
   const recentColors = useRef<{ color: Color; hex: string }[]>([]);
   const { t } = useTranslation();
+  const scheme = useColorScheme();
+  // Every color the picker shows is the stored color mapped to the current
+  // color scheme; what it hands back through `onChange` is always the stored one
+  const display = (hex: string) => toDisplayHex(hex, scheme);
 
   const themeColors = themeBaseColors(theme);
 
@@ -144,17 +154,18 @@ const ColorPicker = ({
   };
 
   const renderColorSwatch = (
-    displayHex: string,
+    hex: string,
     colorValue: Color,
     row: number,
     col: number,
   ) => {
     const isSelected = colorsEqual(selectedColor, colorValue);
+    const displayHex = display(hex);
 
     const swatchClassName = [
       "ic-color-picker__swatch",
       "ic-color-picker__swatch--selectable",
-      isWhiteColor(displayHex) ? "ic-color-picker__swatch--white" : "",
+      isWhiteColor(hex) ? "ic-color-picker__swatch--white" : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -165,7 +176,7 @@ const ColorPicker = ({
         type="button"
         className={swatchClassName}
         style={{ backgroundColor: displayHex }}
-        onClick={() => handleColorSelect(colorValue, displayHex)}
+        onClick={() => handleColorSelect(colorValue, hex)}
         aria-label={displayHex}
         data-nav-row={row}
         data-nav-col={col}
@@ -187,8 +198,14 @@ const ColorPicker = ({
   if (isPickerOpen) {
     return (
       <AdvancedColorPicker
-        color={resolveColorToHex(selectedColor, theme) || FALLBACK_COLOR}
-        onAccept={(hex) => handleColorSelect(hex, hex)}
+        color={display(
+          resolveColorToHex(selectedColor, theme) || FALLBACK_COLOR,
+        )}
+        onAccept={(hex) => {
+          // The advanced picker works in screen colors; store the workbook one
+          const stored = fromDisplayHex(hex, scheme);
+          handleColorSelect(stored, stored);
+        }}
         onCancel={() => setPickerOpen(false)}
         anchorEl={anchorEl}
         open={true}
@@ -219,7 +236,7 @@ const ColorPicker = ({
         >
           <span
             className="ic-color-picker__menu-item-square"
-            style={{ backgroundColor: defaultSwatchColor }}
+            style={{ backgroundColor: display(defaultSwatchColor) }}
             aria-hidden="true"
           />
           <span className="ic-color-picker__menu-item-text">{title}</span>
@@ -286,9 +303,9 @@ const ColorPicker = ({
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                style={{ backgroundColor: recentHex }}
+                style={{ backgroundColor: display(recentHex) }}
                 onClick={() => handleColorSelect(recentColor, recentHex)}
-                aria-label={recentHex}
+                aria-label={display(recentHex)}
                 data-nav-row={8}
                 data-nav-col={col}
               />

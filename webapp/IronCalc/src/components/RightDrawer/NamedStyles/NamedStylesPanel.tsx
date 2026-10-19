@@ -16,6 +16,7 @@ import EditNamedStyle, {
 } from "./EditNamedStyle";
 import ManageCustomStyles from "./ManageCustomStyles";
 import "./named-styles.css";
+import { useDisplayHex } from "../../../theme/colorScheme";
 import { getTileStyle } from "./named-styles-utils";
 
 type CategoryType = "grid" | "themed";
@@ -168,6 +169,7 @@ const NamedStylesPanel = ({
   onClose,
 }: NamedStylesPanelProps) => {
   const { t } = useTranslation();
+  const displayHex = useDisplayHex();
   const [view, setView] = useState<PanelView>({ mode: "list" });
 
   const normalStyle = builtinStyles.find(
@@ -184,7 +186,7 @@ const NamedStylesPanel = ({
       key={name}
       type="button"
       className="ic-named-styles-tile"
-      style={getTileStyle(model, style)}
+      style={getTileStyle(model, style, displayHex)}
       onClick={() => onApplyNamedStyle(name)}
     >
       <span className="ic-named-styles-tile-text">{label ?? name}</span>

@@ -235,3 +235,39 @@ test.each([
     `default-colors-${mode}`,
   );
 });
+
+// In dark mode every workbook color is shown inverted: a white fill lands on
+// the dark background, light fills become dark tints, dark text becomes light
+// and the hue is kept (theme/invertColor.ts). The workbook keeps the
+// light-mode colors.
+test("explicit colors are inverted in dark mode", async () => {
+  const model = await newModel();
+  labelTopLeftCell(model);
+  // B2: white fill with black text, indistinguishable from the default cell
+  model.setUserInput(0, 2, 2, "White fill");
+  model.updateRangeStyle(cell(2, 2), "fill.color", "#FFFFFF");
+  model.updateRangeStyle(cell(2, 2), "font.color", "#000000");
+  // B3: a pastel yellow fill with dark red text
+  model.setUserInput(0, 3, 2, "Pastel yellow");
+  model.updateRangeStyle(cell(3, 2), "fill.color", "#FFF2CC");
+  model.updateRangeStyle(cell(3, 2), "font.color", "#9C0006");
+  // B4: dark blue fill, no font color: the text uses the theme default
+  model.setUserInput(0, 4, 2, "Dark blue fill");
+  model.updateRangeStyle(cell(4, 2), "fill.color", "#002060");
+  // B5: saturated red text on the default background
+  model.setUserInput(0, 5, 2, "Red text");
+  model.updateRangeStyle(cell(5, 2), "font.color", "#FF0000");
+  // D2:D4: a thick green border
+  model.setAreaWithBorder(cell(2, 4, 1, 3), {
+    item: { style: BorderStyle.Thick, color: "#00B050" },
+    type: BorderType.Outer,
+  });
+
+  await expectScreenshot(
+    await renderToCanvas(model, {
+      themeVars: testDarkThemeVars,
+      colorScheme: "dark",
+    }),
+    "inverted-colors-dark",
+  );
+});

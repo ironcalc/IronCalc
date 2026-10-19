@@ -1,8 +1,8 @@
 import type { IronCalcTheme } from "@ironcalc/wasm";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useResolveColor } from "../../../theme/colorScheme";
 import { Button } from "../../Button/Button";
-import { resolveColorToHex } from "../../ColorPicker/util";
 import ClassicRule from "./ClassicRule";
 import ColorScaleRule, {
   type ColorScaleRuleData,
@@ -61,6 +61,7 @@ const EditRule = ({
   currentTheme,
 }: EditRuleProps) => {
   const { t } = useTranslation();
+  const resolveColor = useResolveColor(currentTheme);
   const initialTab: TabId =
     initialValues?.ruleType === "color_scale"
       ? "color_scale"
@@ -92,20 +93,15 @@ const EditRule = ({
   >(
     initialValues?.colorScale
       ? [
-          resolveColorToHex(
-            initialValues.colorScale.minimum.color,
-            currentTheme,
-          ),
-          resolveColorToHex(
-            initialValues.colorScale.midpoint.color,
-            currentTheme,
-          ),
-          resolveColorToHex(
-            initialValues.colorScale.maximum.color,
-            currentTheme,
-          ),
+          resolveColor(initialValues.colorScale.minimum.color),
+          resolveColor(initialValues.colorScale.midpoint.color),
+          resolveColor(initialValues.colorScale.maximum.color),
         ]
-      : ["#8CB354", "#F8CD3D", "#EC5753"],
+      : [
+          resolveColor("#8CB354"),
+          resolveColor("#F8CD3D"),
+          resolveColor("#EC5753"),
+        ],
   );
 
   const headerPreviewStyle: React.CSSProperties = {
@@ -119,10 +115,9 @@ const EditRule = ({
         .filter(Boolean)
         .join(" ") || "none",
     color:
-      resolveColorToHex(formatStyle.fontColor, currentTheme) ||
+      resolveColor(formatStyle.fontColor) ||
       "var(--palette-sheet-default-text-color)",
-    backgroundColor:
-      resolveColorToHex(formatStyle.fillColor, currentTheme) || "transparent",
+    backgroundColor: resolveColor(formatStyle.fillColor) || "transparent",
   };
 
   const tabs: { id: TabId; label: string }[] = [
@@ -149,7 +144,7 @@ const EditRule = ({
         >
           {activeTab === "data_bars" ? (
             <DataBarMiniChart
-              color={dbPreview.color}
+              color={resolveColor(dbPreview.color)}
               gradient={dbPreview.gradient}
             />
           ) : activeTab === "icon_sets" && isPreview ? (

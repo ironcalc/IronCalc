@@ -1,6 +1,7 @@
 import type { FmtSettings, Model, NamedStyle } from "@ironcalc/wasm";
 import { PackageOpen, PencilLine, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useDisplayHex } from "../../../theme/colorScheme";
 import { IconButton } from "../../Button/IconButton";
 import { Tooltip } from "../../Tooltip/Tooltip";
 import { getPreviewText, getTileStyle } from "./named-styles-utils";
@@ -21,6 +22,7 @@ const ManageCustomStyles = ({
   onDelete,
 }: ManageCustomStylesProps) => {
   const { t } = useTranslation();
+  const displayHex = useDisplayHex();
 
   if (customStyles.length === 0) {
     return (
@@ -41,7 +43,7 @@ const ManageCustomStyles = ({
         <div key={s.name} className="ic-named-styles-manage-item">
           <div
             className="ic-named-styles-manage-item-preview"
-            style={getTileStyle(model, s.style)}
+            style={getTileStyle(model, s.style, displayHex)}
           >
             {getPreviewText(s.style.num_fmt, formatOptions, t)}
           </div>

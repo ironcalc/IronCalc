@@ -26,6 +26,7 @@ import RowHeaderContextMenu from "./ContextMenus/RowHeader";
 import LinkTooltip from "./LinkTooltip";
 import usePointer from "./usePointer";
 import "./worksheet.css";
+import { useColorScheme } from "../../theme/colorScheme";
 import { Alert, Prompt } from "../Modal";
 
 function useWindowSize() {
@@ -128,6 +129,7 @@ const Worksheet = forwardRef(
     const { model, workbookState, refresh, canEdit, onCut, onCopy, onPaste } =
       props;
     const { t } = useTranslation();
+    const colorScheme = useColorScheme();
     const [clientWidth, clientHeight] = useWindowSize();
 
     useImperativeHandle(ref, () => ({
@@ -171,6 +173,7 @@ const Worksheet = forwardRef(
         height: worksheetRef.clientHeight,
         model,
         workbookState,
+        colorScheme,
         elements: {
           canvas: canvasRef,
           columnGuide: columnGuideRef,

@@ -2,11 +2,15 @@ import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { Check, SquareMousePointer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  fromDisplayHex,
+  useColorScheme,
+  useResolveColor,
+} from "../../../theme/colorScheme";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { Checkbox } from "../../Checkbox/Checkbox";
 import ColorPicker from "../../ColorPicker/ColorPicker";
-import { resolveColorToHex } from "../../ColorPicker/util";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
@@ -141,6 +145,8 @@ const DataBarsRule = ({
   currentTheme,
 }: DataBarsRuleProps) => {
   const { t } = useTranslation();
+  const scheme = useColorScheme();
+  const resolveColor = useResolveColor(currentTheme);
   const [positiveOpen, setPositiveOpen] = useState(false);
   const [negativeOpen, setNegativeOpen] = useState(false);
   const positiveRef = useRef<HTMLButtonElement>(null);
@@ -252,7 +258,7 @@ const DataBarsRule = ({
               {COLORS.map((color) => (
                 <DataBarSwatch
                   key={`solid-${color}`}
-                  color={color}
+                  color={resolveColor(color)}
                   gradient={false}
                   selected={selected.color === color && !selected.gradient}
                   onClick={() =>
@@ -276,7 +282,7 @@ const DataBarsRule = ({
               {COLORS.map((color) => (
                 <DataBarSwatch
                   key={`gradient-${color}`}
-                  color={color}
+                  color={resolveColor(color)}
                   gradient={true}
                   selected={selected.color === color && selected.gradient}
                   onClick={() =>
@@ -361,14 +367,11 @@ const DataBarsRule = ({
               <div className="ic-cs-settings-row">
                 <Input
                   type="text"
-                  value={resolveColorToHex(
-                    selected.positiveColor,
-                    currentTheme,
-                  )}
+                  value={resolveColor(selected.positiveColor)}
                   onChange={(e) =>
                     setSelected((s) => ({
                       ...s,
-                      positiveColor: e.target.value,
+                      positiveColor: fromDisplayHex(e.target.value, scheme),
                     }))
                   }
                 />
@@ -378,10 +381,7 @@ const DataBarsRule = ({
                     type="button"
                     className="ic-cs-color-swatch"
                     style={{
-                      backgroundColor: resolveColorToHex(
-                        selected.positiveColor,
-                        currentTheme,
-                      ),
+                      backgroundColor: resolveColor(selected.positiveColor),
                     }}
                     onClick={() => setPositiveOpen(true)}
                     aria-label={t("conditional_formatting.data_bars_positive")}
@@ -389,10 +389,7 @@ const DataBarsRule = ({
                 </div>
                 <ColorPicker
                   color={selected.positiveColor}
-                  defaultColor={resolveColorToHex(
-                    selected.positiveColor,
-                    currentTheme,
-                  )}
+                  defaultColor={resolveColor(selected.positiveColor)}
                   title={t("color_picker.default")}
                   onChange={(c) => {
                     setSelected((s) => ({ ...s, positiveColor: c }));
@@ -412,14 +409,11 @@ const DataBarsRule = ({
               <div className="ic-cs-settings-row">
                 <Input
                   type="text"
-                  value={resolveColorToHex(
-                    selected.negativeColor,
-                    currentTheme,
-                  )}
+                  value={resolveColor(selected.negativeColor)}
                   onChange={(e) =>
                     setSelected((s) => ({
                       ...s,
-                      negativeColor: e.target.value,
+                      negativeColor: fromDisplayHex(e.target.value, scheme),
                     }))
                   }
                 />
@@ -429,10 +423,7 @@ const DataBarsRule = ({
                     type="button"
                     className="ic-cs-color-swatch"
                     style={{
-                      backgroundColor: resolveColorToHex(
-                        selected.negativeColor,
-                        currentTheme,
-                      ),
+                      backgroundColor: resolveColor(selected.negativeColor),
                     }}
                     onClick={() => setNegativeOpen(true)}
                     aria-label={t("conditional_formatting.data_bars_negative")}
@@ -440,10 +431,7 @@ const DataBarsRule = ({
                 </div>
                 <ColorPicker
                   color={selected.negativeColor}
-                  defaultColor={resolveColorToHex(
-                    selected.negativeColor,
-                    currentTheme,
-                  )}
+                  defaultColor={resolveColor(selected.negativeColor)}
                   title={t("color_picker.default")}
                   onChange={(c) => {
                     setSelected((s) => ({ ...s, negativeColor: c }));

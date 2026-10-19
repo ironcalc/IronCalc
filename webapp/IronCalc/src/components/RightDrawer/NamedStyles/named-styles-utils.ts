@@ -7,7 +7,6 @@ import type {
   VerticalAlignment,
 } from "@ironcalc/wasm";
 import type { CSSProperties } from "react";
-import { defaultThemeVariables } from "../../../theme/theme";
 import { NumberFormats } from "../../FormatMenu/formatUtil";
 
 export const HORIZONTAL_JUSTIFY: Partial<Record<HorizontalAlignment, string>> =
@@ -66,11 +65,12 @@ export function borderStyleToCss(style: string, color: string): string {
 function getBorderValue(
   model: Model,
   item: BorderItem | undefined,
+  displayHex: (hex: string) => string,
 ): string | undefined {
   if (!item?.style) {
     return undefined;
   }
-  const color = model.resolveColor(item.color) || "currentColor";
+  const color = displayHex(model.resolveColor(item.color)) || "currentColor";
   return borderStyleToCss(item.style, color);
 }
 
@@ -106,7 +106,13 @@ export function getPreviewText(
   return "C";
 }
 
-export function getTileStyle(model: Model, style: CellStyle): CSSProperties {
+// `displayHex` maps a workbook color to the one shown on screen (see
+// theme/colorScheme.ts)
+export function getTileStyle(
+  model: Model,
+  style: CellStyle,
+  displayHex: (hex: string) => string,
+): CSSProperties {
   const decorations: string[] = [];
   if (style.font.u) {
     decorations.push("underline");
@@ -115,11 +121,12 @@ export function getTileStyle(model: Model, style: CellStyle): CSSProperties {
     decorations.push("line-through");
   }
   const tileStyle: CSSProperties = {
-    backgroundColor: model.resolveColor(style.fill.color) || undefined,
+    backgroundColor:
+      displayHex(model.resolveColor(style.fill.color)) || undefined,
     color:
-      model.resolveColor(style.font.color) ||
+      displayHex(model.resolveColor(style.font.color)) ||
       (style.fill.color
-        ? defaultThemeVariables["--palette-sheet-default-text-color"]
+        ? "var(--palette-sheet-default-text-color)"
         : undefined),
     fontWeight: style.font.b ? "bold" : undefined,
     fontStyle: style.font.i ? "italic" : undefined,
@@ -132,10 +139,10 @@ export function getTileStyle(model: Model, style: CellStyle): CSSProperties {
       : undefined,
   };
 
-  const top = getBorderValue(model, style.border?.top);
-  const right = getBorderValue(model, style.border?.right);
-  const bottom = getBorderValue(model, style.border?.bottom);
-  const left = getBorderValue(model, style.border?.left);
+  const top = getBorderValue(model, style.border?.top, displayHex);
+  const right = getBorderValue(model, style.border?.right, displayHex);
+  const bottom = getBorderValue(model, style.border?.bottom, displayHex);
+  const left = getBorderValue(model, style.border?.left, displayHex);
   // Draw every side explicitly (faint fallback where unset) and drop the
   // box-shadow so it doesn't double up with real borders.
   if (top || right || bottom || left) {

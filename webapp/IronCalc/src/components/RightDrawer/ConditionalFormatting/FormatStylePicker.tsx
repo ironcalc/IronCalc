@@ -9,9 +9,9 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useResolveColor } from "../../../theme/colorScheme";
 import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
-import { resolveColorToHex } from "../../ColorPicker/util";
 import "./format-style-picker.css";
 import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 
@@ -56,6 +56,7 @@ const FormatStylePicker = ({
   currentTheme,
 }: FormatStylePickerProps) => {
   const { t } = useTranslation();
+  const resolveColor = useResolveColor(currentTheme);
   const [fontColorOpen, setFontColorOpen] = useState(false);
   const [fillColorOpen, setFillColorOpen] = useState(false);
   const fontColorRef = useRef<HTMLButtonElement>(null);
@@ -73,10 +74,9 @@ const FormatStylePicker = ({
         .filter(Boolean)
         .join(" ") || "none",
     color:
-      resolveColorToHex(value.fontColor, currentTheme) ||
+      resolveColor(value.fontColor) ||
       "var(--palette-sheet-default-text-color)",
-    backgroundColor:
-      resolveColorToHex(value.fillColor, currentTheme) || "transparent",
+    backgroundColor: resolveColor(value.fillColor) || "transparent",
   };
 
   return (
@@ -122,7 +122,7 @@ const FormatStylePicker = ({
                     className="ic-fsp-color-bar"
                     style={{
                       backgroundColor:
-                        resolveColorToHex(value.fontColor, currentTheme) ||
+                        resolveColor(value.fontColor) ||
                         "var(--palette-sheet-default-text-color)",
                     }}
                   />
@@ -140,8 +140,7 @@ const FormatStylePicker = ({
                     className="ic-fsp-color-bar"
                     style={{
                       backgroundColor:
-                        resolveColorToHex(value.fillColor, currentTheme) ||
-                        "transparent",
+                        resolveColor(value.fillColor) || "transparent",
                     }}
                   />
                 </>
@@ -168,11 +167,10 @@ const FormatStylePicker = ({
               type="button"
               className="ic-fsp-preset"
               style={{
-                color: resolveColorToHex(preset.fontColor, currentTheme),
+                color: resolveColor(preset.fontColor),
                 backgroundColor:
-                  resolveColorToHex(preset.fillColor, currentTheme) ||
-                  "#FFFFFF",
-                borderColor: resolveColorToHex(preset.fontColor, currentTheme),
+                  resolveColor(preset.fillColor) || resolveColor("#FFFFFF"),
+                borderColor: resolveColor(preset.fontColor),
               }}
               onClick={() => onChange(preset)}
               aria-label={t("conditional_formatting.apply_preset")}

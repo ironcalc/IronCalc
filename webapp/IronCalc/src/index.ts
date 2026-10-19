@@ -36,6 +36,13 @@ export type { TooltipProperties } from "./components/Tooltip/Tooltip";
 export { Tooltip } from "./components/Tooltip/Tooltip";
 export type { IronCalcHandle } from "./IronCalc";
 export { darkThemeVariables } from "./theme";
+export type { ColorScheme } from "./theme/colorScheme";
+export {
+  DEFAULT_OPTIONS as defaultInvertColorOptions,
+  type InvertColorOptions,
+  invertColor,
+  uninvertColor,
+} from "./theme/invertColor";
 export { IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo, Model };
 
 export const init: typeof initWasm = async (module_or_path) => {

@@ -1,5 +1,3 @@
-import { defaultThemeVariables } from "../../theme/theme";
-
 // Get a 10% transparency of an hex color
 export function hexToRGBA10Percent(colorHex: string): string {
   // Remove the leading hash (#) if present
@@ -72,9 +70,6 @@ export function readThemeFromCSS(root: Element): Theme {
   const style = getComputedStyle(root);
   return {
     backgroundColor: readCSSVar("--palette-common-white", style),
-    // Fills don't follow the theme, so filled cells always use the light-theme text color
-    filledCellTextColor:
-      defaultThemeVariables["--palette-sheet-default-text-color"],
     commonWhite: readCSSVar("--palette-common-white", style),
     gridColor: readCSSVar("--palette-sheet-grid-color", style),
     cellFontFamily: readCSSVar(
@@ -121,7 +116,6 @@ export interface Theme {
   headerFont: string;
   gridSeparatorColor: string;
   defaultTextColor: string;
-  filledCellTextColor: string;
   commonWhite: string;
   headerSelectedColor: string;
 }

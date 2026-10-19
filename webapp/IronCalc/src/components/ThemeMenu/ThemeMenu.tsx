@@ -2,6 +2,7 @@ import type { IronCalcTheme } from "@ironcalc/wasm";
 import { Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useDisplayHex } from "../../theme/colorScheme";
 import { Menu } from "../Menu/Menu";
 import { MenuDivider } from "../Menu/MenuDivider";
 import { MenuItem } from "../Menu/MenuItem";
@@ -33,6 +34,7 @@ const ThemeMenu = ({
   onManageThemes,
 }: ThemeMenuProperties) => {
   const { t } = useTranslation();
+  const displayHex = useDisplayHex();
   let allThemes = themes;
   if (!themes.some((theme) => themeEquals(theme, currentTheme))) {
     allThemes = [...themes, currentTheme];
@@ -55,7 +57,9 @@ const ThemeMenu = ({
                   <span
                     key={key}
                     className="ic-theme-menu-swatch"
-                    style={{ backgroundColor: theme[key] as string }}
+                    style={{
+                      backgroundColor: displayHex(theme[key] as string),
+                    }}
                   />
                 ))}
               </span>
