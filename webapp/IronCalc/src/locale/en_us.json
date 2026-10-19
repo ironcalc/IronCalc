@@ -321,6 +321,14 @@
     "title": "Custom number format"
   },
   "regional_settings": {
+    "dark_mode": {
+      "chroma_curve": "Chroma curve",
+      "dark_background": "Lightness of white",
+      "dark_foreground": "Lightness of black",
+      "lightness_curve": "Lightness curve",
+      "reset": "Reset to defaults",
+      "title": "Dark mode colors"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",

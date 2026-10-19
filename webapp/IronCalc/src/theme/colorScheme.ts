@@ -1,7 +1,12 @@
 import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { createContext, useCallback, useContext } from "react";
 import { resolveColorToHex } from "../components/ColorPicker/util";
-import { invertColor, uninvertColor } from "./invertColor";
+import {
+  DEFAULT_OPTIONS,
+  type InvertColorOptions,
+  invertColor,
+  uninvertColor,
+} from "./invertColor";
 
 export type ColorScheme = "light" | "dark";
 
@@ -13,24 +18,61 @@ export function useColorScheme(): ColorScheme {
   return useContext(ColorSchemeContext);
 }
 
+// The knobs of the dark-mode inversion (invertColor.ts). `IronCalc` owns them
+// so they can be tuned at runtime from the regional settings drawer.
+export interface InvertColorOptionsState {
+  options: InvertColorOptions;
+  setOptions: (options: InvertColorOptions) => void;
+}
+
+export const InvertColorOptionsContext = createContext<InvertColorOptionsState>(
+  { options: DEFAULT_OPTIONS, setOptions: () => {} },
+);
+
+export function useInvertColorOptions(): InvertColorOptionsState {
+  return useContext(InvertColorOptionsContext);
+}
+
 // Workbook colors are light-mode colors. These two functions map between what
 // is stored in the workbook and what is shown on screen (see invertColor.ts).
 // Non hex values ("", "transparent", "var(--x)") pass through untouched.
 
 /** Stored (light-mode) color → color shown on screen. */
-export function toDisplayHex(hex: string, scheme: ColorScheme): string {
-  return scheme === "dark" ? invertColor(hex) : hex;
+export function toDisplayHex(
+  hex: string,
+  scheme: ColorScheme,
+  options: InvertColorOptions = DEFAULT_OPTIONS,
+): string {
+  return scheme === "dark" ? invertColor(hex, options) : hex;
 }
 
 /** Color picked on screen → color to store in the workbook. */
-export function fromDisplayHex(hex: string, scheme: ColorScheme): string {
-  return scheme === "dark" ? uninvertColor(hex) : hex;
+export function fromDisplayHex(
+  hex: string,
+  scheme: ColorScheme,
+  options: InvertColorOptions = DEFAULT_OPTIONS,
+): string {
+  return scheme === "dark" ? uninvertColor(hex, options) : hex;
 }
 
-/** `toDisplayHex` bound to the current color scheme. */
+/** `toDisplayHex` bound to the current color scheme and options. */
 export function useDisplayHex(): (hex: string) => string {
   const scheme = useColorScheme();
-  return useCallback((hex: string) => toDisplayHex(hex, scheme), [scheme]);
+  const { options } = useInvertColorOptions();
+  return useCallback(
+    (hex: string) => toDisplayHex(hex, scheme, options),
+    [scheme, options],
+  );
+}
+
+/** `fromDisplayHex` bound to the current color scheme and options. */
+export function useFromDisplayHex(): (hex: string) => string {
+  const scheme = useColorScheme();
+  const { options } = useInvertColorOptions();
+  return useCallback(
+    (hex: string) => fromDisplayHex(hex, scheme, options),
+    [scheme, options],
+  );
 }
 
 /**
@@ -42,8 +84,10 @@ export function useResolveColor(
   theme: IronCalcTheme,
 ): (color: Color) => string {
   const scheme = useColorScheme();
+  const { options } = useInvertColorOptions();
   return useCallback(
-    (color: Color) => toDisplayHex(resolveColorToHex(color, theme), scheme),
-    [theme, scheme],
+    (color: Color) =>
+      toDisplayHex(resolveColorToHex(color, theme), scheme, options),
+    [theme, scheme, options],
   );
 }

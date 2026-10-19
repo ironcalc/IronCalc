@@ -321,6 +321,14 @@
     "title": "Benutzerdefiniertes Zahlenformat"
   },
   "regional_settings": {
+    "dark_mode": {
+      "chroma_curve": "Chromakurve",
+      "dark_background": "Helligkeit von Weiß",
+      "dark_foreground": "Helligkeit von Schwarz",
+      "lightness_curve": "Helligkeitskurve",
+      "reset": "Auf Standard zurücksetzen",
+      "title": "Farben im Dunkelmodus"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",

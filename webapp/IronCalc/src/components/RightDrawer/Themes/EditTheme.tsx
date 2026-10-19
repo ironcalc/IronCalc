@@ -1,11 +1,7 @@
 import { Check } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  fromDisplayHex,
-  toDisplayHex,
-  useColorScheme,
-} from "../../../theme/colorScheme";
+import { useDisplayHex, useFromDisplayHex } from "../../../theme/colorScheme";
 import { Button } from "../../Button/Button";
 import ColorPicker from "../../ColorPicker/ColorPicker";
 import { resolveColorToHex } from "../../ColorPicker/util";
@@ -59,7 +55,8 @@ const ColorField = ({
   const ref = useRef<HTMLButtonElement>(null);
   // `value` is the stored (light-mode) color; the swatch and the text field
   // show it mapped to the current color scheme
-  const scheme = useColorScheme();
+  const display = useDisplayHex();
+  const fromDisplay = useFromDisplayHex();
 
   return (
     <div className="ic-edit-theme-field-wrapper">
@@ -70,15 +67,15 @@ const ColorField = ({
             ref={ref}
             type="button"
             className="ic-edit-theme-color-swatch"
-            style={{ backgroundColor: toDisplayHex(value, scheme) }}
+            style={{ backgroundColor: display(value) }}
             onClick={() => setOpen(true)}
             aria-label={label}
           />
         </div>
         <Input
           type="text"
-          value={toDisplayHex(value, scheme)}
-          onChange={(e) => onChange(fromDisplayHex(e.target.value, scheme))}
+          value={display(value)}
+          onChange={(e) => onChange(fromDisplay(e.target.value))}
           onKeyDown={onKeyDown}
         />
         <ColorPicker

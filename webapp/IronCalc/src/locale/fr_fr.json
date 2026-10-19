@@ -321,6 +321,14 @@
     "title": "Format de nombre personnalisé"
   },
   "regional_settings": {
+    "dark_mode": {
+      "chroma_curve": "Courbe de chroma",
+      "dark_background": "Luminosité du blanc",
+      "dark_foreground": "Luminosité du noir",
+      "lightness_curve": "Courbe de luminosité",
+      "reset": "Rétablir les valeurs par défaut",
+      "title": "Couleurs du mode sombre"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",

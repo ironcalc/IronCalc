@@ -1,11 +1,116 @@
 import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
-import { Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, RotateCcw, X } from "lucide-react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  useColorScheme,
+  useInvertColorOptions,
+} from "../../../theme/colorScheme";
+import {
+  DEFAULT_OPTIONS,
+  type InvertColorOptions,
+} from "../../../theme/invertColor";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import "./regional-settings.css";
 import { Select } from "../../Select/Select";
+
+// Sliders for the knobs of the dark-mode color inversion (invertColor.ts).
+// Only shown in dark mode; the changes apply live to the whole workbook.
+const INVERT_COLOR_SLIDERS: {
+  key: keyof InvertColorOptions;
+  labelKey: string;
+  min: number;
+  max: number;
+  step: number;
+}[] = [
+  {
+    key: "darkBackgroundL",
+    labelKey: "regional_settings.dark_mode.dark_background",
+    min: 0,
+    max: 1,
+    step: 0.005,
+  },
+  {
+    key: "darkForegroundL",
+    labelKey: "regional_settings.dark_mode.dark_foreground",
+    min: 0,
+    max: 1,
+    step: 0.005,
+  },
+  {
+    key: "lightnessGamma",
+    labelKey: "regional_settings.dark_mode.lightness_curve",
+    min: 0.25,
+    max: 3,
+    step: 0.05,
+  },
+  {
+    key: "chromaGamma",
+    labelKey: "regional_settings.dark_mode.chroma_curve",
+    min: 0.25,
+    max: 3,
+    step: 0.05,
+  },
+];
+
+const DarkModeTuning = () => {
+  const { t } = useTranslation();
+  const { options, setOptions } = useInvertColorOptions();
+  const id = useId();
+  const isDefault = INVERT_COLOR_SLIDERS.every(
+    ({ key }) => options[key] === DEFAULT_OPTIONS[key],
+  );
+
+  return (
+    <div className="ic-regional-settings-section">
+      <div className="ic-regional-settings-section-title">
+        {t("regional_settings.dark_mode.title")}
+      </div>
+      <div className="ic-regional-settings-sliders">
+        {INVERT_COLOR_SLIDERS.map(({ key, labelKey, min, max, step }) => (
+          <div key={key} className="ic-regional-settings-slider">
+            <label
+              htmlFor={`${id}-${key}`}
+              className="ic-regional-settings-row"
+            >
+              {t(labelKey)}
+              <span className="ic-regional-settings-row-value">
+                {options[key].toFixed(3)}
+              </span>
+            </label>
+            <input
+              id={`${id}-${key}`}
+              type="range"
+              className="ic-regional-settings-range"
+              min={min}
+              max={max}
+              step={step}
+              defaultValue={options[key]}
+              // Safari does not focus a range input on click; the workbook only
+              // leaves focus alone while the active element is in the drawer
+              onPointerDown={(e) => e.currentTarget.focus()}
+              onChange={(e) =>
+                setOptions({ ...options, [key]: Number(e.target.value) })
+              }
+            />
+          </div>
+        ))}
+      </div>
+      <div>
+        <Button
+          variant="secondary"
+          size="sm"
+          startIcon={<RotateCcw />}
+          disabled={isDefault}
+          onClick={() => setOptions(DEFAULT_OPTIONS)}
+        >
+          {t("regional_settings.dark_mode.reset")}
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 type RegionalSettingsProps = {
   onClose: () => void;
@@ -73,6 +178,7 @@ export const getLocaleDisplayName = (locale: string): string => {
 
 const RegionalSettings = (properties: RegionalSettingsProps) => {
   const { t } = useTranslation();
+  const colorScheme = useColorScheme();
   const locales = getSupportedLocales();
   const timezones = getAllTimezones();
 
@@ -184,6 +290,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             />
           </div>
         </div>
+        {colorScheme === "dark" && <DarkModeTuning />}
       </div>
 
       <div className="ic-regional-settings-footer">

@@ -101,12 +101,10 @@ function transform(
   }
   const { r, g, b, alpha } = parsed;
   const key = `${inverse ? "u" : "i"}${r},${g},${b}`;
-  const cachedOptions = options === DEFAULT_OPTIONS;
-  if (cachedOptions) {
-    const cached = cache.get(key);
-    if (cached !== undefined) {
-      return cached + alpha;
-    }
+  const cache = cacheFor(options);
+  const cached = cache.get(key);
+  if (cached !== undefined) {
+    return cached + alpha;
   }
 
   const [L, C, H] = toOklch(r, g, b);
@@ -125,17 +123,26 @@ function transform(
   const newC = relative * maxChroma(newL, H);
   const result = toHex(...fromOklch(newL, newC, H));
 
-  if (cachedOptions) {
-    if (cache.size > CACHE_LIMIT) {
-      cache.clear();
-    }
-    cache.set(key, result);
+  if (cache.size > CACHE_LIMIT) {
+    cache.clear();
   }
+  cache.set(key, result);
   return result + alpha;
 }
 
-const cache = new Map<string, string>();
+// One cache per options object: the sheet repeats the same few colors
+// thousands of times per frame
+const caches = new WeakMap<InvertColorOptions, Map<string, string>>();
 const CACHE_LIMIT = 20000;
+
+function cacheFor(options: InvertColorOptions): Map<string, string> {
+  let cache = caches.get(options);
+  if (!cache) {
+    cache = new Map();
+    caches.set(options, cache);
+  }
+  return cache;
+}
 const CHROMA_EPSILON = 1e-6;
 
 // Largest chroma at lightness L and hue H (degrees) that is inside the sRGB

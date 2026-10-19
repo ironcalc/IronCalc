@@ -7,11 +7,7 @@ import { createAnchoredPortal } from "../createAnchoredPortal";
 import { getFocusableElements } from "../util";
 import "./color-picker.css";
 import type { Color, IronCalcTheme } from "@ironcalc/wasm";
-import {
-  fromDisplayHex,
-  toDisplayHex,
-  useColorScheme,
-} from "../../theme/colorScheme";
+import { useDisplayHex, useFromDisplayHex } from "../../theme/colorScheme";
 import useAnchorPosition, { type Placement } from "./useAnchorPosition";
 import useKeyDown from "./useKeyDown";
 import {
@@ -78,10 +74,10 @@ const ColorPicker = ({
   // Workbook (light-mode) colors with their resolved hex; shown through `display`
   const recentColors = useRef<{ color: Color; hex: string }[]>([]);
   const { t } = useTranslation();
-  const scheme = useColorScheme();
   // Every color the picker shows is the stored color mapped to the current
   // color scheme; what it hands back through `onChange` is always the stored one
-  const display = (hex: string) => toDisplayHex(hex, scheme);
+  const display = useDisplayHex();
+  const fromDisplay = useFromDisplayHex();
 
   const themeColors = themeBaseColors(theme);
 
@@ -203,7 +199,7 @@ const ColorPicker = ({
         )}
         onAccept={(hex) => {
           // The advanced picker works in screen colors; store the workbook one
-          const stored = fromDisplayHex(hex, scheme);
+          const stored = fromDisplay(hex);
           handleColorSelect(stored, stored);
         }}
         onCancel={() => setPickerOpen(false)}

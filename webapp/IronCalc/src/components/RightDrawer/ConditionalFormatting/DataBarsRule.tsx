@@ -2,11 +2,7 @@ import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { Check, SquareMousePointer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  fromDisplayHex,
-  useColorScheme,
-  useResolveColor,
-} from "../../../theme/colorScheme";
+import { useFromDisplayHex, useResolveColor } from "../../../theme/colorScheme";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { Checkbox } from "../../Checkbox/Checkbox";
@@ -145,7 +141,7 @@ const DataBarsRule = ({
   currentTheme,
 }: DataBarsRuleProps) => {
   const { t } = useTranslation();
-  const scheme = useColorScheme();
+  const fromDisplay = useFromDisplayHex();
   const resolveColor = useResolveColor(currentTheme);
   const [positiveOpen, setPositiveOpen] = useState(false);
   const [negativeOpen, setNegativeOpen] = useState(false);
@@ -371,7 +367,7 @@ const DataBarsRule = ({
                   onChange={(e) =>
                     setSelected((s) => ({
                       ...s,
-                      positiveColor: fromDisplayHex(e.target.value, scheme),
+                      positiveColor: fromDisplay(e.target.value),
                     }))
                   }
                 />
@@ -413,7 +409,7 @@ const DataBarsRule = ({
                   onChange={(e) =>
                     setSelected((s) => ({
                       ...s,
-                      negativeColor: fromDisplayHex(e.target.value, scheme),
+                      negativeColor: fromDisplay(e.target.value),
                     }))
                   }
                 />

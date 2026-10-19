@@ -7,6 +7,7 @@ import type {
 } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
 import { type ColorScheme, toDisplayHex } from "../../theme/colorScheme";
+import type { InvertColorOptions } from "../../theme/invertColor";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
@@ -41,6 +42,7 @@ export interface CanvasSettings {
   workbookState: WorkbookState;
   // In "dark" every workbook color is shown inverted (see theme/invertColor.ts)
   colorScheme?: ColorScheme;
+  invertColorOptions?: InvertColorOptions;
   elements: {
     canvas: HTMLCanvasElement;
     cellOutline: HTMLDivElement;
@@ -119,6 +121,8 @@ export default class WorksheetCanvas {
 
   colorScheme: ColorScheme;
 
+  invertColorOptions: InvertColorOptions | undefined;
+
   rowGuide: HTMLDivElement;
 
   columnHeaders: HTMLDivElement;
@@ -165,6 +169,7 @@ export default class WorksheetCanvas {
     this.ctx = this.setContext();
     this.workbookState = options.workbookState;
     this.colorScheme = options.colorScheme ?? "light";
+    this.invertColorOptions = options.invertColorOptions;
     this.editor = options.elements.editor;
     this.refresh = options.refresh;
 
@@ -452,7 +457,11 @@ export default class WorksheetCanvas {
   // Resolves a workbook color against the workbook theme and maps it to the
   // color shown on screen in the current color scheme ("" when absent)
   private displayColor(color: Color): string {
-    return toDisplayHex(this.model.resolveColor(color), this.colorScheme);
+    return toDisplayHex(
+      this.model.resolveColor(color),
+      this.colorScheme,
+      this.invertColorOptions,
+    );
   }
 
   private getFontStyle(style: CellStyle): {

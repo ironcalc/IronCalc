@@ -93,6 +93,27 @@
   width: 100%;
 }
 
+/* Dark mode tuning sliders */
+.ic-regional-settings-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: var(--typography-font-family);
+}
+
+.ic-regional-settings-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ic-regional-settings-range {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--palette-primary-main);
+  cursor: pointer;
+}
+
 .ic-regional-settings-footer {
   color: var(--palette-grey-700);
   display: flex;

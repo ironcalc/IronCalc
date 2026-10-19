@@ -18,8 +18,10 @@ Dark mode is two things:
 
 `invertColor` works in OKLCH: it keeps the hue, flips the lightness so that pure white lands on the dark
 background and pure black on the dark foreground, and keeps the chroma relative to the sRGB gamut so the
-transform is invertible (up to 8-bit rounding). The knobs are in `DEFAULT_OPTIONS`; the Storybook story
-"Theme/Color inversion" is a playground to tune them and `tests/invertColor.test.ts` pins the behaviour.
+transform is invertible (up to 8-bit rounding). The knobs are in `DEFAULT_OPTIONS`; `IronCalc` keeps a
+runtime copy of them in `InvertColorOptionsContext`, and in dark mode the regional settings drawer shows
+sliders that change them live. The Storybook story "Theme/Color inversion" is another playground and
+`tests/invertColor.test.ts` pins the behaviour.
 
 In code, components never call `invertColor` directly. They use the hooks in `colorScheme.ts`:
 

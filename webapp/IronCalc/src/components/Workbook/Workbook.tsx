@@ -103,10 +103,10 @@ const Workbook = (props: {
   const focusWorkbook = useCallback(() => {
     const active = document.activeElement as HTMLElement | null;
     // FIXME: Horrible HACK for now
-    // Prevents the workbook from stealing focus when the user is interacting with the color picker, border picker, advanced color picker, or a modal dialog
+    // Prevents the workbook from stealing focus when the user is interacting with the color picker, border picker, advanced color picker, a modal dialog or the right drawer
     if (
       active?.closest(
-        ".ic-color-picker, .ic-advanced-color-picker-panel, .ic-border-picker, .ic-modal-dialog",
+        ".ic-color-picker, .ic-advanced-color-picker-panel, .ic-border-picker, .ic-modal-dialog, .ic-drawer-container",
       )
     ) {
       return;

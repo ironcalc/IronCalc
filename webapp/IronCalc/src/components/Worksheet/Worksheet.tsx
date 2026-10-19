@@ -26,7 +26,7 @@ import RowHeaderContextMenu from "./ContextMenus/RowHeader";
 import LinkTooltip from "./LinkTooltip";
 import usePointer from "./usePointer";
 import "./worksheet.css";
-import { useColorScheme } from "../../theme/colorScheme";
+import { useColorScheme, useInvertColorOptions } from "../../theme/colorScheme";
 import { Alert, Prompt } from "../Modal";
 
 function useWindowSize() {
@@ -130,6 +130,7 @@ const Worksheet = forwardRef(
       props;
     const { t } = useTranslation();
     const colorScheme = useColorScheme();
+    const { options: invertColorOptions } = useInvertColorOptions();
     const [clientWidth, clientHeight] = useWindowSize();
 
     useImperativeHandle(ref, () => ({
@@ -174,6 +175,7 @@ const Worksheet = forwardRef(
         model,
         workbookState,
         colorScheme,
+        invertColorOptions,
         elements: {
           canvas: canvasRef,
           columnGuide: columnGuideRef,

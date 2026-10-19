@@ -4,6 +4,9 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { I18nextProvider } from "react-i18next";
 import Workbook from "./components/Workbook/Workbook.tsx";
@@ -16,7 +19,12 @@ import {
   setThemeVariables,
   unsetThemeVariables,
 } from "./theme";
-import { type ColorScheme, ColorSchemeContext } from "./theme/colorScheme";
+import {
+  type ColorScheme,
+  ColorSchemeContext,
+  InvertColorOptionsContext,
+} from "./theme/colorScheme";
+import { DEFAULT_OPTIONS, type InvertColorOptions } from "./theme/invertColor";
 
 interface IronCalcProperties {
   model: Model;
@@ -49,6 +57,20 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
     ref,
   ) => {
     const root = rootContainer ?? document.body;
+    // One runtime state for the lifetime of the widget: IronCalc re-renders
+    // when the inversion knobs change and must not reset the editing state
+    const workbookState = useRef(new WorkbookState()).current;
+    // Knobs of the dark-mode color inversion, tunable from the regional
+    // settings drawer while in dark mode
+    const [invertColorOptions, setInvertColorOptions] =
+      useState<InvertColorOptions>(DEFAULT_OPTIONS);
+    const invertColorState = useMemo(
+      () => ({
+        options: invertColorOptions,
+        setOptions: setInvertColorOptions,
+      }),
+      [invertColorOptions],
+    );
     useEffect(() => {
       if (root.classList.contains("ic-root")) {
         console.warn("rootContainer already in use:", root);
@@ -78,11 +100,13 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
       <div className="ic-widget">
         <I18nextProvider i18n={i18n}>
           <ColorSchemeContext.Provider value={colorScheme}>
-            <Workbook
-              model={model}
-              workbookState={new WorkbookState()}
-              canEdit={canEdit}
-            />
+            <InvertColorOptionsContext.Provider value={invertColorState}>
+              <Workbook
+                model={model}
+                workbookState={workbookState}
+                canEdit={canEdit}
+              />
+            </InvertColorOptionsContext.Provider>
           </ColorSchemeContext.Provider>
         </I18nextProvider>
       </div>
