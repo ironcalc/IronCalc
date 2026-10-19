@@ -198,3 +198,16 @@ pub fn load_from_icalc<'a>(file_name: &str, language_id: &'a str) -> Result<Mode
         .map_err(|e| XlsxError::IO(format!("Failed to decode file: {e}")))?;
     Model::from_workbook(workbook, language_id).map_err(XlsxError::Workbook)
 }
+
+#[cfg(test)]
+mod zip_input_tests {
+    use super::{load_from_xlsx_bytes, XlsxError};
+
+    #[test]
+    fn malformed_zip_inputs_remain_zip_errors() {
+        for bytes in [b"".as_slice(), b"not a ZIP archive", b"PK\x03\x04"] {
+            let result = load_from_xlsx_bytes(bytes, "invalid", "en", "UTC");
+            assert!(matches!(result, Err(XlsxError::Zip(_))));
+        }
+    }
+}
