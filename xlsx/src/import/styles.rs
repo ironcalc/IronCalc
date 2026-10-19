@@ -621,7 +621,7 @@ mod indexed_color_tests {
         let mut buf = Vec::new();
         {
             let mut zw = zip::ZipWriter::new(Cursor::new(&mut buf));
-            zw.start_file("xl/styles.xml", zip::write::FileOptions::default())
+            zw.start_file("xl/styles.xml", zip::write::SimpleFileOptions::default())
                 .unwrap();
             zw.write_all(styles.as_bytes()).unwrap();
             zw.finish().unwrap();
