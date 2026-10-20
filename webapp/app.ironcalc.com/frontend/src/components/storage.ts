@@ -52,11 +52,22 @@ export type ModelsMetadata = Readonly<Record<string, WorkbookMetadata>>;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-function openDatabase(): Promise<IDBDatabase> {
-  if (dbPromise) {
-    return dbPromise;
-  }
-  dbPromise = new Promise((resolve, reject) => {
+function deleteDatabase(): Promise<void> {
+  return new Promise((resolve) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => resolve();
+    // Other tabs close their connection on `versionchange`, so the deletion
+    // goes through shortly; a subsequent `open` is queued behind it anyway.
+    request.onblocked = () => resolve();
+  });
+}
+
+// Opens the database once. Rejects if it cannot be opened (e.g. it was
+// created by a newer version of the app) or if it does not have the expected
+// object stores.
+function tryOpenDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -69,19 +80,42 @@ function openDatabase(): Promise<IDBDatabase> {
     };
     request.onsuccess = () => {
       const db = request.result;
-      // If another tab upgrades the database, drop our connection so the
-      // next call reopens it.
+      if (
+        !db.objectStoreNames.contains(WORKBOOKS_STORE) ||
+        !db.objectStoreNames.contains(BYTES_STORE)
+      ) {
+        db.close();
+        reject(new Error("IndexedDB database is missing object stores"));
+        return;
+      }
+      // If another tab upgrades (or deletes) the database, drop our
+      // connection so the next call reopens it.
       db.onversionchange = () => {
         db.close();
         dbPromise = null;
       };
       resolve(db);
     };
-    request.onerror = () => {
-      dbPromise = null;
-      reject(request.error);
-    };
+    request.onerror = () => reject(request.error);
   });
+}
+
+function openDatabase(): Promise<IDBDatabase> {
+  if (dbPromise) {
+    return dbPromise;
+  }
+  const pending = tryOpenDatabase().catch(async (e) => {
+    // The database is unusable: throw it away and start from scratch.
+    console.warn("Resetting IndexedDB storage", e);
+    await deleteDatabase();
+    return tryOpenDatabase();
+  });
+  pending.catch(() => {
+    if (dbPromise === pending) {
+      dbPromise = null;
+    }
+  });
+  dbPromise = pending;
   return dbPromise;
 }
 
@@ -135,18 +169,48 @@ async function readBytes(uuid: string): Promise<Uint8Array | undefined> {
   );
 }
 
+function isValidMetadata(value: unknown): value is WorkbookMetadata {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const { name, createdAt, pinned } = value as Record<string, unknown>;
+  return (
+    typeof name === "string" &&
+    typeof createdAt === "number" &&
+    Number.isFinite(createdAt) &&
+    typeof pinned === "boolean"
+  );
+}
+
+// Reads every metadata record. Records that are not in the expected shape
+// are deleted (together with their bytes) and left out of the result.
 async function readAllMetadata(): Promise<Record<string, WorkbookMetadata>> {
   const db = await openDatabase();
   const tx = db.transaction(WORKBOOKS_STORE, "readonly");
   const store = tx.objectStore(WORKBOOKS_STORE);
   const [keys, values] = await Promise.all([
     requestToPromise(store.getAllKeys()),
-    requestToPromise(store.getAll() as IDBRequest<WorkbookMetadata[]>),
+    requestToPromise(store.getAll() as IDBRequest<unknown[]>),
   ]);
   const result: Record<string, WorkbookMetadata> = {};
+  const malformed: IDBValidKey[] = [];
   keys.forEach((key, index) => {
-    result[String(key)] = values[index];
+    const value = values[index];
+    if (typeof key === "string" && isValidMetadata(value)) {
+      result[key] = value;
+    } else {
+      malformed.push(key);
+    }
   });
+  if (malformed.length > 0) {
+    console.warn("Deleting malformed workbooks from storage", malformed);
+    await writeTransaction((workbooks, bytesStore) => {
+      for (const key of malformed) {
+        workbooks.delete(key);
+        bytesStore.delete(key);
+      }
+    });
+  }
   return result;
 }
 
@@ -204,11 +268,26 @@ function serialized<T>(operation: () => Promise<T>): Promise<T> {
 // Hydrates the in-memory cache from IndexedDB. Must be awaited once at app
 // startup before any of the synchronous getters are used.
 export async function initStorage(): Promise<void> {
+  let metadata: Record<string, WorkbookMetadata> = {};
   try {
-    setMetadataCache(await readAllMetadata());
+    metadata = await readAllMetadata();
   } catch (e) {
-    console.warn("Failed to initialize storage", e);
-    setMetadataCache({});
+    // Reading failed even though the database opened: delete it and retry
+    // once with a fresh, empty database.
+    console.warn("Failed to read storage, resetting it", e);
+    await closeStorage();
+    await deleteDatabase();
+    try {
+      metadata = await readAllMetadata();
+    } catch (e2) {
+      console.warn("Failed to initialize storage", e2);
+    }
+  }
+  setMetadataCache(metadata);
+  // A selection that does not point to a known workbook is meaningless.
+  const selected = getSelectedUuid();
+  if (selected !== null && !metadata[selected]) {
+    clearSelectedUuid();
   }
 }
 
@@ -268,9 +347,18 @@ export function saveDefaultLocaleInStorage(locale: string) {
   localStorage.setItem(DEFAULT_LOCALE_KEY, locale);
 }
 
+const SUPPORTED_LOCALES = [
+  "en-US",
+  "en-GB",
+  "es-ES",
+  "fr-FR",
+  "de-DE",
+  "it-IT",
+];
+
 export function loadDefaultLocaleFromStorage(): string {
   const lang = localStorage.getItem(DEFAULT_LOCALE_KEY);
-  if (lang) {
+  if (lang && SUPPORTED_LOCALES.includes(lang)) {
     return lang;
   }
   const l = getDefaultUILocale();
@@ -395,13 +483,28 @@ function newestUuid(metadata: ModelsMetadata): string | null {
   });
 }
 
+// Loads a workbook. Returns null if it does not exist. A workbook whose bytes
+// cannot be deserialized is deleted from storage and null is returned.
 async function loadModel(uuid: string): Promise<Model | null> {
   const bytes = await readBytes(uuid);
   if (!bytes) {
     return null;
   }
   const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
-  return Model.fromBytes(bytes, language);
+  try {
+    return Model.fromBytes(bytes, language);
+  } catch (e) {
+    console.warn("Deleting workbook that could not be deserialized", uuid, e);
+    await writeTransaction((workbooks, bytesStore) => {
+      workbooks.delete(uuid);
+      bytesStore.delete(uuid);
+    });
+    setMetadataCache(withoutMetadata(uuid));
+    if (getSelectedUuid() === uuid) {
+      clearSelectedUuid();
+    }
+    return null;
+  }
 }
 
 // Creates an empty workbook with a fresh name, stores it and selects it.
@@ -421,8 +524,7 @@ export function saveModelToStorage(model: Model): Promise<void> {
 }
 
 // Loads the currently selected workbook. Returns null if there is none or it
-// could not be loaded. A workbook that fails to deserialize is left in place
-// (it may be readable by a future version); only the selection is cleared.
+// could not be loaded (in which case the selection is cleared).
 export function loadSelectedModelFromStorage(): Promise<Model | null> {
   return serialized(async () => {
     const uuid = getSelectedUuid();
@@ -551,12 +653,13 @@ export function deleteSelectedModel(): Promise<Model | null> {
 export function duplicateModel(uuid: string): Promise<Model | null> {
   return serialized(async () => {
     const original = metadataCache[uuid];
-    const bytes = await readBytes(uuid);
-    if (!original || !bytes) {
+    if (!original) {
       return null;
     }
-    const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
-    const duplicated = Model.fromBytes(bytes, language);
+    const duplicated = await loadModel(uuid);
+    if (!duplicated) {
+      return null;
+    }
     const existingNames = Object.values(metadataCache).map((m) => m.name);
 
     // Find next available number
