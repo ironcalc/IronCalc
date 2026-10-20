@@ -105,11 +105,7 @@ describe("preferences stay in localStorage", () => {
     expect(storage.loadThemeModeFromStorage()).toBe("light");
   });
 
-  it("defaults the theme mode to light and reads legacy values", () => {
-    expect(storage.loadThemeModeFromStorage()).toBe("light");
-    localStorage.setItem("dark_mode", "true");
-    expect(storage.loadThemeModeFromStorage()).toBe("dark");
-    localStorage.setItem("dark_mode", "false");
+  it("defaults the theme mode to light", () => {
     expect(storage.loadThemeModeFromStorage()).toBe("light");
     localStorage.setItem("dark_mode", "system");
     expect(storage.loadThemeModeFromStorage()).toBe("light");

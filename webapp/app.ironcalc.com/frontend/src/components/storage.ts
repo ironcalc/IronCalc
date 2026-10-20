@@ -285,15 +285,7 @@ export function saveThemeModeInStorage(mode: ThemeMode) {
 }
 
 export function loadThemeModeFromStorage(): ThemeMode {
-  const stored = localStorage.getItem(DARK_MODE_KEY);
-  switch (stored) {
-    case "dark":
-    // legacy boolean value
-    case "true":
-      return "dark";
-    default:
-      return "light";
-  }
+  return localStorage.getItem(DARK_MODE_KEY) === "dark" ? "dark" : "light";
 }
 
 export function getSelectedUuid(): string | null {
