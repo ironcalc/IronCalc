@@ -228,7 +228,8 @@ describe("loadSelectedModelFromStorage", () => {
     expect(storage.isStorageEmpty()).toBe(false);
   });
 
-  it("clears the selection when bytes cannot be deserialized", async () => {
+  it("deletes the workbook when bytes cannot be deserialized", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     await storage.createNewModel();
     const uuid = storage.getSelectedUuid() as string;
     // Corrupt the stored bytes: the fake Model expects JSON.
@@ -239,8 +240,10 @@ describe("loadSelectedModelFromStorage", () => {
     const model = await storage.loadSelectedModelFromStorage();
     expect(model).toBeNull();
     expect(storage.getSelectedUuid()).toBeNull();
-    // The workbook is still there.
-    expect(storage.getModelsMetadata()[uuid]).toBeDefined();
+    // The workbook is gone, also after a reload.
+    expect(storage.getModelsMetadata()[uuid]).toBeUndefined();
+    storage = await reload();
+    expect(storage.getModelsMetadata()[uuid]).toBeUndefined();
   });
 });
 
@@ -349,5 +352,129 @@ describe("deleteSelectedModel", () => {
     const result = await storage.deleteSelectedModel();
     expect(result?.getName()).toBe("Workbook1");
     expect(storage.getModelsMetadata()[second]).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Malformed storage is thrown away and recreated so the app always loads.
+// ---------------------------------------------------------------------------
+
+function openRaw(
+  version: number,
+  upgrade: (db: IDBDatabase) => void,
+): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("ironcalc", version);
+    request.onupgradeneeded = () => upgrade(request.result);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Writes a raw record into one of the stores, bypassing validation.
+async function putRaw(
+  storeName: string,
+  key: IDBValidKey,
+  value: unknown,
+): Promise<void> {
+  const db = await openRaw(1, () => {});
+  const tx = db.transaction(storeName, "readwrite");
+  tx.objectStore(storeName).put(value, key);
+  await new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function countRaw(storeName: string): Promise<number> {
+  const db = await openRaw(1, () => {});
+  const tx = db.transaction(storeName, "readonly");
+  const request = tx.objectStore(storeName).count();
+  const count = await new Promise<number>((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return count;
+}
+
+describe("malformed storage recovery", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  it("recreates a database with a newer version", async () => {
+    await storage.createNewModel();
+    await storage.closeStorage();
+    await deleteDatabase();
+    const db = await openRaw(99, (db) => {
+      db.createObjectStore("something_else");
+    });
+    db.close();
+
+    storage = await reload();
+    expect(storage.getModelsMetadata()).toEqual({});
+    const model = await storage.createNewModel();
+    expect(model.getName()).toBe("Workbook1");
+    storage = await reload();
+    expect(Object.keys(storage.getModelsMetadata())).toHaveLength(1);
+  });
+
+  it("recreates a database that is missing the object stores", async () => {
+    await storage.closeStorage();
+    await deleteDatabase();
+    const db = await openRaw(1, (db) => {
+      db.createObjectStore("workbooks");
+    });
+    db.close();
+
+    storage = await reload();
+    const model = await storage.createNewModel();
+    expect(model.getName()).toBe("Workbook1");
+    expect(await countRaw("workbook_bytes")).toBe(1);
+  });
+
+  it("deletes malformed metadata records and their bytes", async () => {
+    await storage.createNewModel();
+    const good = storage.getSelectedUuid() as string;
+    await putRaw("workbooks", "bad-1", {
+      name: 42,
+      createdAt: 1,
+      pinned: false,
+    });
+    await putRaw("workbook_bytes", "bad-1", new Uint8Array([1, 2, 3]));
+    await putRaw("workbooks", "bad-2", "not an object");
+    await putRaw("workbooks", 7, { name: "x", createdAt: 1, pinned: false });
+
+    storage = await reload();
+    expect(Object.keys(storage.getModelsMetadata())).toEqual([good]);
+    expect(await countRaw("workbooks")).toBe(1);
+    expect(await countRaw("workbook_bytes")).toBe(1);
+  });
+
+  it("deletes a workbook whose bytes cannot be deserialized", async () => {
+    await storage.createNewModel();
+    const uuid = storage.getSelectedUuid() as string;
+    await putRaw("workbook_bytes", uuid, new TextEncoder().encode("garbage"));
+
+    storage = await reload();
+    expect(await storage.loadSelectedModelFromStorage()).toBeNull();
+    expect(storage.getSelectedUuid()).toBeNull();
+    expect(storage.getModelsMetadata()).toEqual({});
+    expect(await countRaw("workbook_bytes")).toBe(0);
+  });
+
+  it("clears a selected uuid that points to no workbook", async () => {
+    await storage.createNewModel();
+    localStorage.setItem("selected", "does-not-exist");
+    storage = await reload();
+    expect(storage.getSelectedUuid()).toBeNull();
+  });
+
+  it("resets an unsupported locale", () => {
+    localStorage.setItem("default_locale", "xx-YY");
+    expect(storage.loadDefaultLocaleFromStorage()).toBe("en-US");
+    expect(localStorage.getItem("default_locale")).toBe("en-US");
   });
 });
