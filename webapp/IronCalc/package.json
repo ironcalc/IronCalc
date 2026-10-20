@@ -1,6 +1,7 @@
 {
   "name": "@ironcalc/workbook",
   "version": "0.9.0",
+  "license": "MIT OR Apache-2.0",
   "type": "module",
   "sideEffects": [
     "*.css",
@@ -61,7 +62,10 @@
     "react-i18next": "^17.0.15"
   },
   "files": [
-    "dist"
+    "dist",
+    "THIRD-PARTY-NOTICES.md",
+    "LICENSE-MIT",
+    "LICENSE-Apache-2.0"
   ],
   "repository": {
     "type": "git",

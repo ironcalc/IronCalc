@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde_json = { version = "1.0", features = ["preserve_order"] }
 clap = { version = "3.2.22", features = ["derive"] }
 bitcode = "0.6.3"
 

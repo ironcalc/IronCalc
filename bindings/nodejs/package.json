@@ -3,6 +3,12 @@
   "version": "0.9.0",
   "main": "index.js",
   "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "LICENSE-MIT",
+    "LICENSE-Apache-2.0"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ironcalc/IronCalc.git",
@@ -32,7 +38,7 @@
       "riscv64gc-unknown-linux-gnu"
     ]
   },
-  "license": "MIT",
+  "license": "MIT OR Apache-2.0",
   "devDependencies": {
     "@napi-rs/cli": "^3.3",
     "ava": "^6.0.1",

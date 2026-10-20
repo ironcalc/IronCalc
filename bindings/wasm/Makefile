@@ -4,6 +4,10 @@
 #
 # The xlsx APIs are gated on `--features xlsx`, so the default bundle stays
 # the same size. Both builds go through wasm-pack (and therefore wasm-opt).
+#
+# Each package ships LICENSE-MIT, LICENSE-Apache-2.0 and a generated
+# THIRD-PARTY-NOTICES.md (see third_party_notices.py) so that users can
+# redistribute it with the required notices.
 
 # In some platforms, python is called python3
 PYTHON := $(shell command -v python 2>/dev/null || command -v python3 2>/dev/null)
@@ -31,6 +35,10 @@ pkg/.built-$(SRC_HASH): | deps types.js
 	cp README.pkg.md pkg/README.md
 	$(PYTHON) fix_types.py pkg
 	$(PYTHON) fix_package.py pkg
+	cp ../../LICENSE-MIT ../../LICENSE-Apache-2.0 pkg/
+	$(PYTHON) third_party_notices.py --manifest-path Cargo.toml --name @ironcalc/wasm \
+		--target wasm32-unknown-unknown \
+		--include ../../base/THIRD-PARTY-NOTICES.md --output pkg/THIRD-PARTY-NOTICES.md
 	node --test tests/test_package.mjs
 	rm -f pkg/.built-*
 	touch $@
@@ -42,6 +50,10 @@ pkg-xlsx/.built-$(SRC_HASH): | deps types.js
 	cp README.pkg-xlsx.md pkg-xlsx/README.md
 	$(PYTHON) fix_types.py pkg-xlsx
 	$(PYTHON) fix_package.py pkg-xlsx @ironcalc/wasm-xlsx
+	cp ../../LICENSE-MIT ../../LICENSE-Apache-2.0 pkg-xlsx/
+	$(PYTHON) third_party_notices.py --manifest-path Cargo.toml --name @ironcalc/wasm-xlsx \
+		--target wasm32-unknown-unknown --features xlsx \
+		--include ../../base/THIRD-PARTY-NOTICES.md --output pkg-xlsx/THIRD-PARTY-NOTICES.md
 	PKG_DIR=pkg-xlsx node --test tests/test_package.mjs
 	rm -f pkg-xlsx/.built-*
 	touch $@

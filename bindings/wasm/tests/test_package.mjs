@@ -19,6 +19,16 @@ const pkgDir = path.join(
     process.env.PKG_DIR || 'pkg',
 );
 
+function packedFiles() {
+    // npm <= 11 prints a JSON array of packed packages; npm >= 12 prints an
+    // object keyed by package name. Accept both.
+    const parsed = JSON.parse(
+        execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: pkgDir })
+    );
+    const [{ files }] = Array.isArray(parsed) ? parsed : Object.values(parsed);
+    return new Set(files.map((file) => file.path));
+}
+
 test('npm tarball contains every module imported by wasm.js', () => {
     const wasmJs = readFileSync(path.join(pkgDir, 'wasm.js'), 'utf8');
     const imports = new Set();
@@ -26,13 +36,7 @@ test('npm tarball contains every module imported by wasm.js', () => {
         imports.add(match[1].replace(/^\.\//, ''));
     }
 
-    // npm <= 11 prints a JSON array of packed packages; npm >= 12 prints an
-    // object keyed by package name. Accept both.
-    const parsed = JSON.parse(
-        execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: pkgDir })
-    );
-    const [{ files }] = Array.isArray(parsed) ? parsed : Object.values(parsed);
-    const packed = new Set(files.map((file) => file.path));
+    const packed = packedFiles();
 
     assert.ok(packed.has('wasm.js'), 'tarball must contain wasm.js');
     assert.ok(packed.has('wasm_bg.wasm'), 'tarball must contain wasm_bg.wasm');
@@ -44,4 +48,15 @@ test('npm tarball contains every module imported by wasm.js', () => {
                 '(is "snippets" missing from "files" in pkg/package.json?)'
         );
     }
+});
+
+// The packages are redistributed by users, so they must carry the license
+// files and the notices of the third-party crates compiled into the wasm.
+test('npm tarball contains the license files and third-party notices', () => {
+    const packed = packedFiles();
+    for (const file of ['LICENSE-MIT', 'LICENSE-Apache-2.0', 'THIRD-PARTY-NOTICES.md']) {
+        assert.ok(packed.has(file), `tarball must contain ${file}`);
+    }
+    const pkg = JSON.parse(readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
+    assert.strictEqual(pkg.license, 'MIT OR Apache-2.0');
 });

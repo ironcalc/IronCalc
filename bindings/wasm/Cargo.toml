@@ -3,7 +3,7 @@ name = "wasm"
 version = "0.9.0"
 authors = ["Nicolas Hatcher <nicolas@theuniverse.today>"]
 description = "IronCalc Web bindings"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/ironcalc/IronCalc"
 edition = "2021"
 
