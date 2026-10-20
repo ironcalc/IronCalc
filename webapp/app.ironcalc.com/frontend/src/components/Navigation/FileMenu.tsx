@@ -33,7 +33,6 @@ const LANGUAGES = [
 const THEMES: [ThemeMode, string][] = [
   ["light", "file_bar.file_menu.appearance_light"],
   ["dark", "file_bar.file_menu.appearance_dark"],
-  ["system", "file_bar.file_menu.appearance_system"],
 ];
 
 export function FileMenu(props: {

@@ -38,9 +38,7 @@ import {
   saveThemeModeInStorage,
   selectModelFromStorage,
   subscribeToStorage,
-  systemPrefersDark,
   type ThemeMode,
-  watchSystemDarkMode,
 } from "./components/storage";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
@@ -53,10 +51,7 @@ function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(
     loadThemeModeFromStorage,
   );
-  const [systemIsDark, setSystemIsDark] = useState(systemPrefersDark);
-  useEffect(() => watchSystemDarkMode(setSystemIsDark), []);
-  const isDarkMode =
-    themeMode === "system" ? systemIsDark : themeMode === "dark";
+  const isDarkMode = themeMode === "dark";
 
   const ironCalcRef = useRef<IronCalcHandle>(null);
   // A workbook opened from a link (?model= or ?example=) stays read-only until

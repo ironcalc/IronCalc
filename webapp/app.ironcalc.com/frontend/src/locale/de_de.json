@@ -110,8 +110,7 @@
       "default_language": "Standardsprache",
       "appearance": "Erscheinungsbild",
       "appearance_light": "Hell",
-      "appearance_dark": "Dunkel",
-      "appearance_system": "System"
+      "appearance_dark": "Dunkel"
     },
     "help_menu": {
       "button": "Hilfe",

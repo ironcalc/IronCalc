@@ -278,8 +278,7 @@ export function loadDefaultLocaleFromStorage(): string {
   return l;
 }
 
-/** "system" follows the OS colour scheme (and tracks its changes). */
-export type ThemeMode = "light" | "dark" | "system";
+export type ThemeMode = "light" | "dark";
 
 export function saveThemeModeInStorage(mode: ThemeMode) {
   localStorage.setItem(DARK_MODE_KEY, mode);
@@ -288,37 +287,13 @@ export function saveThemeModeInStorage(mode: ThemeMode) {
 export function loadThemeModeFromStorage(): ThemeMode {
   const stored = localStorage.getItem(DARK_MODE_KEY);
   switch (stored) {
-    case "light":
     case "dark":
-    case "system":
-      return stored;
-    // values written before the "system" option existed
+    // legacy boolean value
     case "true":
       return "dark";
-    case "false":
-      return "light";
     default:
-      return "system";
+      return "light";
   }
-}
-
-const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
-
-export function systemPrefersDark(): boolean {
-  return window.matchMedia?.(DARK_SCHEME_QUERY).matches ?? false;
-}
-
-/** Calls `onChange` whenever the OS colour scheme flips; returns the unsubscribe. */
-export function watchSystemDarkMode(
-  onChange: (isDark: boolean) => void,
-): () => void {
-  const query = window.matchMedia?.(DARK_SCHEME_QUERY);
-  if (!query) {
-    return () => {};
-  }
-  const listener = (event: MediaQueryListEvent) => onChange(event.matches);
-  query.addEventListener("change", listener);
-  return () => query.removeEventListener("change", listener);
 }
 
 export function getSelectedUuid(): string | null {

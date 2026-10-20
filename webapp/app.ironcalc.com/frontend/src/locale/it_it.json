@@ -110,8 +110,7 @@
       "default_language": "Lingua predefinita",
       "appearance": "Aspetto",
       "appearance_light": "Chiaro",
-      "appearance_dark": "Scuro",
-      "appearance_system": "Sistema"
+      "appearance_dark": "Scuro"
     },
     "help_menu": {
       "button": "Aiuto",
