@@ -1,4 +1,9 @@
 {
+  "_meta": {
+    "cldr_version": "48.2.0",
+    "source": "https://github.com/unicode-org/cldr-json",
+    "license": "Unicode-3.0"
+  },
   "de": {
     "dates": {
       "day_names": [
@@ -113,56 +118,56 @@
       "symbol": "€"
     }
   },
-  "es": {
+  "en": {
     "dates": {
       "day_names": [
-        "domingo",
-        "lunes",
-        "martes",
-        "miércoles",
-        "jueves",
-        "viernes",
-        "sábado"
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
       ],
       "day_names_short": [
-        "dom",
-        "lun",
-        "mar",
-        "mié",
-        "jue",
-        "vie",
-        "sáb"
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat"
       ],
       "months": [
-        "enero",
-        "febrero",
-        "marzo",
-        "abril",
-        "mayo",
-        "junio",
-        "julio",
-        "agosto",
-        "septiembre",
-        "octubre",
-        "noviembre",
-        "diciembre"
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
       ],
       "months_short": [
-        "ene",
-        "feb",
-        "mar",
-        "abr",
-        "may",
-        "jun",
-        "jul",
-        "ago",
-        "sept",
-        "oct",
-        "nov",
-        "dic"
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
       ],
       "months_letter": [
-        "E",
+        "J",
         "F",
         "M",
         "A",
@@ -176,16 +181,16 @@
         "D"
       ],
       "date_formats": {
-        "full": "dddd, d \"de\" mmmm \"de\" yyyy",
-        "long": "d \"de\" mmmm \"de\" yyyy",
-        "medium": "d mmm yyyy",
-        "short": "d/m/yy"
+        "full": "dddd, mmmm d, yyyy",
+        "long": "mmmm d, yyyy",
+        "medium": "mmm d, yyyy",
+        "short": "m/d/yy"
       },
       "time_formats": {
-        "full": "H:mm:ss (zzzz)",
-        "long": "H:mm:ss z",
-        "medium": "H:mm:ss",
-        "short": "H:mm"
+        "full": "h:mm:ss a zzzz",
+        "long": "h:mm:ss a z",
+        "medium": "h:mm:ss a",
+        "short": "h:mm a"
       },
       "date_time_formats": {
         "full": "{1}, {0}",
@@ -196,8 +201,8 @@
     },
     "numbers": {
       "symbols-numberSystem-latn": {
-        "decimal": ",",
-        "group": ".",
+        "decimal": ".",
+        "group": ",",
         "list": ";",
         "percentSign": "%",
         "plusSign": "+",
@@ -214,17 +219,17 @@
         "standard": "#,##0.###"
       },
       "currencyFormats-numberSystem-latn": {
-        "standard": "#,##0.00 ¤",
-        "standard-alphaNextToNumber": "#,##0.00 ¤",
+        "standard": "¤#,##0.00",
+        "standard-alphaNextToNumber": "¤ #,##0.00",
         "standard-noCurrency": "#,##0.00",
-        "accounting": "#,##0.00 ¤",
-        "accounting-alphaNextToNumber": "#,##0.00 ¤",
-        "accounting-noCurrency": "#,##0.00"
+        "accounting": "¤#,##0.00;(¤#,##0.00)",
+        "accounting-alphaNextToNumber": "¤ #,##0.00;(¤ #,##0.00)",
+        "accounting-noCurrency": "#,##0.00;(#,##0.00)"
       }
     },
     "currency": {
-      "iso": "EUR",
-      "symbol": "€"
+      "iso": "USD",
+      "symbol": "$"
     }
   },
   "en-GB": {
@@ -341,56 +346,56 @@
       "symbol": "£"
     }
   },
-  "en": {
+  "es": {
     "dates": {
       "day_names": [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday"
+        "domingo",
+        "lunes",
+        "martes",
+        "miércoles",
+        "jueves",
+        "viernes",
+        "sábado"
       ],
       "day_names_short": [
-        "Sun",
-        "Mon",
-        "Tue",
-        "Wed",
-        "Thu",
-        "Fri",
-        "Sat"
+        "dom",
+        "lun",
+        "mar",
+        "mié",
+        "jue",
+        "vie",
+        "sáb"
       ],
       "months": [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December"
+        "enero",
+        "febrero",
+        "marzo",
+        "abril",
+        "mayo",
+        "junio",
+        "julio",
+        "agosto",
+        "septiembre",
+        "octubre",
+        "noviembre",
+        "diciembre"
       ],
       "months_short": [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec"
+        "ene",
+        "feb",
+        "mar",
+        "abr",
+        "may",
+        "jun",
+        "jul",
+        "ago",
+        "sept",
+        "oct",
+        "nov",
+        "dic"
       ],
       "months_letter": [
-        "J",
+        "E",
         "F",
         "M",
         "A",
@@ -404,16 +409,16 @@
         "D"
       ],
       "date_formats": {
-        "full": "dddd, mmmm d, yyyy",
-        "long": "mmmm d, yyyy",
-        "medium": "mmm d, yyyy",
-        "short": "m/d/yy"
+        "full": "dddd, d \"de\" mmmm \"de\" yyyy",
+        "long": "d \"de\" mmmm \"de\" yyyy",
+        "medium": "d mmm yyyy",
+        "short": "d/m/yy"
       },
       "time_formats": {
-        "full": "h:mm:ss a zzzz",
-        "long": "h:mm:ss a z",
-        "medium": "h:mm:ss a",
-        "short": "h:mm a"
+        "full": "H:mm:ss (zzzz)",
+        "long": "H:mm:ss z",
+        "medium": "H:mm:ss",
+        "short": "H:mm"
       },
       "date_time_formats": {
         "full": "{1}, {0}",
@@ -424,8 +429,8 @@
     },
     "numbers": {
       "symbols-numberSystem-latn": {
-        "decimal": ".",
-        "group": ",",
+        "decimal": ",",
+        "group": ".",
         "list": ";",
         "percentSign": "%",
         "plusSign": "+",
@@ -442,17 +447,17 @@
         "standard": "#,##0.###"
       },
       "currencyFormats-numberSystem-latn": {
-        "standard": "¤#,##0.00",
-        "standard-alphaNextToNumber": "¤ #,##0.00",
+        "standard": "#,##0.00 ¤",
+        "standard-alphaNextToNumber": "#,##0.00 ¤",
         "standard-noCurrency": "#,##0.00",
-        "accounting": "¤#,##0.00;(¤#,##0.00)",
-        "accounting-alphaNextToNumber": "¤ #,##0.00;(¤ #,##0.00)",
-        "accounting-noCurrency": "#,##0.00;(#,##0.00)"
+        "accounting": "#,##0.00 ¤",
+        "accounting-alphaNextToNumber": "#,##0.00 ¤",
+        "accounting-noCurrency": "#,##0.00"
       }
     },
     "currency": {
-      "iso": "USD",
-      "symbol": "$"
+      "iso": "EUR",
+      "symbol": "€"
     }
   },
   "fr": {

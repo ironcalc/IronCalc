@@ -155,3 +155,17 @@ Licensed under either of
 * [Apache license, version 2.0](LICENSE-Apache-2.0)
 
 at your option.
+
+IronCalc bundles locale data derived from [Unicode CLDR](https://cldr.unicode.org/),
+redistributed under the Unicode License v3; the notice is in
+[base/THIRD-PARTY-NOTICES.md](base/THIRD-PARTY-NOTICES.md). The npm packages
+`@ironcalc/wasm` and `@ironcalc/wasm-xlsx` ship a `THIRD-PARTY-NOTICES.md`
+listing the licenses of every crate compiled into the WebAssembly binary.
+The web fonts in the repository (Inter, Mozilla Headline) are under the SIL
+Open Font License 1.1; a copy sits next to each set of font files.
+
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in IronCalc by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.

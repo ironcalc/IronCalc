@@ -3,7 +3,7 @@
 # package.json it emits, so `npm publish` would ship a wasm.js importing
 # modules that are not in the tarball. See https://github.com/ironcalc/IronCalc/issues/1316
 # Upstream wasm-pack bug: https://github.com/wasm-bindgen/wasm-pack/issues/1206
-# This script can be removed once wasm-pack includes snippets in `files` itself.
+# It also adds the generated THIRD-PARTY-NOTICES.md to `files`.
 #
 # Usage: fix_package.py [pkg_dir] [package_name]
 import json
@@ -18,6 +18,12 @@ with open(package_file) as f:
 
 if "snippets" not in package["files"]:
     package["files"].append("snippets")
+
+# License material. npm only auto-includes files named exactly LICENSE/LICENCE
+# (plus an extension), so LICENSE-MIT and friends must be listed explicitly.
+for name in ["LICENSE-MIT", "LICENSE-Apache-2.0", "THIRD-PARTY-NOTICES.md"]:
+    if name not in package["files"]:
+        package["files"].append(name)
 
 if package_name:
     package["name"] = package_name

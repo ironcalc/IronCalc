@@ -1,5 +1,9 @@
 use std::fs;
-use std::{collections::HashMap, io::Write, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashMap},
+    io::Write,
+    path::PathBuf,
+};
 
 use constants::{Currency, Locale};
 
@@ -31,6 +35,19 @@ pub struct Opt {
     /// output json file with all locale info
     #[clap(long, value_parser)]
     output: PathBuf,
+}
+
+/// Version of the cldr-json checkout, as published in its npm packages.
+fn get_cldr_version(cldr_dir: &str) -> Result<String, String> {
+    let package_file = format!("{}cldr-json/cldr-core/package.json", cldr_dir);
+    let contents = fs::read_to_string(&package_file)
+        .or(Err(format!("Failed reading file: {}", package_file)))?;
+    let package: serde_json::Value = serde_json::from_str(&contents)
+        .or(Err(format!("Failed parsing file: {}", package_file)))?;
+    package["version"]
+        .as_str()
+        .map(str::to_string)
+        .ok_or(format!("No version in {}", package_file))
 }
 
 fn main() -> Result<(), String> {
@@ -76,7 +93,26 @@ fn main() -> Result<(), String> {
         );
     }
 
-    let s = serde_json::to_string(&locales).or(Err("Failed to stringify data"))?;
+    // The json file is the human-readable form of locales.bin. It starts with
+    // a `_meta` entry recording which CLDR release the data was taken from, so
+    // the version can be quoted in license notices (the data is redistributed
+    // under the Unicode License v3, see base/THIRD-PARTY-NOTICES.md).
+    let mut json = serde_json::Map::new();
+    json.insert(
+        "_meta".to_string(),
+        serde_json::json!({
+            "cldr_version": get_cldr_version(&cldr_dir)?,
+            "source": "https://github.com/unicode-org/cldr-json",
+            "license": "Unicode-3.0",
+        }),
+    );
+    // Locales sorted by id; fields keep their declaration order (preserve_order).
+    let sorted: BTreeMap<&String, &Locale> = locales.iter().collect();
+    match serde_json::to_value(&sorted).or(Err("Failed to stringify data"))? {
+        serde_json::Value::Object(map) => json.extend(map),
+        _ => return Err("Expected a json object".to_string()),
+    }
+    let s = serde_json::to_string_pretty(&json).or(Err("Failed to stringify data"))?;
     let mut f = fs::File::create(opt.output).or(Err("Failed to create file"))?;
     f.write_all(s.as_bytes()).or(Err("Failed writing"))?;
 
