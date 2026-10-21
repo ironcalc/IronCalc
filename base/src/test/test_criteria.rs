@@ -234,7 +234,7 @@ fn test_build_criteria_date_iso_is_locale_independent() {
     // guard, a regression that wrongly applied the D/M/Y swap to ISO dates
     // would slip through.
     let iso = CalcResult::String("2023-07-31".to_string());
-    for id in ["en", "en-GB", "es", "de", "fr", "it"] {
+    for id in ["en", "en-GB", "es", "de", "fr", "it", "he"] {
         let loc = get_locale(id).unwrap();
         let fn_criteria = build_criteria(&iso, loc);
         assert!(

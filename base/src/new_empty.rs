@@ -193,6 +193,7 @@ impl<'a> Model<'a> {
             "fr" => "Feuil".to_string(),
             "de" => "Tabelle".to_string(),
             "it" => "Foglio".to_string(),
+            "he" => "גיליון".to_string(),
             _ => "Sheet".to_string(),
         }
     }
@@ -621,6 +622,7 @@ impl<'a> Model<'a> {
             "fr" => "Feuil1".to_string(),
             "de" => "Tabelle1".to_string(),
             "it" => "Foglio1".to_string(),
+            "he" => "גיליון1".to_string(),
             _ => "Sheet1".to_string(),
         };
 

@@ -1,0 +1,133 @@
+{
+  "app": {
+    "title": "IronCalc"
+  },
+  "default_workbook_name": "חוברת עבודה",
+  "errors": {
+    "model_not_found": "המודל לא נמצא או שטעינתו נכשלה",
+    "example_not_found": "קובץ הדוגמה לא נמצא או שטעינתו נכשלה",
+    "storage_save_failed": "לא ניתן היה לשמור את השינויים. ייתכן שנגמר שטח האחסון בדפדפן."
+  },
+  "unsaved_bar": {
+    "message": "אתה צופה בחוברת עבודה לקריאה בלבד. שמור עותק כדי לערוך אותה.",
+    "save_copy": "שמור עותק"
+  },
+  "welcome_dialog": {
+    "title": "ברוכים הבאים ל-IronCalc",
+    "subtitle": "התחל מאפס, הבא את הנתונים שלך או גלה מה אפשר לעשות.",
+    "close_dialog": "סגור תיבת דו-שיח",
+    "new": "חדש",
+    "blank_workbook": "חוברת עבודה ריקה",
+    "import_workbook": "ייבא ‎.xlsx",
+    "storage_warning": "<warn>אזהרה!</warn> אפליקציה זו היא הוכחת היתכנות ולא מוצר מוגמר. אתה מוזמן לחקור, לשתף ולהעלות/להוריד מודלים, אך אל תשתף או תעלה מודלים המכילים מידע רגיש או פרטי. הנתונים יימחקו מעת לעת. <docsLink>מידע נוסף</docsLink>",
+    "templates": {
+      "choose_template": "בחר תבנית",
+      "templates": "תבניות",
+      "see_all": "הצג הכל",
+      "examples_and_templates": "דוגמאות ותבניות",
+      "category_all": "הכל",
+      "category_finance": "כספים",
+      "category_lifestyle": "סגנון חיים",
+      "category_project_management": "ניהול פרויקטים",
+      "category_games": "משחקים",
+      "yearly_calendar": "לוח שנה שנתי",
+      "yearly_calendar_description": "תכנן והצג את השנה כולה.",
+      "crossword": "תשבץ",
+      "crossword_description": "מלא את הרשת ופתור את ההגדרות.",
+      "travel_expenses_tracker": "מעקב הוצאות נסיעה",
+      "travel_expenses_tracker_description": "עקוב אחר עלויות הנסיעה ועמוד בתקציב.",
+      "invoice": "חשבונית",
+      "invoice_description": "צור חשבוניות ללקוחות ועקוב אחריהן.",
+      "gantt_project_tracker": "מעקב פרויקט גאנט",
+      "gantt_project_tracker_description": "תכנן משימות ולוחות זמנים בתרשים גאנט.",
+      "weekly_timesheet": "דוח שעות שבועי",
+      "weekly_timesheet_description": "רשום וסקור את שעות העבודה בכל שבוע.",
+      "wordle": "Wordle",
+      "wordle_description": "נחש את המילה הנסתרת בת חמש האותיות.",
+      "event_calendar": "לוח אירועים",
+      "event_calendar_description": "ארגן ועקוב אחר אירועים קרובים."
+    },
+    "create_workbook": "צור חוברת עבודה",
+    "documentation": "תיעוד",
+    "about_ironcalc": "אודות IronCalc"
+  },
+  "left_drawer": {
+    "new_workbook": "חוברת עבודה חדשה",
+    "search_workbook": "חפש חוברות עבודה",
+    "search_placeholder": "חפש חוברת עבודה...",
+    "clear_search": "נקה חיפוש",
+    "empty_state": "עדיין אין חוברות עבודה. חוברות עבודה שתיצור או תשמור יופיעו כאן.",
+    "search_no_results": "החיפוש לא תואם לאף חוברת עבודה.",
+    "pinned": "מוצמדות",
+    "today": "היום",
+    "last_30_days": "30 הימים האחרונים",
+    "older": "ישנות יותר",
+    "workbook_menu": {
+      "download": "הורד (‎.xlsx)",
+      "pin": "הצמד",
+      "unpin": "בטל הצמדה",
+      "duplicate": "שכפל",
+      "delete": "מחק חוברת עבודה"
+    },
+    "alert": {
+      "close": "סגור"
+    },
+    "documentation": "תיעוד",
+    "cancel": "ביטול",
+    "delete_workbooks_one": "מחק {{count}} חוברת עבודה",
+    "delete_workbooks_other": "מחק {{count}} חוברות עבודה",
+    "delete_workbooks_two": "מחק {{count}} חוברות עבודה",
+    "bulk_delete_message_one": "חוברת עבודה זו תימחק לצמיתות. קישורים ששיתפת ימשיכו לפעול.",
+    "bulk_delete_message_other": "{{count}} חוברות עבודה יימחקו לצמיתות. קישורים ששיתפת ימשיכו לפעול.",
+    "bulk_delete_message_two": "{{count}} חוברות עבודה יימחקו לצמיתות. קישורים ששיתפת ימשיכו לפעול.",
+    "select_workbook": "בחר {{name}}"
+  },
+  "file_bar": {
+    "open_sidebar": "פתח סרגל צד",
+    "close_sidebar": "סגור סרגל צד",
+    "cloud_warning": "<warn>אזהרה!</warn> אפליקציה זו היא הוכחת היתכנות ולא מוצר מוגמר. אתה מוזמן לחקור, לשתף ולהעלות/להוריד מודלים, אך אל תשתף או תעלה מודלים המכילים מידע רגיש או פרטי. הנתונים יימחקו מעת לעת.",
+    "file_menu": {
+      "button": "קובץ",
+      "new_blank_workbook": "חוברת עבודה ריקה חדשה",
+      "new_from_template": "חדש מתבנית",
+      "import": {
+        "button": "ייבא",
+        "title": "ייבא קובץ ‎.xlsx",
+        "subtitle": "גרור ושחרר קובץ לכאן או",
+        "subtitle_link": "לחץ כדי לעיין",
+        "learn_more": "מידע נוסף על ייבוא קבצים ל-IronCalc",
+        "close_dialog": "סגור תיבת דו-שיח",
+        "uploading": "מעלה את {{fileName}}...",
+        "drop_file_here": "שחרר את הקובץ כאן"
+      },
+      "download": "הורד (‎.xlsx)",
+      "delete_workbook": {
+        "button": "מחק חוברת עבודה",
+        "title": "האם אתה בטוח?",
+        "subtitle": "חוברת העבודה '{{workbookName}}' תימחק לצמיתות.",
+        "warning": "לא ניתן לבטל פעולה זו. קישורים ששיתפת ימשיכו לפעול.",
+        "confirm_button": "כן, מחק",
+        "cancel_button": "ביטול"
+      },
+      "default_language": "שפת ברירת מחדל",
+      "appearance": "מראה",
+      "appearance_light": "בהיר",
+      "appearance_dark": "כהה"
+    },
+    "help_menu": {
+      "button": "עזרה",
+      "about": "אודות IronCalc",
+      "documentation": "תיעוד",
+      "keyboard_shortcuts": "קיצורי מקלדת"
+    },
+    "share_popover": {
+      "button": "שתף",
+      "copy_url": "העתק כתובת URL",
+      "copied": "הועתק!",
+      "info_text": "כל מי שיש לו את הקישור יוכל לגשת לעותק של חוברת עבודה זו. לא ניתן למחוק קישורים משותפים."
+    }
+  },
+  "loading_screen": {
+    "message": "טוען את IronCalc"
+  }
+}

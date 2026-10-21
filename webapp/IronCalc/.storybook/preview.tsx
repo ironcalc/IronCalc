@@ -87,6 +87,7 @@ const preview: Preview = {
           { value: "fr-FR", title: "Français" },
           { value: "de-DE", title: "Deutsch" },
           { value: "it-IT", title: "Italiano" },
+          { value: "he-IL", title: "עברית" },
         ],
       },
     },

@@ -22,6 +22,7 @@ const localeDisplayNames: Record<string, string> = {
   fr: "fr-FR",
   de: "de-DE",
   it: "it-IT",
+  he: "he-IL",
 };
 
 // Locale-specific format examples (independent of display language)
@@ -64,6 +65,12 @@ const localeFormatExamples: Record<
     dateTime: "17/10/2026 21:21:06",
     delimiterType: "semicolon",
     delimiterChar: ";",
+  },
+  he: {
+    number: "1,234.56",
+    dateTime: "17.10.2026 21:21:06",
+    delimiterType: "comma",
+    delimiterChar: ",",
   },
 };
 

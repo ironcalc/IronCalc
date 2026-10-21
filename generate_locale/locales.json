@@ -574,6 +574,120 @@
       "symbol": "€"
     }
   },
+  "he": {
+    "dates": {
+      "day_names": [
+        "יום ראשון",
+        "יום שני",
+        "יום שלישי",
+        "יום רביעי",
+        "יום חמישי",
+        "יום שישי",
+        "יום שבת"
+      ],
+      "day_names_short": [
+        "יום א׳",
+        "יום ב׳",
+        "יום ג׳",
+        "יום ד׳",
+        "יום ה׳",
+        "יום ו׳",
+        "שבת"
+      ],
+      "months": [
+        "ינואר",
+        "פברואר",
+        "מרץ",
+        "אפריל",
+        "מאי",
+        "יוני",
+        "יולי",
+        "אוגוסט",
+        "ספטמבר",
+        "אוקטובר",
+        "נובמבר",
+        "דצמבר"
+      ],
+      "months_short": [
+        "ינו׳",
+        "פבר׳",
+        "מרץ",
+        "אפר׳",
+        "מאי",
+        "יוני",
+        "יולי",
+        "אוג׳",
+        "ספט׳",
+        "אוק׳",
+        "נוב׳",
+        "דצמ׳"
+      ],
+      "months_letter": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12"
+      ],
+      "date_formats": {
+        "full": "dddd, d \"ב\"mmmm yyyy",
+        "long": "d \"ב\"mmmm yyyy",
+        "medium": "d \"ב\"mmm yyyy",
+        "short": "d.m.yyyy"
+      },
+      "time_formats": {
+        "full": "H:mm:ss zzzz",
+        "long": "H:mm:ss z",
+        "medium": "H:mm:ss",
+        "short": "H:mm"
+      },
+      "date_time_formats": {
+        "full": "{1}, {0}",
+        "long": "{1}, {0}",
+        "medium": "{1}, {0}",
+        "short": "{1}, {0}"
+      }
+    },
+    "numbers": {
+      "symbols-numberSystem-latn": {
+        "decimal": ".",
+        "group": ",",
+        "list": ";",
+        "percentSign": "%",
+        "plusSign": "+",
+        "minusSign": "-",
+        "approximatelySign": "~",
+        "exponential": "E",
+        "superscriptingExponent": "×",
+        "perMille": "‰",
+        "infinity": "∞",
+        "nan": "NaN",
+        "timeSeparator": ":"
+      },
+      "decimalFormats-numberSystem-latn": {
+        "standard": "#,##0.###"
+      },
+      "currencyFormats-numberSystem-latn": {
+        "standard": "#,##0.00 ¤;-#,##0.00 ¤",
+        "standard-alphaNextToNumber": "#,##0.00 ¤;-#,##0.00 ¤",
+        "standard-noCurrency": "#,##0.00 ;-#,##0.00 ",
+        "accounting": "#,##0.00 ¤;-#,##0.00 ¤",
+        "accounting-alphaNextToNumber": "#,##0.00 ¤;-#,##0.00 ¤",
+        "accounting-noCurrency": "#,##0.00 ;-#,##0.00 "
+      }
+    },
+    "currency": {
+      "iso": "ILS",
+      "symbol": "₪"
+    }
+  },
   "it": {
     "dates": {
       "day_names": [

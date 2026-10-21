@@ -54,6 +54,12 @@ pub fn cldr_to_excel_date_format(cldr_pattern: &str) -> String {
             // Italian-style with slashes
             m.insert("dd/MM/yy", "dd/mm/yy");
 
+            // Hebrew: the month is prefixed with "ב" ("in"), which must be quoted
+            m.insert("EEEE, d בMMMM y", "dddd, d \"ב\"mmmm yyyy");
+            m.insert("d בMMMM y", "d \"ב\"mmmm yyyy");
+            m.insert("d בMMM y", "d \"ב\"mmm yyyy");
+            m.insert("d.M.y", "d.m.yyyy");
+
             m
         })
         .get(cldr_pattern)

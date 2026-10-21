@@ -27,6 +27,9 @@ pub fn get_numbers_formatting(
     );
 
     let contents = fs::read_to_string(numbers_file).or(Err("Failed reading 'numbers.json'"))?;
+    // Right-to-left locales (e.g. Hebrew) put LRM/RLM bidi marks in symbols and currency
+    // patterns. They are display hints, not content, and would leak into Excel number formats.
+    let contents = contents.replace(['\u{200E}', '\u{200F}'], "");
     let numbers_json: &NumbersJSON =
         &serde_json::from_str(&contents).or(Err("Failed parsing 'numbers.json' file"))?;
     // Grouping is either

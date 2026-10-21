@@ -9,7 +9,7 @@ lang: en-US
 IronCalc can be used in multiple languages. Switching the language affects not only the interface, but also the **engine**—formulas and error messages will use the selected language.
 
 ::: info
-Currently, only **English**, **Spanish**, **French**, **German**, and **Italian** are supported. If you'd like us to add a specific language, let us know on [Discord](https://discord.com/invite/zZYWfh3RHJ) or start a [Discussion](https://github.com/ironcalc/IronCalc/discussions) in our GitHub repository.
+Currently, only **English**, **Spanish**, **French**, **German**, **Italian**, and **Hebrew** are supported. In Hebrew, function names and error messages stay in English, as they do in Excel. If you'd like us to add a specific language, let us know on [Discord](https://discord.com/invite/zZYWfh3RHJ) or start a [Discussion](https://github.com/ironcalc/IronCalc/discussions) in our GitHub repository.
 :::
 
 ## How Languages Work in IronCalc

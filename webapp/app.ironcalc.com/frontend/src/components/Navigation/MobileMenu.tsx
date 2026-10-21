@@ -32,6 +32,7 @@ const LANGUAGES = [
   ["fr-FR", "Français"],
   ["de-DE", "Deutsch"],
   ["it-IT", "Italiano"],
+  ["he-IL", "עברית"],
 ] as const;
 
 const THEMES: [ThemeMode, string][] = [

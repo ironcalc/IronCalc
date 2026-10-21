@@ -3,6 +3,7 @@ import translationDE from "./locale/de_de.json";
 import translationEN from "./locale/en_us.json";
 import translationES from "./locale/es_es.json";
 import translationFR from "./locale/fr_fr.json";
+import translationHE from "./locale/he_il.json";
 import translationIT from "./locale/it_it.json";
 
 const resources = {
@@ -12,6 +13,7 @@ const resources = {
   "fr-FR": { translation: translationFR },
   "de-DE": { translation: translationDE },
   "it-IT": { translation: translationIT },
+  "he-IL": { translation: translationHE },
 };
 
 const instance: typeof i18n = i18n.createInstance({
