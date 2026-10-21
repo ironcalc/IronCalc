@@ -1,8 +1,6 @@
-# IronCalc Web bindings with XLSX
+# IronCalc Web bindings with XLSX import/export
 
-This package is the IronCalc engine plus XLSX import and export. If you only need the calc engine, use [`@ironcalc/wasm`](https://www.npmjs.com/package/@ironcalc/wasm) instead — that package stays smaller.
-
-This addresses the bundle size concern from [ironcalc/IronCalc#379](https://github.com/ironcalc/IronCalc/issues/379) and makes XLSX conversion available in the browser ([#1113](https://github.com/ironcalc/IronCalc/issues/1113)).
+This package is the IronCalc engine plus XLSX import and export. If you only need the calc engine, use [`@ironcalc/wasm`](https://www.npmjs.com/package/@ironcalc/wasm) instead.
 
 ## Usage
 
