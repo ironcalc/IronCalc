@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "ironcalc"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "bitcode",
  "chrono",
@@ -420,7 +420,7 @@ dependencies = [
 
 [[package]]
 name = "ironcalc_base"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "bitcode",
  "chrono",
@@ -439,7 +439,7 @@ dependencies = [
 
 [[package]]
 name = "ironcalc_nodejs"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "ironcalc",
  "napi",
@@ -737,7 +737,7 @@ dependencies = [
 
 [[package]]
 name = "pyroncalc"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "bitcode",
  "ironcalc",
@@ -1075,7 +1075,7 @@ dependencies = [
 
 [[package]]
 name = "wasm"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "ironcalc",
  "ironcalc_base",
