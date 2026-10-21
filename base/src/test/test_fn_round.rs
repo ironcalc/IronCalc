@@ -52,3 +52,38 @@ fn fn_round_digit_counts_beyond_f64_range() {
     assert_eq!(model._get_text("A7"), *"0");
     assert_eq!(model._get_text("A8"), *"-1E+300");
 }
+
+#[test]
+fn fn_round_arguments() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ROUND()");
+    model._set("A2", "=ROUND(1.234)");
+    model._set("A3", "=ROUND(1.234,1)");
+    model._set("A4", "=ROUND(1.234,1,2)");
+
+    model._set("B1", "=ROUNDUP()");
+    model._set("B2", "=ROUNDUP(1.234)");
+    model._set("B3", "=ROUNDUP(1.234,1)");
+    model._set("B4", "=ROUNDUP(1.234,1,2)");
+
+    model._set("C1", "=ROUNDDOWN()");
+    model._set("C2", "=ROUNDDOWN(1.234)");
+    model._set("C3", "=ROUNDDOWN(1.234,1)");
+    model._set("C4", "=ROUNDDOWN(1.234,1,2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"1.2");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B1"), *"#ERROR!");
+    assert_eq!(model._get_text("B2"), *"#ERROR!");
+    assert_eq!(model._get_text("B3"), *"1.3");
+    assert_eq!(model._get_text("B4"), *"#ERROR!");
+
+    assert_eq!(model._get_text("C1"), *"#ERROR!");
+    assert_eq!(model._get_text("C2"), *"#ERROR!");
+    assert_eq!(model._get_text("C3"), *"1.2");
+    assert_eq!(model._get_text("C4"), *"#ERROR!");
+}
