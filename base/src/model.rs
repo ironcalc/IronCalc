@@ -1887,30 +1887,30 @@ impl<'a> Model<'a> {
     /// # }
     /// ```
     pub fn parse_reference(&self, s: &str) -> Option<CellReferenceIndex> {
-        let bytes = s.as_bytes();
+        // Iterate over chars, not bytes: sheet names can be non-ASCII (e.g. "גיליון1")
         let mut sheet_name = "".to_string();
         let mut column = "".to_string();
         let mut row = "".to_string();
         let mut state = "sheet"; // "sheet", "col", "row"
-        for &byte in bytes {
+        for ch in s.chars() {
             match state {
                 "sheet" => {
-                    if byte == b'!' {
+                    if ch == '!' {
                         state = "col"
                     } else {
-                        sheet_name.push(byte as char);
+                        sheet_name.push(ch);
                     }
                 }
                 "col" => {
-                    if byte.is_ascii_alphabetic() {
-                        column.push(byte as char);
+                    if ch.is_ascii_alphabetic() {
+                        column.push(ch);
                     } else {
                         state = "row";
-                        row.push(byte as char);
+                        row.push(ch);
                     }
                 }
                 _ => {
-                    row.push(byte as char);
+                    row.push(ch);
                 }
             }
         }
