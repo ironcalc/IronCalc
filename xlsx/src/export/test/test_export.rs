@@ -411,6 +411,7 @@ fn rows_without_cells_keep_height_and_hidden() {
     let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
     assert_eq!(model.get_row_height(0, 1).unwrap(), 40.0);
     assert!(model.is_row_hidden(0, 3).unwrap());
+    fs::remove_file(temp_file_name).unwrap();
 }
 
 #[test]

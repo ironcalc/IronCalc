@@ -476,10 +476,12 @@ function newestUuid(metadata: ModelsMetadata): string | null {
   if (uuids.length === 0) {
     return null;
   }
+  // On equal timestamps the later entry wins, so workbooks created within
+  // the same millisecond still resolve in creation order.
   return uuids.reduce((newest, current) => {
     const newestTime = metadata[newest]?.createdAt || 0;
     const currentTime = metadata[current]?.createdAt || 0;
-    return currentTime > newestTime ? current : newest;
+    return currentTime >= newestTime ? current : newest;
   });
 }
 

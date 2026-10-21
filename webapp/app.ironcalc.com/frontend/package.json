@@ -2,6 +2,7 @@
   "name": "frontend",
   "private": true,
   "version": "0.9.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

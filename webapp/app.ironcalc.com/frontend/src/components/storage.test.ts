@@ -322,10 +322,13 @@ describe("deleteModelByUuid", () => {
   });
 
   it("serializes concurrent deletes", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1000);
     await storage.createNewModel();
     const a = storage.getSelectedUuid() as string;
+    vi.spyOn(Date, "now").mockReturnValue(2000);
     await storage.createNewModel();
     const b = storage.getSelectedUuid() as string;
+    vi.spyOn(Date, "now").mockReturnValue(3000);
     await storage.createNewModel();
     const c = storage.getSelectedUuid() as string;
     // Fire without awaiting, like the multi-select delete in the drawer.
