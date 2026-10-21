@@ -135,7 +135,8 @@ fn test_year_booleans() {
 
     // We start counting from Dec 31, 1899 (serial 1)
     assert_eq!(model._get_text("A1"), *"1899");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    // FALSE is serial 0, which Excel reads as 0 Jan 1900 (#1569)
+    assert_eq!(model._get_text("A2"), *"1900");
 }
 
 #[test]
@@ -148,7 +149,8 @@ fn test_month_booleans() {
 
     // We start counting from Dec 31, 1899 (serial 1)
     assert_eq!(model._get_text("A1"), *"12");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    // FALSE is serial 0, which Excel reads as 0 Jan 1900 (#1569)
+    assert_eq!(model._get_text("A2"), *"1");
 }
 
 #[test]
@@ -161,7 +163,8 @@ fn test_day_booleans() {
 
     // We start counting from Dec 31, 1899 (serial 1)
     assert_eq!(model._get_text("A1"), *"31");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    // FALSE is serial 0, which Excel reads as 0 Jan 1900 (#1569)
+    assert_eq!(model._get_text("A2"), *"0");
 }
 
 #[test]
@@ -176,7 +179,8 @@ fn test_day_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    // Serial 0 is 0 Jan 1900 in Excel, the value of an empty date cell (#1569)
+    assert_eq!(model._get_text("A2"), *"0");
     // Excel thinks is Feb 29, 1900
     assert_eq!(model._get_text("A3"), *"28");
 
@@ -196,7 +200,8 @@ fn test_month_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    // Serial 0 is 0 Jan 1900 in Excel (#1569)
+    assert_eq!(model._get_text("A2"), *"1");
     // We agree with Excel here (We are both in Feb)
     assert_eq!(model._get_text("A3"), *"2");
 
@@ -216,7 +221,8 @@ fn test_year_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    // Serial 0 is 0 Jan 1900 in Excel (#1569)
+    assert_eq!(model._get_text("A2"), *"1900");
 
     assert_eq!(model._get_text("A3"), *"1900");
 
@@ -898,7 +904,8 @@ fn test_second_function() {
 fn test_fn_weekday_weeknum_isoweeknum_day_zero() {
     let mut model = new_empty_model();
 
-    // Date serial 0 is 0 Jan 1900 in Excel, a valid date. We return #NUM! instead.
+    // Date serial 0 is 0 Jan 1900 in Excel, a valid date (a Saturday). WEEKDAY
+    // accepts it (#1569); WEEKNUM and ISOWEEKNUM still return #NUM! instead.
     model._set("A1", "=WEEKDAY(0)");
     model._set("A2", "=WEEKNUM(0)");
     model._set("A3", "=ISOWEEKNUM(0)");
@@ -910,13 +917,66 @@ fn test_fn_weekday_weeknum_isoweeknum_day_zero() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A1"), *"7");
     assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"#NUM!");
 
-    assert_eq!(model._get_text("B1"), *"#NUM!");
+    assert_eq!(model._get_text("B1"), *"7");
     assert_eq!(model._get_text("B2"), *"#NUM!");
     assert_eq!(model._get_text("B3"), *"#NUM!");
+}
+
+#[test]
+fn test_date_parts_serial_zero() {
+    // Excel treats serial 0 as 0 Jan 1900 (a Saturday): it is what an empty or
+    // zero date cell evaluates to, so it must not turn dependent formulas into
+    // errors (#1569). Expected values are from Excel.
+    let mut model = new_empty_model();
+    model._set("A1", "=YEAR(0)");
+    model._set("A2", "=MONTH(0)");
+    model._set("A3", "=DAY(0)");
+    // B1 is an empty cell, which is treated as 0.
+    model._set("A4", "=YEAR(B1)");
+    model._set("A5", "=MONTH(B1)");
+    model._set("A6", "=DAY(B1)");
+    // The time of day is discarded.
+    model._set("A7", "=YEAR(0.75)");
+    model._set("A8", "=DAY(0.999)");
+    model._set("A9", "=WEEKDAY(0,1)");
+    model._set("A10", "=WEEKDAY(0,2)");
+    model._set("A11", "=WEEKDAY(0,3)");
+    model._set("A12", "=WEEKDAY(0,11)");
+    model._set("A13", "=WEEKDAY(0.9,2)");
+    model._set("A14", "=DATE(YEAR(0)+5,9,1)");
+    model._set("A15", "=DATE(YEAR(0)+12,MONTH(0),DAY(0))");
+    // Negative serials are still invalid.
+    model._set("A16", "=YEAR(-1)");
+    model._set("A17", "=DAY(-0.5)");
+    model._set("A18", "=WEEKDAY(-1)");
+    // Array arguments are evaluated element-wise.
+    model._set("A19", "=SUM(DAY({0,61}))");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1900");
+    assert_eq!(model._get_text("A2"), *"1");
+    assert_eq!(model._get_text("A3"), *"0");
+    assert_eq!(model._get_text("A4"), *"1900");
+    assert_eq!(model._get_text("A5"), *"1");
+    assert_eq!(model._get_text("A6"), *"0");
+    assert_eq!(model._get_text("A7"), *"1900");
+    assert_eq!(model._get_text("A8"), *"0");
+    assert_eq!(model._get_text("A9"), *"7");
+    assert_eq!(model._get_text("A10"), *"6");
+    assert_eq!(model._get_text("A11"), *"5");
+    assert_eq!(model._get_text("A12"), *"6");
+    assert_eq!(model._get_text("A13"), *"6");
+    assert_eq!(model._get_text("A14"), *"9/1/1905");
+    assert_eq!(model._get_text("A15"), *"12/31/1911");
+    assert_eq!(model._get_text("A16"), *"#NUM!");
+    assert_eq!(model._get_text("A17"), *"#NUM!");
+    assert_eq!(model._get_text("A18"), *"#NUM!");
+    assert_eq!(model._get_text("A19"), *"1");
 }
 
 #[test]

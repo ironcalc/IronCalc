@@ -138,25 +138,39 @@ fn seconds_of_day(v: f64) -> i64 {
 // functions (DAY, MONTH, YEAR, HOUR, MINUTE, SECOND).
 // ---------------------------------------------------------------------------
 
-// Generate DAY / MONTH / YEAR helpers – simply convert the serial number to a
-// NaiveDate and return the requested component as a number.
+// Serial 0 is Excel's "0 January 1900", the value of an empty or zero date
+// cell. DAY, MONTH, YEAR and WEEKDAY accept it like Excel does (#1569); every
+// other serial keeps IronCalc's calendar (serial 1 is 31 December 1899).
+fn date_part_ymd(serial: i64) -> Result<(i32, u32, u32), Error> {
+    if serial == 0 {
+        return Ok((1900, 1, 0));
+    }
+    let date = from_excel_date(serial).map_err(|_| Error::NUM)?;
+    Ok((date.year(), date.month(), date.day()))
+}
+
+// "0 January 1900" is a Saturday in Excel, and serial 0 in IronCalc's calendar
+// is 30 December 1899, also a Saturday, so WEEKDAY can use that date.
+fn weekday_date(serial: i64) -> Result<chrono::NaiveDate, Error> {
+    if serial == 0 {
+        return chrono::NaiveDate::from_ymd_opt(1899, 12, 30).ok_or(Error::NUM);
+    }
+    from_excel_date(serial).map_err(|_| Error::NUM)
+}
+
+// Generate DAY / MONTH / YEAR helpers – convert the serial number to a
+// (year, month, day) triple and return the requested component as a number.
 macro_rules! date_part_fn {
-    ($name:ident, $method:ident) => {
+    ($name:ident, $component:expr) => {
         pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            // Convert the serial number to a NaiveDate and return the requested
-            // component. Broadcasts element-wise over ranges/arrays. Uses the free
-            // function from_excel_date to avoid borrowing self in the closure.
-            self.apply_number_unary(
-                &args[0],
-                cell,
-                |f| match from_excel_date(f.floor() as i64) {
-                    Ok(date) => Ok(date.$method() as f64),
-                    Err(_) => Err(Error::NUM),
-                },
-            )
+            // Broadcasts element-wise over ranges/arrays. Uses the free function
+            // date_part_ymd to avoid borrowing self in the closure.
+            self.apply_number_unary(&args[0], cell, |f| {
+                date_part_ymd(f.floor() as i64).map(|ymd| $component(ymd) as f64)
+            })
         }
     };
 }
@@ -738,9 +752,9 @@ impl<'a> Model<'a> {
     // -----------------------------------------------------------------------
     // Auto-generated DATE part helpers (DAY / MONTH / YEAR)
     // -----------------------------------------------------------------------
-    date_part_fn!(fn_day, day);
-    date_part_fn!(fn_month, month);
-    date_part_fn!(fn_year, year);
+    date_part_fn!(fn_day, |(_, _, day): (i32, u32, u32)| day);
+    date_part_fn!(fn_month, |(_, month, _): (i32, u32, u32)| month);
+    date_part_fn!(fn_year, |(year, _, _): (i32, u32, u32)| year);
 
     pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
@@ -1710,7 +1724,7 @@ impl<'a> Model<'a> {
         // Broadcasts element-wise over a range/array date argument. `dates` was
         // already evaluated above, so we reuse it instead of re-evaluating the node.
         self.apply_number_unary_value(dates, cell, move |serial| {
-            let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
+            let date = weekday_date(serial.floor() as i64)?;
             weekday_number(date, return_type)
         })
     }
