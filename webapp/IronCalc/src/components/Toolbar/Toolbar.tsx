@@ -13,6 +13,7 @@ import {
   AlignRight,
   ArrowDownToLine,
   ArrowUpToLine,
+  Banknote,
   Bold,
   Brush,
   ChevronDown,
@@ -191,6 +192,9 @@ function Toolbar(properties: ToolbarProperties) {
     case "GBP":
       currencyIcon = <PoundSterling />;
       break;
+    default:
+      // Currencies without their own icon (e.g. ILS)
+      currencyIcon = <Banknote />;
   }
 
   return (
