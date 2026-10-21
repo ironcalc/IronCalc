@@ -135,7 +135,7 @@ fn test_year_booleans() {
 
     // We start counting from Dec 31, 1899 (serial 1)
     assert_eq!(model._get_text("A1"), *"1899");
-    // FALSE is serial 0, which Excel reads as 0 Jan 1900 (#1569)
+    // FALSE is serial 0, which Excel reads as 0 Jan 1900
     assert_eq!(model._get_text("A2"), *"1900");
 }
 
@@ -149,7 +149,7 @@ fn test_month_booleans() {
 
     // We start counting from Dec 31, 1899 (serial 1)
     assert_eq!(model._get_text("A1"), *"12");
-    // FALSE is serial 0, which Excel reads as 0 Jan 1900 (#1569)
+    // FALSE is serial 0, which Excel reads as 0 Jan 1900
     assert_eq!(model._get_text("A2"), *"1");
 }
 
@@ -163,7 +163,7 @@ fn test_day_booleans() {
 
     // We start counting from Dec 31, 1899 (serial 1)
     assert_eq!(model._get_text("A1"), *"31");
-    // FALSE is serial 0, which Excel reads as 0 Jan 1900 (#1569)
+    // FALSE is serial 0, which Excel reads as 0 Jan 1900
     assert_eq!(model._get_text("A2"), *"0");
 }
 
@@ -179,7 +179,7 @@ fn test_day_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    // Serial 0 is 0 Jan 1900 in Excel, the value of an empty date cell (#1569)
+    // Serial 0 is 0 Jan 1900 in Excel, what an empty date cell evaluates to
     assert_eq!(model._get_text("A2"), *"0");
     // Excel thinks is Feb 29, 1900
     assert_eq!(model._get_text("A3"), *"28");
@@ -200,7 +200,7 @@ fn test_month_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    // Serial 0 is 0 Jan 1900 in Excel (#1569)
+    // Serial 0 is 0 Jan 1900 in Excel
     assert_eq!(model._get_text("A2"), *"1");
     // We agree with Excel here (We are both in Feb)
     assert_eq!(model._get_text("A3"), *"2");
@@ -221,7 +221,7 @@ fn test_year_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    // Serial 0 is 0 Jan 1900 in Excel (#1569)
+    // Serial 0 is 0 Jan 1900 in Excel
     assert_eq!(model._get_text("A2"), *"1900");
 
     assert_eq!(model._get_text("A3"), *"1900");
@@ -905,7 +905,7 @@ fn test_fn_weekday_weeknum_isoweeknum_day_zero() {
     let mut model = new_empty_model();
 
     // Date serial 0 is 0 Jan 1900 in Excel, a valid date (a Saturday). WEEKDAY
-    // accepts it (#1569); WEEKNUM and ISOWEEKNUM still return #NUM! instead.
+    // accepts it, but WEEKNUM and ISOWEEKNUM still return #NUM! instead.
     model._set("A1", "=WEEKDAY(0)");
     model._set("A2", "=WEEKNUM(0)");
     model._set("A3", "=ISOWEEKNUM(0)");
@@ -928,9 +928,9 @@ fn test_fn_weekday_weeknum_isoweeknum_day_zero() {
 
 #[test]
 fn test_date_parts_serial_zero() {
-    // Excel treats serial 0 as 0 Jan 1900 (a Saturday): it is what an empty or
-    // zero date cell evaluates to, so it must not turn dependent formulas into
-    // errors (#1569). Expected values are from Excel.
+    // Excel treats serial 0 as 0 Jan 1900 (a Saturday). It is what an empty
+    // date cell evaluates to, so formulas built on it must not turn into
+    // errors. Expected values are from Excel.
     let mut model = new_empty_model();
     model._set("A1", "=YEAR(0)");
     model._set("A2", "=MONTH(0)");

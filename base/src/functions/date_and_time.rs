@@ -138,9 +138,9 @@ fn seconds_of_day(v: f64) -> i64 {
 // functions (DAY, MONTH, YEAR, HOUR, MINUTE, SECOND).
 // ---------------------------------------------------------------------------
 
-// Serial 0 is Excel's "0 January 1900", the value of an empty or zero date
-// cell. DAY, MONTH, YEAR and WEEKDAY accept it like Excel does (#1569); every
-// other serial keeps IronCalc's calendar (serial 1 is 31 December 1899).
+// Excel treats serial 0 as 0 January 1900, which is what an empty date cell
+// evaluates to, so DAY(0) is 0, MONTH(0) is 1 and YEAR(0) is 1900. Any other
+// serial goes through `from_excel_date` as before.
 fn date_part_ymd(serial: i64) -> Result<(i32, u32, u32), Error> {
     if serial == 0 {
         return Ok((1900, 1, 0));
@@ -149,8 +149,8 @@ fn date_part_ymd(serial: i64) -> Result<(i32, u32, u32), Error> {
     Ok((date.year(), date.month(), date.day()))
 }
 
-// "0 January 1900" is a Saturday in Excel, and serial 0 in IronCalc's calendar
-// is 30 December 1899, also a Saturday, so WEEKDAY can use that date.
+// Excel's 0 January 1900 is a Saturday. Serial 0 in our calendar is
+// 30 December 1899, also a Saturday, so we can use that date.
 fn weekday_date(serial: i64) -> Result<chrono::NaiveDate, Error> {
     if serial == 0 {
         return chrono::NaiveDate::from_ymd_opt(1899, 12, 30).ok_or(Error::NUM);
