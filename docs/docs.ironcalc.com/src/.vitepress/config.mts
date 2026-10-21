@@ -2076,6 +2076,10 @@ export default defineConfig({
             text: "Function documentation guide",
             link: "/contributing/function-documentation-guide",
           },
+          {
+            text: "Translating IronCalc",
+            link: "/contributing/translation-guide",
+          },
         ],
       },
     ],
