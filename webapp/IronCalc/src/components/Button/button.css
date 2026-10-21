@@ -16,6 +16,7 @@
   font-family: var(--typography-font-family);
   font-size: var(--typography-font-size);
   font-weight: 500;
+  line-height: 1.2;
   text-decoration: none;
   box-sizing: border-box;
   border: 1px solid var(--black-04);
@@ -43,19 +44,16 @@
 .ic-button--xs {
   --button-height: 24px;
   height: var(--button-height);
-  line-height: var(--button-height);
 }
 
 .ic-button--sm {
   --button-height: 28px;
   height: var(--button-height);
-  line-height: var(--button-height);
 }
 
 .ic-button--md {
   --button-height: 32px;
   height: var(--button-height);
-  line-height: var(--button-height);
 }
 
 .ic-button--primary {
