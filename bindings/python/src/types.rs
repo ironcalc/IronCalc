@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use xlsx::base::types::CellType;
 
 /// The type of the content of a cell, following Excel's TYPE() convention.
-#[pyclass(name = "CellType", eq, eq_int)]
+#[pyclass(name = "CellType", eq, eq_int, skip_from_py_object)]
 #[derive(PartialEq, Clone)]
 pub enum PyCellType {
     Number = 1,

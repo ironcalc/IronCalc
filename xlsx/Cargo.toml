@@ -21,17 +21,17 @@ zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 quick-xml = "0.42"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-thiserror = "1.0"
+thiserror = "2.0"
 # Uses `../base` when used locally, and uses
 # the inicated version from crates.io when published.
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
 ironcalc_base = { path = "../base", version = "0.9" }
-itertools = "0.12"
+itertools = "0.15"
 chrono = "0.4"
-bitcode = "0.6.8"
+bitcode = "0.6.9"
 
 [dev-dependencies]
-uuid = { version = "1.2.2", features = ["serde", "v4"] }
+uuid = { version = "1.28.0", features = ["serde", "v4"] }
 # Path-only self dependency (stripped when publishing): turns on the mocked
 # clock for this crate's own tests while leaving normal builds untouched.
 ironcalc = { path = ".", features = ["mock_time"] }
