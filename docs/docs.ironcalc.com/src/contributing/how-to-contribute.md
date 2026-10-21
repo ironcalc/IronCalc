@@ -13,3 +13,7 @@ If you also want to discuss topics, share your thoughts or just say 'hi', you ca
 ## Documentation
 
 If you're interested in contributing to our documentation, especially function documentation, please see our [Function Documentation Guide](/contributing/function-documentation-guide).
+
+## Translations
+
+If you'd like to translate IronCalc into a new language, please read [Translating IronCalc](/contributing/translation-guide) before you start.
