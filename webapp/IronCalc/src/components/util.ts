@@ -193,11 +193,9 @@ export function isEditingKey(key: string): boolean {
   if (key.length !== 1) {
     return false;
   }
+  // Any script, not just Latin-1 (e.g. Hebrew "ש" is U+05E9)
   const code = key.codePointAt(0) ?? 0;
-  if (code > 0 && code < 255) {
-    return true;
-  }
-  return false;
+  return code > 0;
 }
 
 export type NavigationKey =

@@ -5,11 +5,22 @@ import {
   decreaseDecimalPlaces,
   increaseDecimalPlaces,
 } from "../src/components/FormatMenu/formatUtil";
-import { getFullRangeToString, isNavigationKey } from "../src/components/util";
+import {
+  getFullRangeToString,
+  isEditingKey,
+  isNavigationKey,
+} from "../src/components/util";
 
 test("checks arrow left is a navigation key", () => {
   expect(isNavigationKey("ArrowLeft")).toBe(true);
   expect(isNavigationKey("Arrow")).toBe(false);
+});
+
+test("non-Latin letters start editing", () => {
+  expect(isEditingKey("a")).toBe(true);
+  expect(isEditingKey("Ü")).toBe(true);
+  expect(isEditingKey("ש")).toBe(true);
+  expect(isEditingKey("Enter")).toBe(false);
 });
 
 test("increase decimals", () => {
