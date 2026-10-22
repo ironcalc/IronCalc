@@ -32,6 +32,29 @@ fn test_column_to_number() {
 }
 
 #[test]
+fn test_column_to_number_overflow() {
+    // Column tokens longer than three letters cannot be valid columns, and the
+    // accumulation must not leave the `i32` range on the way there.
+    for column in ["AAAAAAAA", "AAAAAAAAAA", "ZZZZZZZZZZZZ"] {
+        assert_eq!(
+            column_to_number(column),
+            Err("Column is not valid.".to_string())
+        );
+    }
+
+    // A lowercase token of the same length still fails on the A-Z check.
+    assert_eq!(
+        column_to_number("aaaaaaaa"),
+        Err("Column identifier can use only A-Z characters".to_string())
+    );
+
+    assert_eq!(
+        column_to_number("XFE"),
+        Err("Column is not valid.".to_string())
+    );
+}
+
+#[test]
 fn test_is_valid_column() {
     assert!(is_valid_column("A"));
     assert!(is_valid_column("AA"));
