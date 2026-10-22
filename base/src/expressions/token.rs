@@ -219,7 +219,12 @@ pub enum TableReference {
 pub enum TokenType {
     Illegal(LexerError),
     EOF,
-    Ident(String),      // abc123
+    Ident(String), // abc123
+    // A sheet-qualified identifier: Sheet1!MyName (a defined name)
+    QualifiedIdent {
+        sheet: String,
+        name: String,
+    },
     String(String),     // "A season"
     Number(f64),        // 123.4
     Boolean(bool),      // TRUE | FALSE

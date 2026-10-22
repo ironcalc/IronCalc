@@ -794,6 +794,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {
+        let start = self.position;
         let m = if self.mode == LexerMode::A1 {
             self.consume_range_a1()
         } else {
@@ -813,7 +814,35 @@ impl<'a> Lexer<'a> {
                     }
                 }
             }
-            Err(error) => TokenType::Illegal(error),
+            Err(error) => match sheet {
+                // `Sheet1!Name` is not a reference, but could be a defined name
+                Some(sheet) => self.consume_qualified_identifier(sheet, start, error),
+                None => TokenType::Illegal(error),
+            },
         }
+    }
+
+    /// What follows `Sheet1!` when it is not a reference: a defined name
+    /// qualified with a sheet (`Sheet1!MyName`), or else the original error.
+    fn consume_qualified_identifier(
+        &mut self,
+        sheet: String,
+        position: usize,
+        error: LexerError,
+    ) -> TokenType {
+        self.position = position;
+        let name = self.consume_identifier();
+        let is_valid = match self.mode {
+            LexerMode::A1 => utils::is_valid_a1_identifier(&name),
+            LexerMode::R1C1 => {
+                let next_char = self.peek_char();
+                is_valid_r1c1_identifier(&name, next_char)
+            }
+        };
+        if !name.is_empty() && is_valid {
+            return TokenType::QualifiedIdent { sheet, name };
+        }
+        self.position = self.len;
+        TokenType::Illegal(error)
     }
 }

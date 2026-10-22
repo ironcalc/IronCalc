@@ -294,7 +294,7 @@ impl<'a> Model<'a> {
             Node::EmptyArgKind => None,
             Node::NamedFunctionKind { .. } => None,
             Node::ArrayKind(_) => None,
-            Node::DefinedNameKind(_) => None,
+            Node::DefinedNameKind { .. } => None,
             Node::TableNameKind(_) => None,
             Node::NamedVariableKind { .. } => None,
             Node::CompareKind { .. } => None,

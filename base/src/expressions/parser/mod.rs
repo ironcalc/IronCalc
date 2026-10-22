@@ -225,7 +225,15 @@ pub enum Node {
         args: Vec<Node>,
     },
     ArrayKind(Vec<Vec<ArrayNode>>),
-    DefinedNameKind(DefinedNameS),
+    DefinedNameKind {
+        name: String,
+        /// The sheet the name is local to, `None` for a workbook name
+        scope: Option<u32>,
+        formula: String,
+        /// `Sheet1!Name`: the sheet the name was qualified with, as
+        /// (sheet index, sheet name). `None` for a bare `Name`.
+        sheet: Option<(u32, String)>,
+    },
     TableNameKind(String),
     NamedVariableKind {
         name: String,
@@ -1004,7 +1012,12 @@ impl<'a> Parser<'a> {
 
                 // Could be a defined name or a table
                 if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
-                    return Node::DefinedNameKind((name, scope, formula));
+                    return Node::DefinedNameKind {
+                        name,
+                        scope,
+                        formula,
+                        sheet: None,
+                    };
                 }
                 let name_lower = name.to_lowercase();
                 for table_name in self.tables.keys() {
@@ -1015,6 +1028,33 @@ impl<'a> Parser<'a> {
                 // xlpm: Excel Lambda Parameter
                 let name = name.trim_start_matches("_xlpm.").to_string();
                 Node::NamedVariableKind { name, id: None }
+            }
+            // A defined name qualified with a sheet: Sheet1!MyName
+            // It is the name local to that sheet if there is one, the
+            // workbook name otherwise.
+            TokenType::QualifiedIdent { sheet, name } => {
+                let sheet_index = match self.get_sheet_index_by_name(&sheet) {
+                    Some(i) => i,
+                    None => {
+                        return Node::ParseErrorKind {
+                            formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
+                            position: 0,
+                            message: format!("sheet not found: {sheet}"),
+                        };
+                    }
+                };
+                // An unknown name keeps the scope of the sheet, and evaluates
+                // to #NAME?
+                let (scope, formula) = self
+                    .get_defined_name(&name, sheet_index)
+                    .unwrap_or((Some(sheet_index), String::new()));
+                Node::DefinedNameKind {
+                    name,
+                    scope,
+                    formula,
+                    sheet: Some((sheet_index, sheet)),
+                }
             }
             TokenType::Error(kind) => Node::ErrorKind(kind),
             TokenType::Illegal(error) => Node::ParseErrorKind {

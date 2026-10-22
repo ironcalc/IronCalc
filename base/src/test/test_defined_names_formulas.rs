@@ -59,3 +59,56 @@ fn constants_and_expressions() {
     assert_eq!(model._get_text("A6"), "350");
     assert_eq!(model._get_text("A7"), "120");
 }
+
+// A name local to a sheet can be used from another sheet by qualifying it:
+// `Data!Scope_Test`. `Sheet!GlobalName` is the workbook name.
+#[test]
+fn sheet_qualified_names() {
+    let mut model = new_empty_model();
+    model.add_sheet("Data").unwrap();
+    model._set("Sheet1!A1", "3");
+    model._set("Data!A1", "12");
+    // Workbook name and a name local to Data with the same name
+    model
+        .new_defined_name("Scope_Test", None, "Sheet1!$A$1")
+        .unwrap();
+    model
+        .new_defined_name("Scope_Test", Some(1), "Data!$A$1")
+        .unwrap();
+
+    model._set("Sheet1!B1", "=Scope_Test");
+    model._set("Sheet1!B2", "=Data!Scope_Test");
+    model._set("Sheet1!B3", "=Sheet1!Scope_Test");
+    model._set("Sheet1!B4", "=Data!Scope_Test*2");
+    model._set("Sheet1!B5", "=Data!Nope");
+    model._set("Data!B1", "=Scope_Test");
+    model._set("Data!B2", "=Sheet1!Scope_Test");
+    model.evaluate();
+
+    assert_eq!(model._get_text("Sheet1!B1"), "3");
+    assert_eq!(model._get_text("Sheet1!B2"), "12");
+    assert_eq!(model._get_text("Sheet1!B3"), "3");
+    assert_eq!(model._get_text("Sheet1!B4"), "24");
+    assert_eq!(model._get_text("Sheet1!B5"), "#NAME?");
+    assert_eq!(model._get_text("Data!B1"), "12");
+    assert_eq!(model._get_text("Data!B2"), "3");
+    assert_eq!(model._get_formula("Sheet1!B2"), "=Data!Scope_Test");
+    assert_eq!(model._get_formula("Sheet1!B5"), "=Data!Nope");
+
+    // Renaming the sheet renames the qualifier
+    model.rename_sheet_by_index(1, "Data Set").unwrap();
+    model.evaluate();
+    assert_eq!(model._get_formula("Sheet1!B2"), "='Data Set'!Scope_Test");
+    assert_eq!(model._get_formula("Sheet1!B4"), "='Data Set'!Scope_Test*2");
+    assert_eq!(model._get_text("Sheet1!B2"), "12");
+
+    // Moving the sheet keeps the name resolving to the right sheet
+    model.move_sheet(1, 0).unwrap();
+    model.evaluate();
+    assert_eq!(model._get_formula("Sheet1!B2"), "='Data Set'!Scope_Test");
+    assert_eq!(model._get_text("Sheet1!B2"), "12");
+    assert_eq!(model._get_text("Sheet1!B1"), "3");
+    // 'Data Set' is now the first sheet
+    assert_eq!(model._get_text_at(0, 1, 2), "12");
+    assert_eq!(model._get_text_at(0, 2, 2), "3");
+}

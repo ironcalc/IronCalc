@@ -207,7 +207,7 @@ fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
         | Node::ArrayKind(_)
-        | Node::DefinedNameKind(_)
+        | Node::DefinedNameKind { .. }
         | Node::TableNameKind(_)
         | Node::ErrorKind(_)
         | Node::ParseErrorKind { .. }
@@ -223,6 +223,14 @@ pub fn to_string_displaced(
     language: &Language,
 ) -> String {
     stringify(node, Some(context), displace_data, false, locale, language)
+}
+
+/// `Name`, or `Sheet1!Name` when the name was qualified with a sheet
+pub(crate) fn defined_name_to_string(name: &str, sheet: &Option<(u32, String)>) -> String {
+    match sheet {
+        Some((_, sheet_name)) => format!("{}!{}", quote_name(sheet_name), name),
+        None => name.to_string(),
+    }
 }
 
 /// Converts a local reference to a string applying some displacement if needed.
@@ -829,7 +837,7 @@ fn stringify(
                 | ReferenceKind { .. }
                 | RangeKind { .. }
                 | WrongReferenceKind { .. }
-                | DefinedNameKind(_)
+                | DefinedNameKind { .. }
                 | TableNameKind(_)
                 | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
@@ -874,7 +882,7 @@ fn stringify(
                 | ReferenceKind { .. }
                 | RangeKind { .. }
                 | WrongReferenceKind { .. }
-                | DefinedNameKind(_)
+                | DefinedNameKind { .. }
                 | TableNameKind(_)
                 | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
@@ -971,7 +979,7 @@ fn stringify(
             format!("{{{matrix_string}}}")
         }
         TableNameKind(value) => value.to_string(),
-        DefinedNameKind((name, ..)) => name.to_string(),
+        DefinedNameKind { name, sheet, .. } => defined_name_to_string(name, sheet),
         NamedVariableKind { name, id: _ } => name.to_string(),
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
@@ -990,7 +998,7 @@ fn stringify(
                     | LambdaDefKind { .. }
                     | LambdaCallKind { .. }
                     | ArrayKind(_)
-                    | DefinedNameKind(_)
+                    | DefinedNameKind { .. }
                     | TableNameKind(_)
                     | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
@@ -1284,7 +1292,13 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ErrorKind(_) => {}
         Node::ParseErrorKind { .. } => {}
         Node::ArrayKind(_) => {}
-        Node::DefinedNameKind(_) => {}
+        Node::DefinedNameKind { sheet, .. } => {
+            if let Some((index, sheet_name)) = sheet {
+                if *index == sheet_index {
+                    *sheet_name = new_name.to_owned();
+                }
+            }
+        }
         Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
         Node::EmptyArgKind => {}
@@ -1311,7 +1325,9 @@ pub(crate) fn rename_defined_name_in_node(
 ) {
     match node {
         // Rename
-        Node::DefinedNameKind((n, s, _)) => {
+        Node::DefinedNameKind {
+            name: n, scope: s, ..
+        } => {
             if name.to_lowercase() == n.to_lowercase() && *s == scope {
                 *n = new_name.to_string();
             }
