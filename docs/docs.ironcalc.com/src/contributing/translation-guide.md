@@ -9,7 +9,7 @@ lang: en-US
 Thanks for your interest in bringing IronCalc to more people! This guide explains what adding a language involves, and what you should consider before starting work.
 
 ::: warning
-**Please make sure you open a [Discussion](https://github.com/ironcalc/IronCalc/discussions) before sending a translation pull request!** Every language we add has to be updated each time IronCalc changes (which, trust us, it's quite often), and our team can only review a few languages _with confidence_. Because of this, translation pull requests opened without prior discussion are likely to be closed, even when the work done is good.
+**Please note we're not accepting new languages at the moment.** If you have a strong case for adding one, please open a [Discussion](https://github.com/ironcalc/IronCalc/discussions) and tell us about it before sending a translation pull request. Every language we add has to be updated each time IronCalc changes (which, trust us, it's quite often), and our team can only review a few languages _with confidence_. Because of this, translation pull requests opened without prior discussion are likely to be closed, even when the work done is good.
 :::
 
 ## Why translations are hard for us
@@ -18,8 +18,8 @@ IronCalc currently supports 5 languages: **English**, **Spanish**, **French**, *
 
 When a new language arrives to IronCalc, we take on a commitment that lasts much longer than the PR:
 
-- **Every new feature needs new strings.** Someone has to translate them, every time, so the language doesn't fall behind and the interface ends up half translated.
-- **We can't review what we can't understand.** If nobody on the team knows the language or its script, we can't tell a good translation from a bad one. We also don't know how good are AI tools translating certain languages.
+- **Every new feature needs new strings.** Someone has to translate them, every time, so the language doesn't fall behind and leave the interface half translated.
+- **We can't review what we can't understand.** If nobody on the team knows the language or its script, we can't tell a good translation from a bad one. We also don't know how good AI tools are at translating certain languages.
 - **Bugs can show up in unexpected places.** A new language often exposes assumptions in the code (input handling, text direction, fonts), and those take time to fix properly.
 
 We would love to add more languages, but each one needs planning, and ideally someone who can help us maintain it.
@@ -70,7 +70,7 @@ IronCalc uses the [Inter](https://rsms.me/inter/) font. Inter covers the Latin, 
 Right-to-left (RTL) languages, like Hebrew, Arabic or Persian, raise more questions:
 
 - The interface is not mirrored, so menus and panels stay in left-to-right order, which may not be ideal.
-- Mixing right-to-left text with numbers and formulas in a cell needs careful handling.
+- Mixing RTL text with numbers and formulas in a cell needs careful handling.
 - CLDR data for these locales contains invisible direction marks that must not end up in number formats.
 
 Supporting a new script takes design and engineering work on our side. If your language needs it, mention it in your Discussion so we can plan it together.
