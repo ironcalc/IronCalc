@@ -148,7 +148,11 @@ impl<'a> Model<'a> {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(parameters, *body)
                     }
-                    _ => ParsedDefinedName::InvalidDefinedNameFormula,
+                    // A reference to a sheet that no longer exists
+                    Node::WrongReferenceKind { .. }
+                    | Node::WrongRangeKind { .. }
+                    | Node::ParseErrorKind { .. } => ParsedDefinedName::InvalidDefinedNameFormula,
+                    node => ParsedDefinedName::Formula(node),
                 }
             };
 

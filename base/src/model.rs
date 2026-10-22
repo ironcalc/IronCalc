@@ -96,6 +96,47 @@ pub(crate) enum CellStructure {
     },
 }
 
+/// True if the formula has a reference that is not qualified with a sheet
+/// name (`A1` rather than `Sheet1!A1`), or one to a sheet that does not exist.
+/// A defined name has no sheet of its own, so such references are ambiguous.
+fn has_unqualified_reference(node: &Node) -> bool {
+    match node {
+        Node::ReferenceKind { sheet_name, .. } | Node::RangeKind { sheet_name, .. } => {
+            sheet_name.is_none()
+        }
+        Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => true,
+        Node::OpRangeKind { left, right }
+        | Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right }
+        | Node::CompareKind { left, right, .. } => {
+            has_unqualified_reference(left) || has_unqualified_reference(right)
+        }
+        Node::UnaryKind { right, .. } => has_unqualified_reference(right),
+        Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
+            has_unqualified_reference(child)
+        }
+        Node::LambdaDefKind { body, .. } => has_unqualified_reference(body),
+        Node::LambdaCallKind { lambda, args } => {
+            has_unqualified_reference(lambda) || args.iter().any(has_unqualified_reference)
+        }
+        Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
+            args.iter().any(has_unqualified_reference)
+        }
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ArrayKind(_)
+        | Node::DefinedNameKind(_)
+        | Node::TableNameKind(_)
+        | Node::NamedVariableKind { .. }
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::EmptyArgKind => false,
+    }
+}
+
 /// A parsed formula for a defined name
 #[derive(Clone)]
 pub(crate) enum ParsedDefinedName {
@@ -105,7 +146,11 @@ pub(crate) enum ParsedDefinedName {
     RangeReference(Range),
     /// `=LAMBDA(params..., body)`
     LambdaDefinition(Vec<NamedVariable>, Node),
-    /// `=SomethingElse`
+    /// Any other formula: a constant (`=3.14`, `="Hello"`), an expression
+    /// (`=SUM(Data!$E$2:$E$21)*2`) or a dynamic range (`=OFFSET(...)`).
+    /// It is evaluated in the context of the cell that uses the name.
+    Formula(Node),
+    /// A formula that does not parse
     InvalidDefinedNameFormula,
 }
 
@@ -402,6 +447,9 @@ impl<'a> Model<'a> {
                                 left: range.left,
                                 right: range.right,
                             };
+                        }
+                        ParsedDefinedName::Formula(formula) => {
+                            return self.evaluate_node_with_reference(&formula, cell);
                         }
                         ParsedDefinedName::LambdaDefinition(..)
                         | ParsedDefinedName::InvalidDefinedNameFormula => {}
@@ -816,10 +864,13 @@ impl<'a> Model<'a> {
                             self.lambdas.insert(lambda_id, (param_names, body));
                             CalcResult::Lambda(lambda_id)
                         }
+                        ParsedDefinedName::Formula(formula) => {
+                            self.evaluate_node_in_context(&formula, cell)
+                        }
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
-                            format!("Defined name \"{name}\" is not a reference."),
+                            format!("Defined name \"{name}\" is not a valid formula."),
                         ),
                     }
                 } else {
@@ -3642,7 +3693,8 @@ impl<'a> Model<'a> {
             }
         }
 
-        // Make sure the formula is valid — accept cell/range references OR a LAMBDA definition.
+        // Make sure the formula is valid: a cell/range reference or any
+        // formula that parses (a constant, an expression, a LAMBDA definition).
         let is_reference =
             common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
                 self.get_sheet_index_by_name(name)
@@ -3650,7 +3702,7 @@ impl<'a> Model<'a> {
             .is_ok();
 
         if !is_reference {
-            // Try the full parser to see if it is a LAMBDA definition.
+            // Try the full parser.
             // Defined-name formulas may carry a leading '='; strip it before parsing.
             use crate::expressions::types::CellReferenceRC;
             let formula_body = formula.strip_prefix('=').unwrap_or(formula);
@@ -3671,7 +3723,7 @@ impl<'a> Model<'a> {
             if let Node::ParseErrorKind { .. } = node {
                 node = self.parse_internal_formula(formula_body, &dummy_ref);
             }
-            if !matches!(node, Node::LambdaDefKind { .. }) {
+            if matches!(node, Node::ParseErrorKind { .. }) || has_unqualified_reference(&node) {
                 return Err("Formula: Invalid defined name formula".to_string());
             }
         }
