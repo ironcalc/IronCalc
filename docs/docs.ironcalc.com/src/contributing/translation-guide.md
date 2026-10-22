@@ -93,6 +93,9 @@ The last point is key, as a potential language, with a native speaker willing to
 Once we've agreed on a plan, a PR will usually touch:
 
 - The interface JSON files and both `i18n.ts` files.
+- The `LANGUAGES` lists in `components/Navigation/FileMenu.tsx` and `components/Navigation/MobileMenu.tsx`, so the language shows up in the menus.
+- `webapp/app.ironcalc.com/frontend/src/components/storage.ts`, which detects the browser language, keeps the saved preference and maps it to a locale code. Without this, the choice is lost on reload and the locale falls back to English.
+- The locale-to-language mapping in `RegionalSettings.tsx`.
 - `generate_language/src/languages.json` and the regenerated `language.bin`.
 - `generate_locale/locales_list.json` and the regenerated `locales.json` and `locales.bin`.
 - The default sheet names in `base/src/new_empty.rs`.
