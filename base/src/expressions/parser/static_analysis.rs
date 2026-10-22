@@ -141,15 +141,13 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             add_implicit_intersection(right, add);
         }
 
-        Node::DefinedNameKind(v) => {
-            if add {
-                // Not all defined names deserve the II operator
-                // For instance =Sheet1!A1 doesn't need to be intersected
-                if is_range_reference(&v.2) {
-                    *node = Node::ImplicitIntersection {
-                        automatic: true,
-                        child: Box::new(Node::DefinedNameKind(v.to_owned())),
-                    }
+        Node::DefinedNameKind { formula, .. } => {
+            // Not all defined names deserve the II operator
+            // For instance =Sheet1!A1 doesn't need to be intersected
+            if add && is_range_reference(formula) {
+                *node = Node::ImplicitIntersection {
+                    automatic: true,
+                    child: Box::new(node.clone()),
                 }
             }
         }
@@ -234,7 +232,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::OpRangeKind { .. }
-        | Node::DefinedNameKind(_)
+        | Node::DefinedNameKind { .. }
         | Node::NamedVariableKind { .. }
         | Node::TableNameKind(_)
         | Node::LambdaDefKind { .. }
@@ -376,7 +374,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::CompareKind { left, right, .. } => static_analysis_op_nodes(left, right),
 
         // defined names
-        Node::DefinedNameKind(_) => {
+        Node::DefinedNameKind { .. } => {
             // TODO: We could do better if we tracked the defined names
             StaticResult::Unknown
         }

@@ -14,6 +14,12 @@ pub fn column_to_number(column: &str) -> Result<i32, String> {
         return Err("Column identifier must be ASCII.".to_string());
     }
 
+    // The last column is XFD: longer identifiers are not columns (and would
+    // overflow below)
+    if column.len() > 3 {
+        return Err("Column is not valid.".to_string());
+    }
+
     let mut column_number = 0;
     for character in column.chars() {
         if !character.is_ascii_uppercase() {

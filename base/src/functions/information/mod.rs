@@ -150,7 +150,7 @@ impl<'a> Model<'a> {
             Node::FunctionKind { kind, args: _ } => kind.returns_reference(),
             // A defined name or a variable is a reference if what it stands
             // for is one
-            Node::DefinedNameKind(_) | Node::NamedVariableKind { .. } => matches!(
+            Node::DefinedNameKind { .. } | Node::NamedVariableKind { .. } => matches!(
                 self.evaluate_node_with_reference(node, cell),
                 CalcResult::Range { .. }
             ),
@@ -286,7 +286,7 @@ impl<'a> Model<'a> {
         // The arg could be a defined name or a table
         // let  = &args[0];
         match &args[0] {
-            Node::DefinedNameKind((name, scope, _)) => {
+            Node::DefinedNameKind { name, scope, .. } => {
                 // Let's see if it is a defined name
                 if let Some(defined_name) = self
                     .parsed_defined_names

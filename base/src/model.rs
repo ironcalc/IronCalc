@@ -128,7 +128,7 @@ fn has_unqualified_reference(node: &Node) -> bool {
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ArrayKind(_)
-        | Node::DefinedNameKind(_)
+        | Node::DefinedNameKind { .. }
         | Node::TableNameKind(_)
         | Node::NamedVariableKind { .. }
         | Node::ErrorKind(_)
@@ -433,7 +433,7 @@ impl<'a> Model<'a> {
             Node::NamedVariableKind { .. } => self.variable_value(node, cell),
             // A defined name that stands for a reference is that reference,
             // to a single cell as well
-            Node::DefinedNameKind((name, scope, _)) => {
+            Node::DefinedNameKind { name, scope, .. } => {
                 if let Ok(Some(parsed_defined_name)) = self.get_parsed_defined_name(name, *scope) {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {
@@ -849,7 +849,7 @@ impl<'a> Model<'a> {
                 self.call_lambda(lambda_result, args, cell)
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
-            DefinedNameKind((name, scope, _)) => {
+            DefinedNameKind { name, scope, .. } => {
                 if let Ok(Some(parsed_defined_name)) = self.get_parsed_defined_name(name, *scope) {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {

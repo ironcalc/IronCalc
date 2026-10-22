@@ -1,5 +1,5 @@
 use super::{
-    stringify::{stringify_reference, DisplaceData},
+    stringify::{defined_name_to_string, stringify_reference, DisplaceData},
     ArrayNode, Node, Reference,
 };
 use crate::{
@@ -474,7 +474,7 @@ fn to_string_moved(
             // Enclose the whole matrix in braces
             format!("{{{matrix_string}}}")
         }
-        DefinedNameKind((name, ..)) => name.to_string(),
+        DefinedNameKind { name, sheet, .. } => defined_name_to_string(name, sheet),
         TableNameKind(name) => name.to_string(),
         NamedVariableKind { name, id: _ } => name.to_string(),
         CompareKind { kind, left, right } => format!(
