@@ -1,8 +1,14 @@
-import { IconButton, type Model, Tooltip } from "@ironcalc/workbook";
+import {
+  IconButton,
+  type IronCalcHandle,
+  type Model,
+  Tooltip,
+} from "@ironcalc/workbook";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
+import { EditMenu } from "./Navigation/EditMenu";
 import { FileMenu } from "./Navigation/FileMenu";
 import { HelpMenu } from "./Navigation/HelpMenu";
 import { MobileMenu } from "./Navigation/MobileMenu";
@@ -16,10 +22,11 @@ import { WorkbookTitle } from "./WorkbookTitle";
 
 import "./file-bar.css";
 
-type OpenMenu = "file" | "help" | null;
+type OpenMenu = "file" | "edit" | "help" | null;
 
 export function FileBar(properties: {
   model: Model;
+  ironCalcRef: RefObject<IronCalcHandle | null>;
   newModel: () => void;
   newModelFromTemplate: () => void;
   setModel: (key: string) => void;
@@ -104,6 +111,15 @@ export function FileBar(properties: {
             onLanguageChange={properties.onLanguageChange}
             themeMode={properties.themeMode}
             onThemeModeChange={properties.onThemeModeChange}
+          />
+          <EditMenu
+            ironCalcRef={properties.ironCalcRef}
+            model={properties.model}
+            isReadOnly={properties.isReadOnly}
+            isOpen={openMenu === "edit"}
+            onOpen={() => setOpenMenu("edit")}
+            onClose={closeMenus}
+            onHover={() => openMenu && setOpenMenu("edit")}
           />
           <HelpMenu
             isOpen={openMenu === "help"}

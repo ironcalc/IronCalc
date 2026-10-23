@@ -112,6 +112,14 @@
       "appearance_light": "Hell",
       "appearance_dark": "Dunkel"
     },
+    "edit_menu": {
+      "button": "Bearbeiten",
+      "undo": "Rückgängig",
+      "redo": "Wiederholen",
+      "cut": "Ausschneiden",
+      "copy": "Kopieren",
+      "paste": "Einfügen"
+    },
     "help_menu": {
       "button": "Hilfe",
       "about": "Über IronCalc",
