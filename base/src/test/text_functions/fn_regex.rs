@@ -50,7 +50,8 @@ fn test_regextest_case_sensitive() {
 fn test_regextest_wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=REGEXTEST(\"text\")");
-    model._set("A2", "=REGEXTEST(\"text\", \".\", \"extra\")");
+    // a third argument is case_sensitivity, as in Excel
+    model._set("A2", "=REGEXTEST(\"text\", \".\", 0, \"extra\")");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");
@@ -97,7 +98,8 @@ fn test_regexextract_invalid_regex() {
 fn test_regexextract_wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=REGEXEXTRACT(\"text\")");
-    model._set("A2", "=REGEXEXTRACT(\"text\", \".\", \"0\", \"extra\")");
+    // a fourth argument is case_sensitivity, as in Excel
+    model._set("A2", "=REGEXEXTRACT(\"text\", \".\", 0, 0, \"extra\")");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");
@@ -169,8 +171,31 @@ fn test_regexreplace_invalid_regex() {
 fn test_regexreplace_wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=REGEXREPLACE(\"text\", \".\")");
-    model._set("A2", "=REGEXREPLACE(\"text\", \".\", \"x\", \"extra\")");
+    // occurrence and case_sensitivity follow, as in Excel
+    model._set(
+        "A2",
+        "=REGEXREPLACE(\"text\", \".\", \"x\", 0, 0, \"extra\")",
+    );
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");
+}
+
+#[test]
+fn test_regex_excel_options() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REGEXTEST(\"abc\", \"B\", 1)");
+    model._set("A2", "=REGEXTEST(\"abc\", \"B\")");
+    model._set("A3", "=REGEXEXTRACT(\"ab12\", \"([a-z]+)([0-9]+)\", 2)");
+    model._set("A4", "=REGEXREPLACE(\"a1b2c3\", \"[0-9]\", \"#\", 2)");
+    model._set("A5", "=REGEXREPLACE(\"a1b2c3\", \"[0-9]\", \"#\", -1)");
+    model._set("A6", "=REGEXREPLACE(\"ABC\", \"b\", \"x\", 0, 1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "TRUE");
+    assert_eq!(model._get_text("A2"), "FALSE");
+    assert_eq!(model._get_text("A3"), "ab");
+    assert_eq!(model._get_text("B3"), "12");
+    assert_eq!(model._get_text("A4"), "a1b#c3");
+    assert_eq!(model._get_text("A5"), "a1b2c#");
+    assert_eq!(model._get_text("A6"), "AxC");
 }
