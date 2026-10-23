@@ -3706,13 +3706,16 @@ impl<'a> Model<'a> {
             // Defined-name formulas may carry a leading '='; strip it before parsing.
             use crate::expressions::types::CellReferenceRC;
             let formula_body = formula.strip_prefix('=').unwrap_or(formula);
+            // A name local to a sheet is parsed in that sheet, so that the
+            // names it uses resolve to the local ones (see `parse_defined_names`)
+            let context_sheet = match scope {
+                Some(index) => self.workbook.worksheets.get(index as usize),
+                None => self.workbook.worksheets.first(),
+            }
+            .map(|ws| ws.get_name())
+            .unwrap_or_else(|| "Sheet1".to_string());
             let dummy_ref = CellReferenceRC {
-                sheet: self
-                    .workbook
-                    .worksheets
-                    .first()
-                    .map(|ws| ws.get_name())
-                    .unwrap_or_else(|| "Sheet1".to_string()),
+                sheet: context_sheet,
                 row: 1,
                 column: 1,
             };

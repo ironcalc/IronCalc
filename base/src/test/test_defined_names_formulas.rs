@@ -112,3 +112,42 @@ fn sheet_qualified_names() {
     assert_eq!(model._get_text_at(0, 1, 2), "12");
     assert_eq!(model._get_text_at(0, 2, 2), "3");
 }
+// The names used in the formula of a sheet-local name resolve in that sheet
+#[test]
+fn local_name_formulas_resolve_in_their_sheet() {
+    let mut model = new_empty_model();
+    model.add_sheet("Data").unwrap();
+    model.new_defined_name("Rate", None, "1").unwrap();
+    model.new_defined_name("Rate", Some(1), "10").unwrap();
+    model
+        .new_defined_name("DoubleRate", Some(1), "Rate*2")
+        .unwrap();
+    model.new_defined_name("OnlyLocal", Some(1), "7").unwrap();
+    // A local name may depend on a name that exists only in its sheet
+    model
+        .new_defined_name("UsesLocal", Some(1), "OnlyLocal+1")
+        .unwrap();
+    // A workbook name uses the workbook Rate
+    model
+        .new_defined_name("GlobalDouble", None, "Rate*2")
+        .unwrap();
+
+    model._set("Sheet1!A1", "=Data!DoubleRate");
+    model._set("Sheet1!A2", "=Data!UsesLocal");
+    model._set("Sheet1!A3", "=GlobalDouble");
+    model._set("Data!A1", "=DoubleRate");
+    model._set("Data!A2", "=GlobalDouble");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet1!A1"), "20");
+    assert_eq!(model._get_text("Sheet1!A2"), "8");
+    assert_eq!(model._get_text("Sheet1!A3"), "2");
+    assert_eq!(model._get_text("Data!A1"), "20");
+    assert_eq!(model._get_text("Data!A2"), "2");
+
+    // Still true after the sheets are reordered
+    model.move_sheet(1, 0).unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet1!A1"), "20");
+    assert_eq!(model._get_text("Sheet1!A2"), "8");
+    assert_eq!(model._get_text("Data!A1"), "20");
+}
