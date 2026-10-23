@@ -418,6 +418,21 @@ const Workbook = (
     apply(!value);
   };
 
+  // Runs an insert on the model, showing a dialog if it fails (for instance
+  // when it would split a merged cell)
+  const insertRowsOrColumns = (
+    insert: () => void,
+    what: "rows" | "columns",
+  ) => {
+    try {
+      insert();
+    } catch {
+      const title = t(`error_dialog.error_inserting_${what}`);
+      setAlertDialog({ title, message: title });
+    }
+    setRedrawId((id) => id + 1);
+  };
+
   // The one implementation behind the toolbar, the keyboard shortcuts and the
   // host application (through the imperative handle)
   const actions: WorkbookActions = {
@@ -466,6 +481,31 @@ const Workbook = (
         columnEnd,
       );
       setRedrawId((id) => id + 1);
+    }),
+    insertRowsAbove: whenEditable(() => {
+      const { sheet, row, height } = getSelectedArea();
+      insertRowsOrColumns(() => model.insertRows(sheet, row, height), "rows");
+    }),
+    insertRowsBelow: whenEditable(() => {
+      const { sheet, row, height } = getSelectedArea();
+      insertRowsOrColumns(
+        () => model.insertRows(sheet, row + height, height),
+        "rows",
+      );
+    }),
+    insertColumnsLeft: whenEditable(() => {
+      const { sheet, column, width } = getSelectedArea();
+      insertRowsOrColumns(
+        () => model.insertColumns(sheet, column, width),
+        "columns",
+      );
+    }),
+    insertColumnsRight: whenEditable(() => {
+      const { sheet, column, width } = getSelectedArea();
+      insertRowsOrColumns(
+        () => model.insertColumns(sheet, column + width, width),
+        "columns",
+      );
     }),
   };
 
@@ -1084,9 +1124,7 @@ const Workbook = (
           }}
           ref={worksheetRef}
           canEdit={canEdit && canEditFormula}
-          onCut={actions.cut}
-          onCopy={actions.copy}
-          onPaste={actions.paste}
+          actions={actions}
           onEditLink={
             canEdit
               ? (row: number, column: number): void => {

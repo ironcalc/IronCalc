@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
 import { getEditorSize } from "../util";
+import type { WorkbookActions } from "../Workbook/workbookActions";
 import type { LinkHoverCell } from "../WorksheetCanvas/cellLinks";
 import {
   headerColumnWidth,
@@ -48,9 +49,8 @@ const Worksheet = forwardRef(
       workbookState: WorkbookState;
       refresh: () => void;
       canEdit: boolean;
-      onCut: () => void;
-      onCopy: () => void;
-      onPaste: () => void;
+      // Shared with the toolbar, the keyboard and the host application
+      actions: WorkbookActions;
       onEditLink?: (row: number, column: number) => void;
       onDeleteLink?: (row: number, column: number) => void;
     },
@@ -125,8 +125,7 @@ const Worksheet = forwardRef(
       }, 300);
     };
 
-    const { model, workbookState, refresh, canEdit, onCut, onCopy, onPaste } =
-      props;
+    const { model, workbookState, refresh, canEdit, actions } = props;
     const { t } = useTranslation();
     const [clientWidth, clientHeight] = useWindowSize();
 
@@ -602,48 +601,24 @@ const Worksheet = forwardRef(
           }
           column={columnNameFromNumber(model.getSelectedView().column)}
           row={model.getSelectedView().row}
-          onCut={onCut}
-          onCopy={onCopy}
-          onPaste={onPaste}
+          onCut={actions.cut}
+          onCopy={actions.copy}
+          onPaste={actions.paste}
           onInsertColumnLeft={(): void => {
-            const view = model.getSelectedView();
-            try {
-              model.insertColumns(view.sheet, view.column, 1);
-            } catch {
-              setRowColErrorTitle(t("error_dialog.error_inserting_columns"));
-            }
             setCellContextMenuOpen(false);
-            refresh();
+            actions.insertColumnsLeft();
           }}
           onInsertColumnRight={(): void => {
-            const view = model.getSelectedView();
-            try {
-              model.insertColumns(view.sheet, view.range[3] + 1, 1);
-            } catch {
-              setRowColErrorTitle(t("error_dialog.error_inserting_columns"));
-            }
             setCellContextMenuOpen(false);
-            refresh();
+            actions.insertColumnsRight();
           }}
           onInsertRowAbove={(): void => {
-            const view = model.getSelectedView();
-            try {
-              model.insertRows(view.sheet, view.row, 1);
-            } catch {
-              setRowColErrorTitle(t("error_dialog.error_inserting_rows"));
-            }
             setCellContextMenuOpen(false);
-            refresh();
+            actions.insertRowsAbove();
           }}
           onInsertRowBelow={(): void => {
-            const view = model.getSelectedView();
-            try {
-              model.insertRows(view.sheet, view.range[2] + 1, 1);
-            } catch {
-              setRowColErrorTitle(t("error_dialog.error_inserting_rows"));
-            }
             setCellContextMenuOpen(false);
-            refresh();
+            actions.insertRowsBelow();
           }}
           onDeleteColumn={(): void => {
             const view = model.getSelectedView();
@@ -675,34 +650,12 @@ const Worksheet = forwardRef(
               : null
           }
           onInsertColumnsLeft={(): void => {
-            const view = model.getSelectedView();
-            const columnStart = view.range[1];
-            const columnEnd = view.range[3];
-            try {
-              model.insertColumns(
-                view.sheet,
-                view.column,
-                columnEnd - columnStart + 1,
-              );
-            } catch {
-              setRowColErrorTitle(t("error_dialog.error_inserting_columns"));
-            }
             setColHeaderContextMenuOpen(false);
+            actions.insertColumnsLeft();
           }}
           onInsertColumnsRight={(): void => {
-            const view = model.getSelectedView();
-            const columnStart = view.range[1];
-            const columnEnd = view.range[3];
-            try {
-              model.insertColumns(
-                view.sheet,
-                columnEnd + 1,
-                columnEnd - columnStart + 1,
-              );
-            } catch {
-              setRowColErrorTitle(t("error_dialog.error_inserting_columns"));
-            }
             setColHeaderContextMenuOpen(false);
+            actions.insertColumnsRight();
           }}
           onMoveColumnsLeft={(): void => {
             const view = model.getSelectedView();
@@ -817,26 +770,12 @@ const Worksheet = forwardRef(
               : null
           }
           onInsertRowsAbove={(): void => {
-            const view = model.getSelectedView();
-            const rowStart = view.range[0];
-            const rowEnd = view.range[2];
-            try {
-              model.insertRows(view.sheet, view.row, rowEnd - rowStart + 1);
-            } catch {
-              setRowColErrorTitle(t("error_dialog.error_inserting_rows"));
-            }
             setRowHeaderContextMenuOpen(false);
+            actions.insertRowsAbove();
           }}
           onInsertRowsBelow={(): void => {
-            const view = model.getSelectedView();
-            const rowStart = view.range[0];
-            const rowEnd = view.range[2];
-            try {
-              model.insertRows(view.sheet, view.row + 1, rowEnd - rowStart + 1);
-            } catch {
-              setRowColErrorTitle(t("error_dialog.error_inserting_rows"));
-            }
             setRowHeaderContextMenuOpen(false);
+            actions.insertRowsBelow();
           }}
           onMoveRowsUp={(): void => {
             const view = model.getSelectedView();

@@ -120,6 +120,17 @@
       "copy": "Kopieren",
       "paste": "Einfügen"
     },
+    "insert_menu": {
+      "button": "Einfügen",
+      "rows_above_one": "Zeile oben",
+      "rows_above_other": "{{count}} Zeilen oben",
+      "rows_below_one": "Zeile unten",
+      "rows_below_other": "{{count}} Zeilen unten",
+      "columns_left_one": "Spalte links",
+      "columns_left_other": "{{count}} Spalten links",
+      "columns_right_one": "Spalte rechts",
+      "columns_right_other": "{{count}} Spalten rechts"
+    },
     "format_menu": {
       "button": "Format",
       "number": {

@@ -32,4 +32,12 @@ export interface WorkbookActions {
   /** Changes the font size by `delta` points (negative shrinks it). */
   increaseFontSize: (delta: number) => void;
   clearFormatting: () => void;
+  /**
+   * Inserts as many rows (columns) as the selection spans, above (left of)
+   * or below (right of) it.
+   */
+  insertRowsAbove: () => void;
+  insertRowsBelow: () => void;
+  insertColumnsLeft: () => void;
+  insertColumnsRight: () => void;
 }
