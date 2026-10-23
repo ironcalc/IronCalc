@@ -115,6 +115,26 @@ impl<'a> Model<'a> {
         let mut parsed_defined_names = HashMap::new();
 
         for (name, formula, sheet_id) in entries {
+            let local_sheet_index = if let Some(sid) = sheet_id {
+                if let Some(idx) = self.get_sheet_index_by_sheet_id(sid) {
+                    Some(idx)
+                } else {
+                    // Sheet with given sheet_id not found.
+                    continue;
+                }
+            } else {
+                None
+            };
+            // A name local to a sheet is parsed in that sheet, so that the
+            // names it uses resolve to the local ones. Workbook names are
+            // parsed in the first sheet.
+            let context_sheet = match local_sheet_index {
+                Some(index) => self.workbook.worksheets.get(index as usize),
+                None => self.workbook.worksheets.first(),
+            }
+            .map(|ws| ws.get_name())
+            .unwrap_or_else(|| "Sheet1".to_string());
+
             let parsed_defined_name_formula = if let Ok(reference) =
                 ParsedReference::parse_reference_formula(None, &formula, self.locale, |n| {
                     self.get_sheet_index_by_name(n)
@@ -132,12 +152,7 @@ impl<'a> Model<'a> {
                 // Defined-name formulas may carry a leading '='; strip it before parsing.
                 let formula_body = formula.strip_prefix('=').unwrap_or(&formula);
                 let dummy_ref = CellReferenceRC {
-                    sheet: self
-                        .workbook
-                        .worksheets
-                        .first()
-                        .map(|ws| ws.get_name())
-                        .unwrap_or_else(|| "Sheet1".to_string()),
+                    sheet: context_sheet,
                     row: 1,
                     column: 1,
                 };
@@ -154,17 +169,6 @@ impl<'a> Model<'a> {
                     | Node::ParseErrorKind { .. } => ParsedDefinedName::InvalidDefinedNameFormula,
                     node => ParsedDefinedName::Formula(node),
                 }
-            };
-
-            let local_sheet_index = if let Some(sid) = sheet_id {
-                if let Some(idx) = self.get_sheet_index_by_sheet_id(sid) {
-                    Some(idx)
-                } else {
-                    // Sheet with given sheet_id not found.
-                    continue;
-                }
-            } else {
-                None
             };
 
             parsed_defined_names.insert(
