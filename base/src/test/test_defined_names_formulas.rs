@@ -112,6 +112,24 @@ fn sheet_qualified_names() {
     assert_eq!(model._get_text_at(0, 1, 2), "12");
     assert_eq!(model._get_text_at(0, 2, 2), "3");
 }
+
+// A name whose text starts like a cell reference (`Q1_Total`) is a name
+#[test]
+fn qualified_name_starting_like_a_reference() {
+    let mut model = new_empty_model();
+    model.add_sheet("Data").unwrap();
+    model._set("Data!Q1", "77");
+    model.new_defined_name("Q1_Total", None, "100").unwrap();
+    model._set("Sheet1!A1", "=Data!Q1_Total");
+    model._set("Sheet1!A2", "=Data!Q1");
+    model._set("Sheet1!A3", "=SUM(Data!Q1_Total,Data!Q1)");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet1!A1"), "100");
+    assert_eq!(model._get_formula("Sheet1!A1"), "=Data!Q1_Total");
+    assert_eq!(model._get_text("Sheet1!A2"), "77");
+    assert_eq!(model._get_text("Sheet1!A3"), "177");
+}
+
 // The names used in the formula of a sheet-local name resolve in that sheet
 #[test]
 fn local_name_formulas_resolve_in_their_sheet() {
