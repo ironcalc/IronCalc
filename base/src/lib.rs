@@ -49,6 +49,7 @@ pub use crate::constants::ROW_HEIGHT_FACTOR;
 mod actions;
 mod arithmetic;
 mod cast;
+mod comments;
 mod conditional_formatting;
 mod constants;
 mod cut_paste;

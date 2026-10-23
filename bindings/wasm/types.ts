@@ -534,6 +534,15 @@ export type Link =
  * only the formula can change it. */
 export type CellLink = { row: number; column: number; dynamic: boolean } & Link;
 
+/** A cell comment, the kind Excel calls a note. `cell_ref` is the cell in A1
+ * notation, e.g. "C7". */
+export interface Comment {
+  text: string;
+  author_name: string;
+  author_id?: string | null;
+  cell_ref: string;
+}
+
 export interface FmtSettings {
   currency: string;
   currency_format: string;

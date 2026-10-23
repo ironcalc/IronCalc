@@ -1167,11 +1167,14 @@ impl<'a> UserModel<'a> {
             height: row_count,
         })?;
 
+        let comment_diffs = self.deleted_comment_diffs(sheet, row, row_count, true)?;
+
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         self.model.delete_rows(sheet, row, row_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
         diff_list.extend(link_diffs);
+        diff_list.extend(comment_diffs);
         diff_list.push(Diff::DeleteRows {
             sheet,
             row,
@@ -1247,11 +1250,14 @@ impl<'a> UserModel<'a> {
             height: LAST_ROW,
         })?;
 
+        let comment_diffs = self.deleted_comment_diffs(sheet, column, column_count, false)?;
+
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
         self.model.delete_columns(sheet, column, column_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
         diff_list.extend(link_diffs);
+        diff_list.extend(comment_diffs);
         diff_list.push(Diff::DeleteColumns {
             sheet,
             column,

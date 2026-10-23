@@ -8,6 +8,7 @@ mod test_batch_row_column_diff;
 mod test_border;
 mod test_clear_cells;
 mod test_column_style;
+mod test_comments;
 mod test_conditional_formatting;
 mod test_cut_n_paste;
 mod test_defined_names;

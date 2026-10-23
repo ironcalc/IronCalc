@@ -632,6 +632,19 @@ impl<'a> UserModel<'a> {
                         .set_cell_link(*sheet, *row, *column, link.clone())?,
                     None => self.model.delete_cell_link(*sheet, *row, *column)?,
                 },
+                Diff::SetCellComment {
+                    sheet,
+                    row,
+                    column,
+                    old_value,
+                    new_value: _,
+                } => match old_value.as_ref() {
+                    Some(comment) => {
+                        self.model
+                            .put_cell_comment(*sheet, *row, *column, comment.clone())?
+                    }
+                    None => self.model.delete_cell_comment(*sheet, *row, *column)?,
+                },
                 Diff::SetMergedCells {
                     sheet,
                     old_value,
@@ -1082,6 +1095,19 @@ impl<'a> UserModel<'a> {
                         .model
                         .set_cell_link(*sheet, *row, *column, link.clone())?,
                     None => self.model.delete_cell_link(*sheet, *row, *column)?,
+                },
+                Diff::SetCellComment {
+                    sheet,
+                    row,
+                    column,
+                    old_value: _,
+                    new_value,
+                } => match new_value.as_ref() {
+                    Some(comment) => {
+                        self.model
+                            .put_cell_comment(*sheet, *row, *column, comment.clone())?
+                    }
+                    None => self.model.delete_cell_comment(*sheet, *row, *column)?,
                 },
                 Diff::SetMergedCells {
                     sheet,
