@@ -34,6 +34,7 @@ export type {
 export { ToggleButton } from "./components/ToggleButton/ToggleButton";
 export type { TooltipProperties } from "./components/Tooltip/Tooltip";
 export { Tooltip } from "./components/Tooltip/Tooltip";
+export type { WorkbookActions } from "./components/Workbook/workbookActions";
 export type { IronCalcHandle } from "./IronCalc";
 export { darkThemeVariables } from "./theme";
 export { IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo, Model };

@@ -7,7 +7,15 @@ import type {
   WorksheetProperties,
 } from "@ironcalc/wasm";
 import { type Color, getThemeList } from "@ironcalc/wasm";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ForwardedRef,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
@@ -33,6 +41,7 @@ import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
+import type { WorkbookActions } from "./workbookActions";
 import "./workbook.css";
 import { LinkDialog } from "../LinkDialog/LinkDialog";
 import { Alert } from "../Modal";
@@ -47,12 +56,19 @@ function colorToParam(color: Color): string {
   return `[${color[0]}, ${color[1]}]`;
 }
 
-const Workbook = (props: {
+interface WorkbookProperties {
   model: Model;
   workbookState: WorkbookState;
   /** When false, the toolbar is hidden, the formula bar is read-only and all edits are blocked. */
   canEdit?: boolean;
-}) => {
+}
+
+// The ref exposes the `WorkbookActions` so the host application can drive
+// the workbook (see `IronCalcHandle.workbook`).
+const Workbook = (
+  props: WorkbookProperties,
+  ref: ForwardedRef<WorkbookActions>,
+) => {
   const { model, workbookState, canEdit = true } = props;
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -382,6 +398,66 @@ const Workbook = (props: {
     setRedrawId((id) => id + 1);
   };
 
+  // Wraps a mutating action so it is a no-op when the workbook is read-only
+  const whenEditable =
+    <A extends unknown[]>(action: (...args: A) => void) =>
+    (...args: A): void => {
+      if (canEdit) {
+        action(...args);
+      }
+    };
+
+  // Toggles a boolean font property of the selection, based on the style of
+  // the selected cell (the one the toolbar displays)
+  const toggleFontProperty = (
+    property: "b" | "i" | "u" | "strike",
+    apply: (value: boolean) => void,
+  ) => {
+    const { sheet, row, column } = model.getSelectedView();
+    const value = model.getCellStyle(sheet, row, column).style.font[property];
+    apply(!value);
+  };
+
+  // The one implementation behind the toolbar, the keyboard shortcuts and the
+  // host application (through the imperative handle)
+  const actions: WorkbookActions = {
+    refresh: () => {
+      setRedrawId((id) => id + 1);
+    },
+    undo: whenEditable(onUndo),
+    redo: whenEditable(onRedo),
+    toggleBold: whenEditable(() => toggleFontProperty("b", onToggleBold)),
+    toggleItalic: whenEditable(() => toggleFontProperty("i", onToggleItalic)),
+    toggleUnderline: whenEditable(() =>
+      toggleFontProperty("u", onToggleUnderline),
+    ),
+    toggleStrikethrough: whenEditable(() =>
+      toggleFontProperty("strike", onToggleStrike),
+    ),
+    setHorizontalAlignment: whenEditable(onToggleHorizontalAlign),
+    setVerticalAlignment: whenEditable(onToggleVerticalAlign),
+    setWrapText: whenEditable(onToggleWrapText),
+    setNumberFormat: whenEditable(onNumberFormatPicked),
+    setFontSize: whenEditable(onSetFontSize),
+    increaseFontSize: whenEditable(onIncreaseFontSize),
+    clearFormatting: whenEditable(() => {
+      const {
+        sheet,
+        range: [rowStart, columnStart, rowEnd, columnEnd],
+      } = model.getSelectedView();
+      model.rangeClearFormatting(
+        sheet,
+        rowStart,
+        columnStart,
+        rowEnd,
+        columnEnd,
+      );
+      setRedrawId((id) => id + 1);
+    }),
+  };
+
+  useImperativeHandle(ref, () => actions);
+
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
   // the Rust backend
   const { onKeyDown } = useKeyboardNavigation({
@@ -468,21 +544,9 @@ const Workbook = (props: {
       });
       setRedrawId((id) => id + 1);
     },
-    onBold: () => {
-      const { sheet, row, column } = model.getSelectedView();
-      const value = model.getCellStyle(sheet, row, column).style.font.b;
-      onToggleBold(!value);
-    },
-    onItalic: () => {
-      const { sheet, row, column } = model.getSelectedView();
-      const value = model.getCellStyle(sheet, row, column).style.font.i;
-      onToggleItalic(!value);
-    },
-    onUnderline: () => {
-      const { sheet, row, column } = model.getSelectedView();
-      const value = model.getCellStyle(sheet, row, column).style.font.u;
-      onToggleUnderline(!value);
-    },
+    onBold: actions.toggleBold,
+    onItalic: actions.toggleItalic,
+    onUnderline: actions.toggleUnderline,
     onNavigationToEdge: (direction: NavigationKey): void => {
       model.onNavigateToEdgeInDirection(direction);
       setRedrawId((id) => id + 1);
@@ -525,14 +589,8 @@ const Workbook = (props: {
       model.setTopLeftVisibleCell(view.top_row, LAST_COLUMN - 5);
       setRedrawId((id) => id + 1);
     },
-    onUndo: (): void => {
-      model.undo();
-      setRedrawId((id) => id + 1);
-    },
-    onRedo: (): void => {
-      model.redo();
-      setRedrawId((id) => id + 1);
-    },
+    onUndo: actions.undo,
+    onRedo: actions.redo,
     onNextSheet: (): void => {
       const nextSheet = model.getSelectedSheet() + 1;
       if (nextSheet >= model.getWorksheetsProperties().length) {
@@ -867,26 +925,9 @@ const Workbook = (props: {
           onTextColorPicked={onTextColorPicked}
           onFillColorPicked={onFillColorPicked}
           onNumberFormatPicked={onNumberFormatPicked}
-          onClearFormatting={() => {
-            const {
-              sheet,
-              range: [rowStart, columnStart, rowEnd, columnEnd],
-            } = model.getSelectedView();
-            model.rangeClearFormatting(
-              sheet,
-              rowStart,
-              columnStart,
-              rowEnd,
-              columnEnd,
-            );
-            setRedrawId((id) => id + 1);
-          }}
-          onIncreaseFontSize={(delta: number) => {
-            onIncreaseFontSize(delta);
-          }}
-          onSetFontSize={(size: number) => {
-            onSetFontSize(size);
-          }}
+          onClearFormatting={actions.clearFormatting}
+          onIncreaseFontSize={actions.increaseFontSize}
+          onSetFontSize={actions.setFontSize}
           onDownloadPNG={() => {
             // creates a new canvas element in the visible part of the the selected area
             const worksheetCanvas = worksheetRef.current?.getCanvas();
@@ -1230,4 +1271,4 @@ const Workbook = (props: {
   );
 };
 
-export default Workbook;
+export default forwardRef(Workbook);

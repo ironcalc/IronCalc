@@ -112,6 +112,10 @@
       "appearance_light": "Chiaro",
       "appearance_dark": "Scuro"
     },
+    "format_menu": {
+      "button": "Formato",
+      "bold": "Grassetto"
+    },
     "help_menu": {
       "button": "Aiuto",
       "about": "Informazioni su IronCalc",
