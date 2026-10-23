@@ -13,7 +13,7 @@ use crate::{
         util::from_wildcard_to_regex,
     },
     model::Model,
-    number_format::to_precision,
+    number_format::{to_excel_precision_str, to_precision},
 };
 
 /// An argument of a text function that works element by element (LEFT, MID,
@@ -308,7 +308,9 @@ impl<'a> Model<'a> {
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::String(value) => result = format!("{result}{value}"),
-                CalcResult::Number(value) => result = format!("{result}{value}"),
+                CalcResult::Number(value) => {
+                    result = format!("{result}{}", to_excel_precision_str(value))
+                }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                 CalcResult::Boolean(value) => {
                     if value {
@@ -336,7 +338,9 @@ impl<'a> Model<'a> {
                                 CalcResult::String(value) => {
                                     result = format!("{result}{value}");
                                 }
-                                CalcResult::Number(value) => result = format!("{result}{value}"),
+                                CalcResult::Number(value) => {
+                                    result = format!("{result}{}", to_excel_precision_str(value))
+                                }
                                 CalcResult::Boolean(value) => {
                                     if value {
                                         result = format!("{result}TRUE");
@@ -358,7 +362,16 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // CONCAT accepts an array of values, one text piece per cell
+                CalcResult::Array(array) => {
+                    for value in array.iter().flatten() {
+                        match array_node_to_string(value) {
+                            Ok(text) => result.push_str(&text),
+                            Err(error) => return CalcResult::new_error(error, cell, String::new()),
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
@@ -796,7 +809,8 @@ impl<'a> Model<'a> {
             Ok(s) => s,
             Err(error) => return error,
         };
-        let instance_num = if arg_count > 2 {
+        // A left-out instance_num (TEXTAFTER(t,"-",,1)) is the first one
+        let instance_num = if arg_count > 2 && !matches!(args[2], Node::EmptyArgKind) {
             match self.get_number(&args[2], cell) {
                 Ok(f) => f.floor() as i32,
                 Err(s) => return s,
@@ -901,7 +915,8 @@ impl<'a> Model<'a> {
             Ok(s) => s,
             Err(error) => return error,
         };
-        let instance_num = if arg_count > 2 {
+        // A left-out instance_num (TEXTAFTER(t,"-",,1)) is the first one
+        let instance_num = if arg_count > 2 && !matches!(args[2], Node::EmptyArgKind) {
             match self.get_number(&args[2], cell) {
                 Ok(f) => f.floor() as i32,
                 Err(s) => return s,
@@ -1010,7 +1025,7 @@ impl<'a> Model<'a> {
         let mut values = Vec::new();
         for arg in &args[2..] {
             match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => values.push(format!("{value}")),
+                CalcResult::Number(value) => values.push(to_excel_precision_str(value)),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -1038,7 +1053,7 @@ impl<'a> Model<'a> {
                                 column,
                             }) {
                                 CalcResult::Number(value) => {
-                                    values.push(format!("{value}"));
+                                    values.push(to_excel_precision_str(value));
                                 }
                                 CalcResult::String(value) => values.push(value),
                                 CalcResult::Boolean(value) => {
@@ -1081,7 +1096,16 @@ impl<'a> Model<'a> {
                     }
                 }
                 CalcResult::EmptyArg => {}
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // TEXTJOIN accepts an array of values, one text piece per cell
+                CalcResult::Array(array) => {
+                    for value in array.iter().flatten() {
+                        match array_node_to_string(value) {
+                            Ok(text) => values.push(text),
+                            Err(error) => return CalcResult::new_error(error, cell, String::new()),
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
@@ -1089,6 +1113,10 @@ impl<'a> Model<'a> {
                     }
                 }
             };
+        }
+        // Leaving out empty values leaves out empty text ("") too
+        if ignore_empty {
+            values.retain(|v| !v.is_empty());
         }
         let result = values.join(&delimiter);
         CalcResult::String(result)
@@ -1224,18 +1252,39 @@ impl<'a> Model<'a> {
         }
     }
 
-    // VALUETOTEXT(value)
+    // VALUETOTEXT(value, [format])
     pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
+        if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.get_string(&args[0], cell) {
+        // format 1 (strict) puts text in quotes, as a formula would show it
+        let strict = match args.get(1) {
+            None | Some(Node::EmptyArgKind) => false,
+            Some(node) => match self.get_number(node, cell) {
+                Ok(f) if f.trunc() == 0.0 => false,
+                Ok(f) if f.trunc() == 1.0 => true,
+                Ok(_) => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "format must be 0 or 1".to_string(),
+                    )
+                }
+                Err(e) => return e,
+            },
+        };
+        let value = self.evaluate_node_in_context(&args[0], cell);
+        let is_text = matches!(value, CalcResult::String(_));
+        let text = match self.cast_to_string(value, cell) {
             Ok(s) => s,
             Err(error) => match error {
                 CalcResult::Error { error, .. } => error.to_string(),
                 _ => "".to_string(),
             },
         };
+        if strict && is_text {
+            return CalcResult::String(format!("\"{}\"", text.replace('"', "\"\"")));
+        }
         CalcResult::String(text)
     }
 }
