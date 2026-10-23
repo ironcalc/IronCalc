@@ -13,6 +13,7 @@ export type { IconButtonProperties } from "./components/Button/IconButton";
 export { IconButton } from "./components/Button/IconButton";
 export type { CheckboxProperties } from "./components/Checkbox/Checkbox";
 export { Checkbox } from "./components/Checkbox/Checkbox";
+export { NumberFormats } from "./components/FormatMenu/formatUtil";
 export type { InputProperties, InputSize } from "./components/Input/Input";
 export { Input } from "./components/Input/Input";
 export type { MenuProperties } from "./components/Menu/Menu";
@@ -34,6 +35,7 @@ export type {
 export { ToggleButton } from "./components/ToggleButton/ToggleButton";
 export type { TooltipProperties } from "./components/Tooltip/Tooltip";
 export { Tooltip } from "./components/Tooltip/Tooltip";
+export type { WorkbookActions } from "./components/Workbook/workbookActions";
 export type { IronCalcHandle } from "./IronCalc";
 export { darkThemeVariables } from "./theme";
 export { IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo, Model };

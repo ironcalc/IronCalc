@@ -4,9 +4,11 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
+  useRef,
 } from "react";
 import { I18nextProvider } from "react-i18next";
 import Workbook from "./components/Workbook/Workbook.tsx";
+import type { WorkbookActions } from "./components/Workbook/workbookActions";
 import { WorkbookState } from "./components/workbookState.ts";
 import i18n from "./i18n";
 import "./theme/theme.css";
@@ -27,11 +29,13 @@ interface IronCalcProperties {
 
 export interface IronCalcHandle {
   setLanguage: (language: string) => void;
+  readonly workbook: WorkbookActions | null;
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
   ({ themeVariables, model, rootContainer, canEdit = true }, ref) => {
     const root = rootContainer ?? document.body;
+    const workbookRef = useRef<WorkbookActions>(null);
     useEffect(() => {
       if (root.classList.contains("ic-root")) {
         console.warn("rootContainer already in use:", root);
@@ -55,12 +59,17 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
           model.setLanguage(lang);
         }
       },
+      // A getter so the host always sees the actions of the latest render
+      get workbook() {
+        return workbookRef.current;
+      },
     }));
 
     return (
       <div className="ic-widget">
         <I18nextProvider i18n={i18n}>
           <Workbook
+            ref={workbookRef}
             model={model}
             workbookState={new WorkbookState()}
             canEdit={canEdit}

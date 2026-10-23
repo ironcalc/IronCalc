@@ -267,6 +267,7 @@ function App() {
       >
         <FileBar
           model={model}
+          ironCalcRef={ironCalcRef}
           onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
             const blob = await uploadFile(arrayBuffer, fileName);
 
