@@ -114,6 +114,7 @@ export function FileBar(properties: {
           />
           <FormatMenu
             ironCalcRef={properties.ironCalcRef}
+            model={properties.model}
             isReadOnly={properties.isReadOnly}
             isOpen={openMenu === "format"}
             onOpen={() => setOpenMenu("format")}

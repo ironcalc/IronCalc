@@ -114,7 +114,41 @@
     },
     "format_menu": {
       "button": "Format",
-      "bold": "Gras"
+      "number": {
+        "title": "Nombre",
+        "auto": "Automatique",
+        "number": "Nombre",
+        "percentage": "Pourcentage",
+        "percentage_example": "10 %",
+        "currency_eur": "Euro (EUR)",
+        "currency_usd": "Dollar (USD)",
+        "currency_gbp": "Livre sterling (GBP)",
+        "date_short": "Date courte",
+        "date_long": "Date longue"
+      },
+      "text": {
+        "title": "Texte",
+        "bold": "Gras",
+        "italic": "Italique",
+        "underline": "Souligné",
+        "strikethrough": "Barré"
+      },
+      "alignment": {
+        "title": "Alignement",
+        "left": "Aligner à gauche",
+        "center": "Centrer",
+        "right": "Aligner à droite",
+        "vertical_top": "Aligner en haut",
+        "vertical_center": "Aligner au milieu",
+        "vertical_bottom": "Aligner en bas"
+      },
+      "wrap_text": "Renvoyer à la ligne",
+      "font_size": {
+        "title": "Taille de la police",
+        "increase": "Augmenter la taille de la police",
+        "decrease": "Diminuer la taille de la police"
+      },
+      "clear_formatting": "Effacer la mise en forme"
     },
     "help_menu": {
       "button": "Aide",
