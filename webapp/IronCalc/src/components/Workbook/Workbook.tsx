@@ -426,6 +426,19 @@ const Workbook = (
     },
     undo: whenEditable(onUndo),
     redo: whenEditable(onRedo),
+    // Copy and cut go through the browser's clipboard events handled by the
+    // root element below, so the workbook needs the focus and a selection
+    copy: () => {
+      focusWorkbook();
+      document.execCommand("copy");
+    },
+    cut: whenEditable(() => {
+      focusWorkbook();
+      document.execCommand("cut");
+    }),
+    paste: whenEditable(() => {
+      handlePaste();
+    }),
     toggleBold: whenEditable(() => toggleFontProperty("b", onToggleBold)),
     toggleItalic: whenEditable(() => toggleFontProperty("i", onToggleItalic)),
     toggleUnderline: whenEditable(() =>
@@ -1071,15 +1084,9 @@ const Workbook = (
           }}
           ref={worksheetRef}
           canEdit={canEdit && canEditFormula}
-          onCut={(): void => {
-            focusWorkbook();
-            document.execCommand("cut");
-          }}
-          onCopy={(): void => {
-            focusWorkbook();
-            document.execCommand("copy");
-          }}
-          onPaste={handlePaste}
+          onCut={actions.cut}
+          onCopy={actions.copy}
+          onPaste={actions.paste}
           onEditLink={
             canEdit
               ? (row: number, column: number): void => {

@@ -8,6 +8,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
+import { EditMenu } from "./Navigation/EditMenu";
 import { FileMenu } from "./Navigation/FileMenu";
 import { FormatMenu } from "./Navigation/FormatMenu";
 import { HelpMenu } from "./Navigation/HelpMenu";
@@ -22,7 +23,7 @@ import { WorkbookTitle } from "./WorkbookTitle";
 
 import "./file-bar.css";
 
-type OpenMenu = "file" | "format" | "help" | null;
+type OpenMenu = "file" | "edit" | "format" | "help" | null;
 
 export function FileBar(properties: {
   model: Model;
@@ -111,6 +112,15 @@ export function FileBar(properties: {
             onLanguageChange={properties.onLanguageChange}
             themeMode={properties.themeMode}
             onThemeModeChange={properties.onThemeModeChange}
+          />
+          <EditMenu
+            ironCalcRef={properties.ironCalcRef}
+            model={properties.model}
+            isReadOnly={properties.isReadOnly}
+            isOpen={openMenu === "edit"}
+            onOpen={() => setOpenMenu("edit")}
+            onClose={closeMenus}
+            onHover={() => openMenu && setOpenMenu("edit")}
           />
           <FormatMenu
             ironCalcRef={properties.ironCalcRef}

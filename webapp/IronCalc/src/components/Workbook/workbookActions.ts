@@ -14,6 +14,11 @@ export interface WorkbookActions {
   refresh: () => void;
   undo: () => void;
   redo: () => void;
+  /** Copies the selection to the clipboard (also in read-only mode). */
+  copy: () => void;
+  cut: () => void;
+  /** Pastes from the clipboard; needs to run from a user gesture. */
+  paste: () => void;
   /** Toggles bold on the selection, based on the selected cell's style. */
   toggleBold: () => void;
   toggleItalic: () => void;
