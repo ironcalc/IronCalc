@@ -1,9 +1,10 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
-import { Check, SquareMousePointer, Tag } from "lucide-react";
+import { Check, EyeOff, SquareMousePointer, Tag } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
+import { Checkbox } from "../../Checkbox/Checkbox";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { Textarea } from "../../Textarea/Textarea";
@@ -16,12 +17,23 @@ export interface SaveError {
   formulaError: string;
 }
 
+// Excel allows at most 255 characters in a defined name comment
+export const MAX_COMMENT_LENGTH = 255;
+
 interface EditNamedRangeProps {
   name: string;
   scope: string;
   formula: string;
+  comment: string;
+  hidden: boolean;
   model: Model;
-  onSave: (name: string, scope: string, formula: string) => SaveError;
+  onSave: (
+    name: string,
+    scope: string,
+    formula: string,
+    hidden: boolean,
+    comment: string,
+  ) => SaveError;
   onCancel: () => void;
   editingDefinedName: DefinedName | null;
 }
@@ -46,6 +58,8 @@ const EditNamedRange = ({
   name: initialName,
   scope: initialScope,
   formula: initialFormula,
+  comment: initialComment,
+  hidden: initialHidden,
   onSave,
   onCancel,
   editingDefinedName,
@@ -84,6 +98,8 @@ const EditNamedRange = ({
   const scope =
     worksheets.find((s) => s.sheet_id === scopeSheetId)?.name ?? "[Global]";
   const [formula, setFormula] = useState(initialFormula);
+  const [comment, setComment] = useState(initialComment);
+  const [hidden, setHidden] = useState(initialHidden);
   const [nameError, setNameError] = useState<string>("");
   const [formulaError, setFormulaError] = useState<string>("");
 
@@ -124,7 +140,7 @@ const EditNamedRange = ({
     if (hasAnyError) {
       return;
     }
-    const error = onSave(name.trim(), scope, formula);
+    const error = onSave(name.trim(), scope, formula, hidden, comment);
     if (error.nameError) {
       setNameError(error.nameError);
     }
@@ -145,9 +161,15 @@ const EditNamedRange = ({
     // biome-ignore lint/a11y/noStaticElementInteractions: container captures Cmd/Ctrl+Enter shortcut bubbling from child inputs
     <div className="ic-edit-range-container" onKeyDown={handleKeyDown}>
       <div className="ic-edit-range-content-area">
-        <div className="ic-edit-range-header-box">
+        <div
+          className={
+            hidden
+              ? "ic-edit-range-header-box ic-edit-range-header-box--hidden"
+              : "ic-edit-range-header-box"
+          }
+        >
           <div className="ic-edit-range-header-icon">
-            <Tag />
+            {hidden ? <EyeOff /> : <Tag />}
           </div>
           <span className="ic-edit-range-header-box-text">
             {name || t("name_manager_dialog.new_named_range")}
@@ -256,6 +278,29 @@ const EditNamedRange = ({
               </Tooltip>
             }
           />
+          <Textarea
+            label={t("name_manager_dialog.comment_label")}
+            placeholder={t("name_manager_dialog.enter_comment")}
+            value={comment}
+            maxLength={MAX_COMMENT_LENGTH}
+            onChange={(e) => setComment(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+        </div>
+        <div className="ic-edit-range-styled-box ic-edit-range-advanced-section">
+          <div className="ic-edit-range-section-title">
+            {t("name_manager_dialog.advanced")}
+          </div>
+          <div className="ic-edit-range-hidden-field">
+            <Checkbox
+              checked={hidden}
+              onChange={setHidden}
+              label={t("name_manager_dialog.hide_name")}
+            />
+            <p className="ic-edit-range-hidden-helper">
+              {t("name_manager_dialog.hide_name_helper")}
+            </p>
+          </div>
         </div>
       </div>
       <div className="ic-edit-range-footer">

@@ -136,6 +136,21 @@
   overflow-wrap: break-word;
 }
 
+/* Hidden names stay in the manager (so they can be edited or unhidden)
+   but are greyed out and marked with the eye-off icon */
+.ic-named-ranges-list-item--hidden .ic-named-ranges-name-text,
+.ic-named-ranges-list-item--hidden .ic-named-ranges-scope-text {
+  color: var(--palette-grey-500);
+}
+
+.ic-named-ranges-hidden-icon {
+  width: 12px;
+  height: 12px;
+  vertical-align: -1px;
+  margin-right: 4px;
+  color: var(--palette-grey-500);
+}
+
 .ic-named-ranges-icons-wrapper {
   display: flex;
   align-items: center;
