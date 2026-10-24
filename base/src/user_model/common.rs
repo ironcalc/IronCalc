@@ -2127,18 +2127,19 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
-    /// Returns the list of defined names
-    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String)> {
+    /// Returns the list of defined names as `(name, scope, formula, hidden)`
+    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String, bool)> {
         self.model.get_defined_name_list()
     }
 
     /// Delete an existing defined name
     pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
-        let old_value = self.model.get_defined_name_formula(name, scope)?;
+        let defined_name = self.model.get_defined_name(name, scope)?;
         let diff_list = vec![Diff::DeleteDefinedName {
             name: name.to_string(),
             scope,
-            old_value,
+            old_value: defined_name.formula.clone(),
+            old_hidden: defined_name.hidden,
         }];
         self.push_diff_list(diff_list);
         self.model.delete_defined_name(name, scope)?;
@@ -2146,14 +2147,16 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
-    /// Create a new defined name
+    /// Create a new defined name. A hidden name works like any other but is
+    /// not meant to be shown in the UI.
     pub fn new_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,
+        hidden: bool,
     ) -> Result<(), String> {
-        self.model.new_defined_name(name, scope, formula)?;
+        self.model.new_defined_name(name, scope, formula, hidden)?;
         // Diffs store the internal (English) formula so undo/redo replays
         // correctly regardless of the active language at replay time. A
         // just-created name is guaranteed to be retrievable, so propagate any
@@ -2163,6 +2166,7 @@ impl<'a> UserModel<'a> {
             name: name.to_string(),
             scope,
             value,
+            hidden,
         }];
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
@@ -2177,15 +2181,24 @@ impl<'a> UserModel<'a> {
         new_name: &str,
         new_scope: Option<u32>,
         new_formula: &str,
+        new_hidden: bool,
     ) -> Result<(), String> {
         // Both formulas in the diff are stored internally (in English) so
         // undo/redo replays correctly regardless of the active language.
-        let old_formula = self
+        let old_defined_name = self
             .model
-            .get_defined_name_formula(name, scope)
+            .get_defined_name(name, scope)
             .map_err(|_| "General: Failed to get old name")?;
-        self.model
-            .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
+        let old_formula = old_defined_name.formula.clone();
+        let old_hidden = old_defined_name.hidden;
+        self.model.update_defined_name(
+            name,
+            scope,
+            new_name,
+            new_scope,
+            new_formula,
+            new_hidden,
+        )?;
         // Read back the canonical (English) formula that was just stored so the
         // diff stays canonical; a successful update guarantees it is retrievable.
         let new_formula_internal = self.model.get_defined_name_formula(new_name, new_scope)?;
@@ -2193,9 +2206,11 @@ impl<'a> UserModel<'a> {
             name: name.to_string(),
             scope,
             old_formula,
+            old_hidden,
             new_name: new_name.to_string(),
             new_scope,
             new_formula: new_formula_internal,
+            new_hidden,
         }];
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();

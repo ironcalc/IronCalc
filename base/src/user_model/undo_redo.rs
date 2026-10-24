@@ -368,6 +368,7 @@ impl<'a> UserModel<'a> {
                     name,
                     scope,
                     value: _,
+                    hidden: _,
                 } => {
                     self.model.delete_defined_name(name, *scope)?;
                 }
@@ -375,16 +376,20 @@ impl<'a> UserModel<'a> {
                     name,
                     scope,
                     old_value,
+                    old_hidden,
                 } => {
-                    self.model.new_defined_name(name, *scope, old_value)?;
+                    self.model
+                        .new_defined_name(name, *scope, old_value, *old_hidden)?;
                 }
                 Diff::UpdateDefinedName {
                     name,
                     scope,
                     old_formula,
+                    old_hidden,
                     new_name,
                     new_scope,
                     new_formula: _,
+                    new_hidden: _,
                 } => {
                     self.model.update_defined_name(
                         new_name,
@@ -392,6 +397,7 @@ impl<'a> UserModel<'a> {
                         name,
                         *scope,
                         old_formula,
+                        *old_hidden,
                     )?;
                 }
                 Diff::SetSheetState {
@@ -881,27 +887,34 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.workbook.theme = *new_value.clone();
                 }
-                Diff::CreateDefinedName { name, scope, value } => {
-                    self.model.new_defined_name(name, *scope, value)?
-                }
+                Diff::CreateDefinedName {
+                    name,
+                    scope,
+                    value,
+                    hidden,
+                } => self.model.new_defined_name(name, *scope, value, *hidden)?,
                 Diff::DeleteDefinedName {
                     name,
                     scope,
                     old_value: _,
+                    old_hidden: _,
                 } => self.model.delete_defined_name(name, *scope)?,
                 Diff::UpdateDefinedName {
                     name,
                     scope,
                     old_formula: _,
+                    old_hidden: _,
                     new_name,
                     new_scope,
                     new_formula,
+                    new_hidden,
                 } => self.model.update_defined_name(
                     name,
                     *scope,
                     new_name,
                     *new_scope,
                     new_formula,
+                    *new_hidden,
                 )?,
                 Diff::SetSheetState {
                     index,

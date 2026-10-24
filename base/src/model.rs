@@ -2989,38 +2989,56 @@ impl<'a> Model<'a> {
         Ok(None)
     }
 
+    /// Returns the defined name with `name` and `scope` (`None` is global,
+    /// `Some(index)` is local to the sheet with that index).
+    pub(crate) fn get_defined_name(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+    ) -> Result<&DefinedName, String> {
+        let name_upper = name.to_uppercase();
+        let sheet_id = match scope {
+            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
+            None => None,
+        };
+        self.workbook
+            .defined_names
+            .iter()
+            .find(|df| df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id)
+            .ok_or_else(|| "Defined name not found".to_string())
+    }
+
     // Returns the formula for a defined name
     pub(crate) fn get_defined_name_formula(
         &self,
         name: &str,
         scope: Option<u32>,
     ) -> Result<String, String> {
-        let name_upper = name.to_uppercase();
-        let defined_names = &self.workbook.defined_names;
-        let sheet_id = match scope {
-            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
-            None => None,
-        };
-        for df in defined_names {
-            if df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id {
-                return Ok(df.formula.clone());
-            }
-        }
-        Err("Defined name not found".to_string())
+        Ok(self.get_defined_name(name, scope)?.formula.clone())
     }
 
-    /// Returns the list of defined names as `(name, scope, formula)`.
+    /// Returns the list of defined names as `(name, scope, formula, hidden)`.
     ///
     /// Formulas are stored internally in English; they are translated into the
     /// active language/locale for display.
-    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String)> {
+    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String, bool)> {
         let context = self.defined_name_context();
+        let sheet_ids: Vec<u32> = self
+            .workbook
+            .worksheets
+            .iter()
+            .map(|s| s.sheet_id)
+            .collect();
         self.workbook
-            .get_defined_names_with_scope()
-            .into_iter()
-            .map(|(name, scope, formula)| {
-                let formula = self.internal_formula_to_display(&formula, &context);
-                (name, scope, formula)
+            .defined_names
+            .iter()
+            .map(|dn| {
+                let scope = dn
+                    .sheet_id
+                    .and_then(|sheet_id| sheet_ids.iter().position(|&id| id == sheet_id))
+                    .map(|pos| pos as u32);
+                let formula = self.internal_formula_to_display(&dn.formula, &context);
+                (dn.name.clone(), scope, formula, dn.hidden)
             })
             .collect()
     }
@@ -3631,11 +3649,13 @@ impl<'a> Model<'a> {
 
     /// Adds a new defined name.
     /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
+    /// A hidden name works like any other but is not meant to be shown in the UI.
     pub fn new_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,
+        hidden: bool,
     ) -> Result<(), String> {
         let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
         // Defined-name formulas are stored internally in English so they keep
@@ -3646,6 +3666,7 @@ impl<'a> Model<'a> {
             name: name.to_string(),
             formula: internal_formula,
             sheet_id,
+            hidden,
         });
         self.reset_parsed_structures();
 
@@ -3765,6 +3786,7 @@ impl<'a> Model<'a> {
         new_name: &str,
         new_scope: Option<u32>,
         new_formula: &str,
+        new_hidden: bool,
     ) -> Result<(), String> {
         if !is_valid_identifier(new_name) {
             return Err("Name: Invalid defined name".to_string());
@@ -3838,6 +3860,7 @@ impl<'a> Model<'a> {
                 df.name = new_name.to_string();
                 df.sheet_id = new_sheet_id;
                 df.formula = internal_formula;
+                df.hidden = new_hidden;
                 self.reset_parsed_structures();
             }
             Ok(())

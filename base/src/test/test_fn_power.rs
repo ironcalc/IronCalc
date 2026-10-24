@@ -219,6 +219,7 @@ fn inside_a_lambda() {
             "gelu",
             None,
             "=LAMBDA(x, 0.5*x*(1 + TANH(SQRT(2/PI()) * (x + 0.044715 * POWER(x,3)))))",
+            false,
         )
         .unwrap();
     model._set("A1", "1");

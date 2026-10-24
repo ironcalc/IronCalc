@@ -62,10 +62,13 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
             }
             None => None,
         };
+        // `hidden` is an xsd:boolean: "1"/"true" or "0"/"false", default false
+        let hidden = matches!(node.attribute("hidden"), Some("1") | Some("true"));
         defined_names.push(DefinedName {
             name,
             formula,
             sheet_id,
+            hidden,
         })
     }
     // read the relationships file

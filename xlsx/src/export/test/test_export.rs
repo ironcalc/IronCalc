@@ -333,13 +333,14 @@ fn test_existing_file() {
 fn test_defined_name_lambda_exports_excel_prefixes() {
     let mut model = new_empty_model();
     model
-        .new_defined_name("cal_year", None, "Sheet1!$A$1")
+        .new_defined_name("cal_year", None, "Sheet1!$A$1", false)
         .unwrap();
     model
         .new_defined_name(
             "month_start",
             None,
             "LAMBDA(mo,LET(anchor,DATE(cal_year,mo,1),anchor+1))",
+            false,
         )
         .unwrap();
     model.set_user_input(0, 1, 1, "2024".to_string()).unwrap();

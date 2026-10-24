@@ -175,7 +175,7 @@ fn cf_invalid_formula_is_rejected() {
 fn defined_name_lambda_entered_in_english_survives_switch_to_spanish() {
     let mut model = new_empty_model();
     model
-        .new_defined_name("MyIf", None, "=LAMBDA(x, IF(x>0, 1, 2))")
+        .new_defined_name("MyIf", None, "=LAMBDA(x, IF(x>0, 1, 2))", false)
         .unwrap();
     model._set("A1", "=MyIf(5)");
     model.evaluate();
@@ -199,7 +199,7 @@ fn defined_name_lambda_entered_in_english_survives_switch_to_spanish() {
 
     // An edit reparses the defined names; the English form must still parse.
     model
-        .new_defined_name("Other", None, "Sheet1!$Z$1")
+        .new_defined_name("Other", None, "Sheet1!$Z$1", false)
         .unwrap();
     model.evaluate();
     assert_eq!(
@@ -215,7 +215,7 @@ fn defined_name_lambda_entered_in_spanish_is_stored_in_english() {
     let mut model = new_empty_model();
     model.set_language("es").unwrap();
     model
-        .new_defined_name("MiSi", None, "=LAMBDA(x, SI(x>0, 1, 2))")
+        .new_defined_name("MiSi", None, "=LAMBDA(x, SI(x>0, 1, 2))", false)
         .unwrap();
     model._set("A1", "=MiSi(5)");
     model.evaluate();

@@ -553,13 +553,16 @@ impl<'a> UserModel<'a> {
                 selected_column,
             );
             for (dn_name, dn_scope, old_formula, new_formula) in dn_updates {
+                let hidden = self.model.get_defined_name(&dn_name, dn_scope)?.hidden;
                 diff_list.push(Diff::UpdateDefinedName {
                     name: dn_name.clone(),
                     scope: dn_scope,
                     old_formula: old_formula.clone(),
+                    old_hidden: hidden,
                     new_name: dn_name.clone(),
                     new_scope: dn_scope,
                     new_formula: new_formula.clone(),
+                    new_hidden: hidden,
                 });
                 self.model.update_defined_name(
                     &dn_name,
@@ -567,6 +570,7 @@ impl<'a> UserModel<'a> {
                     &dn_name,
                     dn_scope,
                     &new_formula,
+                    hidden,
                 )?;
             }
             // Update conditional formatting ranges and formula references.

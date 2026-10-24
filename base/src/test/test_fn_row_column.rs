@@ -129,6 +129,7 @@ fn inside_a_lambda() {
             "Last_Non_Empty_Row",
             None,
             "=LAMBDA(range, SUMPRODUCT(MAX((range<>\"\")*ROW(range))))",
+            false,
         )
         .unwrap();
     model
@@ -136,6 +137,7 @@ fn inside_a_lambda() {
             "Last_Non_Empty_Column",
             None,
             "=LAMBDA(range, SUMPRODUCT(MAX((range<>\"\")*COLUMN(range))))",
+            false,
         )
         .unwrap();
     model._set("C1", "Prompt");
