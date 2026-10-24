@@ -1018,7 +1018,7 @@ impl UserModel {
 
   // Defined names
 
-  /// Returns the list of defined names as [{name, scope, formula, hidden}].
+  /// Returns the list of defined names as [{name, scope, formula, hidden, comment}].
   /// `scope` is omitted for globally scoped names.
   #[napi(ts_return_type = "Array<DefinedName>")]
   pub fn get_defined_name_list<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
@@ -1026,11 +1026,12 @@ impl UserModel {
       .model
       .get_defined_name_list()
       .into_iter()
-      .map(|(name, scope, formula, hidden)| DefinedName {
+      .map(|(name, scope, formula, hidden, comment)| DefinedName {
         name,
         scope,
         formula,
         hidden,
+        comment,
       })
       .collect();
     env.to_js_value(&data).map_err(to_js_error)
@@ -1038,6 +1039,7 @@ impl UserModel {
 
   /// Creates a new defined name. `scope` is a sheet index or null for global scope.
   /// A hidden name (`hidden` defaults to false) works like any other but is not shown in the UI.
+  /// The comment is free text of at most 255 characters (defaults to none).
   #[napi]
   pub fn new_defined_name(
     &mut self,
@@ -1045,14 +1047,22 @@ impl UserModel {
     scope: Option<u32>,
     formula: String,
     hidden: Option<bool>,
+    comment: Option<String>,
   ) -> Result<()> {
     self
       .model
-      .new_defined_name(&name, scope, &formula, hidden.unwrap_or(false))
+      .new_defined_name(
+        &name,
+        scope,
+        &formula,
+        hidden.unwrap_or(false),
+        comment.as_deref().unwrap_or(""),
+      )
       .map_err(to_js_error)
   }
 
   #[napi]
+  #[allow(clippy::too_many_arguments)]
   pub fn update_defined_name(
     &mut self,
     name: String,
@@ -1061,10 +1071,19 @@ impl UserModel {
     new_scope: Option<u32>,
     new_formula: String,
     new_hidden: bool,
+    new_comment: String,
   ) -> Result<()> {
     self
       .model
-      .update_defined_name(&name, scope, &new_name, new_scope, &new_formula, new_hidden)
+      .update_defined_name(
+        &name,
+        scope,
+        &new_name,
+        new_scope,
+        &new_formula,
+        new_hidden,
+        &new_comment,
+      )
       .map_err(to_js_error)
   }
 

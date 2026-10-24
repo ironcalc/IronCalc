@@ -132,6 +132,8 @@ pub struct DefinedName {
     pub formula: String,
     pub sheet_id: Option<u32>,
     pub hidden: bool,
+    /// Free text describing the name, at most 255 characters. Empty means no comment.
+    pub comment: String,
 }
 
 /// * state:

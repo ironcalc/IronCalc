@@ -176,10 +176,10 @@ fn inside_a_lambda() {
         .new_defined_name(
             "score",
             None,
-            "=LAMBDA(left_char, right_char, IF((left_char = \"\") + (right_char = \"\"), \"\", IFERROR(MAX(FILTER(Sheet2!$D:$D, (left_char = Sheet2!$A:$A) * (right_char = Sheet2!$B:$B), \"\")), \"\")))", false,)
+            "=LAMBDA(left_char, right_char, IF((left_char = \"\") + (right_char = \"\"), \"\", IFERROR(MAX(FILTER(Sheet2!$D:$D, (left_char = Sheet2!$A:$A) * (right_char = Sheet2!$B:$B), \"\")), \"\")))", false, "",)
         .unwrap();
     model
-        .new_defined_name("biggest", None, "=LAMBDA(x, MAX(x))", false)
+        .new_defined_name("biggest", None, "=LAMBDA(x, MAX(x))", false, "")
         .unwrap();
     model._set("A1", "h");
     model._set("B1", "e");
@@ -239,16 +239,16 @@ fn defined_names() {
     model._set("L1", "10");
     model._set("L2", "20");
     model
-        .new_defined_name("TextCell", None, "Sheet1!$K$1", false)
+        .new_defined_name("TextCell", None, "Sheet1!$K$1", false, "")
         .unwrap();
     model
-        .new_defined_name("NumCell", None, "Sheet1!$K$2", false)
+        .new_defined_name("NumCell", None, "Sheet1!$K$2", false, "")
         .unwrap();
     model
-        .new_defined_name("NumCells", None, "Sheet1!$L$1:$L$2", false)
+        .new_defined_name("NumCells", None, "Sheet1!$L$1:$L$2", false, "")
         .unwrap();
     model
-        .new_defined_name("LocalText", Some(0), "Sheet1!$K$1", false)
+        .new_defined_name("LocalText", Some(0), "Sheet1!$K$1", false, "")
         .unwrap();
     model._set("A1", "=MAX(TextCell)");
     model._set("A2", "=MIN(TextCell)");

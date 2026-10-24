@@ -430,6 +430,7 @@ impl<'a> Model<'a> {
                 formula,
                 sheet_id: Some(new_sheet_id),
                 hidden: defined_name.hidden,
+                comment: defined_name.comment.clone(),
             });
         }
         self.workbook.defined_names.extend(new_defined_names);
@@ -511,6 +512,7 @@ impl<'a> Model<'a> {
                 formula,
                 sheet_id: defined_name.sheet_id,
                 hidden: defined_name.hidden,
+                comment: defined_name.comment.clone(),
             });
         }
         self.workbook.defined_names = defined_names;
@@ -830,7 +832,7 @@ mod tests {
         let mut model = new_empty_model();
         model.set_user_input(0, 1, 1, "5".to_string()).unwrap();
         model
-            .new_defined_name("local_name", Some(0), "Sheet1!$A$1", false)
+            .new_defined_name("local_name", Some(0), "Sheet1!$A$1", false, "")
             .unwrap();
         model.evaluate();
 
@@ -840,14 +842,14 @@ mod tests {
         let names = model.get_defined_name_list();
         let copy = names
             .iter()
-            .find(|(name, scope, _, _)| name == "local_name" && *scope == Some(new_index))
+            .find(|(name, scope, ..)| name == "local_name" && *scope == Some(new_index))
             .expect("local name should be duplicated on the copy");
         assert_eq!(copy.2, "'Sheet1 (1)'!$A$1");
 
         // The original local name is left untouched.
         assert!(names
             .iter()
-            .any(|(name, scope, formula, _)| name == "local_name"
+            .any(|(name, scope, formula, ..)| name == "local_name"
                 && *scope == Some(0)
                 && formula == "Sheet1!$A$1"));
     }
@@ -859,10 +861,10 @@ mod tests {
         model.set_user_input(0, 1, 1, "5".to_string()).unwrap();
         // A global name referencing the source sheet, and one that doesn't.
         model
-            .new_defined_name("from_source", None, "Sheet1!$A$1", false)
+            .new_defined_name("from_source", None, "Sheet1!$A$1", false, "")
             .unwrap();
         model
-            .new_defined_name("from_other", None, "Other!$A$1", false)
+            .new_defined_name("from_other", None, "Other!$A$1", false, "")
             .unwrap();
         model.evaluate();
 
@@ -872,23 +874,23 @@ mod tests {
         // The original global names are preserved.
         assert!(names
             .iter()
-            .any(|(name, scope, _, _)| name == "from_source" && scope.is_none()));
+            .any(|(name, scope, ..)| name == "from_source" && scope.is_none()));
         assert!(names
             .iter()
-            .any(|(name, scope, _, _)| name == "from_other" && scope.is_none()));
+            .any(|(name, scope, ..)| name == "from_other" && scope.is_none()));
 
         // The global name referencing the source is duplicated as a sheet-local
         // name on the copy, retargeted to it.
         let copy = names
             .iter()
-            .find(|(name, scope, _, _)| name == "from_source" && *scope == Some(new_index))
+            .find(|(name, scope, ..)| name == "from_source" && *scope == Some(new_index))
             .expect("global name referencing source should become local on copy");
         assert_eq!(copy.2, "'Sheet1 (1)'!$A$1");
 
         // The global name that does not reference the source is NOT duplicated.
         assert!(!names
             .iter()
-            .any(|(name, scope, _, _)| name == "from_other" && *scope == Some(new_index)));
+            .any(|(name, scope, ..)| name == "from_other" && *scope == Some(new_index)));
     }
 
     #[test]
@@ -899,10 +901,10 @@ mod tests {
         let mut model = new_empty_model();
         // The global is created first (so it comes earlier in `defined_names`).
         model
-            .new_defined_name("shared", None, "Sheet1!$A$1", false)
+            .new_defined_name("shared", None, "Sheet1!$A$1", false, "")
             .unwrap();
         model
-            .new_defined_name("shared", Some(0), "Sheet1!$B$2", false)
+            .new_defined_name("shared", Some(0), "Sheet1!$B$2", false, "")
             .unwrap();
         model.evaluate();
 
@@ -913,7 +915,7 @@ mod tests {
         // sheet-local definition ($B$2), not the global one ($A$1).
         let local_copies: Vec<_> = names
             .iter()
-            .filter(|(name, scope, _, _)| name == "shared" && *scope == Some(new_index))
+            .filter(|(name, scope, ..)| name == "shared" && *scope == Some(new_index))
             .collect();
         assert_eq!(local_copies.len(), 1);
         assert_eq!(local_copies[0].2, "'Sheet1 (1)'!$B$2");

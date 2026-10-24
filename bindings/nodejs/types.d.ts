@@ -367,6 +367,8 @@ export interface DefinedName {
   formula: string;
   /** Hidden names work like any other but are not shown in the UI */
   hidden: boolean;
+  /** Free text of at most 255 characters, empty when there is no comment */
+  comment: string;
 }
 
 /**

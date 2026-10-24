@@ -75,6 +75,7 @@ pub(crate) struct DefinedName {
   pub scope: Option<u32>,
   pub formula: String,
   pub hidden: bool,
+  pub comment: String,
 }
 
 // Local mirror of `ironcalc_base::FmtSettings`, which does not implement Serialize

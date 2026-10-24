@@ -10,26 +10,28 @@ fn constants_and_expressions() {
     model._set("K2", "20");
     model._set("K3", "30");
     model
-        .new_defined_name("Pi", None, "3.14159", false)
+        .new_defined_name("Pi", None, "3.14159", false, "")
         .unwrap();
     model
-        .new_defined_name("Greeting", None, "\"Hello\"", false)
-        .unwrap();
-    model.new_defined_name("Yes", None, "TRUE", false).unwrap();
-    model
-        .new_defined_name("Total", None, "SUM(Sheet1!$K$1:$K$3)", false)
+        .new_defined_name("Greeting", None, "\"Hello\"", false, "")
         .unwrap();
     model
-        .new_defined_name("Double", None, "Sheet1!$K$1*2", false)
+        .new_defined_name("Yes", None, "TRUE", false, "")
         .unwrap();
     model
-        .new_defined_name("TotalPlus", None, "Total+Double", false)
+        .new_defined_name("Total", None, "SUM(Sheet1!$K$1:$K$3)", false, "")
         .unwrap();
     model
-        .new_defined_name("Dyn", None, "OFFSET(Sheet1!$K$1,0,0,2,1)", false)
+        .new_defined_name("Double", None, "Sheet1!$K$1*2", false, "")
+        .unwrap();
+    model
+        .new_defined_name("TotalPlus", None, "Total+Double", false, "")
+        .unwrap();
+    model
+        .new_defined_name("Dyn", None, "OFFSET(Sheet1!$K$1,0,0,2,1)", false, "")
         .unwrap();
     assert!(model
-        .new_defined_name("Broken", None, "SUM(", false)
+        .new_defined_name("Broken", None, "SUM(", false, "")
         .is_err());
 
     model._set("A1", "=Pi");
@@ -74,10 +76,10 @@ fn sheet_qualified_names() {
     model._set("Data!A1", "12");
     // Workbook name and a name local to Data with the same name
     model
-        .new_defined_name("Scope_Test", None, "Sheet1!$A$1", false)
+        .new_defined_name("Scope_Test", None, "Sheet1!$A$1", false, "")
         .unwrap();
     model
-        .new_defined_name("Scope_Test", Some(1), "Data!$A$1", false)
+        .new_defined_name("Scope_Test", Some(1), "Data!$A$1", false, "")
         .unwrap();
 
     model._set("Sheet1!B1", "=Scope_Test");
@@ -124,7 +126,7 @@ fn qualified_name_starting_like_a_reference() {
     model.add_sheet("Data").unwrap();
     model._set("Data!Q1", "77");
     model
-        .new_defined_name("Q1_Total", None, "100", false)
+        .new_defined_name("Q1_Total", None, "100", false, "")
         .unwrap();
     model._set("Sheet1!A1", "=Data!Q1_Total");
     model._set("Sheet1!A2", "=Data!Q1");
@@ -141,23 +143,25 @@ fn qualified_name_starting_like_a_reference() {
 fn local_name_formulas_resolve_in_their_sheet() {
     let mut model = new_empty_model();
     model.add_sheet("Data").unwrap();
-    model.new_defined_name("Rate", None, "1", false).unwrap();
     model
-        .new_defined_name("Rate", Some(1), "10", false)
+        .new_defined_name("Rate", None, "1", false, "")
         .unwrap();
     model
-        .new_defined_name("DoubleRate", Some(1), "Rate*2", false)
+        .new_defined_name("Rate", Some(1), "10", false, "")
         .unwrap();
     model
-        .new_defined_name("OnlyLocal", Some(1), "7", false)
+        .new_defined_name("DoubleRate", Some(1), "Rate*2", false, "")
+        .unwrap();
+    model
+        .new_defined_name("OnlyLocal", Some(1), "7", false, "")
         .unwrap();
     // A local name may depend on a name that exists only in its sheet
     model
-        .new_defined_name("UsesLocal", Some(1), "OnlyLocal+1", false)
+        .new_defined_name("UsesLocal", Some(1), "OnlyLocal+1", false, "")
         .unwrap();
     // A workbook name uses the workbook Rate
     model
-        .new_defined_name("GlobalDouble", None, "Rate*2", false)
+        .new_defined_name("GlobalDouble", None, "Rate*2", false, "")
         .unwrap();
 
     model._set("Sheet1!A1", "=Data!DoubleRate");

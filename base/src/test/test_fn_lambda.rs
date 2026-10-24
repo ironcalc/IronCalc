@@ -24,7 +24,7 @@ fn evaluation_in_let() {
 fn evaluation_with_defined_name() {
     let mut model = new_empty_model();
     model
-        .new_defined_name("MySum", None, "=LAMBDA(x, y, x + y)", false)
+        .new_defined_name("MySum", None, "=LAMBDA(x, y, x + y)", false, "")
         .unwrap();
     model._set("A1", "=MySum(1, 2)");
     model.evaluate();
@@ -40,7 +40,7 @@ fn evaluation_with_defined_name() {
 fn defined_name_lambda_spills_array() {
     let mut model = new_empty_model();
     model
-        .new_defined_name("MySeq", None, "=LAMBDA(n, SEQUENCE(n))", false)
+        .new_defined_name("MySeq", None, "=LAMBDA(n, SEQUENCE(n))", false, "")
         .unwrap();
     model._set("A1", "=MySeq(3)");
     model.evaluate();
@@ -78,10 +78,10 @@ fn sheet_local_name_takes_precedence_over_global() {
     model.new_sheet(); // adds Sheet2 at index 1
 
     model
-        .new_defined_name("MyFn", None, "=LAMBDA(x, x * 2)", false)
+        .new_defined_name("MyFn", None, "=LAMBDA(x, x * 2)", false, "")
         .unwrap();
     model
-        .new_defined_name("MyFn", Some(1), "=LAMBDA(x, x * 3)", false)
+        .new_defined_name("MyFn", Some(1), "=LAMBDA(x, x * 3)", false, "")
         .unwrap();
 
     model._set("A1", "=MyFn(5)");
@@ -206,10 +206,10 @@ fn a_defined_name_for_a_single_cell_is_a_reference() {
     model._set("K1", "text");
     model._set("K2", "7");
     model
-        .new_defined_name("TextCell", None, "Sheet1!$K$1", false)
+        .new_defined_name("TextCell", None, "Sheet1!$K$1", false, "")
         .unwrap();
     model
-        .new_defined_name("Later", None, "=LAMBDA(x, x+1)", false)
+        .new_defined_name("Later", None, "=LAMBDA(x, x+1)", false, "")
         .unwrap();
     model._set("A1", "=ROW(TextCell)");
     model._set("A2", "=COLUMN(TextCell)");
