@@ -144,11 +144,28 @@
 }
 
 .ic-named-ranges-hidden-icon {
-  width: 12px;
-  height: 12px;
-  vertical-align: -1px;
-  margin-right: 4px;
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-left: 6px;
   color: var(--palette-grey-500);
+}
+
+.ic-named-ranges-hidden-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* At most two lines, the rest is truncated */
+.ic-named-ranges-comment-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--palette-grey-600);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: break-word;
 }
 
 .ic-named-ranges-icons-wrapper {

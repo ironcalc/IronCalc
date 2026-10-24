@@ -174,6 +174,30 @@ export const Ghost: Story = {
   },
 };
 
+export const WithToggles: Story = {
+  args: defaultArgs,
+  render: () => {
+    const [value, setValue] = useState("apple");
+    const [includeExotic, setIncludeExotic] = useState(false);
+    return (
+      <Select
+        label="Fruit"
+        options={fruitOptions}
+        value={value}
+        onChange={setValue}
+        toggles={[
+          {
+            value: "exotic",
+            label: "Include exotic fruit",
+            checked: includeExotic,
+            onChange: setIncludeExotic,
+          },
+        ]}
+      />
+    );
+  },
+};
+
 export const CornerPositioning: Story = {
   args: defaultArgs,
   parameters: {

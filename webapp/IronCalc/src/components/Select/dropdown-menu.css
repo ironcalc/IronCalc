@@ -58,6 +58,14 @@
   align-items: baseline;
 }
 
-.ic-dropdown-menu-option.is-selected .ic-dropdown-menu-option-content {
+.ic-dropdown-menu-option.is-selected:not(.is-toggle)
+  .ic-dropdown-menu-option-content {
   font-weight: 600;
+}
+
+/* Separates the toggles from the options */
+.ic-dropdown-menu-divider {
+  margin: 4px -4px;
+  border: 0;
+  border-top: 1px solid var(--palette-grey-200);
 }
