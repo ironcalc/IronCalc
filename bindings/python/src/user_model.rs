@@ -16,6 +16,7 @@ pub(crate) struct DefinedNameEntry {
     pub name: String,
     pub scope: Option<u32>,
     pub formula: String,
+    pub hidden: bool,
 }
 
 #[derive(Serialize)]
@@ -1058,35 +1059,38 @@ impl PyUserModel {
 
     // Defined names
 
-    /// Returns the list of defined names as [{"name", "scope", "formula"}]
+    /// Returns the list of defined names as [{"name", "scope", "formula", "hidden"}]
     pub fn get_defined_name_list<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let data: Vec<DefinedNameEntry> = self
             .model
             .get_defined_name_list()
             .into_iter()
-            .map(|(name, scope, formula)| DefinedNameEntry {
+            .map(|(name, scope, formula, hidden)| DefinedNameEntry {
                 name,
                 scope,
                 formula,
+                hidden,
             })
             .collect();
         to_python(py, &data)
     }
 
     /// Creates a new defined name. `scope` is a sheet index or None for global scope.
-    #[pyo3(signature = (name, scope, formula))]
+    /// A hidden name works like any other but is not shown in the UI.
+    #[pyo3(signature = (name, scope, formula, hidden=false))]
     pub fn new_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,
+        hidden: bool,
     ) -> PyResult<()> {
         self.model
-            .new_defined_name(name, scope, formula)
+            .new_defined_name(name, scope, formula, hidden)
             .map_err(to_py_err)
     }
 
-    #[pyo3(signature = (name, scope, new_name, new_scope, new_formula))]
+    #[pyo3(signature = (name, scope, new_name, new_scope, new_formula, new_hidden))]
     pub fn update_defined_name(
         &mut self,
         name: &str,
@@ -1094,9 +1098,10 @@ impl PyUserModel {
         new_name: &str,
         new_scope: Option<u32>,
         new_formula: &str,
+        new_hidden: bool,
     ) -> PyResult<()> {
         self.model
-            .update_defined_name(name, scope, new_name, new_scope, new_formula)
+            .update_defined_name(name, scope, new_name, new_scope, new_formula, new_hidden)
             .map_err(to_py_err)
     }
 

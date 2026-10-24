@@ -74,6 +74,7 @@ pub(crate) struct DefinedName {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub scope: Option<u32>,
   pub formula: String,
+  pub hidden: bool,
 }
 
 // Local mirror of `ironcalc_base::FmtSettings`, which does not implement Serialize

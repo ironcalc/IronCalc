@@ -568,6 +568,8 @@ export interface DefinedName {
   name: string;
   scope?: number;
   formula: string;
+  /** Hidden names work like any other but are not shown in the UI */
+  hidden: boolean;
 }
 
 /**

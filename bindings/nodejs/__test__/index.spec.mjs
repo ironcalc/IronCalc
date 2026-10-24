@@ -97,6 +97,13 @@ test('defined names', (t) => {
   t.false("scope" in names[0]);
   t.is(names[1].name, "localname");
   t.is(names[1].scope, 0);
+  t.false(names[0].hidden);
+
+  // hidden names
+  model.newDefinedName("secret", null, "Sheet1!$C$3", true);
+  t.true(model.getDefinedNameList()[2].hidden);
+  model.updateDefinedName("secret", null, "secret", null, "Sheet1!$C$3", false);
+  t.false(model.getDefinedNameList()[2].hidden);
 });
 
 test('conditional formatting', (t) => {

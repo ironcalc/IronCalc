@@ -365,6 +365,8 @@ export interface DefinedName {
   name: string;
   scope?: number;
   formula: string;
+  /** Hidden names work like any other but are not shown in the UI */
+  hidden: boolean;
 }
 
 /**
@@ -577,13 +579,16 @@ export declare class Model {
   /** Returns all the links in the worksheet sorted by (row, column). */
   getLinks(sheet: number): Array<CellLink>
   /**
-   * Returns the list of defined names as [{name, scope, formula}].
+   * Returns the list of defined names as [{name, scope, formula, hidden}].
    * `scope` is omitted for globally scoped names.
    */
   getDefinedNameList(): Array<DefinedName>
-  /** Creates a new defined name. `scope` is a sheet index or null for global scope. */
-  newDefinedName(name: string, scope: number | undefined | null, formula: string): void
-  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string): void
+  /**
+   * Creates a new defined name. `scope` is a sheet index or null for global scope.
+   * A hidden name (`hidden` defaults to false) works like any other but is not shown in the UI.
+   */
+  newDefinedName(name: string, scope: number | undefined | null, formula: string, hidden?: boolean | undefined | null): void
+  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string, newHidden: boolean): void
   deleteDefinedName(name: string, scope?: number | undefined | null): void
   /** Returns the workbook theme */
   getTheme(): IronCalcTheme
@@ -798,13 +803,16 @@ export declare class UserModel {
   raiseConditionalFormattingPriority(sheet: number, index: number): void
   lowerConditionalFormattingPriority(sheet: number, index: number): void
   /**
-   * Returns the list of defined names as [{name, scope, formula}].
+   * Returns the list of defined names as [{name, scope, formula, hidden}].
    * `scope` is omitted for globally scoped names.
    */
   getDefinedNameList(): Array<DefinedName>
-  /** Creates a new defined name. `scope` is a sheet index or null for global scope. */
-  newDefinedName(name: string, scope: number | undefined | null, formula: string): void
-  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string): void
+  /**
+   * Creates a new defined name. `scope` is a sheet index or null for global scope.
+   * A hidden name (`hidden` defaults to false) works like any other but is not shown in the UI.
+   */
+  newDefinedName(name: string, scope: number | undefined | null, formula: string, hidden?: boolean | undefined | null): void
+  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string, newHidden: boolean): void
   deleteDefinedName(name: string, scope?: number | undefined | null): void
   /** Throws if the defined name is not valid */
   isValidDefinedName(name: string, scope: number | undefined | null, formula: string): void
