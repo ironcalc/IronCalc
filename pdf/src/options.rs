@@ -45,6 +45,8 @@ impl Default for PdfExportOptions {
                     vertical: false,
                 },
                 first_page_number: FirstPageNumberPolicy::FromDocumentOrAuto,
+                horizontal_alignment: PageHorizontalAlignment::Left,
+                vertical_alignment: PageVerticalAlignment::Top,
             },
 
             layout: LayoutOptions {
@@ -378,6 +380,26 @@ pub struct PageOptions {
     pub margins: MarginPolicy,
     pub center_on_page: CenterOnPagePolicy,
     pub first_page_number: FirstPageNumberPolicy,
+    pub horizontal_alignment: PageHorizontalAlignment,
+    pub vertical_alignment: PageVerticalAlignment,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum PageHorizontalAlignment {
+    #[default]
+    Left,
+    Center,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum PageVerticalAlignment {
+    #[default]
+    Top,
+    Middle,
+    Bottom,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -731,6 +753,25 @@ pub enum RepeatTitlePolicy {
 pub enum FrozenPanePrintPolicy {
     DoNotRepeat,
     RepeatAsPrintTitles,
+    PerAxis { rows: bool, columns: bool },
+}
+
+impl FrozenPanePrintPolicy {
+    pub fn repeat_rows(&self) -> bool {
+        match self {
+            Self::RepeatAsPrintTitles => true,
+            Self::PerAxis { rows, .. } => *rows,
+            Self::DoNotRepeat => false,
+        }
+    }
+
+    pub fn repeat_columns(&self) -> bool {
+        match self {
+            Self::RepeatAsPrintTitles => true,
+            Self::PerAxis { columns, .. } => *columns,
+            Self::DoNotRepeat => false,
+        }
+    }
 }
 
 /*
@@ -1119,6 +1160,11 @@ impl PdfExportOptionsPayload {
                     let range_str = self.selection_range.unwrap_or_else(|| "A1".to_string());
                     if let Some(range) = parse_a1_range(&range_str) {
                         opts.scope = ExportScope::Selection { sheet, range };
+                    } else {
+                        opts.scope = ExportScope::Selection {
+                            sheet,
+                            range: CellRange::new(0, 0, 0, 0),
+                        };
                     }
                 }
                 _ => {
@@ -1229,7 +1275,7 @@ impl PdfExportOptionsPayload {
             }
         }
 
-        // Alignment (Center on page)
+        // Alignment (Center on page & general page alignment)
         let center_h = self
             .horizontal_alignment
             .as_deref()
@@ -1246,6 +1292,38 @@ impl PdfExportOptionsPayload {
                 vertical: center_v,
             };
         }
+        opts.page.horizontal_alignment = match self
+            .horizontal_alignment
+            .as_deref()
+            .map(|s| s.to_lowercase())
+            .as_deref()
+        {
+            Some("center") => PageHorizontalAlignment::Center,
+            Some("right") => PageHorizontalAlignment::Right,
+            _ => {
+                if center_h {
+                    PageHorizontalAlignment::Center
+                } else {
+                    PageHorizontalAlignment::Left
+                }
+            }
+        };
+        opts.page.vertical_alignment = match self
+            .vertical_alignment
+            .as_deref()
+            .map(|s| s.to_lowercase())
+            .as_deref()
+        {
+            Some("middle") | Some("center") => PageVerticalAlignment::Middle,
+            Some("bottom") => PageVerticalAlignment::Bottom,
+            _ => {
+                if center_v {
+                    PageVerticalAlignment::Middle
+                } else {
+                    PageVerticalAlignment::Top
+                }
+            }
+        };
 
         // Headers and Footers
         let has_hf = self.page_numbers.unwrap_or(false)
@@ -1278,11 +1356,16 @@ impl PdfExportOptionsPayload {
         }
 
         // Repeat frozen panes
-        if self.repeat_frozen_rows.unwrap_or(false) || self.repeat_frozen_columns.unwrap_or(false) {
-            opts.repeat.frozen_panes = FrozenPanePrintPolicy::RepeatAsPrintTitles;
-        } else {
-            opts.repeat.frozen_panes = FrozenPanePrintPolicy::DoNotRepeat;
-        }
+        let rep_rows = self.repeat_frozen_rows.unwrap_or(false);
+        let rep_cols = self.repeat_frozen_columns.unwrap_or(false);
+        opts.repeat.frozen_panes = match (rep_rows, rep_cols) {
+            (true, true) => FrozenPanePrintPolicy::RepeatAsPrintTitles,
+            (false, false) => FrozenPanePrintPolicy::DoNotRepeat,
+            (r, c) => FrozenPanePrintPolicy::PerAxis {
+                rows: r,
+                columns: c,
+            },
+        };
 
         // Custom fonts
         if let Some(fonts) = self.custom_fonts {
@@ -1315,11 +1398,14 @@ fn parse_a1_cell(s: &str) -> Option<(i32, i32)> {
     let row_str = trimmed[col_end..].trim_start_matches('$');
     let col = col_str_to_num(col_str)?;
     let row = row_str.parse::<i32>().ok()?;
+    if !(1..=16_384).contains(&col) || !(1..=1_048_576).contains(&row) {
+        return None;
+    }
     Some((row, col))
 }
 
 fn parse_a1_range(s: &str) -> Option<CellRange> {
-    let clean = s.split('!').last().unwrap_or(s).trim();
+    let clean = s.split('!').next_back().unwrap_or(s).trim();
     let parts: Vec<&str> = clean.split(':').collect();
     if parts.len() == 1 {
         let (r, c) = parse_a1_cell(parts[0])?;
@@ -1332,4 +1418,3 @@ fn parse_a1_range(s: &str) -> Option<CellRange> {
         None
     }
 }
-

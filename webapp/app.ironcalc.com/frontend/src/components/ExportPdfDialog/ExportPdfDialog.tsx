@@ -1,10 +1,10 @@
 import { Button, Checkbox, IconButton, type Model } from "@ironcalc/workbook";
 import { ChevronDown, ChevronUp, Loader2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  collectFontFamiliesFromModel,
-  fetchFontsForFamilies,
+  collectFontFacesFromModel,
+  fetchFontsForFaces,
   uint8ArrayToBase64,
 } from "../fontUtils";
 import {
@@ -13,6 +13,7 @@ import {
   type PdfExportPayloadOptions,
   triggerBlobDownload,
 } from "../rpc";
+import { useModalFocus } from "../ShareWorkbook/useModalFocus";
 import { PdfPagesPreview } from "./PdfPagesPreview";
 import "./export-pdf-dialog.css";
 
@@ -38,6 +39,13 @@ export function ExportPdfDialog({
   onClose,
   model,
 }: ExportPdfDialogProperties) {
+  const { modalRef, restoreFocus } = useModalFocus(open);
+
+  const handleClose = useCallback(() => {
+    restoreFocus();
+    onClose();
+  }, [restoreFocus, onClose]);
+
   // Selected range detection from model
   const selectionInfo = useMemo(() => {
     if (!open || !model) return null;
@@ -68,7 +76,9 @@ export function ExportPdfDialog({
           const row = cell[0];
           const col = cell[1];
           const colStr = columnNumberToName(col);
-          const currentSheet = model.getSelectedSheet ? model.getSelectedSheet() : 0;
+          const currentSheet = model.getSelectedSheet
+            ? model.getSelectedSheet()
+            : 0;
           return {
             sheetIndex: currentSheet,
             rangeStr: `${colStr}${row}`,
@@ -86,7 +96,9 @@ export function ExportPdfDialog({
   const [paperSize, setPaperSize] = useState<string>("Letter");
   const [customWidth, setCustomWidth] = useState<number>(21.6);
   const [customHeight, setCustomHeight] = useState<number>(27.9);
-  const [orientation, setOrientation] = useState<"Landscape" | "Portrait">("Landscape");
+  const [orientation, setOrientation] = useState<"Landscape" | "Portrait">(
+    "Landscape",
+  );
   const [scale, setScale] = useState<string>("FitToWidth");
   const [scalePercentage, setScalePercentage] = useState<number>(100);
   const [margins, setMargins] = useState<string>("Normal");
@@ -113,10 +125,13 @@ export function ExportPdfDialog({
   const [currentDate, setCurrentDate] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<boolean>(false);
   const [repeatFrozenRows, setRepeatFrozenRows] = useState<boolean>(false);
-  const [repeatFrozenColumns, setRepeatFrozenColumns] = useState<boolean>(false);
+  const [repeatFrozenColumns, setRepeatFrozenColumns] =
+    useState<boolean>(false);
 
   // State for fonts
-  const [loadedCustomFonts, setLoadedCustomFonts] = useState<CustomFontPayload[]>([]);
+  const [loadedCustomFonts, setLoadedCustomFonts] = useState<
+    CustomFontPayload[]
+  >([]);
   const [fontsLoaded, setFontsLoaded] = useState<boolean>(false);
 
   // State for live preview
@@ -133,7 +148,9 @@ export function ExportPdfDialog({
   useEffect(() => {
     if (open && model) {
       try {
-        const currentSheet = model.getSelectedSheet ? model.getSelectedSheet() : 0;
+        const currentSheet = model.getSelectedSheet
+          ? model.getSelectedSheet()
+          : 0;
         if (typeof model.getShowGridLines === "function") {
           setShowGridLines(model.getShowGridLines(currentSheet));
         }
@@ -150,17 +167,14 @@ export function ExportPdfDialog({
 
     async function loadFonts() {
       try {
-        const families = collectFontFamiliesFromModel(model);
-        const { fontMap } = await fetchFontsForFamilies(families);
+        const faces = collectFontFacesFromModel(model);
+        const { fonts: loadedFaces } = await fetchFontsForFaces(faces);
         if (cancelled) return;
 
-        const fonts: CustomFontPayload[] = [];
-        fontMap.forEach((bytes, name) => {
-          fonts.push({
-            name,
-            data: uint8ArrayToBase64(bytes),
-          });
-        });
+        const fonts: CustomFontPayload[] = loadedFaces.map((f) => ({
+          name: f.family,
+          data: uint8ArrayToBase64(f.bytes),
+        }));
         setLoadedCustomFonts(fonts);
         setFontsLoaded(true);
       } catch (err) {
@@ -175,25 +189,26 @@ export function ExportPdfDialog({
     };
   }, [open, model]);
 
-
-  // Escape key handler
+  // Global escape key handler as a safety net
   useEffect(() => {
     if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const onWindowKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        handleClose();
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+    window.addEventListener("keydown", onWindowKeyDown);
+    return () => window.removeEventListener("keydown", onWindowKeyDown);
+  }, [open, handleClose]);
 
   // Build payload options
   const exportOptions: PdfExportPayloadOptions = useMemo(() => {
     const currentSheet = model.getSelectedSheet ? model.getSelectedSheet() : 0;
     const isSelectedScope = scope === "SelectedCells";
     const targetSheet =
-      isSelectedScope && selectionInfo ? selectionInfo.sheetIndex : currentSheet;
+      isSelectedScope && selectionInfo
+        ? selectionInfo.sheetIndex
+        : currentSheet;
     const targetRange =
       isSelectedScope && selectionInfo ? selectionInfo.rangeStr : undefined;
 
@@ -260,18 +275,25 @@ export function ExportPdfDialog({
     customMarginLeft,
   ]);
 
+  const [retryTrigger, setRetryTrigger] = useState(0);
+
   // Debounced live preview generation
   useEffect(() => {
     if (!open || !fontsLoaded) return;
 
     let cancelled = false;
+    setPreviewBlob(null);
     setIsLoadingPreview(true);
     setPreviewError(null);
 
     const timer = setTimeout(async () => {
       try {
         const bytes = model.toBytes();
-        const blob = await fetchModelPdfBlob(bytes, exportOptions, loadedCustomFonts);
+        const blob = await fetchModelPdfBlob(
+          bytes,
+          exportOptions,
+          loadedCustomFonts,
+        );
         if (cancelled) return;
 
         setPreviewBlob(blob);
@@ -288,21 +310,67 @@ export function ExportPdfDialog({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, fontsLoaded, exportOptions, loadedCustomFonts, model]);
+  }, [
+    open,
+    fontsLoaded,
+    exportOptions,
+    loadedCustomFonts,
+    model,
+    retryTrigger,
+  ]);
 
   const handleRetryPreview = () => {
-    setIsLoadingPreview(true);
+    setPreviewBlob(null);
     setPreviewError(null);
-    const bytes = model.toBytes();
-    fetchModelPdfBlob(bytes, exportOptions, loadedCustomFonts)
-      .then((blob) => {
-        setPreviewBlob(blob);
-        setIsLoadingPreview(false);
-      })
-      .catch((err) => {
-        setPreviewError(err instanceof Error ? err.message : String(err));
-        setIsLoadingPreview(false);
-      });
+    setIsLoadingPreview(true);
+    setRetryTrigger((t) => t + 1);
+  };
+
+  // Focus trapping and keyboard navigation within modal
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      handleClose();
+      return;
+    }
+
+    if (e.key === "Tab") {
+      if (!modalRef.current) return;
+      const focusableSelector =
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      const focusables = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(focusableSelector),
+      ).filter(
+        (el) =>
+          el.offsetParent !== null || el.offsetWidth > 0 || el.offsetHeight > 0,
+      );
+
+      if (focusables.length === 0) {
+        e.preventDefault();
+        return;
+      }
+
+      const firstElement = focusables[0];
+      const lastElement = focusables[focusables.length - 1];
+
+      if (e.shiftKey) {
+        if (
+          document.activeElement === firstElement ||
+          !modalRef.current.contains(document.activeElement)
+        ) {
+          e.preventDefault();
+          lastElement.focus();
+        }
+      } else {
+        if (
+          document.activeElement === lastElement ||
+          !modalRef.current.contains(document.activeElement)
+        ) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+    }
   };
 
   if (!open) {
@@ -315,15 +383,19 @@ export function ExportPdfDialog({
 
     try {
       const fileName = model.getName();
-      if (previewBlob && !isLoadingPreview) {
+      if (previewBlob && !isLoadingPreview && !previewError) {
         // Fast path: use already generated and verified blob!
         triggerBlobDownload(previewBlob, fileName);
-        onClose();
+        handleClose();
       } else {
         const bytes = model.toBytes();
-        const blob = await fetchModelPdfBlob(bytes, exportOptions, loadedCustomFonts);
+        const blob = await fetchModelPdfBlob(
+          bytes,
+          exportOptions,
+          loadedCustomFonts,
+        );
         triggerBlobDownload(blob, fileName);
-        onClose();
+        handleClose();
       }
     } catch (error) {
       console.error("PDF Export error:", error);
@@ -337,16 +409,18 @@ export function ExportPdfDialog({
 
   return createPortal(
     <div
+      ref={modalRef}
       className="app-ic-epd-backdrop"
       role="dialog"
       aria-modal="true"
       aria-label="Export to PDF"
-      onClick={onClose}
+      tabIndex={-1}
+      onClick={handleClose}
+      onKeyDown={handleKeyDown}
     >
       {/* Left side: Live PDF Preview Area */}
-      <div
+      <section
         className="app-ic-epd-preview-area"
-        role="region"
         aria-label="PDF Preview"
       >
         <PdfPagesPreview
@@ -355,15 +429,14 @@ export function ExportPdfDialog({
           error={previewError}
           onRetry={handleRetryPreview}
           onPageCountChange={setPageCount}
-          onBackgroundClick={onClose}
+          onBackgroundClick={handleClose}
         />
-      </div>
+      </section>
 
       {/* Right side: Export Settings Sheet */}
-      <div
+      <section
         className="app-ic-epd-panel"
         onClick={(e) => e.stopPropagation()}
-        role="region"
         aria-label="Export settings panel"
       >
         <div className="app-ic-epd-header">
@@ -373,7 +446,7 @@ export function ExportPdfDialog({
             size="sm"
             icon={<X size={16} />}
             aria-label="Close dialog"
-            onClick={onClose}
+            onClick={handleClose}
           />
         </div>
 
@@ -389,7 +462,8 @@ export function ExportPdfDialog({
               <option value="CurrentSheet">Current sheet</option>
               <option value="Workbook">Workbook</option>
               <option value="SelectedCells">
-                Selected cells{selectionInfo ? ` (${selectionInfo.rangeStr})` : ""}
+                Selected cells
+                {selectionInfo ? ` (${selectionInfo.rangeStr})` : ""}
               </option>
             </select>
           </div>
@@ -543,7 +617,9 @@ export function ExportPdfDialog({
                   type="number"
                   className="app-ic-epd-input"
                   value={customMarginBottom}
-                  onChange={(e) => setCustomMarginBottom(Number(e.target.value))}
+                  onChange={(e) =>
+                    setCustomMarginBottom(Number(e.target.value))
+                  }
                   step="0.1"
                 />
               </div>
@@ -562,13 +638,19 @@ export function ExportPdfDialog({
 
           {/* Accordion: Formatting */}
           <div className="app-ic-epd-accordion">
-            <div
+            <button
+              type="button"
               className="app-ic-epd-accordion-header"
+              aria-expanded={formattingOpen}
               onClick={() => setFormattingOpen(!formattingOpen)}
             >
               <span>Formatting</span>
-              {formattingOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </div>
+              {formattingOpen ? (
+                <ChevronUp size={16} />
+              ) : (
+                <ChevronDown size={16} />
+              )}
+            </button>
 
             {formattingOpen && (
               <div className="app-ic-epd-accordion-content">
@@ -581,7 +663,8 @@ export function ExportPdfDialog({
                 <Checkbox
                   checked={showNotes}
                   onChange={setShowNotes}
-                  label="Show notes"
+                  label="Show notes (not yet supported)"
+                  disabled
                 />
 
                 <div className="app-ic-epd-field">
@@ -628,13 +711,19 @@ export function ExportPdfDialog({
 
           {/* Accordion: Headers and footers */}
           <div className="app-ic-epd-accordion">
-            <div
+            <button
+              type="button"
               className="app-ic-epd-accordion-header"
+              aria-expanded={headersFootersOpen}
               onClick={() => setHeadersFootersOpen(!headersFootersOpen)}
             >
               <span>Headers and footers</span>
-              {headersFootersOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </div>
+              {headersFootersOpen ? (
+                <ChevronUp size={16} />
+              ) : (
+                <ChevronDown size={16} />
+              )}
+            </button>
 
             {headersFootersOpen && (
               <div className="app-ic-epd-accordion-content">
@@ -668,9 +757,12 @@ export function ExportPdfDialog({
                   label="Current time"
                 />
 
-                <div className="app-ic-epd-subheading">Row & column headers</div>
+                <div className="app-ic-epd-subheading">
+                  Row & column headers
+                </div>
                 <div className="app-ic-epd-hint">
-                  Go to View &gt; Freeze to select which rows/columns to repeat on all pages
+                  Go to View &gt; Freeze to select which rows/columns to repeat
+                  on all pages
                 </div>
 
                 <Checkbox
@@ -698,14 +790,16 @@ export function ExportPdfDialog({
 
         <div className="app-ic-epd-footer">
           <span className="app-ic-epd-page-count">
-            {pageCount > 0 ? `${pageCount} ${pageCount === 1 ? "page" : "pages"}` : ""}
+            {pageCount > 0
+              ? `${pageCount} ${pageCount === 1 ? "page" : "pages"}`
+              : ""}
           </span>
           <div className="app-ic-epd-footer-actions">
             <Button
               type="button"
               variant="secondary"
               size="md"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isExporting}
             >
               Cancel
@@ -717,14 +811,16 @@ export function ExportPdfDialog({
               onClick={handleExport}
               disabled={isExporting}
               startIcon={
-                isExporting ? <Loader2 size={15} className="app-ic-epd-spin" /> : undefined
+                isExporting ? (
+                  <Loader2 size={15} className="app-ic-epd-spin" />
+                ) : undefined
               }
             >
               {isExporting ? "Exporting..." : "Export"}
             </Button>
           </div>
         </div>
-      </div>
+      </section>
     </div>,
     document.body,
   );

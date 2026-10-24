@@ -679,6 +679,36 @@ impl Model {
         families
     }
 
+    #[wasm_bindgen(
+        js_name = "getFontDescriptors",
+        unchecked_return_type = "FontDescriptor[]"
+    )]
+    pub fn get_font_descriptors(&self) -> Result<JsValue, JsError> {
+        #[derive(Serialize)]
+        struct WasmFontDescriptor {
+            family: String,
+            bold: bool,
+            italic: bool,
+        }
+
+        let mut seen = std::collections::HashSet::new();
+        let mut descriptors = Vec::new();
+        for f in &self.model.get_model().workbook.styles.fonts {
+            let name = f.name.trim();
+            if !name.is_empty() {
+                let key = (name.to_lowercase(), f.b, f.i);
+                if seen.insert(key) {
+                    descriptors.push(WasmFontDescriptor {
+                        family: name.to_string(),
+                        bold: f.b,
+                        italic: f.i,
+                    });
+                }
+            }
+        }
+        serde_wasm_bindgen::to_value(&descriptors).map_err(|e| to_js_error(e.to_string()))
+    }
+
     #[wasm_bindgen(js_name = "onPasteStyles")]
     pub fn on_paste_styles(
         &mut self,

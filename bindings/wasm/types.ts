@@ -586,3 +586,9 @@ export interface IronCalcTheme {
   /** Followed-hyperlink color. */
   fol_hlink: string;
 }
+
+export interface FontDescriptor {
+  family: string;
+  bold: boolean;
+  italic: boolean;
+}

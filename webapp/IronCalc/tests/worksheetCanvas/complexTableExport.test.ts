@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { initSync, Model } from "@ironcalc/wasm";
 import { createCanvas } from "@napi-rs/canvas";
@@ -20,11 +21,19 @@ describe("Complex table PNG export", () => {
     }
 
     const bytesPath = fileURLToPath(
-      new URL(
-        "../../../../pdf/tests/output/complex_table.bytes",
-        import.meta.url,
-      ),
+      new URL("../../../../pdf/tests/output/complex_table.bytes", import.meta.url),
     );
+
+    if (!existsSync(bytesPath)) {
+      const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
+      execSync(
+        "cargo test -p ironcalc_pdf --test test_complex_table_export -- test_complex_table_evaluation_integrity",
+        {
+          cwd: repoRoot,
+          stdio: "inherit",
+        },
+      );
+    }
     expect(existsSync(bytesPath)).toBe(true);
 
     const modelBytes = readFileSync(bytesPath);
@@ -72,18 +81,5 @@ describe("Complex table PNG export", () => {
 
     const pngBuffer = capturedCanvas.encodeSync("png");
     expect(pngBuffer.length).toBeGreaterThan(5000);
-
-    const outPngPath = fileURLToPath(
-      new URL(
-        "../../../../pdf/tests/output/complex_table.png",
-        import.meta.url,
-      ),
-    );
-    writeFileSync(outPngPath, pngBuffer);
-
-    expect(existsSync(outPngPath)).toBe(true);
-    console.log(
-      `Generated complex table PNG at ${outPngPath} (${pngBuffer.length} bytes)`,
-    );
   });
 });

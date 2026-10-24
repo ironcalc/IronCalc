@@ -1,7 +1,13 @@
 import { Loader2, Minus, Plus } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -36,7 +42,7 @@ export function PdfPagesPreview({
 
   const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
-  const renderTasksRef = useRef<any[]>([]);
+  const renderTasksRef = useRef<pdfjsLib.RenderTask[]>([]);
 
   // Observe container width for responsive page sizing
   useLayoutEffect(() => {
@@ -64,30 +70,59 @@ export function PdfPagesPreview({
   useEffect(() => {
     if (!blob) {
       setPages([]);
-      pdfDocRef.current = null;
+      if (pdfDocRef.current) {
+        try {
+          pdfDocRef.current.destroy();
+        } catch {
+          // ignore
+        }
+        pdfDocRef.current = null;
+      }
       return;
     }
 
     let cancelled = false;
+    let currentLoadingTask: ReturnType<typeof pdfjsLib.getDocument> | null =
+      null;
+    let currentDoc: pdfjsLib.PDFDocumentProxy | null = null;
 
     async function loadPdf() {
       try {
-        const arrayBuffer = await blob!.arrayBuffer();
+        if (!blob) return;
+        const arrayBuffer = await blob.arrayBuffer();
         if (cancelled) return;
 
-        const loadingTask = pdfjsLib.getDocument({
+        if (pdfDocRef.current) {
+          try {
+            pdfDocRef.current.destroy();
+          } catch {
+            // ignore
+          }
+          pdfDocRef.current = null;
+        }
+
+        currentLoadingTask = pdfjsLib.getDocument({
           data: arrayBuffer,
           cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
           cMapPacked: true,
         });
 
-        const doc = await loadingTask.promise;
-        if (cancelled) return;
+        const doc = await currentLoadingTask.promise;
+        if (cancelled) {
+          try {
+            doc.destroy();
+          } catch {
+            // ignore
+          }
+          return;
+        }
 
+        currentDoc = doc;
         pdfDocRef.current = doc;
 
         const pageDims: PageDimension[] = [];
         for (let i = 1; i <= doc.numPages; i++) {
+          if (cancelled) return;
           const page = await doc.getPage(i);
           const viewport = page.getViewport({ scale: 1.0 });
           pageDims.push({
@@ -110,13 +145,36 @@ export function PdfPagesPreview({
 
     return () => {
       cancelled = true;
+      if (currentLoadingTask) {
+        try {
+          currentLoadingTask.destroy();
+        } catch {
+          // ignore
+        }
+      }
+      if (currentDoc) {
+        try {
+          currentDoc.destroy();
+        } catch {
+          // ignore
+        }
+      }
+      if (pdfDocRef.current) {
+        try {
+          pdfDocRef.current.destroy();
+          pdfDocRef.current = null;
+        } catch {
+          // ignore
+        }
+      }
     };
   }, [blob]);
 
   // Helper to compute a page's display width and height
   const getPageDisplaySize = useCallback(
     (p: PageDimension) => {
-      const availW = containerWidth > 0 ? Math.max(containerWidth - 64, 200) : 750;
+      const availW =
+        containerWidth > 0 ? Math.max(containerWidth - 64, 200) : 750;
       const baseScale = Math.min(availW / p.originalWidth, 1.25);
       const scale = Math.max(baseScale * zoom, 0.2);
       return {
@@ -148,6 +206,7 @@ export function PdfPagesPreview({
     renderTasksRef.current = [];
 
     async function renderAllPages() {
+      if (!doc) return;
       setIsRendering(true);
       const dpr = window.devicePixelRatio || 1;
 
@@ -158,7 +217,7 @@ export function PdfPagesPreview({
         if (!canvas) continue;
 
         try {
-          const page = await doc!.getPage(pageInfo.pageNumber);
+          const page = await doc.getPage(pageInfo.pageNumber);
           if (cancelled) break;
 
           const { scale, width, height } = getPageDisplaySize(pageInfo);
@@ -185,8 +244,8 @@ export function PdfPagesPreview({
           renderTasksRef.current.push(task);
 
           await task.promise;
-        } catch (err: any) {
-          if (err?.name !== "RenderingCancelledException") {
+        } catch (err: unknown) {
+          if ((err as { name?: string })?.name !== "RenderingCancelledException") {
             console.warn(`Page ${pageInfo.pageNumber} render warning:`, err);
           }
         }
@@ -300,7 +359,9 @@ export function PdfPagesPreview({
           className="app-ic-epd-preview-error-box"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="app-ic-epd-preview-error-title">Preview unavailable</span>
+          <span className="app-ic-epd-preview-error-title">
+            Preview unavailable
+          </span>
           <span className="app-ic-epd-preview-error-msg">{error}</span>
           {onRetry && (
             <button

@@ -185,9 +185,7 @@ pub fn create_complex_table_model() -> Model<'static> {
     ];
 
     for (col, text, align) in headers {
-        model
-            .set_user_input(s0, 4, col, text.to_string())
-            .unwrap();
+        model.set_user_input(s0, 4, col, text.to_string()).unwrap();
         let header_style = Style {
             alignment: Some(Alignment {
                 horizontal: align,
@@ -378,21 +376,11 @@ pub fn create_complex_table_model() -> Model<'static> {
         let is_even = idx % 2 == 0;
         let row_fill = if is_even { "#FFFFFF" } else { "#F8FAFC" };
 
-        model
-            .set_user_input(s0, r, 1, id.to_string())
-            .unwrap();
-        model
-            .set_user_input(s0, r, 2, desc.to_string())
-            .unwrap();
-        model
-            .set_user_input(s0, r, 3, region.to_string())
-            .unwrap();
-        model
-            .set_user_input(s0, r, 4, units.to_string())
-            .unwrap();
-        model
-            .set_user_input(s0, r, 5, price.to_string())
-            .unwrap();
+        model.set_user_input(s0, r, 1, id.to_string()).unwrap();
+        model.set_user_input(s0, r, 2, desc.to_string()).unwrap();
+        model.set_user_input(s0, r, 3, region.to_string()).unwrap();
+        model.set_user_input(s0, r, 4, units.to_string()).unwrap();
+        model.set_user_input(s0, r, 5, price.to_string()).unwrap();
         model
             .set_user_input(s0, r, 6, format!("=D{}*E{}", r, r))
             .unwrap();
@@ -500,7 +488,12 @@ pub fn create_complex_table_model() -> Model<'static> {
         .set_user_input(s0, 25, 1, "TOTAL".to_string())
         .unwrap();
     model
-        .set_user_input(s0, 25, 2, "=CONCAT(\"Items: \", COUNTA(B5:B24))".to_string())
+        .set_user_input(
+            s0,
+            25,
+            2,
+            "=CONCAT(\"Items: \", COUNTA(B5:B24))".to_string(),
+        )
         .unwrap();
     model
         .set_user_input(s0, 25, 3, "20 ACTIVE".to_string())
@@ -758,18 +751,14 @@ pub fn create_complex_table_model() -> Model<'static> {
     model
         .set_user_input(s0, 30, 3, "AUDIT".to_string())
         .unwrap();
-    model
-        .set_user_input(s0, 30, 4, "0".to_string())
-        .unwrap();
+    model.set_user_input(s0, 30, 4, "0".to_string()).unwrap();
     model
         .set_user_input(s0, 30, 5, "$0.00".to_string())
         .unwrap();
     model
         .set_user_input(s0, 30, 6, "=100/D30".to_string()) // Evaluates to #DIV/0!
         .unwrap();
-    model
-        .set_user_input(s0, 30, 7, "0.0%".to_string())
-        .unwrap();
+    model.set_user_input(s0, 30, 7, "0.0%".to_string()).unwrap();
     model
         .set_user_input(s0, 30, 8, "=1+\"INVALID\"".to_string()) // Evaluates to #VALUE!
         .unwrap();
@@ -827,7 +816,12 @@ pub fn create_complex_table_model() -> Model<'static> {
         .unwrap();
     let _ = model.set_cell_style(s1, 1, 1, &title_style);
 
-    let kpi_headers = ["Metric Title", "Formula Expression", "Computed Value", "Audit Status"];
+    let kpi_headers = [
+        "Metric Title",
+        "Formula Expression",
+        "Computed Value",
+        "Audit Status",
+    ];
     for (idx, h) in kpi_headers.iter().enumerate() {
         model
             .set_user_input(s1, 3, (idx + 1) as i32, h.to_string())
@@ -841,30 +835,15 @@ pub fn create_complex_table_model() -> Model<'static> {
             "=Financials!F25",
             "AUDITED",
         ),
-        (
-            5,
-            "Consolidated Net Revenue",
-            "=Financials!I25",
-            "AUDITED",
-        ),
+        (5, "Consolidated Net Revenue", "=Financials!I25", "AUDITED"),
         (
             6,
             "Consolidated Tax Liability",
             "=Financials!K25",
             "AUDITED",
         ),
-        (
-            7,
-            "Final Consolidated Total",
-            "=Financials!L25",
-            "APPROVED",
-        ),
-        (
-            8,
-            "Target Goal Met?",
-            "=Financials!M25",
-            "CONFIRMED",
-        ),
+        (7, "Final Consolidated Total", "=Financials!L25", "APPROVED"),
+        (8, "Target Goal Met?", "=Financials!M25", "CONFIRMED"),
         (
             9,
             "Calculus Div/Zero Audit Check",
@@ -874,18 +853,10 @@ pub fn create_complex_table_model() -> Model<'static> {
     ];
 
     for (r, title, formula, status) in kpi_rows {
-        model
-            .set_user_input(s1, r, 1, title.to_string())
-            .unwrap();
-        model
-            .set_user_input(s1, r, 2, formula.to_string())
-            .unwrap();
-        model
-            .set_user_input(s1, r, 3, formula.to_string())
-            .unwrap();
-        model
-            .set_user_input(s1, r, 4, status.to_string())
-            .unwrap();
+        model.set_user_input(s1, r, 1, title.to_string()).unwrap();
+        model.set_user_input(s1, r, 2, formula.to_string()).unwrap();
+        model.set_user_input(s1, r, 3, formula.to_string()).unwrap();
+        model.set_user_input(s1, r, 4, status.to_string()).unwrap();
     }
 
     // Evaluate all workbook formulas
@@ -921,14 +892,9 @@ pub fn create_complex_table_model_with_errors() -> Model<'static> {
     model
 }
 
-fn export_and_verify(
-    name: &str,
-    model: &Model,
-    opts: &PdfExportOptions,
-    out: &Path,
-) -> Vec<u8> {
-    let pdf = export_to_pdf(model, opts)
-        .unwrap_or_else(|e| panic!("failed exporting {}: {}", name, e));
+fn export_and_verify(name: &str, model: &Model, opts: &PdfExportOptions, out: &Path) -> Vec<u8> {
+    let pdf =
+        export_to_pdf(model, opts).unwrap_or_else(|e| panic!("failed exporting {}: {}", name, e));
     assert!(
         pdf.starts_with(b"%PDF-"),
         "{} must start with %PDF- header",
@@ -942,8 +908,7 @@ fn export_and_verify(
         name
     );
     let path = out.join(format!("{}.pdf", name));
-    fs::write(&path, &pdf)
-        .unwrap_or_else(|e| panic!("failed writing {}: {}", path.display(), e));
+    fs::write(&path, &pdf).unwrap_or_else(|e| panic!("failed writing {}: {}", path.display(), e));
     pdf
 }
 
@@ -1022,7 +987,9 @@ fn test_complex_table_all_export_configurations() {
     // Verify formula calculation error (#DIV/0!) is visibly printed on the default exported PDF
     let default_pdf_path = out.join("complex_table_01_default.pdf");
     let default_doc = Document::load_mem(&fs::read(&default_pdf_path).unwrap()).unwrap();
-    let page1_bytes = default_doc.get_page_content(*default_doc.get_pages().get(&1).unwrap()).unwrap();
+    let page1_bytes = default_doc
+        .get_page_content(*default_doc.get_pages().get(&1).unwrap())
+        .unwrap();
     let page1_content = hipdf::lopdf::content::Content::decode(&page1_bytes).unwrap();
     let mut default_strings = Vec::new();
     for op in &page1_content.operations {
@@ -1044,7 +1011,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_02_paper_a4_portrait",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::A4).portrait(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::A4)
+            .portrait(),
         &out,
     );
 
@@ -1052,7 +1021,10 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_03_paper_a4_landscape",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::A4).landscape().fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::A4)
+            .landscape()
+            .fit_to_page(),
         &out,
     );
     fs::copy(
@@ -1065,7 +1037,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_04_paper_letter_portrait",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::Letter).portrait(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::Letter)
+            .portrait(),
         &out,
     );
 
@@ -1073,7 +1047,10 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_05_paper_letter_landscape",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::Letter).landscape().fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::Letter)
+            .landscape()
+            .fit_to_page(),
         &out,
     );
 
@@ -1081,7 +1058,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_06_paper_legal_portrait",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::Legal).portrait(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::Legal)
+            .portrait(),
         &out,
     );
 
@@ -1089,7 +1068,10 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_07_paper_legal_landscape",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::Legal).landscape().fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::Legal)
+            .landscape()
+            .fit_to_page(),
         &out,
     );
 
@@ -1097,7 +1079,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_08_paper_tabloid_portrait",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::Tabloid).portrait(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::Tabloid)
+            .portrait(),
         &out,
     );
 
@@ -1105,7 +1089,10 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_09_paper_tabloid_landscape",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::Tabloid).landscape().fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::Tabloid)
+            .landscape()
+            .fit_to_page(),
         &out,
     );
 
@@ -1113,7 +1100,10 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_10_paper_a3",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::A3).landscape().fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::A3)
+            .landscape()
+            .fit_to_page(),
         &out,
     );
 
@@ -1121,7 +1111,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_11_paper_a5",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::A5).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::A5)
+            .fit_to_page(),
         &out,
     );
 
@@ -1129,7 +1121,10 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_12_paper_b4",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::B4).landscape().fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::B4)
+            .landscape()
+            .fit_to_page(),
         &out,
     );
 
@@ -1137,7 +1132,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_13_paper_b5",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::B5).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::B5)
+            .fit_to_page(),
         &out,
     );
 
@@ -1145,7 +1142,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_14_paper_executive",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::Executive).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::Executive)
+            .fit_to_page(),
         &out,
     );
 
@@ -1153,7 +1152,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_15_paper_statement",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::Statement).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::Statement)
+            .fit_to_page(),
         &out,
     );
 
@@ -1161,7 +1162,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_16_paper_folio",
         &model,
-        &PdfExportOptions::default().with_paper_size(PaperSize::Folio).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_paper_size(PaperSize::Folio)
+            .fit_to_page(),
         &out,
     );
 
@@ -1191,7 +1194,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_18_scaling_actual_size",
         &model,
-        &PdfExportOptions::default().with_scaling(Scaling::ActualSize).with_gridlines(true),
+        &PdfExportOptions::default()
+            .with_scaling(Scaling::ActualSize)
+            .with_gridlines(true),
         &out,
     );
 
@@ -1199,7 +1204,10 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_19_scaling_fit_one_page",
         &model,
-        &PdfExportOptions::default().fit_to_page().with_margins(Margins::narrow()).with_centering(true, true),
+        &PdfExportOptions::default()
+            .fit_to_page()
+            .with_margins(Margins::narrow())
+            .with_centering(true, true),
         &out,
     );
     fs::copy(
@@ -1212,7 +1220,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_20_scaling_fit_to_width",
         &model,
-        &PdfExportOptions::default().fit_to_width(1).with_margins(Margins::narrow()),
+        &PdfExportOptions::default()
+            .fit_to_width(1)
+            .with_margins(Margins::narrow()),
         &out,
     );
     fs::copy(
@@ -1225,7 +1235,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_21_scaling_fit_to_height",
         &model,
-        &PdfExportOptions::default().fit_to_height(1).with_margins(Margins::normal()),
+        &PdfExportOptions::default()
+            .fit_to_height(1)
+            .with_margins(Margins::normal()),
         &out,
     );
     fs::copy(
@@ -1278,7 +1290,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_26_margins_normal",
         &model,
-        &PdfExportOptions::default().with_margins(Margins::normal()).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_margins(Margins::normal())
+            .fit_to_page(),
         &out,
     );
 
@@ -1286,7 +1300,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_27_margins_narrow",
         &model,
-        &PdfExportOptions::default().with_margins(Margins::narrow()).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_margins(Margins::narrow())
+            .fit_to_page(),
         &out,
     );
 
@@ -1294,7 +1310,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_28_margins_wide",
         &model,
-        &PdfExportOptions::default().with_margins(Margins::wide()).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_margins(Margins::wide())
+            .fit_to_page(),
         &out,
     );
 
@@ -1302,7 +1320,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_29_margins_none",
         &model,
-        &PdfExportOptions::default().with_margins(Margins::none()).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_margins(Margins::none())
+            .fit_to_page(),
         &out,
     );
 
@@ -1323,7 +1343,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_31_gridlines_visible",
         &model,
-        &PdfExportOptions::default().with_gridlines(true).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_gridlines(true)
+            .fit_to_page(),
         &out,
     );
 
@@ -1331,7 +1353,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_32_gridlines_hidden",
         &model,
-        &PdfExportOptions::default().with_gridlines(false).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_gridlines(false)
+            .fit_to_page(),
         &out,
     );
     fs::copy(
@@ -1344,7 +1368,10 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_33_headings_visible",
         &model,
-        &PdfExportOptions::default().with_headings(true).with_gridlines(true).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_headings(true)
+            .with_gridlines(true)
+            .fit_to_page(),
         &out,
     );
     fs::copy(
@@ -1357,7 +1384,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_34_headings_hidden",
         &model,
-        &PdfExportOptions::default().with_headings(false).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_headings(false)
+            .fit_to_page(),
         &out,
     );
 
@@ -1368,7 +1397,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_35_formulas_calculated_values",
         &model,
-        &PdfExportOptions::default().with_formulas(FormulaPrintPolicy::CalculatedValues).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_formulas(FormulaPrintPolicy::CalculatedValues)
+            .fit_to_page(),
         &out,
     );
 
@@ -1376,7 +1407,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_36_formulas_raw_text",
         &model,
-        &PdfExportOptions::default().with_formulas(FormulaPrintPolicy::FormulaText).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_formulas(FormulaPrintPolicy::FormulaText)
+            .fit_to_page(),
         &out,
     );
     fs::copy(
@@ -1392,7 +1425,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_37_errors_display_as_stored",
         &model_with_errors,
-        &PdfExportOptions::default().with_cell_errors(CellErrorMode::DisplayAsStored).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_cell_errors(CellErrorMode::DisplayAsStored)
+            .fit_to_page(),
         &out,
     );
     fs::copy(
@@ -1405,7 +1440,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_38_errors_dash",
         &model_with_errors,
-        &PdfExportOptions::default().with_cell_errors(CellErrorMode::Dash).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_cell_errors(CellErrorMode::Dash)
+            .fit_to_page(),
         &out,
     );
     fs::copy(
@@ -1418,7 +1455,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_39_errors_blank",
         &model_with_errors,
-        &PdfExportOptions::default().with_cell_errors(CellErrorMode::Blank).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_cell_errors(CellErrorMode::Blank)
+            .fit_to_page(),
         &out,
     );
     fs::copy(
@@ -1431,7 +1470,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_40_errors_not_available",
         &model_with_errors,
-        &PdfExportOptions::default().with_cell_errors(CellErrorMode::NotAvailable).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_cell_errors(CellErrorMode::NotAvailable)
+            .fit_to_page(),
         &out,
     );
     fs::copy(
@@ -1447,7 +1488,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_41_scope_active_sheet",
         &model,
-        &PdfExportOptions::default().with_scope(ExportScope::ActiveSheet).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_scope(ExportScope::ActiveSheet)
+            .fit_to_page(),
         &out,
     );
 
@@ -1526,7 +1569,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_45_scope_second_sheet",
         &model,
-        &PdfExportOptions::default().with_scope(ExportScope::SelectedSheets(vec![1])).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_scope(ExportScope::SelectedSheets(vec![1]))
+            .fit_to_page(),
         &out,
     );
 
@@ -1537,7 +1582,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_46_page_order_down_then_over",
         &model,
-        &PdfExportOptions::default().with_scaling(Scaling::ActualSize).with_page_order(PageOrder::DownThenOver),
+        &PdfExportOptions::default()
+            .with_scaling(Scaling::ActualSize)
+            .with_page_order(PageOrder::DownThenOver),
         &out,
     );
 
@@ -1545,7 +1592,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_47_page_order_over_then_down",
         &model,
-        &PdfExportOptions::default().with_scaling(Scaling::ActualSize).with_page_order(PageOrder::OverThenDown),
+        &PdfExportOptions::default()
+            .with_scaling(Scaling::ActualSize)
+            .with_page_order(PageOrder::OverThenDown),
         &out,
     );
     fs::copy(
@@ -1561,7 +1610,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_48_centering_none",
         &model,
-        &PdfExportOptions::default().with_centering(false, false).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_centering(false, false)
+            .fit_to_page(),
         &out,
     );
 
@@ -1569,7 +1620,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_49_centering_horizontal",
         &model,
-        &PdfExportOptions::default().with_centering(true, false).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_centering(true, false)
+            .fit_to_page(),
         &out,
     );
 
@@ -1577,7 +1630,9 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_50_centering_both",
         &model,
-        &PdfExportOptions::default().with_centering(true, true).fit_to_page(),
+        &PdfExportOptions::default()
+            .with_centering(true, true)
+            .fit_to_page(),
         &out,
     );
 
@@ -1588,18 +1643,20 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_51_headers_footers_standard",
         &model,
-        &PdfExportOptions::default().fit_to_page().with_header_footer(
-            HeaderFooterLayout {
-                left: HeaderFooterField::Text("ENTERPRISE AUDIT".to_string()),
-                center: HeaderFooterField::Empty,
-                right: HeaderFooterField::Date,
-            },
-            HeaderFooterLayout {
-                left: HeaderFooterField::Empty,
-                center: HeaderFooterField::PageNumberOfTotal,
-                right: HeaderFooterField::Empty,
-            },
-        ),
+        &PdfExportOptions::default()
+            .fit_to_page()
+            .with_header_footer(
+                HeaderFooterLayout {
+                    left: HeaderFooterField::Text("ENTERPRISE AUDIT".to_string()),
+                    center: HeaderFooterField::Empty,
+                    right: HeaderFooterField::Date,
+                },
+                HeaderFooterLayout {
+                    left: HeaderFooterField::Empty,
+                    center: HeaderFooterField::PageNumberOfTotal,
+                    right: HeaderFooterField::Empty,
+                },
+            ),
         &out,
     );
 
@@ -1607,18 +1664,20 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_52_headers_footers_all_tokens",
         &model,
-        &PdfExportOptions::default().fit_to_page().with_header_footer(
-            HeaderFooterLayout {
-                left: HeaderFooterField::SheetName,
-                center: HeaderFooterField::WorkbookName,
-                right: HeaderFooterField::Date,
-            },
-            HeaderFooterLayout {
-                left: HeaderFooterField::Time,
-                center: HeaderFooterField::PageNumberOfTotal,
-                right: HeaderFooterField::Text("IRONCALC EXPORT".to_string()),
-            },
-        ),
+        &PdfExportOptions::default()
+            .fit_to_page()
+            .with_header_footer(
+                HeaderFooterLayout {
+                    left: HeaderFooterField::SheetName,
+                    center: HeaderFooterField::WorkbookName,
+                    right: HeaderFooterField::Date,
+                },
+                HeaderFooterLayout {
+                    left: HeaderFooterField::Time,
+                    center: HeaderFooterField::PageNumberOfTotal,
+                    right: HeaderFooterField::Text("IRONCALC EXPORT".to_string()),
+                },
+            ),
         &out,
     );
 
@@ -1626,18 +1685,20 @@ fn test_complex_table_all_export_configurations() {
     export_and_verify(
         "complex_table_53_headers_footers_confidential",
         &model,
-        &PdfExportOptions::default().fit_to_page().with_header_footer(
-            HeaderFooterLayout {
-                left: HeaderFooterField::Text("CONFIDENTIAL & PROPRIETARY".to_string()),
-                center: HeaderFooterField::Empty,
-                right: HeaderFooterField::SheetName,
-            },
-            HeaderFooterLayout {
-                left: HeaderFooterField::Text("DO NOT DISTRIBUTE".to_string()),
-                center: HeaderFooterField::PageNumberOfTotal,
-                right: HeaderFooterField::Date,
-            },
-        ),
+        &PdfExportOptions::default()
+            .fit_to_page()
+            .with_header_footer(
+                HeaderFooterLayout {
+                    left: HeaderFooterField::Text("CONFIDENTIAL & PROPRIETARY".to_string()),
+                    center: HeaderFooterField::Empty,
+                    right: HeaderFooterField::SheetName,
+                },
+                HeaderFooterLayout {
+                    left: HeaderFooterField::Text("DO NOT DISTRIBUTE".to_string()),
+                    center: HeaderFooterField::PageNumberOfTotal,
+                    right: HeaderFooterField::Date,
+                },
+            ),
         &out,
     );
 
@@ -1707,7 +1768,11 @@ fn test_complex_table_png_export_validation() {
         let root_dir = manifest_dir().join("..");
         let _ = std::process::Command::new("npx")
             .current_dir(root_dir.join("webapp/IronCalc"))
-            .args(["vitest", "run", "tests/worksheetCanvas/complexTableExport.test.ts"])
+            .args([
+                "vitest",
+                "run",
+                "tests/worksheetCanvas/complexTableExport.test.ts",
+            ])
             .output();
     }
 

@@ -602,7 +602,7 @@ fn render_cell_borders(model: &Model, plan: &PagePlan, ops: &mut Vec<Operation>)
 
     // Now render perimeter borders for merged cells as unified rectangles
     let mut rendered_merges = HashMap::new();
-    for merge in &plan.merged_cells {
+    for merge in plan.merged_cells.iter() {
         if rendered_merges.contains_key(&(merge.row, merge.column)) {
             continue;
         }
@@ -693,7 +693,13 @@ fn render_cell_borders(model: &Model, plan: &PagePlan, ops: &mut Vec<Operation>)
                 } else {
                     if let Some((b_style, ref b_color)) = current_border {
                         draw_border_line(
-                            ops, b_style, b_color, seg_start, bottom_y_pdf, seg_end, bottom_y_pdf,
+                            ops,
+                            b_style,
+                            b_color,
+                            seg_start,
+                            bottom_y_pdf,
+                            seg_end,
+                            bottom_y_pdf,
                         );
                     }
                     current_border = b_key;
@@ -703,7 +709,13 @@ fn render_cell_borders(model: &Model, plan: &PagePlan, ops: &mut Vec<Operation>)
             }
             if let Some((b_style, ref b_color)) = current_border {
                 draw_border_line(
-                    ops, b_style, b_color, seg_start, bottom_y_pdf, seg_end, bottom_y_pdf,
+                    ops,
+                    b_style,
+                    b_color,
+                    seg_start,
+                    bottom_y_pdf,
+                    seg_end,
+                    bottom_y_pdf,
                 );
             }
         }
@@ -1148,10 +1160,31 @@ impl FontCatalog {
             {
                 return entry;
             }
-            if let Some(entry) = custom_candidates.iter().find(|e| e.is_bold == is_bold) {
-                return entry;
+            if !is_bold && !is_italic {
+                if let Some(entry) = custom_candidates
+                    .iter()
+                    .find(|e| !e.is_bold && !e.is_italic)
+                {
+                    return entry;
+                }
+                return custom_candidates[0];
             }
-            return custom_candidates[0];
+            if is_bold && !is_italic {
+                if let Some(entry) = custom_candidates.iter().find(|e| e.is_bold && !e.is_italic) {
+                    return entry;
+                }
+            } else if !is_bold && is_italic {
+                if let Some(entry) = custom_candidates.iter().find(|e| !e.is_bold && e.is_italic) {
+                    return entry;
+                }
+            } else if is_bold && is_italic {
+                if let Some(entry) = custom_candidates.iter().find(|e| e.is_bold && e.is_italic) {
+                    return entry;
+                }
+            }
+            // If the custom font family does not supply the requested bold/italic variant,
+            // fall through to the corresponding standard font variant below so that bold or
+            // italic styling is preserved rather than silently rendered as regular.
         }
 
         if family_id == 3 || is_monospace_name(font_name) {
@@ -1274,8 +1307,7 @@ fn render_cell_texts(
             let is_b = style.font.b;
             let is_i = style.font.i;
 
-            let active_font_entry =
-                fonts.resolve(&style.font.name, is_b, is_i, style.font.family);
+            let active_font_entry = fonts.resolve(&style.font.name, is_b, is_i, style.font.family);
             let active_font = &active_font_entry.font;
             let active_res = &active_font_entry.resource_name;
 

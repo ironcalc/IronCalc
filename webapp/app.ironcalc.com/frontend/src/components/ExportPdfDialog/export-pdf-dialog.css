@@ -12,6 +12,7 @@
   z-index: 1000;
   animation: app-ic-epd-fade-in 0.15s ease-out;
   overflow: hidden;
+  outline: none;
 }
 
 @keyframes app-ic-epd-fade-in {
@@ -62,7 +63,9 @@
   flex-shrink: 0;
   width: 100%;
   box-sizing: border-box;
-  transition: filter 0.2s ease, opacity 0.2s ease;
+  transition:
+    filter 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .app-ic-epd-pages-stack--blurred {
@@ -76,7 +79,9 @@
   position: relative;
   background-color: #ffffff;
   border-radius: 2px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.22), 0 1px 4px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.22),
+    0 1px 4px rgba(0, 0, 0, 0.12);
   margin-bottom: 28px;
   overflow: hidden;
   border: none;
@@ -199,7 +204,10 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.1s;
   outline: none;
 }
 
@@ -297,15 +305,21 @@
   width: 100%;
   height: 32px;
   padding: 0 10px;
-  border: 1px solid var(--palette-input-border, var(--palette-grey-300, #e0e0e0));
+  border: 1px solid
+    var(--palette-input-border, var(--palette-grey-300, #e0e0e0));
   border-radius: 4px;
-  background-color: var(--palette-input-background, var(--palette-common-white, #ffffff));
+  background-color: var(
+    --palette-input-background,
+    var(--palette-common-white, #ffffff)
+  );
   color: var(--palette-common-black, #272525);
   font-size: 12px;
   font-family: var(--typography-font-family, "Inter", sans-serif);
   box-sizing: border-box;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .app-ic-epd-select:hover,
@@ -316,7 +330,8 @@
 .app-ic-epd-select:focus,
 .app-ic-epd-input:focus {
   border-color: var(--palette-primary-main, #f2994a);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--palette-primary-main, #f2994a) 25%, transparent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--palette-primary-main, #f2994a) 25%, transparent);
 }
 
 .app-ic-epd-radio-group {
@@ -372,10 +387,20 @@
   color: var(--palette-grey-900, #333333);
   font-family: var(--typography-font-family, "Inter", sans-serif);
   padding: 4px 0;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
 }
 
 .app-ic-epd-accordion-header:hover {
   color: var(--palette-primary-main, #f2994a);
+}
+
+.app-ic-epd-accordion-header:focus-visible {
+  outline: 2px solid var(--palette-primary-main, #f2994a);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .app-ic-epd-accordion-content {
@@ -404,9 +429,14 @@
 
 .app-ic-epd-status {
   padding: 8px 12px;
-  background-color: color-mix(in srgb, var(--palette-primary-main, #f2994a) 10%, transparent);
+  background-color: color-mix(
+    in srgb,
+    var(--palette-primary-main, #f2994a) 10%,
+    transparent
+  );
   color: var(--palette-primary-dark, #d68742);
-  border: 1px solid color-mix(in srgb, var(--palette-primary-main, #f2994a) 25%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--palette-primary-main, #f2994a) 25%, transparent);
   border-radius: 4px;
   font-size: 12px;
   font-family: var(--typography-font-family, "Inter", sans-serif);

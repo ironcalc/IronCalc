@@ -4,6 +4,7 @@
 //! and pagination into deterministic page plans ready for rendering.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use chrono::Local;
 use ironcalc_base::types::{MergedCell, SheetState};
@@ -52,11 +53,11 @@ pub struct PagePlan {
     /// Data rows on this page.
     pub slice_rows: Vec<i32>,
     /// Scaled width for each column (column_index -> width_pt).
-    pub col_widths: HashMap<i32, f32>,
+    pub col_widths: Arc<HashMap<i32, f32>>,
     /// Scaled height for each row (row_index -> height_pt).
-    pub row_heights: HashMap<i32, f32>,
+    pub row_heights: Arc<HashMap<i32, f32>>,
     /// Merged cells relevant to this sheet.
-    pub merged_cells: Vec<MergedCell>,
+    pub merged_cells: Arc<Vec<MergedCell>>,
     /// Evaluated header text (left, center, right).
     pub header_text: (String, String, String),
     /// Evaluated footer text (left, center, right).
@@ -198,6 +199,13 @@ pub fn plan_export_layout(
         return Err(PdfError::IronCalc(
             "Export produced no printable pages".to_string(),
         ));
+    }
+
+    if unnumbered_plans.len() > 1_000 {
+        return Err(PdfError::Pdf(format!(
+            "Export exceeds maximum allowed page budget of 1,000 pages ({} pages requested)",
+            unnumbered_plans.len()
+        )));
     }
 
     // Number pages and resolve header/footer page count tokens
@@ -351,10 +359,41 @@ fn plan_sheet_layout(
             PrintAreaPolicy::OnlyExplicitRange(r) => r,
             PrintAreaPolicy::HonorDefinedPrintAreas | PrintAreaPolicy::IgnoreDefinedPrintAreas => {
                 let dim = worksheet.dimension();
-                CellRange::new(dim.min_row, dim.min_column, dim.max_row, dim.max_column)
+                let mut min_row = dim.min_row;
+                let mut max_row = dim.max_row;
+                let mut min_col = dim.min_column;
+                let mut max_col = dim.max_column;
+                for mc in &worksheet.merged_cells {
+                    min_row = min_row.min(mc.row);
+                    max_row = max_row.max(mc.row + mc.height - 1);
+                    min_col = min_col.min(mc.column);
+                    max_col = max_col.max(mc.column + mc.width - 1);
+                }
+                CellRange::new(min_row, min_col, max_row, max_col)
             }
         }
     };
+
+    if cell_range.start_row < 1
+        || cell_range.start_col < 1
+        || cell_range.end_row > 1_048_576
+        || cell_range.end_col > 16_384
+        || cell_range.start_row > cell_range.end_row
+        || cell_range.start_col > cell_range.end_col
+    {
+        return Err(PdfError::InvalidRange(format!(
+            "Range bounds [{}, {}] to [{}, {}] are out of sheet limits (1..=1048576, 1..=16384)",
+            cell_range.start_row, cell_range.start_col, cell_range.end_row, cell_range.end_col
+        )));
+    }
+
+    let cell_count = (cell_range.end_row - cell_range.start_row + 1) as u64
+        * (cell_range.end_col - cell_range.start_col + 1) as u64;
+    if cell_count > 2_000_000 {
+        return Err(PdfError::InvalidRange(format!(
+            "Range exceeds maximum cell budget of 2,000,000 cells ({cell_count} cells requested)"
+        )));
+    }
 
     // 5. Filter visible rows and columns
     let omit_hidden = matches!(options.range.hidden_rows_columns, HiddenContentPolicy::Omit);
@@ -411,12 +450,7 @@ fn plan_sheet_layout(
         _ => (Vec::new(), Vec::new()),
     };
 
-    if repeat_cols.is_empty()
-        && matches!(
-            options.repeat.frozen_panes,
-            FrozenPanePrintPolicy::RepeatAsPrintTitles
-        )
-    {
+    if repeat_cols.is_empty() && options.repeat.frozen_panes.repeat_columns() {
         let frozen_c = model.get_frozen_columns_count(sheet_idx).unwrap_or(0);
         if frozen_c > 0 {
             repeat_cols = (1..=frozen_c)
@@ -425,12 +459,7 @@ fn plan_sheet_layout(
         }
     }
 
-    if repeat_rows.is_empty()
-        && matches!(
-            options.repeat.frozen_panes,
-            FrozenPanePrintPolicy::RepeatAsPrintTitles
-        )
-    {
+    if repeat_rows.is_empty() && options.repeat.frozen_panes.repeat_rows() {
         let frozen_r = model.get_frozen_rows_count(sheet_idx).unwrap_or(0);
         if frozen_r > 0 {
             repeat_rows = (1..=frozen_r)
@@ -496,41 +525,73 @@ fn plan_sheet_layout(
         Scaling::ActualSize => 1.0,
         Scaling::Percent(pct) => (pct as f32) / 100.0,
         Scaling::FitSheetOnOnePage => {
-            let sx = printable_w / full_table_w;
-            let sy = printable_h / full_table_h;
-            sx.min(sy).clamp(0.1, 1.0)
+            let sx = if full_table_w > 0.0 {
+                printable_w / full_table_w
+            } else {
+                1.0
+            };
+            let sy = if full_table_h > 0.0 {
+                printable_h / full_table_h
+            } else {
+                1.0
+            };
+            sx.min(sy).clamp(0.001, 1.0)
         }
         Scaling::FitToWidth {
             pages_wide,
             pages_tall,
         } => {
-            let sx = (printable_w * pages_wide as f32) / full_table_w;
-            if let Some(ptall) = pages_tall {
-                let sy = (printable_h * ptall as f32) / full_table_h;
-                sx.min(sy).clamp(0.1, 1.0)
+            let sx = if full_table_w > 0.0 {
+                (printable_w * pages_wide as f32) / full_table_w
             } else {
-                sx.clamp(0.1, 1.0)
+                1.0
+            };
+            if let Some(ptall) = pages_tall {
+                let sy = if full_table_h > 0.0 {
+                    (printable_h * ptall as f32) / full_table_h
+                } else {
+                    1.0
+                };
+                sx.min(sy).clamp(0.001, 1.0)
+            } else {
+                sx.clamp(0.001, 1.0)
             }
         }
         Scaling::FitToHeight {
             pages_wide,
             pages_tall,
         } => {
-            let sy = (printable_h * pages_tall as f32) / full_table_h;
-            if let Some(pwide) = pages_wide {
-                let sx = (printable_w * pwide as f32) / full_table_w;
-                sx.min(sy).clamp(0.1, 1.0)
+            let sy = if full_table_h > 0.0 {
+                (printable_h * pages_tall as f32) / full_table_h
             } else {
-                sy.clamp(0.1, 1.0)
+                1.0
+            };
+            if let Some(pwide) = pages_wide {
+                let sx = if full_table_w > 0.0 {
+                    (printable_w * pwide as f32) / full_table_w
+                } else {
+                    1.0
+                };
+                sx.min(sy).clamp(0.001, 1.0)
+            } else {
+                sy.clamp(0.001, 1.0)
             }
         }
         Scaling::FitToPages {
             pages_wide,
             pages_tall,
         } => {
-            let sx = (printable_w * pages_wide as f32) / full_table_w;
-            let sy = (printable_h * pages_tall as f32) / full_table_h;
-            sx.min(sy).clamp(0.1, 1.0)
+            let sx = if full_table_w > 0.0 {
+                (printable_w * pages_wide as f32) / full_table_w
+            } else {
+                1.0
+            };
+            let sy = if full_table_h > 0.0 {
+                (printable_h * pages_tall as f32) / full_table_h
+            } else {
+                1.0
+            };
+            sx.min(sy).clamp(0.001, 1.0)
         }
     };
 
@@ -596,6 +657,10 @@ fn plan_sheet_layout(
         } => (horizontal, vertical),
     };
 
+    let col_widths = Arc::new(col_widths);
+    let row_heights = Arc::new(row_heights);
+    let merged_cells = Arc::new(worksheet.merged_cells.clone());
+
     let mut plans = Vec::new();
 
     let make_page = |c_slice: &[i32], r_slice: &[i32]| -> PagePlan {
@@ -609,16 +674,52 @@ fn plan_sheet_layout(
             total_page_content_h += row_heights[r];
         }
 
-        let content_x = if center_h && printable_w > total_page_content_w {
-            left_margin + (printable_w - total_page_content_w) / 2.0
-        } else {
-            left_margin
+        let content_x = match options.page.horizontal_alignment {
+            PageHorizontalAlignment::Center => {
+                if printable_w > total_page_content_w {
+                    left_margin + (printable_w - total_page_content_w) / 2.0
+                } else {
+                    left_margin
+                }
+            }
+            PageHorizontalAlignment::Right => {
+                if printable_w > total_page_content_w {
+                    left_margin + (printable_w - total_page_content_w)
+                } else {
+                    left_margin
+                }
+            }
+            PageHorizontalAlignment::Left => {
+                if center_h && printable_w > total_page_content_w {
+                    left_margin + (printable_w - total_page_content_w) / 2.0
+                } else {
+                    left_margin
+                }
+            }
         };
 
-        let content_y = if center_v && printable_h > total_page_content_h {
-            top_margin + header_space + (printable_h - total_page_content_h) / 2.0
-        } else {
-            top_margin + header_space
+        let content_y = match options.page.vertical_alignment {
+            PageVerticalAlignment::Middle => {
+                if printable_h > total_page_content_h {
+                    top_margin + header_space + (printable_h - total_page_content_h) / 2.0
+                } else {
+                    top_margin + header_space
+                }
+            }
+            PageVerticalAlignment::Bottom => {
+                if printable_h > total_page_content_h {
+                    top_margin + header_space + (printable_h - total_page_content_h)
+                } else {
+                    top_margin + header_space
+                }
+            }
+            PageVerticalAlignment::Top => {
+                if center_v && printable_h > total_page_content_h {
+                    top_margin + header_space + (printable_h - total_page_content_h) / 2.0
+                } else {
+                    top_margin + header_space
+                }
+            }
         };
 
         PagePlan {
@@ -640,9 +741,9 @@ fn plan_sheet_layout(
             slice_cols: c_slice.to_vec(),
             repeat_rows: repeat_rows.clone(),
             slice_rows: r_slice.to_vec(),
-            col_widths: col_widths.clone(),
-            row_heights: row_heights.clone(),
-            merged_cells: worksheet.merged_cells.clone(),
+            col_widths: Arc::clone(&col_widths),
+            row_heights: Arc::clone(&row_heights),
+            merged_cells: Arc::clone(&merged_cells),
             header_text: (String::new(), String::new(), String::new()),
             footer_text: (String::new(), String::new(), String::new()),
         }

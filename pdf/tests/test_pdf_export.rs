@@ -632,8 +632,13 @@ fn test_pdf_export_payload_json_deserialization() {
     );
     assert_eq!(
         opts.repeat.frozen_panes,
-        ironcalc_pdf::FrozenPanePrintPolicy::RepeatAsPrintTitles
+        ironcalc_pdf::FrozenPanePrintPolicy::PerAxis {
+            rows: true,
+            columns: false,
+        }
     );
+    assert!(opts.repeat.frozen_panes.repeat_rows());
+    assert!(!opts.repeat.frozen_panes.repeat_columns());
     assert_eq!(
         opts.page.center_on_page,
         ironcalc_pdf::CenterOnPagePolicy::Fixed {
@@ -664,7 +669,8 @@ fn test_pdf_export_payload_selected_cells() {
     );
 
     let model = create_sample_model();
-    let pdf_bytes = ironcalc_pdf::export_to_pdf(&model, &opts).expect("export selected cells from payload");
+    let pdf_bytes =
+        ironcalc_pdf::export_to_pdf(&model, &opts).expect("export selected cells from payload");
     assert!(pdf_bytes.starts_with(b"%PDF-"));
 }
 
@@ -677,8 +683,7 @@ fn test_font_family_resolution_and_text_spill() {
             0,
             1,
             1,
-            "This is a long header title that should spill into adjacent empty columns"
-                .to_string(),
+            "This is a long header title that should spill into adjacent empty columns".to_string(),
         )
         .unwrap();
     model.evaluate();
@@ -780,10 +785,16 @@ fn test_calculation_and_formula_errors_printed_on_pdf() {
     let mut model = Model::new_empty("ErrorsSheet", "en", "UTC", "en").unwrap();
     // Setup various formula calculation errors
     model.set_user_input(0, 1, 1, "=100/0".to_string()).unwrap(); // #DIV/0!
-    model.set_user_input(0, 2, 1, "=1+\"invalid\"".to_string()).unwrap(); // #VALUE!
+    model
+        .set_user_input(0, 2, 1, "=1+\"invalid\"".to_string())
+        .unwrap(); // #VALUE!
     model.set_user_input(0, 3, 1, "=NA()".to_string()).unwrap(); // #N/A
-    model.set_user_input(0, 4, 1, "=SQRT(-1)".to_string()).unwrap(); // #NUM!
-    model.set_user_input(0, 5, 1, "=NONEXISTENT_FN()".to_string()).unwrap(); // #NAME?
+    model
+        .set_user_input(0, 4, 1, "=SQRT(-1)".to_string())
+        .unwrap(); // #NUM!
+    model
+        .set_user_input(0, 5, 1, "=NONEXISTENT_FN()".to_string())
+        .unwrap(); // #NAME?
     model.evaluate();
 
     // Verify cell evaluations
@@ -840,10 +851,9 @@ fn test_calculation_and_formula_errors_printed_on_pdf() {
     let pdf_dash = export_to_pdf(&model, &options_dash).expect("export dash errors");
     let doc_dash = Document::load_mem(&pdf_dash).unwrap();
     let page_dash_id = *doc_dash.get_pages().get(&1).unwrap();
-    let content_dash = hipdf::lopdf::content::Content::decode(
-        &doc_dash.get_page_content(page_dash_id).unwrap(),
-    )
-    .unwrap();
+    let content_dash =
+        hipdf::lopdf::content::Content::decode(&doc_dash.get_page_content(page_dash_id).unwrap())
+            .unwrap();
     let mut dash_strings = Vec::new();
     for op in &content_dash.operations {
         if op.operator == "Tj" {
@@ -858,3 +868,97 @@ fn test_calculation_and_formula_errors_printed_on_pdf() {
     );
 }
 
+#[test]
+fn test_unbounded_range_rejected() {
+    let mut model = Model::new_empty("Sheet1", "en", "UTC", "en").unwrap();
+    model.set_user_input(0, 1, 1, "A1".to_string()).unwrap();
+
+    let payload_str = r#"{
+        "scope": "SelectedCells",
+        "selection_range": "A1:A2147483647"
+    }"#;
+    let payload: ironcalc_pdf::PdfExportOptionsPayload =
+        serde_json::from_str(payload_str).expect("deserialize payload");
+    let opts = payload.into_options();
+    let result = ironcalc_pdf::plan_export_layout(&model, &opts);
+    assert!(result.is_err());
+
+    // Explicit out-of-bounds CellRange
+    let oob_opts = PdfExportOptions::default().with_scope(ExportScope::Selection {
+        sheet: 0,
+        range: CellRange::new(1, 1, 2_000_000, 1),
+    });
+    let oob_res = ironcalc_pdf::plan_export_layout(&model, &oob_opts);
+    assert!(oob_res.is_err());
+}
+
+#[test]
+fn test_merged_cell_extents_included_in_dimensions() {
+    let mut model = Model::new_empty("Sheet1", "en", "UTC", "en").unwrap();
+    // Only A1 is stored, but A1:C2 is merged
+    model
+        .set_user_input(0, 1, 1, "Merged Title".to_string())
+        .unwrap();
+    model
+        .workbook
+        .worksheet_mut(0)
+        .unwrap()
+        .merged_cells
+        .push(MergedCell {
+            row: 1,
+            column: 1,
+            width: 3,
+            height: 2,
+        });
+
+    let opts = PdfExportOptions::default();
+    let plans = ironcalc_pdf::plan_export_layout(&model, &opts).expect("plan layout");
+    assert_eq!(plans.len(), 1);
+    let plan = &plans[0];
+    let all_cols = plan.all_columns();
+    let all_rows = plan.all_rows();
+    assert!(all_cols.contains(&1) && all_cols.contains(&2) && all_cols.contains(&3));
+    assert!(all_rows.contains(&1) && all_rows.contains(&2));
+}
+
+#[test]
+fn test_scale_below_ten_percent_allowed() {
+    let mut model = Model::new_empty("Sheet1", "en", "UTC", "en").unwrap();
+    // 1000 rows
+    for r in 1..=1000 {
+        model.set_user_input(0, r, 1, "test".to_string()).unwrap();
+    }
+    let opts = PdfExportOptions::default().fit_to_page();
+    let plans = ironcalc_pdf::plan_export_layout(&model, &opts).expect("plan layout");
+    assert_eq!(plans.len(), 1);
+    assert!(
+        plans[0].scale < 0.1,
+        "Scale should be below 0.1 to fit 1000 rows, got {}",
+        plans[0].scale
+    );
+    assert_eq!(plans[0].slice_rows.len(), 1000);
+}
+
+#[test]
+fn test_horizontal_right_alignment() {
+    let mut model = Model::new_empty("Sheet1", "en", "UTC", "en").unwrap();
+    model
+        .set_user_input(0, 1, 1, "RightAligned".to_string())
+        .unwrap();
+    let payload_str = r#"{
+        "horizontal_alignment": "Right"
+    }"#;
+    let payload: ironcalc_pdf::PdfExportOptionsPayload =
+        serde_json::from_str(payload_str).expect("deserialize payload");
+    let opts = payload.into_options();
+    let plans = ironcalc_pdf::plan_export_layout(&model, &opts).expect("plan layout");
+    assert_eq!(plans.len(), 1);
+    let left_aligned_opts = PdfExportOptions::default();
+    let left_plans = ironcalc_pdf::plan_export_layout(&model, &left_aligned_opts).unwrap();
+    assert!(
+        plans[0].content_x > left_plans[0].content_x,
+        "Right aligned content_x ({}) should be > left ({})",
+        plans[0].content_x,
+        left_plans[0].content_x
+    );
+}

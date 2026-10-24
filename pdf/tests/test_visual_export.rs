@@ -512,22 +512,23 @@ fn test_generate_different_fonts_showcase_pdf() {
 
     let set_specimen_row = |m: &mut Model,
                             row: i32,
-                                font_family: &str,
-                                family_id: i32,
-                                variant_label: &str,
-                                sample_text: &str,
-                                size: i32,
-                                b: bool,
-                                i: bool,
-                                u: bool,
-                                strike: bool,
-                                note: &str| {
+                            font_family: &str,
+                            family_id: i32,
+                            variant_label: &str,
+                            sample_text: &str,
+                            size: i32,
+                            b: bool,
+                            i: bool,
+                            u: bool,
+                            strike: bool,
+                            note: &str| {
         let _ = m.set_row_height(0, row, if size > 14 { 30.0 } else { 20.0 });
         m.set_user_input(0, row, 1, font_family.to_string())
             .unwrap();
         m.set_user_input(0, row, 2, variant_label.to_string())
             .unwrap();
-        m.set_user_input(0, row, 3, sample_text.to_string()).unwrap();
+        m.set_user_input(0, row, 3, sample_text.to_string())
+            .unwrap();
         m.set_user_input(0, row, 4, format!("{size} pt")).unwrap();
         m.set_user_input(0, row, 5, note.to_string()).unwrap();
 
@@ -576,43 +577,333 @@ fn test_generate_different_fonts_showcase_pdf() {
     };
 
     // SECTION 1: Sans-Serif (Helvetica / Arial)
-    make_section(&mut model, 4, "  1. SANS-SERIF FAMILY (HELVETICA / ARIAL / CALIBRI)", "#DBEAFE", "#1E40AF");
+    make_section(
+        &mut model,
+        4,
+        "  1. SANS-SERIF FAMILY (HELVETICA / ARIAL / CALIBRI)",
+        "#DBEAFE",
+        "#1E40AF",
+    );
     set_row_headers(&mut model, 5);
-    set_specimen_row(&mut model, 6, "Helvetica", 2, "Regular (Normal)", "The quick brown fox jumps over the lazy dog 12345", 10, false, false, false, false, "Standard neutral sans-serif body text");
-    set_specimen_row(&mut model, 7, "Helvetica", 2, "Bold (Strong)", "The quick brown fox jumps over the lazy dog 12345", 10, true, false, false, false, "High contrast section headers & totals");
-    set_specimen_row(&mut model, 8, "Helvetica", 2, "Italic (Oblique)", "The quick brown fox jumps over the lazy dog 12345", 10, false, true, false, false, "Annotations, notes, and classifications");
-    set_specimen_row(&mut model, 9, "Helvetica", 2, "Bold Italic", "The quick brown fox jumps over the lazy dog 12345", 10, true, true, false, false, "Urgent highlights, alerts & critical notes");
-    set_specimen_row(&mut model, 10, "Helvetica", 2, "Underline", "The quick brown fox jumps over the lazy dog 12345", 10, false, false, true, false, "Total ledger underlines & interactive links");
-    set_specimen_row(&mut model, 11, "Helvetica", 2, "Strikethrough", "The quick brown fox jumps over the lazy dog 12345", 10, false, false, false, true, "Cancelled, superseded or deleted items");
+    set_specimen_row(
+        &mut model,
+        6,
+        "Helvetica",
+        2,
+        "Regular (Normal)",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        false,
+        false,
+        false,
+        false,
+        "Standard neutral sans-serif body text",
+    );
+    set_specimen_row(
+        &mut model,
+        7,
+        "Helvetica",
+        2,
+        "Bold (Strong)",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        true,
+        false,
+        false,
+        false,
+        "High contrast section headers & totals",
+    );
+    set_specimen_row(
+        &mut model,
+        8,
+        "Helvetica",
+        2,
+        "Italic (Oblique)",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        false,
+        true,
+        false,
+        false,
+        "Annotations, notes, and classifications",
+    );
+    set_specimen_row(
+        &mut model,
+        9,
+        "Helvetica",
+        2,
+        "Bold Italic",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        true,
+        true,
+        false,
+        false,
+        "Urgent highlights, alerts & critical notes",
+    );
+    set_specimen_row(
+        &mut model,
+        10,
+        "Helvetica",
+        2,
+        "Underline",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        false,
+        false,
+        true,
+        false,
+        "Total ledger underlines & interactive links",
+    );
+    set_specimen_row(
+        &mut model,
+        11,
+        "Helvetica",
+        2,
+        "Strikethrough",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        false,
+        false,
+        false,
+        true,
+        "Cancelled, superseded or deleted items",
+    );
 
     // SECTION 2: Serif (Times New Roman / Georgia)
-    make_section(&mut model, 13, "  2. SERIF FAMILY (TIMES NEW ROMAN / GEORGIA / GARAMOND)", "#FEF3C7", "#92400E");
+    make_section(
+        &mut model,
+        13,
+        "  2. SERIF FAMILY (TIMES NEW ROMAN / GEORGIA / GARAMOND)",
+        "#FEF3C7",
+        "#92400E",
+    );
     set_row_headers(&mut model, 14);
-    set_specimen_row(&mut model, 15, "Times New Roman", 1, "Regular (Roman)", "The quick brown fox jumps over the lazy dog 12345", 10, false, false, false, false, "Authoritative formal report typography");
-    set_specimen_row(&mut model, 16, "Times New Roman", 1, "Bold (Strong)", "The quick brown fox jumps over the lazy dog 12345", 10, true, false, false, false, "Editorial headings and section banners");
-    set_specimen_row(&mut model, 17, "Times New Roman", 1, "Italic", "The quick brown fox jumps over the lazy dog 12345", 10, false, true, false, false, "Legal disclaimers, citations & footnotes");
-    set_specimen_row(&mut model, 18, "Times New Roman", 1, "Bold Italic", "The quick brown fox jumps over the lazy dog 12345", 10, true, true, false, false, "Distinguished formal captions & emphasis");
+    set_specimen_row(
+        &mut model,
+        15,
+        "Times New Roman",
+        1,
+        "Regular (Roman)",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        false,
+        false,
+        false,
+        false,
+        "Authoritative formal report typography",
+    );
+    set_specimen_row(
+        &mut model,
+        16,
+        "Times New Roman",
+        1,
+        "Bold (Strong)",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        true,
+        false,
+        false,
+        false,
+        "Editorial headings and section banners",
+    );
+    set_specimen_row(
+        &mut model,
+        17,
+        "Times New Roman",
+        1,
+        "Italic",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        false,
+        true,
+        false,
+        false,
+        "Legal disclaimers, citations & footnotes",
+    );
+    set_specimen_row(
+        &mut model,
+        18,
+        "Times New Roman",
+        1,
+        "Bold Italic",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        true,
+        true,
+        false,
+        false,
+        "Distinguished formal captions & emphasis",
+    );
 
     // SECTION 3: Monospace (Courier New / Consolas)
-    make_section(&mut model, 20, "  3. MONOSPACE FAMILY (COURIER NEW / CONSOLAS / CODE)", "#DCFCE7", "#166534");
+    make_section(
+        &mut model,
+        20,
+        "  3. MONOSPACE FAMILY (COURIER NEW / CONSOLAS / CODE)",
+        "#DCFCE7",
+        "#166534",
+    );
     set_row_headers(&mut model, 21);
-    set_specimen_row(&mut model, 22, "Courier New", 3, "Regular (Mono)", "The quick brown fox jumps over the lazy dog 12345", 10, false, false, false, false, "Fixed-width aligned numbers & financial codes");
-    set_specimen_row(&mut model, 23, "Courier New", 3, "Bold Mono", "The quick brown fox jumps over the lazy dog 12345", 10, true, false, false, false, "Transaction IDs, ledger keys & formulas");
-    set_specimen_row(&mut model, 24, "Courier New", 3, "Italic Mono", "The quick brown fox jumps over the lazy dog 12345", 10, false, true, false, false, "System log timestamps & debug outputs");
-    set_specimen_row(&mut model, 25, "Courier New", 3, "Bold Italic Mono", "The quick brown fox jumps over the lazy dog 12345", 10, true, true, false, false, "Cryptographic hashes & checksum tokens");
+    set_specimen_row(
+        &mut model,
+        22,
+        "Courier New",
+        3,
+        "Regular (Mono)",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        false,
+        false,
+        false,
+        false,
+        "Fixed-width aligned numbers & financial codes",
+    );
+    set_specimen_row(
+        &mut model,
+        23,
+        "Courier New",
+        3,
+        "Bold Mono",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        true,
+        false,
+        false,
+        false,
+        "Transaction IDs, ledger keys & formulas",
+    );
+    set_specimen_row(
+        &mut model,
+        24,
+        "Courier New",
+        3,
+        "Italic Mono",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        false,
+        true,
+        false,
+        false,
+        "System log timestamps & debug outputs",
+    );
+    set_specimen_row(
+        &mut model,
+        25,
+        "Courier New",
+        3,
+        "Bold Italic Mono",
+        "The quick brown fox jumps over the lazy dog 12345",
+        10,
+        true,
+        true,
+        false,
+        false,
+        "Cryptographic hashes & checksum tokens",
+    );
 
     // SECTION 4: Type Hierarchy & Scale
-    make_section(&mut model, 27, "  4. TYPE HIERARCHY & SIZES (8pt TO 18pt)", "#F3E8FF", "#6B21A8");
+    make_section(
+        &mut model,
+        27,
+        "  4. TYPE HIERARCHY & SIZES (8pt TO 18pt)",
+        "#F3E8FF",
+        "#6B21A8",
+    );
     set_row_headers(&mut model, 28);
-    set_specimen_row(&mut model, 29, "Helvetica", 2, "Size 8pt", "Small caption, legal footnote, and micro-print metadata", 8, false, false, false, false, "Fine print & metadata tags");
-    set_specimen_row(&mut model, 30, "Helvetica", 2, "Size 9pt", "Standard secondary label and column header text", 9, false, false, false, false, "Headers & supporting annotations");
-    set_specimen_row(&mut model, 31, "Helvetica", 2, "Size 10pt", "Default spreadsheet cell reading and editing size", 10, false, false, false, false, "Primary spreadsheet grid text");
-    set_specimen_row(&mut model, 32, "Helvetica", 2, "Size 12pt", "Emphasized row total and key metric summary callout", 12, true, false, false, false, "Totals & metric cards");
-    set_specimen_row(&mut model, 33, "Helvetica", 2, "Size 14pt", "Section title and major department header grouping", 14, true, false, false, false, "Group and table titles");
-    set_specimen_row(&mut model, 34, "Helvetica", 2, "Size 18pt", "Display headline for executive report presentations", 18, true, false, false, false, "Executive report banners");
+    set_specimen_row(
+        &mut model,
+        29,
+        "Helvetica",
+        2,
+        "Size 8pt",
+        "Small caption, legal footnote, and micro-print metadata",
+        8,
+        false,
+        false,
+        false,
+        false,
+        "Fine print & metadata tags",
+    );
+    set_specimen_row(
+        &mut model,
+        30,
+        "Helvetica",
+        2,
+        "Size 9pt",
+        "Standard secondary label and column header text",
+        9,
+        false,
+        false,
+        false,
+        false,
+        "Headers & supporting annotations",
+    );
+    set_specimen_row(
+        &mut model,
+        31,
+        "Helvetica",
+        2,
+        "Size 10pt",
+        "Default spreadsheet cell reading and editing size",
+        10,
+        false,
+        false,
+        false,
+        false,
+        "Primary spreadsheet grid text",
+    );
+    set_specimen_row(
+        &mut model,
+        32,
+        "Helvetica",
+        2,
+        "Size 12pt",
+        "Emphasized row total and key metric summary callout",
+        12,
+        true,
+        false,
+        false,
+        false,
+        "Totals & metric cards",
+    );
+    set_specimen_row(
+        &mut model,
+        33,
+        "Helvetica",
+        2,
+        "Size 14pt",
+        "Section title and major department header grouping",
+        14,
+        true,
+        false,
+        false,
+        false,
+        "Group and table titles",
+    );
+    set_specimen_row(
+        &mut model,
+        34,
+        "Helvetica",
+        2,
+        "Size 18pt",
+        "Display headline for executive report presentations",
+        18,
+        true,
+        false,
+        false,
+        false,
+        "Executive report banners",
+    );
 
     // SECTION 5: Multi-Font Real-World Table
-    make_section(&mut model, 36, "  5. COMPOSITE TABLE (SIMULTANEOUS SANS, SERIF & MONO RENDERING)", "#FCE7F3", "#9D174D");
+    make_section(
+        &mut model,
+        36,
+        "  5. COMPOSITE TABLE (SIMULTANEOUS SANS, SERIF & MONO RENDERING)",
+        "#FCE7F3",
+        "#9D174D",
+    );
     let _ = model.set_row_height(0, 37, 22.0);
     let composite_headers = [
         (1, "Account Code (Mono)"),
@@ -625,7 +916,11 @@ fn test_generate_different_fonts_showcase_pdf() {
         model.set_user_input(0, 37, col, text.to_string()).unwrap();
         let st = Style {
             alignment: Some(Alignment {
-                horizontal: if col >= 4 { HorizontalAlignment::Right } else { HorizontalAlignment::Left },
+                horizontal: if col >= 4 {
+                    HorizontalAlignment::Right
+                } else {
+                    HorizontalAlignment::Left
+                },
                 vertical: VerticalAlignment::Center,
                 wrap_text: false,
             }),
@@ -651,10 +946,38 @@ fn test_generate_different_fonts_showcase_pdf() {
     }
 
     let comp_data = [
-        (38, "GL-1049-US", "Corporate Treasury", "Sec. 104(b) Federal Reserve Compliance", "4.25%", "$45,250,800.00"),
-        (39, "GL-2081-EU", "Engineering Operations", "Directive 2014/65/EU MiFID II Audit", "3.80%", "$18,912,450.50"),
-        (40, "GL-3105-AP", "Global Research & Dev", "GAAP Standard 350-40 Intangibles", "5.10%", "$8,400,120.25"),
-        (41, "GL-9999-TX", "Consolidated Reserves", "Statutory Capital Adequacy Basel III", "4.50%", "$72,563,370.75"),
+        (
+            38,
+            "GL-1049-US",
+            "Corporate Treasury",
+            "Sec. 104(b) Federal Reserve Compliance",
+            "4.25%",
+            "$45,250,800.00",
+        ),
+        (
+            39,
+            "GL-2081-EU",
+            "Engineering Operations",
+            "Directive 2014/65/EU MiFID II Audit",
+            "3.80%",
+            "$18,912,450.50",
+        ),
+        (
+            40,
+            "GL-3105-AP",
+            "Global Research & Dev",
+            "GAAP Standard 350-40 Intangibles",
+            "5.10%",
+            "$8,400,120.25",
+        ),
+        (
+            41,
+            "GL-9999-TX",
+            "Consolidated Reserves",
+            "Statutory Capital Adequacy Basel III",
+            "4.50%",
+            "$72,563,370.75",
+        ),
     ];
 
     for (row, code, dept, stat, rate, bal) in comp_data {
@@ -669,10 +992,26 @@ fn test_generate_different_fonts_showcase_pdf() {
 
         // Col 1: Monospace
         let st1 = Style {
-            alignment: Some(Alignment { horizontal: HorizontalAlignment::Left, vertical: VerticalAlignment::Center, wrap_text: false }),
+            alignment: Some(Alignment {
+                horizontal: HorizontalAlignment::Left,
+                vertical: VerticalAlignment::Center,
+                wrap_text: false,
+            }),
             num_fmt: "general".to_string(),
-            fill: Fill { color: Color::Rgb(row_bg.to_string()) },
-            font: Font { strike: false, u: false, b: true, i: false, sz: 9, color: Color::Rgb("#0F172A".to_string()), name: "Consolas".to_string(), family: 3, scheme: ironcalc_base::types::FontScheme::Minor },
+            fill: Fill {
+                color: Color::Rgb(row_bg.to_string()),
+            },
+            font: Font {
+                strike: false,
+                u: false,
+                b: true,
+                i: false,
+                sz: 9,
+                color: Color::Rgb("#0F172A".to_string()),
+                name: "Consolas".to_string(),
+                family: 3,
+                scheme: ironcalc_base::types::FontScheme::Minor,
+            },
             border: border_thin.clone(),
             quote_prefix: false,
         };
@@ -680,10 +1019,26 @@ fn test_generate_different_fonts_showcase_pdf() {
 
         // Col 2: Sans-Serif
         let st2 = Style {
-            alignment: Some(Alignment { horizontal: HorizontalAlignment::Left, vertical: VerticalAlignment::Center, wrap_text: false }),
+            alignment: Some(Alignment {
+                horizontal: HorizontalAlignment::Left,
+                vertical: VerticalAlignment::Center,
+                wrap_text: false,
+            }),
             num_fmt: "general".to_string(),
-            fill: Fill { color: Color::Rgb(row_bg.to_string()) },
-            font: Font { strike: false, u: false, b: false, i: false, sz: 9, color: Color::Rgb("#1E293B".to_string()), name: "Helvetica".to_string(), family: 2, scheme: ironcalc_base::types::FontScheme::Minor },
+            fill: Fill {
+                color: Color::Rgb(row_bg.to_string()),
+            },
+            font: Font {
+                strike: false,
+                u: false,
+                b: false,
+                i: false,
+                sz: 9,
+                color: Color::Rgb("#1E293B".to_string()),
+                name: "Helvetica".to_string(),
+                family: 2,
+                scheme: ironcalc_base::types::FontScheme::Minor,
+            },
             border: border_thin.clone(),
             quote_prefix: false,
         };
@@ -691,10 +1046,26 @@ fn test_generate_different_fonts_showcase_pdf() {
 
         // Col 3: Serif
         let st3 = Style {
-            alignment: Some(Alignment { horizontal: HorizontalAlignment::Left, vertical: VerticalAlignment::Center, wrap_text: false }),
+            alignment: Some(Alignment {
+                horizontal: HorizontalAlignment::Left,
+                vertical: VerticalAlignment::Center,
+                wrap_text: false,
+            }),
             num_fmt: "general".to_string(),
-            fill: Fill { color: Color::Rgb(row_bg.to_string()) },
-            font: Font { strike: false, u: false, b: false, i: true, sz: 9, color: Color::Rgb("#334155".to_string()), name: "Times New Roman".to_string(), family: 1, scheme: ironcalc_base::types::FontScheme::Minor },
+            fill: Fill {
+                color: Color::Rgb(row_bg.to_string()),
+            },
+            font: Font {
+                strike: false,
+                u: false,
+                b: false,
+                i: true,
+                sz: 9,
+                color: Color::Rgb("#334155".to_string()),
+                name: "Times New Roman".to_string(),
+                family: 1,
+                scheme: ironcalc_base::types::FontScheme::Minor,
+            },
             border: border_thin.clone(),
             quote_prefix: false,
         };
@@ -702,10 +1073,26 @@ fn test_generate_different_fonts_showcase_pdf() {
 
         // Col 4: Sans-serif center
         let st4 = Style {
-            alignment: Some(Alignment { horizontal: HorizontalAlignment::Right, vertical: VerticalAlignment::Center, wrap_text: false }),
+            alignment: Some(Alignment {
+                horizontal: HorizontalAlignment::Right,
+                vertical: VerticalAlignment::Center,
+                wrap_text: false,
+            }),
             num_fmt: "general".to_string(),
-            fill: Fill { color: Color::Rgb(row_bg.to_string()) },
-            font: Font { strike: false, u: false, b: false, i: false, sz: 9, color: Color::Rgb("#0F172A".to_string()), name: "Helvetica".to_string(), family: 2, scheme: ironcalc_base::types::FontScheme::Minor },
+            fill: Fill {
+                color: Color::Rgb(row_bg.to_string()),
+            },
+            font: Font {
+                strike: false,
+                u: false,
+                b: false,
+                i: false,
+                sz: 9,
+                color: Color::Rgb("#0F172A".to_string()),
+                name: "Helvetica".to_string(),
+                family: 2,
+                scheme: ironcalc_base::types::FontScheme::Minor,
+            },
             border: border_thin.clone(),
             quote_prefix: false,
         };
@@ -713,10 +1100,26 @@ fn test_generate_different_fonts_showcase_pdf() {
 
         // Col 5: Monospace bold right
         let st5 = Style {
-            alignment: Some(Alignment { horizontal: HorizontalAlignment::Right, vertical: VerticalAlignment::Center, wrap_text: false }),
+            alignment: Some(Alignment {
+                horizontal: HorizontalAlignment::Right,
+                vertical: VerticalAlignment::Center,
+                wrap_text: false,
+            }),
             num_fmt: "general".to_string(),
-            fill: Fill { color: Color::Rgb(row_bg.to_string()) },
-            font: Font { strike: false, u: false, b: true, i: false, sz: 9, color: Color::Rgb("#0F172A".to_string()), name: "Consolas".to_string(), family: 3, scheme: ironcalc_base::types::FontScheme::Minor },
+            fill: Fill {
+                color: Color::Rgb(row_bg.to_string()),
+            },
+            font: Font {
+                strike: false,
+                u: false,
+                b: true,
+                i: false,
+                sz: 9,
+                color: Color::Rgb("#0F172A".to_string()),
+                name: "Consolas".to_string(),
+                family: 3,
+                scheme: ironcalc_base::types::FontScheme::Minor,
+            },
             border: border_thin.clone(),
             quote_prefix: false,
         };
@@ -734,12 +1137,16 @@ fn test_generate_different_fonts_showcase_pdf() {
         .with_headings(true)
         .with_header_footer(
             HeaderFooterLayout {
-                left: HeaderFooterField::Text("IronCalc Multi-Font Typography Showcase".to_string()),
+                left: HeaderFooterField::Text(
+                    "IronCalc Multi-Font Typography Showcase".to_string(),
+                ),
                 center: HeaderFooterField::Empty,
                 right: HeaderFooterField::Date,
             },
             HeaderFooterLayout {
-                left: HeaderFooterField::Text("Demonstrating Sans-Serif, Serif, and Monospace".to_string()),
+                left: HeaderFooterField::Text(
+                    "Demonstrating Sans-Serif, Serif, and Monospace".to_string(),
+                ),
                 center: HeaderFooterField::Empty,
                 right: HeaderFooterField::PageNumberOfTotal,
             },
