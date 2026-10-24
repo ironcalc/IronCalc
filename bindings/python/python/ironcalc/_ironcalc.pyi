@@ -74,6 +74,7 @@ class DefinedNameDict(TypedDict):
     scope: int | None
     formula: str
     hidden: bool
+    comment: str
 
 class SheetPropertiesDict(TypedDict, total=False):
     name: str
@@ -279,7 +280,12 @@ class Model:
     # Defined names
     def get_defined_name_list(self) -> list[DefinedNameDict]: ...
     def new_defined_name(
-        self, name: str, scope: int | None, formula: str, hidden: bool = False
+        self,
+        name: str,
+        scope: int | None,
+        formula: str,
+        hidden: bool = False,
+        comment: str = "",
     ) -> None: ...
     def update_defined_name(
         self,
@@ -289,6 +295,7 @@ class Model:
         new_scope: int | None,
         new_formula: str,
         new_hidden: bool,
+        new_comment: str,
     ) -> None: ...
     def delete_defined_name(self, name: str, scope: int | None) -> None: ...
 
@@ -562,7 +569,12 @@ class UserModel:
     # Defined names
     def get_defined_name_list(self) -> list[DefinedNameDict]: ...
     def new_defined_name(
-        self, name: str, scope: int | None, formula: str, hidden: bool = False
+        self,
+        name: str,
+        scope: int | None,
+        formula: str,
+        hidden: bool = False,
+        comment: str = "",
     ) -> None: ...
     def update_defined_name(
         self,
@@ -572,6 +584,7 @@ class UserModel:
         new_scope: int | None,
         new_formula: str,
         new_hidden: bool,
+        new_comment: str,
     ) -> None: ...
     def delete_defined_name(self, name: str, scope: int | None) -> None: ...
     def is_valid_defined_name(

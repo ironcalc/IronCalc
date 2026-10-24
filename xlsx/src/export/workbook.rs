@@ -64,6 +64,7 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
     // <definedName localSheetId="4" name="answer">shared!$G$5</definedName>
     // <definedName name="numbers">Sheet1!$A$16:$A$18</definedName>
     // <definedName name="secret" hidden="1">Sheet1!$B$2</definedName>
+    // <definedName name="rate" comment="Tax rate">Sheet1!$B$3</definedName>
     // Formulas are stored in IronCalc's internal English form (`LAMBDA(x,x+1)`);
     // Excel expects future-function and lambda-parameter prefixes
     // (`_xlfn.LAMBDA(_xlpm.x,_xlpm.x+1)`), so they are parsed and re-stringified.
@@ -106,8 +107,13 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
         } else {
             ""
         };
+        let comment = if defined_name.comment.is_empty() {
+            "".to_string()
+        } else {
+            format!(" comment=\"{}\"", escape_xml(&defined_name.comment))
+        };
         defined_names_str.push(format!(
-            "<definedName name=\"{name}\"{local_sheet_id}{hidden}>{formula}</definedName>"
+            "<definedName name=\"{name}\"{local_sheet_id}{hidden}{comment}>{formula}</definedName>"
         ))
     }
 

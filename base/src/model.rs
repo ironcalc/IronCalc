@@ -138,6 +138,18 @@ fn has_unqualified_reference(node: &Node) -> bool {
 }
 
 /// A parsed formula for a defined name
+/// Excel limits defined-name comments to 255 characters.
+pub const DEFINED_NAME_COMMENT_MAX_LENGTH: usize = 255;
+
+fn validate_defined_name_comment(comment: &str) -> Result<(), String> {
+    if comment.chars().count() > DEFINED_NAME_COMMENT_MAX_LENGTH {
+        return Err(format!(
+            "Comment: Comment must be at most {DEFINED_NAME_COMMENT_MAX_LENGTH} characters"
+        ));
+    }
+    Ok(())
+}
+
 #[derive(Clone)]
 pub(crate) enum ParsedDefinedName {
     /// CellReference (`=C4`)
@@ -3017,11 +3029,12 @@ impl<'a> Model<'a> {
         Ok(self.get_defined_name(name, scope)?.formula.clone())
     }
 
-    /// Returns the list of defined names as `(name, scope, formula, hidden)`.
+    /// Returns the list of defined names as `(name, scope, formula, hidden, comment)`.
     ///
     /// Formulas are stored internally in English; they are translated into the
     /// active language/locale for display.
-    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String, bool)> {
+    #[allow(clippy::type_complexity)]
+    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String, bool, String)> {
         let context = self.defined_name_context();
         let sheet_ids: Vec<u32> = self
             .workbook
@@ -3038,7 +3051,13 @@ impl<'a> Model<'a> {
                     .and_then(|sheet_id| sheet_ids.iter().position(|&id| id == sheet_id))
                     .map(|pos| pos as u32);
                 let formula = self.internal_formula_to_display(&dn.formula, &context);
-                (dn.name.clone(), scope, formula, dn.hidden)
+                (
+                    dn.name.clone(),
+                    scope,
+                    formula,
+                    dn.hidden,
+                    dn.comment.clone(),
+                )
             })
             .collect()
     }
@@ -3650,14 +3669,17 @@ impl<'a> Model<'a> {
     /// Adds a new defined name.
     /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
     /// A hidden name works like any other but is not meant to be shown in the UI.
+    /// The comment is free text of at most 255 characters (empty for no comment).
     pub fn new_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,
         hidden: bool,
+        comment: &str,
     ) -> Result<(), String> {
         let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
+        validate_defined_name_comment(comment)?;
         // Defined-name formulas are stored internally in English so they keep
         // working when the user switches language/locale.
         let context = self.defined_name_context();
@@ -3667,6 +3689,7 @@ impl<'a> Model<'a> {
             formula: internal_formula,
             sheet_id,
             hidden,
+            comment: comment.to_string(),
         });
         self.reset_parsed_structures();
 
@@ -3779,6 +3802,7 @@ impl<'a> Model<'a> {
     }
 
     /// Update defined name
+    #[allow(clippy::too_many_arguments)]
     pub fn update_defined_name(
         &mut self,
         name: &str,
@@ -3787,10 +3811,12 @@ impl<'a> Model<'a> {
         new_scope: Option<u32>,
         new_formula: &str,
         new_hidden: bool,
+        new_comment: &str,
     ) -> Result<(), String> {
         if !is_valid_identifier(new_name) {
             return Err("Name: Invalid defined name".to_string());
         };
+        validate_defined_name_comment(new_comment)?;
         let name_upper = name.to_uppercase();
         let new_name_upper = new_name.to_uppercase();
 
@@ -3861,6 +3887,7 @@ impl<'a> Model<'a> {
                 df.sheet_id = new_sheet_id;
                 df.formula = internal_formula;
                 df.hidden = new_hidden;
+                df.comment = new_comment.to_string();
                 self.reset_parsed_structures();
             }
             Ok(())

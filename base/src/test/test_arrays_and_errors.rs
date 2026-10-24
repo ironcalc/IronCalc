@@ -176,6 +176,7 @@ fn inside_a_lambda() {
             None,
             "=LAMBDA(range,(range-AVERAGE(range))/SQRT(VAR.P(range)+0.00001))",
             false,
+            "",
         )
         .unwrap();
     // A row with numbers and an empty one

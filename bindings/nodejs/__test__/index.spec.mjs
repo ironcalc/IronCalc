@@ -98,12 +98,20 @@ test('defined names', (t) => {
   t.is(names[1].name, "localname");
   t.is(names[1].scope, 0);
   t.false(names[0].hidden);
+  t.is(names[0].comment, "");
 
   // hidden names
   model.newDefinedName("secret", null, "Sheet1!$C$3", true);
   t.true(model.getDefinedNameList()[2].hidden);
-  model.updateDefinedName("secret", null, "secret", null, "Sheet1!$C$3", false);
+  model.updateDefinedName("secret", null, "secret", null, "Sheet1!$C$3", false, "");
   t.false(model.getDefinedNameList()[2].hidden);
+
+  // comments
+  model.newDefinedName("rate", null, "Sheet1!$D$4", false, "Tax rate");
+  t.is(model.getDefinedNameList()[3].comment, "Tax rate");
+  model.updateDefinedName("rate", null, "rate", null, "Sheet1!$D$4", false, "VAT");
+  t.is(model.getDefinedNameList()[3].comment, "VAT");
+  t.throws(() => model.newDefinedName("long", null, "Sheet1!$E$5", false, "x".repeat(256)));
 });
 
 test('conditional formatting', (t) => {

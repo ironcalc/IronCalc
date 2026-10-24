@@ -187,8 +187,8 @@ Defined names
 ^^^^^^^^^^^^^
 
 .. method:: Model.get_defined_name_list() -> list[dict]
-.. method:: Model.new_defined_name(name: str, scope: int | None, formula: str, hidden: bool = False)
-.. method:: Model.update_defined_name(name, scope, new_name, new_scope, new_formula, new_hidden)
+.. method:: Model.new_defined_name(name: str, scope: int | None, formula: str, hidden: bool = False, comment: str = "")
+.. method:: Model.update_defined_name(name, scope, new_name, new_scope, new_formula, new_hidden, new_comment)
 .. method:: Model.delete_defined_name(name: str, scope: int | None)
 
 Workbook properties

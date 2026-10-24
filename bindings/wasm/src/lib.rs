@@ -82,6 +82,7 @@ struct DefinedName {
     scope: Option<u32>,
     formula: String,
     hidden: bool,
+    comment: String,
 }
 
 /// Consecutive rows or columns (`first..=last`, 1-based) sharing a size in
@@ -1169,6 +1170,7 @@ impl Model {
                 scope: s.1,
                 formula: s.2.to_owned(),
                 hidden: s.3,
+                comment: s.4.to_owned(),
             })
             .collect();
         serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
@@ -1176,7 +1178,8 @@ impl Model {
 
     /// Creates a new defined name. `scope` is a sheet index or undefined for
     /// a global name. A hidden name (`hidden` defaults to false) works like any
-    /// other but is not shown in the UI.
+    /// other but is not shown in the UI. The comment is free text of at most
+    /// 255 characters (defaults to none).
     #[wasm_bindgen(js_name = "newDefinedName")]
     pub fn new_defined_name(
         &mut self,
@@ -1184,13 +1187,21 @@ impl Model {
         scope: Option<u32>,
         formula: &str,
         hidden: Option<bool>,
+        comment: Option<String>,
     ) -> Result<(), JsError> {
         self.model
-            .new_defined_name(name, scope, formula, hidden.unwrap_or(false))
+            .new_defined_name(
+                name,
+                scope,
+                formula,
+                hidden.unwrap_or(false),
+                comment.as_deref().unwrap_or(""),
+            )
             .map_err(|e| to_js_error(e.to_string()))
     }
 
     #[wasm_bindgen(js_name = "updateDefinedName")]
+    #[allow(clippy::too_many_arguments)]
     pub fn update_defined_name(
         &mut self,
         name: &str,
@@ -1199,9 +1210,18 @@ impl Model {
         new_scope: Option<u32>,
         new_formula: &str,
         new_hidden: bool,
+        new_comment: &str,
     ) -> Result<(), JsError> {
         self.model
-            .update_defined_name(name, scope, new_name, new_scope, new_formula, new_hidden)
+            .update_defined_name(
+                name,
+                scope,
+                new_name,
+                new_scope,
+                new_formula,
+                new_hidden,
+                new_comment,
+            )
             .map_err(|e| to_js_error(e.to_string()))
     }
 

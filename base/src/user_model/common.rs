@@ -2127,8 +2127,9 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
-    /// Returns the list of defined names as `(name, scope, formula, hidden)`
-    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String, bool)> {
+    /// Returns the list of defined names as `(name, scope, formula, hidden, comment)`
+    #[allow(clippy::type_complexity)]
+    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String, bool, String)> {
         self.model.get_defined_name_list()
     }
 
@@ -2140,6 +2141,7 @@ impl<'a> UserModel<'a> {
             scope,
             old_value: defined_name.formula.clone(),
             old_hidden: defined_name.hidden,
+            old_comment: defined_name.comment.clone(),
         }];
         self.push_diff_list(diff_list);
         self.model.delete_defined_name(name, scope)?;
@@ -2148,15 +2150,18 @@ impl<'a> UserModel<'a> {
     }
 
     /// Create a new defined name. A hidden name works like any other but is
-    /// not meant to be shown in the UI.
+    /// not meant to be shown in the UI. The comment is free text of at most
+    /// 255 characters (empty for no comment).
     pub fn new_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,
         hidden: bool,
+        comment: &str,
     ) -> Result<(), String> {
-        self.model.new_defined_name(name, scope, formula, hidden)?;
+        self.model
+            .new_defined_name(name, scope, formula, hidden, comment)?;
         // Diffs store the internal (English) formula so undo/redo replays
         // correctly regardless of the active language at replay time. A
         // just-created name is guaranteed to be retrievable, so propagate any
@@ -2167,6 +2172,7 @@ impl<'a> UserModel<'a> {
             scope,
             value,
             hidden,
+            comment: comment.to_string(),
         }];
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
@@ -2174,6 +2180,7 @@ impl<'a> UserModel<'a> {
     }
 
     /// Updates a defined name
+    #[allow(clippy::too_many_arguments)]
     pub fn update_defined_name(
         &mut self,
         name: &str,
@@ -2182,6 +2189,7 @@ impl<'a> UserModel<'a> {
         new_scope: Option<u32>,
         new_formula: &str,
         new_hidden: bool,
+        new_comment: &str,
     ) -> Result<(), String> {
         // Both formulas in the diff are stored internally (in English) so
         // undo/redo replays correctly regardless of the active language.
@@ -2191,6 +2199,7 @@ impl<'a> UserModel<'a> {
             .map_err(|_| "General: Failed to get old name")?;
         let old_formula = old_defined_name.formula.clone();
         let old_hidden = old_defined_name.hidden;
+        let old_comment = old_defined_name.comment.clone();
         self.model.update_defined_name(
             name,
             scope,
@@ -2198,6 +2207,7 @@ impl<'a> UserModel<'a> {
             new_scope,
             new_formula,
             new_hidden,
+            new_comment,
         )?;
         // Read back the canonical (English) formula that was just stored so the
         // diff stays canonical; a successful update guarantees it is retrievable.
@@ -2207,10 +2217,12 @@ impl<'a> UserModel<'a> {
             scope,
             old_formula,
             old_hidden,
+            old_comment,
             new_name: new_name.to_string(),
             new_scope,
             new_formula: new_formula_internal,
             new_hidden,
+            new_comment: new_comment.to_string(),
         }];
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();

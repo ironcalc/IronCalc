@@ -657,17 +657,18 @@ impl PyModel {
 
     // Defined names
 
-    /// Returns the list of defined names as [{"name", "scope", "formula", "hidden"}]
+    /// Returns the list of defined names as [{"name", "scope", "formula", "hidden", "comment"}]
     pub fn get_defined_name_list<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let data: Vec<DefinedNameEntry> = self
             .model
             .get_defined_name_list()
             .into_iter()
-            .map(|(name, scope, formula, hidden)| DefinedNameEntry {
+            .map(|(name, scope, formula, hidden, comment)| DefinedNameEntry {
                 name,
                 scope,
                 formula,
                 hidden,
+                comment,
             })
             .collect();
         to_python(py, &data)
@@ -675,20 +676,23 @@ impl PyModel {
 
     /// Creates a new defined name. `scope` is a sheet index or None for global scope.
     /// A hidden name works like any other but is not shown in the UI.
-    #[pyo3(signature = (name, scope, formula, hidden=false))]
+    /// The comment is free text of at most 255 characters.
+    #[pyo3(signature = (name, scope, formula, hidden=false, comment=""))]
     pub fn new_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,
         hidden: bool,
+        comment: &str,
     ) -> PyResult<()> {
         self.model
-            .new_defined_name(name, scope, formula, hidden)
+            .new_defined_name(name, scope, formula, hidden, comment)
             .map_err(to_py_err)
     }
 
-    #[pyo3(signature = (name, scope, new_name, new_scope, new_formula, new_hidden))]
+    #[pyo3(signature = (name, scope, new_name, new_scope, new_formula, new_hidden, new_comment))]
+    #[allow(clippy::too_many_arguments)]
     pub fn update_defined_name(
         &mut self,
         name: &str,
@@ -697,9 +701,18 @@ impl PyModel {
         new_scope: Option<u32>,
         new_formula: &str,
         new_hidden: bool,
+        new_comment: &str,
     ) -> PyResult<()> {
         self.model
-            .update_defined_name(name, scope, new_name, new_scope, new_formula, new_hidden)
+            .update_defined_name(
+                name,
+                scope,
+                new_name,
+                new_scope,
+                new_formula,
+                new_hidden,
+                new_comment,
+            )
             .map_err(to_py_err)
     }
 

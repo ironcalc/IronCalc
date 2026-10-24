@@ -317,13 +317,14 @@ Defined names
 .. method:: UserModel.get_defined_name_list() -> list[dict]
 
    Entries have ``name``, ``scope`` (sheet index or ``None`` for global),
-   ``formula`` and ``hidden``.
+   ``formula``, ``hidden`` and ``comment``.
 
-.. method:: UserModel.new_defined_name(name: str, scope: int | None, formula: str, hidden: bool = False)
+.. method:: UserModel.new_defined_name(name: str, scope: int | None, formula: str, hidden: bool = False, comment: str = "")
 
-   A hidden name works like any other but is not shown in the UI.
+   A hidden name works like any other but is not shown in the UI. The comment
+   is free text of at most 255 characters.
 
-.. method:: UserModel.update_defined_name(name, scope, new_name, new_scope, new_formula, new_hidden)
+.. method:: UserModel.update_defined_name(name, scope, new_name, new_scope, new_formula, new_hidden, new_comment)
 .. method:: UserModel.delete_defined_name(name: str, scope: int | None)
 .. method:: UserModel.is_valid_defined_name(name: str, scope: int | None, formula: str)
 

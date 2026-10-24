@@ -65,13 +65,13 @@ fn defined_names_and_variables() {
     model._set("K1", "text");
     model._set("K2", "7");
     model
-        .new_defined_name("TextCell", None, "Sheet1!$K$1", false)
+        .new_defined_name("TextCell", None, "Sheet1!$K$1", false, "")
         .unwrap();
     model
-        .new_defined_name("Cells", None, "Sheet1!$K$1:$K$2", false)
+        .new_defined_name("Cells", None, "Sheet1!$K$1:$K$2", false, "")
         .unwrap();
     model
-        .new_defined_name("Twice", None, "=LAMBDA(x, 2*x)", false)
+        .new_defined_name("Twice", None, "=LAMBDA(x, 2*x)", false, "")
         .unwrap();
     model._set("A1", "=ISREF(TextCell)");
     model._set("A2", "=ISREF(Cells)");

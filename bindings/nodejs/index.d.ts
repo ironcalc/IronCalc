@@ -367,6 +367,8 @@ export interface DefinedName {
   formula: string;
   /** Hidden names work like any other but are not shown in the UI */
   hidden: boolean;
+  /** Free text of at most 255 characters, empty when there is no comment */
+  comment: string;
 }
 
 /**
@@ -579,16 +581,17 @@ export declare class Model {
   /** Returns all the links in the worksheet sorted by (row, column). */
   getLinks(sheet: number): Array<CellLink>
   /**
-   * Returns the list of defined names as [{name, scope, formula, hidden}].
+   * Returns the list of defined names as [{name, scope, formula, hidden, comment}].
    * `scope` is omitted for globally scoped names.
    */
   getDefinedNameList(): Array<DefinedName>
   /**
    * Creates a new defined name. `scope` is a sheet index or null for global scope.
    * A hidden name (`hidden` defaults to false) works like any other but is not shown in the UI.
+   * The comment is free text of at most 255 characters (defaults to none).
    */
-  newDefinedName(name: string, scope: number | undefined | null, formula: string, hidden?: boolean | undefined | null): void
-  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string, newHidden: boolean): void
+  newDefinedName(name: string, scope: number | undefined | null, formula: string, hidden?: boolean | undefined | null, comment?: string | undefined | null): void
+  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string, newHidden: boolean, newComment: string): void
   deleteDefinedName(name: string, scope?: number | undefined | null): void
   /** Returns the workbook theme */
   getTheme(): IronCalcTheme
@@ -803,16 +806,17 @@ export declare class UserModel {
   raiseConditionalFormattingPriority(sheet: number, index: number): void
   lowerConditionalFormattingPriority(sheet: number, index: number): void
   /**
-   * Returns the list of defined names as [{name, scope, formula, hidden}].
+   * Returns the list of defined names as [{name, scope, formula, hidden, comment}].
    * `scope` is omitted for globally scoped names.
    */
   getDefinedNameList(): Array<DefinedName>
   /**
    * Creates a new defined name. `scope` is a sheet index or null for global scope.
    * A hidden name (`hidden` defaults to false) works like any other but is not shown in the UI.
+   * The comment is free text of at most 255 characters (defaults to none).
    */
-  newDefinedName(name: string, scope: number | undefined | null, formula: string, hidden?: boolean | undefined | null): void
-  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string, newHidden: boolean): void
+  newDefinedName(name: string, scope: number | undefined | null, formula: string, hidden?: boolean | undefined | null, comment?: string | undefined | null): void
+  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string, newHidden: boolean, newComment: string): void
   deleteDefinedName(name: string, scope?: number | undefined | null): void
   /** Throws if the defined name is not valid */
   isValidDefinedName(name: string, scope: number | undefined | null, formula: string): void

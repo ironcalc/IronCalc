@@ -130,6 +130,7 @@ fn inside_a_lambda() {
             None,
             "=LAMBDA(range, SUMPRODUCT(MAX((range<>\"\")*ROW(range))))",
             false,
+            "",
         )
         .unwrap();
     model
@@ -138,6 +139,7 @@ fn inside_a_lambda() {
             None,
             "=LAMBDA(range, SUMPRODUCT(MAX((range<>\"\")*COLUMN(range))))",
             false,
+            "",
         )
         .unwrap();
     model._set("C1", "Prompt");

@@ -83,13 +83,13 @@ fn duplicate_handles_defined_names() {
     model.set_user_input(0, 1, 1, "5").unwrap();
 
     model
-        .new_defined_name("local_name", Some(0), "Sheet1!$A$1", false)
+        .new_defined_name("local_name", Some(0), "Sheet1!$A$1", false, "")
         .unwrap();
     model
-        .new_defined_name("from_source", None, "Sheet1!$A$1", false)
+        .new_defined_name("from_source", None, "Sheet1!$A$1", false, "")
         .unwrap();
     model
-        .new_defined_name("from_other", None, "Other!$A$1", false)
+        .new_defined_name("from_other", None, "Other!$A$1", false, "")
         .unwrap();
 
     model.duplicate_sheet(0).unwrap();
@@ -99,25 +99,25 @@ fn duplicate_handles_defined_names() {
     // Local name duplicated as local-to-copy and retargeted.
     assert!(names
         .iter()
-        .any(|(n, s, f, _)| n == "local_name" && *s == Some(copy) && f == "'Sheet1 (1)'!$A$1"));
+        .any(|(n, s, f, ..)| n == "local_name" && *s == Some(copy) && f == "'Sheet1 (1)'!$A$1"));
     // Original local name preserved.
     assert!(names
         .iter()
-        .any(|(n, s, f, _)| n == "local_name" && *s == Some(0) && f == "Sheet1!$A$1"));
+        .any(|(n, s, f, ..)| n == "local_name" && *s == Some(0) && f == "Sheet1!$A$1"));
 
     // Global name referencing the source becomes a local name on the copy.
     assert!(names
         .iter()
-        .any(|(n, s, f, _)| n == "from_source" && *s == Some(copy) && f == "'Sheet1 (1)'!$A$1"));
+        .any(|(n, s, f, ..)| n == "from_source" && *s == Some(copy) && f == "'Sheet1 (1)'!$A$1"));
     // Original global preserved.
     assert!(names
         .iter()
-        .any(|(n, s, _, _)| n == "from_source" && s.is_none()));
+        .any(|(n, s, ..)| n == "from_source" && s.is_none()));
 
     // Global name not referencing the source is NOT duplicated onto the copy.
     assert!(!names
         .iter()
-        .any(|(n, s, _, _)| n == "from_other" && *s == Some(copy)));
+        .any(|(n, s, ..)| n == "from_other" && *s == Some(copy)));
 }
 
 #[test]
@@ -163,10 +163,10 @@ fn duplicate_undo_redo() {
     model.set_user_input(0, 1, 1, "10").unwrap();
     model.set_user_input(0, 1, 2, "=A1*2").unwrap();
     model
-        .new_defined_name("local_name", Some(0), "Sheet1!$A$1", false)
+        .new_defined_name("local_name", Some(0), "Sheet1!$A$1", false, "")
         .unwrap();
     model
-        .new_defined_name("from_source", None, "Sheet1!$A$1", false)
+        .new_defined_name("from_source", None, "Sheet1!$A$1", false, "")
         .unwrap();
 
     let names_before = model.get_defined_name_list().len();
