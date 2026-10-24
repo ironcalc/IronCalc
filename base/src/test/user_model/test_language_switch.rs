@@ -39,7 +39,7 @@ fn defined_name_created_in_spanish_undo_redo() {
     let mut model = new_empty_user_model();
     model.set_language("es").unwrap();
     model
-        .new_defined_name("MiSi", None, "=LAMBDA(x, SI(x>0, 1, 2))")
+        .new_defined_name("MiSi", None, "=LAMBDA(x, SI(x>0, 1, 2))", false)
         .unwrap();
     model.set_user_input(0, 1, 1, "=MiSi(5)").unwrap();
     assert_eq!(model.model._get_text("A1"), *"1");

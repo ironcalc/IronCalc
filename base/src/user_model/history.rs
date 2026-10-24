@@ -206,19 +206,23 @@ pub(crate) enum Diff {
         name: String,
         scope: Option<u32>,
         value: String,
+        hidden: bool,
     },
     DeleteDefinedName {
         name: String,
         scope: Option<u32>,
         old_value: String,
+        old_hidden: bool,
     },
     UpdateDefinedName {
         name: String,
         scope: Option<u32>,
         old_formula: String,
+        old_hidden: bool,
         new_name: String,
         new_scope: Option<u32>,
         new_formula: String,
+        new_hidden: bool,
     },
     MoveColumns {
         sheet: u32,

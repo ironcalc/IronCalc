@@ -63,6 +63,7 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
     // defined names
     // <definedName localSheetId="4" name="answer">shared!$G$5</definedName>
     // <definedName name="numbers">Sheet1!$A$16:$A$18</definedName>
+    // <definedName name="secret" hidden="1">Sheet1!$B$2</definedName>
     // Formulas are stored in IronCalc's internal English form (`LAMBDA(x,x+1)`);
     // Excel expects future-function and lambda-parameter prefixes
     // (`_xlfn.LAMBDA(_xlpm.x,_xlpm.x+1)`), so they are parsed and re-stringified.
@@ -100,8 +101,13 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
         let node = parser.parse(formula_body, &parse_context);
         let formula = to_excel_string(&node, &parse_context);
         let formula = escape_xml(&formula);
+        let hidden = if defined_name.hidden {
+            " hidden=\"1\""
+        } else {
+            ""
+        };
         defined_names_str.push(format!(
-            "<definedName name=\"{name}\"{local_sheet_id}>{formula}</definedName>"
+            "<definedName name=\"{name}\"{local_sheet_id}{hidden}>{formula}</definedName>"
         ))
     }
 

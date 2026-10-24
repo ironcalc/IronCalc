@@ -122,12 +122,16 @@ pub struct Workbook {
     pub theme: Theme,
 }
 
-/// A defined name. The `sheet_id` is the sheet index in case the name is local
+/// A defined name. The `sheet_id` is the sheet index in case the name is local.
+/// Hidden names are not shown in the UI (name manager, name box), but still
+/// resolve in formulas; see `hidden` in 18.2.5 definedName (Defined Name) of
+/// the OOXML spec.
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct DefinedName {
     pub name: String,
     pub formula: String,
     pub sheet_id: Option<u32>,
+    pub hidden: bool,
 }
 
 /// * state:
