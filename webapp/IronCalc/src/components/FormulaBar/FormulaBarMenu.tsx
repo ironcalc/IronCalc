@@ -31,7 +31,10 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
   const [popoverMaxHeight, setPopoverMaxHeight] = useState<number>();
   const menuId = useId();
 
-  const definedNameList = properties.model.getDefinedNameList();
+  // Hidden names work in formulas but are not listed
+  const definedNameList = properties.model
+    .getDefinedNameList()
+    .filter((definedName) => !definedName.hidden);
 
   const openMenu = useCallback((): void => {
     setMenuOpen(true);

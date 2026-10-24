@@ -1,6 +1,7 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
 import {
   ArrowLeft,
+  EyeOff,
   PackageOpen,
   PencilLine,
   Plus,
@@ -74,13 +75,15 @@ const NamedRanges = ({
     name: string,
     scope: string,
     formula: string,
+    hidden: boolean,
+    comment: string,
   ): SaveError => {
     const worksheets = model.getWorksheetsProperties();
     if (isCreatingNew) {
       const scope_index = worksheets.findIndex((s) => s.name === scope);
       const newScope = scope_index >= 0 ? scope_index : null;
       try {
-        model.newDefinedName(name, newScope, formula);
+        model.newDefinedName(name, newScope, formula, hidden, comment);
         setIsCreatingNew(false);
         onUpdate();
         return {
@@ -110,6 +113,8 @@ const NamedRanges = ({
           name,
           newScope,
           formula,
+          hidden,
+          comment,
         );
         setEditingDefinedName(null);
         onUpdate();
@@ -128,9 +133,13 @@ const NamedRanges = ({
     let name = "";
     let scopeName = "[Global]";
     let formula = "";
+    let comment = "";
+    let hidden = false;
 
     if (editingDefinedName) {
       name = editingDefinedName.name;
+      comment = editingDefinedName.comment;
+      hidden = editingDefinedName.hidden;
       const worksheets = model.getWorksheetsProperties();
       scopeName =
         editingDefinedName.scope != null
@@ -169,6 +178,8 @@ const NamedRanges = ({
             name={name}
             scope={scopeName}
             formula={formula}
+            comment={comment}
+            hidden={hidden}
             onSave={handleSave}
             onCancel={handleCancel}
             editingDefinedName={editingDefinedName}
@@ -298,7 +309,7 @@ const NamedRanges = ({
                 return (
                   // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
                   <div
-                    className={`ic-named-ranges-list-item ${isSelected ? "ic-named-ranges-list-item--selected" : ""}`}
+                    className={`ic-named-ranges-list-item ${isSelected ? "ic-named-ranges-list-item--selected" : ""} ${definedName.hidden ? "ic-named-ranges-list-item--hidden" : ""}`}
                     key={`${definedName.name}-${definedName.scope}`}
                     // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
                     tabIndex={0}
@@ -334,6 +345,12 @@ const NamedRanges = ({
                   >
                     <div className="ic-named-ranges-list-item-text">
                       <div className="ic-named-ranges-name-text">
+                        {definedName.hidden ? (
+                          <EyeOff
+                            className="ic-named-ranges-hidden-icon"
+                            aria-label={t("name_manager_dialog.hidden")}
+                          />
+                        ) : null}
                         {definedName.name}
                       </div>
                       <div className="ic-named-ranges-scope-text">

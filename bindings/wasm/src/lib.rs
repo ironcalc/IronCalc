@@ -1177,8 +1177,8 @@ impl Model {
     }
 
     /// Creates a new defined name. `scope` is a sheet index or undefined for
-    /// a global name. A hidden name (`hidden` defaults to false) works like any
-    /// other but is not shown in the UI. The comment is free text of at most
+    /// a global name. A hidden name (`hidden` defaults to false) works like a
+    /// regular one but is not shown in the UI. The comment is free text of at most
     /// 255 characters (defaults to none).
     #[wasm_bindgen(js_name = "newDefinedName")]
     pub fn new_defined_name(
