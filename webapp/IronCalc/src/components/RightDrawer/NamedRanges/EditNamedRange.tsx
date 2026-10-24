@@ -26,6 +26,8 @@ interface EditNamedRangeProps {
   formula: string;
   comment: string;
   hidden: boolean;
+  /** Whether the "Advanced" section (hide this name) is shown */
+  showAdvanced: boolean;
   model: Model;
   onSave: (
     name: string,
@@ -60,6 +62,7 @@ const EditNamedRange = ({
   formula: initialFormula,
   comment: initialComment,
   hidden: initialHidden,
+  showAdvanced,
   onSave,
   onCancel,
   editingDefinedName,
@@ -287,21 +290,23 @@ const EditNamedRange = ({
             onKeyDown={handleKeyDown}
           />
         </div>
-        <div className="ic-edit-range-styled-box ic-edit-range-advanced-section">
-          <div className="ic-edit-range-section-title">
-            {t("name_manager_dialog.advanced")}
+        {showAdvanced ? (
+          <div className="ic-edit-range-styled-box ic-edit-range-advanced-section">
+            <div className="ic-edit-range-section-title">
+              {t("name_manager_dialog.advanced")}
+            </div>
+            <div className="ic-edit-range-hidden-field">
+              <Checkbox
+                checked={hidden}
+                onChange={setHidden}
+                label={t("name_manager_dialog.hide_name")}
+              />
+              <p className="ic-edit-range-hidden-helper">
+                {t("name_manager_dialog.hide_name_helper")}
+              </p>
+            </div>
           </div>
-          <div className="ic-edit-range-hidden-field">
-            <Checkbox
-              checked={hidden}
-              onChange={setHidden}
-              label={t("name_manager_dialog.hide_name")}
-            />
-            <p className="ic-edit-range-hidden-helper">
-              {t("name_manager_dialog.hide_name_helper")}
-            </p>
-          </div>
-        </div>
+        ) : null}
       </div>
       <div className="ic-edit-range-footer">
         <Button variant="secondary" onClick={onCancel}>

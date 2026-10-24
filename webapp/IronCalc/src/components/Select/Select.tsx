@@ -31,11 +31,23 @@ export interface SelectOption {
   triggerLabel?: ReactNode;
 }
 
+/**
+ * An independent on/off item listed after the options, below a divider.
+ * It does not change the Select's value: picking it flips `checked`.
+ */
+export interface SelectToggle {
+  value: string;
+  label: ReactNode;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
 export interface SelectProperties {
   value: string;
   variant?: SelectVariant;
   options: SelectOption[];
   onChange: (value: string) => void;
+  toggles?: SelectToggle[];
   id?: string;
   name?: string;
   size?: SelectSize;
@@ -97,6 +109,7 @@ export function Select({
   value,
   options,
   onChange,
+  toggles = [],
   id,
   name,
   size = "md",
@@ -123,6 +136,8 @@ export function Select({
 
   const selectedIndex = options.findIndex((option) => option.value === value);
   const selectedOption = options[selectedIndex];
+  // Options come first, toggles after them, in one keyboard-navigable list
+  const itemCount = options.length + toggles.length;
 
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(selectedIndex);
@@ -222,11 +237,15 @@ export function Select({
 
   function commit(index: number) {
     const option = options[index];
-    if (!option) {
+    const toggle = toggles[index - options.length];
+    if (option) {
+      onChange(option.value);
+    } else if (toggle) {
+      toggle.onChange(!toggle.checked);
+    } else {
       return;
     }
 
-    onChange(option.value);
     setOpen(false);
     triggerRef.current?.focus();
   }
@@ -256,13 +275,13 @@ export function Select({
     switch (event.key) {
       case "ArrowDown": {
         event.preventDefault();
-        setActiveIndex((index + 1) % options.length);
+        setActiveIndex((index + 1) % itemCount);
         break;
       }
 
       case "ArrowUp": {
         event.preventDefault();
-        setActiveIndex((index - 1 + options.length) % options.length);
+        setActiveIndex((index - 1 + itemCount) % itemCount);
         break;
       }
 
@@ -274,7 +293,7 @@ export function Select({
 
       case "End": {
         event.preventDefault();
-        setActiveIndex(options.length - 1);
+        setActiveIndex(itemCount - 1);
         break;
       }
 
@@ -291,6 +310,50 @@ export function Select({
         break;
       }
     }
+  }
+
+  function renderItem(
+    key: string,
+    label: ReactNode,
+    index: number,
+    {
+      selected,
+      showCheck,
+      toggle = false,
+    }: { selected: boolean; showCheck: boolean; toggle?: boolean },
+  ) {
+    const isActive = index === activeIndex;
+
+    return (
+      <button
+        key={key}
+        ref={(element) => {
+          optionRefs.current[index] = element;
+        }}
+        type="button"
+        role="option"
+        aria-selected={selected ? "true" : "false"}
+        className={[
+          "ic-dropdown-menu-option",
+          selected && "is-selected",
+          isActive && "is-active",
+          toggle && "is-toggle",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        onClick={() => commit(index)}
+        onMouseEnter={() => setActiveIndex(index)}
+        onKeyDown={(event) => handleOptionKeyDown(event, index)}
+      >
+        {showCheck && (
+          <span className="ic-dropdown-menu-option-check" aria-hidden="true">
+            {selected ? <Check size={16} /> : null}
+          </span>
+        )}
+
+        <span className="ic-dropdown-menu-option-content">{label}</span>
+      </button>
+    );
   }
 
   return (
@@ -350,45 +413,29 @@ export function Select({
                   role="listbox"
                   aria-labelledby={label ? labelId : valueId}
                 >
-                  {options.map((option, index) => {
-                    const isSelected = option.value === value;
-                    const isActive = index === activeIndex;
+                  {options.map((option, index) =>
+                    renderItem(option.value, option.label, index, {
+                      selected: option.value === value,
+                      showCheck: !hideCheck,
+                    }),
+                  )}
 
-                    return (
-                      <button
-                        key={option.value}
-                        ref={(element) => {
-                          optionRefs.current[index] = element;
-                        }}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected ? "true" : "false"}
-                        className={[
-                          "ic-dropdown-menu-option",
-                          isSelected && "is-selected",
-                          isActive && "is-active",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                        onClick={() => commit(index)}
-                        onMouseEnter={() => setActiveIndex(index)}
-                        onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                      >
-                        {!hideCheck && (
-                          <span
-                            className="ic-dropdown-menu-option-check"
-                            aria-hidden="true"
-                          >
-                            {isSelected ? <Check size={16} /> : null}
-                          </span>
-                        )}
+                  {toggles.length > 0 ? (
+                    <hr className="ic-dropdown-menu-divider" />
+                  ) : null}
 
-                        <span className="ic-dropdown-menu-option-content">
-                          {option.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  {toggles.map((toggle, toggleIndex) =>
+                    renderItem(
+                      toggle.value,
+                      toggle.label,
+                      options.length + toggleIndex,
+                      {
+                        selected: toggle.checked,
+                        showCheck: true,
+                        toggle: true,
+                      },
+                    ),
+                  )}
                 </div>
               </div>,
               rootRef.current,

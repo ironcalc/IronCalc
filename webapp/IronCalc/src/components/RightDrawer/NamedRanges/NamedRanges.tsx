@@ -45,6 +45,9 @@ const NamedRanges = ({
     useState<DefinedName | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [scopeFilter, setScopeFilter] = useState("[all]");
+  // Hidden names are left out of the list (and the editor's "Advanced"
+  // section) unless the user opts in
+  const [includeHidden, setIncludeHidden] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
@@ -180,6 +183,7 @@ const NamedRanges = ({
             formula={formula}
             comment={comment}
             hidden={hidden}
+            showAdvanced={includeHidden}
             onSave={handleSave}
             onCancel={handleCancel}
             editingDefinedName={editingDefinedName}
@@ -202,6 +206,9 @@ const NamedRanges = ({
     },
   ];
   const filteredDefinedNameList = definedNameList.filter((definedName) => {
+    if (!includeHidden && definedName.hidden) {
+      return false;
+    }
     if (scopeFilter === "[global]" && definedName.scope != null) {
       return false;
     }
@@ -225,6 +232,13 @@ const NamedRanges = ({
     }
     return true;
   });
+  // Nothing to list only because every name is hidden and hidden names are
+  // excluded: tell the user how to see them rather than "no search results"
+  const onlyHiddenNames =
+    !includeHidden &&
+    scopeFilter === "[all]" &&
+    !searchQuery.trim() &&
+    definedNameList.every((definedName) => definedName.hidden);
   const onNameSelected = (formula: string) => {
     const range = parseRangeInSheet(model, formula);
     if (range) {
@@ -280,6 +294,14 @@ const NamedRanges = ({
                   value={scopeFilter}
                   options={scopeOptions}
                   onChange={setScopeFilter}
+                  toggles={[
+                    {
+                      value: "[hidden]",
+                      label: t("name_manager_dialog.include_hidden"),
+                      checked: includeHidden,
+                      onChange: setIncludeHidden,
+                    },
+                  ]}
                 />
               </div>
             </div>
@@ -291,9 +313,11 @@ const NamedRanges = ({
               {filteredDefinedNameList.length === 0 ? (
                 <div className="ic-named-ranges-empty-state-message">
                   <div className="ic-named-ranges-icon-wrapper">
-                    <SearchX />
+                    {onlyHiddenNames ? <EyeOff /> : <SearchX />}
                   </div>
-                  {t("name_manager_dialog.no_search_results")}
+                  {onlyHiddenNames
+                    ? t("name_manager_dialog.only_hidden_names")
+                    : t("name_manager_dialog.no_search_results")}
                 </div>
               ) : null}
               {filteredDefinedNameList.map((definedName) => {
@@ -345,13 +369,16 @@ const NamedRanges = ({
                   >
                     <div className="ic-named-ranges-list-item-text">
                       <div className="ic-named-ranges-name-text">
-                        {definedName.hidden ? (
-                          <EyeOff
-                            className="ic-named-ranges-hidden-icon"
-                            aria-label={t("name_manager_dialog.hidden")}
-                          />
-                        ) : null}
                         {definedName.name}
+                        {definedName.hidden ? (
+                          <Tooltip title={t("name_manager_dialog.hidden")}>
+                            <span className="ic-named-ranges-hidden-icon">
+                              <EyeOff
+                                aria-label={t("name_manager_dialog.hidden")}
+                              />
+                            </span>
+                          </Tooltip>
+                        ) : null}
                       </div>
                       <div className="ic-named-ranges-scope-text">
                         {scopeName}
@@ -359,6 +386,11 @@ const NamedRanges = ({
                       <div className="ic-named-ranges-formula-text">
                         {definedName.formula}
                       </div>
+                      {definedName.comment ? (
+                        <div className="ic-named-ranges-comment-text">
+                          {definedName.comment}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="ic-named-ranges-icons-wrapper">
