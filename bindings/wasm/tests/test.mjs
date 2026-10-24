@@ -33,6 +33,43 @@ test('Row height', () => {
     assert.strictEqual(model.getRowHeight(0, 3), 320);
 });
 
+test('Row and column sizes', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.deepStrictEqual(model.getRowSizes(0), { default_size: 25, runs: [] });
+    assert.deepStrictEqual(model.getColumnSizes(0), { default_size: 90, runs: [] });
+
+    model.setRowsHeight(0, 3, 4, 40);
+    model.setRowsHidden(0, 6, 6, true);
+    model.setColumnsWidth(0, 2, 3, 120);
+    model.setColumnsHidden(0, 5, 5, true);
+
+    assert.deepStrictEqual(model.getRowSizes(0), {
+        default_size: 25,
+        runs: [
+            { first: 3, last: 3, size: 40 },
+            { first: 4, last: 4, size: 40 },
+            { first: 6, last: 6, size: 0 },
+        ],
+    });
+    const columns = model.getColumnSizes(0);
+    assert.strictEqual(columns.default_size, 90);
+    // The engine keeps one record per column
+    assert.deepStrictEqual(columns.runs, [
+        { first: 2, last: 2, size: 120 },
+        { first: 3, last: 3, size: 120 },
+        { first: 5, last: 5, size: 0 },
+    ]);
+    // The runs agree with the per-row and per-column queries
+    for (let i = 1; i <= 8; i += 1) {
+        const row = model.getRowSizes(0).runs.find((r) => r.first <= i && i <= r.last);
+        assert.strictEqual(row ? row.size : 25, model.getRowHeight(0, i));
+        const column = columns.runs.find((c) => c.first <= i && i <= c.last);
+        assert.strictEqual(column ? column.size : 90, model.getColumnWidth(0, i));
+    }
+
+    assert.throws(() => model.getRowSizes(3));
+});
+
 test('Evaluates correctly', (t) => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.setUserInput(0, 1, 1, "23");

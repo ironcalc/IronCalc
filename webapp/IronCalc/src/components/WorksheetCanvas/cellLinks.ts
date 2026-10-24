@@ -235,18 +235,7 @@ export class CellLinks {
     worksheet.model.setSelectedSheet(sheetIndex);
     worksheet.model.setSelectedCell(row, column);
     worksheet.model.setSelectedRange(row, column, rowEnd, columnEnd);
-    // If the target is out of view, scroll so that it becomes the top-left
-    // visible cell. `getVisibleCells` reads the view of the (now) selected
-    // sheet; the DOM scroller follows the model view on refresh.
-    const { topLeftCell, bottomRightCell } = worksheet.getVisibleCells();
-    if (
-      row < topLeftCell.row ||
-      row > bottomRightCell.row ||
-      column < topLeftCell.column ||
-      column > bottomRightCell.column
-    ) {
-      worksheet.model.setTopLeftVisibleCell(row, column);
-    }
+    // The worksheet scrolls the target into view on refresh
     worksheet.refresh();
     worksheet.renderSheet();
   }

@@ -14,7 +14,8 @@ use ironcalc_base::{
     },
     types::{CellType, Color, Link, Style, StyleIncludes},
     worksheet::NavigationDirection,
-    BorderArea, ClipboardData, UserModel as BaseModel,
+    BorderArea, ClipboardData, UserModel as BaseModel, COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH,
+    DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
 };
 
 fn to_js_error(error: String) -> JsError {
@@ -80,6 +81,23 @@ struct DefinedName {
     name: String,
     scope: Option<u32>,
     formula: String,
+}
+
+/// Consecutive rows or columns (`first..=last`, 1-based) sharing a size in
+/// pixels. Hidden ones have size 0.
+#[derive(Serialize)]
+struct SizeRun {
+    first: i32,
+    last: i32,
+    size: f64,
+}
+
+/// The sizes along one axis of a sheet: the runs with a non-default size.
+/// Everything not covered by a run has the default size.
+#[derive(Serialize)]
+struct AxisSizes {
+    default_size: f64,
+    runs: Vec<SizeRun>,
 }
 
 #[derive(Serialize)]
@@ -484,6 +502,70 @@ impl Model {
         self.model
             .get_column_width(sheet, column)
             .map_err(to_js_error)
+    }
+
+    /// The row heights of a sheet in pixels, as the runs of rows with a
+    /// non-default height (hidden rows have height 0). A UI builds its row
+    /// axis from this in one call instead of asking for every row; the
+    /// sizes follow `getRowHeight`.
+    #[wasm_bindgen(js_name = "getRowSizes", unchecked_return_type = "AxisSizes")]
+    pub fn get_row_sizes(&self, sheet: u32) -> Result<JsValue, JsError> {
+        let worksheet = self
+            .model
+            .get_model()
+            .workbook
+            .worksheet(sheet)
+            .map_err(to_js_error)?;
+        let runs = worksheet
+            .rows
+            .iter()
+            .map(|row| SizeRun {
+                first: row.r,
+                last: row.r,
+                size: if row.hidden {
+                    0.0
+                } else {
+                    row.height * ROW_HEIGHT_FACTOR
+                },
+            })
+            .collect();
+        serde_wasm_bindgen::to_value(&AxisSizes {
+            default_size: DEFAULT_ROW_HEIGHT,
+            runs,
+        })
+        .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// The column widths of a sheet in pixels, as the runs of columns with a
+    /// non-default width (hidden columns have width 0). The sizes follow
+    /// `getColumnWidth`.
+    #[wasm_bindgen(js_name = "getColumnSizes", unchecked_return_type = "AxisSizes")]
+    pub fn get_column_sizes(&self, sheet: u32) -> Result<JsValue, JsError> {
+        let worksheet = self
+            .model
+            .get_model()
+            .workbook
+            .worksheet(sheet)
+            .map_err(to_js_error)?;
+        let runs = worksheet
+            .cols
+            .iter()
+            .filter(|col| col.hidden || col.custom_width)
+            .map(|col| SizeRun {
+                first: col.min,
+                last: col.max,
+                size: if col.hidden {
+                    0.0
+                } else {
+                    col.width * COLUMN_WIDTH_FACTOR
+                },
+            })
+            .collect();
+        serde_wasm_bindgen::to_value(&AxisSizes {
+            default_size: DEFAULT_COLUMN_WIDTH,
+            runs,
+        })
+        .map_err(|e| to_js_error(e.to_string()))
     }
 
     #[wasm_bindgen(js_name = "setUserInput")]
