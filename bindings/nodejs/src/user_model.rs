@@ -1018,7 +1018,7 @@ impl UserModel {
 
   // Defined names
 
-  /// Returns the list of defined names as [{name, scope, formula}].
+  /// Returns the list of defined names as [{name, scope, formula, hidden}].
   /// `scope` is omitted for globally scoped names.
   #[napi(ts_return_type = "Array<DefinedName>")]
   pub fn get_defined_name_list<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
@@ -1026,26 +1026,29 @@ impl UserModel {
       .model
       .get_defined_name_list()
       .into_iter()
-      .map(|(name, scope, formula)| DefinedName {
+      .map(|(name, scope, formula, hidden)| DefinedName {
         name,
         scope,
         formula,
+        hidden,
       })
       .collect();
     env.to_js_value(&data).map_err(to_js_error)
   }
 
   /// Creates a new defined name. `scope` is a sheet index or null for global scope.
+  /// A hidden name (`hidden` defaults to false) works like any other but is not shown in the UI.
   #[napi]
   pub fn new_defined_name(
     &mut self,
     name: String,
     scope: Option<u32>,
     formula: String,
+    hidden: Option<bool>,
   ) -> Result<()> {
     self
       .model
-      .new_defined_name(&name, scope, &formula)
+      .new_defined_name(&name, scope, &formula, hidden.unwrap_or(false))
       .map_err(to_js_error)
   }
 
@@ -1057,10 +1060,11 @@ impl UserModel {
     new_name: String,
     new_scope: Option<u32>,
     new_formula: String,
+    new_hidden: bool,
   ) -> Result<()> {
     self
       .model
-      .update_defined_name(&name, scope, &new_name, new_scope, &new_formula)
+      .update_defined_name(&name, scope, &new_name, new_scope, &new_formula, new_hidden)
       .map_err(to_js_error)
   }
 

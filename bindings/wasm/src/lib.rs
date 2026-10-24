@@ -81,6 +81,7 @@ struct DefinedName {
     name: String,
     scope: Option<u32>,
     formula: String,
+    hidden: bool,
 }
 
 /// Consecutive rows or columns (`first..=last`, 1-based) sharing a size in
@@ -1167,20 +1168,25 @@ impl Model {
                 name: s.0.to_owned(),
                 scope: s.1,
                 formula: s.2.to_owned(),
+                hidden: s.3,
             })
             .collect();
         serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
     }
 
+    /// Creates a new defined name. `scope` is a sheet index or undefined for
+    /// a global name. A hidden name (`hidden` defaults to false) works like any
+    /// other but is not shown in the UI.
     #[wasm_bindgen(js_name = "newDefinedName")]
     pub fn new_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,
+        hidden: Option<bool>,
     ) -> Result<(), JsError> {
         self.model
-            .new_defined_name(name, scope, formula)
+            .new_defined_name(name, scope, formula, hidden.unwrap_or(false))
             .map_err(|e| to_js_error(e.to_string()))
     }
 
@@ -1192,9 +1198,10 @@ impl Model {
         new_name: &str,
         new_scope: Option<u32>,
         new_formula: &str,
+        new_hidden: bool,
     ) -> Result<(), JsError> {
         self.model
-            .update_defined_name(name, scope, new_name, new_scope, new_formula)
+            .update_defined_name(name, scope, new_name, new_scope, new_formula, new_hidden)
             .map_err(|e| to_js_error(e.to_string()))
     }
 
