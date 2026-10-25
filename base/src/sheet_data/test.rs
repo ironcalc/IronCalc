@@ -4,7 +4,7 @@ use std::borrow::Cow;
 
 use super::row::Row;
 use super::*;
-use crate::constants::LAST_ROW;
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::types::Cell;
 
 fn number(v: f64) -> Cell {
@@ -400,4 +400,94 @@ fn equality_is_about_cells_not_about_chunks() {
     assert_eq!(a, b);
     b.set_cell(1, 2, number(1.0));
     assert_ne!(a, b);
+}
+
+#[test]
+fn displace_rows_moves_rows_in_one_piece() {
+    let mut data = SheetData::new();
+    for row in 1..=5 {
+        data.set_cell(row, 1, number(row as f64));
+        data.set_cell(row, 2, text(0));
+    }
+    // a row with no cells, as the importer makes for a row with a height
+    data.set_row(7, Vec::new());
+    // two rows inserted at 3
+    data.displace_rows(3, 2);
+    assert_eq!(data.rows(), vec![1, 2, 5, 6, 7, 9]);
+    assert_eq!(data.cell(5, 1).as_deref(), Some(&number(3.0)));
+    assert_eq!(data.cell(5, 2).as_deref(), Some(&text(0)));
+    assert_eq!(data.cell(3, 1), None);
+    assert_eq!(data.cells_in_row(9).len(), 0);
+    // the inserted rows deleted again
+    data.displace_rows(5, -2);
+    assert_eq!(data.rows(), vec![1, 2, 3, 4, 5, 7]);
+    assert_eq!(data.cell(3, 1).as_deref(), Some(&number(3.0)));
+    // rows 2 and 3 deleted: their cells are gone, the others move up
+    data.displace_rows(4, -2);
+    assert_eq!(data.rows(), vec![1, 2, 3, 5]);
+    assert_eq!(data.cell(1, 1).as_deref(), Some(&number(1.0)));
+    assert_eq!(data.cell(2, 1).as_deref(), Some(&number(4.0)));
+    assert_eq!(data.cell(3, 1).as_deref(), Some(&number(5.0)));
+    assert_eq!(data.cells().count(), 6);
+    // a row pushed beyond the last row is dropped
+    data.displace_rows(3, LAST_ROW - 4);
+    assert_eq!(data.rows(), vec![1, 2, LAST_ROW - 1]);
+    assert_eq!(data.cell(LAST_ROW - 1, 1).as_deref(), Some(&number(5.0)));
+    data.displace_rows(1, 1);
+    assert_eq!(data.rows(), vec![2, 3, LAST_ROW]);
+    data.displace_rows(1, 1);
+    assert_eq!(data.rows(), vec![3, 4]);
+}
+
+#[test]
+fn displace_columns_shifts_every_row() {
+    let mut data = SheetData::new();
+    // numbers across the boundary, a row of cells, numbers wholly to the
+    // left, numbers wholly to the right, and a row with no cells
+    for column in 1..=5 {
+        data.set_cell(1, column, number(column as f64));
+    }
+    data.set_cell(2, 2, text(0));
+    data.set_cell(2, 4, number(4.0));
+    for column in 1..=3 {
+        data.set_cell(3, column, number(column as f64));
+    }
+    for column in 6..=8 {
+        data.set_cell(4, column, number(column as f64));
+    }
+    data.set_row(9, Vec::new());
+    // two columns inserted at 4
+    data.displace_columns(4, 2);
+    assert_eq!(data.columns_in_row(1), vec![1, 2, 3, 6, 7]);
+    assert_eq!(data.cell(1, 6).as_deref(), Some(&number(4.0)));
+    assert_eq!(data.columns_in_row(2), vec![2, 6]);
+    assert_eq!(data.cell(2, 6).as_deref(), Some(&number(4.0)));
+    assert_eq!(data.columns_in_row(3), vec![1, 2, 3]);
+    assert_eq!(data.columns_in_row(4), vec![8, 9, 10]);
+    assert_eq!(data.cell(4, 8).as_deref(), Some(&number(6.0)));
+    assert_eq!(data.rows(), vec![1, 2, 3, 4, 9]);
+    // they are deleted again: nothing was in them
+    data.displace_columns(6, -2);
+    assert_eq!(data.columns_in_row(1), vec![1, 2, 3, 4, 5]);
+    assert_eq!(data.columns_in_row(2), vec![2, 4]);
+    assert_eq!(data.columns_in_row(4), vec![6, 7, 8]);
+    // columns 2 and 3 deleted: their cells are gone, the others move left
+    data.displace_columns(4, -2);
+    assert_eq!(data.columns_in_row(1), vec![1, 2, 3]);
+    assert_eq!(data.cell(1, 2).as_deref(), Some(&number(4.0)));
+    assert_eq!(data.cell(1, 3).as_deref(), Some(&number(5.0)));
+    assert_eq!(data.columns_in_row(2), vec![2]);
+    assert_eq!(data.cell(2, 2).as_deref(), Some(&number(4.0)));
+    assert_eq!(data.columns_in_row(3), vec![1]);
+    assert_eq!(data.columns_in_row(4), vec![4, 5, 6]);
+    // a row left without cells is removed, one that had none stays
+    data.displace_columns(3, -2);
+    assert_eq!(data.rows(), vec![1, 4, 9]);
+    assert_eq!(data.columns_in_row(1), vec![1]);
+    assert_eq!(data.cell(1, 1).as_deref(), Some(&number(5.0)));
+    assert_eq!(data.columns_in_row(4), vec![2, 3, 4]);
+    // a cell pushed beyond the last column is dropped
+    data.displace_columns(3, LAST_COLUMN - 3);
+    assert_eq!(data.columns_in_row(4), vec![2, LAST_COLUMN]);
+    assert_eq!(data.cell(4, LAST_COLUMN).as_deref(), Some(&number(7.0)));
 }

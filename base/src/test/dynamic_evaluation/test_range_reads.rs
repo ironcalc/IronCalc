@@ -112,6 +112,9 @@ fn an_ordinary_formula_summing_a_whole_column_needs_no_restart() {
 fn a_whole_column_read_records_one_rectangle() {
     let mut model = new_empty_model();
     model._set("A1", "=SUM(D:D)");
+    // Reads are recorded for an anchor's spill to be checked against: with
+    // no dynamic anchor in the workbook none is kept. This one reads nothing.
+    model._set("F1", "=SEQUENCE(1)");
     model._set("D1", "1");
     model._set("D2", "2");
     model._set("D3", "");

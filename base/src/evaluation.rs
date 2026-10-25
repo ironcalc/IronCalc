@@ -402,6 +402,10 @@ pub(crate) struct Evaluation {
     /// formatting at load time, formula helpers) there is no driver to restart
     /// anything, so cells are simply evaluated on demand.
     pub(crate) in_pass: bool,
+    /// Whether the reads of the current pass are put on record (`seen`,
+    /// `seen_ranges`). They are recorded for an anchor's spill to be checked
+    /// against, so a pass with no dynamic anchor records none.
+    pub(crate) record_reads: bool,
     /// Number of restarts the last `evaluate()` needed. For tests and tuning.
     pub(crate) restarts_in_last_evaluation: u32,
     /// Number of formulas running right now, that is the depth of the
@@ -465,6 +469,7 @@ impl Default for Evaluation {
             seen_ranges: Vec::new(),
             restart: None,
             in_pass: false,
+            record_reads: false,
             restarts_in_last_evaluation: 0,
             depth: 0,
             max_depth: default_max_depth(),
@@ -479,7 +484,7 @@ impl Evaluation {
     /// See `Model::record_seen`. Here so that a read can be put on record
     /// while the sheet it was made in is still borrowed.
     pub(crate) fn record_seen(&mut self, position: CellReferenceIndex, seen: Seen) {
-        if !self.in_pass {
+        if !self.in_pass || !self.record_reads {
             return;
         }
         if let Some(root) = self.root {
@@ -495,6 +500,14 @@ impl Evaluation {
     }
 }
 
+/// What `Model::survey` finds
+#[derive(Default)]
+struct Survey {
+    formulas: Vec<CellReferenceIndex>,
+    dynamic_anchors: Vec<CellReferenceIndex>,
+    dynamic_spills: Vec<(CellReferenceIndex, Cell)>,
+}
+
 impl<'a> Model<'a> {
     /// Evaluates every formula in the workbook.
     ///
@@ -504,15 +517,21 @@ impl<'a> Model<'a> {
     /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
     /// is marked, so there is nothing of it to read or to contradict.
     pub fn evaluate(&mut self) {
-        self.sync_anchor_order();
+        let Survey {
+            formulas,
+            dynamic_anchors,
+            dynamic_spills,
+        } = self.survey();
+        self.sync_anchor_order(dynamic_anchors);
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
         // The only changes to that sheet within an evaluation are the dropping
         // of stale spill cells: an anchor's own when it gave them up, a marked
-        // anchor's when it is marked.
-        let mut spills_before = self.dynamic_spills();
+        // anchor's when it is marked. The formula cells stay where they are
+        // throughout, so they are found once.
+        let mut spills_before = dynamic_spills;
         let mut log = RestartLog::new();
-        while let Some(restart) = self.run_pass(&log.circular) {
+        while let Some(restart) = self.run_pass(&log.circular, &formulas) {
             let marked = log.record(&restart, &mut self.evaluation.anchor_order);
             spills_before.retain(|(position, cell)| {
                 let dropped = match &restart {
@@ -576,19 +595,37 @@ impl<'a> Model<'a> {
             .map(|(sheet, worksheet)| (sheet as u32, worksheet))
     }
 
-    /// Every formula cell, in natural `(sheet, row, column)` order. The other
-    /// cells are left out: there is nothing to evaluate in a constant, and a
-    /// spill cell holds what its anchor, a formula, writes.
-    fn formula_positions(&self) -> Vec<CellReferenceIndex> {
-        let mut found = Vec::new();
+    /// What an evaluation needs to know about the sheet before it starts,
+    /// found in one walk over the cells: every formula cell, in natural
+    /// `(sheet, row, column)` order (the other cells are left out: there is
+    /// nothing to evaluate in a constant, and a spill cell holds what its
+    /// anchor, a formula, writes); the dynamic anchors among them, in the same
+    /// order; and the dynamic anchors with their spill cells as they are now,
+    /// what `dynamic_spills` finds. On a sheet of a million constants the
+    /// walk costs more than the formulas do, so it is made once, not three
+    /// times.
+    fn survey(&self) -> Survey {
+        let mut survey = Survey::default();
         for (sheet, worksheet) in self.sheets_with_formulas() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
-                if FormulaCell::of(&cell).is_some() {
-                    found.push(CellReferenceIndex { sheet, row, column });
+                let position = CellReferenceIndex { sheet, row, column };
+                match &*cell {
+                    Cell::CellFormula { .. } => survey.formulas.push(position),
+                    Cell::ArrayFormula { kind, .. } => {
+                        survey.formulas.push(position);
+                        if matches!(kind, ArrayKind::Dynamic) {
+                            survey.dynamic_anchors.push(position);
+                            survey.dynamic_spills.push((position, cell.into_owned()));
+                        }
+                    }
+                    Cell::SpillCell { .. } if self.belongs_to_a_dynamic_array(position, &cell) => {
+                        survey.dynamic_spills.push((position, cell.into_owned()));
+                    }
+                    _ => {}
                 }
             }
         }
-        found
+        survey
     }
 
     /// Every dynamic anchor and every spill cell of a dynamic anchor, as they
@@ -653,11 +690,10 @@ impl<'a> Model<'a> {
         }
     }
 
-    /// Brings `anchor_order` in line with the dynamic anchors that exist now:
-    /// anchors that are gone are dropped, new ones are appended in natural
-    /// order, the rest keep their relative order.
-    fn sync_anchor_order(&mut self) {
-        let current = self.dynamic_anchors_in_natural_order();
+    /// Brings `anchor_order` in line with the dynamic anchors that exist now,
+    /// given in natural order: anchors that are gone are dropped, new ones are
+    /// appended in natural order, the rest keep their relative order.
+    fn sync_anchor_order(&mut self, current: Vec<CellReferenceIndex>) {
         let current_set: HashSet<CellReferenceIndex> = current.iter().copied().collect();
         let order = &mut self.evaluation.anchor_order;
         order.retain(|anchor| current_set.contains(anchor));
@@ -665,27 +701,14 @@ impl<'a> Model<'a> {
         order.extend(current.into_iter().filter(|a| !known.contains(a)));
     }
 
-    fn dynamic_anchors_in_natural_order(&self) -> Vec<CellReferenceIndex> {
-        let mut found = Vec::new();
-        for (sheet, worksheet) in self.sheets_with_formulas() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
-                if matches!(
-                    *cell,
-                    Cell::ArrayFormula {
-                        kind: ArrayKind::Dynamic,
-                        ..
-                    }
-                ) {
-                    found.push(CellReferenceIndex { sheet, row, column });
-                }
-            }
-        }
-        found
-    }
-
-    /// One pass over the workbook: anchors first, then every formula. Returns
-    /// the reason the pass had to be abandoned, if any.
-    fn run_pass(&mut self, circular_anchors: &[CellKey]) -> Option<Restart> {
+    /// One pass over the workbook: anchors first, then every formula, given
+    /// in natural order. Returns the reason the pass had to be abandoned, if
+    /// any.
+    fn run_pass(
+        &mut self,
+        circular_anchors: &[CellKey],
+        formulas: &[CellReferenceIndex],
+    ) -> Option<Restart> {
         let state = &mut self.evaluation;
         state.cells.clear();
         state.stack.clear();
@@ -696,15 +719,19 @@ impl<'a> Model<'a> {
         state.unwinding = false;
         state.circular = circular_anchors.iter().copied().collect();
         state.in_pass = true;
+        // What a formula read is put on record to be contradicted by an
+        // anchor's spill. With no dynamic anchor in the workbook nothing
+        // spills and nothing can contradict a read, so none is recorded: on a
+        // large sheet the records were a good part of the pass.
+        state.record_reads = !state.anchor_order.is_empty();
         // dynamic links (HYPERLINK) are rebuilt on every evaluation
         self.links.clear();
         self.clear_variable_stack();
         self.clear_lambdas();
 
         let anchors = self.evaluation.anchor_order.clone();
-        let formulas = self.formula_positions();
         let mut restart = None;
-        for cell in anchors.into_iter().chain(formulas) {
+        for cell in anchors.into_iter().chain(formulas.iter().copied()) {
             self.evaluation.root = Some(cell);
             self.evaluate_cell(cell);
             if self.evaluation.restart.is_some() {
@@ -1030,7 +1057,11 @@ impl<'a> Model<'a> {
         row2: i32,
         column2: i32,
     ) {
-        if !self.evaluation.in_pass || row1 > row2 || column1 > column2 {
+        if !self.evaluation.in_pass
+            || !self.evaluation.record_reads
+            || row1 > row2
+            || column1 > column2
+        {
             return;
         }
         if let Some(root) = self.evaluation.root {

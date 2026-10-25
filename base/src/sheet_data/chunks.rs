@@ -211,18 +211,92 @@ impl SheetData {
 
     /// Removes every cell of a row, and the row.
     pub fn remove_row(&mut self, row: i32) {
-        let Some((chunk_index, index)) = locate(row) else {
+        self.take_row(row);
+    }
+
+    /// Takes a row out of the sheet. The row no longer exists afterwards.
+    fn take_row(&mut self, row: i32) -> Option<Row> {
+        let (chunk_index, index) = locate(row)?;
+        let chunk = self.chunks.get_mut(chunk_index)?.as_mut()?;
+        let taken = chunk.rows[index].take()?;
+        chunk.used -= 1;
+        self.row_count -= 1;
+        if chunk.used == 0 {
+            self.chunks[chunk_index] = None;
+        }
+        Some(taken)
+    }
+
+    /// Puts a row in the sheet in place of whatever was there. Outside the
+    /// sheet it is dropped.
+    fn put_row(&mut self, row: i32, data: Row) {
+        if let Some(slot) = self.row_or_insert(row) {
+            *slot = data;
+        }
+    }
+
+    /// Moves every row from `first_row` on by `delta` rows: row `r` becomes
+    /// row `r + delta`, cells and all. This is what inserting rows above
+    /// `first_row` does, and deleting them: with a negative `delta` the rows
+    /// the others land on, `first_row + delta` to `first_row - 1`, are removed
+    /// first. A row that would land beyond the last row is dropped. The sheet
+    /// is not read cell by cell: a row moves in one piece.
+    pub fn displace_rows(&mut self, first_row: i32, delta: i32) {
+        if delta == 0 {
             return;
-        };
-        let Some(Some(chunk)) = self.chunks.get_mut(chunk_index) else {
-            return;
-        };
-        if chunk.rows[index].take().is_some() {
-            chunk.used -= 1;
-            self.row_count -= 1;
-            if chunk.used == 0 {
-                self.chunks[chunk_index] = None;
+        }
+        let rows: Vec<i32> = self
+            .rows_in_order()
+            .map(|(row, _)| row)
+            .filter(|row| *row >= first_row + delta.min(0))
+            .collect();
+        if delta > 0 {
+            // From the bottom up, so that a row lands on a row already moved
+            for row in rows.into_iter().rev() {
+                if let Some(data) = self.take_row(row) {
+                    self.put_row(row + delta, data);
+                }
             }
+        } else {
+            for row in rows {
+                if row < first_row {
+                    self.remove_row(row);
+                } else if let Some(data) = self.take_row(row) {
+                    self.put_row(row + delta, data);
+                }
+            }
+        }
+    }
+
+    /// Moves every cell from `first_column` on by `delta` columns, in every
+    /// row: the cell in column `c` goes to column `c + delta`. This is what
+    /// inserting columns before `first_column` does, and deleting them: with a
+    /// negative `delta` the cells in the columns the others land on,
+    /// `first_column + delta` to `first_column - 1`, are removed first. A row
+    /// left with no cells by that is removed, as it is when its last cell is
+    /// removed. A cell that would land beyond the last column is dropped.
+    pub fn displace_columns(&mut self, first_column: i32, delta: i32) {
+        if delta == 0 {
+            return;
+        }
+        let mut emptied = Vec::new();
+        for (chunk_index, chunk) in self.chunks.iter_mut().enumerate() {
+            let Some(chunk) = chunk else {
+                continue;
+            };
+            for (index, row) in chunk.rows.iter_mut().enumerate() {
+                let Some(row_data) = row else {
+                    continue;
+                };
+                let was_empty = row_data.is_empty();
+                row_data.displace_columns(first_column, delta);
+                if !was_empty && row_data.is_empty() {
+                    emptied.push(((chunk_index << CHUNK_BITS) | index) as i32);
+                }
+            }
+        }
+        for row in emptied {
+            self.remove_row(row);
         }
     }
 

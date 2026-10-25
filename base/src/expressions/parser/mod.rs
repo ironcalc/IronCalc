@@ -50,6 +50,7 @@ use super::utils::number_to_column;
 
 use token::OpCompare;
 
+pub(crate) mod displace;
 mod lambda;
 pub mod move_formula;
 pub mod static_analysis;
