@@ -1,13 +1,13 @@
 mod conditional_formatting;
 mod test_actions;
 mod test_arabic_roman;
+mod test_base_decimal;
 mod test_binary_search;
 mod test_ceiling_floor;
 mod test_cell;
 mod test_cell_clear_contents;
 mod test_circular_references;
 mod test_column_width;
-mod test_base_decimal;
 mod test_criteria;
 mod test_database;
 mod test_date_and_time;
