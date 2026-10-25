@@ -2295,6 +2295,12 @@ impl<'a> Model<'a> {
         value: &str,
     ) -> Result<(), String> {
         let style_index = self.get_cell_style_index(sheet, row, column)?;
+        // Clear the spill of a dynamic formula we are replacing (or reset the
+        // anchor if we write inside a spill), exactly as set_user_input does.
+        // Out-of-range cells are left to the setter below, which reports them.
+        if (1..=LAST_ROW).contains(&row) && (1..=LAST_COLUMN).contains(&column) {
+            self.prepare_cell_for_user_input(sheet, row, column)?;
+        }
 
         let new_style_index = if common::value_needs_quoting(value, self.language) {
             self.workbook
@@ -2343,6 +2349,12 @@ impl<'a> Model<'a> {
         value: bool,
     ) -> Result<(), String> {
         let style_index = self.get_cell_style_index(sheet, row, column)?;
+        // Clear the spill of a dynamic formula we are replacing (or reset the
+        // anchor if we write inside a spill), exactly as set_user_input does.
+        // Out-of-range cells are left to the setter below, which reports them.
+        if (1..=LAST_ROW).contains(&row) && (1..=LAST_COLUMN).contains(&column) {
+            self.prepare_cell_for_user_input(sheet, row, column)?;
+        }
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
             self.workbook
                 .styles
@@ -2385,6 +2397,12 @@ impl<'a> Model<'a> {
         value: f64,
     ) -> Result<(), String> {
         let style_index = self.get_cell_style_index(sheet, row, column)?;
+        // Clear the spill of a dynamic formula we are replacing (or reset the
+        // anchor if we write inside a spill), exactly as set_user_input does.
+        // Out-of-range cells are left to the setter below, which reports them.
+        if (1..=LAST_ROW).contains(&row) && (1..=LAST_COLUMN).contains(&column) {
+            self.prepare_cell_for_user_input(sheet, row, column)?;
+        }
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
             self.workbook
                 .styles
@@ -2430,6 +2448,12 @@ impl<'a> Model<'a> {
         formula: String,
     ) -> Result<(), String> {
         let mut style_index = self.get_cell_style_index(sheet, row, column)?;
+        // Clear the spill of a dynamic formula we are replacing (or reset the
+        // anchor if we write inside a spill), exactly as set_user_input does.
+        // Out-of-range cells are left to the setter below, which reports them.
+        if (1..=LAST_ROW).contains(&row) && (1..=LAST_COLUMN).contains(&column) {
+            self.prepare_cell_for_user_input(sheet, row, column)?;
+        }
         if self.workbook.styles.style_is_quote_prefix(style_index) {
             style_index = self
                 .workbook
