@@ -2805,7 +2805,7 @@ impl<'a> Model<'a> {
     /// it to them if it is new.
     ///
     /// It tries to use the 'cache' lookup first to avoid quadratic time complexity when adding new formulas.
-    fn shared_formula_index(
+    pub(crate) fn shared_formula_index(
         &mut self,
         sheet: u32,
         parsed_formula: Node,

@@ -3,6 +3,7 @@
 
 use std::borrow::Cow;
 
+use crate::constants::LAST_COLUMN;
 use crate::types::Cell;
 
 /// Rows this short are searched from the left; longer ones by bisection.
@@ -324,6 +325,47 @@ impl Row {
         let cells = self.cells_mut();
         let index = position(cells, column).ok()?;
         Some(cells.remove(index).1)
+    }
+}
+
+/// See `SheetData::displace_columns`. The cells stay sorted: those that
+/// move all move the same way, and land to the right of those that stay.
+fn displace_cells(cells: &mut Vec<(i32, Cell)>, first_column: i32, delta: i32) {
+    let deleted = (first_column + delta.min(0))..first_column;
+    cells.retain(|(column, _)| !deleted.contains(column));
+    for (column, _) in cells.iter_mut() {
+        if *column >= first_column {
+            *column += delta;
+        }
+    }
+    cells.retain(|(column, _)| *column <= LAST_COLUMN);
+}
+
+impl Row {
+    /// See `SheetData::displace_columns`. A row of numbers wholly to one side
+    /// of `first_column` stays a row of numbers; one that straddles it is
+    /// rebuilt from its cells.
+    pub(super) fn displace_columns(&mut self, first_column: i32, delta: i32) {
+        match self {
+            Row::Cells(cells) => displace_cells(cells, first_column, delta),
+            Row::Numbers {
+                first_column: row_first_column,
+                values,
+                ..
+            } => {
+                let last_column = *row_first_column + values.len() as i32 - 1;
+                if last_column < first_column + delta.min(0) {
+                    // Wholly to the left: nothing moves
+                } else if *row_first_column >= first_column && last_column + delta <= LAST_COLUMN {
+                    // Wholly to the right: slides as it is
+                    *row_first_column += delta;
+                } else {
+                    let mut cells = self.to_cells();
+                    displace_cells(&mut cells, first_column, delta);
+                    *self = Row::from_cells(cells);
+                }
+            }
+        }
     }
 }
 
