@@ -11,6 +11,7 @@ import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
 import { EditMenu } from "./Navigation/EditMenu";
 import { FileMenu } from "./Navigation/FileMenu";
 import { HelpMenu } from "./Navigation/HelpMenu";
+import { InsertMenu } from "./Navigation/InsertMenu";
 import { MobileMenu } from "./Navigation/MobileMenu";
 import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareWorkbook/ShareButton";
@@ -22,7 +23,7 @@ import { WorkbookTitle } from "./WorkbookTitle";
 
 import "./file-bar.css";
 
-type OpenMenu = "file" | "edit" | "help" | null;
+type OpenMenu = "file" | "edit" | "insert" | "help" | null;
 
 export function FileBar(properties: {
   model: Model;
@@ -120,6 +121,15 @@ export function FileBar(properties: {
             onOpen={() => setOpenMenu("edit")}
             onClose={closeMenus}
             onHover={() => openMenu && setOpenMenu("edit")}
+          />
+          <InsertMenu
+            ironCalcRef={properties.ironCalcRef}
+            model={properties.model}
+            isReadOnly={properties.isReadOnly}
+            isOpen={openMenu === "insert"}
+            onOpen={() => setOpenMenu("insert")}
+            onClose={closeMenus}
+            onHover={() => openMenu && setOpenMenu("insert")}
           />
           <HelpMenu
             isOpen={openMenu === "help"}
