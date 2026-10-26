@@ -105,7 +105,7 @@ const Workbook = (
     ({ name, color, sheet_id, state }: WorksheetProperties) => {
       return {
         name,
-        color: model.resolveColor(color) || "var(--palette-common-white)",
+        color: model.resolveColor(color) || "",
         sheetId: sheet_id,
         state,
       };
