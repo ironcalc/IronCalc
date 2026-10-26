@@ -141,6 +141,37 @@
       "column_right": "Insérer une colonne à droite",
       "sheet": "Feuille"
     },
+    "format_menu": {
+      "button": "Format",
+      "number_format": "Format de nombre",
+      "number_formats": {
+        "auto": "Automatique",
+        "number": "Nombre",
+        "percentage": "Pourcentage",
+        "currency_eur": "Euro (EUR)",
+        "currency_usd": "Dollar (USD)",
+        "currency_gbp": "Livre sterling (GBP)",
+        "date_short": "Date courte",
+        "date_long": "Date longue"
+      },
+      "text": "Texte",
+      "bold": "Gras",
+      "italic": "Italique",
+      "underline": "Souligné",
+      "strikethrough": "Barré",
+      "font_size": "Taille de police",
+      "alignment": "Alignement",
+      "align_left": "Aligner à gauche",
+      "align_center": "Centrer",
+      "align_right": "Aligner à droite",
+      "align_top": "Aligner en haut",
+      "align_middle": "Aligner au milieu",
+      "align_bottom": "Aligner en bas",
+      "wrap_text": "Renvoyer à la ligne",
+      "overflow_text": "Laisser déborder le texte",
+      "conditional_formatting": "Mise en forme conditionnelle",
+      "clear_formatting": "Effacer la mise en forme"
+    },
     "help_menu": {
       "button": "Aide",
       "about": "À propos d'IronCalc",
