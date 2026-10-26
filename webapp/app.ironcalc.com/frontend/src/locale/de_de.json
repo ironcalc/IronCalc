@@ -141,6 +141,37 @@
       "column_right": "Spalte rechts einfügen",
       "sheet": "Blatt"
     },
+    "format_menu": {
+      "button": "Format",
+      "number_format": "Zahlenformat",
+      "number_formats": {
+        "auto": "Automatisch",
+        "number": "Zahl",
+        "percentage": "Prozent",
+        "currency_eur": "Euro (EUR)",
+        "currency_usd": "Dollar (USD)",
+        "currency_gbp": "Britisches Pfund (GBP)",
+        "date_short": "Kurzes Datum",
+        "date_long": "Langes Datum"
+      },
+      "text": "Text",
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "underline": "Unterstrichen",
+      "strikethrough": "Durchgestrichen",
+      "font_size": "Schriftgröße",
+      "alignment": "Ausrichtung",
+      "align_left": "Linksbündig",
+      "align_center": "Zentriert",
+      "align_right": "Rechtsbündig",
+      "align_top": "Oben ausrichten",
+      "align_middle": "Mittig ausrichten",
+      "align_bottom": "Unten ausrichten",
+      "wrap_text": "Textumbruch",
+      "overflow_text": "Text überlaufen lassen",
+      "conditional_formatting": "Bedingte Formatierung",
+      "clear_formatting": "Formatierung löschen"
+    },
     "help_menu": {
       "button": "Hilfe",
       "about": "Über IronCalc",
