@@ -120,6 +120,17 @@
       "copy": "Copia",
       "paste": "Incolla"
     },
+    "view_menu": {
+      "button": "Visualizza",
+      "hide_gridlines": "Nascondi griglia",
+      "show_gridlines": "Mostra griglia",
+      "freeze": "Blocca",
+      "freeze_rows_one": "Blocca {{count}} riga",
+      "freeze_rows_other": "Blocca {{count}} righe",
+      "freeze_columns_one": "Blocca {{count}} colonna",
+      "freeze_columns_other": "Blocca {{count}} colonne",
+      "hidden_sheets": "Fogli nascosti"
+    },
     "insert_menu": {
       "button": "Inserisci",
       "rows": "Righe",

@@ -120,6 +120,17 @@
       "copy": "Copiar",
       "paste": "Pegar"
     },
+    "view_menu": {
+      "button": "Ver",
+      "hide_gridlines": "Ocultar líneas de cuadrícula",
+      "show_gridlines": "Mostrar líneas de cuadrícula",
+      "freeze": "Inmovilizar",
+      "freeze_rows_one": "Inmovilizar {{count}} fila",
+      "freeze_rows_other": "Inmovilizar {{count}} filas",
+      "freeze_columns_one": "Inmovilizar {{count}} columna",
+      "freeze_columns_other": "Inmovilizar {{count}} columnas",
+      "hidden_sheets": "Hojas ocultas"
+    },
     "insert_menu": {
       "button": "Insertar",
       "rows": "Filas",
