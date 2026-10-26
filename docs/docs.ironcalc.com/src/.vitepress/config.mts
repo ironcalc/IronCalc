@@ -1251,6 +1251,10 @@ export default defineConfig({
                 link: "/functions/text/dollar",
               },
               {
+                text: "ENCODEURL",
+                link: "/functions/text/encodeurl",
+              },
+              {
                 text: "EXACT",
                 link: "/functions/text/exact",
               },
