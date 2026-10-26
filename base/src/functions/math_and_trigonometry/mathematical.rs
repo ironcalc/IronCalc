@@ -206,6 +206,10 @@ impl<'a> Model<'a> {
                 message: "Radix must be between 2 and 36".to_string(),
             };
         }
+        // Excel treats empty text as 0 (see https://github.com/ironcalc/IronCalc/issues/1617)
+        if text.is_empty() {
+            return CalcResult::Number(0.0);
+        }
         match i64::from_str_radix(&text, radix as u32) {
             Ok(n) => CalcResult::Number(n as f64),
             Err(_) => CalcResult::Error {

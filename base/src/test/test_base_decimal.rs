@@ -3,6 +3,20 @@
 use crate::test::util::new_empty_model;
 
 #[test]
+fn empty_text_returns_zero() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DECIMAL(\"\", 2)");
+    model._set("A2", "=DECIMAL(A3, 2)");
+    model._set("A4", "=DECIMAL(\"\", 99)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"0");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}
+
+#[test]
 fn wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=BASE()");
