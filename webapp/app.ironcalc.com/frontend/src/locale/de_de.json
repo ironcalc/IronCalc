@@ -120,6 +120,16 @@
       "copy": "Kopieren",
       "paste": "Einfügen"
     },
+    "insert_menu": {
+      "button": "Einfügen",
+      "rows": "Zeilen",
+      "row_above": "Zeile oberhalb einfügen",
+      "row_below": "Zeile unterhalb einfügen",
+      "columns": "Spalten",
+      "column_left": "Spalte links einfügen",
+      "column_right": "Spalte rechts einfügen",
+      "sheet": "Blatt"
+    },
     "help_menu": {
       "button": "Hilfe",
       "about": "Über IronCalc",

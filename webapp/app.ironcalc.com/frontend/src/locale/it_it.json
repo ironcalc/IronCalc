@@ -120,6 +120,16 @@
       "copy": "Copia",
       "paste": "Incolla"
     },
+    "insert_menu": {
+      "button": "Inserisci",
+      "rows": "Righe",
+      "row_above": "Inserisci riga sopra",
+      "row_below": "Inserisci riga sotto",
+      "columns": "Colonne",
+      "column_left": "Inserisci colonna a sinistra",
+      "column_right": "Inserisci colonna a destra",
+      "sheet": "Foglio"
+    },
     "help_menu": {
       "button": "Aiuto",
       "about": "Informazioni su IronCalc",
