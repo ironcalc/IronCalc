@@ -630,3 +630,12 @@ fn test_workbook_theme_colors() {
         "#C9211E".to_string()
     );
 }
+
+#[cfg(feature = "pdf")]
+#[test]
+fn test_save_to_pdf() {
+    let model = load_from_xlsx("tests/example.xlsx", "en", "UTC", "en").unwrap();
+    let pdf_bytes = ironcalc::export::save_to_pdf_bytes(&model, None).unwrap();
+    assert!(!pdf_bytes.is_empty());
+    assert!(pdf_bytes.starts_with(b"%PDF-"));
+}

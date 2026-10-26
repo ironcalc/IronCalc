@@ -73,6 +73,29 @@ pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
     Ok(())
 }
 
+/// Exports a model to a PDF file.
+#[cfg(feature = "pdf")]
+pub fn save_to_pdf(
+    model: &Model,
+    file_name: &str,
+    options: Option<&ironcalc_pdf::PdfExportOptions>,
+) -> Result<(), ironcalc_pdf::PdfError> {
+    let default_options = ironcalc_pdf::PdfExportOptions::default();
+    let opts = options.unwrap_or(&default_options);
+    ironcalc_pdf::export_to_pdf_file(model, opts, file_name)
+}
+
+/// Exports a model to PDF bytes.
+#[cfg(feature = "pdf")]
+pub fn save_to_pdf_bytes(
+    model: &Model,
+    options: Option<&ironcalc_pdf::PdfExportOptions>,
+) -> Result<Vec<u8>, ironcalc_pdf::PdfError> {
+    let default_options = ironcalc_pdf::PdfExportOptions::default();
+    let opts = options.unwrap_or(&default_options);
+    ironcalc_pdf::export_to_pdf(model, opts)
+}
+
 pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<W, XlsxError> {
     let workbook = &model.workbook;
     // IronCalc does not keep track of the selected sheet: the active tab is

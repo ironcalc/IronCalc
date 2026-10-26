@@ -34,6 +34,7 @@ function WorkbookList({
     handleDeleteConfirm,
     handleDeleteCancel,
     handleDownload,
+    handleDownloadPdf,
     handlePinToggle,
     handleDuplicate,
   } = useWorkbookMenu({ setModel, onDelete });
@@ -126,6 +127,7 @@ function WorkbookList({
           isPinned={isWorkbookPinned(uuid)}
           onOpen={() => handleMenuOpen(uuid)}
           onDownload={() => handleDownload(uuid)}
+          onDownloadPdf={() => handleDownloadPdf(uuid)}
           onPinToggle={() => handlePinToggle(uuid)}
           onDuplicate={() => handleDuplicate(uuid)}
           onDelete={() => handleDeleteClick(uuid)}
