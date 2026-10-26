@@ -1982,6 +1982,14 @@
       "=EFFECT(0.05, 12) returns the effective rate with monthly compounding."
     ]
   },
+  "encodeurl": {
+    "tier": 0,
+    "category": 10,
+    "tags": [],
+    "args": [["text", "text", "String to percent-encode for use in a URL"]],
+    "description": "Returns a URL-encoded string, replacing every character except letters, digits, hyphen, period, underscore and tilde with its percent-encoded UTF-8 bytes. Use it to build query strings or links from cell values that contain spaces or special characters.",
+    "examples": ["=ENCODEURL(\"a b&c\") returns \"a%20b%26c\"."]
+  },
   "eomonth": {
     "tier": 0,
     "category": 2,
