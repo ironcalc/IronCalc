@@ -687,13 +687,22 @@ const Workbook = (
     root: rootRef,
   });
 
+  // Keeps the keyboard focus on the workbook after a render, so the shortcuts
+  // keep working after a click on the toolbar or a closed dialog. It must not
+  // take the focus from somewhere else though: a render caused from the
+  // outside (the host re-rendering or repainting after an external change)
+  // would otherwise interrupt whatever the user is doing there, for instance
+  // typing in another widget or in the host's own inputs.
   useEffect(() => {
-    if (!rootRef.current) {
+    const root = rootRef.current;
+    if (!root || workbookState.getEditingCell()) {
       return;
     }
-    if (!workbookState.getEditingCell()) {
-      focusWorkbook();
+    const active = document.activeElement;
+    if (active && active !== document.body && !root.contains(active)) {
+      return;
     }
+    focusWorkbook();
   });
 
   const cellAddress = useCallback(() => {
