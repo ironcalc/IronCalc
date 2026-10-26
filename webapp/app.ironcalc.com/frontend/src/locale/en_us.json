@@ -120,6 +120,17 @@
       "copy": "Copy",
       "paste": "Paste"
     },
+    "view_menu": {
+      "button": "View",
+      "hide_gridlines": "Hide gridlines",
+      "show_gridlines": "Show gridlines",
+      "freeze": "Freeze",
+      "freeze_rows_one": "Freeze {{count}} row",
+      "freeze_rows_other": "Freeze {{count}} rows",
+      "freeze_columns_one": "Freeze {{count}} column",
+      "freeze_columns_other": "Freeze {{count}} columns",
+      "hidden_sheets": "Hidden sheets"
+    },
     "insert_menu": {
       "button": "Insert",
       "rows": "Rows",

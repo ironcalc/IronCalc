@@ -11,7 +11,6 @@ import { type RefObject, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export function EditMenu(props: {
-  // The widget's handle: the menu runs its actions through it
   ironCalcRef: RefObject<IronCalcHandle | null>;
   model: Model;
   isReadOnly: boolean;

@@ -120,6 +120,17 @@
       "copy": "Kopieren",
       "paste": "Einfügen"
     },
+    "view_menu": {
+      "button": "Ansicht",
+      "hide_gridlines": "Gitternetzlinien ausblenden",
+      "show_gridlines": "Gitternetzlinien einblenden",
+      "freeze": "Fixieren",
+      "freeze_rows_one": "{{count}} Zeile fixieren",
+      "freeze_rows_other": "{{count}} Zeilen fixieren",
+      "freeze_columns_one": "{{count}} Spalte fixieren",
+      "freeze_columns_other": "{{count}} Spalten fixieren",
+      "hidden_sheets": "Ausgeblendete Blätter"
+    },
     "insert_menu": {
       "button": "Einfügen",
       "rows": "Zeilen",

@@ -120,6 +120,17 @@
       "copy": "Copier",
       "paste": "Coller"
     },
+    "view_menu": {
+      "button": "Affichage",
+      "hide_gridlines": "Masquer le quadrillage",
+      "show_gridlines": "Afficher le quadrillage",
+      "freeze": "Figer",
+      "freeze_rows_one": "Figer {{count}} ligne",
+      "freeze_rows_other": "Figer {{count}} lignes",
+      "freeze_columns_one": "Figer {{count}} colonne",
+      "freeze_columns_other": "Figer {{count}} colonnes",
+      "hidden_sheets": "Feuilles masquées"
+    },
     "insert_menu": {
       "button": "Insertion",
       "rows": "Lignes",
