@@ -12,7 +12,7 @@ import {
   PencilLine,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BorderBottomIcon,
@@ -27,8 +27,10 @@ import {
 } from "../../icons";
 import { IconButton } from "../Button/IconButton";
 import ColorPicker from "../ColorPicker/ColorPicker";
+import { MenuItem, MenuItemWithSubmenu } from "../Menu/MenuItem";
+import { useMenuPosition } from "../utils/useMenuPosition";
 import "./border-picker.css";
-import LineStylePicker from "./LineStylePicker";
+import { STYLE_OPTIONS } from "./LineStylePicker";
 
 type BorderPickerProps = {
   onChange: (border: BorderOptions) => void;
@@ -36,11 +38,6 @@ type BorderPickerProps = {
   anchorEl: React.RefObject<HTMLElement | null>;
   open: boolean;
   currentTheme: IronCalcTheme;
-};
-
-type Position = {
-  top: number;
-  left: number;
 };
 
 const BORDER_BUTTONS = [
@@ -115,42 +112,13 @@ export default function BorderPicker({
 }: BorderPickerProps) {
   const { t } = useTranslation();
 
-  const rootRef = useRef<HTMLDivElement | null>(null);
+  const { menuRef: rootRef, position } = useMenuPosition(open, anchorEl);
   const borderColorButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  const [position, setPosition] = useState<Position | null>(null);
   const [borderSelected, setBorderSelected] = useState<BorderType | null>(null);
   const [borderColor, setBorderColor] = useState<Color>("");
   const [borderStyle, setBorderStyle] = useState(BorderStyle.Thin);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const [stylePickerOpen, setStylePickerOpen] = useState(false);
-
-  useLayoutEffect(() => {
-    if (!open || !anchorEl.current) {
-      return;
-    }
-
-    const updatePosition = () => {
-      if (!anchorEl.current) {
-        return;
-      }
-
-      const bb = anchorEl.current.getBoundingClientRect();
-      setPosition({
-        top: bb.bottom + 4,
-        left: bb.left - 4,
-      });
-    };
-
-    updatePosition();
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [anchorEl, open]);
 
   useEffect(() => {
     if (!open) {
@@ -165,10 +133,6 @@ export default function BorderPicker({
           setColorPickerOpen(false);
           return;
         }
-        if (stylePickerOpen) {
-          setStylePickerOpen(false);
-          return;
-        }
         onClose();
       }
       // Block everything for now
@@ -180,7 +144,7 @@ export default function BorderPicker({
     return () => {
       document.removeEventListener("keydown", handleKeyDown, true);
     };
-  }, [open, onClose, colorPickerOpen, stylePickerOpen]);
+  }, [open, onClose, colorPickerOpen]);
 
   useEffect(() => {
     if (open) {
@@ -190,7 +154,6 @@ export default function BorderPicker({
     setBorderColor("");
     setBorderStyle(BorderStyle.Thin);
     setColorPickerOpen(false);
-    setStylePickerOpen(false);
   }, [open]);
 
   useEffect(() => {
@@ -203,6 +166,10 @@ export default function BorderPicker({
       if (target && rootRef.current?.contains(target)) {
         return;
       }
+      // The line style submenu is portaled outside the picker
+      if (target instanceof Element && target.closest(".ic-menu-wrapper")) {
+        return;
+      }
       if (colorPickerOpen) {
         return;
       }
@@ -213,7 +180,7 @@ export default function BorderPicker({
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true);
     };
-  }, [open, onClose, colorPickerOpen]);
+  }, [open, onClose, colorPickerOpen, rootRef]);
 
   const applyBorder = (
     border: BorderType,
@@ -239,15 +206,7 @@ export default function BorderPicker({
   }
 
   return (
-    <div
-      ref={rootRef}
-      className="ic-border-picker"
-      style={
-        position
-          ? { top: `${position.top}px`, left: `${position.left}px` }
-          : undefined
-      }
-    >
+    <div ref={rootRef} className="ic-border-picker" style={position}>
       <div className="ic-border-picker__borders">
         <div className="row">
           {BORDER_BUTTONS.slice(0, 5).map((button) => {
@@ -330,31 +289,25 @@ export default function BorderPicker({
             theme={currentTheme}
           />
         </div>
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
-        <div
-          className="ic-border-picker__submenu-anchor"
-          onMouseEnter={() => setStylePickerOpen(true)}
-          onMouseLeave={() => setStylePickerOpen(false)}
-        >
-          <button type="button" className="ic-border-picker__button">
-            <LineStyle />
-            <span>{t("toolbar.borders.style")}</span>
-            <ChevronRight />
-          </button>
-
-          {stylePickerOpen && (
-            <LineStylePicker
-              value={borderStyle}
-              onSelect={(style) => {
-                setBorderStyle(style);
-                setStylePickerOpen(false);
+        <MenuItemWithSubmenu
+          icon={<LineStyle />}
+          submenu={STYLE_OPTIONS.map((option) => (
+            <MenuItem
+              key={option.value}
+              checked={borderStyle === option.value}
+              onClick={() => {
+                setBorderStyle(option.value);
                 if (borderSelected) {
-                  applyBorder(borderSelected, borderColor, style);
+                  applyBorder(borderSelected, borderColor, option.value);
                 }
               }}
-            />
-          )}
-        </div>
+            >
+              <span className={`ic-line-preview ${option.previewClassName}`} />
+            </MenuItem>
+          ))}
+        >
+          {t("toolbar.borders.style")}
+        </MenuItemWithSubmenu>
       </div>
     </div>
   );

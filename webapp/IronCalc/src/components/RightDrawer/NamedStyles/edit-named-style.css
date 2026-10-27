@@ -98,10 +98,6 @@
   padding: 2px;
 }
 
-.ic-menu:has(.ic-line-preview) {
-  min-width: 0;
-}
-
 .ic-input-control.ic-edit-style-line-style-wrapper {
   flex: none;
   width: 88px;
