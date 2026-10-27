@@ -141,7 +141,8 @@
       "columns": "Columnas",
       "column_left": "Insertar columna a la izquierda",
       "column_right": "Insertar columna a la derecha",
-      "sheet": "Hoja"
+      "sheet": "Hoja",
+      "link": "Enlace"
     },
     "format_menu": {
       "button": "Formato",

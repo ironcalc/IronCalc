@@ -513,6 +513,10 @@ const Workbook = (
     openNamedRanges: whenEditable(() => {
       openDrawer("namedRanges");
     }),
+    openLinkDialog: whenEditable(() => {
+      const { sheet, row, column } = model.getSelectedView();
+      openLinkDialog(sheet, row, column);
+    }),
     downloadSelectionAsPng: () => {
       // creates a new canvas element in the visible part of the the selected area
       const worksheetCanvas = worksheetRef.current?.getCanvas();
@@ -1096,10 +1100,7 @@ const Workbook = (
           }
           onOpenNamedStyles={() => openDrawer("namedStyles")}
           isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
-          onOpenLinkDialog={() => {
-            const { sheet, row, column } = model.getSelectedView();
-            openLinkDialog(sheet, row, column);
-          }}
+          onOpenLinkDialog={actions.openLinkDialog}
           themes={themes}
           currentTheme={currentTheme}
           onThemePicked={handleThemePicked}

@@ -141,7 +141,8 @@
       "columns": "Spalten",
       "column_left": "Spalte links einfügen",
       "column_right": "Spalte rechts einfügen",
-      "sheet": "Blatt"
+      "sheet": "Blatt",
+      "link": "Link"
     },
     "format_menu": {
       "button": "Format",
