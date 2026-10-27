@@ -1,4 +1,5 @@
 import type { HorizontalAlignment, VerticalAlignment } from "@ironcalc/wasm";
+import type { MergeCellsOperation } from "../Toolbar/Toolbar";
 
 /**
  * Actions a host application can run on the workbook through the widget's
@@ -33,6 +34,15 @@ export interface WorkbookActions {
   insertColumnsRight: () => void;
   openConditionalFormatting: () => void;
   openNamedRanges: () => void;
+  openThemes: () => void;
   openLinkDialog: () => void;
+  mergeCells: (operation: MergeCellsOperation) => void;
+  getMergeCellsState: () => {
+    canMerge: boolean;
+    canMergeAcross: boolean;
+    canMergeDown: boolean;
+    canUnmerge: boolean;
+  };
+  openCustomNumberFormat: () => void;
   downloadSelectionAsPng: () => void;
 }

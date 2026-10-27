@@ -17,6 +17,8 @@ import {
   Italic,
   RemoveFormatting,
   Strikethrough,
+  SwatchBook,
+  TableCellsMerge,
   Type,
   Underline,
   WrapText,
@@ -49,6 +51,7 @@ export function FormatMenu(props: {
   const { sheet, row, column } = model.getSelectedView();
   const style = model.getCellStyle(sheet, row, column).style;
   const wrapText = style.alignment?.wrap_text ?? false;
+  const merge = actions()?.getMergeCellsState();
   const fmt = model.getFmtSettings();
   const numberFormats = [
     [NumberFormats.AUTO, "auto"],
@@ -91,21 +94,34 @@ export function FormatMenu(props: {
       >
         <MenuItemWithSubmenu
           icon={<Hash />}
-          submenu={numberFormats.map((item, index) =>
-            item === null ? (
-              // biome-ignore lint/suspicious/noArrayIndexKey: static list
-              <MenuDivider key={index} />
-            ) : (
+          submenu={
+            <>
+              {numberFormats.map((item, index) =>
+                item === null ? (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static list
+                  <MenuDivider key={index} />
+                ) : (
+                  <MenuItem
+                    key={item[1]}
+                    checked={style.num_fmt === item[0]}
+                    secondaryText={item[2]}
+                    onClick={() => actions()?.setNumberFormat(item[0])}
+                  >
+                    {t(`file_bar.format_menu.number_formats.${item[1]}`)}
+                  </MenuItem>
+                ),
+              )}
+              <MenuDivider />
               <MenuItem
-                key={item[1]}
-                checked={style.num_fmt === item[0]}
-                secondaryText={item[2]}
-                onClick={() => actions()?.setNumberFormat(item[0])}
+                checked={
+                  !numberFormats.some((item) => item?.[0] === style.num_fmt)
+                }
+                onClick={() => actions()?.openCustomNumberFormat()}
               >
-                {t(`file_bar.format_menu.number_formats.${item[1]}`)}
+                {t("file_bar.format_menu.number_formats.custom")}
               </MenuItem>
-            ),
-          )}
+            </>
+          }
         >
           {t("file_bar.format_menu.number_format")}
         </MenuItemWithSubmenu>
@@ -197,12 +213,55 @@ export function FormatMenu(props: {
               : "file_bar.format_menu.wrap_text",
           )}
         </MenuItem>
+        <MenuItemWithSubmenu
+          icon={<TableCellsMerge />}
+          submenu={
+            <>
+              <MenuItem
+                disabled={!merge?.canMerge}
+                onClick={() => actions()?.mergeCells("merge")}
+              >
+                {t("file_bar.format_menu.merge_menu.merge")}
+              </MenuItem>
+              <MenuItem
+                disabled={!merge?.canMerge}
+                onClick={() => actions()?.mergeCells("merge_center")}
+              >
+                {t("file_bar.format_menu.merge_menu.merge_center")}
+              </MenuItem>
+              <MenuItem
+                disabled={!merge?.canMergeAcross}
+                onClick={() => actions()?.mergeCells("merge_across")}
+              >
+                {t("file_bar.format_menu.merge_menu.merge_across")}
+              </MenuItem>
+              <MenuItem
+                disabled={!merge?.canMergeDown}
+                onClick={() => actions()?.mergeCells("merge_down")}
+              >
+                {t("file_bar.format_menu.merge_menu.merge_down")}
+              </MenuItem>
+              <MenuDivider />
+              <MenuItem
+                disabled={!merge?.canUnmerge}
+                onClick={() => actions()?.mergeCells("unmerge")}
+              >
+                {t("file_bar.format_menu.merge_menu.unmerge")}
+              </MenuItem>
+            </>
+          }
+        >
+          {t("file_bar.format_menu.merge_cells")}
+        </MenuItemWithSubmenu>
         <MenuDivider />
         <MenuItem
           icon={<Brush />}
           onClick={() => actions()?.openConditionalFormatting()}
         >
           {t("file_bar.format_menu.conditional_formatting")}
+        </MenuItem>
+        <MenuItem icon={<SwatchBook />} onClick={() => actions()?.openThemes()}>
+          {t("file_bar.format_menu.themes")}
         </MenuItem>
         <MenuDivider />
         <MenuItem

@@ -155,7 +155,8 @@
         "currency_usd": "Dollar (USD)",
         "currency_gbp": "Britisches Pfund (GBP)",
         "date_short": "Kurzes Datum",
-        "date_long": "Langes Datum"
+        "date_long": "Langes Datum",
+        "custom": "Benutzerdefiniert"
       },
       "text": "Text",
       "bold": "Fett",
@@ -172,7 +173,16 @@
       "align_bottom": "Unten ausrichten",
       "wrap_text": "Textumbruch",
       "overflow_text": "Text überlaufen lassen",
+      "merge_cells": "Zellen verbinden",
+      "merge_menu": {
+        "merge": "Zellen verbinden",
+        "merge_center": "Verbinden und zentrieren",
+        "merge_across": "Zeilenweise verbinden",
+        "merge_down": "Spaltenweise verbinden",
+        "unmerge": "Zellverbund aufheben"
+      },
       "conditional_formatting": "Bedingte Formatierung",
+      "themes": "Designs",
       "clear_formatting": "Formatierung löschen"
     },
     "help_menu": {
