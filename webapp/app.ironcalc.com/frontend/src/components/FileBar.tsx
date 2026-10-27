@@ -115,42 +115,42 @@ export function FileBar(properties: {
             themeMode={properties.themeMode}
             onThemeModeChange={properties.onThemeModeChange}
           />
-          <EditMenu
-            ironCalcRef={properties.ironCalcRef}
-            model={properties.model}
-            isReadOnly={properties.isReadOnly}
-            isOpen={openMenu === "edit"}
-            onOpen={() => setOpenMenu("edit")}
-            onClose={closeMenus}
-            onHover={() => openMenu && setOpenMenu("edit")}
-          />
-          <ViewMenu
-            ironCalcRef={properties.ironCalcRef}
-            model={properties.model}
-            isReadOnly={properties.isReadOnly}
-            isOpen={openMenu === "view"}
-            onOpen={() => setOpenMenu("view")}
-            onClose={closeMenus}
-            onHover={() => openMenu && setOpenMenu("view")}
-          />
-          <InsertMenu
-            ironCalcRef={properties.ironCalcRef}
-            model={properties.model}
-            isReadOnly={properties.isReadOnly}
-            isOpen={openMenu === "insert"}
-            onOpen={() => setOpenMenu("insert")}
-            onClose={closeMenus}
-            onHover={() => openMenu && setOpenMenu("insert")}
-          />
-          <FormatMenu
-            ironCalcRef={properties.ironCalcRef}
-            model={properties.model}
-            isReadOnly={properties.isReadOnly}
-            isOpen={openMenu === "format"}
-            onOpen={() => setOpenMenu("format")}
-            onClose={closeMenus}
-            onHover={() => openMenu && setOpenMenu("format")}
-          />
+          {!properties.isReadOnly && (
+            <>
+              <EditMenu
+                ironCalcRef={properties.ironCalcRef}
+                model={properties.model}
+                isOpen={openMenu === "edit"}
+                onOpen={() => setOpenMenu("edit")}
+                onClose={closeMenus}
+                onHover={() => openMenu && setOpenMenu("edit")}
+              />
+              <ViewMenu
+                ironCalcRef={properties.ironCalcRef}
+                model={properties.model}
+                isOpen={openMenu === "view"}
+                onOpen={() => setOpenMenu("view")}
+                onClose={closeMenus}
+                onHover={() => openMenu && setOpenMenu("view")}
+              />
+              <InsertMenu
+                ironCalcRef={properties.ironCalcRef}
+                model={properties.model}
+                isOpen={openMenu === "insert"}
+                onOpen={() => setOpenMenu("insert")}
+                onClose={closeMenus}
+                onHover={() => openMenu && setOpenMenu("insert")}
+              />
+              <FormatMenu
+                ironCalcRef={properties.ironCalcRef}
+                model={properties.model}
+                isOpen={openMenu === "format"}
+                onOpen={() => setOpenMenu("format")}
+                onClose={closeMenus}
+                onHover={() => openMenu && setOpenMenu("format")}
+              />
+            </>
+          )}
           <HelpMenu
             isOpen={openMenu === "help"}
             onOpen={() => setOpenMenu("help")}

@@ -27,7 +27,6 @@ import { useTranslation } from "react-i18next";
 export function FormatMenu(props: {
   ironCalcRef: RefObject<IronCalcHandle | null>;
   model: Model;
-  isReadOnly: boolean;
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -36,7 +35,7 @@ export function FormatMenu(props: {
   const [anchorPosition, setAnchorPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
-  const { model, isReadOnly } = props;
+  const { model } = props;
 
   const captureAnchor = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -100,7 +99,6 @@ export function FormatMenu(props: {
               <MenuItem
                 key={item[1]}
                 checked={style.num_fmt === item[0]}
-                disabled={isReadOnly}
                 secondaryText={item[2]}
                 onClick={() => actions()?.setNumberFormat(item[0])}
               >
@@ -116,30 +114,23 @@ export function FormatMenu(props: {
           icon={<Type />}
           submenu={
             <>
-              <MenuItem
-                icon={<Bold />}
-                disabled={isReadOnly}
-                onClick={() => actions()?.toggleBold()}
-              >
+              <MenuItem icon={<Bold />} onClick={() => actions()?.toggleBold()}>
                 {t("file_bar.format_menu.bold")}
               </MenuItem>
               <MenuItem
                 icon={<Italic />}
-                disabled={isReadOnly}
                 onClick={() => actions()?.toggleItalic()}
               >
                 {t("file_bar.format_menu.italic")}
               </MenuItem>
               <MenuItem
                 icon={<Underline />}
-                disabled={isReadOnly}
                 onClick={() => actions()?.toggleUnderline()}
               >
                 {t("file_bar.format_menu.underline")}
               </MenuItem>
               <MenuItem
                 icon={<Strikethrough />}
-                disabled={isReadOnly}
                 onClick={() => actions()?.toggleStrikethrough()}
               >
                 {t("file_bar.format_menu.strikethrough")}
@@ -155,7 +146,6 @@ export function FormatMenu(props: {
             <MenuItem
               key={size}
               checked={style.font.sz === size}
-              disabled={isReadOnly}
               onClick={() => actions()?.setFontSize(size)}
             >
               {size}
@@ -172,7 +162,6 @@ export function FormatMenu(props: {
               {(["left", "center", "right"] as const).map((alignment) => (
                 <MenuItem
                   key={alignment}
-                  disabled={isReadOnly}
                   onClick={() => actions()?.setHorizontalAlignment(alignment)}
                 >
                   {t(`file_bar.format_menu.align_${alignment}`)}
@@ -188,7 +177,6 @@ export function FormatMenu(props: {
               ).map(([alignment, label]) => (
                 <MenuItem
                   key={alignment}
-                  disabled={isReadOnly}
                   onClick={() => actions()?.setVerticalAlignment(alignment)}
                 >
                   {t(`file_bar.format_menu.${label}`)}
@@ -201,7 +189,6 @@ export function FormatMenu(props: {
         </MenuItemWithSubmenu>
         <MenuItem
           icon={<WrapText />}
-          disabled={isReadOnly}
           onClick={() => actions()?.setWrapText(!wrapText)}
         >
           {t(
@@ -213,7 +200,6 @@ export function FormatMenu(props: {
         <MenuDivider />
         <MenuItem
           icon={<Brush />}
-          disabled={isReadOnly}
           onClick={() => actions()?.openConditionalFormatting()}
         >
           {t("file_bar.format_menu.conditional_formatting")}
@@ -221,7 +207,6 @@ export function FormatMenu(props: {
         <MenuDivider />
         <MenuItem
           icon={<RemoveFormatting />}
-          disabled={isReadOnly}
           onClick={() => actions()?.clearFormatting()}
         >
           {t("file_bar.format_menu.clear_formatting")}
