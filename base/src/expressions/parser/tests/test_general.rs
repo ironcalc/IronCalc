@@ -533,3 +533,22 @@ fn test_to_string_displaced_too_high() {
     );
     assert_eq!(t, "#REF!".to_string());
 }
+
+#[test]
+fn test_parser_trailing_tokens_are_an_error() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    for formula in ["1+1 2", "SUM(1,2))", "1,2", "A1 A2", "(1+1 2)"] {
+        let t = parser.parse(formula, &cell_reference);
+        match &t {
+            Node::ParseErrorKind { formula: f, .. } => assert_eq!(f, formula),
+            _ => panic!("Expected error in formula: {formula}"),
+        }
+        assert_eq!(to_rc_format(&t), formula);
+    }
+}
