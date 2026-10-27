@@ -129,7 +129,9 @@
       "freeze_rows_other": "Figer {{count}} lignes",
       "freeze_columns_one": "Figer {{count}} colonne",
       "freeze_columns_other": "Figer {{count}} colonnes",
-      "hidden_sheets": "Feuilles masquées"
+      "hidden_sheets": "Feuilles masquées",
+      "named_ranges": "Plages nommées",
+      "download_png": "Télécharger la zone en .png"
     },
     "insert_menu": {
       "button": "Insertion",

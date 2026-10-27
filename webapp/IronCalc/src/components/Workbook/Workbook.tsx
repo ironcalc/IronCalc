@@ -510,6 +510,55 @@ const Workbook = (
     openConditionalFormatting: whenEditable(() => {
       openDrawer("conditionalFormatting");
     }),
+    openNamedRanges: whenEditable(() => {
+      openDrawer("namedRanges");
+    }),
+    downloadSelectionAsPng: () => {
+      // creates a new canvas element in the visible part of the the selected area
+      const worksheetCanvas = worksheetRef.current?.getCanvas();
+      if (!worksheetCanvas) {
+        return;
+      }
+      const {
+        range: [rowStart, columnStart, rowEnd, columnEnd],
+      } = model.getSelectedView();
+      // NB: cells outside of the displayed area are not rendered
+      // I think the only reasonable way to do this would be server side.
+      let [x, y] = worksheetCanvas.getCoordinatesByCell(rowStart, columnStart);
+      const [x1, y1] = worksheetCanvas.getCoordinatesByCell(
+        rowEnd + 1,
+        columnEnd + 1,
+      );
+      const width = (x1 - x) * devicePixelRatio;
+      const height = (y1 - y) * devicePixelRatio;
+      x *= devicePixelRatio;
+      y *= devicePixelRatio;
+
+      const capturedCanvas = document.createElement("canvas");
+      capturedCanvas.width = width;
+      capturedCanvas.height = height;
+      const ctx = capturedCanvas.getContext("2d");
+      if (!ctx) {
+        return;
+      }
+
+      ctx.drawImage(
+        worksheetCanvas.canvas,
+        x,
+        y,
+        width,
+        height,
+        0,
+        0,
+        width,
+        height,
+      );
+
+      const downloadLink = document.createElement("a");
+      downloadLink.href = capturedCanvas.toDataURL("image/png");
+      downloadLink.download = "ironcalc.png";
+      downloadLink.click();
+    },
   };
 
   useImperativeHandle(ref, () => actions);
@@ -993,55 +1042,7 @@ const Workbook = (
           onClearFormatting={actions.clearFormatting}
           onIncreaseFontSize={actions.increaseFontSize}
           onSetFontSize={actions.setFontSize}
-          onDownloadPNG={() => {
-            // creates a new canvas element in the visible part of the the selected area
-            const worksheetCanvas = worksheetRef.current?.getCanvas();
-            if (!worksheetCanvas) {
-              return;
-            }
-            const {
-              range: [rowStart, columnStart, rowEnd, columnEnd],
-            } = model.getSelectedView();
-            // NB: cells outside of the displayed area are not rendered
-            // I think the only reasonable way to do this would be server side.
-            let [x, y] = worksheetCanvas.getCoordinatesByCell(
-              rowStart,
-              columnStart,
-            );
-            const [x1, y1] = worksheetCanvas.getCoordinatesByCell(
-              rowEnd + 1,
-              columnEnd + 1,
-            );
-            const width = (x1 - x) * devicePixelRatio;
-            const height = (y1 - y) * devicePixelRatio;
-            x *= devicePixelRatio;
-            y *= devicePixelRatio;
-
-            const capturedCanvas = document.createElement("canvas");
-            capturedCanvas.width = width;
-            capturedCanvas.height = height;
-            const ctx = capturedCanvas.getContext("2d");
-            if (!ctx) {
-              return;
-            }
-
-            ctx.drawImage(
-              worksheetCanvas.canvas,
-              x,
-              y,
-              width,
-              height,
-              0,
-              0,
-              width,
-              height,
-            );
-
-            const downloadLink = document.createElement("a");
-            downloadLink.href = capturedCanvas.toDataURL("image/png");
-            downloadLink.download = "ironcalc.png";
-            downloadLink.click();
-          }}
+          onDownloadPNG={actions.downloadSelectionAsPng}
           onBorderChanged={(border: BorderOptions): void => {
             const {
               sheet,
@@ -1123,9 +1124,7 @@ const Workbook = (
           }}
           model={model}
           workbookState={workbookState}
-          openDrawer={() => {
-            openDrawer("namedRanges");
-          }}
+          openDrawer={actions.openNamedRanges}
           canEdit={canEdit && canEditFormula}
         />
         <Worksheet

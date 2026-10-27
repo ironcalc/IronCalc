@@ -129,7 +129,9 @@
       "freeze_rows_other": "Blocca {{count}} righe",
       "freeze_columns_one": "Blocca {{count}} colonna",
       "freeze_columns_other": "Blocca {{count}} colonne",
-      "hidden_sheets": "Fogli nascosti"
+      "hidden_sheets": "Fogli nascosti",
+      "named_ranges": "Intervalli denominati",
+      "download_png": "Scarica area come .png"
     },
     "insert_menu": {
       "button": "Inserisci",
