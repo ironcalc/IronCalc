@@ -29,7 +29,7 @@ fn example_without(lists: &[&str]) -> Vec<u8> {
         let mut writer = zip::ZipWriter::new(Cursor::new(&mut out));
         for index in 0..archive.len() {
             let mut file = archive.by_index(index).unwrap();
-            let name = file.name().to_string();
+            let name = file.name().unwrap().into_owned();
             let mut data = Vec::new();
             file.read_to_end(&mut data).unwrap();
             if name == "xl/styles.xml" {
@@ -43,7 +43,7 @@ fn example_without(lists: &[&str]) -> Vec<u8> {
                 data = text.into_bytes();
             }
             writer
-                .start_file(name, zip::write::FileOptions::default())
+                .start_file(name, zip::write::SimpleFileOptions::default())
                 .unwrap();
             writer.write_all(&data).unwrap();
         }
