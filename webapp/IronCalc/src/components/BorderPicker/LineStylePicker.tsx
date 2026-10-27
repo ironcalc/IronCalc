@@ -15,32 +15,3 @@ export const STYLE_OPTIONS = [
     previewClassName: "medium-dash-dot-dot",
   },
 ] as const;
-
-type LineStylePickerProps = {
-  value: BorderStyle;
-  onSelect: (style: BorderStyle) => void;
-};
-
-export default function LineStylePicker({
-  value,
-  onSelect,
-}: LineStylePickerProps) {
-  return (
-    <div className="ic-line-style-picker">
-      {STYLE_OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          className={
-            value === option.value
-              ? "ic-border-picker__button selected"
-              : "ic-border-picker__button"
-          }
-          onClick={() => onSelect(option.value)}
-        >
-          <span className={`ic-line-preview ${option.previewClassName}`} />
-        </button>
-      ))}
-    </div>
-  );
-}

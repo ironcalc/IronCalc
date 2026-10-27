@@ -26,8 +26,11 @@ function getPanelPosition(
   let top: number;
 
   if (placement === "right") {
-    // Aligned with the anchor's top edge, used by submenus (e.g. BorderPicker)
-    left = anchorRect.right;
+    // Aligned with the anchor's top edge, used by submenus (e.g. BorderPicker).
+    // Flips to the anchor's left side when it would overflow the viewport.
+    const overflowsRight =
+      anchorRect.right + panelWidth > viewportWidth - margin;
+    left = overflowsRight ? anchorRect.left - panelWidth : anchorRect.right;
     top = anchorRect.top;
   } else {
     // Preferred side by default, falls back to the other side when it has more space

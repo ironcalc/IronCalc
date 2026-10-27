@@ -1,16 +1,5 @@
-.ic-line-style-picker {
-  position: absolute;
-  top: 0;
-  left: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  min-width: 92px;
-  padding: 4px;
-  background: var(--palette-surface-elevated);
-  border: 1px solid var(--palette-surface-elevated-border);
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
+.ic-menu:has(.ic-line-preview) {
+  min-width: 0;
 }
 
 .ic-line-preview {
