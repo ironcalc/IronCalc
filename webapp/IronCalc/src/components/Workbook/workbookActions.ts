@@ -32,4 +32,6 @@ export interface WorkbookActions {
   insertColumnsLeft: () => void;
   insertColumnsRight: () => void;
   openConditionalFormatting: () => void;
+  openNamedRanges: () => void;
+  downloadSelectionAsPng: () => void;
 }

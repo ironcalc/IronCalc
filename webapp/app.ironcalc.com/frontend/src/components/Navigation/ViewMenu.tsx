@@ -7,7 +7,14 @@ import {
   MenuItemWithSubmenu,
   type Model,
 } from "@ironcalc/workbook";
-import { EyeOff, Grid2x2Check, Grid2x2X, Snowflake } from "lucide-react";
+import {
+  EyeOff,
+  Grid2x2Check,
+  Grid2x2X,
+  ImageDown,
+  Snowflake,
+  Tag,
+} from "lucide-react";
 import { type RefObject, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -140,6 +147,23 @@ export function ViewMenu(props: {
             {t("file_bar.view_menu.hidden_sheets")}
           </MenuItemWithSubmenu>
         )}
+        <MenuDivider />
+        <MenuItem
+          icon={<Tag />}
+          disabled={isReadOnly}
+          onClick={() => props.ironCalcRef.current?.workbook?.openNamedRanges()}
+        >
+          {t("file_bar.view_menu.named_ranges")}
+        </MenuItem>
+        <MenuDivider />
+        <MenuItem
+          icon={<ImageDown />}
+          onClick={() =>
+            props.ironCalcRef.current?.workbook?.downloadSelectionAsPng()
+          }
+        >
+          {t("file_bar.view_menu.download_png")}
+        </MenuItem>
       </Menu>
     </div>
   );

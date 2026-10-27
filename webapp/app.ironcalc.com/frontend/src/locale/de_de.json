@@ -129,7 +129,9 @@
       "freeze_rows_other": "{{count}} Zeilen fixieren",
       "freeze_columns_one": "{{count}} Spalte fixieren",
       "freeze_columns_other": "{{count}} Spalten fixieren",
-      "hidden_sheets": "Ausgeblendete Blätter"
+      "hidden_sheets": "Ausgeblendete Blätter",
+      "named_ranges": "Benannte Bereiche",
+      "download_png": "Bereich als .png herunterladen"
     },
     "insert_menu": {
       "button": "Einfügen",

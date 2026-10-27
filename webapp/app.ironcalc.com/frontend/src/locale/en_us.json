@@ -129,7 +129,9 @@
       "freeze_rows_other": "Freeze {{count}} rows",
       "freeze_columns_one": "Freeze {{count}} column",
       "freeze_columns_other": "Freeze {{count}} columns",
-      "hidden_sheets": "Hidden sheets"
+      "hidden_sheets": "Hidden sheets",
+      "named_ranges": "Named ranges",
+      "download_png": "Download area as .png"
     },
     "insert_menu": {
       "button": "Insert",

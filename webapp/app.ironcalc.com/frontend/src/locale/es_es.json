@@ -129,7 +129,9 @@
       "freeze_rows_other": "Inmovilizar {{count}} filas",
       "freeze_columns_one": "Inmovilizar {{count}} columna",
       "freeze_columns_other": "Inmovilizar {{count}} columnas",
-      "hidden_sheets": "Hojas ocultas"
+      "hidden_sheets": "Hojas ocultas",
+      "named_ranges": "Rangos con nombre",
+      "download_png": "Descargar área como .png"
     },
     "insert_menu": {
       "button": "Insertar",
