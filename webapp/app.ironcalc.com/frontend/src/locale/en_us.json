@@ -141,7 +141,8 @@
       "columns": "Columns",
       "column_left": "Insert column left",
       "column_right": "Insert column right",
-      "sheet": "Sheet"
+      "sheet": "Sheet",
+      "link": "Link"
     },
     "format_menu": {
       "button": "Format",

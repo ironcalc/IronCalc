@@ -7,7 +7,7 @@ import {
   MenuItemWithSubmenu,
   type Model,
 } from "@ironcalc/workbook";
-import { Columns3, Rows3, Sheet } from "lucide-react";
+import { Columns3, Link2, Rows3, Sheet } from "lucide-react";
 import { type RefObject, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -88,7 +88,6 @@ export function InsertMenu(props: {
         >
           {t("file_bar.insert_menu.columns")}
         </MenuItemWithSubmenu>
-        <MenuDivider />
         <MenuItem
           icon={<Sheet />}
           onClick={() => {
@@ -97,6 +96,10 @@ export function InsertMenu(props: {
           }}
         >
           {t("file_bar.insert_menu.sheet")}
+        </MenuItem>
+        <MenuDivider />
+        <MenuItem icon={<Link2 />} onClick={() => actions()?.openLinkDialog()}>
+          {t("file_bar.insert_menu.link")}
         </MenuItem>
       </Menu>
     </div>
