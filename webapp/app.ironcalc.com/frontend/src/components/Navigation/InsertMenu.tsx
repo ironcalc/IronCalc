@@ -14,7 +14,6 @@ import { useTranslation } from "react-i18next";
 export function InsertMenu(props: {
   ironCalcRef: RefObject<IronCalcHandle | null>;
   model: Model;
-  isReadOnly: boolean;
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -23,7 +22,7 @@ export function InsertMenu(props: {
   const [anchorPosition, setAnchorPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
-  const { model, isReadOnly } = props;
+  const { model } = props;
 
   const captureAnchor = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -63,16 +62,10 @@ export function InsertMenu(props: {
           icon={<Rows3 />}
           submenu={
             <>
-              <MenuItem
-                disabled={isReadOnly}
-                onClick={() => actions()?.insertRowsAbove()}
-              >
+              <MenuItem onClick={() => actions()?.insertRowsAbove()}>
                 {t("file_bar.insert_menu.row_above")}
               </MenuItem>
-              <MenuItem
-                disabled={isReadOnly}
-                onClick={() => actions()?.insertRowsBelow()}
-              >
+              <MenuItem onClick={() => actions()?.insertRowsBelow()}>
                 {t("file_bar.insert_menu.row_below")}
               </MenuItem>
             </>
@@ -84,16 +77,10 @@ export function InsertMenu(props: {
           icon={<Columns3 />}
           submenu={
             <>
-              <MenuItem
-                disabled={isReadOnly}
-                onClick={() => actions()?.insertColumnsLeft()}
-              >
+              <MenuItem onClick={() => actions()?.insertColumnsLeft()}>
                 {t("file_bar.insert_menu.column_left")}
               </MenuItem>
-              <MenuItem
-                disabled={isReadOnly}
-                onClick={() => actions()?.insertColumnsRight()}
-              >
+              <MenuItem onClick={() => actions()?.insertColumnsRight()}>
                 {t("file_bar.insert_menu.column_right")}
               </MenuItem>
             </>
@@ -104,7 +91,6 @@ export function InsertMenu(props: {
         <MenuDivider />
         <MenuItem
           icon={<Sheet />}
-          disabled={isReadOnly}
           onClick={() => {
             model.newSheet();
             actions()?.refresh();

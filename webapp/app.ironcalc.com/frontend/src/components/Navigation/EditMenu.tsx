@@ -13,7 +13,6 @@ import { useTranslation } from "react-i18next";
 export function EditMenu(props: {
   ironCalcRef: RefObject<IronCalcHandle | null>;
   model: Model;
-  isReadOnly: boolean;
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -22,7 +21,7 @@ export function EditMenu(props: {
   const [anchorPosition, setAnchorPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
-  const { model, isReadOnly } = props;
+  const { model } = props;
 
   const captureAnchor = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -60,34 +59,26 @@ export function EditMenu(props: {
       >
         <MenuItem
           icon={<Undo2 />}
-          disabled={isReadOnly || !model.canUndo()}
+          disabled={!model.canUndo()}
           onClick={() => actions()?.undo()}
         >
           {t("file_bar.edit_menu.undo")}
         </MenuItem>
         <MenuItem
           icon={<Redo2 />}
-          disabled={isReadOnly || !model.canRedo()}
+          disabled={!model.canRedo()}
           onClick={() => actions()?.redo()}
         >
           {t("file_bar.edit_menu.redo")}
         </MenuItem>
         <MenuDivider />
-        <MenuItem
-          icon={<Scissors />}
-          disabled={isReadOnly}
-          onClick={() => actions()?.cut()}
-        >
+        <MenuItem icon={<Scissors />} onClick={() => actions()?.cut()}>
           {t("file_bar.edit_menu.cut")}
         </MenuItem>
         <MenuItem icon={<Copy />} onClick={() => actions()?.copy()}>
           {t("file_bar.edit_menu.copy")}
         </MenuItem>
-        <MenuItem
-          icon={<ClipboardPaste />}
-          disabled={isReadOnly}
-          onClick={() => actions()?.paste()}
-        >
+        <MenuItem icon={<ClipboardPaste />} onClick={() => actions()?.paste()}>
           {t("file_bar.edit_menu.paste")}
         </MenuItem>
       </Menu>

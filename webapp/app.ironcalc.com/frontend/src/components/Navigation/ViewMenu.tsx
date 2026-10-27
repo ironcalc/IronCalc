@@ -21,7 +21,6 @@ import { useTranslation } from "react-i18next";
 export function ViewMenu(props: {
   ironCalcRef: RefObject<IronCalcHandle | null>;
   model: Model;
-  isReadOnly: boolean;
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -30,7 +29,7 @@ export function ViewMenu(props: {
   const [anchorPosition, setAnchorPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
-  const { model, isReadOnly } = props;
+  const { model } = props;
 
   const captureAnchor = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -78,7 +77,6 @@ export function ViewMenu(props: {
       >
         <MenuItem
           icon={showGridLines ? <Grid2x2X /> : <Grid2x2Check />}
-          disabled={isReadOnly}
           onClick={() =>
             update(() => model.setShowGridLines(sheet, !showGridLines))
           }
@@ -97,7 +95,6 @@ export function ViewMenu(props: {
               {[1, 2].map((count) => (
                 <MenuItem
                   key={count}
-                  disabled={isReadOnly}
                   onClick={() =>
                     update(() => model.setFrozenRowsCount(sheet, count))
                   }
@@ -109,7 +106,6 @@ export function ViewMenu(props: {
               {[1, 2].map((count) => (
                 <MenuItem
                   key={count}
-                  disabled={isReadOnly}
                   onClick={() =>
                     update(() => model.setFrozenColumnsCount(sheet, count))
                   }
@@ -132,7 +128,6 @@ export function ViewMenu(props: {
             submenu={hiddenSheets.map(({ name, index }) => (
               <MenuItem
                 key={index}
-                disabled={isReadOnly}
                 onClick={() =>
                   update(() => {
                     model.unhideSheet(index);
@@ -150,7 +145,6 @@ export function ViewMenu(props: {
         <MenuDivider />
         <MenuItem
           icon={<Tag />}
-          disabled={isReadOnly}
           onClick={() => props.ironCalcRef.current?.workbook?.openNamedRanges()}
         >
           {t("file_bar.view_menu.named_ranges")}
