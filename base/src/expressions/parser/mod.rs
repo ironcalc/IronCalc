@@ -352,7 +352,21 @@ impl<'a> Parser<'a> {
         // At the top level a formula may start with an expression or a range.
         self.expecting_here = vec![ExpectedTokens::Range, ExpectedTokens::Other];
         self.trailing_name = None;
-        self.parse_expr()
+        let node = self.parse_expr();
+        if let Node::ParseErrorKind { .. } = node {
+            return node;
+        }
+        // The whole formula must be one expression: `=1+1 2` or `=SUM(1,2))`
+        // is an error, not `=1+1` with the rest silently dropped.
+        if let Err(err) = self.lexer.expect(TokenType::EOF) {
+            return Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
+                position: err.position,
+                message: err.message,
+            };
+        }
+        node
     }
 
     /// Parses `formula` up to `cursor` (a char offset) and reports what the
