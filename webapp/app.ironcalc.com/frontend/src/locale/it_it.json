@@ -155,7 +155,8 @@
         "currency_usd": "Dollaro (USD)",
         "currency_gbp": "Sterlina britannica (GBP)",
         "date_short": "Data breve",
-        "date_long": "Data lunga"
+        "date_long": "Data lunga",
+        "custom": "Personalizzato"
       },
       "text": "Testo",
       "bold": "Grassetto",
@@ -172,7 +173,16 @@
       "align_bottom": "Allinea in basso",
       "wrap_text": "Testo a capo",
       "overflow_text": "Testo in overflow",
+      "merge_cells": "Unisci celle",
+      "merge_menu": {
+        "merge": "Unisci celle",
+        "merge_center": "Unisci e centra",
+        "merge_across": "Unisci orizzontalmente",
+        "merge_down": "Unisci verticalmente",
+        "unmerge": "Separa celle"
+      },
       "conditional_formatting": "Formattazione condizionale",
+      "themes": "Temi",
       "clear_formatting": "Cancella formattazione"
     },
     "help_menu": {

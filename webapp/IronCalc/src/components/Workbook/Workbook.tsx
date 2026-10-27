@@ -43,6 +43,7 @@ import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 import type { WorkbookActions } from "./workbookActions";
 import "./workbook.css";
+import FormatPicker from "../FormatMenu/FormatPicker";
 import { LinkDialog } from "../LinkDialog/LinkDialog";
 import { Alert } from "../Modal";
 
@@ -85,6 +86,7 @@ const Workbook = (
     title: string;
     message: string;
   } | null>(null);
+  const [isFormatPickerOpen, setFormatPickerOpen] = useState(false);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
   const [drawerType, setDrawerType] = useState<DrawerType>("namedRanges");
@@ -512,6 +514,14 @@ const Workbook = (
     }),
     openNamedRanges: whenEditable(() => {
       openDrawer("namedRanges");
+    }),
+    openThemes: whenEditable(() => {
+      openDrawer("themes");
+    }),
+    mergeCells: whenEditable(onMergeCells),
+    getMergeCellsState,
+    openCustomNumberFormat: whenEditable(() => {
+      setFormatPickerOpen(true);
     }),
     openLinkDialog: whenEditable(() => {
       const { sheet, row, column } = model.getSelectedView();
@@ -1081,8 +1091,8 @@ const Workbook = (
             style.alignment?.vertical ? style.alignment.vertical : "bottom"
           }
           wrapText={style.alignment?.wrap_text || false}
-          mergeCellsState={getMergeCellsState()}
-          onMergeCells={onMergeCells}
+          mergeCellsState={actions.getMergeCellsState()}
+          onMergeCells={actions.mergeCells}
           canEdit={true}
           numFmt={style.num_fmt}
           showGridLines={model.getShowGridLines(model.getSelectedSheet())}
@@ -1104,7 +1114,7 @@ const Workbook = (
           themes={themes}
           currentTheme={currentTheme}
           onThemePicked={handleThemePicked}
-          onOpenThemes={() => openDrawer("themes")}
+          onOpenThemes={actions.openThemes}
         />
       )}
       <div
@@ -1299,6 +1309,12 @@ const Workbook = (
         onClose={() => setAlertDialog(null)}
         title={alertDialog?.title ?? ""}
         message={alertDialog?.message ?? ""}
+      />
+      <FormatPicker
+        open={isFormatPickerOpen}
+        onClose={() => setFormatPickerOpen(false)}
+        numFmt={style.num_fmt}
+        onChange={onNumberFormatPicked}
       />
       {linkDialogCell && (
         <LinkDialog
