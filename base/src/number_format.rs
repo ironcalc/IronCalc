@@ -137,6 +137,68 @@ pub fn to_excel_precision_str(value: f64) -> String {
     to_precision_str(value, 15)
 }
 
+/// Converts a number to text the way Excel does when a formula needs a
+/// number as a string: the `&` operator, UPPER, ENCODEURL, ... It keeps at
+/// most 15 significant digits and uses plain decimal notation unless the
+/// decimal exponent is 15 or more, or -15 or less, when it switches to
+/// scientific notation:
+/// ```
+///     use ironcalc_base::number_format::number_to_text;
+///     assert_eq!(number_to_text(1.0 / 3.0), "0.333333333333333");
+///     assert_eq!(number_to_text(0.1 + 0.2), "0.3");
+///     assert_eq!(number_to_text(1e-7), "0.0000001");
+///     assert_eq!(number_to_text(1e20), "1E+20");
+///     assert_eq!(number_to_text(123456789012345678.0), "1.23456789012346E+17");
+/// ```
+pub fn number_to_text(value: f64) -> String {
+    if !value.is_finite() {
+        return format!("{value}");
+    }
+    if value == 0.0 {
+        return "0".to_string();
+    }
+    // 15 significant digits: "-1.23450000000000e5"
+    let formatted = format!("{value:.14e}");
+    let Some((mantissa, exponent)) = formatted.split_once('e') else {
+        return formatted;
+    };
+    let Ok(exponent) = exponent.parse::<i32>() else {
+        return formatted;
+    };
+    let (sign, mantissa) = match mantissa.strip_prefix('-') {
+        Some(mantissa) => ("-", mantissa),
+        None => ("", mantissa),
+    };
+    // The significant digits, without the decimal point or trailing zeros.
+    // There is always at least one since the value is not zero.
+    let digits: String = mantissa.chars().filter(|c| *c != '.').collect();
+    let digits = digits.trim_end_matches('0');
+
+    if !(-15 < exponent && exponent < 15) {
+        let mantissa = if digits.len() > 1 {
+            format!("{}.{}", &digits[..1], &digits[1..])
+        } else {
+            digits.to_string()
+        };
+        let exponent_sign = if exponent < 0 { '-' } else { '+' };
+        return format!("{sign}{mantissa}E{exponent_sign}{:02}", exponent.abs());
+    }
+    if exponent < 0 {
+        let zeros = "0".repeat((-exponent - 1) as usize);
+        return format!("{sign}0.{zeros}{digits}");
+    }
+    let integer_len = exponent as usize + 1;
+    if digits.len() <= integer_len {
+        let zeros = "0".repeat(integer_len - digits.len());
+        return format!("{sign}{digits}{zeros}");
+    }
+    format!(
+        "{sign}{}.{}",
+        &digits[..integer_len],
+        &digits[integer_len..]
+    )
+}
+
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
     if !value.is_finite() {
         return value;
