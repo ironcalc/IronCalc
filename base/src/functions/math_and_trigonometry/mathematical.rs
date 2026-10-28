@@ -217,7 +217,9 @@ impl<'a> Model<'a> {
         if text.is_empty() {
             return CalcResult::Number(0.0);
         }
-        match i64::from_str_radix(&text, radix as u32) {
+        // Excel ignores leading spaces
+        let digits = text.trim_start_matches(' ');
+        match i64::from_str_radix(digits, radix as u32) {
             Ok(n) => CalcResult::Number(n as f64),
             Err(_) => CalcResult::Error {
                 error: Error::VALUE,

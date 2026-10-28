@@ -59,3 +59,15 @@ fn wrong_arg_count() {
     assert_eq!(model._get_text("B3"), *"10");
     assert_eq!(model._get_text("B4"), *"#ERROR!");
 }
+
+#[test]
+fn leading_space_is_ignored() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DECIMAL(\" 10\", 2)");
+    model._set("A2", "=DECIMAL(\" FF\", 16)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(model._get_text("A2"), *"255");
+}
