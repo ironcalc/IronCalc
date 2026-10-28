@@ -1834,7 +1834,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Asc => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
         Function::Dollar => not_implemented(args),
-        Function::Encodeurl => not_implemented(args),
+        Function::Encodeurl => scalar_arguments(args),
         Function::EcmaCeiling => scalar_arguments(args),
         Function::Findb => not_implemented(args),
         Function::Fixed => not_implemented(args),

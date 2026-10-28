@@ -23,9 +23,10 @@ fn fn_encodeurl() {
         "A1",
         r#"=ENCODEURL("http://contoso.sharepoint.com/Finance/Profit and Loss Statement.xlsx")"#,
     );
-    model._set("A2", r#"=ENCODEURL("AZaz09-._~")"#);
+    model._set("A2", r#"=ENCODEURL("AZaz09-._")"#);
     model._set("A3", r#"=ENCODEURL("a b+c&d=e?f/g:h")"#);
     model._set("A4", r#"=ENCODEURL("")"#);
+    model._set("A5", r#"=ENCODEURL("~!*'()")"#);
 
     model.evaluate();
 
@@ -33,10 +34,49 @@ fn fn_encodeurl() {
         model._get_text("A1"),
         *"http%3A%2F%2Fcontoso.sharepoint.com%2FFinance%2FProfit%20and%20Loss%20Statement.xlsx"
     );
-    // Unreserved characters are not encoded
-    assert_eq!(model._get_text("A2"), *"AZaz09-._~");
+    // Letters, digits, '-', '.' and '_' are not encoded
+    assert_eq!(model._get_text("A2"), *"AZaz09-._");
     assert_eq!(model._get_text("A3"), *"a%20b%2Bc%26d%3De%3Ff%2Fg%3Ah");
     assert_eq!(model._get_text("A4"), *"");
+    // Unlike RFC 3986, Excel encodes '~'
+    assert_eq!(model._get_text("A5"), *"%7E%21%2A%27%28%29");
+}
+
+#[test]
+fn fn_encodeurl_result_too_long() {
+    let mut model = new_empty_model();
+
+    // Excel cannot return 32,767 characters or more
+    model._set("A1", r#"=LEN(ENCODEURL(REPT(" ",10922)))"#);
+    model._set("A2", r#"=ENCODEURL(REPT(" ",10923))"#);
+    model._set("A3", r#"=ENCODEURL(REPT("a",32767))"#);
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"32766");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+}
+
+#[test]
+fn fn_encodeurl_arrays() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "a b");
+    model._set("A2", "hello world");
+    model._set("A3", "=1/0");
+    model._set("B1", "=ENCODEURL(A1:A3)");
+    model._set("C1", "=INDEX(ENCODEURL(A1:A3),2)");
+    model._set("D1", r#"=ENCODEURL({"x y",1.5})"#);
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), *"a%20b");
+    assert_eq!(model._get_text("B2"), *"hello%20world");
+    assert_eq!(model._get_text("B3"), *"#DIV/0!");
+    assert_eq!(model._get_text("C1"), *"hello%20world");
+    assert_eq!(model._get_text("D1"), *"x%20y");
+    assert_eq!(model._get_text("E1"), *"1.5");
 }
 
 #[test]
@@ -62,10 +102,17 @@ fn fn_encodeurl_casts_arguments() {
     model._set("A1", "=ENCODEURL(12.5)");
     model._set("A2", "=ENCODEURL(TRUE)");
     model._set("A3", "=ENCODEURL(1/0)");
+    // Numbers are converted to text with 15 significant digits
+    model._set("A4", "=ENCODEURL(1/3)");
+    model._set("A5", "=ENCODEURL(1E+20)");
+    model._set("A6", "=ENCODEURL(0.0000001)");
 
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"12.5");
     assert_eq!(model._get_text("A2"), *"TRUE");
     assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("A4"), *"0.333333333333333");
+    assert_eq!(model._get_text("A5"), *"1E%2B20");
+    assert_eq!(model._get_text("A6"), *"0.0000001");
 }

@@ -1,7 +1,7 @@
 use crate::{
     arithmetic::{array_of_errors, bcast_idx},
     calc_result::CalcResult,
-    cast::{array_node_to_string, calc_result_to_array_node},
+    cast::{array_node_to_string, calc_result_to_array_node, StringOrArray},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -13,7 +13,7 @@ use crate::{
         util::from_wildcard_to_regex,
     },
     model::Model,
-    number_format::to_precision,
+    number_format::{number_to_text, to_precision},
 };
 
 /// An argument of a text function that works element by element (LEFT, MID,
@@ -588,18 +588,33 @@ impl<'a> Model<'a> {
         cell: CellReferenceIndex,
         f: impl Fn(&str) -> String,
     ) -> CalcResult {
+        self.try_apply_text_unary(args, cell, |s| Ok(f(s)))
+    }
+
+    /// Like [`Model::apply_text_unary`] for transforms that can fail on an
+    /// element (e.g. ENCODEURL when the result is too long). A failure is the
+    /// error for a scalar argument and an error element in an array.
+    pub(crate) fn try_apply_text_unary(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        f: impl Fn(&str) -> Result<String, Error>,
+    ) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
         match self.get_string_or_array(&args[0], cell) {
-            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s)),
-            Ok(crate::cast::StringOrArray::Array(arr)) => CalcResult::Array(
+            Ok(StringOrArray::String(s)) => match f(&s) {
+                Ok(s) => CalcResult::String(s),
+                Err(error) => CalcResult::new_error(error, cell, String::new()),
+            },
+            Ok(StringOrArray::Array(arr)) => CalcResult::Array(
                 arr.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| match crate::cast::array_node_to_string(n) {
-                                Ok(s) => crate::expressions::parser::ArrayNode::String(f(&s)),
-                                Err(e) => crate::expressions::parser::ArrayNode::Error(e),
+                            .map(|n| match array_node_to_string(n).and_then(|s| f(&s)) {
+                                Ok(s) => ArrayNode::String(s),
+                                Err(e) => ArrayNode::Error(e),
                             })
                             .collect()
                     })
@@ -612,7 +627,7 @@ impl<'a> Model<'a> {
     pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => format!("{v}"),
+                CalcResult::Number(v) => number_to_text(v),
                 CalcResult::String(v) => v,
                 CalcResult::Boolean(b) => {
                     if b {
