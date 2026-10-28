@@ -181,6 +181,7 @@
         "merge_down": "Combinar verticalmente",
         "unmerge": "Separar celdas"
       },
+      "cell_styles": "Estilos de celda",
       "conditional_formatting": "Formato condicional",
       "themes": "Temas",
       "clear_formatting": "Borrar formato"

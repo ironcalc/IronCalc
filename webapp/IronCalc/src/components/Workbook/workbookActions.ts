@@ -35,6 +35,7 @@ export interface WorkbookActions {
   openConditionalFormatting: () => void;
   openNamedRanges: () => void;
   openThemes: () => void;
+  openNamedStyles: () => void;
   openLinkDialog: () => void;
   mergeCells: (operation: MergeCellsOperation) => void;
   getMergeCellsState: () => {

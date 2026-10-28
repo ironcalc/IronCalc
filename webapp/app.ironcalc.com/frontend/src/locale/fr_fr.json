@@ -181,6 +181,7 @@
         "merge_down": "Fusionner verticalement",
         "unmerge": "Annuler la fusion"
       },
+      "cell_styles": "Styles de cellule",
       "conditional_formatting": "Mise en forme conditionnelle",
       "themes": "Thèmes",
       "clear_formatting": "Effacer la mise en forme"

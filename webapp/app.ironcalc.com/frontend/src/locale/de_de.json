@@ -181,6 +181,7 @@
         "merge_down": "Spaltenweise verbinden",
         "unmerge": "Zellverbund aufheben"
       },
+      "cell_styles": "Zellenformatvorlagen",
       "conditional_formatting": "Bedingte Formatierung",
       "themes": "Designs",
       "clear_formatting": "Formatierung löschen"
