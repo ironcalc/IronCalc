@@ -15,10 +15,12 @@ import {
   type BorderSegment,
   drawBorderLine,
   drawBorders,
+  hasGaps,
   ICON_AREA_WIDTH,
   renderDataBar,
   renderIcon,
   renderRating,
+  underlayStyle,
 } from "./cfRenderer";
 import {
   cellPadding,
@@ -96,6 +98,11 @@ interface TextProperties {
 type PaneRect = [number, number, number, number];
 
 // What a queued border line stands for, lowest first: see strokeBorders
+// Whether a cell's border on one side is of the "double" style
+function isDouble(border: { style: string } | null | undefined): boolean {
+  return border?.style === "double";
+}
+
 enum BorderPriority {
   // The gap a spilling text leaves in the grid, painted in the background
   // colour: the grid lines it meets stay whole
@@ -104,8 +111,12 @@ enum BorderPriority {
   Grid = 1,
   // A grid line in the colour of a cell's fill, so the fill reads as one
   Fill = 2,
+  // The underlay of a double or dashed border (see hasGaps): the fill or
+  // background colour showing through its gaps, over the ends of the grid
+  // lines running into it
+  Underlay = 3,
   // A border the cell (or its neighbour) has
-  Border = 3,
+  Border = 4,
 }
 
 export default class WorksheetCanvas {
@@ -1354,13 +1365,38 @@ export default class WorksheetCanvas {
     // the row headers' last pixel column, and the cell's own pixels start at
     // the pane edge (fills and borders do reach it)
     if (x > headerColumnWidth + 0.51 || priority !== BorderPriority.Grid) {
-      this.queueBorder(borderLeftStyle, borderLeftColor, priority, [
-        x,
-        y,
-        x,
-        y + height,
-        true,
-      ]);
+      if (borderLeftStyle === "double") {
+        this.queueDoubleBorder(
+          borderLeftColor,
+          this.gapColor(row, column, row, column - 1),
+          [x, y, x, y + height, true],
+          isDouble(leftStyle.border.right)
+            ? [
+                isDouble(leftStyle.border.top),
+                isDouble(leftStyle.border.bottom),
+              ]
+            : null,
+          isDouble(border.left)
+            ? [isDouble(border.top), isDouble(border.bottom)]
+            : null,
+        );
+      } else {
+        if (hasGaps(borderLeftStyle)) {
+          this.queueBorder(
+            underlayStyle(borderLeftStyle),
+            this.gapColor(row, column, row, column - 1),
+            BorderPriority.Underlay,
+            [x, y, x, y + height, true],
+          );
+        }
+        this.queueBorder(borderLeftStyle, borderLeftColor, priority, [
+          x,
+          y,
+          x,
+          y + height,
+          true,
+        ]);
+      }
     }
   }
 
@@ -1416,14 +1452,111 @@ export default class WorksheetCanvas {
     // The top border of the first row is shared with the header separator
     if (y > headerRowHeight + 0.51 || border.top) {
       const x1 = x > headerColumnWidth + 0.51 ? x : x - 0.5;
-      this.queueBorder(borderTopStyle, borderTopColor, priority, [
-        x1,
-        y,
-        x + width,
-        y,
-        false,
-      ]);
+      if (borderTopStyle === "double") {
+        this.queueDoubleBorder(
+          borderTopColor,
+          this.gapColor(row, column, row - 1, column),
+          [x1, y, x + width, y, false],
+          isDouble(topStyle.border.bottom)
+            ? [isDouble(topStyle.border.left), isDouble(topStyle.border.right)]
+            : null,
+          isDouble(border.top)
+            ? [isDouble(border.left), isDouble(border.right)]
+            : null,
+        );
+      } else {
+        if (hasGaps(borderTopStyle)) {
+          this.queueBorder(
+            underlayStyle(borderTopStyle),
+            this.gapColor(row, column, row - 1, column),
+            BorderPriority.Underlay,
+            [x1, y, x + width, y, false],
+          );
+        }
+        this.queueBorder(borderTopStyle, borderTopColor, priority, [
+          x1,
+          y,
+          x + width,
+          y,
+          false,
+        ]);
+      }
     }
+  }
+
+  // Queues a double border along the edge `segment`, three strokes: the
+  // band between its lines (its underlay, see hasGaps) in `gapColor`, and the
+  // two lines, offset a pixel to either side of the edge. `before` and
+  // `after` say whether the cell on that side of the edge (above or left,
+  // below or right) has the double border, and if so whether it also has
+  // one at the segment's start and at its end. At such a corner the double
+  // outline is drawn as two nested rectangles: the line on the inside of
+  // the cell stops at the inner corner, the line on its outside reaches
+  // the outer line of the perpendicular border. A free end stops on the
+  // grid line it ends on, inside the cell.
+  private queueDoubleBorder(
+    color: string,
+    gapColor: string,
+    segment: BorderSegment,
+    before: [start: boolean, end: boolean] | null,
+    after: [start: boolean, end: boolean] | null,
+  ): void {
+    const [x1, y1, x2, y2, isVertical] = segment;
+    // How far past the grid line position a line reaches at one end (0 for
+    // the start, 1 for the end) on the side of `own`, the other side being
+    // `other`: half a pixel short of it, to the inner corner, when the cell
+    // on its side owns a perpendicular double border there; over the outer
+    // line of the other cell's perpendicular double border; or over the
+    // grid line at a free end
+    const reach = (
+      own: typeof before,
+      other: typeof before,
+      end: 0 | 1,
+    ): number => (own?.[end] ? -0.5 : other?.[end] ? 1.5 : 0.5);
+    const sides: [offset: number, start: number, end: number][] = [
+      [-1, reach(before, after, 0), reach(before, after, 1)],
+      [1, reach(after, before, 0), reach(after, before, 1)],
+    ];
+    // The band spans the lines, and always the pixel on the grid line: at
+    // an inner corner it is part of the gap between the rectangles
+    const bandStart = Math.max(sides[0][1], sides[1][1], 0.5);
+    const bandEnd = Math.max(sides[0][2], sides[1][2], 0.5);
+    this.queueBorder(
+      underlayStyle("double"),
+      gapColor,
+      BorderPriority.Underlay,
+      isVertical
+        ? [x1, y1 - bandStart, x1, y2 + bandEnd, true]
+        : [x1 - bandStart, y1, x2 + bandEnd, y1, false],
+    );
+    for (const [offset, start, end] of sides) {
+      this.queueBorder(
+        "double",
+        color,
+        BorderPriority.Border,
+        isVertical
+          ? [x1 + offset, y1 - start, x1 + offset, y2 + end, true]
+          : [x1 - start, y1 + offset, x2 + end, y1 + offset, false],
+      );
+    }
+  }
+
+  // The colour showing through the gaps of a double or dashed border on
+  // the edge between cell (row, column) and its neighbour: what the grid
+  // line under it is covered with, that is the fill of the cell that owns
+  // the edge (the later one, as in fillPane), else the neighbour's fill,
+  // else the background
+  private gapColor(
+    row: number,
+    column: number,
+    neighbourRow: number,
+    neighbourColumn: number,
+  ): string {
+    return (
+      this.getEffectiveFillColor(row, column) ??
+      this.getEffectiveFillColor(neighbourRow, neighbourColumn) ??
+      this.theme.backgroundColor
+    );
   }
 
   // Whether the cell has a fill (its own: a cell covered by a merged range
