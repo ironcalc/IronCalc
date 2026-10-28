@@ -235,3 +235,51 @@ test.each([
     `default-colors-${mode}`,
   );
 });
+
+// Every border style, with and without a fill, in both themes: wide lines
+// meet at their corners, double borders are two nested rectangles, the
+// band between them and the gaps of the dashed styles show the fill (or
+// the background, never the grid line or the page behind the canvas), and
+// free ends are squared off over the grid line. Borders without a colour
+// follow the theme's default text color.
+test.each([
+  ["light", testThemeVars],
+  ["dark", testDarkThemeVars],
+])("borders of every style in %s mode", async (mode, themeVars) => {
+  const model = await newModel();
+  labelTopLeftCell(model);
+  const border = (
+    range: ReturnType<typeof cell>,
+    style: BorderStyle,
+    type: BorderType,
+    color?: string,
+  ) => model.setAreaWithBorder(range, { item: { style, color }, type });
+  // B2: thin outline in the default colour; D2: medium outline on a fill
+  border(cell(2, 2), BorderStyle.Thin, BorderType.Outer);
+  model.updateRangeStyle(cell(2, 4), "fill.color", "#FDEBD0");
+  border(cell(2, 4), BorderStyle.Medium, BorderType.Outer, "#1F618D");
+  // B4:C5: double outline on a filled range, crossed by its inner grid
+  // lines; E4:F5: every border double, so the doubles share edges
+  model.updateRangeStyle(cell(4, 2, 2, 2), "fill.color", "#E8C04A");
+  border(cell(4, 2, 2, 2), BorderStyle.Double, BorderType.Outer, "#2E3B4E");
+  border(cell(4, 5, 2, 2), BorderStyle.Double, BorderType.All);
+  // Row 7: a thick top border with free ends, then the dashed styles
+  border(cell(7, 2), BorderStyle.Thick, BorderType.Top, "#C0392B");
+  border(cell(7, 3), BorderStyle.Dotted, BorderType.Outer, "#7D3C98");
+  border(cell(7, 4), BorderStyle.MediumDashed, BorderType.Outer, "#1E8449");
+  border(cell(7, 5), BorderStyle.MediumDashDot, BorderType.Outer, "#B9770E");
+  border(cell(7, 6), BorderStyle.MediumDashDotDot, BorderType.Outer);
+  // Row 9: a slanted dash-dot outline on a fill, a double top border with
+  // free ends, and a thick border between two different fills
+  model.updateRangeStyle(cell(9, 2), "fill.color", "#D9EAD3");
+  border(cell(9, 2), BorderStyle.SlantDashDot, BorderType.Outer, "#1F618D");
+  border(cell(9, 3), BorderStyle.Double, BorderType.Top, "#2E3B4E");
+  model.updateRangeStyle(cell(9, 4), "fill.color", "#D6EAF8");
+  model.updateRangeStyle(cell(9, 5), "fill.color", "#FADBD8");
+  border(cell(9, 4), BorderStyle.Thick, BorderType.Right, "#2E3B4E");
+
+  await expectScreenshot(
+    await renderToCanvas(model, { themeVars, width: 610, height: 280 }),
+    `borders-${mode}`,
+  );
+});

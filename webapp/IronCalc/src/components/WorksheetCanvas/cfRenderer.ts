@@ -24,7 +24,7 @@ export function drawBorderLine(
 }
 
 // A border segment from (x1, y1) to (x2, y2). Vertical segments are told
-// apart for the "double" style, whose two lines are offset across the segment.
+// apart for the extension of wide lines at their ends, see `drawBorders`.
 export type BorderSegment = [
   x1: number,
   y1: number,
@@ -33,8 +33,35 @@ export type BorderSegment = [
   isVertical: boolean,
 ];
 
+// Whether a border of `style` leaves gaps: the band between the two lines
+// of a "double" border, or the gaps of a dash pattern. Such a border is
+// stroked over an underlay (see `underlayStyle`) in the colour the grid
+// line under the border would be covered with, so the gaps show the cell's
+// fill or the background rather than the grid lines running into the
+// border, or nothing at all (the page behind the canvas).
+export function hasGaps(style: string): boolean {
+  return style === "double" || borderLine(style).dash.length > 0;
+}
+
+// The pseudo style of the underlay of a border of `style`: a solid line of
+// the same width (one pixel for "double": the band between its two lines,
+// which come as "double" segments already offset to their side of the edge
+// and cut to length, see WorksheetCanvas.queueDoubleBorder).
+export function underlayStyle(style: string): string {
+  return `${UNDERLAY_PREFIX}${style}`;
+}
+
+const UNDERLAY_PREFIX = "underlay:";
+
 // The line width and dash pattern of a border style
 function borderLine(style: string): { lineWidth: number; dash: number[] } {
+  if (style.startsWith(UNDERLAY_PREFIX)) {
+    const base = style.slice(UNDERLAY_PREFIX.length);
+    return {
+      lineWidth: base === "double" ? 1 : borderLine(base).lineWidth,
+      dash: [],
+    };
+  }
   switch (style) {
     case "medium":
       return { lineWidth: 2, dash: [] };
@@ -58,6 +85,17 @@ function borderLine(style: string): { lineWidth: number; dash: number[] } {
   }
 }
 
+function lineExtension(style: string, lineWidth: number): number {
+  if (style === underlayStyle("double")) {
+    // Cut to length with the lines, see WorksheetCanvas.queueDoubleBorder
+    return 0;
+  }
+  if (lineWidth > 1) {
+    return lineWidth / 2;
+  }
+  return style.startsWith(UNDERLAY_PREFIX) ? -0.5 : 0;
+}
+
 // Strokes `segments` with one border style and colour as a single path:
 // the context is set up once and the segments share one stroke call, so a
 // frame's thousands of grid lines cost a handful of strokes. (A dash pattern
@@ -72,6 +110,16 @@ export function drawBorders(
     return;
   }
   const { lineWidth, dash } = borderLine(style);
+  // A segment runs between two grid line positions. A line wider than the
+  // grid line overhangs it on both sides, so two such lines meeting at a
+  // corner would leave the corner square outside both unpainted: each
+  // segment is extended by half the line's full width at both ends, which
+  // fills the corner, and squares off a free end over the grid line it ends
+  // on, as Excel does. Thin lines are left alone: the crossing grid line
+  // already covers their end pixel, and a double border arrives cut to
+  // length. The underlay of a thin dashed line stops short of that pixel,
+  // which it would otherwise half cover.
+  const ext = lineExtension(style, lineWidth);
   context.save();
   context.strokeStyle = color;
   context.lineWidth = lineWidth;
@@ -80,21 +128,12 @@ export function drawBorders(
   }
   context.beginPath();
   for (const [x1, y1, x2, y2, isVertical] of segments) {
-    if (style === "double") {
-      if (isVertical) {
-        context.moveTo(x1 - 1, y1);
-        context.lineTo(x1 - 1, y2);
-        context.moveTo(x1 + 1, y1);
-        context.lineTo(x1 + 1, y2);
-      } else {
-        context.moveTo(x1, y1 - 1);
-        context.lineTo(x2, y1 - 1);
-        context.moveTo(x1, y1 + 1);
-        context.lineTo(x2, y1 + 1);
-      }
+    if (isVertical) {
+      context.moveTo(x1, y1 - ext);
+      context.lineTo(x2, y2 + ext);
     } else {
-      context.moveTo(x1, y1);
-      context.lineTo(x2, y2);
+      context.moveTo(x1 - ext, y1);
+      context.lineTo(x2 + ext, y2);
     }
   }
   context.stroke();
