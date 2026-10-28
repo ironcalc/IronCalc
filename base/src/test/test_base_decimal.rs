@@ -17,6 +17,23 @@ fn empty_text_returns_zero() {
 }
 
 #[test]
+fn text_longer_than_255_characters_is_value_error() {
+    let mut model = new_empty_model();
+    // 255 characters are still converted
+    model._set("A1", "=DECIMAL(REPT(\"0\", 254)&\"1\", 2)");
+    model._set("A2", "=DECIMAL(REPT(\"0\", 255)&\"1\", 2)");
+    model._set("A3", "=DECIMAL(REPT(\"0\", 255)&\"1\", 36)");
+    model._set("A4", "=DECIMAL(REPT(\"0\", 256)&\"1\", 99)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}
+
+#[test]
 fn wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=BASE()");
