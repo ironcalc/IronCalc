@@ -15,6 +15,7 @@ import {
   Brush,
   Hash,
   Italic,
+  Layers,
   RemoveFormatting,
   Strikethrough,
   SwatchBook,
@@ -262,6 +263,12 @@ export function FormatMenu(props: {
         </MenuItem>
         <MenuItem icon={<SwatchBook />} onClick={() => actions()?.openThemes()}>
           {t("file_bar.format_menu.themes")}
+        </MenuItem>
+        <MenuItem
+          icon={<Layers />}
+          onClick={() => actions()?.openNamedStyles()}
+        >
+          {t("file_bar.format_menu.cell_styles")}
         </MenuItem>
         <MenuDivider />
         <MenuItem

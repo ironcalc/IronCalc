@@ -518,6 +518,9 @@ const Workbook = (
     openThemes: whenEditable(() => {
       openDrawer("themes");
     }),
+    openNamedStyles: whenEditable(() => {
+      openDrawer("namedStyles");
+    }),
     mergeCells: whenEditable(onMergeCells),
     getMergeCellsState,
     openCustomNumberFormat: whenEditable(() => {
@@ -1108,7 +1111,7 @@ const Workbook = (
           isConditionalFormattingOpen={
             isDrawerOpen && drawerType === "conditionalFormatting"
           }
-          onOpenNamedStyles={() => openDrawer("namedStyles")}
+          onOpenNamedStyles={actions.openNamedStyles}
           isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
           onOpenLinkDialog={actions.openLinkDialog}
           themes={themes}
