@@ -21,7 +21,9 @@ import {
 } from "./constants";
 import { attachOutlineHandle } from "./outlineHandle";
 import {
+  cellTextColor,
   computeWrappedLines,
+  defaultCellTextColor,
   hexToRGBA10Percent,
   readThemeFromCSS,
   type Theme,
@@ -444,15 +446,17 @@ export default class WorksheetCanvas {
   } {
     const fontSize = style.font?.sz || 13;
     let font = `${fontSize}px ${this.theme.cellFontFamily}`;
-    let color = style.fill.color
-      ? this.theme.filledCellTextColor
-      : this.theme.defaultTextColor;
+    const fill = style.fill.color
+      ? this.model.resolveColor(style.fill.color)
+      : null;
+    let color = defaultCellTextColor(this.theme, fill);
 
     if (style.font) {
       // Font.color is optional: a missing color means "use the default" — fall back
       // to the theme's default text color rather than leaving it undefined.
       if (style.font.color) {
-        color = this.model.resolveColor(style.font.color);
+        const resolved = this.model.resolveColor(style.font.color);
+        color = cellTextColor(style.font.color, resolved, this.theme, fill);
       }
       font = style.font.b ? `bold ${font}` : `400 ${font}`;
       if (style.font.i) {
