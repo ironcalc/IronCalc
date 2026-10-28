@@ -131,6 +131,13 @@ impl<'a> Model<'a> {
                             message: "Minimum length must be non-negative".to_string(),
                         };
                     }
+                    if f.trunc() > 255.0 {
+                        return CalcResult::Error {
+                            error: Error::NUM,
+                            origin: cell,
+                            message: "Minimum length must be at most 255".to_string(),
+                        };
+                    }
                     f.trunc() as usize
                 }
                 Err(s) => return s,

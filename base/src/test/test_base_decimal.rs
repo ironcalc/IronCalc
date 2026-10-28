@@ -17,6 +17,22 @@ fn empty_text_returns_zero() {
 }
 
 #[test]
+fn base_min_length_max_255() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LEN(BASE(5, 2, 255))");
+    model._set("A2", "=BASE(5, 2, 255.9)");
+    model._set("A3", "=BASE(5, 2, 256)");
+    model._set("A4", "=BASE(5, 2, 1E6)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"255");
+    assert_eq!(model._get_text("A2"), "0".repeat(252) + "101");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}
+
+#[test]
 fn wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=BASE()");
