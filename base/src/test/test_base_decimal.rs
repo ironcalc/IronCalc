@@ -95,6 +95,24 @@ fn wrong_arg_count() {
 }
 
 #[test]
+fn decimal_sign_is_num_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DECIMAL(\"-10\", 2)");
+    model._set("A2", "=DECIMAL(\"+10\", 2)");
+    model._set("A3", "=DECIMAL(-5, 10)");
+    model._set("A4", "=DECIMAL(\" -10\", 2)");
+    model._set("A5", "=DECIMAL(\"10\", 2)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"2");
+}
+
+#[test]
 fn leading_space_is_ignored() {
     let mut model = new_empty_model();
     model._set("A1", "=DECIMAL(\" 10\", 2)");
