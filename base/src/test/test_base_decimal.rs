@@ -53,6 +53,20 @@ fn base_negative_fraction_is_num_error() {
 }
 
 #[test]
+fn decimal_text_max_255() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DECIMAL(REPT(\"0\",254)&\"1\", 2)");
+    model._set("A2", "=DECIMAL(REPT(\"0\",255)&\"1\", 2)");
+    model._set("A3", "=DECIMAL(REPT(\"0\",300), 16)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+}
+
+#[test]
 fn wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=BASE()");
