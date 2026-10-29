@@ -1174,7 +1174,7 @@ impl<'a> UserModel<'a> {
         })?;
 
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
-        self.model.delete_rows(sheet, row, row_count)?;
+        let old_formulas = self.model.delete_rows_displacing(sheet, row, row_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
         diff_list.extend(link_diffs);
@@ -1183,6 +1183,7 @@ impl<'a> UserModel<'a> {
             row,
             count: row_count,
             old_data,
+            old_formulas,
         });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
@@ -1254,7 +1255,9 @@ impl<'a> UserModel<'a> {
         })?;
 
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
-        self.model.delete_columns(sheet, column, column_count)?;
+        let old_formulas = self
+            .model
+            .delete_columns_displacing(sheet, column, column_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
         diff_list.extend(link_diffs);
@@ -1263,6 +1266,7 @@ impl<'a> UserModel<'a> {
             column,
             count: column_count,
             old_data,
+            old_formulas,
         });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
