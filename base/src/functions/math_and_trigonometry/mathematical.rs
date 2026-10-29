@@ -218,6 +218,13 @@ impl<'a> Model<'a> {
         if text.is_empty() {
             return CalcResult::Number(0.0);
         }
+        if text.chars().count() > 255 {
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Text must be at most 255 characters".to_string(),
+            };
+        }
         // Excel ignores leading spaces
         let digits = text.trim_start_matches(' ');
         match i64::from_str_radix(digits, radix as u32) {
