@@ -33,6 +33,26 @@ fn base_min_length_max_255() {
 }
 
 #[test]
+fn base_negative_fraction_is_num_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BASE(-0.5, 2)");
+    model._set("A2", "=BASE(-0.5, 2, )");
+    model._set("A3", "=BASE(-9.9999999999999995E-8, 2)");
+    model._set("A4", "=BASE(-1, 2)");
+    model._set("A5", "=BASE(0.5, 2)");
+    model._set("A6", "=BASE(-0, 2)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"0");
+    assert_eq!(model._get_text("A6"), *"0");
+}
+
+#[test]
 fn wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=BASE()");

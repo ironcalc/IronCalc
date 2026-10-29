@@ -111,8 +111,8 @@ impl<'a> Model<'a> {
         }
 
         // number to convert
-        let mut value = match self.get_number(&args[0], cell) {
-            Ok(f) => f.trunc() as i64,
+        let number = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
             Err(s) => return s,
         };
         // radix
@@ -155,13 +155,14 @@ impl<'a> Model<'a> {
         }
 
         // number must be >= 0
-        if value < 0 {
+        if number < 0.0 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
                 message: "Number must be non-negative".to_string(),
             };
         }
+        let mut value = number.trunc() as i64;
 
         let mut buf = String::new();
         if value == 0 {
