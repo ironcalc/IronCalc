@@ -15,6 +15,58 @@ export interface MergedCell {
   height: number;
 }
 
+// Consecutive rows or columns (`first..=last`, 1-based) sharing a size in
+// pixels. A hidden row or column has size 0.
+export interface SizeRun {
+  first: number;
+  last: number;
+  size: number;
+}
+
+// The sizes along one axis of a sheet (its rows or its columns): the runs
+// with a non-default size. Everything not covered by a run has
+// `default_size`. See `Model.getRowSizes` and `Model.getColumnSizes`.
+export interface AxisSizes {
+  default_size: number;
+  runs: SizeRun[];
+}
+
+// The formatted value of a non-empty cell in a CellsBlock. `cell_type` is
+// the value `Model.getCellType` returns for the cell.
+export interface CellText {
+  row: number;
+  column: number;
+  text: string;
+  cell_type: number;
+}
+
+// Consecutive cells of one row of a CellsBlock sharing a fill colour:
+// `color` is the resolved colour (as `Model.resolveColor` gives it), or ""
+// for cells without a fill.
+export interface FillRun {
+  row: number;
+  column: number;
+  width: number;
+  color: string;
+}
+
+// A rectangle of cells with their styles and texts, see
+// `Model.getCellsBlock`. `styles` lists each distinct style once;
+// `style_indices` gives, for every cell in row-major order, the index of its
+// style; `texts` lists the non-empty cells in row-major order; `fills`
+// covers every cell as runs of one fill colour along each row, in row-major
+// order.
+export interface CellsBlock {
+  row: number;
+  column: number;
+  width: number;
+  height: number;
+  styles: ExtendedCellStyle[];
+  style_indices: number[];
+  texts: CellText[];
+  fills: FillRun[];
+}
+
 export enum BorderType {
   All = "All",
   Inner = "Inner",

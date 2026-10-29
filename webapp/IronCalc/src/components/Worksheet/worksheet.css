@@ -58,6 +58,21 @@
   opacity: 1;
 }
 
+/* On touch devices the pointer handlers work from coordinates, so nothing in
+   the headers needs to be a hit target, and two things go wrong if it is:
+   - the browser snaps a tap near a header onto one of the invisible 3px
+     resize handles (touch target adjustment), which are mouse affordances;
+   - the column headers are rebuilt on every render, and a touch keeps
+     delivering its events to the element it started on even once that is
+     detached, so a hold on a header (which re-renders) loses the drag that
+     follows it. */
+@media (pointer: coarse) {
+  .ic-worksheet-column-headers *,
+  .ic-worksheet-sheet-container .row-resize-handle {
+    pointer-events: none;
+  }
+}
+
 /* Wrapper */
 .ic-worksheet-wrapper {
   position: absolute;

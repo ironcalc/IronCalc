@@ -181,6 +181,7 @@
         "merge_down": "Merge down",
         "unmerge": "Unmerge cells"
       },
+      "cell_styles": "Cell styles",
       "conditional_formatting": "Conditional formatting",
       "themes": "Themes",
       "clear_formatting": "Clear formatting"

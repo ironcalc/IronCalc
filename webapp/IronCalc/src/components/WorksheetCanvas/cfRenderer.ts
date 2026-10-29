@@ -23,6 +23,88 @@ export function drawBorderLine(
   context.stroke();
 }
 
+// A border segment from (x1, y1) to (x2, y2). Vertical segments are told
+// apart for the "double" style, whose two lines are offset across the segment.
+export type BorderSegment = [
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  isVertical: boolean,
+];
+
+// The line width and dash pattern of a border style
+function borderLine(style: string): { lineWidth: number; dash: number[] } {
+  switch (style) {
+    case "medium":
+      return { lineWidth: 2, dash: [] };
+    case "thick":
+      return { lineWidth: 3, dash: [] };
+    case "dotted":
+      return { lineWidth: 1, dash: [1, 2] };
+    case "mediumdashed":
+      return { lineWidth: 2, dash: [4, 2] };
+    case "slantdashdot":
+      return { lineWidth: 1, dash: [4, 2, 1, 2] };
+    case "mediumdashdot":
+      return { lineWidth: 2, dash: [4, 2, 1, 2] };
+    case "mediumdashdotdot":
+      return { lineWidth: 2, dash: [4, 2, 1, 2, 1, 2] };
+    case "dashed":
+      return { lineWidth: 1, dash: [4, 2] };
+    default:
+      // thin, double and anything unknown
+      return { lineWidth: 1, dash: [] };
+  }
+}
+
+// Strokes `segments` with one border style and colour as a single path:
+// the context is set up once and the segments share one stroke call, so a
+// frame's thousands of grid lines cost a handful of strokes. (A dash pattern
+// restarts at each segment, as it does for separately stroked lines.)
+export function drawBorders(
+  context: CanvasRenderingContext2D,
+  style: string,
+  color: string,
+  segments: BorderSegment[],
+): void {
+  if (segments.length === 0) {
+    return;
+  }
+  const { lineWidth, dash } = borderLine(style);
+  context.save();
+  context.strokeStyle = color;
+  context.lineWidth = lineWidth;
+  if (dash.length) {
+    context.setLineDash(dash);
+  }
+  context.beginPath();
+  for (const [x1, y1, x2, y2, isVertical] of segments) {
+    if (style === "double") {
+      if (isVertical) {
+        context.moveTo(x1 - 1, y1);
+        context.lineTo(x1 - 1, y2);
+        context.moveTo(x1 + 1, y1);
+        context.lineTo(x1 + 1, y2);
+      } else {
+        context.moveTo(x1, y1 - 1);
+        context.lineTo(x2, y1 - 1);
+        context.moveTo(x1, y1 + 1);
+        context.lineTo(x2, y1 + 1);
+      }
+    } else {
+      context.moveTo(x1, y1);
+      context.lineTo(x2, y2);
+    }
+  }
+  context.stroke();
+  if (dash.length) {
+    context.setLineDash([]);
+  }
+  context.restore();
+}
+
+// Strokes one border segment, see `drawBorders`
 export function drawBorder(
   context: CanvasRenderingContext2D,
   style: string,
@@ -33,73 +115,7 @@ export function drawBorder(
   y2: number,
   isVertical: boolean,
 ): void {
-  context.save();
-  context.strokeStyle = color;
-
-  switch (style) {
-    case "thin":
-      context.lineWidth = 1;
-      drawBorderLine(context, x1, y1, x2, y2);
-      break;
-    case "medium":
-      context.lineWidth = 2;
-      drawBorderLine(context, x1, y1, x2, y2);
-      break;
-    case "thick":
-      context.lineWidth = 3;
-      drawBorderLine(context, x1, y1, x2, y2);
-      break;
-    case "double":
-      context.lineWidth = 1;
-      if (isVertical) {
-        drawBorderLine(context, x1 - 1, y1, x1 - 1, y2);
-        drawBorderLine(context, x1 + 1, y1, x1 + 1, y2);
-      } else {
-        drawBorderLine(context, x1, y1 - 1, x2, y1 - 1);
-        drawBorderLine(context, x1, y1 + 1, x2, y1 + 1);
-      }
-      break;
-    case "dotted":
-      context.lineWidth = 1;
-      context.setLineDash([1, 2]);
-      drawBorderLine(context, x1, y1, x2, y2);
-      context.setLineDash([]);
-      break;
-    case "mediumdashed":
-      context.lineWidth = 2;
-      context.setLineDash([4, 2]);
-      drawBorderLine(context, x1, y1, x2, y2);
-      context.setLineDash([]);
-      break;
-    case "slantdashdot":
-      context.lineWidth = 1;
-      context.setLineDash([4, 2, 1, 2]);
-      drawBorderLine(context, x1, y1, x2, y2);
-      context.setLineDash([]);
-      break;
-    case "mediumdashdot":
-      context.lineWidth = 2;
-      context.setLineDash([4, 2, 1, 2]);
-      drawBorderLine(context, x1, y1, x2, y2);
-      context.setLineDash([]);
-      break;
-    case "mediumdashdotdot":
-      context.lineWidth = 2;
-      context.setLineDash([4, 2, 1, 2, 1, 2]);
-      drawBorderLine(context, x1, y1, x2, y2);
-      context.setLineDash([]);
-      break;
-    case "dashed":
-      context.lineWidth = 1;
-      context.setLineDash([4, 2]);
-      drawBorderLine(context, x1, y1, x2, y2);
-      context.setLineDash([]);
-      break;
-    default:
-      context.lineWidth = 1;
-      drawBorderLine(context, x1, y1, x2, y2);
-  }
-  context.restore();
+  drawBorders(context, style, color, [[x1, y1, x2, y2, isVertical]]);
 }
 
 // ---------------------------------------------------------------------------

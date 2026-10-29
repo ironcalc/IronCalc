@@ -62,12 +62,11 @@
   text-align: left;
 }
 
-/* This applies to the BorderStyle, PencilLine and the ChevronRight icons */
+/* This applies to the PencilLine and the ChevronRight icons */
 .ic-border-picker__menu .ic-border-picker__button svg {
   flex: 0 0 16px;
   width: 16px;
   height: 16px;
-  color: var(--palette-grey-600);
 }
 
 .ic-border-picker__menu .ic-border-picker__button span {

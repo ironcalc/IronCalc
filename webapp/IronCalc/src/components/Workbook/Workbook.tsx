@@ -518,6 +518,9 @@ const Workbook = (
     openThemes: whenEditable(() => {
       openDrawer("themes");
     }),
+    openNamedStyles: whenEditable(() => {
+      openDrawer("namedStyles");
+    }),
     mergeCells: whenEditable(onMergeCells),
     getMergeCellsState,
     openCustomNumberFormat: whenEditable(() => {
@@ -695,17 +698,13 @@ const Workbook = (
       setRedrawId((id) => id + 1);
     },
     onKeyHome: (): void => {
-      const view = model.getSelectedView();
       const cell = model.getSelectedCell();
       model.setSelectedCell(cell[1], 1);
-      model.setTopLeftVisibleCell(view.top_row, 1);
       setRedrawId((id) => id + 1);
     },
     onKeyEnd: (): void => {
-      const view = model.getSelectedView();
       const cell = model.getSelectedCell();
       model.setSelectedCell(cell[1], LAST_COLUMN);
-      model.setTopLeftVisibleCell(view.top_row, LAST_COLUMN - 5);
       setRedrawId((id) => id + 1);
     },
     onUndo: actions.undo,
@@ -1108,7 +1107,7 @@ const Workbook = (
           isConditionalFormattingOpen={
             isDrawerOpen && drawerType === "conditionalFormatting"
           }
-          onOpenNamedStyles={() => openDrawer("namedStyles")}
+          onOpenNamedStyles={actions.openNamedStyles}
           isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
           onOpenLinkDialog={actions.openLinkDialog}
           themes={themes}

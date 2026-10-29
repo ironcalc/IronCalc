@@ -92,9 +92,145 @@ const Worksheet = forwardRef(
     const [rowHeightDefault, setRowHeightDefault] = useState("");
 
     const ignoreScrollEventRef = useRef(false);
-    // The model's scroll position as of the last time it was synced with the
-    // DOM scroller, in either direction (see the render effect and onScroll)
-    const lastModelScroll = useRef<{ x: number; y: number } | null>(null);
+    // The animation frame that will repaint the canvas after a scroll, if one
+    // is pending. Scroll events can arrive several times per frame and a
+    // repaint is only useful once per frame, so onScroll coalesces them.
+    const scrollFrame = useRef<number | null>(null);
+    const renderOnNextFrame = (): void => {
+      if (scrollFrame.current !== null) {
+        return;
+      }
+      scrollFrame.current = requestAnimationFrame(() => {
+        scrollFrame.current = null;
+        worksheetCanvas.current?.renderSheet();
+      });
+    };
+    const cancelPendingRender = (): void => {
+      if (scrollFrame.current !== null) {
+        cancelAnimationFrame(scrollFrame.current);
+        scrollFrame.current = null;
+      }
+    };
+    useEffect(
+      () => () => {
+        if (scrollFrame.current !== null) {
+          cancelAnimationFrame(scrollFrame.current);
+        }
+      },
+      [],
+    );
+    // The engine's view (its top-left cell) as of the last time it was
+    // synced with the DOM scroller, in either direction (see the render
+    // effect and onScroll)
+    const syncedView = useRef<{
+      sheet: number;
+      topRow: number;
+      leftColumn: number;
+    } | null>(null);
+    const currentView = (): {
+      sheet: number;
+      topRow: number;
+      leftColumn: number;
+    } => {
+      const view = model.getSelectedView();
+      return {
+        sheet: view.sheet,
+        topRow: view.top_row,
+        leftColumn: view.left_column,
+      };
+    };
+    // The selection as of the last render: the active cell and the
+    // normalized range
+    const lastSelection = useRef<{
+      sheet: number;
+      row: number;
+      column: number;
+      range: [number, number, number, number];
+    } | null>(null);
+    const currentSelection = (): NonNullable<typeof lastSelection.current> => {
+      const { sheet, row, column, range } = model.getSelectedView();
+      const [a, b, c, d] = range;
+      return {
+        sheet,
+        row,
+        column,
+        range: [Math.min(a, c), Math.min(b, d), Math.max(a, c), Math.max(b, d)],
+      };
+    };
+    // The scroll offset of every sheet shown so far, by sheet id (stable
+    // across adding, deleting and moving sheets), with the selection as of
+    // the last time the sheet was shown. The engine remembers only the cell
+    // at the offset; this keeps the sub-cell part across sheet switches.
+    const sheetScroll = useRef(
+      new Map<
+        number,
+        { x: number; y: number; selection: typeof lastSelection.current }
+      >(),
+    );
+    const selectedSheetId = (): number =>
+      model.getWorksheetsProperties()[model.getSelectedSheet()].sheet_id;
+    // The frozen rows and columns as of the last render: the scroll offset
+    // counts from the first unfrozen cell, so it resets when they change
+    const lastFrozen = useRef<{
+      sheet: number;
+      rows: number;
+      columns: number;
+    } | null>(null);
+    // The cell to bring into view after a render, if the selection moved
+    // since the last one: the active cell when it moved (keyboard
+    // navigation, a click, the end of an edit, a link, ...); otherwise the
+    // corner of the range opposite the active cell, the one Shift+arrows
+    // and a drag move. Without a previous selection (the first render, a
+    // sheet shown for the first time) the active cell. Whole rows and
+    // columns (header clicks, select all) never scroll.
+    const revealTarget = (
+      previous: typeof lastSelection.current,
+      selection: NonNullable<typeof lastSelection.current>,
+    ): { row: number; column: number } | null => {
+      const [r0, c0, r1, c1] = selection.range;
+      if ((r0 === 1 && r1 === LAST_ROW) || (c0 === 1 && c1 === LAST_COLUMN)) {
+        return null;
+      }
+      if (
+        !previous ||
+        previous.row !== selection.row ||
+        previous.column !== selection.column
+      ) {
+        return { row: selection.row, column: selection.column };
+      }
+      if (previous.range.some((v, i) => v !== selection.range[i])) {
+        return {
+          row: r1 > selection.row ? r1 : r0,
+          column: c1 > selection.column ? c1 : c0,
+        };
+      }
+      return null;
+    };
+
+    // The spacer makes the scroller scrollable: as wide and tall as the
+    // sheet. Browsers cap the scrollable extent at some tens of millions of
+    // pixels, less than a million rows, so it only reaches well past the
+    // current position and grows as the user scrolls.
+    const resizeSpacer = (
+      canvas: WorksheetCanvas,
+      left: number,
+      top: number,
+    ): void => {
+      const scroller = scrollElement.current;
+      const spacer = spacerElement.current;
+      if (!scroller || !spacer) {
+        return;
+      }
+      const max = canvas.getMaxScroll();
+      const width = `${Math.min(max.x, left + 100_000) + scroller.clientWidth}px`;
+      const height = `${Math.min(max.y, top + 500_000) + scroller.clientHeight}px`;
+      if (spacer.style.width !== width) {
+        spacer.style.width = width;
+      }
+      if (spacer.style.height !== height) {
+        spacer.style.height = height;
+      }
+    };
 
     // The cell whose link tooltip is shown (null if hidden). The canvas does
     // the hover hit-testing and reports it through onLinkHover; the tooltip
@@ -127,7 +263,8 @@ const Worksheet = forwardRef(
 
     const { model, workbookState, refresh, canEdit, actions } = props;
     const { t } = useTranslation();
-    const [clientWidth, clientHeight] = useWindowSize();
+    // Re-renders (and so re-creates the canvas, below) on window resizes
+    useWindowSize();
 
     useImperativeHandle(ref, () => ({
       getCanvas: () => worksheetCanvas.current,
@@ -162,9 +299,6 @@ const Worksheet = forwardRef(
       ) {
         return;
       }
-      // FIXME: This two need to be computed.
-      model.setWindowWidth(clientWidth - 37);
-      model.setWindowHeight(clientHeight - 190);
       const canvas = new WorksheetCanvas({
         width: worksheetRef.clientWidth,
         height: worksheetRef.clientHeight,
@@ -246,43 +380,116 @@ const Worksheet = forwardRef(
         },
         refresh,
       });
-      const scrollX = model.getScrollX();
-      const scrollY = model.getScrollY();
-      const [sheetWidth, sheetHeight] = [scrollX + 100_000, scrollY + 500_000];
-      if (spacerElement.current) {
-        spacerElement.current.style.height = `${sheetHeight}px`;
-        spacerElement.current.style.width = `${sheetWidth}px`;
-      }
-      // Push the model's scroll position into the DOM scroller only when the
-      // model changed since the last sync (keyboard navigation, following a
-      // link, switching sheets, ...). During free scrolling the model is
-      // snapped to whole-cell boundaries while the DOM scroller sits mid-cell,
-      // so the two rarely match exactly: re-syncing on every render would jump
-      // the sheet whenever an unrelated state change re-renders (e.g. the link
-      // tooltip on pointer moves).
-      const synced = lastModelScroll.current;
-      if (!synced || synced.x !== scrollX || synced.y !== scrollY) {
-        const previousLeft = scrollElement.current.scrollLeft;
-        const previousTop = scrollElement.current.scrollTop;
-        scrollElement.current.scrollLeft = scrollX;
-        scrollElement.current.scrollTop = scrollY;
-        if (
-          scrollElement.current.scrollLeft !== previousLeft ||
-          scrollElement.current.scrollTop !== previousTop
-        ) {
-          // the write fires a single (asynchronous) scroll event, consumed in
-          // onScroll; when the browser quantizes the value back to the current
-          // position no event fires, so the flag must stay clear
-          ignoreScrollEventRef.current = true;
-        }
-        lastModelScroll.current = { x: scrollX, y: scrollY };
-      }
+      // The engine's own scrolling (page up / down, ...) works in the
+      // scrolling pane
+      const pane = canvas.getScrollPaneSize();
+      model.setWindowWidth(pane.width);
+      model.setWindowHeight(pane.height);
 
+      // The scroll position. The DOM scroller is the source of truth while
+      // the user scrolls; the engine only keeps the cell at the offset, and
+      // a canvas (re-created on every render) takes the offset from the
+      // scroller. When the selection moved, the view scrolls as little as
+      // needed to show it (`reveal`); the engine's own scrolling in whole
+      // cells, which comes with its navigation, is ignored. When the engine
+      // moved its view without moving the selection (a request to show a
+      // cell, ...) the scroller follows the engine along the axis that
+      // moved. Comparing cells rather than pixel positions lets the
+      // scroller sit mid-cell without being "corrected" to the cell
+      // boundary by every unrelated re-render (e.g. the link tooltip on
+      // pointer moves). On a sheet switch the sheet's remembered offset is
+      // restored, as long as the engine still has the same cell at it.
+      const scroller = scrollElement.current;
+      const view = currentView();
+      const synced = syncedView.current;
+      const selection = currentSelection();
+      const sheetId = selectedSheetId();
+      const remembered = sheetScroll.current.get(sheetId);
+      const sameSheet = synced !== null && synced.sheet === view.sheet;
+      const frozen = {
+        sheet: view.sheet,
+        rows: model.getFrozenRowsCount(view.sheet),
+        columns: model.getFrozenColumnsCount(view.sheet),
+      };
+      const frozenRowsChanged =
+        sameSheet &&
+        lastFrozen.current !== null &&
+        lastFrozen.current.rows !== frozen.rows;
+      const frozenColumnsChanged =
+        sameSheet &&
+        lastFrozen.current !== null &&
+        lastFrozen.current.columns !== frozen.columns;
+      let target = revealTarget(
+        sameSheet ? lastSelection.current : (remembered?.selection ?? null),
+        selection,
+      );
+      if (!target && (frozenRowsChanged || frozenColumnsChanged)) {
+        target = { row: selection.row, column: selection.column };
+      }
+      const engine = canvas.getScroll();
+      let x = engine.x;
+      let y = engine.y;
+      if (sameSheet) {
+        if (frozenColumnsChanged) {
+          x = 0;
+        } else if (target || synced.leftColumn === view.leftColumn) {
+          x = scroller.scrollLeft;
+        }
+        if (frozenRowsChanged) {
+          y = 0;
+        } else if (target || synced.topRow === view.topRow) {
+          y = scroller.scrollTop;
+        }
+      } else if (remembered) {
+        // The remembered offset, where the engine's cell is still the one
+        // at it (it is not when the engine's view moved since: a row
+        // resized above it in a shared workbook, say)
+        canvas.setScroll(remembered.x, remembered.y);
+        const at = currentView();
+        if (at.leftColumn === view.leftColumn) {
+          x = remembered.x;
+        }
+        if (at.topRow === view.topRow) {
+          y = remembered.y;
+        }
+      }
+      canvas.setScroll(x, y);
+      if (target) {
+        canvas.reveal(target.row, target.column);
+      }
+      lastSelection.current = selection;
+      lastFrozen.current = frozen;
+      ({ x, y } = canvas.getScroll());
+      sheetScroll.current.set(sheetId, { x, y, selection });
+      resizeSpacer(canvas, x, y);
+      const previousLeft = scroller.scrollLeft;
+      const previousTop = scroller.scrollTop;
+      scroller.scrollLeft = x;
+      scroller.scrollTop = y;
+      if (
+        scroller.scrollLeft !== previousLeft ||
+        scroller.scrollTop !== previousTop
+      ) {
+        // the write fires a single (asynchronous) scroll event, consumed in
+        // onScroll; when the browser quantizes the value back to the current
+        // position no event fires, so the flag must stay clear
+        ignoreScrollEventRef.current = true;
+      }
+      syncedView.current = currentView();
+
+      // This render supersedes any repaint a scroll had scheduled
+      cancelPendingRender();
       canvas.renderSheet();
       worksheetCanvas.current = canvas;
     });
 
-    const { onPointerMove, onPointerDown, onPointerUp } = usePointer({
+    const {
+      onPointerMove,
+      onPointerDown,
+      onPointerUp,
+      onPointerCancel,
+      isTouchDown,
+    } = usePointer({
       model,
       workbookState,
       refresh,
@@ -369,15 +576,22 @@ const Worksheet = forwardRef(
       const left = scrollElement.current.scrollLeft;
       const top = scrollElement.current.scrollTop;
 
-      worksheetCanvas.current.setScrollPosition({ left, top });
-      worksheetCanvas.current.renderSheet();
-      // The model snapped to a whole-cell boundary while the DOM scroller sits
-      // wherever the user left it: record the model position so the next
-      // render does not "correct" the DOM scroller back to the boundary.
-      lastModelScroll.current = {
-        x: model.getScrollX(),
-        y: model.getScrollY(),
-      };
+      const canvas = worksheetCanvas.current;
+      canvas.setScrollPosition({ left, top });
+      resizeSpacer(canvas, left, top);
+      // The engine and the spacer follow every event (cheap, and the pointer
+      // handlers rely on the engine's view being current); the repaint waits
+      // for the next frame
+      renderOnNextFrame();
+      // The engine's cell followed the offset: the next render must not take
+      // that for a move of the engine's own
+      syncedView.current = currentView();
+      const { x, y } = canvas.getScroll();
+      sheetScroll.current.set(selectedSheetId(), {
+        x,
+        y,
+        selection: lastSelection.current,
+      });
     };
 
     return (
@@ -394,9 +608,16 @@ const Worksheet = forwardRef(
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
           onContextMenu={(event) => {
             event.preventDefault();
             event.stopPropagation();
+
+            // Android raises a context menu on a long press, which on touch
+            // is the gesture that starts a selection drag instead.
+            if (isTouchDown()) {
+              return;
+            }
 
             // The context menus only offer editing actions (insert/delete,
             // cut/paste), so they are not shown in read-only mode.

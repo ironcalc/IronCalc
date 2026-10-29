@@ -6,6 +6,7 @@ mod test_autofill_merged_cells;
 mod test_autofill_rows;
 mod test_batch_row_column_diff;
 mod test_border;
+mod test_cells_block;
 mod test_clear_cells;
 mod test_column_style;
 mod test_conditional_formatting;
