@@ -227,6 +227,14 @@ impl<'a> Model<'a> {
         }
         // Excel ignores leading spaces
         let digits = text.trim_start_matches(' ');
+        // Excel rejects signed text, which from_str_radix would accept
+        if digits.starts_with(['+', '-']) {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: format!("'{}' is not a valid number in base {}", text, radix),
+            };
+        }
         match i64::from_str_radix(digits, radix as u32) {
             Ok(n) => CalcResult::Number(n as f64),
             Err(_) => CalcResult::Error {
