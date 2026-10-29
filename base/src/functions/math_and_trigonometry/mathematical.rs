@@ -223,7 +223,7 @@ impl<'a> Model<'a> {
         match i64::from_str_radix(digits, radix as u32) {
             Ok(n) => CalcResult::Number(n as f64),
             Err(_) => CalcResult::Error {
-                error: Error::VALUE,
+                error: Error::NUM,
                 origin: cell,
                 message: format!("'{}' is not a valid number in base {}", text, radix),
             },
