@@ -76,6 +76,7 @@ pub mod mock_time;
 pub use locale::get_supported_locales;
 pub use merged_cells::MergeStructure;
 pub use model::get_milliseconds_since_epoch;
+pub use model::DefinedNameEntry;
 pub use model::FmtSettings;
 pub use model::Model;
 pub use user_model::BorderArea;

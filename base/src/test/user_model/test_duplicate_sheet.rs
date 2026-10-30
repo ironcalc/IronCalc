@@ -97,27 +97,27 @@ fn duplicate_handles_defined_names() {
     let names = model.get_defined_name_list();
 
     // Local name duplicated as local-to-copy and retargeted.
-    assert!(names
-        .iter()
-        .any(|(n, s, f, ..)| n == "local_name" && *s == Some(copy) && f == "'Sheet1 (1)'!$A$1"));
+    assert!(names.iter().any(|dn| dn.name == "local_name"
+        && dn.scope == Some(copy)
+        && dn.formula == "'Sheet1 (1)'!$A$1"));
     // Original local name preserved.
     assert!(names
         .iter()
-        .any(|(n, s, f, ..)| n == "local_name" && *s == Some(0) && f == "Sheet1!$A$1"));
+        .any(|dn| dn.name == "local_name" && dn.scope == Some(0) && dn.formula == "Sheet1!$A$1"));
 
     // Global name referencing the source becomes a local name on the copy.
-    assert!(names
-        .iter()
-        .any(|(n, s, f, ..)| n == "from_source" && *s == Some(copy) && f == "'Sheet1 (1)'!$A$1"));
+    assert!(names.iter().any(|dn| dn.name == "from_source"
+        && dn.scope == Some(copy)
+        && dn.formula == "'Sheet1 (1)'!$A$1"));
     // Original global preserved.
     assert!(names
         .iter()
-        .any(|(n, s, ..)| n == "from_source" && s.is_none()));
+        .any(|dn| dn.name == "from_source" && dn.scope.is_none()));
 
     // Global name not referencing the source is NOT duplicated onto the copy.
     assert!(!names
         .iter()
-        .any(|(n, s, ..)| n == "from_other" && *s == Some(copy)));
+        .any(|dn| dn.name == "from_other" && dn.scope == Some(copy)));
 }
 
 #[test]

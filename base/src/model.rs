@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec::Vec;
 
+use serde::Serialize;
+
 use crate::arithmetic::power;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
@@ -164,6 +166,23 @@ pub(crate) enum ParsedDefinedName {
     Formula(Node),
     /// A formula that does not parse
     InvalidDefinedNameFormula,
+}
+
+/// A defined name as seen by the API: `scope` is the index of the sheet the
+/// name is local to, or `None` for a global name. The formula is in the
+/// active language/locale (see [`Model::get_defined_name_list`]).
+#[derive(Serialize, Debug, PartialEq, Eq, Clone)]
+pub struct DefinedNameEntry {
+    /// The name, as typed by the user
+    pub name: String,
+    /// Index of the sheet the name is local to, `None` for a global name
+    pub scope: Option<u32>,
+    /// Formula in the active language/locale, without the leading `=`
+    pub formula: String,
+    /// Hidden names are not shown in the UI but still resolve in formulas
+    pub hidden: bool,
+    /// Free text describing the name, at most 255 characters. Empty means no comment.
+    pub comment: String,
 }
 
 /// Formatting settings for a locale
@@ -3029,12 +3048,11 @@ impl<'a> Model<'a> {
         Ok(self.get_defined_name(name, scope)?.formula.clone())
     }
 
-    /// Returns the list of defined names as `(name, scope, formula, hidden, comment)`.
+    /// Returns the list of defined names.
     ///
     /// Formulas are stored internally in English; they are translated into the
     /// active language/locale for display.
-    #[allow(clippy::type_complexity)]
-    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String, bool, String)> {
+    pub fn get_defined_name_list(&self) -> Vec<DefinedNameEntry> {
         let context = self.defined_name_context();
         let sheet_ids: Vec<u32> = self
             .workbook
@@ -3051,13 +3069,13 @@ impl<'a> Model<'a> {
                     .and_then(|sheet_id| sheet_ids.iter().position(|&id| id == sheet_id))
                     .map(|pos| pos as u32);
                 let formula = self.internal_formula_to_display(&dn.formula, &context);
-                (
-                    dn.name.clone(),
+                DefinedNameEntry {
+                    name: dn.name.clone(),
                     scope,
                     formula,
-                    dn.hidden,
-                    dn.comment.clone(),
-                )
+                    hidden: dn.hidden,
+                    comment: dn.comment.clone(),
+                }
             })
             .collect()
     }

@@ -5,7 +5,6 @@ use xlsx::base::Model;
 use xlsx::export::{save_to_icalc, save_to_xlsx, save_xlsx_to_writer};
 
 use crate::types::PyCellType;
-use crate::user_model::DefinedNameEntry;
 use crate::{area, cell_value_to_py, from_python, py_to_color, to_py_err, to_python};
 
 /// A workbook model implementing the "raw" low level API. Nothing is
@@ -659,18 +658,7 @@ impl PyModel {
 
     /// Returns the list of defined names as [{"name", "scope", "formula", "hidden", "comment"}]
     pub fn get_defined_name_list<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        let data: Vec<DefinedNameEntry> = self
-            .model
-            .get_defined_name_list()
-            .into_iter()
-            .map(|(name, scope, formula, hidden, comment)| DefinedNameEntry {
-                name,
-                scope,
-                formula,
-                hidden,
-                comment,
-            })
-            .collect();
+        let data = self.model.get_defined_name_list();
         to_python(py, &data)
     }
 

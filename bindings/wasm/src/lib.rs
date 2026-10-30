@@ -76,15 +76,6 @@ pub fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
     colors::hex_with_tint_to_rgb(hex, tint)
 }
 
-#[derive(Serialize)]
-struct DefinedName {
-    name: String,
-    scope: Option<u32>,
-    formula: String,
-    hidden: bool,
-    comment: String,
-}
-
 /// Consecutive rows or columns (`first..=last`, 1-based) sharing a size in
 /// pixels. Hidden ones have size 0.
 #[derive(Serialize)]
@@ -1161,18 +1152,7 @@ impl Model {
         unchecked_return_type = "DefinedName[]"
     )]
     pub fn get_defined_name_list(&self) -> Result<JsValue, JsError> {
-        let data: Vec<DefinedName> = self
-            .model
-            .get_defined_name_list()
-            .iter()
-            .map(|s| DefinedName {
-                name: s.0.to_owned(),
-                scope: s.1,
-                formula: s.2.to_owned(),
-                hidden: s.3,
-                comment: s.4.to_owned(),
-            })
-            .collect();
+        let data = self.model.get_defined_name_list();
         serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
     }
 

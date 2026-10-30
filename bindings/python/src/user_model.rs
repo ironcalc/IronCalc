@@ -12,15 +12,6 @@ use crate::{area, cell_value_to_py, from_python, leak_str, py_to_color, to_py_er
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub(crate) struct DefinedNameEntry {
-    pub name: String,
-    pub scope: Option<u32>,
-    pub formula: String,
-    pub hidden: bool,
-    pub comment: String,
-}
-
-#[derive(Serialize)]
 struct NamedStyleEntry {
     name: String,
     style: Style,
@@ -1062,18 +1053,7 @@ impl PyUserModel {
 
     /// Returns the list of defined names as [{"name", "scope", "formula", "hidden", "comment"}]
     pub fn get_defined_name_list<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        let data: Vec<DefinedNameEntry> = self
-            .model
-            .get_defined_name_list()
-            .into_iter()
-            .map(|(name, scope, formula, hidden, comment)| DefinedNameEntry {
-                name,
-                scope,
-                formula,
-                hidden,
-                comment,
-            })
-            .collect();
+        let data = self.model.get_defined_name_list();
         to_python(py, &data)
     }
 

@@ -741,12 +741,12 @@ impl Model {
       .model
       .get_defined_name_list()
       .into_iter()
-      .map(|(name, scope, formula, hidden, comment)| DefinedName {
-        name,
-        scope,
-        formula,
-        hidden,
-        comment,
+      .map(|dn| DefinedName {
+        name: dn.name,
+        scope: dn.scope,
+        formula: dn.formula,
+        hidden: dn.hidden,
+        comment: dn.comment,
       })
       .collect();
     env.to_js_value(&data).map_err(to_js_error)

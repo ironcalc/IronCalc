@@ -392,10 +392,10 @@ fn test_defined_name_lambda_exports_excel_prefixes() {
     let defined_names = model.get_defined_name_list();
     let month_start = defined_names
         .iter()
-        .find(|(name, ..)| name == "month_start")
+        .find(|dn| dn.name == "month_start")
         .unwrap();
     assert_eq!(
-        month_start.2,
+        month_start.formula,
         "LAMBDA(mo,LET(anchor,DATE(cal_year,mo,1),anchor+1))"
     );
     fs::remove_file(temp_file_name).unwrap();
