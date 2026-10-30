@@ -1828,7 +1828,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Trim => scalar_arguments(args),
         Function::Unicode => not_implemented(args),
         Function::Unichar => not_implemented(args),
-        Function::Char => not_implemented(args),
+        // CHAR broadcasts element-wise: an array/range argument yields an array.
+        Function::Char => scalar_arguments(args),
         Function::Clean => scalar_arguments(args),
         Function::Code => not_implemented(args),
         Function::Asc => not_implemented(args),

@@ -28,6 +28,30 @@ pub(crate) enum StringOrArray {
     Array(Vec<Vec<ArrayNode>>),
 }
 
+/// Extracts the payload of an [`ArrayNode`] produced by a unary broadcast, so the
+/// scalar and array paths can share one element-wise core.
+pub(crate) trait FromArrayNode: Sized {
+    fn from_array_node(node: ArrayNode) -> Option<Self>;
+}
+
+impl FromArrayNode for f64 {
+    fn from_array_node(node: ArrayNode) -> Option<Self> {
+        match node {
+            ArrayNode::Number(f) => Some(f),
+            _ => None,
+        }
+    }
+}
+
+impl FromArrayNode for String {
+    fn from_array_node(node: ArrayNode) -> Option<Self> {
+        match node {
+            ArrayNode::String(s) => Some(s),
+            _ => None,
+        }
+    }
+}
+
 /// Collapses a scalar [`CalcResult`] into a single array element.
 /// Ranges, arrays and lambdas cannot be a single element, so they become `#VALUE!`.
 pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
@@ -213,9 +237,54 @@ impl<'a> Model<'a> {
         cell: CellReferenceIndex,
         op: impl Fn(f64) -> Result<f64, Error>,
     ) -> CalcResult {
+        self.apply_number_unary_node(
+            value,
+            cell,
+            |f| op(f).map(ArrayNode::Number),
+            CalcResult::Number,
+        )
+    }
+
+    /// Like [`Self::apply_number_unary`] for transforms from a number to a text,
+    /// such as CHAR or UNICHAR. A scalar argument yields a `String`; a range or
+    /// array argument yields an array of strings (with `#VALUE!` where an
+    /// element does not coerce to a number).
+    pub(crate) fn apply_number_to_text_unary(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        op: impl Fn(f64) -> Result<String, Error>,
+    ) -> CalcResult {
+        match self.get_number_or_array(node, cell) {
+            Ok(value) => self.apply_number_unary_node(
+                value,
+                cell,
+                |f| op(f).map(ArrayNode::String),
+                CalcResult::String,
+            ),
+            Err(e) => e,
+        }
+    }
+
+    /// Shared core of the numeric unary broadcasts: `op` maps each coerced number
+    /// to an array element, `scalar` lifts that element's payload to a
+    /// `CalcResult` when the argument was a single number.
+    fn apply_number_unary_node<T>(
+        &mut self,
+        value: NumberOrArray,
+        cell: CellReferenceIndex,
+        op: impl Fn(f64) -> Result<ArrayNode, Error>,
+        scalar: impl Fn(T) -> CalcResult,
+    ) -> CalcResult
+    where
+        T: FromArrayNode,
+    {
         match value {
             NumberOrArray::Number(f) => match op(f) {
-                Ok(x) => CalcResult::Number(x),
+                Ok(node) => match T::from_array_node(node) {
+                    Some(x) => scalar(x),
+                    None => CalcResult::new_error(Error::VALUE, cell, String::new()),
+                },
                 Err(e) => CalcResult::new_error(e, cell, String::new()),
             },
             NumberOrArray::Array(a) => {
@@ -235,7 +304,7 @@ impl<'a> Model<'a> {
                         };
                         let out = match n {
                             Some(f) => match op(f) {
-                                Ok(x) => ArrayNode::Number(x),
+                                Ok(x) => x,
                                 Err(e) => ArrayNode::Error(e),
                             },
                             None => ArrayNode::Error(Error::VALUE),
