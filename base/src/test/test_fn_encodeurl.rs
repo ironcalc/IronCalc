@@ -116,3 +116,39 @@ fn fn_encodeurl_casts_arguments() {
     assert_eq!(model._get_text("A5"), *"1E%2B20");
     assert_eq!(model._get_text("A6"), *"0.0000001");
 }
+
+#[test]
+fn fn_encodeurl_matches_rfc_3986_reference() {
+    // The `urlencoding` crate implements RFC 3986 percent-encoding (unreserved
+    // characters untouched, every other UTF-8 byte as %XX in uppercase).
+    // Compare it with ENCODEURL on every printable ASCII character and a
+    // sample of non-ASCII text.
+    let mut model = new_empty_model();
+
+    let ascii: String = (0x20u8..0x7F).map(|b| b as char).collect();
+    let inputs = [
+        ascii.as_str(),
+        "AZaz09-._~",
+        "~!*'()",
+        "http://example.com/Profit and Loss.xlsx",
+        "a b+c&d=e?f/g:h",
+        "100% \"sure\"",
+        "ü€日本😀",
+        "mañana\u{301} ñ",
+        "\t\n\r",
+    ];
+    for (i, input) in inputs.iter().enumerate() {
+        let formula = format!("=ENCODEURL(\"{}\")", input.replace('"', "\"\""));
+        model._set(&format!("A{}", i + 1), &formula);
+    }
+
+    model.evaluate();
+
+    for (i, input) in inputs.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", i + 1)),
+            urlencoding::encode(input).into_owned(),
+            "input: {input:?}"
+        );
+    }
+}
