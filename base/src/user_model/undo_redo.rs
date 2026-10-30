@@ -396,6 +396,10 @@ impl<'a> UserModel<'a> {
                 Diff::DeleteNamedFunction { function } => {
                     self.model.new_named_function(*function.clone())?;
                 }
+                Diff::UpdateNamedFunction { old, new } => {
+                    self.model
+                        .update_named_function(&new.name, new.scope, *old.clone())?;
+                }
                 Diff::UpdateDefinedName {
                     name,
                     scope,
@@ -933,6 +937,10 @@ impl<'a> UserModel<'a> {
                 Diff::DeleteNamedFunction { function } => self
                     .model
                     .delete_named_function(&function.name, function.scope)?,
+                Diff::UpdateNamedFunction { old, new } => {
+                    self.model
+                        .update_named_function(&old.name, old.scope, *new.clone())?
+                }
                 Diff::UpdateDefinedName {
                     name,
                     scope,

@@ -21,7 +21,8 @@ use crate::{
             new_parser_english,
             static_analysis::StaticResult,
             stringify::{
-                rename_defined_name_in_node, to_english_string, to_localized_string, to_rc_format,
+                rename_defined_name_in_node, rename_named_function_in_node, to_english_string,
+                to_localized_string, to_rc_format,
             },
             ArrayNode, CompletionContext, NamedVariable, Node, Parser,
         },
@@ -149,6 +150,30 @@ fn validate_defined_name_comment(comment: &str) -> Result<(), String> {
         return Err(format!(
             "Comment: Comment must be at most {DEFINED_NAME_COMMENT_MAX_LENGTH} characters"
         ));
+    }
+    Ok(())
+}
+
+/// Parameter names must be valid identifiers, with no repeats
+fn validate_named_function_parameters(
+    parameters: &[NamedFunctionParameterEntry],
+) -> Result<(), String> {
+    let mut seen: Vec<String> = Vec::new();
+    for parameter in parameters {
+        if !is_valid_identifier(&parameter.name) {
+            return Err(format!(
+                "Parameters: Invalid parameter name '{}'",
+                parameter.name
+            ));
+        }
+        let lower = parameter.name.to_lowercase();
+        if seen.contains(&lower) {
+            return Err(format!(
+                "Parameters: Duplicate parameter name '{}'",
+                parameter.name
+            ));
+        }
+        seen.push(lower);
     }
     Ok(())
 }
@@ -318,6 +343,12 @@ impl NamedFunctionEntry {
             formula: formula.to_string(),
             ..Default::default()
         }
+    }
+
+    /// Sets the name
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = name.to_string();
+        self
     }
 
     /// Makes the function local to the sheet with index `sheet`
@@ -861,6 +892,7 @@ impl<'a> Model<'a> {
         let defined_names = self.workbook.get_defined_names_with_scope();
         let mut parser =
             new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
+        parser.set_named_functions(self.workbook.get_named_functions_with_scope());
         let node = parser.parse(body, context);
         if let Node::ParseErrorKind { .. } = node {
             return formula.to_string();
@@ -2064,13 +2096,14 @@ impl<'a> Model<'a> {
             Ok(lang) => lang,
             Err(_) => return Err("Invalid language".to_string()),
         };
-        let parser = Parser::new(
+        let mut parser = Parser::new(
             worksheet_names,
             defined_names,
             workbook.tables.clone(),
             locale,
             language,
         );
+        parser.set_named_functions(workbook.get_named_functions_with_scope());
         let mut shared_strings = HashMap::new();
         for (index, s) in workbook.shared_strings.iter().enumerate() {
             shared_strings.insert(s.to_string(), index);
@@ -4077,6 +4110,19 @@ impl<'a> Model<'a> {
         parameters: &[NamedFunctionParameterEntry],
         formula: &str,
     ) -> Result<Option<u32>, String> {
+        self.validate_named_function_name(name)?;
+        let sheet_id = self.scope_sheet_id(scope)?;
+        if self.name_exists(name, sheet_id) {
+            return Err(
+                "Name: A function or defined name with this name already exists".to_string(),
+            );
+        }
+        validate_named_function_parameters(parameters)?;
+        self.validate_named_function_body(scope, formula)?;
+        Ok(sheet_id)
+    }
+
+    fn validate_named_function_name(&self, name: &str) -> Result<(), String> {
         if !is_valid_identifier(name) {
             return Err("Name: Invalid function name".to_string());
         }
@@ -4086,37 +4132,27 @@ impl<'a> Model<'a> {
                 name.to_uppercase()
             ));
         }
-        let sheet_id = match scope {
+        Ok(())
+    }
+
+    /// The sheet id of a scope, `None` for the workbook
+    fn scope_sheet_id(&self, scope: Option<u32>) -> Result<Option<u32>, String> {
+        match scope {
             Some(index) => match self.workbook.worksheet(index) {
-                Ok(ws) => Some(ws.sheet_id),
-                Err(_) => return Err("Scope: Invalid sheet index".to_string()),
+                Ok(ws) => Ok(Some(ws.sheet_id)),
+                Err(_) => Err("Scope: Invalid sheet index".to_string()),
             },
-            None => None,
-        };
-        if self.name_exists(name, sheet_id) {
-            return Err(
-                "Name: A function or defined name with this name already exists".to_string(),
-            );
+            None => Ok(None),
         }
-        let mut seen: Vec<String> = Vec::new();
-        for parameter in parameters {
-            if !is_valid_identifier(&parameter.name) {
-                return Err(format!(
-                    "Parameters: Invalid parameter name '{}'",
-                    parameter.name
-                ));
-            }
-            let lower = parameter.name.to_lowercase();
-            if seen.contains(&lower) {
-                return Err(format!(
-                    "Parameters: Duplicate parameter name '{}'",
-                    parameter.name
-                ));
-            }
-            seen.push(lower);
-        }
-        // Accept the body whether it is written in the active language or
-        // already in the internal English form.
+    }
+
+    /// The body must parse, in the active language or in English, and must
+    /// not have references without a sheet, like a defined name.
+    fn validate_named_function_body(
+        &mut self,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<(), String> {
         let context = self.name_context(scope);
         let body = formula.trim().strip_prefix('=').unwrap_or(formula);
         let mut node = self.parser.parse(body, &context);
@@ -4126,7 +4162,234 @@ impl<'a> Model<'a> {
         if matches!(node, Node::ParseErrorKind { .. }) || has_unqualified_reference(&node) {
             return Err("Formula: Invalid named function formula".to_string());
         }
-        Ok(sheet_id)
+        Ok(())
+    }
+
+    /// Replaces the named function `name` with scope `scope` by `new`: every
+    /// field of the function takes the value in `new`. A renamed function is
+    /// renamed in every cell formula and in the bodies of the named functions
+    /// that call it, its own body included.
+    pub fn update_named_function(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        new: NamedFunctionEntry,
+    ) -> Result<(), String> {
+        let index = self.named_function_index(name, scope)?;
+        let NamedFunctionEntry {
+            name: new_name,
+            scope: new_scope,
+            description,
+            parameters,
+            formula,
+        } = new;
+        self.validate_named_function_name(&new_name)?;
+        let new_sheet_id = self.scope_sheet_id(new_scope)?;
+        let old_sheet_id = self.workbook.named_functions[index].sheet_id;
+        let old_name = self.workbook.named_functions[index].name.clone();
+        if (new_name.to_uppercase() != old_name.to_uppercase() || new_sheet_id != old_sheet_id)
+            && self.name_exists(&new_name, new_sheet_id)
+        {
+            return Err(
+                "Name: A function or defined name with this name already exists".to_string(),
+            );
+        }
+        validate_description(&description)?;
+        validate_named_function_parameters(&parameters)?;
+        for parameter in &parameters {
+            validate_description(&parameter.description)?;
+        }
+        self.validate_named_function_body(new_scope, &formula)?;
+        let context = self.name_context(new_scope);
+        let internal_formula = self.user_formula_to_internal(&formula, &context)?;
+        let mut internal_formula = internal_formula
+            .strip_prefix('=')
+            .unwrap_or(&internal_formula)
+            .to_string();
+
+        if new_name != old_name {
+            self.rename_named_function_in_formulas(&old_name, scope, &new_name);
+            // The new body may still call the function by its old name
+            let body = self.parse_internal_formula(&internal_formula, &context);
+            let context_sheet = new_scope.unwrap_or(0);
+            let body = self.rename_named_function_in_body(
+                body,
+                &old_name,
+                scope,
+                context_sheet,
+                &new_name,
+            );
+            internal_formula = to_english_string(&body, &context);
+        }
+
+        let function = &mut self.workbook.named_functions[index];
+        function.name = new_name;
+        function.sheet_id = new_sheet_id;
+        function.description = description;
+        function.parameters = parameters
+            .into_iter()
+            .map(|p| NamedFunctionParameter {
+                name: p.name,
+                description: p.description,
+                optional: p.optional,
+            })
+            .collect();
+        function.formula = internal_formula;
+        self.reset_parsed_structures();
+        Ok(())
+    }
+
+    /// True if a reference to `name` in a formula of `context_sheet` resolves
+    /// to the named function `target` (scope, name). `qualified` is the sheet
+    /// the reference is qualified with (`Sheet1!name`), if any.
+    fn reference_is_named_function(
+        &self,
+        name: &str,
+        qualified: Option<u32>,
+        context_sheet: u32,
+        target: (Option<u32>, &str),
+    ) -> bool {
+        let name_lower = name.to_lowercase();
+        if target.1.to_lowercase() != name_lower {
+            return false;
+        }
+        let sheet = qualified.unwrap_or(context_sheet);
+        // A qualified name is the defined name local to that sheet, if any
+        if qualified.is_some()
+            && self
+                .parsed_defined_names
+                .contains_key(&(Some(sheet), name_lower.clone()))
+        {
+            return false;
+        }
+        // The function local to the sheet takes precedence over the workbook one
+        let resolved = if self
+            .parsed_named_functions
+            .contains_key(&(Some(sheet), name_lower.clone()))
+        {
+            Some(sheet)
+        } else if self
+            .parsed_named_functions
+            .contains_key(&(None, name_lower))
+        {
+            None
+        } else {
+            return false;
+        };
+        resolved == target.0
+    }
+
+    /// Renames the references to the named function (`scope`, `name`) in
+    /// every cell formula and in the bodies of the other named functions.
+    fn rename_named_function_in_formulas(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        new_name: &str,
+    ) {
+        // All internal formulas are R1C1 and in English
+        let locale = self.locale;
+        let language = self.language;
+        self.parser.set_locale(get_default_locale());
+        self.parser.set_language(get_default_language());
+        self.parser.set_lexer_mode(LexerMode::R1C1);
+        let sheet_count = self.workbook.worksheets.len();
+        for sheet_index in 0..sheet_count {
+            let cell_reference = CellReferenceRC {
+                sheet: self.workbook.worksheets[sheet_index].get_name(),
+                row: 1,
+                column: 1,
+            };
+            let shared_formulas = self.workbook.worksheets[sheet_index]
+                .shared_formulas
+                .clone();
+            let mut formulas = Vec::with_capacity(shared_formulas.len());
+            for formula in &shared_formulas {
+                let mut t = self.parser.parse(formula, &cell_reference);
+                let should_rename = |n: &str, qualified: Option<u32>| {
+                    self.reference_is_named_function(
+                        n,
+                        qualified,
+                        sheet_index as u32,
+                        (scope, name),
+                    )
+                };
+                rename_named_function_in_node(&mut t, &mut Vec::new(), &should_rename, new_name);
+                formulas.push(to_rc_format(&t));
+            }
+            self.workbook.worksheets[sheet_index].shared_formulas = formulas;
+        }
+        self.parser.set_lexer_mode(LexerMode::A1);
+        self.parser.set_locale(locale);
+        self.parser.set_language(language);
+
+        // The bodies of the named functions. A body is resolved in the sheet
+        // the function is local to, or in the first sheet.
+        let sheet_ids: Vec<u32> = self
+            .workbook
+            .worksheets
+            .iter()
+            .map(|s| s.sheet_id)
+            .collect();
+        for index in 0..self.workbook.named_functions.len() {
+            let function = &self.workbook.named_functions[index];
+            let function_scope = function
+                .sheet_id
+                .and_then(|sheet_id| sheet_ids.iter().position(|&id| id == sheet_id))
+                .map(|pos| pos as u32);
+            let context = self.name_context(function_scope);
+            let body = self.parse_internal_formula(&function.formula.clone(), &context);
+            let body = self.rename_named_function_in_body(
+                body,
+                name,
+                scope,
+                function_scope.unwrap_or(0),
+                new_name,
+            );
+            self.workbook.named_functions[index].formula = to_english_string(&body, &context);
+        }
+    }
+
+    fn rename_named_function_in_body(
+        &self,
+        mut body: Node,
+        name: &str,
+        scope: Option<u32>,
+        context_sheet: u32,
+        new_name: &str,
+    ) -> Node {
+        let should_rename = |n: &str, qualified: Option<u32>| {
+            self.reference_is_named_function(n, qualified, context_sheet, (scope, name))
+        };
+        rename_named_function_in_node(&mut body, &mut Vec::new(), &should_rename, new_name);
+        body
+    }
+
+    /// Renames the defined name (`scope`, `name`) in the bodies of the named
+    /// functions
+    fn rename_defined_name_in_named_functions(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        new_name: &str,
+    ) {
+        let sheet_ids: Vec<u32> = self
+            .workbook
+            .worksheets
+            .iter()
+            .map(|s| s.sheet_id)
+            .collect();
+        for index in 0..self.workbook.named_functions.len() {
+            let function = &self.workbook.named_functions[index];
+            let function_scope = function
+                .sheet_id
+                .and_then(|sheet_id| sheet_ids.iter().position(|&id| id == sheet_id))
+                .map(|pos| pos as u32);
+            let context = self.name_context(function_scope);
+            let mut body = self.parse_internal_formula(&function.formula.clone(), &context);
+            rename_defined_name_in_node(&mut body, name, scope, new_name);
+            self.workbook.named_functions[index].formula = to_english_string(&body, &context);
+        }
     }
 
     /// True if `name` is a built-in function, in English or in the active
@@ -4272,25 +4535,14 @@ impl<'a> Model<'a> {
         let name_upper = name.to_uppercase();
         let new_name_upper = new_name.to_uppercase();
 
-        if name_upper != new_name_upper || scope != new_scope {
-            for key in self.parsed_defined_names.keys() {
-                if key.1.to_uppercase() == new_name_upper && key.0 == new_scope {
-                    return Err("Name: Defined name already exists".to_string());
-                }
-            }
+        let new_sheet_id = self.scope_sheet_id(new_scope)?;
+        if (name_upper != new_name_upper || scope != new_scope)
+            && self.name_exists(new_name, new_sheet_id)
+        {
+            return Err("Name: Defined name already exists".to_string());
         }
         let defined_names = &self.workbook.defined_names;
         let sheet_id = match scope {
-            Some(index) => Some(
-                self.workbook
-                    .worksheet(index)
-                    .map_err(|_| "Scope: Invalid sheet index")?
-                    .sheet_id,
-            ),
-            None => None,
-        };
-
-        let new_sheet_id = match new_scope {
             Some(index) => Some(
                 self.workbook
                     .worksheet(index)
@@ -4310,6 +4562,21 @@ impl<'a> Model<'a> {
         let context = self.defined_name_context();
         let internal_formula = self.user_formula_to_internal(new_formula, &context)?;
         if let Some(i) = index {
+            if let Some((parameters, body)) = self.split_lambda_formula(&internal_formula, &context)
+            {
+                // A name defined as a LAMBDA is a named function. The cells
+                // using the old name keep it: it is a different thing now.
+                self.workbook.defined_names.remove(i);
+                self.workbook.named_functions.push(NamedFunction {
+                    name: new_name.to_string(),
+                    sheet_id: new_sheet_id,
+                    description: new_comment.to_string(),
+                    parameters,
+                    formula: body,
+                });
+                self.reset_parsed_structures();
+                return Ok(());
+            }
             if let Some(df) = self.workbook.defined_names.get_mut(i) {
                 if *new_name != df.name {
                     // We need to rename the name in every formula:
@@ -4334,7 +4601,9 @@ impl<'a> Model<'a> {
                     }
                     // Se the mode back to A1
                     self.parser.set_lexer_mode(LexerMode::A1);
+                    self.rename_defined_name_in_named_functions(name, scope, new_name);
                 }
+                let df = &mut self.workbook.defined_names[i];
                 df.name = new_name.to_string();
                 df.sheet_id = new_sheet_id;
                 df.formula = internal_formula;

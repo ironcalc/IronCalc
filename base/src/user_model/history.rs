@@ -224,6 +224,10 @@ pub(crate) enum Diff {
     DeleteNamedFunction {
         function: Box<NamedFunctionEntry>,
     },
+    UpdateNamedFunction {
+        old: Box<NamedFunctionEntry>,
+        new: Box<NamedFunctionEntry>,
+    },
     UpdateDefinedName {
         name: String,
         scope: Option<u32>,

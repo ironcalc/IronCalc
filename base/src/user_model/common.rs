@@ -2211,6 +2211,35 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
+    /// Replaces the named function `name` with scope `scope` by `new`: every
+    /// field of the function takes the value in `new`.
+    pub fn update_named_function(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        new: NamedFunctionEntry,
+    ) -> Result<(), String> {
+        // Both entries in the diff carry the internal (English) body so
+        // undo/redo replays correctly regardless of the active language.
+        let old = Box::new(
+            self.named_function_internal_entry(
+                self.model
+                    .get_named_function(name, scope)
+                    .map_err(|_| "General: Failed to get old function")?,
+            ),
+        );
+        let new_name = new.name.clone();
+        let new_scope = new.scope;
+        self.model.update_named_function(name, scope, new)?;
+        let new =
+            Box::new(self.named_function_internal_entry(
+                self.model.get_named_function(&new_name, new_scope)?,
+            ));
+        self.push_diff_list(vec![Diff::UpdateNamedFunction { old, new }]);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
     /// validates a new named function
     pub fn is_valid_named_function(
         &mut self,
@@ -2278,6 +2307,23 @@ impl<'a> UserModel<'a> {
             ..
         } = new.clone();
         self.model.update_defined_name(name, scope, new)?;
+        // A name updated to a LAMBDA is a named function from now on: the
+        // defined name is gone and a function was created.
+        if let Ok(function) = self.model.get_named_function(&new_name, new_scope) {
+            let function = Box::new(self.named_function_internal_entry(function));
+            self.push_diff_list(vec![
+                Diff::DeleteDefinedName {
+                    name: name.to_string(),
+                    scope,
+                    old_value: old_formula,
+                    old_hidden,
+                    old_comment,
+                },
+                Diff::CreateNamedFunction { function },
+            ]);
+            self.evaluate_if_not_paused();
+            return Ok(());
+        }
         // Read back the canonical (English) formula that was just stored so the
         // diff stays canonical; a successful update guarantees it is retrievable.
         let new_formula_internal = self.model.get_defined_name_formula(&new_name, new_scope)?;

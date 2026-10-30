@@ -215,6 +215,113 @@ fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
     }
 }
 
+/// Renames the references to a named function in a formula. A reference is a
+/// call `MyFn(...)`, a bare `MyFn` or a sheet-qualified `Sheet1!MyFn`, when it
+/// is not bound by an enclosing LAMBDA or LET. Which function a reference
+/// resolves to depends on the sheet the formula is in, so `should_rename`
+/// decides, given the name and the sheet it is qualified with (`None` when it
+/// is not).
+pub(crate) fn rename_named_function_in_node(
+    node: &mut Node,
+    bound: &mut Vec<String>,
+    should_rename: &dyn Fn(&str, Option<u32>) -> bool,
+    new_name: &str,
+) {
+    match node {
+        Node::NamedVariableKind { name, .. } => {
+            if !bound.iter().any(|n| n == name) && should_rename(name, None) {
+                *name = new_name.to_string();
+            }
+        }
+        Node::NamedFunctionKind { name, args, .. } => {
+            if !bound.iter().any(|n| n == name) && should_rename(name, None) {
+                *name = new_name.to_string();
+            }
+            for arg in args {
+                rename_named_function_in_node(arg, bound, should_rename, new_name);
+            }
+        }
+        Node::DefinedNameKind {
+            name,
+            sheet: Some((sheet_index, _)),
+            ..
+        } => {
+            if should_rename(name, Some(*sheet_index)) {
+                *name = new_name.to_string();
+            }
+        }
+        Node::LambdaDefKind { parameters, body } => {
+            let depth = bound.len();
+            for parameter in parameters.iter() {
+                bound.push(parameter.name.clone());
+            }
+            rename_named_function_in_node(body, bound, should_rename, new_name);
+            bound.truncate(depth);
+        }
+        Node::FunctionKind {
+            kind: Function::Let,
+            args,
+        } if args.len() >= 3 && args.len() % 2 == 1 => {
+            // LET(name1, value1, [name2, value2, ...], body): each name is in
+            // scope from its own value expression onwards.
+            let depth = bound.len();
+            let pair_count = (args.len() - 1) / 2;
+            for i in 0..pair_count {
+                if let Node::NamedVariableKind { name, .. } = &args[2 * i] {
+                    bound.push(name.clone());
+                }
+                rename_named_function_in_node(&mut args[2 * i + 1], bound, should_rename, new_name);
+            }
+            rename_named_function_in_node(
+                &mut args[2 * pair_count],
+                bound,
+                should_rename,
+                new_name,
+            );
+            bound.truncate(depth);
+        }
+        Node::FunctionKind { args, .. } => {
+            for arg in args {
+                rename_named_function_in_node(arg, bound, should_rename, new_name);
+            }
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            rename_named_function_in_node(lambda, bound, should_rename, new_name);
+            for arg in args {
+                rename_named_function_in_node(arg, bound, should_rename, new_name);
+            }
+        }
+        Node::OpRangeKind { left, right }
+        | Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right }
+        | Node::CompareKind { left, right, .. } => {
+            rename_named_function_in_node(left, bound, should_rename, new_name);
+            rename_named_function_in_node(right, bound, should_rename, new_name);
+        }
+        Node::UnaryKind { right, .. } => {
+            rename_named_function_in_node(right, bound, should_rename, new_name)
+        }
+        Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
+            rename_named_function_in_node(child, bound, should_rename, new_name)
+        }
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ReferenceKind { .. }
+        | Node::RangeKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
+        | Node::ArrayKind(_)
+        | Node::DefinedNameKind { sheet: None, .. }
+        | Node::TableNameKind(_)
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::EmptyArgKind => {}
+    }
+}
+
 pub fn to_string_displaced(
     node: &Node,
     context: &CellReferenceRC,
@@ -956,8 +1063,16 @@ fn stringify(
             };
             format!("{x}^{y}")
         }
+        // In the internal (R1C1) form an unknown function is lowercase, so it
+        // is not taken for a built-in one when the formula is parsed again in
+        // English (`=TRUE()` typed in Spanish). For display the name is kept
+        // as the parser produced it.
         NamedFunctionKind { name, args, id: _ } => format_function(
-            &name.to_lowercase(),
+            &if context.is_none() {
+                name.to_lowercase()
+            } else {
+                name.clone()
+            },
             args,
             context,
             displace_data,

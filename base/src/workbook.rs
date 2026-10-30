@@ -80,6 +80,22 @@ impl Workbook {
             .ok_or_else(|| "Invalid sheet index".to_string())
     }
 
+    /// Returns the list of named functions in the workbook with their scope,
+    /// as a sheet index
+    pub fn get_named_functions_with_scope(&self) -> Vec<(String, Option<u32>)> {
+        let sheet_id_index: Vec<u32> = self.worksheets.iter().map(|s| s.sheet_id).collect();
+        self.named_functions
+            .iter()
+            .map(|nf| {
+                let index = nf
+                    .sheet_id
+                    .and_then(|sheet_id| sheet_id_index.iter().position(|&x| x == sheet_id))
+                    .map(|pos| pos as u32);
+                (nf.name.clone(), index)
+            })
+            .collect()
+    }
+
     /// Returns the a list of defined names in the workbook with their scope
     pub fn get_defined_names_with_scope(&self) -> Vec<DefinedNameS> {
         let sheet_id_index: Vec<u32> = self.worksheets.iter().map(|s| s.sheet_id).collect();
