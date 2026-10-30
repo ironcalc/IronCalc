@@ -49,7 +49,10 @@ fn defined_name_created_in_spanish_undo_redo() {
         model.model.workbook.defined_names[0].formula,
         "=LAMBDA(x,IF(x>0,1,2))"
     );
-    assert_eq!(model.get_defined_name_list()[0].2, "=LAMBDA(x,SI(x>0,1,2))");
+    assert_eq!(
+        model.get_defined_name_list()[0].formula,
+        "=LAMBDA(x,SI(x>0,1,2))"
+    );
 
     // Switching language must not break undo/redo: the diff carries English.
     model.set_language("en").unwrap();

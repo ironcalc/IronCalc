@@ -195,7 +195,7 @@ fn defined_name_lambda_entered_in_english_survives_switch_to_spanish() {
         "=LAMBDA(x,IF(x>0,1,2))"
     );
     let names = model.get_defined_name_list();
-    assert_eq!(names[0].2, "=LAMBDA(x,SI(x>0,1,2))");
+    assert_eq!(names[0].formula, "=LAMBDA(x,SI(x>0,1,2))");
 
     // An edit reparses the defined names; the English form must still parse.
     model
@@ -228,7 +228,13 @@ fn defined_name_lambda_entered_in_spanish_is_stored_in_english() {
     );
 
     // Displayed in Spanish, and in English after switching.
-    assert_eq!(model.get_defined_name_list()[0].2, "=LAMBDA(x,SI(x>0,1,2))");
+    assert_eq!(
+        model.get_defined_name_list()[0].formula,
+        "=LAMBDA(x,SI(x>0,1,2))"
+    );
     model.set_language("en").unwrap();
-    assert_eq!(model.get_defined_name_list()[0].2, "=LAMBDA(x,IF(x>0,1,2))");
+    assert_eq!(
+        model.get_defined_name_list()[0].formula,
+        "=LAMBDA(x,IF(x>0,1,2))"
+    );
 }

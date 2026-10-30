@@ -10,8 +10,8 @@ fn hidden_flag(model: &ironcalc::base::Model, name: &str) -> bool {
     model
         .get_defined_name_list()
         .into_iter()
-        .find(|(n, ..)| n == name)
-        .map(|(_, _, _, hidden, _)| hidden)
+        .find(|dn| dn.name == name)
+        .map(|dn| dn.hidden)
         .unwrap()
 }
 
@@ -19,8 +19,8 @@ fn comment(model: &ironcalc::base::Model, name: &str) -> String {
     model
         .get_defined_name_list()
         .into_iter()
-        .find(|(n, ..)| n == name)
-        .map(|(_, _, _, _, comment)| comment)
+        .find(|dn| dn.name == name)
+        .map(|dn| dn.comment)
         .unwrap()
 }
 

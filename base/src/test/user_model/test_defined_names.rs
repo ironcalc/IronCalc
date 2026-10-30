@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::model::DefinedNameEntry;
 use crate::test::user_model::util::new_empty_user_model;
 
 #[test]
@@ -17,13 +18,13 @@ fn create_defined_name() {
 
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "myName".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            false,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "myName".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: false,
+            comment: String::new()
+        }]
     );
 
     // delete it
@@ -494,13 +495,13 @@ fn cut_paste_updates_defined_name_cell_reference() {
     // "MyConst" must now point to $F$11
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "MyConst".to_string(),
-            None,
-            "Sheet1!$F$11".to_string(),
-            false,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "MyConst".to_string(),
+            scope: None,
+            formula: "Sheet1!$F$11".to_string(),
+            hidden: false,
+            comment: String::new()
+        }]
     );
     // The formula using the defined name still evaluates correctly
     assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "1");
@@ -532,13 +533,13 @@ fn cut_paste_updates_defined_name_range_reference() {
     // "MyRange" must now point to $H$3:$H$5
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "MyRange".to_string(),
-            None,
-            "Sheet1!$H$3:$H$5".to_string(),
-            false,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "MyRange".to_string(),
+            scope: None,
+            formula: "Sheet1!$H$3:$H$5".to_string(),
+            hidden: false,
+            comment: String::new()
+        }]
     );
     assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "6");
 }
@@ -568,21 +569,21 @@ fn cut_paste_defined_name_no_update_when_outside_moved_area() {
 
     let names = model.get_defined_name_list();
     // Name1 moved to D4
-    assert!(names.contains(&(
-        "Name1".to_string(),
-        None,
-        "Sheet1!$D$4".to_string(),
-        false,
-        String::new()
-    )));
+    assert!(names.contains(&DefinedNameEntry {
+        name: "Name1".to_string(),
+        scope: None,
+        formula: "Sheet1!$D$4".to_string(),
+        hidden: false,
+        comment: String::new()
+    }));
     // Name2 is unaffected
-    assert!(names.contains(&(
-        "Name2".to_string(),
-        None,
-        "Sheet1!$B$2".to_string(),
-        false,
-        String::new()
-    )));
+    assert!(names.contains(&DefinedNameEntry {
+        name: "Name2".to_string(),
+        scope: None,
+        formula: "Sheet1!$B$2".to_string(),
+        hidden: false,
+        comment: String::new()
+    }));
 }
 
 #[test]
@@ -605,26 +606,26 @@ fn cut_paste_defined_name_undo_restores_formula() {
 
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "MyVal".to_string(),
-            None,
-            "Sheet1!$C$5".to_string(),
-            false,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "MyVal".to_string(),
+            scope: None,
+            formula: "Sheet1!$C$5".to_string(),
+            hidden: false,
+            comment: String::new()
+        }]
     );
 
     // Undo restores the original formula
     model.undo().unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "MyVal".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            false,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "MyVal".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: false,
+            comment: String::new()
+        }]
     );
 }
 
@@ -649,13 +650,13 @@ fn cut_paste_scoped_defined_name_updates() {
         .unwrap();
 
     // The scoped defined name must also update
-    assert!(model.get_defined_name_list().contains(&(
-        "Local".to_string(),
-        Some(0),
-        "Sheet1!$B$2".to_string(),
-        false,
-        String::new()
-    )));
+    assert!(model.get_defined_name_list().contains(&DefinedNameEntry {
+        name: "Local".to_string(),
+        scope: Some(0),
+        formula: "Sheet1!$B$2".to_string(),
+        hidden: false,
+        comment: String::new()
+    }));
 }
 
 #[test]
@@ -687,13 +688,13 @@ fn cut_paste_range_defined_name_no_update_when_partial_overlap() {
     // BigRange only partially overlaps the moved area — it must NOT be updated
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "BigRange".to_string(),
-            None,
-            "Sheet1!$B$1:$D$3".to_string(),
-            false,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "BigRange".to_string(),
+            scope: None,
+            formula: "Sheet1!$B$1:$D$3".to_string(),
+            hidden: false,
+            comment: String::new()
+        }]
     );
 }
 
@@ -712,13 +713,13 @@ fn hidden_defined_name() {
     );
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "Secret".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            true,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "Secret".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: true,
+            comment: String::new()
+        }]
     );
 
     // Unhide it, keeping everything else
@@ -727,37 +728,37 @@ fn hidden_defined_name() {
         .unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "Secret".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            false,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "Secret".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: false,
+            comment: String::new()
+        }]
     );
 
     // Undo/redo restore the flag
     model.undo().unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "Secret".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            true,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "Secret".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: true,
+            comment: String::new()
+        }]
     );
     model.redo().unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "Secret".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            false,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "Secret".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: false,
+            comment: String::new()
+        }]
     );
 
     // Hide it again with a rename, then delete: undo of the delete brings back a hidden name
@@ -773,13 +774,13 @@ fn hidden_defined_name() {
     model.undo().unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "Hidden".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            true,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "Hidden".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: true,
+            comment: String::new()
+        }]
     );
     // Undo the rename, the unhide, the "=Secret" input and finally the creation
     model.undo().unwrap();
@@ -787,13 +788,13 @@ fn hidden_defined_name() {
     model.undo().unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "Secret".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            true,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "Secret".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: true,
+            comment: String::new()
+        }]
     );
     model.undo().unwrap();
     assert_eq!(model.get_defined_name_list().len(), 0);
@@ -816,24 +817,24 @@ fn hidden_defined_name_survives_cut_paste() {
         .unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "Secret".to_string(),
-            None,
-            "Sheet1!$C$5".to_string(),
-            true,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "Secret".to_string(),
+            scope: None,
+            formula: "Sheet1!$C$5".to_string(),
+            hidden: true,
+            comment: String::new()
+        }]
     );
     model.undo().unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "Secret".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            true,
-            String::new()
-        )]
+        vec![DefinedNameEntry {
+            name: "Secret".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: true,
+            comment: String::new()
+        }]
     );
 }
 
@@ -849,37 +850,37 @@ fn hidden_defined_name_survives_sheet_duplicate_and_rename() {
 
     model.rename_sheet(0, "Renamed").unwrap();
     let names = model.get_defined_name_list();
-    assert!(names.contains(&(
-        "Secret".to_string(),
-        Some(0),
-        "Renamed!$A$1".to_string(),
-        true,
-        String::new()
-    )));
-    assert!(names.contains(&(
-        "Visible".to_string(),
-        Some(0),
-        "Renamed!$A$2".to_string(),
-        false,
-        String::new()
-    )));
+    assert!(names.contains(&DefinedNameEntry {
+        name: "Secret".to_string(),
+        scope: Some(0),
+        formula: "Renamed!$A$1".to_string(),
+        hidden: true,
+        comment: String::new()
+    }));
+    assert!(names.contains(&DefinedNameEntry {
+        name: "Visible".to_string(),
+        scope: Some(0),
+        formula: "Renamed!$A$2".to_string(),
+        hidden: false,
+        comment: String::new()
+    }));
 
     model.duplicate_sheet(0).unwrap();
     let names = model.get_defined_name_list();
-    assert!(names.contains(&(
-        "Secret".to_string(),
-        Some(1),
-        "'Renamed (1)'!$A$1".to_string(),
-        true,
-        String::new()
-    )));
-    assert!(names.contains(&(
-        "Visible".to_string(),
-        Some(1),
-        "'Renamed (1)'!$A$2".to_string(),
-        false,
-        String::new()
-    )));
+    assert!(names.contains(&DefinedNameEntry {
+        name: "Secret".to_string(),
+        scope: Some(1),
+        formula: "'Renamed (1)'!$A$1".to_string(),
+        hidden: true,
+        comment: String::new()
+    }));
+    assert!(names.contains(&DefinedNameEntry {
+        name: "Visible".to_string(),
+        scope: Some(1),
+        formula: "'Renamed (1)'!$A$2".to_string(),
+        hidden: false,
+        comment: String::new()
+    }));
 }
 
 #[test]
@@ -891,13 +892,13 @@ fn defined_name_comment() {
         .unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "TaxRate".to_string(),
-            None,
-            "Sheet1!$A$1".to_string(),
-            false,
-            "VAT in 2024".to_string()
-        )]
+        vec![DefinedNameEntry {
+            name: "TaxRate".to_string(),
+            scope: None,
+            formula: "Sheet1!$A$1".to_string(),
+            hidden: false,
+            comment: "VAT in 2024".to_string()
+        }]
     );
 
     // Change the comment only
@@ -912,18 +913,18 @@ fn defined_name_comment() {
             "VAT in 2025",
         )
         .unwrap();
-    assert_eq!(model.get_defined_name_list()[0].4, "VAT in 2025");
+    assert_eq!(model.get_defined_name_list()[0].comment, "VAT in 2025");
 
     // Undo/redo restore the comment
     model.undo().unwrap();
-    assert_eq!(model.get_defined_name_list()[0].4, "VAT in 2024");
+    assert_eq!(model.get_defined_name_list()[0].comment, "VAT in 2024");
     model.redo().unwrap();
-    assert_eq!(model.get_defined_name_list()[0].4, "VAT in 2025");
+    assert_eq!(model.get_defined_name_list()[0].comment, "VAT in 2025");
 
     // Undo of a delete brings the comment back
     model.delete_defined_name("TaxRate", None).unwrap();
     model.undo().unwrap();
-    assert_eq!(model.get_defined_name_list()[0].4, "VAT in 2025");
+    assert_eq!(model.get_defined_name_list()[0].comment, "VAT in 2025");
 }
 
 #[test]
@@ -936,7 +937,7 @@ fn defined_name_comment_max_length() {
     model
         .new_defined_name("Name1", None, "Sheet1!$A$1", false, &ok)
         .unwrap();
-    assert_eq!(model.get_defined_name_list()[0].4, ok);
+    assert_eq!(model.get_defined_name_list()[0].comment, ok);
 
     // 256 are not, both when creating and updating
     assert_eq!(
@@ -957,7 +958,7 @@ fn defined_name_comment_max_length() {
     );
     // Nothing changed and nothing was pushed to the history
     assert_eq!(model.get_defined_name_list().len(), 1);
-    assert_eq!(model.get_defined_name_list()[0].4, ok);
+    assert_eq!(model.get_defined_name_list()[0].comment, ok);
     model.undo().unwrap();
     assert_eq!(model.get_defined_name_list().len(), 0);
 }
@@ -979,30 +980,30 @@ fn defined_name_comment_survives_cut_paste_rename_and_duplicate() {
         .unwrap();
     assert_eq!(
         model.get_defined_name_list(),
-        vec![(
-            "Rate".to_string(),
-            Some(0),
-            "Sheet1!$C$5".to_string(),
-            true,
-            "Local rate".to_string()
-        )]
+        vec![DefinedNameEntry {
+            name: "Rate".to_string(),
+            scope: Some(0),
+            formula: "Sheet1!$C$5".to_string(),
+            hidden: true,
+            comment: "Local rate".to_string()
+        }]
     );
 
     model.rename_sheet(0, "Renamed").unwrap();
     model.duplicate_sheet(0).unwrap();
     let names = model.get_defined_name_list();
-    assert!(names.contains(&(
-        "Rate".to_string(),
-        Some(0),
-        "Renamed!$C$5".to_string(),
-        true,
-        "Local rate".to_string()
-    )));
-    assert!(names.contains(&(
-        "Rate".to_string(),
-        Some(1),
-        "'Renamed (1)'!$C$5".to_string(),
-        true,
-        "Local rate".to_string()
-    )));
+    assert!(names.contains(&DefinedNameEntry {
+        name: "Rate".to_string(),
+        scope: Some(0),
+        formula: "Renamed!$C$5".to_string(),
+        hidden: true,
+        comment: "Local rate".to_string()
+    }));
+    assert!(names.contains(&DefinedNameEntry {
+        name: "Rate".to_string(),
+        scope: Some(1),
+        formula: "'Renamed (1)'!$C$5".to_string(),
+        hidden: true,
+        comment: "Local rate".to_string()
+    }));
 }

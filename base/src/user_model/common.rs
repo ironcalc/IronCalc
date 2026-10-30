@@ -13,7 +13,7 @@ use crate::{
         types::Area,
         utils::{is_valid_column_number, is_valid_row},
     },
-    model::{FmtSettings, Model},
+    model::{DefinedNameEntry, FmtSettings, Model},
     types::{
         Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
         MergedCell, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
@@ -2127,9 +2127,8 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
-    /// Returns the list of defined names as `(name, scope, formula, hidden, comment)`
-    #[allow(clippy::type_complexity)]
-    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String, bool, String)> {
+    /// Returns the list of defined names
+    pub fn get_defined_name_list(&self) -> Vec<DefinedNameEntry> {
         self.model.get_defined_name_list()
     }
 
