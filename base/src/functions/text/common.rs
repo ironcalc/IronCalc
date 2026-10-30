@@ -366,11 +366,30 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // An inline array or a spilled result, e.g. CONCAT(CHAR(A1:A5)).
+                // Elements are concatenated row by row, like a range.
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for node in row {
+                            match node {
+                                ArrayNode::String(value) => result.push_str(&value),
+                                ArrayNode::Number(value) => result = format!("{result}{value}"),
+                                ArrayNode::Boolean(value) => {
+                                    result.push_str(if value { "TRUE" } else { "FALSE" })
+                                }
+                                ArrayNode::Empty => {}
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::new_error(error, cell, String::new())
+                                }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
-                        message: "Arrays not supported yet".to_string(),
+                        message: "Lambdas not supported".to_string(),
                     }
                 }
             };
