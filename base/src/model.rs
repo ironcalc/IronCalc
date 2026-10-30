@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec::Vec;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::arithmetic::power;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
@@ -168,21 +168,65 @@ pub(crate) enum ParsedDefinedName {
     InvalidDefinedNameFormula,
 }
 
-/// A defined name as seen by the API: `scope` is the index of the sheet the
-/// name is local to, or `None` for a global name. The formula is in the
-/// active language/locale (see [`Model::get_defined_name_list`]).
-#[derive(Serialize, Debug, PartialEq, Eq, Clone)]
+/// A defined name as seen by the API, both when listing names and when
+/// creating or updating one. `scope` is the index of the sheet the name is
+/// local to, or `None` for a global name. The formula is in the active
+/// language/locale (see [`Model::get_defined_name_list`]).
+///
+/// Most names are global, visible and have no comment, so
+/// [`DefinedNameEntry::new`] takes just the name and the formula and the
+/// rest can be chained:
+///
+/// ```
+/// use ironcalc_base::DefinedNameEntry;
+/// let entry = DefinedNameEntry::new("Rate", "Sheet1!$A$1").scope(0).hidden(true);
+/// assert_eq!(entry.scope, Some(0));
+/// assert!(entry.comment.is_empty());
+/// ```
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
 pub struct DefinedNameEntry {
     /// The name, as typed by the user
     pub name: String,
     /// Index of the sheet the name is local to, `None` for a global name
+    #[serde(default)]
     pub scope: Option<u32>,
     /// Formula in the active language/locale, without the leading `=`
     pub formula: String,
     /// Hidden names are not shown in the UI but still resolve in formulas
+    #[serde(default)]
     pub hidden: bool,
     /// Free text describing the name, at most 255 characters. Empty means no comment.
+    #[serde(default)]
     pub comment: String,
+}
+
+impl DefinedNameEntry {
+    /// A global, visible name without a comment
+    pub fn new(name: &str, formula: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            formula: formula.to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// Makes the name local to the sheet with index `sheet`
+    pub fn scope(mut self, sheet: u32) -> Self {
+        self.scope = Some(sheet);
+        self
+    }
+
+    /// Sets the hidden flag
+    pub fn hidden(mut self, hidden: bool) -> Self {
+        self.hidden = hidden;
+        self
+    }
+
+    /// Sets the comment
+    pub fn comment(mut self, comment: &str) -> Self {
+        self.comment = comment.to_string();
+        self
+    }
 }
 
 /// Formatting settings for a locale
@@ -3684,30 +3728,28 @@ impl<'a> Model<'a> {
             .set_row_height(column, height)
     }
 
-    /// Adds a new defined name.
-    /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
-    /// A hidden name works like any other but is not meant to be shown in the UI.
-    /// The comment is free text of at most 255 characters (empty for no comment).
-    pub fn new_defined_name(
-        &mut self,
-        name: &str,
-        scope: Option<u32>,
-        formula: &str,
-        hidden: bool,
-        comment: &str,
-    ) -> Result<(), String> {
-        let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
-        validate_defined_name_comment(comment)?;
+    /// Adds a new defined name. See [`DefinedNameEntry`] for the meaning of
+    /// the fields.
+    pub fn new_defined_name(&mut self, entry: DefinedNameEntry) -> Result<(), String> {
+        let DefinedNameEntry {
+            name,
+            scope,
+            formula,
+            hidden,
+            comment,
+        } = entry;
+        let sheet_id = self.is_valid_defined_name(&name, scope, &formula)?;
+        validate_defined_name_comment(&comment)?;
         // Defined-name formulas are stored internally in English so they keep
         // working when the user switches language/locale.
         let context = self.defined_name_context();
-        let internal_formula = self.user_formula_to_internal(formula, &context)?;
+        let internal_formula = self.user_formula_to_internal(&formula, &context)?;
         self.workbook.defined_names.push(DefinedName {
-            name: name.to_string(),
+            name,
             formula: internal_formula,
             sheet_id,
             hidden,
-            comment: comment.to_string(),
+            comment,
         });
         self.reset_parsed_structures();
 
@@ -3819,18 +3861,19 @@ impl<'a> Model<'a> {
         }
     }
 
-    /// Update defined name
-    #[allow(clippy::too_many_arguments)]
+    /// Replaces the defined name `name` with scope `scope` by `new`: every
+    /// field of the name takes the value in `new`.
     pub fn update_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
-        new_name: &str,
-        new_scope: Option<u32>,
-        new_formula: &str,
-        new_hidden: bool,
-        new_comment: &str,
+        new: DefinedNameEntry,
     ) -> Result<(), String> {
+        let new_name = &new.name;
+        let new_scope = new.scope;
+        let new_formula = &new.formula;
+        let new_hidden = new.hidden;
+        let new_comment = &new.comment;
         if !is_valid_identifier(new_name) {
             return Err("Name: Invalid defined name".to_string());
         };
@@ -3877,7 +3920,7 @@ impl<'a> Model<'a> {
         let internal_formula = self.user_formula_to_internal(new_formula, &context)?;
         if let Some(i) = index {
             if let Some(df) = self.workbook.defined_names.get_mut(i) {
-                if new_name != df.name {
+                if *new_name != df.name {
                     // We need to rename the name in every formula:
 
                     // Parse all formulas with the old name

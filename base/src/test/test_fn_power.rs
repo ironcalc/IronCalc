@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::model::DefinedNameEntry;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -215,13 +216,10 @@ fn implicit_intersection() {
 fn inside_a_lambda() {
     let mut model = new_empty_model();
     model
-        .new_defined_name(
+        .new_defined_name(DefinedNameEntry::new(
             "gelu",
-            None,
             "=LAMBDA(x, 0.5*x*(1 + TANH(SQRT(2/PI()) * (x + 0.044715 * POWER(x,3)))))",
-            false,
-            "",
-        )
+        ))
         .unwrap();
     model._set("A1", "1");
     model._set("B1", "-1");

@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::model::DefinedNameEntry;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -65,13 +66,13 @@ fn defined_names_and_variables() {
     model._set("K1", "text");
     model._set("K2", "7");
     model
-        .new_defined_name("TextCell", None, "Sheet1!$K$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("TextCell", "Sheet1!$K$1"))
         .unwrap();
     model
-        .new_defined_name("Cells", None, "Sheet1!$K$1:$K$2", false, "")
+        .new_defined_name(DefinedNameEntry::new("Cells", "Sheet1!$K$1:$K$2"))
         .unwrap();
     model
-        .new_defined_name("Twice", None, "=LAMBDA(x, 2*x)", false, "")
+        .new_defined_name(DefinedNameEntry::new("Twice", "=LAMBDA(x, 2*x)"))
         .unwrap();
     model._set("A1", "=ISREF(TextCell)");
     model._set("A2", "=ISREF(Cells)");

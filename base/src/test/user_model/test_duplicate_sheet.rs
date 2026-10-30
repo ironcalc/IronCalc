@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::cf_types::{CfRuleInput, ValueOperator};
+use crate::model::DefinedNameEntry;
 use crate::test::user_model::util::new_empty_user_model;
 use crate::types::{Color, Dxf, Fill};
 
@@ -83,13 +84,13 @@ fn duplicate_handles_defined_names() {
     model.set_user_input(0, 1, 1, "5").unwrap();
 
     model
-        .new_defined_name("local_name", Some(0), "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("local_name", "Sheet1!$A$1").scope(0))
         .unwrap();
     model
-        .new_defined_name("from_source", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("from_source", "Sheet1!$A$1"))
         .unwrap();
     model
-        .new_defined_name("from_other", None, "Other!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("from_other", "Other!$A$1"))
         .unwrap();
 
     model.duplicate_sheet(0).unwrap();
@@ -163,10 +164,10 @@ fn duplicate_undo_redo() {
     model.set_user_input(0, 1, 1, "10").unwrap();
     model.set_user_input(0, 1, 2, "=A1*2").unwrap();
     model
-        .new_defined_name("local_name", Some(0), "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("local_name", "Sheet1!$A$1").scope(0))
         .unwrap();
     model
-        .new_defined_name("from_source", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("from_source", "Sheet1!$A$1"))
         .unwrap();
 
     let names_before = model.get_defined_name_list().len();

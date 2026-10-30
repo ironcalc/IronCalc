@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     cf_types::ConditionalFormatting,
     expressions::types::{Area, CellReferenceIndex},
-    model::CellStructure,
+    model::{CellStructure, DefinedNameEntry},
     types::{ArrayKind, Cell, Link, MergedCell, Style},
     UserModel,
 };
@@ -571,11 +571,13 @@ impl<'a> UserModel<'a> {
                 self.model.update_defined_name(
                     &dn_name,
                     dn_scope,
-                    &dn_name,
-                    dn_scope,
-                    &new_formula,
-                    hidden,
-                    &comment,
+                    DefinedNameEntry {
+                        name: dn_name.clone(),
+                        scope: dn_scope,
+                        formula: new_formula.clone(),
+                        hidden,
+                        comment: comment.clone(),
+                    },
                 )?;
             }
             // Update conditional formatting ranges and formula references.

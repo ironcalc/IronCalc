@@ -8,7 +8,7 @@ fn create_defined_name() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
     model
-        .new_defined_name("myName", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("myName", "Sheet1!$A$1"))
         .unwrap();
     model.set_user_input(0, 5, 7, "=myName").unwrap();
     assert_eq!(
@@ -50,7 +50,7 @@ fn scopes() {
 
     // Global
     model
-        .new_defined_name("myName", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("myName", "Sheet1!$A$1"))
         .unwrap();
     model.set_user_input(0, 5, 7, "=myName").unwrap();
 
@@ -58,7 +58,7 @@ fn scopes() {
     model.new_sheet().unwrap();
     model.set_user_input(1, 2, 1, "145").unwrap();
     model
-        .new_defined_name("myName", Some(1), "Sheet2!$A$2", false, "")
+        .new_defined_name(DefinedNameEntry::new("myName", "Sheet2!$A$2").scope(1))
         .unwrap();
     model.set_user_input(1, 8, 8, "=myName").unwrap();
 
@@ -92,7 +92,7 @@ fn delete_sheet() {
         .unwrap();
     model.new_sheet().unwrap();
     model
-        .new_defined_name("myName", Some(1), "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("myName", "Sheet1!$A$1").scope(1))
         .unwrap();
     model
         .set_user_input(1, 2, 1, r#"=CONCATENATE(MyName, " my world!")"#)
@@ -130,7 +130,7 @@ fn change_scope() {
         .unwrap();
     model.new_sheet().unwrap();
     model
-        .new_defined_name("myName", Some(1), "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("myName", "Sheet1!$A$1").scope(1))
         .unwrap();
 
     assert_eq!(
@@ -139,7 +139,11 @@ fn change_scope() {
     );
 
     model
-        .update_defined_name("myName", Some(1), "myName", None, "Sheet1!$A$1", false, "")
+        .update_defined_name(
+            "myName",
+            Some(1),
+            DefinedNameEntry::new("myName", "Sheet1!$A$1"),
+        )
         .unwrap();
 
     assert_eq!(
@@ -157,7 +161,7 @@ fn rename_defined_name() {
         .unwrap();
     model.new_sheet().unwrap();
     model
-        .new_defined_name("myName", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("myName", "Sheet1!$A$1"))
         .unwrap();
 
     assert_eq!(
@@ -166,7 +170,11 @@ fn rename_defined_name() {
     );
 
     model
-        .update_defined_name("myName", None, "newName", None, "Sheet1!$A$1", false, "")
+        .update_defined_name(
+            "myName",
+            None,
+            DefinedNameEntry::new("newName", "Sheet1!$A$1"),
+        )
         .unwrap();
 
     assert_eq!(
@@ -187,7 +195,7 @@ fn rename_defined_name_operations() {
     model.set_user_input(0, 1, 2, "123").unwrap();
 
     model
-        .new_defined_name("answer", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("answer", "Sheet1!$A$1"))
         .unwrap();
 
     model
@@ -201,13 +209,17 @@ fn rename_defined_name_operations() {
     model.new_sheet().unwrap();
     model.set_user_input(1, 1, 1, "78").unwrap();
     model
-        .new_defined_name("answer", Some(1), "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("answer", "Sheet1!$A$1").scope(1))
         .unwrap();
 
     model.set_user_input(1, 3, 1, "=answer").unwrap();
 
     model
-        .update_defined_name("answer", None, "respuesta", None, "Sheet1!$A$1", false, "")
+        .update_defined_name(
+            "answer",
+            None,
+            DefinedNameEntry::new("respuesta", "Sheet1!$A$1"),
+        )
         .unwrap();
 
     assert_eq!(
@@ -231,17 +243,17 @@ fn rename_defined_name_string_operations() {
     model.set_user_input(0, 1, 2, "World").unwrap();
 
     model
-        .new_defined_name("hello", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("hello", "Sheet1!$A$1"))
         .unwrap();
 
     model
-        .new_defined_name("world", None, "Sheet1!$B$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("world", "Sheet1!$B$1"))
         .unwrap();
 
     model.set_user_input(0, 2, 1, "=hello&world").unwrap();
 
     model
-        .update_defined_name("hello", None, "HolaS", None, "Sheet1!$A$1", false, "")
+        .update_defined_name("hello", None, DefinedNameEntry::new("HolaS", "Sheet1!$A$1"))
         .unwrap();
 
     assert_eq!(
@@ -255,24 +267,28 @@ fn invalid_names() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model
-        .new_defined_name("MyName", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("MyName", "Sheet1!$A$1"))
         .unwrap();
 
     // spaces
     assert_eq!(
-        model.new_defined_name("A real", None, "Sheet1!$A$1", false, ""),
+        model.new_defined_name(DefinedNameEntry::new("A real", "Sheet1!$A$1")),
         Err("Name: Invalid defined name".to_string())
     );
 
     // Starts with number
     assert_eq!(
-        model.new_defined_name("2real", None, "Sheet1!$A$1", false, ""),
+        model.new_defined_name(DefinedNameEntry::new("2real", "Sheet1!$A$1")),
         Err("Name: Invalid defined name".to_string())
     );
 
     // Updating also fails
     assert_eq!(
-        model.update_defined_name("MyName", None, "My Name", None, "Sheet1!$A$1", false, ""),
+        model.update_defined_name(
+            "MyName",
+            None,
+            DefinedNameEntry::new("My Name", "Sheet1!$A$1")
+        ),
         Err("Name: Invalid defined name".to_string())
     );
 }
@@ -282,21 +298,25 @@ fn already_existing() {
     let mut model = new_empty_user_model();
 
     model
-        .new_defined_name("MyName", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("MyName", "Sheet1!$A$1"))
         .unwrap();
     model
-        .new_defined_name("Another", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("Another", "Sheet1!$A$1"))
         .unwrap();
 
     // Can't create a new name with the same name
     assert_eq!(
-        model.new_defined_name("MyName", None, "Sheet1!$A$2", false, ""),
+        model.new_defined_name(DefinedNameEntry::new("MyName", "Sheet1!$A$2")),
         Err("Name: Defined name already exists".to_string())
     );
 
     // Can't update one into an existing
     assert_eq!(
-        model.update_defined_name("Another", None, "MyName", None, "Sheet1!$A$1", false, ""),
+        model.update_defined_name(
+            "Another",
+            None,
+            DefinedNameEntry::new("MyName", "Sheet1!$A$1")
+        ),
         Err("Name: Defined name already exists".to_string())
     );
 }
@@ -306,16 +326,20 @@ fn invalid_sheet() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model
-        .new_defined_name("MyName", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("MyName", "Sheet1!$A$1"))
         .unwrap();
 
     assert_eq!(
-        model.new_defined_name("Mything", Some(2), "Sheet1!$A$1", false, ""),
+        model.new_defined_name(DefinedNameEntry::new("Mything", "Sheet1!$A$1").scope(2)),
         Err("Scope: Invalid sheet index".to_string())
     );
 
     assert_eq!(
-        model.update_defined_name("MyName", None, "MyName", Some(2), "Sheet1!$A$1", false, ""),
+        model.update_defined_name(
+            "MyName",
+            None,
+            DefinedNameEntry::new("MyName", "Sheet1!$A$1").scope(2)
+        ),
         Err("Scope: Invalid sheet index".to_string())
     );
 
@@ -323,11 +347,7 @@ fn invalid_sheet() {
         model.update_defined_name(
             "MyName",
             Some(9),
-            "YourName",
-            None,
-            "Sheet1!$A$1",
-            false,
-            ""
+            DefinedNameEntry::new("YourName", "Sheet1!$A$1")
         ),
         Err("General: Failed to get old name".to_string())
     );
@@ -338,7 +358,7 @@ fn invalid_formula() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     assert!(model
-        .new_defined_name("MyName", None, "A1", false, "")
+        .new_defined_name(DefinedNameEntry::new("MyName", "A1"))
         .is_err());
 
     model.set_user_input(0, 1, 2, "=MyName").unwrap();
@@ -357,7 +377,7 @@ fn undo_redo() {
     model.set_user_input(0, 1, 2, r#"=MyName&"!""#).unwrap();
 
     model
-        .new_defined_name("MyName", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("MyName", "Sheet1!$A$1"))
         .unwrap();
 
     assert_eq!(
@@ -379,7 +399,11 @@ fn undo_redo() {
     );
 
     model
-        .update_defined_name("MyName", None, "MyName", None, "Sheet1!$A$2", false, "")
+        .update_defined_name(
+            "MyName",
+            None,
+            DefinedNameEntry::new("MyName", "Sheet1!$A$2"),
+        )
         .unwrap();
     assert_eq!(model.get_defined_name_list().len(), 1);
     assert_eq!(
@@ -423,7 +447,7 @@ fn change_scope_to_first_sheet() {
         .set_user_input(1, 2, 1, r#"=CONCATENATE(MyName, " world!")"#)
         .unwrap();
     model
-        .new_defined_name("myName", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("myName", "Sheet1!$A$1"))
         .unwrap();
 
     assert_eq!(
@@ -432,7 +456,11 @@ fn change_scope_to_first_sheet() {
     );
 
     model
-        .update_defined_name("myName", None, "myName", Some(0), "Sheet1!$A$1", false, "")
+        .update_defined_name(
+            "myName",
+            None,
+            DefinedNameEntry::new("myName", "Sheet1!$A$1").scope(0),
+        )
         .unwrap();
 
     assert_eq!(
@@ -448,7 +476,7 @@ fn rename_sheet() {
     model.set_user_input(0, 1, 1, "Hello").unwrap();
 
     model
-        .new_defined_name("myName", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("myName", "Sheet1!$A$1"))
         .unwrap();
 
     model
@@ -478,7 +506,7 @@ fn cut_paste_updates_defined_name_cell_reference() {
     // A1 = 11; defined name "MyConst" = Sheet1!$A$1
     model.set_user_input(0, 1, 1, "11").unwrap();
     model
-        .new_defined_name("MyConst", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("MyConst", "Sheet1!$A$1"))
         .unwrap();
     model.set_user_input(0, 3, 3, "=SEQUENCE(MyConst)").unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "1");
@@ -516,7 +544,7 @@ fn cut_paste_updates_defined_name_range_reference() {
     model.set_user_input(0, 4, 3, "2").unwrap();
     model.set_user_input(0, 5, 3, "3").unwrap();
     model
-        .new_defined_name("MyRange", None, "Sheet1!$C$3:$C$5", false, "")
+        .new_defined_name(DefinedNameEntry::new("MyRange", "Sheet1!$C$3:$C$5"))
         .unwrap();
     model.set_user_input(0, 1, 2, "=SUM(MyRange)").unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "6");
@@ -552,10 +580,10 @@ fn cut_paste_defined_name_no_update_when_outside_moved_area() {
     model.set_user_input(0, 1, 1, "5").unwrap();
     model.set_user_input(0, 2, 2, "7").unwrap();
     model
-        .new_defined_name("Name1", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("Name1", "Sheet1!$A$1"))
         .unwrap();
     model
-        .new_defined_name("Name2", None, "Sheet1!$B$2", false, "")
+        .new_defined_name(DefinedNameEntry::new("Name2", "Sheet1!$B$2"))
         .unwrap();
 
     // Cut only A1, paste to D4 — Name2 must not change
@@ -592,7 +620,7 @@ fn cut_paste_defined_name_undo_restores_formula() {
 
     model.set_user_input(0, 1, 1, "42").unwrap();
     model
-        .new_defined_name("MyVal", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("MyVal", "Sheet1!$A$1"))
         .unwrap();
 
     // Cut A1, paste to C5
@@ -637,7 +665,7 @@ fn cut_paste_scoped_defined_name_updates() {
     // Sheet1!A1 = 10; scoped defined name on Sheet1: "Local" = Sheet1!$A$1
     model.set_user_input(0, 1, 1, "10").unwrap();
     model
-        .new_defined_name("Local", Some(0), "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("Local", "Sheet1!$A$1").scope(0))
         .unwrap();
 
     // Cut A1, paste to B2
@@ -673,7 +701,7 @@ fn cut_paste_range_defined_name_no_update_when_partial_overlap() {
     }
     // "BigRange" = Sheet1!$B$1:$D$3 (3x3 area)
     model
-        .new_defined_name("BigRange", None, "Sheet1!$B$1:$D$3", false, "")
+        .new_defined_name(DefinedNameEntry::new("BigRange", "Sheet1!$B$1:$D$3"))
         .unwrap();
 
     // Cut only B1:B3 (subset of BigRange) to F1:F3
@@ -703,7 +731,7 @@ fn hidden_defined_name() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
     model
-        .new_defined_name("Secret", None, "Sheet1!$A$1", true, "")
+        .new_defined_name(DefinedNameEntry::new("Secret", "Sheet1!$A$1").hidden(true))
         .unwrap();
     // A hidden name resolves like any other
     model.set_user_input(0, 2, 1, "=Secret").unwrap();
@@ -724,7 +752,11 @@ fn hidden_defined_name() {
 
     // Unhide it, keeping everything else
     model
-        .update_defined_name("Secret", None, "Secret", None, "Sheet1!$A$1", false, "")
+        .update_defined_name(
+            "Secret",
+            None,
+            DefinedNameEntry::new("Secret", "Sheet1!$A$1"),
+        )
         .unwrap();
     assert_eq!(
         model.get_defined_name_list(),
@@ -763,7 +795,11 @@ fn hidden_defined_name() {
 
     // Hide it again with a rename, then delete: undo of the delete brings back a hidden name
     model
-        .update_defined_name("Secret", None, "Hidden", None, "Sheet1!$A$1", true, "")
+        .update_defined_name(
+            "Secret",
+            None,
+            DefinedNameEntry::new("Hidden", "Sheet1!$A$1").hidden(true),
+        )
         .unwrap();
     assert_eq!(
         model.get_formatted_cell_value(0, 2, 1),
@@ -805,7 +841,7 @@ fn hidden_defined_name_survives_cut_paste() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
     model
-        .new_defined_name("Secret", None, "Sheet1!$A$1", true, "")
+        .new_defined_name(DefinedNameEntry::new("Secret", "Sheet1!$A$1").hidden(true))
         .unwrap();
 
     // Cut A1 and paste it to C5: the name follows and stays hidden
@@ -842,10 +878,14 @@ fn hidden_defined_name_survives_cut_paste() {
 fn hidden_defined_name_survives_sheet_duplicate_and_rename() {
     let mut model = new_empty_user_model();
     model
-        .new_defined_name("Secret", Some(0), "Sheet1!$A$1", true, "")
+        .new_defined_name(
+            DefinedNameEntry::new("Secret", "Sheet1!$A$1")
+                .scope(0)
+                .hidden(true),
+        )
         .unwrap();
     model
-        .new_defined_name("Visible", Some(0), "Sheet1!$A$2", false, "")
+        .new_defined_name(DefinedNameEntry::new("Visible", "Sheet1!$A$2").scope(0))
         .unwrap();
 
     model.rename_sheet(0, "Renamed").unwrap();
@@ -888,7 +928,7 @@ fn defined_name_comment() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "0.21").unwrap();
     model
-        .new_defined_name("TaxRate", None, "Sheet1!$A$1", false, "VAT in 2024")
+        .new_defined_name(DefinedNameEntry::new("TaxRate", "Sheet1!$A$1").comment("VAT in 2024"))
         .unwrap();
     assert_eq!(
         model.get_defined_name_list(),
@@ -906,11 +946,7 @@ fn defined_name_comment() {
         .update_defined_name(
             "TaxRate",
             None,
-            "TaxRate",
-            None,
-            "Sheet1!$A$1",
-            false,
-            "VAT in 2025",
+            DefinedNameEntry::new("TaxRate", "Sheet1!$A$1").comment("VAT in 2025"),
         )
         .unwrap();
     assert_eq!(model.get_defined_name_list()[0].comment, "VAT in 2025");
@@ -935,24 +971,20 @@ fn defined_name_comment_max_length() {
 
     // 255 characters (not bytes) are fine
     model
-        .new_defined_name("Name1", None, "Sheet1!$A$1", false, &ok)
+        .new_defined_name(DefinedNameEntry::new("Name1", "Sheet1!$A$1").comment(&ok))
         .unwrap();
     assert_eq!(model.get_defined_name_list()[0].comment, ok);
 
     // 256 are not, both when creating and updating
     assert_eq!(
-        model.new_defined_name("Name2", None, "Sheet1!$A$2", false, &too_long),
+        model.new_defined_name(DefinedNameEntry::new("Name2", "Sheet1!$A$2").comment(&too_long)),
         Err("Comment: Comment must be at most 255 characters".to_string())
     );
     assert_eq!(
         model.update_defined_name(
             "Name1",
             None,
-            "Name1",
-            None,
-            "Sheet1!$A$1",
-            false,
-            &too_long
+            DefinedNameEntry::new("Name1", "Sheet1!$A$1").comment(&too_long)
         ),
         Err("Comment: Comment must be at most 255 characters".to_string())
     );
@@ -968,7 +1000,12 @@ fn defined_name_comment_survives_cut_paste_rename_and_duplicate() {
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
     model
-        .new_defined_name("Rate", Some(0), "Sheet1!$A$1", true, "Local rate")
+        .new_defined_name(
+            DefinedNameEntry::new("Rate", "Sheet1!$A$1")
+                .scope(0)
+                .hidden(true)
+                .comment("Local rate"),
+        )
         .unwrap();
 
     // Cut A1 to C5

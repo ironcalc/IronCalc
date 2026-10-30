@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 
 use xlsx::base::cf_types::CfRuleInput;
 use xlsx::base::types::{Link, Style, StyleIncludes, Theme};
-use xlsx::base::{BorderArea, ClipboardData, UserModel};
+use xlsx::base::{BorderArea, ClipboardData, DefinedNameEntry, UserModel};
 use xlsx::export::{save_to_icalc, save_to_xlsx, save_xlsx_to_writer};
 use xlsx::import;
 
@@ -1057,32 +1057,41 @@ impl PyUserModel {
         to_python(py, &data)
     }
 
-    /// Creates a new defined name. `scope` is a sheet index or None for global scope.
-    /// A hidden name works like any other but is not shown in the UI.
-    /// The comment is free text of at most 255 characters.
-    #[pyo3(signature = (name, scope, formula, hidden=false, comment=""))]
+    /// Creates a new defined name. Only `name` and `formula` are required:
+    /// `scope` (a sheet index) defaults to a global name, `hidden` to False and
+    /// `comment` to none. A hidden name works like any other but is not shown
+    /// in the UI. The comment is free text of at most 255 characters.
+    #[pyo3(signature = (name, formula, scope=None, hidden=false, comment=""))]
     pub fn new_defined_name(
         &mut self,
         name: &str,
-        scope: Option<u32>,
         formula: &str,
+        scope: Option<u32>,
         hidden: bool,
         comment: &str,
     ) -> PyResult<()> {
         self.model
-            .new_defined_name(name, scope, formula, hidden, comment)
+            .new_defined_name(DefinedNameEntry {
+                name: name.to_string(),
+                scope,
+                formula: formula.to_string(),
+                hidden,
+                comment: comment.to_string(),
+            })
             .map_err(to_py_err)
     }
 
-    #[pyo3(signature = (name, scope, new_name, new_scope, new_formula, new_hidden, new_comment))]
+    /// Replaces the defined name `name` with scope `scope`: every field takes
+    /// the new value, with the same defaults as `new_defined_name`.
+    #[pyo3(signature = (name, scope, new_name, new_formula, new_scope=None, new_hidden=false, new_comment=""))]
     #[allow(clippy::too_many_arguments)]
     pub fn update_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
         new_name: &str,
-        new_scope: Option<u32>,
         new_formula: &str,
+        new_scope: Option<u32>,
         new_hidden: bool,
         new_comment: &str,
     ) -> PyResult<()> {
@@ -1090,11 +1099,13 @@ impl PyUserModel {
             .update_defined_name(
                 name,
                 scope,
-                new_name,
-                new_scope,
-                new_formula,
-                new_hidden,
-                new_comment,
+                DefinedNameEntry {
+                    name: new_name.to_string(),
+                    scope: new_scope,
+                    formula: new_formula.to_string(),
+                    hidden: new_hidden,
+                    comment: new_comment.to_string(),
+                },
             )
             .map_err(to_py_err)
     }

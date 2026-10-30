@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::model::DefinedNameEntry;
 use crate::test::util::new_empty_model;
 
 // A defined name whose formula is not a reference: a constant or an expression
@@ -10,28 +11,28 @@ fn constants_and_expressions() {
     model._set("K2", "20");
     model._set("K3", "30");
     model
-        .new_defined_name("Pi", None, "3.14159", false, "")
+        .new_defined_name(DefinedNameEntry::new("Pi", "3.14159"))
         .unwrap();
     model
-        .new_defined_name("Greeting", None, "\"Hello\"", false, "")
+        .new_defined_name(DefinedNameEntry::new("Greeting", "\"Hello\""))
         .unwrap();
     model
-        .new_defined_name("Yes", None, "TRUE", false, "")
+        .new_defined_name(DefinedNameEntry::new("Yes", "TRUE"))
         .unwrap();
     model
-        .new_defined_name("Total", None, "SUM(Sheet1!$K$1:$K$3)", false, "")
+        .new_defined_name(DefinedNameEntry::new("Total", "SUM(Sheet1!$K$1:$K$3)"))
         .unwrap();
     model
-        .new_defined_name("Double", None, "Sheet1!$K$1*2", false, "")
+        .new_defined_name(DefinedNameEntry::new("Double", "Sheet1!$K$1*2"))
         .unwrap();
     model
-        .new_defined_name("TotalPlus", None, "Total+Double", false, "")
+        .new_defined_name(DefinedNameEntry::new("TotalPlus", "Total+Double"))
         .unwrap();
     model
-        .new_defined_name("Dyn", None, "OFFSET(Sheet1!$K$1,0,0,2,1)", false, "")
+        .new_defined_name(DefinedNameEntry::new("Dyn", "OFFSET(Sheet1!$K$1,0,0,2,1)"))
         .unwrap();
     assert!(model
-        .new_defined_name("Broken", None, "SUM(", false, "")
+        .new_defined_name(DefinedNameEntry::new("Broken", "SUM("))
         .is_err());
 
     model._set("A1", "=Pi");
@@ -76,10 +77,10 @@ fn sheet_qualified_names() {
     model._set("Data!A1", "12");
     // Workbook name and a name local to Data with the same name
     model
-        .new_defined_name("Scope_Test", None, "Sheet1!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("Scope_Test", "Sheet1!$A$1"))
         .unwrap();
     model
-        .new_defined_name("Scope_Test", Some(1), "Data!$A$1", false, "")
+        .new_defined_name(DefinedNameEntry::new("Scope_Test", "Data!$A$1").scope(1))
         .unwrap();
 
     model._set("Sheet1!B1", "=Scope_Test");
@@ -126,7 +127,7 @@ fn qualified_name_starting_like_a_reference() {
     model.add_sheet("Data").unwrap();
     model._set("Data!Q1", "77");
     model
-        .new_defined_name("Q1_Total", None, "100", false, "")
+        .new_defined_name(DefinedNameEntry::new("Q1_Total", "100"))
         .unwrap();
     model._set("Sheet1!A1", "=Data!Q1_Total");
     model._set("Sheet1!A2", "=Data!Q1");
@@ -144,24 +145,24 @@ fn local_name_formulas_resolve_in_their_sheet() {
     let mut model = new_empty_model();
     model.add_sheet("Data").unwrap();
     model
-        .new_defined_name("Rate", None, "1", false, "")
+        .new_defined_name(DefinedNameEntry::new("Rate", "1"))
         .unwrap();
     model
-        .new_defined_name("Rate", Some(1), "10", false, "")
+        .new_defined_name(DefinedNameEntry::new("Rate", "10").scope(1))
         .unwrap();
     model
-        .new_defined_name("DoubleRate", Some(1), "Rate*2", false, "")
+        .new_defined_name(DefinedNameEntry::new("DoubleRate", "Rate*2").scope(1))
         .unwrap();
     model
-        .new_defined_name("OnlyLocal", Some(1), "7", false, "")
+        .new_defined_name(DefinedNameEntry::new("OnlyLocal", "7").scope(1))
         .unwrap();
     // A local name may depend on a name that exists only in its sheet
     model
-        .new_defined_name("UsesLocal", Some(1), "OnlyLocal+1", false, "")
+        .new_defined_name(DefinedNameEntry::new("UsesLocal", "OnlyLocal+1").scope(1))
         .unwrap();
     // A workbook name uses the workbook Rate
     model
-        .new_defined_name("GlobalDouble", None, "Rate*2", false, "")
+        .new_defined_name(DefinedNameEntry::new("GlobalDouble", "Rate*2"))
         .unwrap();
 
     model._set("Sheet1!A1", "=Data!DoubleRate");

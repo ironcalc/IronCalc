@@ -5,6 +5,7 @@
 //! non-English language: the diffs hold the internal (English) formula, so they
 //! replay correctly regardless of the active language.
 
+use crate::model::DefinedNameEntry;
 use crate::{
     cf_types::{CfRule, CfRuleInput},
     test::user_model::util::new_empty_user_model,
@@ -39,7 +40,7 @@ fn defined_name_created_in_spanish_undo_redo() {
     let mut model = new_empty_user_model();
     model.set_language("es").unwrap();
     model
-        .new_defined_name("MiSi", None, "=LAMBDA(x, SI(x>0, 1, 2))", false, "")
+        .new_defined_name(DefinedNameEntry::new("MiSi", "=LAMBDA(x, SI(x>0, 1, 2))"))
         .unwrap();
     model.set_user_input(0, 1, 1, "=MiSi(5)").unwrap();
     assert_eq!(model.model._get_text("A1"), *"1");

@@ -575,6 +575,22 @@ export interface DefinedName {
 }
 
 /**
+ * A defined name to create or to replace an existing one with. Only `name`
+ * and `formula` are required: the name is global, visible and without a
+ * comment unless said otherwise.
+ */
+export interface DefinedNameInput {
+  name: string;
+  formula: string;
+  /** Index of the sheet the name is local to; omit or null for a global name */
+  scope?: number | null;
+  /** Hidden names work like regular ones but are not shown in the UI */
+  hidden?: boolean;
+  /** Free text of at most 255 characters */
+  comment?: string;
+}
+
+/**
  * A cell hyperlink. The link is cell metadata: the text displayed in the cell
  * is the cell content, not part of the link.
  * External links point to a resource outside the workbook (an URL, a mailto:

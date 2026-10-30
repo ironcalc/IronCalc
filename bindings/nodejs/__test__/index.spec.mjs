@@ -87,8 +87,8 @@ test('named styles', (t) => {
 
 test('defined names', (t) => {
   const model = new UserModel("Workbook1");
-  model.newDefinedName("myname", null, "Sheet1!$A$1");
-  model.newDefinedName("localname", 0, "Sheet1!$B$2");
+  model.newDefinedName({ name: "myname", formula: "Sheet1!$A$1" });
+  model.newDefinedName({ name: "localname", scope: 0, formula: "Sheet1!$B$2" });
   const names = model.getDefinedNameList();
   t.is(names.length, 2);
   t.is(names[0].name, "myname");
@@ -101,17 +101,18 @@ test('defined names', (t) => {
   t.is(names[0].comment, "");
 
   // hidden names
-  model.newDefinedName("secret", null, "Sheet1!$C$3", true);
+  model.newDefinedName({ name: "secret", formula: "Sheet1!$C$3", hidden: true });
   t.true(model.getDefinedNameList()[2].hidden);
-  model.updateDefinedName("secret", null, "secret", null, "Sheet1!$C$3", false, "");
+  // update replaces every field: hidden goes back to its default
+  model.updateDefinedName("secret", null, { name: "secret", formula: "Sheet1!$C$3" });
   t.false(model.getDefinedNameList()[2].hidden);
 
   // comments
-  model.newDefinedName("rate", null, "Sheet1!$D$4", false, "Tax rate");
+  model.newDefinedName({ name: "rate", formula: "Sheet1!$D$4", comment: "Tax rate" });
   t.is(model.getDefinedNameList()[3].comment, "Tax rate");
-  model.updateDefinedName("rate", null, "rate", null, "Sheet1!$D$4", false, "VAT");
+  model.updateDefinedName("rate", null, { name: "rate", formula: "Sheet1!$D$4", comment: "VAT" });
   t.is(model.getDefinedNameList()[3].comment, "VAT");
-  t.throws(() => model.newDefinedName("long", null, "Sheet1!$E$5", false, "x".repeat(256)));
+  t.throws(() => model.newDefinedName({ name: "long", formula: "Sheet1!$E$5", comment: "x".repeat(256) }));
 });
 
 test('conditional formatting', (t) => {
