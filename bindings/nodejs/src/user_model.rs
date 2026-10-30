@@ -6,13 +6,15 @@ use ironcalc::{
   base::{
     cf_types::CfRuleInput,
     types::{Link, Style, StyleIncludes, Theme},
-    BorderArea, ClipboardData, DefinedNameEntry, UserModel as BaseModel,
+    BorderArea, ClipboardData, DefinedNameEntry, NamedFunctionEntry, UserModel as BaseModel,
   },
   export::{save_to_icalc, save_to_xlsx},
   import::{load_from_icalc, load_from_xlsx},
 };
 
-use crate::{area, js_to_color, leak_str, to_js_error, CellType, DefinedName, FmtSettings};
+use crate::{
+  area, js_to_color, leak_str, to_js_error, CellType, DefinedName, FmtSettings, NamedFunction,
+};
 
 #[derive(Serialize)]
 struct NamedStyleEntry {
@@ -1073,6 +1075,91 @@ impl UserModel {
     self
       .model
       .delete_defined_name(&name, scope)
+      .map_err(to_js_error)
+  }
+
+  // Named functions
+
+  /// Returns the list of named functions as [{name, scope, description, parameters, formula}].
+  /// `scope` is omitted for workbook functions.
+  #[napi(ts_return_type = "Array<NamedFunction>")]
+  pub fn get_named_function_list<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
+    let data: Vec<NamedFunction> = self
+      .model
+      .get_named_function_list()
+      .into_iter()
+      .map(NamedFunction::from)
+      .collect();
+    env.to_js_value(&data).map_err(to_js_error)
+  }
+
+  /// Creates a new named function. Only `name` and `formula` (the body) are
+  /// required: `scope` (a sheet index) defaults to a workbook function,
+  /// `parameters` to none and `description` to none.
+  #[napi]
+  pub fn new_named_function(
+    &mut self,
+    env: Env,
+    #[napi(ts_arg_type = "NamedFunctionInput")] entry: Unknown,
+  ) -> Result<()> {
+    let entry: NamedFunctionEntry = env.from_js_value(entry).map_err(to_js_error)?;
+    self.model.new_named_function(entry).map_err(to_js_error)
+  }
+
+  /// Replaces the named function `name` with scope `scope` by `entry`: every
+  /// field takes the value in `entry`, with the same defaults as
+  /// `newNamedFunction`. A renamed function is renamed in every formula that
+  /// uses it.
+  #[napi]
+  pub fn update_named_function(
+    &mut self,
+    env: Env,
+    name: String,
+    scope: Option<u32>,
+    #[napi(ts_arg_type = "NamedFunctionInput")] entry: Unknown,
+  ) -> Result<()> {
+    let entry: NamedFunctionEntry = env.from_js_value(entry).map_err(to_js_error)?;
+    self
+      .model
+      .update_named_function(&name, scope, entry)
+      .map_err(to_js_error)
+  }
+
+  /// Deletes a named function. Cells using it evaluate to #NAME?.
+  #[napi]
+  pub fn delete_named_function(&mut self, name: String, scope: Option<u32>) -> Result<()> {
+    self
+      .model
+      .delete_named_function(&name, scope)
+      .map_err(to_js_error)
+  }
+
+  /// Checks a named function being created or, when `currentName` is given,
+  /// the one with that name and scope `currentScope` being edited. Returns
+  /// the problems found field by field.
+  #[napi(ts_return_type = "NamedFunctionCheck")]
+  pub fn check_named_function<'e>(
+    &mut self,
+    env: &'e Env,
+    #[napi(ts_arg_type = "NamedFunctionInput")] entry: Unknown,
+    current_name: Option<String>,
+    current_scope: Option<u32>,
+  ) -> Result<Unknown<'e>> {
+    let entry: NamedFunctionEntry = env.from_js_value(entry).map_err(to_js_error)?;
+    let current = current_name
+      .as_deref()
+      .map(|current_name| (current_name, current_scope));
+    let check = self.model.check_named_function(&entry, current);
+    env.to_js_value(&check).map_err(to_js_error)
+  }
+
+  /// The number of cells whose formula uses the named function
+  #[napi]
+  pub fn named_function_usage_count(&self, name: String, scope: Option<u32>) -> Result<u32> {
+    self
+      .model
+      .named_function_usage_count(&name, scope)
+      .map(|count| count as u32)
       .map_err(to_js_error)
   }
 

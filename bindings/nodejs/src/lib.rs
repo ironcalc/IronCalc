@@ -78,6 +78,30 @@ pub(crate) struct DefinedName {
   pub comment: String,
 }
 
+/// A named function as returned to JavaScript: `scope` is omitted for a
+/// workbook function
+#[derive(Serialize)]
+pub(crate) struct NamedFunction {
+  pub name: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub scope: Option<u32>,
+  pub description: String,
+  pub parameters: Vec<ironcalc::base::NamedFunctionParameterEntry>,
+  pub formula: String,
+}
+
+impl From<ironcalc::base::NamedFunctionEntry> for NamedFunction {
+  fn from(entry: ironcalc::base::NamedFunctionEntry) -> Self {
+    NamedFunction {
+      name: entry.name,
+      scope: entry.scope,
+      description: entry.description,
+      parameters: entry.parameters,
+      formula: entry.formula,
+    }
+  }
+}
+
 // Local mirror of `ironcalc_base::FmtSettings`, which does not implement Serialize
 #[derive(Serialize)]
 pub(crate) struct FmtSettings {

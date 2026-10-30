@@ -387,6 +387,71 @@ export interface DefinedNameInput {
   comment?: string;
 }
 
+/** A parameter of a named function */
+export interface NamedFunctionParameter {
+  name: string;
+  /** Free text of at most 255 characters, empty when there is no description */
+  description: string;
+  /** An optional parameter may be omitted when calling the function */
+  optional: boolean;
+}
+
+/**
+ * A named function: `name(parameters) = formula`. The formula is the body,
+ * without a leading `=`, in the active language.
+ */
+export interface NamedFunction {
+  name: string;
+  /** Index of the sheet the function is local to, absent for a workbook function */
+  scope?: number;
+  /** Free text of at most 255 characters, empty when there is no description */
+  description: string;
+  parameters: NamedFunctionParameter[];
+  formula: string;
+}
+
+/** A parameter of a named function to create or update. Only `name` is required. */
+export interface NamedFunctionParameterInput {
+  name: string;
+  /** Free text of at most 255 characters */
+  description?: string;
+  /** An optional parameter may be omitted when calling the function */
+  optional?: boolean;
+}
+
+/**
+ * A named function to create or to replace an existing one with. Only `name`
+ * and `formula` (the body) are required: the function is a workbook one,
+ * without parameters or description unless said otherwise.
+ */
+export interface NamedFunctionInput {
+  name: string;
+  formula: string;
+  /** Index of the sheet the function is local to; omit or null for a workbook function */
+  scope?: number | null;
+  /** Free text of at most 255 characters */
+  description?: string;
+  parameters?: NamedFunctionParameterInput[];
+}
+
+/**
+ * The problems found in a named function being edited, to show next to each
+ * field. The function can be saved when there are no errors; warnings are
+ * informative.
+ */
+export interface NamedFunctionCheck {
+  /** The error in the name, if any */
+  name?: string | null;
+  /** The error in each parameter, in the order they were given */
+  parameters: (string | null)[];
+  /** The errors in the formula */
+  formula: string[];
+  /** Warnings about the formula, like a parameter that is not used */
+  warnings: string[];
+  /** Names used in the formula that are neither parameters nor functions */
+  unknown_names: string[];
+}
+
 /**
  * A cell hyperlink. The link is cell metadata: the text displayed in the cell
  * is the cell content, not part of the link.

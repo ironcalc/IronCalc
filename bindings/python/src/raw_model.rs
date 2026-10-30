@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 
 use xlsx::base::types::{Link, SheetState, Style, Theme};
-use xlsx::base::{DefinedNameEntry, Model};
+use xlsx::base::{DefinedNameEntry, Model, NamedFunctionEntry};
 use xlsx::export::{save_to_icalc, save_to_xlsx, save_xlsx_to_writer};
 
 use crate::types::PyCellType;
@@ -719,6 +719,129 @@ impl PyModel {
     pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> PyResult<()> {
         self.model
             .delete_defined_name(name, scope)
+            .map_err(to_py_err)
+    }
+
+    // Named functions
+
+    /// Returns the list of named functions as
+    /// [{"name", "scope", "description", "parameters", "formula"}], where each
+    /// parameter is {"name", "description", "optional"}
+    pub fn get_named_function_list<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let data = self.model.get_named_function_list();
+        to_python(py, &data)
+    }
+
+    /// Creates a new named function. Only `name` and `formula` (the body) are
+    /// required: `parameters` is a list of {"name", "description", "optional"}
+    /// dicts where only "name" is required, `scope` (a sheet index) defaults
+    /// to a workbook function and `description` to none.
+    #[pyo3(signature = (name, formula, parameters=None, scope=None, description=""))]
+    pub fn new_named_function(
+        &mut self,
+        name: &str,
+        formula: &str,
+        parameters: Option<&Bound<'_, PyAny>>,
+        scope: Option<u32>,
+        description: &str,
+    ) -> PyResult<()> {
+        let parameters = match parameters {
+            Some(parameters) => from_python(parameters)?,
+            None => Vec::new(),
+        };
+        self.model
+            .new_named_function(NamedFunctionEntry {
+                name: name.to_string(),
+                scope,
+                description: description.to_string(),
+                parameters,
+                formula: formula.to_string(),
+            })
+            .map_err(to_py_err)
+    }
+
+    /// Replaces the named function `name` with scope `scope`: every field
+    /// takes the new value, with the same defaults as `new_named_function`.
+    /// A renamed function is renamed in every formula that uses it.
+    #[pyo3(signature = (name, scope, new_name, new_formula, new_parameters=None, new_scope=None, new_description=""))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn update_named_function(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        new_name: &str,
+        new_formula: &str,
+        new_parameters: Option<&Bound<'_, PyAny>>,
+        new_scope: Option<u32>,
+        new_description: &str,
+    ) -> PyResult<()> {
+        let parameters = match new_parameters {
+            Some(parameters) => from_python(parameters)?,
+            None => Vec::new(),
+        };
+        self.model
+            .update_named_function(
+                name,
+                scope,
+                NamedFunctionEntry {
+                    name: new_name.to_string(),
+                    scope: new_scope,
+                    description: new_description.to_string(),
+                    parameters,
+                    formula: new_formula.to_string(),
+                },
+            )
+            .map_err(to_py_err)
+    }
+
+    /// Deletes a named function. Cells using it evaluate to #NAME?.
+    #[pyo3(signature = (name, scope))]
+    pub fn delete_named_function(&mut self, name: &str, scope: Option<u32>) -> PyResult<()> {
+        self.model
+            .delete_named_function(name, scope)
+            .map_err(to_py_err)
+    }
+
+    /// Checks a named function being created or, when `current_name` is
+    /// given, the one with that name and scope `current_scope` being edited.
+    /// Returns the problems found field by field as
+    /// {"name", "parameters", "formula", "warnings", "unknown_names"}. The
+    /// function can be saved when "name" is None, every entry of "parameters"
+    /// is None and "formula" is empty.
+    #[pyo3(signature = (name, formula, parameters=None, scope=None, description="", current_name=None, current_scope=None))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn check_named_function<'py>(
+        &mut self,
+        py: Python<'py>,
+        name: &str,
+        formula: &str,
+        parameters: Option<&Bound<'_, PyAny>>,
+        scope: Option<u32>,
+        description: &str,
+        current_name: Option<&str>,
+        current_scope: Option<u32>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let parameters = match parameters {
+            Some(parameters) => from_python(parameters)?,
+            None => Vec::new(),
+        };
+        let entry = NamedFunctionEntry {
+            name: name.to_string(),
+            scope,
+            description: description.to_string(),
+            parameters,
+            formula: formula.to_string(),
+        };
+        let current = current_name.map(|current_name| (current_name, current_scope));
+        let check = self.model.check_named_function(&entry, current);
+        to_python(py, &check)
+    }
+
+    /// The number of cells whose formula uses the named function
+    #[pyo3(signature = (name, scope))]
+    pub fn named_function_usage_count(&self, name: &str, scope: Option<u32>) -> PyResult<usize> {
+        self.model
+            .named_function_usage_count(name, scope)
             .map_err(to_py_err)
     }
 

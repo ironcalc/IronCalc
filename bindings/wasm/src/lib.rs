@@ -14,8 +14,8 @@ use ironcalc_base::{
     },
     types::{CellType, Color, Link, Style, StyleIncludes},
     worksheet::NavigationDirection,
-    BorderArea, ClipboardData, DefinedNameEntry, UserModel as BaseModel, COLUMN_WIDTH_FACTOR,
-    DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
+    BorderArea, ClipboardData, DefinedNameEntry, NamedFunctionEntry, UserModel as BaseModel,
+    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
 };
 
 fn to_js_error(error: String) -> JsError {
@@ -1192,6 +1192,90 @@ impl Model {
     pub fn delete_definedname(&mut self, name: &str, scope: Option<u32>) -> Result<(), JsError> {
         self.model
             .delete_defined_name(name, scope)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(
+        js_name = "getNamedFunctionList",
+        unchecked_return_type = "NamedFunction[]"
+    )]
+    pub fn get_named_function_list(&self) -> Result<JsValue, JsError> {
+        let data = self.model.get_named_function_list();
+        serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Creates a new named function. Only `name` and `formula` (the body)
+    /// are required: `scope` (a sheet index) defaults to a workbook function,
+    /// `parameters` to none and `description` to none.
+    #[wasm_bindgen(js_name = "newNamedFunction")]
+    pub fn new_named_function(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "NamedFunctionInput")] entry: JsValue,
+    ) -> Result<(), JsError> {
+        let entry: NamedFunctionEntry =
+            serde_wasm_bindgen::from_value(entry).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .new_named_function(entry)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Replaces the named function `name` with scope `scope` by `entry`: every
+    /// field takes the value in `entry`, with the same defaults as
+    /// `newNamedFunction`. A renamed function is renamed in every formula that
+    /// uses it.
+    #[wasm_bindgen(js_name = "updateNamedFunction")]
+    pub fn update_named_function(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        #[wasm_bindgen(unchecked_param_type = "NamedFunctionInput")] entry: JsValue,
+    ) -> Result<(), JsError> {
+        let entry: NamedFunctionEntry =
+            serde_wasm_bindgen::from_value(entry).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .update_named_function(name, scope, entry)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Deletes a named function. Cells using it evaluate to #NAME?.
+    #[wasm_bindgen(js_name = "deleteNamedFunction")]
+    pub fn delete_named_function(&mut self, name: &str, scope: Option<u32>) -> Result<(), JsError> {
+        self.model
+            .delete_named_function(name, scope)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Checks a named function being created or, when `currentName` is given,
+    /// the one with that name and scope `currentScope` being edited. Returns
+    /// the problems found field by field; `isValid` tells if it can be saved.
+    #[wasm_bindgen(
+        js_name = "checkNamedFunction",
+        unchecked_return_type = "NamedFunctionCheck"
+    )]
+    pub fn check_named_function(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "NamedFunctionInput")] entry: JsValue,
+        current_name: Option<String>,
+        current_scope: Option<u32>,
+    ) -> Result<JsValue, JsError> {
+        let entry: NamedFunctionEntry =
+            serde_wasm_bindgen::from_value(entry).map_err(|e| to_js_error(e.to_string()))?;
+        let current = current_name
+            .as_deref()
+            .map(|current_name| (current_name, current_scope));
+        let check = self.model.check_named_function(&entry, current);
+        serde_wasm_bindgen::to_value(&check).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// The number of cells whose formula uses the named function
+    #[wasm_bindgen(js_name = "namedFunctionUsageCount")]
+    pub fn named_function_usage_count(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+    ) -> Result<usize, JsError> {
+        self.model
+            .named_function_usage_count(name, scope)
             .map_err(|e| to_js_error(e.to_string()))
     }
 
