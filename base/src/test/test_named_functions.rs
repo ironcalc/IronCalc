@@ -712,3 +712,372 @@ fn renamed_defined_name_is_renamed_in_bodies() {
     assert_eq!(model.get_named_function_list()[0].formula, "net*(1+TAX)");
     assert_eq!(model._get_text("A1"), *"120");
 }
+
+// ---------------------------------------------------------------------------
+// Check
+// ---------------------------------------------------------------------------
+
+use crate::model::NamedFunctionCheck;
+
+fn ok_check(parameter_count: usize) -> NamedFunctionCheck {
+    NamedFunctionCheck {
+        parameters: vec![None; parameter_count],
+        ..Default::default()
+    }
+}
+
+#[test]
+fn check_valid() {
+    let mut model = new_empty_model();
+    let check = model.check_named_function(&profit(), None);
+    assert_eq!(check, ok_check(2));
+    assert!(check.is_valid());
+
+    // A recursive function, with no parameters used as a lambda, in Spanish
+    model.set_language("es").unwrap();
+    let check = model.check_named_function(
+        &NamedFunctionEntry::new("FACTORIAL", "SI(n>0, n*FACTORIAL(n-1), 1)")
+            .parameters(vec![NamedFunctionParameterEntry::new("n")]),
+        None,
+    );
+    assert_eq!(check, ok_check(1));
+}
+
+#[test]
+fn check_name() {
+    let mut model = new_empty_model();
+    model.new_named_function(profit()).unwrap();
+    model
+        .new_defined_name(DefinedNameEntry::new("Margin", "Sheet1!$A$1"))
+        .unwrap();
+    let cases = [
+        ("", "Name is required."),
+        ("  ", "Name is required."),
+        ("AB12", "This name looks like a cell reference (like AB12)."),
+        ("R1C1", "This name looks like a cell reference (like AB12)."),
+        (
+            "My Fn",
+            "Use letters, numbers, and underscores, starting with a letter.",
+        ),
+        (
+            "2fn",
+            "Use letters, numbers, and underscores, starting with a letter.",
+        ),
+        ("sum", "SUM is already a built-in function."),
+        (
+            "profit",
+            "A function or defined name called PROFIT already exists.",
+        ),
+        (
+            "MARGIN",
+            "A function or defined name called MARGIN already exists.",
+        ),
+    ];
+    for (name, message) in cases {
+        let check = model.check_named_function(&NamedFunctionEntry::new(name, "1"), None);
+        assert_eq!(check.name, Some(message.to_string()), "{name}");
+        assert!(!check.is_valid());
+    }
+    // Its own name while editing is fine, in any case; another scope is a
+    // different function
+    let check = model.check_named_function(
+        &NamedFunctionEntry::new("profit", "1"),
+        Some(("PROFIT", None)),
+    );
+    assert_eq!(check.name, None);
+    let check = model.check_named_function(&NamedFunctionEntry::new("profit", "1").scope(0), None);
+    assert_eq!(check.name, None);
+    let check = model.check_named_function(&NamedFunctionEntry::new("Fn", "1").scope(7), None);
+    assert_eq!(
+        check.name,
+        Some("The sheet of the function does not exist.".to_string())
+    );
+}
+
+#[test]
+fn check_parameters() {
+    let mut model = new_empty_model();
+    model
+        .new_defined_name(DefinedNameEntry::new("VAT", "Sheet1!$A$1"))
+        .unwrap();
+    let entry = NamedFunctionEntry::new("Fn", "a + b").parameters(vec![
+        NamedFunctionParameterEntry::new("a"),
+        NamedFunctionParameterEntry::new("B2"),
+        NamedFunctionParameterEntry::new("my arg"),
+        NamedFunctionParameterEntry::new("A"),
+        NamedFunctionParameterEntry::new("vat"),
+        NamedFunctionParameterEntry::new("b"),
+    ]);
+    let check = model.check_named_function(&entry, None);
+    assert_eq!(
+        check.parameters,
+        vec![
+            None,
+            Some("This name looks like a cell reference. Try another.".to_string()),
+            Some(
+                "Argument names must start with a letter and contain only letters, numbers, and underscores."
+                    .to_string()
+            ),
+            Some("Each argument needs a different name.".to_string()),
+            Some("A defined name called vat already exists. Try another.".to_string()),
+            None,
+        ]
+    );
+    assert!(check.formula.is_empty());
+    // The invalid ones are not used, the valid ones are
+    assert_eq!(
+        check.warnings,
+        vec![
+            "\"B2\" isn't used in the formula.".to_string(),
+            "\"my arg\" isn't used in the formula.".to_string(),
+            "\"A\" isn't used in the formula.".to_string(),
+            "\"vat\" isn't used in the formula.".to_string(),
+        ]
+    );
+    assert!(!check.is_valid());
+}
+
+#[test]
+fn check_formula() {
+    let mut model = new_empty_model();
+    model.new_named_function(double()).unwrap();
+    let with = |formula: &str| {
+        NamedFunctionEntry::new("PROFIT", formula).parameters(vec![
+            NamedFunctionParameterEntry::new("revenue"),
+            NamedFunctionParameterEntry::new("cost"),
+        ])
+    };
+
+    let check = model.check_named_function(&with(""), None);
+    assert_eq!(check.formula, vec!["Formula is required.".to_string()]);
+    let check = model.check_named_function(&with(" = "), None);
+    assert_eq!(check.formula, vec!["Formula is required.".to_string()]);
+
+    let check = model.check_named_function(&with("revenue -"), None);
+    assert_eq!(
+        check.formula,
+        vec!["There's an error in this formula.".to_string()]
+    );
+    assert!(check.warnings.is_empty());
+
+    let check = model.check_named_function(&with("revenue - cost + A1"), None);
+    assert_eq!(
+        check.formula,
+        vec!["References in the formula need a sheet (like Sheet1!A1).".to_string()]
+    );
+
+    // Unknown names are errors and chips in red; unused parameters are warnings
+    let check = model.check_named_function(&with("(revenue - coste) / price"), None);
+    assert_eq!(
+        check.formula,
+        vec![
+            "\"coste\" isn't an argument. Add it above or check the spelling.".to_string(),
+            "\"price\" isn't an argument. Add it above or check the spelling.".to_string(),
+        ]
+    );
+    assert_eq!(check.unknown_names, vec!["coste", "price"]);
+    assert_eq!(
+        check.warnings,
+        vec!["\"cost\" isn't used in the formula.".to_string()]
+    );
+    assert!(!check.is_valid());
+
+    // Parameters are case-sensitive, like the evaluation
+    let check = model.check_named_function(&with("Revenue - cost"), None);
+    assert_eq!(check.unknown_names, vec!["Revenue"]);
+
+    // Functions: known, itself, a parameter used as a function, unknown
+    let check = model.check_named_function(
+        &with("DOUBLE(revenue) + PROFIT(revenue, cost) + cost(1) + NOPE(2)"),
+        None,
+    );
+    assert_eq!(
+        check.formula,
+        vec!["\"NOPE\" isn't a known function.".to_string()]
+    );
+    assert_eq!(check.unknown_names, vec!["NOPE"]);
+    assert!(check.warnings.is_empty());
+
+    // Functions used as values, LET and LAMBDA variables are fine
+    let check = model.check_named_function(
+        &with("LET(x, revenue, SUM(MAP(x, DOUBLE)) + LAMBDA(y, y + cost)(1))"),
+        None,
+    );
+    assert_eq!(check, ok_check(2));
+
+    // A function being renamed may call itself by the new name
+    let check = model.check_named_function(
+        &NamedFunctionEntry::new("FACT2", "IF(n>0, n*FACT2(n-1), 1)")
+            .parameters(vec![NamedFunctionParameterEntry::new("n")]),
+        Some(("FACTORIAL", None)),
+    );
+    assert_eq!(check, ok_check(1));
+}
+
+#[test]
+fn usage_count() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model.new_named_function(double()).unwrap();
+    model
+        .new_named_function(double().name("Local").scope(1))
+        .unwrap();
+    // The one local to Sheet2 shadows the global one there
+    model.new_named_function(double().scope(1)).unwrap();
+    assert_eq!(model.named_function_usage_count("DOUBLE", None), Ok(0));
+
+    model._set("A1", "=DOUBLE(1)");
+    model._set("A2", "=DOUBLE(1) + DOUBLE(2)"); // one cell
+    model._set("A3", "=SUM(MAP(B1:B2, DOUBLE))");
+    model._set("A4", "=Sheet2!DOUBLE(1)"); // the local one
+    model._set("A5", "=LET(DOUBLE, 1, DOUBLE)"); // bound
+    model._set("A6", "=Sheet1!DOUBLE(1)");
+    model._set("A7", "5");
+    model._set("Sheet2!A1", "=DOUBLE(1)"); // the local one
+    model._set("Sheet2!A2", "=Sheet1!DOUBLE(1)");
+    model._set("Sheet2!A3", "=Local(1)");
+    model.evaluate();
+
+    assert_eq!(model.named_function_usage_count("double", None), Ok(5));
+    assert_eq!(model.named_function_usage_count("DOUBLE", Some(1)), Ok(2));
+    assert_eq!(model.named_function_usage_count("Local", Some(1)), Ok(1));
+    assert_eq!(
+        model.named_function_usage_count("Local", None),
+        Err("Named function not found".to_string())
+    );
+
+    // Renaming keeps the count
+    model
+        .update_named_function("DOUBLE", None, double().name("TWICE"))
+        .unwrap();
+    assert_eq!(model.named_function_usage_count("TWICE", None), Ok(5));
+    assert_eq!(model.named_function_usage_count("DOUBLE", Some(1)), Ok(2));
+}
+
+// ---------------------------------------------------------------------------
+// Sheet lifecycle
+// ---------------------------------------------------------------------------
+
+#[test]
+fn delete_sheet_drops_its_functions() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model.new_sheet();
+    model.new_named_function(double()).unwrap();
+    model
+        .new_named_function(double().name("Local2").scope(1))
+        .unwrap();
+    model
+        .new_named_function(double().name("Local3").scope(2))
+        .unwrap();
+    model._set("A1", "=DOUBLE(1)+Local2(1)");
+    model._set("Sheet3!A1", "=Local3(1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NAME?"); // Local2 is local to Sheet2
+    assert_eq!(model._get_text("Sheet3!A1"), *"2");
+
+    model.delete_sheet(1).unwrap();
+    let list = model.get_named_function_list();
+    assert_eq!(list.len(), 2);
+    assert_eq!(list[0].name, "DOUBLE");
+    assert_eq!(list[0].scope, None);
+    // Sheet3 is now at index 1 and keeps its function
+    assert_eq!(list[1].name, "Local3");
+    assert_eq!(list[1].scope, Some(1));
+    assert_eq!(model._get_text("Sheet3!A1"), *"2");
+    assert_eq!(
+        model.named_function_usage_count("Local2", Some(1)),
+        Err("Named function not found".to_string())
+    );
+}
+
+#[test]
+fn duplicate_sheet_copies_functions() {
+    let mut model = new_empty_model();
+    model.add_sheet("Other").unwrap();
+    model._set("A1", "10");
+    model._set("Other!A1", "1");
+    // Local to the source, retargeted
+    model
+        .new_named_function(
+            NamedFunctionEntry::new("local_fn", "x + Sheet1!$A$1")
+                .parameters(vec![NamedFunctionParameterEntry::new("x")])
+                .scope(0),
+        )
+        .unwrap();
+    // Workbook functions: referencing the source becomes local to the copy,
+    // the others are left alone
+    model
+        .new_named_function(NamedFunctionEntry::new("from_source", "Sheet1!$A$1 * 2"))
+        .unwrap();
+    model
+        .new_named_function(NamedFunctionEntry::new("from_other", "Other!$A$1 * 2"))
+        .unwrap();
+    model.new_named_function(double()).unwrap();
+    // Both workbook and local to the source: the local one wins
+    model
+        .new_named_function(NamedFunctionEntry::new("shared", "Sheet1!$A$1"))
+        .unwrap();
+    model
+        .new_named_function(NamedFunctionEntry::new("shared", "Sheet1!$A$1 + 1").scope(0))
+        .unwrap();
+    model._set("B1", "=local_fn(1) + from_source() + shared()");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), *"42");
+
+    let (new_name, new_index) = model.duplicate_sheet(0).unwrap();
+    assert_eq!(new_name, "Sheet1 (1)");
+    let list = model.get_named_function_list();
+    let on_copy: Vec<&NamedFunctionEntry> = list
+        .iter()
+        .filter(|nf| nf.scope == Some(new_index))
+        .collect();
+    assert_eq!(on_copy.len(), 3);
+    assert_eq!(on_copy[0].name, "local_fn");
+    assert_eq!(on_copy[0].formula, "x+'Sheet1 (1)'!$A$1");
+    assert_eq!(on_copy[0].parameters.len(), 1);
+    assert_eq!(on_copy[1].name, "shared");
+    assert_eq!(on_copy[1].formula, "'Sheet1 (1)'!$A$1+1");
+    assert_eq!(on_copy[2].name, "from_source");
+    assert_eq!(on_copy[2].formula, "'Sheet1 (1)'!$A$1*2");
+    // The originals are untouched
+    assert_eq!(list.len(), 6 + 3);
+    assert_eq!(list[0].formula, "x+Sheet1!$A$1");
+    assert_eq!(list[0].scope, Some(0));
+
+    // The copy computes with its own cells
+    model
+        .set_user_input(new_index, 1, 1, "100".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), *"42");
+    assert_eq!(model._get_text_at(new_index, 1, 2), *"402");
+}
+
+#[test]
+fn rename_sheet_updates_bodies_and_calls() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set("A1", "10");
+    model
+        .new_named_function(
+            NamedFunctionEntry::new("Scaled", "x * Sheet1!$A$1")
+                .parameters(vec![NamedFunctionParameterEntry::new("x")]),
+        )
+        .unwrap();
+    model.new_named_function(double().scope(1)).unwrap();
+    model._set("B1", "=Scaled(2) + Sheet2!DOUBLE(1)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), *"22");
+
+    model.rename_sheet_by_index(0, "Data").unwrap();
+    model.rename_sheet_by_index(1, "Calc").unwrap();
+    assert_eq!(model.get_named_function_list()[0].formula, "x*Data!$A$1");
+    assert_eq!(model._get_formula("Data!B1"), "=Scaled(2)+Calc!DOUBLE(1)");
+    assert_eq!(model._get_text("Data!B1"), *"22");
+
+    // Still stored in English after a rename in Spanish
+    model.set_language("es").unwrap();
+    model.rename_sheet_by_index(0, "Datos").unwrap();
+    assert_eq!(model.workbook.named_functions[0].formula, "x*Datos!$A$1");
+}

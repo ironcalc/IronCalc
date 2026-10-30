@@ -18,7 +18,9 @@ use crate::{
     language::{get_default_language, get_language},
     locale::{get_default_locale, get_locale},
     model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
-    types::{DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, Worksheet},
+    types::{
+        DefinedName, Metadata, NamedFunction, SheetState, Workbook, WorkbookSettings, Worksheet,
+    },
     utils::ParsedReference,
 };
 
@@ -491,6 +493,42 @@ impl<'a> Model<'a> {
         }
         self.workbook.defined_names.extend(new_defined_names);
 
+        // The same for the named functions: those local to the source are
+        // copied as local to the copy, the workbook ones only when their body
+        // references the source sheet. A local one hides a workbook one.
+        let named_functions = self.workbook.named_functions.clone();
+        let mut ordered: Vec<&NamedFunction> = named_functions.iter().collect();
+        ordered.sort_by_key(|nf| nf.sheet_id != Some(source_sheet_id));
+        let mut new_named_functions: Vec<NamedFunction> = Vec::new();
+        for function in ordered {
+            let is_local_to_source = function.sheet_id == Some(source_sheet_id);
+            let is_global = function.sheet_id.is_none();
+            if !is_local_to_source && !is_global {
+                continue;
+            }
+            if new_named_functions
+                .iter()
+                .any(|f| f.name.eq_ignore_ascii_case(&function.name))
+            {
+                continue;
+            }
+            let mut body = self.parse_internal_formula(&function.formula, &context);
+            let before = to_english_string(&body, &context);
+            rename_sheet_in_node(&mut body, source_index, &new_name);
+            let after = to_english_string(&body, &context);
+            if is_global && before == after {
+                continue;
+            }
+            new_named_functions.push(NamedFunction {
+                name: function.name.clone(),
+                sheet_id: Some(new_sheet_id),
+                description: function.description.clone(),
+                parameters: function.parameters.clone(),
+                formula: after,
+            });
+        }
+        self.workbook.named_functions.extend(new_named_functions);
+
         self.reset_parsed_structures();
         Ok((new_name, new_index as u32))
     }
@@ -573,6 +611,14 @@ impl<'a> Model<'a> {
         }
         self.workbook.defined_names = defined_names;
 
+        // And the bodies of the named functions, stored in English
+        for index in 0..self.workbook.named_functions.len() {
+            let formula = self.workbook.named_functions[index].formula.clone();
+            let mut body = self.parse_internal_formula(&formula, cell_reference);
+            rename_sheet_in_node(&mut body, sheet_index, new_name);
+            self.workbook.named_functions[index].formula = to_english_string(&body, cell_reference);
+        }
+
         // Update the name of the worksheet
         self.workbook.worksheet_mut(sheet_index)?.set_name(new_name);
         self.reset_parsed_structures();
@@ -591,7 +637,12 @@ impl<'a> Model<'a> {
         if sheet_index >= sheet_count {
             return Err("Sheet index too large".to_string());
         };
+        let sheet_id = worksheets[sheet_index as usize].sheet_id;
         self.workbook.worksheets.remove(sheet_index as usize);
+        // The named functions local to the sheet go with it
+        self.workbook
+            .named_functions
+            .retain(|nf| nf.sheet_id != Some(sheet_id));
         self.reset_parsed_structures();
         Ok(())
     }

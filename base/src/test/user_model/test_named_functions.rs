@@ -177,3 +177,95 @@ fn defined_name_updated_to_lambda_undo_redo() {
     assert!(model.get_defined_name_list().is_empty());
     assert_eq!(model.get_named_function_list(), vec![expected]);
 }
+
+#[test]
+fn check_and_usage() {
+    let mut model = new_empty_user_model();
+    model.new_named_function(profit()).unwrap();
+    model.set_user_input(0, 1, 1, "=PROFIT(200, 50)").unwrap();
+    model.set_user_input(0, 2, 1, "=PROFIT(300, 50)").unwrap();
+    assert_eq!(model.named_function_usage_count("PROFIT", None), Ok(2));
+
+    let check = model.check_named_function(&profit(), None);
+    assert_eq!(
+        check.name,
+        Some("A function or defined name called PROFIT already exists.".to_string())
+    );
+    let check = model.check_named_function(&profit(), Some(("PROFIT", None)));
+    assert!(check.is_valid());
+}
+
+#[test]
+fn delete_sheet_undo_redo() {
+    let mut model = new_empty_user_model();
+    model.new_sheet().unwrap();
+    model.new_named_function(profit()).unwrap();
+    model
+        .new_named_function(profit().name("Local").scope(1))
+        .unwrap();
+    model.set_user_input(1, 1, 1, "=Local(200, 50)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(1, 1, 1).unwrap(), "0.75");
+
+    model.delete_sheet(1).unwrap();
+    assert_eq!(model.get_named_function_list(), vec![profit()]);
+
+    model.undo().unwrap();
+    assert_eq!(
+        model.get_named_function_list(),
+        vec![profit(), profit().name("Local").scope(1)]
+    );
+    assert_eq!(model.get_formatted_cell_value(1, 1, 1).unwrap(), "0.75");
+
+    model.redo().unwrap();
+    assert_eq!(model.get_named_function_list(), vec![profit()]);
+    assert_eq!(model.get_worksheets_properties().len(), 1);
+}
+
+#[test]
+fn duplicate_sheet_undo_redo() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 1, 1, "10").unwrap();
+    model
+        .new_named_function(
+            NamedFunctionEntry::new("local_fn", "x+Sheet1!$A$1")
+                .parameters(vec![NamedFunctionParameterEntry::new("x")])
+                .scope(0),
+        )
+        .unwrap();
+    model.new_named_function(profit()).unwrap();
+    model.set_user_input(0, 1, 2, "=local_fn(1)").unwrap();
+
+    model.duplicate_sheet(0).unwrap();
+    assert_eq!(model.get_named_function_list().len(), 3);
+    assert_eq!(model.get_formatted_cell_value(1, 1, 2).unwrap(), "11");
+
+    model.undo().unwrap();
+    assert_eq!(model.get_worksheets_properties().len(), 1);
+    assert_eq!(model.get_named_function_list().len(), 2);
+
+    model.redo().unwrap();
+    assert_eq!(model.get_worksheets_properties().len(), 2);
+    let list = model.get_named_function_list();
+    assert_eq!(list.len(), 3);
+    assert_eq!(list[2].scope, Some(1));
+    assert_eq!(list[2].formula, "x+'Sheet1 (1)'!$A$1");
+    assert_eq!(model.get_formatted_cell_value(1, 1, 2).unwrap(), "11");
+}
+
+#[test]
+fn rename_sheet_undo_redo() {
+    let mut model = new_empty_user_model();
+    model.set_user_input(0, 1, 1, "10").unwrap();
+    model
+        .new_named_function(
+            NamedFunctionEntry::new("Scaled", "x*Sheet1!$A$1")
+                .parameters(vec![NamedFunctionParameterEntry::new("x")]),
+        )
+        .unwrap();
+    model.rename_sheet(0, "Data").unwrap();
+    assert_eq!(model.get_named_function_list()[0].formula, "x*Data!$A$1");
+    model.undo().unwrap();
+    assert_eq!(model.get_named_function_list()[0].formula, "x*Sheet1!$A$1");
+    model.redo().unwrap();
+    assert_eq!(model.get_named_function_list()[0].formula, "x*Data!$A$1");
+}

@@ -483,7 +483,7 @@ impl<'a> Parser<'a> {
     //  * None: If there is no defined name by that name
     //  * Some((Some(index), formula)): If there is a defined name local to that sheet
     //  * Some(None): If there is a global defined name
-    fn get_defined_name(&self, name: &str, sheet: u32) -> Option<(Option<u32>, String)> {
+    pub(crate) fn get_defined_name(&self, name: &str, sheet: u32) -> Option<(Option<u32>, String)> {
         for (df_name, df_scope, df_formula) in &self.defined_names {
             if name.to_lowercase() == df_name.to_lowercase() && df_scope == &Some(sheet) {
                 return Some((*df_scope, df_formula.to_owned()));
