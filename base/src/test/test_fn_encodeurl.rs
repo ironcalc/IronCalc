@@ -38,8 +38,8 @@ fn fn_encodeurl() {
     assert_eq!(model._get_text("A2"), *"AZaz09-._");
     assert_eq!(model._get_text("A3"), *"a%20b%2Bc%26d%3De%3Ff%2Fg%3Ah");
     assert_eq!(model._get_text("A4"), *"");
-    // Unlike RFC 3986, Excel encodes '~'
-    assert_eq!(model._get_text("A5"), *"%7E%21%2A%27%28%29");
+    // '~' is unreserved in RFC 3986 and is left alone (Excel and LibreOffice encode it)
+    assert_eq!(model._get_text("A5"), *"~%21%2A%27%28%29");
 }
 
 #[test]

@@ -10,13 +10,16 @@ use crate::{
 const MAX_RESULT_LENGTH: usize = 32_766;
 
 /// Percent-encodes every byte of the UTF-8 representation of `text` except
-/// A-Z, a-z, 0-9, '-', '.', '_' and '~' (see RFC 3986).
+/// the RFC 3986 unreserved characters: A-Z, a-z, 0-9, '-', '.', '_' and '~'.
 /// Hexadecimal digits are uppercase.
+///
+/// This deliberately differs from Excel and LibreOffice, which encode '~' as
+/// "%7E" (LibreOffice also encodes '.' as "%2E").
 fn encode_url(text: &str) -> Result<String, Error> {
     let mut result = String::with_capacity(text.len());
     for byte in text.as_bytes() {
         match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' => {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
                 result.push(*byte as char);
             }
             _ => {
