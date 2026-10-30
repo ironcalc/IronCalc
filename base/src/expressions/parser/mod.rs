@@ -272,6 +272,9 @@ pub struct Parser<'a> {
     lexer: lexer::Lexer<'a>,
     worksheets: Vec<String>,
     defined_names: Vec<DefinedNameS>,
+    /// The named functions (name, sheet index it is local to), so that a
+    /// reference to one takes the name as it was defined
+    named_functions: Vec<(String, Option<u32>)>,
     context: CellReferenceRC,
     tables: HashMap<String, Table>,
     locale: &'a Locale,
@@ -315,6 +318,7 @@ impl<'a> Parser<'a> {
             lexer,
             worksheets,
             defined_names,
+            named_functions: Vec::new(),
             context,
             tables,
             locale,
@@ -344,6 +348,36 @@ impl<'a> Parser<'a> {
     ) {
         self.worksheets = worksheets;
         self.defined_names = defined_names;
+    }
+
+    /// Sets the named functions as (name, index of the sheet the function is
+    /// local to)
+    pub fn set_named_functions(&mut self, named_functions: Vec<(String, Option<u32>)>) {
+        self.named_functions = named_functions;
+    }
+
+    /// The name of the named function `name` resolves to as seen from
+    /// `sheet` (the local one first, then the workbook one), as it was defined
+    fn named_function_name(&self, name: &str, sheet: Option<u32>) -> Option<String> {
+        let name_lower = name.to_lowercase();
+        if let Some(sheet) = sheet {
+            if let Some((nf_name, _)) = self
+                .named_functions
+                .iter()
+                .find(|(n, scope)| *scope == Some(sheet) && n.to_lowercase() == name_lower)
+            {
+                return Some(nf_name.clone());
+            }
+        }
+        self.named_functions
+            .iter()
+            .find(|(n, scope)| scope.is_none() && n.to_lowercase() == name_lower)
+            .map(|(n, _)| n.clone())
+    }
+
+    /// The sheet of the cell being parsed, if it exists
+    fn context_sheet_index(&self) -> Option<u32> {
+        self.get_sheet_index_by_name(&self.context.sheet)
     }
 
     pub fn parse(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
@@ -1005,8 +1039,12 @@ impl<'a> Parser<'a> {
                             args,
                         };
                     }
+                    let name = name.trim_start_matches("_xlpm.").to_string();
+                    let name = self
+                        .named_function_name(&name, self.context_sheet_index())
+                        .unwrap_or(name);
                     return Node::NamedFunctionKind {
-                        name: name.trim_start_matches("_xlpm.").to_string(),
+                        name,
                         args,
                         id: None,
                     };
@@ -1042,6 +1080,10 @@ impl<'a> Parser<'a> {
                 }
                 // xlpm: Excel Lambda Parameter
                 let name = name.trim_start_matches("_xlpm.").to_string();
+                // A named function used as a value takes its defined name
+                let name = self
+                    .named_function_name(&name, Some(context_sheet_index))
+                    .unwrap_or(name);
                 Node::NamedVariableKind { name, id: None }
             }
             // A defined name qualified with a sheet: Sheet1!MyName
@@ -1061,9 +1103,17 @@ impl<'a> Parser<'a> {
                 };
                 // An unknown name keeps the scope of the sheet, and evaluates
                 // to #NAME?
-                let (scope, formula) = self
-                    .get_defined_name(&name, sheet_index)
-                    .unwrap_or((Some(sheet_index), String::new()));
+                let (name, (scope, formula)) = match self.get_defined_name(&name, sheet_index) {
+                    Some(defined_name) => (name, defined_name),
+                    None => {
+                        // A named function qualified with a sheet takes its
+                        // defined name
+                        let name = self
+                            .named_function_name(&name, Some(sheet_index))
+                            .unwrap_or(name);
+                        (name, (Some(sheet_index), String::new()))
+                    }
+                };
                 let defined_name = Node::DefinedNameKind {
                     name,
                     scope,

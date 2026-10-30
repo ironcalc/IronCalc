@@ -84,3 +84,96 @@ fn validation() {
     );
     assert!(model.get_named_function_list().is_empty());
 }
+
+#[test]
+fn update_undo_redo() {
+    let mut model = new_empty_user_model();
+    model.new_named_function(profit()).unwrap();
+    model.set_user_input(0, 1, 1, "=PROFIT(200, 50)").unwrap();
+    model.set_user_input(0, 2, 1, "=MAP(A1, PROFIT)").unwrap();
+
+    let margin = NamedFunctionEntry::new("MARGIN", "(revenue-cost)/revenue")
+        .description("Renamed")
+        .parameters(vec![
+            NamedFunctionParameterEntry::new("revenue"),
+            NamedFunctionParameterEntry::new("cost"),
+        ]);
+    model
+        .update_named_function("PROFIT", None, margin.clone())
+        .unwrap();
+    assert_eq!(model.get_named_function_list(), vec![margin.clone()]);
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "=MARGIN(200,50)");
+    assert_eq!(model.get_cell_content(0, 2, 1).unwrap(), "=MAP(A1,MARGIN)");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "0.75");
+
+    model.undo().unwrap();
+    assert_eq!(model.get_named_function_list(), vec![profit()]);
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "=PROFIT(200,50)");
+    assert_eq!(model.get_cell_content(0, 2, 1).unwrap(), "=MAP(A1,PROFIT)");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "0.75");
+
+    model.redo().unwrap();
+    assert_eq!(model.get_named_function_list(), vec![margin]);
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "=MARGIN(200,50)");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "0.75");
+}
+
+#[test]
+fn update_in_spanish_undo_in_english() {
+    let mut model = new_empty_user_model();
+    model.set_language("es").unwrap();
+    model
+        .new_named_function(
+            NamedFunctionEntry::new("Signum", "SI(x>0, 1, -1)")
+                .parameters(vec![NamedFunctionParameterEntry::new("x")]),
+        )
+        .unwrap();
+    model
+        .update_named_function(
+            "Signum",
+            None,
+            NamedFunctionEntry::new("Signum", "SI(x>=0, 1, -1)")
+                .parameters(vec![NamedFunctionParameterEntry::new("x")]),
+        )
+        .unwrap();
+    model.set_user_input(0, 1, 1, "=Signum(0)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+
+    model.set_language("en").unwrap();
+    model.undo().unwrap(); // the input
+    model.undo().unwrap(); // the update
+    assert_eq!(model.get_named_function_list()[0].formula, "IF(x>0,1,-1)");
+    model.redo().unwrap();
+    assert_eq!(model.get_named_function_list()[0].formula, "IF(x>=0,1,-1)");
+}
+
+#[test]
+fn defined_name_updated_to_lambda_undo_redo() {
+    let mut model = new_empty_user_model();
+    model
+        .new_defined_name(DefinedNameEntry::new("Rate", "Sheet1!$A$1").comment("A rate"))
+        .unwrap();
+    model
+        .update_defined_name(
+            "Rate",
+            None,
+            DefinedNameEntry::new("Twice", "=LAMBDA(x, 2*x)"),
+        )
+        .unwrap();
+    assert!(model.get_defined_name_list().is_empty());
+    let expected = NamedFunctionEntry::new("Twice", "2*x")
+        .parameters(vec![NamedFunctionParameterEntry::new("x")]);
+    assert_eq!(model.get_named_function_list(), vec![expected.clone()]);
+
+    model.undo().unwrap();
+    assert!(model.get_named_function_list().is_empty());
+    let names = model.get_defined_name_list();
+    assert_eq!(names.len(), 1);
+    assert_eq!(names[0].name, "Rate");
+    assert_eq!(names[0].formula, "Sheet1!$A$1");
+    assert_eq!(names[0].comment, "A rate");
+
+    model.redo().unwrap();
+    assert!(model.get_defined_name_list().is_empty());
+    assert_eq!(model.get_named_function_list(), vec![expected]);
+}
