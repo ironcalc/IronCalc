@@ -34,6 +34,7 @@ export interface WorkbookActions {
   insertColumnsRight: () => void;
   openConditionalFormatting: () => void;
   openNamedRanges: () => void;
+  openNamedFunctions: () => void;
   openThemes: () => void;
   openNamedStyles: () => void;
   openLinkDialog: () => void;

@@ -643,7 +643,7 @@ export interface NamedFunctionInput {
  * informative.
  */
 export interface NamedFunctionCheck {
-  /** The error in the name, if any */
+  /** The error in the name, absent when the name is fine */
   name?: string | null;
   /** The error in each parameter, in the order they were given */
   parameters: (string | null)[];

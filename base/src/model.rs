@@ -4183,7 +4183,9 @@ impl<'a> Model<'a> {
         for parameter in &entry.parameters {
             let parameter_name = parameter.name.trim();
             let lower = parameter_name.to_lowercase();
-            let error = if looks_like_reference(parameter_name) {
+            let error = if parameter_name.is_empty() {
+                Some("Each argument needs a name.".to_string())
+            } else if looks_like_reference(parameter_name) {
                 Some("This name looks like a cell reference. Try another.".to_string())
             } else if !is_valid_identifier(parameter_name) {
                 Some(

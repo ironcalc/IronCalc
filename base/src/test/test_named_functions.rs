@@ -802,6 +802,7 @@ fn check_parameters() {
         .unwrap();
     let entry = NamedFunctionEntry::new("Fn", "a + b").parameters(vec![
         NamedFunctionParameterEntry::new("a"),
+        NamedFunctionParameterEntry::new(" "),
         NamedFunctionParameterEntry::new("B2"),
         NamedFunctionParameterEntry::new("my arg"),
         NamedFunctionParameterEntry::new("A"),
@@ -813,6 +814,7 @@ fn check_parameters() {
         check.parameters,
         vec![
             None,
+            Some("Each argument needs a name.".to_string()),
             Some("This name looks like a cell reference. Try another.".to_string()),
             Some(
                 "Argument names must start with a letter and contain only letters, numbers, and underscores."
