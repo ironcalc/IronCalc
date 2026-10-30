@@ -4,9 +4,10 @@ use bitcode::{Decode, Encode};
 
 use crate::{
     cf_types::CfRule,
+    model::NamedFunctionEntry,
     types::{
-        Cell, Col, Color, DateSystem, FocusOnOpen, Link, MergedCell, Row, SheetState, Style,
-        StyleIncludes, Theme, Worksheet,
+        Cell, Col, Color, DateSystem, FocusOnOpen, Link, MergedCell, NamedFunction, Row,
+        SheetState, Style, StyleIncludes, Theme, Worksheet,
     },
 };
 
@@ -152,6 +153,8 @@ pub(crate) enum Diff {
     DeleteSheet {
         sheet: u32,
         old_data: Box<Worksheet>,
+        /// The named functions local to the sheet, deleted with it
+        named_functions: Vec<NamedFunction>,
     },
     SetFrozenRowsCount {
         sheet: u32,
@@ -216,6 +219,17 @@ pub(crate) enum Diff {
         old_value: String,
         old_hidden: bool,
         old_comment: String,
+    },
+    /// A named function, with its body in the internal (English) form
+    CreateNamedFunction {
+        function: Box<NamedFunctionEntry>,
+    },
+    DeleteNamedFunction {
+        function: Box<NamedFunctionEntry>,
+    },
+    UpdateNamedFunction {
+        old: Box<NamedFunctionEntry>,
+        new: Box<NamedFunctionEntry>,
     },
     UpdateDefinedName {
         name: String,

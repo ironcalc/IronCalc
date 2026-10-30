@@ -41,6 +41,7 @@ import {
   RemoveFormatting,
   Rows3,
   ScanSquare,
+  SquareFunction,
   Strikethrough,
   SwatchBook,
   TableCellsMerge,
@@ -137,6 +138,8 @@ type ToolbarProperties = {
   isConditionalFormattingOpen: boolean;
   onOpenNamedStyles: () => void;
   isNamedStylesOpen: boolean;
+  onOpenNamedFunctions: () => void;
+  isNamedFunctionsOpen: boolean;
   onOpenLinkDialog: () => void;
   themes: IronCalcTheme[];
   currentTheme: IronCalcTheme;
@@ -579,6 +582,15 @@ function Toolbar(properties: ToolbarProperties) {
               aria-label={t("toolbar.named_styles")}
               pressed={properties.isNamedStylesOpen}
               onClick={properties.onOpenNamedStyles}
+              disabled={!canEdit}
+            />
+          </Tooltip>
+          <Tooltip title={t("toolbar.named_functions")}>
+            <IconButton
+              icon={<SquareFunction />}
+              aria-label={t("toolbar.named_functions")}
+              pressed={properties.isNamedFunctionsOpen}
+              onClick={properties.onOpenNamedFunctions}
               disabled={!canEdit}
             />
           </Tooltip>

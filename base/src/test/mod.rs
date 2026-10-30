@@ -153,6 +153,7 @@ mod test_log;
 mod test_log10;
 mod test_mixed_range_shape;
 mod test_mod_quotient;
+mod test_named_functions;
 mod test_networkdays;
 mod test_now;
 mod test_percentage;

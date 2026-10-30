@@ -261,3 +261,26 @@
   height: 16px;
   stroke-width: 2;
 }
+
+/* Tells a named range from a named function, before the name */
+.ic-named-ranges-kind-icon {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-right: 6px;
+  color: var(--palette-grey-600);
+}
+
+.ic-named-ranges-kind-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Range or function, when creating a name */
+.ic-named-ranges-kind-toggle {
+  padding: 12px 12px 0;
+}
+
+.ic-named-ranges-editor {
+  flex: 1;
+  min-height: 0;
+}
