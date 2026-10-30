@@ -13,7 +13,7 @@ use crate::{
         types::Area,
         utils::{is_valid_column_number, is_valid_row},
     },
-    model::{DefinedNameEntry, FmtSettings, Model, NamedFunctionEntry},
+    model::{DefinedNameEntry, FmtSettings, Model, NamedFunctionCheck, NamedFunctionEntry},
     types::{
         Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
         MergedCell, NamedFunction, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
@@ -632,10 +632,19 @@ impl<'a> UserModel<'a> {
     pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
         let sheet_id = worksheet.sheet_id;
+        let named_functions = self
+            .model
+            .workbook
+            .named_functions
+            .iter()
+            .filter(|nf| nf.sheet_id == Some(sheet_id))
+            .cloned()
+            .collect();
 
         self.push_diff_list(vec![Diff::DeleteSheet {
             sheet,
             old_data: Box::new(worksheet.clone()),
+            named_functions,
         }]);
 
         let sheet_count = self.model.workbook.worksheets.len() as u32;
@@ -2238,6 +2247,25 @@ impl<'a> UserModel<'a> {
         self.push_diff_list(vec![Diff::UpdateNamedFunction { old, new }]);
         self.evaluate_if_not_paused();
         Ok(())
+    }
+
+    /// Checks a named function being created or, when `current` is the
+    /// (name, scope) it replaces, edited. See [`Model::check_named_function`].
+    pub fn check_named_function(
+        &mut self,
+        entry: &NamedFunctionEntry,
+        current: Option<(&str, Option<u32>)>,
+    ) -> NamedFunctionCheck {
+        self.model.check_named_function(entry, current)
+    }
+
+    /// The number of cells whose formula uses the named function
+    pub fn named_function_usage_count(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+    ) -> Result<usize, String> {
+        self.model.named_function_usage_count(name, scope)
     }
 
     /// validates a new named function

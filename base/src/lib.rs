@@ -79,6 +79,7 @@ pub use model::get_milliseconds_since_epoch;
 pub use model::DefinedNameEntry;
 pub use model::FmtSettings;
 pub use model::Model;
+pub use model::NamedFunctionCheck;
 pub use model::NamedFunctionEntry;
 pub use model::NamedFunctionParameterEntry;
 pub use user_model::BorderArea;

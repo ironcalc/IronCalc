@@ -448,7 +448,11 @@ impl<'a> UserModel<'a> {
                         self.model.range_clear_all(&area)?;
                     }
                 }
-                Diff::DeleteSheet { sheet, old_data } => {
+                Diff::DeleteSheet {
+                    sheet,
+                    old_data,
+                    named_functions,
+                } => {
                     needs_evaluation = true;
                     let sheet_name = &old_data.name.clone();
                     let sheet_index = *sheet;
@@ -468,6 +472,11 @@ impl<'a> UserModel<'a> {
                     worksheet.color = old_data.color.clone();
                     worksheet.merged_cells = old_data.merged_cells.clone();
                     worksheet.shared_formulas = old_data.shared_formulas.clone();
+                    // The functions local to the sheet, with its sheet id
+                    self.model
+                        .workbook
+                        .named_functions
+                        .extend(named_functions.iter().cloned());
                     self.model.reset_parsed_structures();
 
                     self.set_selected_sheet(sheet_index)?;
@@ -852,7 +861,7 @@ impl<'a> UserModel<'a> {
                     new_value,
                     old_value: _,
                 } => self.model.set_frozen_columns(*sheet, *new_value)?,
-                Diff::DeleteSheet { sheet, old_data: _ } => {
+                Diff::DeleteSheet { sheet, .. } => {
                     self.model.delete_sheet(*sheet)?;
                     if *sheet > 0 {
                         self.set_selected_sheet(*sheet - 1)?;

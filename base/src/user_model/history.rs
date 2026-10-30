@@ -6,7 +6,8 @@ use crate::{
     cf_types::CfRule,
     model::NamedFunctionEntry,
     types::{
-        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
+        Cell, Col, Color, Link, MergedCell, NamedFunction, Row, SheetState, Style, StyleIncludes,
+        Theme, Worksheet,
     },
 };
 
@@ -152,6 +153,8 @@ pub(crate) enum Diff {
     DeleteSheet {
         sheet: u32,
         old_data: Box<Worksheet>,
+        /// The named functions local to the sheet, deleted with it
+        named_functions: Vec<NamedFunction>,
     },
     SetFrozenRowsCount {
         sheet: u32,

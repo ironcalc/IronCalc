@@ -22,13 +22,16 @@ use crate::{
             static_analysis::StaticResult,
             stringify::{
                 rename_defined_name_in_node, rename_named_function_in_node, to_english_string,
-                to_localized_string, to_rc_format,
+                to_localized_string, to_rc_format, visit_free_names, NameUse,
             },
             ArrayNode, CompletionContext, NamedVariable, Node, Parser,
         },
         token::{get_error_by_name, Error, OpProduct, OpSum, OpUnary},
         types::*,
-        utils::{self, is_valid_column_number, is_valid_identifier, is_valid_row},
+        utils::{
+            self, is_valid_column_number, is_valid_identifier, is_valid_row, parse_reference_a1,
+            parse_reference_r1c1,
+        },
     },
     formatter::{
         format::{format_number, parse_formatted_number},
@@ -152,6 +155,11 @@ fn validate_defined_name_comment(comment: &str) -> Result<(), String> {
         ));
     }
     Ok(())
+}
+
+/// True if `name` would be read as a cell reference (`AB12`, `R1C1`)
+fn looks_like_reference(name: &str) -> bool {
+    parse_reference_a1(name).is_some() || parse_reference_r1c1(name).is_some()
 }
 
 /// Parameter names must be valid identifiers, with no repeats
@@ -367,6 +375,31 @@ impl NamedFunctionEntry {
     pub fn parameters(mut self, parameters: Vec<NamedFunctionParameterEntry>) -> Self {
         self.parameters = parameters;
         self
+    }
+}
+
+/// The problems found in a named function being edited, to show next to
+/// each field. See [`Model::check_named_function`].
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
+pub struct NamedFunctionCheck {
+    /// The error in the name, if any
+    pub name: Option<String>,
+    /// The error in each parameter, in the order they were given
+    pub parameters: Vec<Option<String>>,
+    /// The errors in the formula
+    pub formula: Vec<String>,
+    /// Warnings about the formula: the function can be saved regardless
+    pub warnings: Vec<String>,
+    /// Names used in the formula that are neither parameters nor functions
+    pub unknown_names: Vec<String>,
+}
+
+impl NamedFunctionCheck {
+    /// True if the function can be saved: no errors, warnings aside
+    pub fn is_valid(&self) -> bool {
+        self.name.is_none()
+            && self.parameters.iter().all(Option::is_none)
+            && self.formula.is_empty()
     }
 }
 
@@ -4099,6 +4132,198 @@ impl<'a> Model<'a> {
             .iter()
             .position(|nf| nf.name.to_uppercase() == name_upper && nf.sheet_id == sheet_id)
             .ok_or_else(|| "Named function not found".to_string())
+    }
+
+    /// Checks a named function being created, or being edited when `current`
+    /// is the (name, scope) of the function it replaces. Unlike
+    /// [`Model::new_named_function`] it reports every problem, field by field,
+    /// with the messages to show. The function is valid when
+    /// [`NamedFunctionCheck::is_valid`].
+    pub fn check_named_function(
+        &mut self,
+        entry: &NamedFunctionEntry,
+        current: Option<(&str, Option<u32>)>,
+    ) -> NamedFunctionCheck {
+        let mut check = NamedFunctionCheck::default();
+        let name = entry.name.trim();
+        let name_upper = name.to_uppercase();
+        let is_current_name = |candidate: &str, scope: Option<u32>| {
+            current.is_some_and(|(current_name, current_scope)| {
+                current_name.to_uppercase() == candidate.to_uppercase() && current_scope == scope
+            })
+        };
+
+        // Name
+        if name.is_empty() {
+            check.name = Some("Name is required.".to_string());
+        } else if looks_like_reference(name) {
+            check.name = Some("This name looks like a cell reference (like AB12).".to_string());
+        } else if !is_valid_identifier(name) {
+            check.name =
+                Some("Use letters, numbers, and underscores, starting with a letter.".to_string());
+        } else if self.is_builtin_function(name) {
+            check.name = Some(format!("{name_upper} is already a built-in function."));
+        } else {
+            match self.scope_sheet_id(entry.scope) {
+                Ok(sheet_id) => {
+                    if self.name_exists(name, sheet_id) && !is_current_name(name, entry.scope) {
+                        check.name = Some(format!(
+                            "A function or defined name called {name_upper} already exists."
+                        ));
+                    }
+                }
+                Err(_) => {
+                    check.name = Some("The sheet of the function does not exist.".to_string())
+                }
+            }
+        }
+
+        // Parameters
+        let mut seen: Vec<String> = Vec::new();
+        for parameter in &entry.parameters {
+            let parameter_name = parameter.name.trim();
+            let lower = parameter_name.to_lowercase();
+            let error = if looks_like_reference(parameter_name) {
+                Some("This name looks like a cell reference. Try another.".to_string())
+            } else if !is_valid_identifier(parameter_name) {
+                Some(
+                    "Argument names must start with a letter and contain only letters, numbers, and underscores."
+                        .to_string(),
+                )
+            } else if seen.contains(&lower) {
+                Some("Each argument needs a different name.".to_string())
+            } else if self
+                .parser
+                .get_defined_name(parameter_name, entry.scope.unwrap_or(0))
+                .is_some()
+            {
+                // The defined name would be used instead of the argument
+                Some(format!(
+                    "A defined name called {parameter_name} already exists. Try another."
+                ))
+            } else {
+                None
+            };
+            seen.push(lower);
+            check.parameters.push(error);
+        }
+
+        // Formula
+        let context = self.name_context(entry.scope);
+        let body = entry.formula.trim();
+        let body = body.strip_prefix('=').unwrap_or(body).trim();
+        if body.is_empty() {
+            check.formula.push("Formula is required.".to_string());
+            return check;
+        }
+        let mut node = self.parser.parse(body, &context);
+        if let Node::ParseErrorKind { .. } = node {
+            node = self.parse_internal_formula(body, &context);
+        }
+        if let Node::ParseErrorKind { .. } = node {
+            check
+                .formula
+                .push("There's an error in this formula.".to_string());
+            return check;
+        }
+        if has_unqualified_reference(&node) {
+            check
+                .formula
+                .push("References in the formula need a sheet (like Sheet1!A1).".to_string());
+        }
+        let context_sheet = entry.scope.unwrap_or(0);
+        let parameter_names: Vec<&str> = entry.parameters.iter().map(|p| p.name.trim()).collect();
+        let mut used: Vec<String> = Vec::new();
+        let mut unknown_variables: Vec<String> = Vec::new();
+        let mut unknown_functions: Vec<String> = Vec::new();
+        visit_free_names(&node, &mut Vec::new(), &mut |free_name, name_use| {
+            // Matching parameters is case-sensitive, like the evaluation
+            if parameter_names.contains(&free_name) {
+                if !used.iter().any(|n| n == free_name) {
+                    used.push(free_name.to_string());
+                }
+                return;
+            }
+            let is_function = self
+                .get_parsed_named_function(free_name, context_sheet)
+                .is_some()
+                || free_name.to_uppercase() == name_upper;
+            if is_function {
+                return;
+            }
+            let list = match name_use {
+                NameUse::Variable => &mut unknown_variables,
+                NameUse::Call | NameUse::Qualified(_) => &mut unknown_functions,
+            };
+            if !list.iter().any(|n| n == free_name) {
+                list.push(free_name.to_string());
+            }
+        });
+        for variable in &unknown_variables {
+            check.formula.push(format!(
+                "\"{variable}\" isn't an argument. Add it above or check the spelling."
+            ));
+        }
+        for function in &unknown_functions {
+            check
+                .formula
+                .push(format!("\"{function}\" isn't a known function."));
+        }
+        check.unknown_names = unknown_variables;
+        check.unknown_names.extend(unknown_functions);
+        for parameter in parameter_names {
+            if !parameter.is_empty() && !used.iter().any(|n| n == parameter) {
+                check
+                    .warnings
+                    .push(format!("\"{parameter}\" isn't used in the formula."));
+            }
+        }
+        check
+    }
+
+    /// The number of cells whose formula uses the named function `name` with
+    /// scope `scope`: calls it, passes it as a value or qualifies it with a
+    /// sheet.
+    pub fn named_function_usage_count(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+    ) -> Result<usize, String> {
+        // Make sure it exists
+        self.named_function_index(name, scope)?;
+        let mut count = 0;
+        for (sheet_index, worksheet) in self.workbook.worksheets.iter().enumerate() {
+            let Some(parsed_formulas) = self.parsed_formulas.get(sheet_index) else {
+                continue;
+            };
+            for (_, _, cell) in worksheet.sheet_data.cells() {
+                let Some(formula_index) = cell.get_formula() else {
+                    continue;
+                };
+                let Some((node, _)) = parsed_formulas.get(formula_index as usize) else {
+                    continue;
+                };
+                let mut found = false;
+                visit_free_names(node, &mut Vec::new(), &mut |free_name, name_use| {
+                    let qualified = match name_use {
+                        NameUse::Qualified(sheet) => Some(sheet),
+                        NameUse::Variable | NameUse::Call => None,
+                    };
+                    if self.reference_is_named_function(
+                        free_name,
+                        qualified,
+                        sheet_index as u32,
+                        (scope, name),
+                    ) {
+                        found = true;
+                    }
+                });
+                if found {
+                    count += 1;
+                }
+            }
+        }
+        Ok(count)
     }
 
     /// Validates if a named function can be created. Returns the sheet id of

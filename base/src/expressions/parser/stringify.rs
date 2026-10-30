@@ -322,6 +322,106 @@ pub(crate) fn rename_named_function_in_node(
     }
 }
 
+/// How a free name is used in a formula
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub(crate) enum NameUse {
+    /// `name`
+    Variable,
+    /// `name(...)`
+    Call,
+    /// `Sheet1!name`, with the index of the sheet
+    Qualified(u32),
+}
+
+/// Visits every name in a formula that is not bound by an enclosing LAMBDA or
+/// LET: a variable, a function call or a sheet-qualified name.
+pub(crate) fn visit_free_names(
+    node: &Node,
+    bound: &mut Vec<String>,
+    visit: &mut dyn FnMut(&str, NameUse),
+) {
+    match node {
+        Node::NamedVariableKind { name, .. } => {
+            if !bound.iter().any(|n| n == name) {
+                visit(name, NameUse::Variable);
+            }
+        }
+        Node::NamedFunctionKind { name, args, .. } => {
+            if !bound.iter().any(|n| n == name) {
+                visit(name, NameUse::Call);
+            }
+            for arg in args {
+                visit_free_names(arg, bound, visit);
+            }
+        }
+        Node::DefinedNameKind {
+            name,
+            sheet: Some((sheet_index, _)),
+            ..
+        } => visit(name, NameUse::Qualified(*sheet_index)),
+        Node::LambdaDefKind { parameters, body } => {
+            let depth = bound.len();
+            for parameter in parameters.iter() {
+                bound.push(parameter.name.clone());
+            }
+            visit_free_names(body, bound, visit);
+            bound.truncate(depth);
+        }
+        Node::FunctionKind {
+            kind: Function::Let,
+            args,
+        } if args.len() >= 3 && args.len() % 2 == 1 => {
+            let depth = bound.len();
+            let pair_count = (args.len() - 1) / 2;
+            for i in 0..pair_count {
+                if let Node::NamedVariableKind { name, .. } = &args[2 * i] {
+                    bound.push(name.clone());
+                }
+                visit_free_names(&args[2 * i + 1], bound, visit);
+            }
+            visit_free_names(&args[2 * pair_count], bound, visit);
+            bound.truncate(depth);
+        }
+        Node::FunctionKind { args, .. } => {
+            for arg in args {
+                visit_free_names(arg, bound, visit);
+            }
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            visit_free_names(lambda, bound, visit);
+            for arg in args {
+                visit_free_names(arg, bound, visit);
+            }
+        }
+        Node::OpRangeKind { left, right }
+        | Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right }
+        | Node::CompareKind { left, right, .. } => {
+            visit_free_names(left, bound, visit);
+            visit_free_names(right, bound, visit);
+        }
+        Node::UnaryKind { right, .. } => visit_free_names(right, bound, visit),
+        Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
+            visit_free_names(child, bound, visit)
+        }
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ReferenceKind { .. }
+        | Node::RangeKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
+        | Node::ArrayKind(_)
+        | Node::DefinedNameKind { sheet: None, .. }
+        | Node::TableNameKind(_)
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::EmptyArgKind => {}
+    }
+}
+
 pub fn to_string_displaced(
     node: &Node,
     context: &CellReferenceRC,
