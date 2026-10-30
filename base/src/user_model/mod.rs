@@ -5,6 +5,7 @@ mod border;
 mod border_utils;
 mod cells_block;
 mod clipboard;
+mod comments;
 mod common;
 mod conditional_formatting;
 pub(crate) mod history;

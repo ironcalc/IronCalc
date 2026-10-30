@@ -5,7 +5,8 @@ use bitcode::{Decode, Encode};
 use crate::{
     cf_types::CfRule,
     types::{
-        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
+        Cell, Col, Color, Comment, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme,
+        Worksheet,
     },
 };
 
@@ -314,6 +315,16 @@ pub(crate) enum Diff {
         sheet: u32,
         old_value: Vec<MergedCell>,
         new_value: Vec<MergedCell>,
+    },
+    /// Last, so that adding it kept the encoding of the earlier variants.
+    /// Sets (`new_value` is `Some`) or deletes (`new_value` is `None`) the comment
+    /// attached to a cell. `old_value` is the comment previously in the cell if any.
+    SetCellComment {
+        sheet: u32,
+        row: i32,
+        column: i32,
+        old_value: Box<Option<Comment>>,
+        new_value: Box<Option<Comment>>,
     },
 }
 
