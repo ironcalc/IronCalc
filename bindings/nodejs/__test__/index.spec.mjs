@@ -115,6 +115,50 @@ test('defined names', (t) => {
   t.throws(() => model.newDefinedName({ name: "long", formula: "Sheet1!$E$5", comment: "x".repeat(256) }));
 });
 
+test('named functions', (t) => {
+  const model = new UserModel("Workbook1");
+  model.newNamedFunction({
+    name: "PROFIT",
+    formula: "(revenue - cost) / revenue",
+    parameters: [{ name: "revenue", description: "Total revenue" }, { name: "cost" }],
+    description: "Profit margin",
+  });
+  model.setUserInput(0, 1, 1, "=PROFIT(200, 50)");
+  t.is(model.getFormattedCellValue(0, 1, 1), "0.75");
+  const functions = model.getNamedFunctionList();
+  t.is(functions.length, 1);
+  t.is(functions[0].name, "PROFIT");
+  // a workbook function has no scope property
+  t.false("scope" in functions[0]);
+  t.is(functions[0].description, "Profit margin");
+  t.is(functions[0].formula, "(revenue-cost)/revenue");
+  t.deepEqual(functions[0].parameters, [
+    { name: "revenue", description: "Total revenue", optional: false },
+    { name: "cost", description: "", optional: false },
+  ]);
+  t.is(model.namedFunctionUsageCount("PROFIT", null), 1);
+
+  // a LAMBDA defined name is a named function
+  model.newDefinedName({ name: "Twice", formula: "=LAMBDA(x, 2*x)" });
+  t.is(model.getDefinedNameList().length, 0);
+  t.is(model.getNamedFunctionList()[1].formula, "2*x");
+
+  // the check reports problems field by field
+  const check = model.checkNamedFunction({ name: "profit", formula: "revenue - price", parameters: [{ name: "revenue" }] });
+  t.is(check.name, "A function or defined name called PROFIT already exists.");
+  t.deepEqual(check.unknown_names, ["price"]);
+  const ok = model.checkNamedFunction({ name: "profit", formula: "revenue", parameters: [{ name: "revenue" }] }, "PROFIT", null);
+  t.is(ok.name, null);
+  t.deepEqual(ok.formula, []);
+
+  // update renames in the cells, delete leaves #NAME?
+  model.updateNamedFunction("PROFIT", null, { name: "MARGIN", formula: "(revenue - cost) / revenue", parameters: [{ name: "revenue" }, { name: "cost" }] });
+  t.is(model.getCellContent(0, 1, 1), "=MARGIN(200,50)");
+  model.deleteNamedFunction("MARGIN", null);
+  t.is(model.getFormattedCellValue(0, 1, 1), "#NAME?");
+  t.throws(() => model.newNamedFunction({ name: "SUM", formula: "1" }));
+});
+
 test('conditional formatting', (t) => {
   const model = new UserModel("Workbook1");
   model.addConditionalFormatting(0, "A1:B10", {

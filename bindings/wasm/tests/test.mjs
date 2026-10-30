@@ -289,6 +289,40 @@ test('Cell link label and style are one undo step', () => {
     assert.strictEqual(model.getCellLink(0, 2, 2).target, "https://www.ironcalc.com/");
 });
 
+test('Named functions', () => {
+    let model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.newNamedFunction({
+        name: "PROFIT",
+        formula: "(revenue - cost) / revenue",
+        parameters: [{ name: "revenue", description: "Total revenue" }, { name: "cost" }],
+        description: "Profit margin",
+    });
+    model.setUserInput(0, 1, 1, "=PROFIT(200, 50)");
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 1), "0.75");
+    const functions = model.getNamedFunctionList();
+    assert.strictEqual(functions.length, 1);
+    assert.strictEqual(functions[0].name, "PROFIT");
+    assert.strictEqual(functions[0].formula, "(revenue-cost)/revenue");
+    assert.deepStrictEqual(functions[0].parameters, [
+        { name: "revenue", description: "Total revenue", optional: false },
+        { name: "cost", description: "", optional: false },
+    ]);
+    assert.strictEqual(model.namedFunctionUsageCount("PROFIT", undefined), 1);
+
+    const check = model.checkNamedFunction({ name: "profit", formula: "revenue - price", parameters: [{ name: "revenue" }] });
+    assert.strictEqual(check.name, "A function or defined name called PROFIT already exists.");
+    assert.deepStrictEqual(check.unknown_names, ["price"]);
+    const ok = model.checkNamedFunction({ name: "profit", formula: "revenue", parameters: [{ name: "revenue" }] }, "PROFIT", undefined);
+    assert.strictEqual(ok.name, undefined);
+
+    model.updateNamedFunction("PROFIT", undefined, { name: "MARGIN", formula: "(revenue - cost) / revenue", parameters: [{ name: "revenue" }, { name: "cost" }] });
+    assert.strictEqual(model.getCellContent(0, 1, 1), "=MARGIN(200,50)");
+    model.undo();
+    assert.strictEqual(model.getCellContent(0, 1, 1), "=PROFIT(200,50)");
+    model.deleteNamedFunction("PROFIT", undefined);
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 1), "#NAME?");
+});
+
 test('Merged cells', () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.setUserInput(0, 2, 2, "5");

@@ -76,6 +76,30 @@ class DefinedNameDict(TypedDict):
     hidden: bool
     comment: str
 
+class NamedFunctionParameterDict(TypedDict):
+    name: str
+    description: str
+    optional: bool
+
+class NamedFunctionParameterInput(TypedDict, total=False):
+    name: str
+    description: str
+    optional: bool
+
+class NamedFunctionDict(TypedDict):
+    name: str
+    scope: int | None
+    description: str
+    parameters: list[NamedFunctionParameterDict]
+    formula: str
+
+class NamedFunctionCheckDict(TypedDict):
+    name: str | None
+    parameters: list[str | None]
+    formula: list[str]
+    warnings: list[str]
+    unknown_names: list[str]
+
 class SheetPropertiesDict(TypedDict, total=False):
     name: str
     state: str  # "visible", "hidden" or "veryHidden"
@@ -298,6 +322,39 @@ class Model:
         new_comment: str = "",
     ) -> None: ...
     def delete_defined_name(self, name: str, scope: int | None) -> None: ...
+
+    # Named functions
+    def get_named_function_list(self) -> list[NamedFunctionDict]: ...
+    def new_named_function(
+        self,
+        name: str,
+        formula: str,
+        parameters: list[NamedFunctionParameterInput] | None = None,
+        scope: int | None = None,
+        description: str = "",
+    ) -> None: ...
+    def update_named_function(
+        self,
+        name: str,
+        scope: int | None,
+        new_name: str,
+        new_formula: str,
+        new_parameters: list[NamedFunctionParameterInput] | None = None,
+        new_scope: int | None = None,
+        new_description: str = "",
+    ) -> None: ...
+    def delete_named_function(self, name: str, scope: int | None) -> None: ...
+    def check_named_function(
+        self,
+        name: str,
+        formula: str,
+        parameters: list[NamedFunctionParameterInput] | None = None,
+        scope: int | None = None,
+        description: str = "",
+        current_name: str | None = None,
+        current_scope: int | None = None,
+    ) -> NamedFunctionCheckDict: ...
+    def named_function_usage_count(self, name: str, scope: int | None) -> int: ...
 
     # Workbook properties
     def get_theme(self) -> dict[str, Any]: ...
@@ -590,6 +647,39 @@ class UserModel:
     def is_valid_defined_name(
         self, name: str, scope: int | None, formula: str
     ) -> None: ...
+
+    # Named functions
+    def get_named_function_list(self) -> list[NamedFunctionDict]: ...
+    def new_named_function(
+        self,
+        name: str,
+        formula: str,
+        parameters: list[NamedFunctionParameterInput] | None = None,
+        scope: int | None = None,
+        description: str = "",
+    ) -> None: ...
+    def update_named_function(
+        self,
+        name: str,
+        scope: int | None,
+        new_name: str,
+        new_formula: str,
+        new_parameters: list[NamedFunctionParameterInput] | None = None,
+        new_scope: int | None = None,
+        new_description: str = "",
+    ) -> None: ...
+    def delete_named_function(self, name: str, scope: int | None) -> None: ...
+    def check_named_function(
+        self,
+        name: str,
+        formula: str,
+        parameters: list[NamedFunctionParameterInput] | None = None,
+        scope: int | None = None,
+        description: str = "",
+        current_name: str | None = None,
+        current_scope: int | None = None,
+    ) -> NamedFunctionCheckDict: ...
+    def named_function_usage_count(self, name: str, scope: int | None) -> int: ...
 
     # Selection
     def get_selected_sheet(self) -> int: ...
