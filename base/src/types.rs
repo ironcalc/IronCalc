@@ -186,6 +186,7 @@ pub struct FocusOnOpen {
 pub struct Workbook {
     pub shared_strings: Vec<String>,
     pub defined_names: Vec<DefinedName>,
+    pub named_functions: Vec<NamedFunction>,
     pub worksheets: Vec<Worksheet>,
     pub styles: Styles,
     pub name: String,
@@ -207,6 +208,67 @@ pub struct DefinedName {
     pub hidden: bool,
     /// Free text describing the name, at most 255 characters. Empty means no comment.
     pub comment: String,
+}
+
+/// A parameter of a named function
+#[derive(Serialize, Deserialize, Encode, Decode, Default, Debug, PartialEq, Eq, Clone)]
+pub struct NamedFunctionParameter {
+    /// The name, as typed by the user
+    pub name: String,
+    /// Free text describing the parameter, at most 255 characters. Empty means
+    /// no description.
+    #[serde(default)]
+    pub description: String,
+    /// An optional parameter may be omitted when calling the function
+    /// (`LAMBDA([x], ...)`)
+    #[serde(default)]
+    pub optional: bool,
+}
+
+/// The names of the parameters of a named function: the names bound in its body
+pub(crate) fn parameter_names(parameters: &[NamedFunctionParameter]) -> Vec<String> {
+    parameters.iter().map(|p| p.name.clone()).collect()
+}
+
+impl NamedFunctionParameter {
+    /// A required parameter without a description
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// Sets the description
+    pub fn description(mut self, description: &str) -> Self {
+        self.description = description.to_string();
+        self
+    }
+
+    /// Sets the optional flag
+    pub fn optional(mut self, optional: bool) -> Self {
+        self.optional = optional;
+        self
+    }
+}
+
+/// A named function: `name(parameters) = formula`. It is what Excel stores as
+/// a defined name whose formula is a `LAMBDA`. The `sheet_id` is the sheet the
+/// function is local to, `None` for a workbook function.
+/// Hidden functions are not shown in the UI (name manager, autocomplete), but
+/// can still be called in formulas, like a hidden [`DefinedName`].
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct NamedFunction {
+    pub name: String,
+    pub sheet_id: Option<u32>,
+    pub hidden: bool,
+    /// Free text describing the function, at most 255 characters. Empty means
+    /// no description.
+    pub description: String,
+    pub parameters: Vec<NamedFunctionParameter>,
+    /// The body of the function, in internal (English) form, without the
+    /// leading `=`
+    pub formula: String,
 }
 
 /// * state:

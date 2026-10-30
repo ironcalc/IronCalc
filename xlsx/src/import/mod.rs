@@ -173,9 +173,10 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         date_system_property.as_deref(),
         &metadata.application,
     );
-    Ok(Workbook {
+    let mut workbook = Workbook {
         shared_strings: shared_strings.into_strings(),
         defined_names: workbook.defined_names,
+        named_functions: vec![],
         worksheets,
         styles,
         name,
@@ -189,7 +190,10 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         metadata,
         tables,
         theme,
-    })
+    };
+    // Excel stores named functions as defined names with a LAMBDA formula
+    workbook.lambda_defined_names_to_named_functions();
+    Ok(workbook)
 }
 
 // Imports a file from disk into an internal representation

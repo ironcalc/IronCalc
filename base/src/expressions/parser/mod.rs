@@ -40,6 +40,7 @@ use crate::locale::get_locale;
 use crate::locale::Locale;
 use crate::types::Table;
 
+use self::stringify::{visit_free_names, NameUse};
 use super::lexer;
 use super::token;
 use super::token::OpUnary;
@@ -272,6 +273,13 @@ pub struct Parser<'a> {
     lexer: lexer::Lexer<'a>,
     worksheets: Vec<String>,
     defined_names: Vec<DefinedNameS>,
+    /// The named functions (name, sheet index it is local to), so that a
+    /// reference to one takes the name as it was defined
+    named_functions: Vec<(String, Option<u32>)>,
+    /// The names that are bound in the formula being parsed: the parameters
+    /// of the named function it is the body of. They are variables, even if
+    /// there is a defined name or a table called the same.
+    bound_names: Vec<String>,
     context: CellReferenceRC,
     tables: HashMap<String, Table>,
     locale: &'a Locale,
@@ -315,6 +323,8 @@ impl<'a> Parser<'a> {
             lexer,
             worksheets,
             defined_names,
+            named_functions: Vec::new(),
+            bound_names: Vec::new(),
             context,
             tables,
             locale,
@@ -346,7 +356,70 @@ impl<'a> Parser<'a> {
         self.defined_names = defined_names;
     }
 
+    /// Sets the named functions as (name, index of the sheet the function is
+    /// local to)
+    pub fn set_named_functions(&mut self, named_functions: Vec<(String, Option<u32>)>) {
+        self.named_functions = named_functions;
+    }
+
+    /// The name of the named function `name` resolves to as seen from
+    /// `sheet` (the local one first, then the workbook one), as it was defined
+    fn named_function_name(&self, name: &str, sheet: Option<u32>) -> Option<String> {
+        let name_lower = name.to_lowercase();
+        if let Some(sheet) = sheet {
+            if let Some((nf_name, _)) = self
+                .named_functions
+                .iter()
+                .find(|(n, scope)| *scope == Some(sheet) && n.to_lowercase() == name_lower)
+            {
+                return Some(nf_name.clone());
+            }
+        }
+        self.named_functions
+            .iter()
+            .find(|(n, scope)| scope.is_none() && n.to_lowercase() == name_lower)
+            .map(|(n, _)| n.clone())
+    }
+
+    /// The sheet of the cell being parsed, if it exists
+    fn context_sheet_index(&self) -> Option<u32> {
+        self.get_sheet_index_by_name(&self.context.sheet)
+    }
+
     pub fn parse(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
+        self.parse_with_bound_names(formula, context, &[])
+    }
+
+    /// Like [`Parser::parse`] for a formula in which the names in `bound` are
+    /// already bound: the body of a named function, with its parameters. A
+    /// bound name is never taken for a defined name, a table or a named
+    /// function.
+    pub fn parse_with_bound_names(
+        &mut self,
+        formula: &str,
+        context: &CellReferenceRC,
+        bound: &[String],
+    ) -> Node {
+        self.bound_names = bound.to_vec();
+        let mut node = self.parse_formula(formula, context);
+        self.bound_names.clear();
+        if !self.named_functions.is_empty() && !matches!(node, Node::ParseErrorKind { .. }) {
+            // A reference to a named function takes the name as it was
+            // defined. This is done once the formula is parsed, when we know
+            // which names are bound by a LAMBDA or a LET.
+            let sheet = self.context_sheet_index();
+            visit_free_names(&mut node, &mut bound.to_vec(), &mut |name, name_use| {
+                if matches!(name_use, NameUse::Variable | NameUse::Call) {
+                    if let Some(defined) = self.named_function_name(name, sheet) {
+                        *name = defined;
+                    }
+                }
+            });
+        }
+        node
+    }
+
+    fn parse_formula(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
         self.lexer.set_formula(formula);
         self.context = context.clone();
         // At the top level a formula may start with an expression or a range.
@@ -926,33 +999,12 @@ impl<'a> Parser<'a> {
                         .trim_start_matches("_xlfn._xlws.")
                         .trim_start_matches("_xlfn.")
                         .trim_start_matches("_xlpm.")
+                        .trim_start_matches("_xludf.")
                         .to_string();
-                    let args = match self.parse_function_args(&display_name) {
+                    let args = match self.parse_call_args(&display_name) {
                         Ok(s) => s,
                         Err(e) => return e,
                     };
-                    if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
-                        // `SUM(A1` parses a complete argument and then fails to
-                        // find the `)`. If we ran out of input we are still
-                        // inside the call, sitting right after a complete
-                        // argument: report the (correct) argument index so the
-                        // signature tooltip works, but NOT `Range` — a fresh
-                        // reference cannot begin after a complete operand. (A
-                        // separator or `)` is what is expected here.)
-                        let at_eof = err.position >= self.lexer.get_formula().chars().count();
-                        let expecting = if at_eof {
-                            let index = (args.len() as u32).max(1);
-                            vec![ExpectedTokens::Argument(display_name.clone(), index)]
-                        } else {
-                            vec![ExpectedTokens::Other]
-                        };
-                        return Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting,
-                            position: err.position,
-                            message: err.message,
-                        };
-                    }
                     // We should do this *only* importing functions from xlsx: Implicit Intersection
                     if &name == "_xlfn.SINGLE" {
                         if args.len() != 1 {
@@ -981,6 +1033,17 @@ impl<'a> Parser<'a> {
                         }
                         return Node::SpillRangeOperator {
                             child: Box::new(args[0].clone()),
+                        };
+                    }
+                    // xludf: a function that is not built-in, even if a
+                    // built-in function of this language is called the same
+                    // (`TRUE()` typed in Spanish, where it is `VERDADERO`).
+                    // It is how Excel writes a function it does not know.
+                    if let Some(name) = name.strip_prefix("_xludf.") {
+                        return Node::NamedFunctionKind {
+                            name: name.to_string(),
+                            args,
+                            id: None,
                         };
                     }
                     // We should do this *only* importing functions from xlsx
@@ -1025,6 +1088,12 @@ impl<'a> Parser<'a> {
                     }
                 };
 
+                // A parameter of the named function this is the body of.
+                // Matching is case-sensitive, like the evaluation.
+                if self.bound_names.contains(&name) {
+                    return Node::NamedVariableKind { name, id: None };
+                }
+
                 // Could be a defined name or a table
                 if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
                     return Node::DefinedNameKind {
@@ -1061,15 +1130,37 @@ impl<'a> Parser<'a> {
                 };
                 // An unknown name keeps the scope of the sheet, and evaluates
                 // to #NAME?
-                let (scope, formula) = self
-                    .get_defined_name(&name, sheet_index)
-                    .unwrap_or((Some(sheet_index), String::new()));
-                Node::DefinedNameKind {
+                let (name, (scope, formula)) = match self.get_defined_name(&name, sheet_index) {
+                    Some(defined_name) => (name, defined_name),
+                    None => {
+                        // A named function qualified with a sheet takes its
+                        // defined name
+                        let name = self
+                            .named_function_name(&name, Some(sheet_index))
+                            .unwrap_or(name);
+                        (name, (Some(sheet_index), String::new()))
+                    }
+                };
+                let display_name = name.clone();
+                let defined_name = Node::DefinedNameKind {
                     name,
                     scope,
                     formula,
                     sheet: Some((sheet_index, sheet)),
+                };
+                // A call of a named function qualified with a sheet: `Sheet1!MyFn(3)`
+                if self.lexer.peek_token() == TokenType::LeftParenthesis {
+                    self.lexer.advance_token();
+                    let args = match self.parse_call_args(&display_name) {
+                        Ok(args) => args,
+                        Err(e) => return e,
+                    };
+                    return Node::LambdaCallKind {
+                        lambda: Box::new(defined_name),
+                        args,
+                    };
                 }
+                defined_name
             }
             TokenType::Error(kind) => Node::ErrorKind(kind),
             TokenType::Illegal(error) => Node::ParseErrorKind {
@@ -1374,6 +1465,35 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    /// Parses the arguments of a call to `fn_name` and its closing
+    /// parenthesis, once the opening one is consumed.
+    fn parse_call_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
+        let args = self.parse_function_args(fn_name)?;
+        if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
+            // `SUM(A1` parses a complete argument and then fails to
+            // find the `)`. If we ran out of input we are still
+            // inside the call, sitting right after a complete
+            // argument: report the (correct) argument index so the
+            // signature tooltip works, but NOT `Range` — a fresh
+            // reference cannot begin after a complete operand. (A
+            // separator or `)` is what is expected here.)
+            let at_eof = err.position >= self.lexer.get_formula().chars().count();
+            let expecting = if at_eof {
+                let index = (args.len() as u32).max(1);
+                vec![ExpectedTokens::Argument(fn_name.to_string(), index)]
+            } else {
+                vec![ExpectedTokens::Other]
+            };
+            return Err(Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting,
+                position: err.position,
+                message: err.message,
+            });
+        }
+        Ok(args)
     }
 
     fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {

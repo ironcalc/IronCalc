@@ -1,7 +1,7 @@
-use ironcalc_base::DefinedNameEntry;
+use ironcalc_base::{DefinedNameEntry, NamedFunctionEntry};
 use std::fs;
 
-use ironcalc_base::types::{Color, StyleIncludes};
+use ironcalc_base::types::{Color, NamedFunctionParameter, StyleIncludes};
 use ironcalc_base::Model;
 
 use crate::error::XlsxError;
@@ -380,22 +380,151 @@ fn test_defined_name_lambda_exports_excel_prefixes() {
     // The plain range name is stored untouched.
     assert!(workbook_xml.contains("<definedName name=\"cal_year\">Sheet1!$A$1</definedName>"));
 
-    // And the file round-trips: the lambda still evaluates and the defined
-    // name displays without the prefixes.
+    // And the file round-trips: the lambda still evaluates and comes back as
+    // a named function, its body without the prefixes.
     let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
     assert_eq!(
         model.get_cell_value_by_index(0, 2, 1).unwrap(),
         expected_value
     );
     let defined_names = model.get_defined_name_list();
-    let month_start = defined_names
-        .iter()
-        .find(|dn| dn.name == "month_start")
-        .unwrap();
+    assert_eq!(defined_names.len(), 1);
+    assert_eq!(defined_names[0].name, "cal_year");
+    let functions = model.get_named_function_list();
+    assert_eq!(functions.len(), 1);
+    assert_eq!(functions[0].name, "month_start");
+    assert_eq!(functions[0].parameters.len(), 1);
+    assert_eq!(functions[0].parameters[0].name, "mo");
     assert_eq!(
-        month_start.formula,
-        "LAMBDA(mo,LET(anchor,DATE(cal_year,mo,1),anchor+1))"
+        functions[0].formula,
+        "LET(anchor,DATE(cal_year,mo,1),anchor+1)"
     );
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
+fn test_hidden_named_function_round_trips() {
+    let mut model = new_empty_model();
+    model
+        .new_named_function(
+            NamedFunctionEntry::new("twice", "2*x")
+                .parameters(vec![NamedFunctionParameter::new("x")])
+                .hidden(true),
+        )
+        .unwrap();
+    model
+        .new_named_function(
+            NamedFunctionEntry::new("thrice", "3*x")
+                .parameters(vec![NamedFunctionParameter::new("x")]),
+        )
+        .unwrap();
+
+    let temp_file_name = "temp_file_test_hidden_named_function.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let file = fs::File::open(temp_file_name).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+    let mut workbook_xml = String::new();
+    std::io::Read::read_to_string(
+        &mut archive.by_name("xl/workbook.xml").unwrap(),
+        &mut workbook_xml,
+    )
+    .unwrap();
+    drop(archive);
+    assert!(
+        workbook_xml.contains("<definedName name=\"twice\" hidden=\"1\">"),
+        "{workbook_xml}"
+    );
+    assert!(
+        workbook_xml.contains("<definedName name=\"thrice\">"),
+        "{workbook_xml}"
+    );
+
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    let functions = model.get_named_function_list();
+    assert_eq!(functions.len(), 2);
+    assert_eq!(functions[0].name, "twice");
+    assert!(functions[0].hidden);
+    assert!(!functions[1].hidden);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+// A function created in Spanish whose name is a built-in function in English
+// has the `_xludf.` prefix in the file, in its definition and in its calls
+#[test]
+fn test_named_function_called_like_a_builtin_round_trips() {
+    let mut model = new_empty_model();
+    model.set_language("es").unwrap();
+    model
+        .new_named_function(
+            NamedFunctionEntry::new("NOW", "x+7")
+                .parameters(vec![NamedFunctionParameter::new("x")]),
+        )
+        .unwrap();
+    model
+        .new_named_function(NamedFunctionEntry::new("TWICE", "2*NOW(1)"))
+        .unwrap();
+    model
+        .set_user_input(0, 1, 1, "=NOW(1)".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 2, 1, "=TWICE()".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 3, 1, "=TIPO(AHORA())".to_string())
+        .unwrap();
+    model.evaluate();
+
+    let temp_file_name = "temp_file_test_named_function_builtin_name.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let file = fs::File::open(temp_file_name).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+    let mut workbook_xml = String::new();
+    std::io::Read::read_to_string(
+        &mut archive.by_name("xl/workbook.xml").unwrap(),
+        &mut workbook_xml,
+    )
+    .unwrap();
+    let mut sheet_xml = String::new();
+    std::io::Read::read_to_string(
+        &mut archive.by_name("xl/worksheets/sheet1.xml").unwrap(),
+        &mut sheet_xml,
+    )
+    .unwrap();
+    drop(archive);
+    assert!(
+        workbook_xml.contains(
+            "<definedName name=\"_xludf.NOW\">_xlfn.LAMBDA(_xlpm.x,_xlpm.x+7)</definedName>"
+        ),
+        "{workbook_xml}"
+    );
+    assert!(
+        workbook_xml
+            .contains("<definedName name=\"TWICE\">_xlfn.LAMBDA(2*_xludf.NOW(1))</definedName>"),
+        "{workbook_xml}"
+    );
+    assert!(sheet_xml.contains(">_xludf.NOW(1)</f>"), "{sheet_xml}");
+    assert!(sheet_xml.contains(">TYPE(NOW())</f>"), "{sheet_xml}");
+
+    // In English it is listed with the prefix
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_eq!(model.workbook.named_functions[0].name, "NOW");
+    let functions = model.get_named_function_list();
+    assert_eq!(functions[0].name, "_xludf.NOW");
+    assert_eq!(functions[1].formula, "2*_xludf.NOW(1)");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "8");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), "16");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "1");
+
+    // In Spanish without it
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "es").unwrap();
+    assert_eq!(model.get_named_function_list()[0].name, "NOW");
+    assert_eq!(
+        model.get_cell_formula(0, 1, 1).unwrap(),
+        Some("=NOW(1)".to_string())
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "8");
     fs::remove_file(temp_file_name).unwrap();
 }
 

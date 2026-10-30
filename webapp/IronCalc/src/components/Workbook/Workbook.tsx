@@ -518,6 +518,9 @@ const Workbook = (
     openNamedRanges: whenEditable(() => {
       openDrawer("namedRanges");
     }),
+    openNamedFunctions: whenEditable(() => {
+      openDrawer("namedFunctions");
+    }),
     openThemes: whenEditable(() => {
       openDrawer("themes");
     }),
@@ -1139,6 +1142,8 @@ const Workbook = (
           }
           onOpenNamedStyles={actions.openNamedStyles}
           isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
+          onOpenNamedFunctions={actions.openNamedFunctions}
+          isNamedFunctionsOpen={isDrawerOpen && drawerType === "namedFunctions"}
           onOpenLinkDialog={actions.openLinkDialog}
           themes={themes}
           currentTheme={currentTheme}

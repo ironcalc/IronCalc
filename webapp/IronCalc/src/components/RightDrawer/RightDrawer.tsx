@@ -29,6 +29,7 @@ const KEYBOARD_RESIZE_STEP = 16;
 
 export type DrawerType =
   | "namedRanges"
+  | "namedFunctions"
   | "namedStyles"
   | "settings"
   | "conditionalFormatting"
@@ -222,6 +223,17 @@ const RightDrawer = ({
             currentTheme={currentTheme}
           />
         );
+      case "namedFunctions":
+        return (
+          <NamedRanges
+            key="functions"
+            initialKind="function"
+            onClose={onClose}
+            model={model}
+            onUpdate={onUpdate}
+            getSelectedArea={getSelectedArea}
+          />
+        );
       case "themes":
         return (
           <Themes
@@ -234,6 +246,8 @@ const RightDrawer = ({
       default:
         return (
           <NamedRanges
+            key="ranges"
+            initialKind="range"
             onClose={onClose}
             model={model}
             onUpdate={onUpdate}

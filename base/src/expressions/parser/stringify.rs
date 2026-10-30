@@ -128,62 +128,128 @@ fn excel_string(node: &Node, context: &CellReferenceRC, is_array_formula: bool) 
 /// Excel stores LAMBDA parameters and LET variables with an `_xlpm.` prefix,
 /// both at the declaration and at every use site:
 /// `LET(x,1,x*2)` is written as `_xlfn.LET(_xlpm.x,1,_xlpm.x*2)`.
-/// Internally IronCalc keeps the bare names, so before exporting we walk the
-/// tree tracking which names are bound by an enclosing LAMBDA/LET and rename
-/// those occurrences. Unbound names (e.g. a defined name that only resolves at
-/// evaluation time) are left alone. Matching is case-sensitive, mirroring
-/// evaluation (see `assign_variable_ids`).
+/// Internally IronCalc keeps the bare names, so before exporting we rename
+/// the names bound by an enclosing LAMBDA/LET. Unbound names (e.g. a defined
+/// name that only resolves at evaluation time) are left alone.
+/// The parameters of a LAMBDA are not part of the walk: they are prefixed
+/// when the LAMBDA is written.
 fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
+    visit_names(node, bound, &mut |name, binding| {
+        if !matches!(binding, NameBinding::Free(_)) {
+            *name = format!("_xlpm.{name}");
+        }
+    });
+}
+
+/// How a free name is used in a formula
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub(crate) enum NameUse {
+    /// `name`
+    Variable,
+    /// `name(...)`
+    Call,
+    /// `Sheet1!name`, with the index of the sheet
+    Qualified(u32),
+}
+
+/// What a name in a formula is, with respect to the enclosing LAMBDAs and LETs
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum NameBinding {
+    /// The name a LET declares: the `x` in `LET(x,1,...)`
+    Declaration,
+    /// A use of a LAMBDA parameter or of a LET variable, as a value (`x`) or
+    /// as a function (`f(2)` in `LET(f,LAMBDA(a,a*a),f(2))`)
+    Bound,
+    /// Any other name
+    Free(NameUse),
+}
+
+/// Visits every name in a formula that is not bound by an enclosing LAMBDA or
+/// LET: a variable, a function call or a sheet-qualified name. The visitor
+/// may rename it. The names in `bound` are bound from the start.
+pub(crate) fn visit_free_names(
+    node: &mut Node,
+    bound: &mut Vec<String>,
+    visit: &mut dyn FnMut(&mut String, NameUse),
+) {
+    visit_names(node, bound, &mut |name, binding| {
+        if let NameBinding::Free(name_use) = binding {
+            visit(name, name_use);
+        }
+    });
+}
+
+/// Visits every name in a formula, telling whether it is bound by an
+/// enclosing LAMBDA or LET. The visitor may rename it. This is where the
+/// scoping rules live:
+///  * The parameters of a LAMBDA are bound in its body.
+///  * In `LET(name1, value1, [name2, value2, ...], body)` each name is bound
+///    from its own value onwards.
+///
+/// Matching is case-sensitive, mirroring evaluation (see
+/// `assign_variable_ids`). The names bound are those found in the formula:
+/// renaming a declaration does not rename its uses.
+fn visit_names(
+    node: &mut Node,
+    bound: &mut Vec<String>,
+    visit: &mut dyn FnMut(&mut String, NameBinding),
+) {
     match node {
         Node::NamedVariableKind { name, .. } => {
-            if bound.iter().any(|n| n == name) {
-                *name = format!("_xlpm.{name}");
+            if bound.contains(name) {
+                visit(name, NameBinding::Bound);
+            } else {
+                visit(name, NameBinding::Free(NameUse::Variable));
             }
         }
-        // A bound lambda used as a function: `LET(f,LAMBDA(a,a*a),f(2))`
         Node::NamedFunctionKind { name, args, .. } => {
-            if bound.iter().any(|n| n == name) {
-                *name = format!("_xlpm.{name}");
+            if bound.contains(name) {
+                visit(name, NameBinding::Bound);
+            } else {
+                visit(name, NameBinding::Free(NameUse::Call));
             }
             for arg in args {
-                prefix_bound_variables(arg, bound);
+                visit_names(arg, bound, visit);
             }
         }
+        Node::DefinedNameKind {
+            name,
+            sheet: Some((sheet_index, _)),
+            ..
+        } => visit(name, NameBinding::Free(NameUse::Qualified(*sheet_index))),
         Node::LambdaDefKind { parameters, body } => {
             let depth = bound.len();
             for parameter in parameters.iter() {
                 bound.push(parameter.name.clone());
             }
-            prefix_bound_variables(body, bound);
+            visit_names(body, bound, visit);
             bound.truncate(depth);
         }
         Node::FunctionKind {
             kind: Function::Let,
             args,
         } if args.len() >= 3 && args.len() % 2 == 1 => {
-            // LET(name1, value1, [name2, value2, ...], body): each name is in
-            // scope from its own value expression onwards.
             let depth = bound.len();
             let pair_count = (args.len() - 1) / 2;
             for i in 0..pair_count {
                 if let Node::NamedVariableKind { name, .. } = &mut args[2 * i] {
                     bound.push(name.clone());
-                    *name = format!("_xlpm.{name}");
+                    visit(name, NameBinding::Declaration);
                 }
-                prefix_bound_variables(&mut args[2 * i + 1], bound);
+                visit_names(&mut args[2 * i + 1], bound, visit);
             }
-            prefix_bound_variables(&mut args[2 * pair_count], bound);
+            visit_names(&mut args[2 * pair_count], bound, visit);
             bound.truncate(depth);
         }
         Node::FunctionKind { args, .. } => {
             for arg in args {
-                prefix_bound_variables(arg, bound);
+                visit_names(arg, bound, visit);
             }
         }
         Node::LambdaCallKind { lambda, args } => {
-            prefix_bound_variables(lambda, bound);
+            visit_names(lambda, bound, visit);
             for arg in args {
-                prefix_bound_variables(arg, bound);
+                visit_names(arg, bound, visit);
             }
         }
         Node::OpRangeKind { left, right }
@@ -192,12 +258,12 @@ fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::OpProductKind { left, right, .. }
         | Node::OpPowerKind { left, right }
         | Node::CompareKind { left, right, .. } => {
-            prefix_bound_variables(left, bound);
-            prefix_bound_variables(right, bound);
+            visit_names(left, bound, visit);
+            visit_names(right, bound, visit);
         }
-        Node::UnaryKind { right, .. } => prefix_bound_variables(right, bound),
+        Node::UnaryKind { right, .. } => visit_names(right, bound, visit),
         Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
-            prefix_bound_variables(child, bound)
+            visit_names(child, bound, visit)
         }
         Node::BooleanKind(_)
         | Node::NumberKind(_)
@@ -207,7 +273,7 @@ fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
         | Node::ArrayKind(_)
-        | Node::DefinedNameKind { .. }
+        | Node::DefinedNameKind { sheet: None, .. }
         | Node::TableNameKind(_)
         | Node::ErrorKind(_)
         | Node::ParseErrorKind { .. }
@@ -956,8 +1022,25 @@ fn stringify(
             };
             format!("{x}^{y}")
         }
+        // A function that is not built-in. In the internal (R1C1) form it is
+        // lowercase, for display the name is kept as the parser produced it.
+        // Its name may be the one of a built-in function of the language the
+        // formula is written in (`=TRUE()` typed in Spanish is not the
+        // English `TRUE`): the `_xludf.` prefix keeps it from being taken for
+        // that one when the formula is parsed again.
         NamedFunctionKind { name, args, id: _ } => format_function(
-            &name.to_lowercase(),
+            &{
+                let name = if context.is_none() {
+                    name.to_lowercase()
+                } else {
+                    name.clone()
+                };
+                if language.functions.lookup(&name).is_some() {
+                    format!("_xludf.{name}")
+                } else {
+                    name
+                }
+            },
             args,
             context,
             displace_data,
