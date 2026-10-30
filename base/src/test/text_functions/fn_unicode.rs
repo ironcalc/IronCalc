@@ -61,3 +61,35 @@ fn wrong_number_of_arguments() {
     assert_eq!(model._get_text("A1"), *"#ERROR!");
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 }
+
+#[test]
+fn arrays_and_ranges() {
+    let mut model = new_empty_model();
+    model._set("A1", "Hello");
+    model._set("A2", "☺");
+    model._set("A3", "=1/0");
+    model._set("A5", "の");
+    model._set("C1", "=UNICODE(A1:A5)");
+    // Consumed element-wise by another function, and round trip with UNICHAR
+    model._set("D1", "=SUM(UNICODE(A1:A2))");
+    model._set("E1", "=UNICHAR(UNICODE(A1:A2))");
+    // Inline arrays: numbers and booleans are coerced to text first
+    model._set("A7", "=UNICODE({\"-\",12,TRUE})");
+    model._set("A8", "=UNICODE({\"a\";\"b\"})");
+    model.evaluate();
+
+    assert_eq!(model._get_text("C1"), *"72");
+    assert_eq!(model._get_text("C2"), *"9786");
+    assert_eq!(model._get_text("C3"), *"#DIV/0!");
+    // Empty cell is an empty text
+    assert_eq!(model._get_text("C4"), *"#VALUE!");
+    assert_eq!(model._get_text("C5"), *"12398");
+    assert_eq!(model._get_text("D1"), *"9858");
+    assert_eq!(model._get_text("E1"), *"H");
+    assert_eq!(model._get_text("E2"), *"☺");
+    assert_eq!(model._get_text("A7"), *"45");
+    assert_eq!(model._get_text("B7"), *"49");
+    assert_eq!(model._get_text("C7"), *"84");
+    assert_eq!(model._get_text("A8"), *"97");
+    assert_eq!(model._get_text("A9"), *"98");
+}
