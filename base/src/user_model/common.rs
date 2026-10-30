@@ -13,10 +13,10 @@ use crate::{
         types::Area,
         utils::{is_valid_column_number, is_valid_row},
     },
-    model::{DefinedNameEntry, FmtSettings, Model},
+    model::{DefinedNameEntry, FmtSettings, Model, NamedFunctionEntry},
     types::{
         Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
-        MergedCell, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
+        MergedCell, NamedFunction, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
     },
 };
 
@@ -2159,6 +2159,13 @@ impl<'a> UserModel<'a> {
             ..
         } = entry.clone();
         self.model.new_defined_name(entry)?;
+        // A name defined as a LAMBDA is stored as a named function
+        if let Ok(function) = self.model.get_named_function(&name, scope) {
+            let function = Box::new(self.named_function_internal_entry(function));
+            self.push_diff_list(vec![Diff::CreateNamedFunction { function }]);
+            self.evaluate_if_not_paused();
+            return Ok(());
+        }
         // Diffs store the internal (English) formula so undo/redo replays
         // correctly regardless of the active language at replay time. A
         // just-created name is guaranteed to be retrievable, so propagate any
@@ -2174,6 +2181,76 @@ impl<'a> UserModel<'a> {
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
+    }
+
+    /// Returns the list of named functions
+    pub fn get_named_function_list(&self) -> Vec<NamedFunctionEntry> {
+        self.model.get_named_function_list()
+    }
+
+    /// Creates a new named function. See [`NamedFunctionEntry`] for the
+    /// meaning of the fields.
+    pub fn new_named_function(&mut self, entry: NamedFunctionEntry) -> Result<(), String> {
+        let name = entry.name.clone();
+        let scope = entry.scope;
+        self.model.new_named_function(entry)?;
+        let function = self.model.get_named_function(&name, scope)?;
+        let function = Box::new(self.named_function_internal_entry(function));
+        self.push_diff_list(vec![Diff::CreateNamedFunction { function }]);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Deletes an existing named function
+    pub fn delete_named_function(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
+        let function = self.model.get_named_function(name, scope)?;
+        let function = Box::new(self.named_function_internal_entry(function));
+        self.push_diff_list(vec![Diff::DeleteNamedFunction { function }]);
+        self.model.delete_named_function(name, scope)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// validates a new named function
+    pub fn is_valid_named_function(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        parameters: &[crate::model::NamedFunctionParameterEntry],
+        formula: &str,
+    ) -> Result<Option<u32>, String> {
+        self.model
+            .is_valid_named_function(name, scope, parameters, formula)
+    }
+
+    /// The entry stored in a diff: the body stays in the internal (English)
+    /// form so undo/redo replays correctly regardless of the active language.
+    fn named_function_internal_entry(&self, function: &NamedFunction) -> NamedFunctionEntry {
+        let sheet_ids: Vec<u32> = self
+            .model
+            .workbook
+            .worksheets
+            .iter()
+            .map(|s| s.sheet_id)
+            .collect();
+        NamedFunctionEntry {
+            name: function.name.clone(),
+            scope: function
+                .sheet_id
+                .and_then(|sheet_id| sheet_ids.iter().position(|&id| id == sheet_id))
+                .map(|pos| pos as u32),
+            description: function.description.clone(),
+            parameters: function
+                .parameters
+                .iter()
+                .map(|p| crate::model::NamedFunctionParameterEntry {
+                    name: p.name.clone(),
+                    description: p.description.clone(),
+                    optional: p.optional,
+                })
+                .collect(),
+            formula: function.formula.clone(),
+        }
     }
 
     /// Replaces the defined name `name` with scope `scope` by `new`: every

@@ -116,6 +116,41 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
             "<definedName name=\"{name}\"{local_sheet_id}{hidden}{comment}>{formula}</definedName>"
         ))
     }
+    // Named functions are defined names with a LAMBDA formula:
+    // <definedName name="profit" comment="Margin">_xlfn.LAMBDA(_xlpm.r,_xlpm.c,(_xlpm.r-_xlpm.c)/_xlpm.r)</definedName>
+    for function in &workbook.named_functions {
+        let name = escape_xml(&function.name);
+        let local_sheet_id = if let Some(sheet_id) = function.sheet_id {
+            let excel_local_sheet_id = sheet_id_to_sheet_index.get(&sheet_id).unwrap();
+            format!(" localSheetId=\"{excel_local_sheet_id}\"")
+        } else {
+            "".to_string()
+        };
+        let mut lambda_args: Vec<String> = function
+            .parameters
+            .iter()
+            .map(|p| {
+                if p.optional {
+                    format!("[{}]", p.name)
+                } else {
+                    p.name.clone()
+                }
+            })
+            .collect();
+        lambda_args.push(function.formula.clone());
+        let lambda = format!("LAMBDA({})", lambda_args.join(","));
+        let node = parser.parse(&lambda, &parse_context);
+        let formula = to_excel_string(&node, &parse_context);
+        let formula = escape_xml(&formula);
+        let comment = if function.description.is_empty() {
+            "".to_string()
+        } else {
+            format!(" comment=\"{}\"", escape_xml(&function.description))
+        };
+        defined_names_str.push(format!(
+            "<definedName name=\"{name}\"{local_sheet_id}{comment}>{formula}</definedName>"
+        ))
+    }
 
     let sheets = sheets_str.join("");
     let defined_names = defined_names_str.join("");

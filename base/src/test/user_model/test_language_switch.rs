@@ -45,27 +45,25 @@ fn defined_name_created_in_spanish_undo_redo() {
     model.set_user_input(0, 1, 1, "=MiSi(5)").unwrap();
     assert_eq!(model.model._get_text("A1"), *"1");
 
-    // Stored in English, displayed in Spanish.
+    // A LAMBDA name is a named function. Stored in English, displayed in Spanish.
+    assert!(model.get_defined_name_list().is_empty());
     assert_eq!(
-        model.model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
+        model.model.workbook.named_functions[0].formula,
+        "IF(x>0,1,2)"
     );
-    assert_eq!(
-        model.get_defined_name_list()[0].formula,
-        "=LAMBDA(x,SI(x>0,1,2))"
-    );
+    assert_eq!(model.get_named_function_list()[0].formula, "SI(x>0,1,2)");
 
     // Switching language must not break undo/redo: the diff carries English.
     model.set_language("en").unwrap();
 
     model.undo().unwrap(); // undo the A1 = "=MiSi(5)" input
-    model.undo().unwrap(); // undo the defined-name creation
-    assert!(model.get_defined_name_list().is_empty());
+    model.undo().unwrap(); // undo the named-function creation
+    assert!(model.get_named_function_list().is_empty());
 
-    model.redo().unwrap(); // redo the defined-name creation
+    model.redo().unwrap(); // redo the named-function creation
     assert_eq!(
-        model.model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
+        model.model.workbook.named_functions[0].formula,
+        "IF(x>0,1,2)"
     );
     model.redo().unwrap(); // redo the A1 input
     assert_eq!(model.model._get_text("A1"), *"1");

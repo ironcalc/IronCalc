@@ -380,21 +380,24 @@ fn test_defined_name_lambda_exports_excel_prefixes() {
     // The plain range name is stored untouched.
     assert!(workbook_xml.contains("<definedName name=\"cal_year\">Sheet1!$A$1</definedName>"));
 
-    // And the file round-trips: the lambda still evaluates and the defined
-    // name displays without the prefixes.
+    // And the file round-trips: the lambda still evaluates and comes back as
+    // a named function, its body without the prefixes.
     let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
     assert_eq!(
         model.get_cell_value_by_index(0, 2, 1).unwrap(),
         expected_value
     );
     let defined_names = model.get_defined_name_list();
-    let month_start = defined_names
-        .iter()
-        .find(|dn| dn.name == "month_start")
-        .unwrap();
+    assert_eq!(defined_names.len(), 1);
+    assert_eq!(defined_names[0].name, "cal_year");
+    let functions = model.get_named_function_list();
+    assert_eq!(functions.len(), 1);
+    assert_eq!(functions[0].name, "month_start");
+    assert_eq!(functions[0].parameters.len(), 1);
+    assert_eq!(functions[0].parameters[0].name, "mo");
     assert_eq!(
-        month_start.formula,
-        "LAMBDA(mo,LET(anchor,DATE(cal_year,mo,1),anchor+1))"
+        functions[0].formula,
+        "LET(anchor,DATE(cal_year,mo,1),anchor+1)"
     );
     fs::remove_file(temp_file_name).unwrap();
 }

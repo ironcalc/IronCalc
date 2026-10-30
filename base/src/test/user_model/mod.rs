@@ -28,6 +28,7 @@ mod test_links;
 mod test_merged_cells;
 mod test_move_sheet;
 mod test_multi_row_column;
+mod test_named_functions;
 mod test_named_styles;
 mod test_on_area_selection;
 mod test_on_expand_selected_range;

@@ -1064,12 +1064,33 @@ impl<'a> Parser<'a> {
                 let (scope, formula) = self
                     .get_defined_name(&name, sheet_index)
                     .unwrap_or((Some(sheet_index), String::new()));
-                Node::DefinedNameKind {
+                let defined_name = Node::DefinedNameKind {
                     name,
                     scope,
                     formula,
                     sheet: Some((sheet_index, sheet)),
+                };
+                // A call of a named function qualified with a sheet: `Sheet1!MyFn(3)`
+                if self.lexer.peek_token() == TokenType::LeftParenthesis {
+                    self.lexer.advance_token();
+                    let args = match self.parse_function_args("LAMBDA") {
+                        Ok(args) => args,
+                        Err(e) => return e,
+                    };
+                    if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
+                        return Node::ParseErrorKind {
+                            formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
+                            position: err.position,
+                            message: err.message,
+                        };
+                    }
+                    return Node::LambdaCallKind {
+                        lambda: Box::new(defined_name),
+                        args,
+                    };
                 }
+                defined_name
             }
             TokenType::Error(kind) => Node::ErrorKind(kind),
             TokenType::Illegal(error) => Node::ParseErrorKind {

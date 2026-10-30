@@ -113,6 +113,7 @@ pub struct WorkbookSettings {
 pub struct Workbook {
     pub shared_strings: Vec<String>,
     pub defined_names: Vec<DefinedName>,
+    pub named_functions: Vec<NamedFunction>,
     pub worksheets: Vec<Worksheet>,
     pub styles: Styles,
     pub name: String,
@@ -134,6 +135,34 @@ pub struct DefinedName {
     pub hidden: bool,
     /// Free text describing the name, at most 255 characters. Empty means no comment.
     pub comment: String,
+}
+
+/// A parameter of a named function
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct NamedFunctionParameter {
+    pub name: String,
+    /// Free text describing the parameter, at most 255 characters. Empty means
+    /// no description.
+    pub description: String,
+    /// An optional parameter may be omitted when calling the function
+    /// (`LAMBDA([x], ...)`)
+    pub optional: bool,
+}
+
+/// A named function: `name(parameters) = formula`. It is what Excel stores as
+/// a defined name whose formula is a `LAMBDA`. The `sheet_id` is the sheet the
+/// function is local to, `None` for a workbook function.
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct NamedFunction {
+    pub name: String,
+    pub sheet_id: Option<u32>,
+    /// Free text describing the function, at most 255 characters. Empty means
+    /// no description.
+    pub description: String,
+    pub parameters: Vec<NamedFunctionParameter>,
+    /// The body of the function, in internal (English) form, without the
+    /// leading `=`
+    pub formula: String,
 }
 
 /// * state:
