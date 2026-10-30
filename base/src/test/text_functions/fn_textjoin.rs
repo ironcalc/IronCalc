@@ -59,3 +59,38 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "9");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
+
+#[test]
+fn textjoin_arrays() {
+    let mut model = new_empty_model();
+    for (i, code) in [72, 101, 108, 108, 111].iter().enumerate() {
+        model._set(&format!("A{}", i + 1), &code.to_string());
+    }
+    // A spilled function result
+    model._set("B1", "=TEXTJOIN(\"\", TRUE, CHAR(A1:A5))");
+    // An inline array, joined row by row, mixing numbers, booleans and texts
+    model._set("B2", "=TEXTJOIN(\"-\", TRUE, {1,\"a\";TRUE,2.5})");
+    // Arrays mixed with scalars and ranges
+    model._set("B3", "=TEXTJOIN(\",\", TRUE, \"x\", {1,2}, A1:A2)");
+    // Empty elements come from empty cells in a range turned into an array
+    model._set("B4", "=TEXTJOIN(\",\", FALSE, UPPER(D1:D3))");
+    model._set("B5", "=TEXTJOIN(\",\", TRUE, UPPER(D1:D3))");
+    // An error element is the error of the function
+    model._set("B6", "=TEXTJOIN(\",\", TRUE, CHAR({65,0}))");
+    // ignore_empty also skips empty texts, scalar or in a range
+    model._set("B7", "=TEXTJOIN(\",\", TRUE, \"a\", \"\", \"b\")");
+    model._set("B8", "=TEXTJOIN(\",\", FALSE, \"a\", \"\", \"b\")");
+    model._set("B9", "=TEXTJOIN(\",\", TRUE, IF(A1:A5>100, A1:A5, \"\"))");
+    model._set("D2", "b");
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), *"Hello");
+    assert_eq!(model._get_text("B2"), *"1-a-TRUE-2.5");
+    assert_eq!(model._get_text("B3"), *"x,1,2,72,101");
+    assert_eq!(model._get_text("B4"), *",B,");
+    assert_eq!(model._get_text("B5"), *"B");
+    assert_eq!(model._get_text("B6"), *"#VALUE!");
+    assert_eq!(model._get_text("B7"), *"a,b");
+    assert_eq!(model._get_text("B8"), *"a,,b");
+    assert_eq!(model._get_text("B9"), *"101,108,108,111");
+}
