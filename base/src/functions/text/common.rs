@@ -1096,14 +1096,46 @@ impl<'a> Model<'a> {
                     }
                 }
                 CalcResult::EmptyArg => {}
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // An inline array or a spilled result, e.g. TEXTJOIN("", TRUE, CHAR(A1:A5)).
+                // Elements are joined row by row, like a range.
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for node in row {
+                            match node {
+                                ArrayNode::Number(value) => values.push(format!("{value}")),
+                                ArrayNode::String(value) => values.push(value),
+                                ArrayNode::Boolean(value) => {
+                                    if value {
+                                        values.push("TRUE".to_string())
+                                    } else {
+                                        values.push("FALSE".to_string())
+                                    }
+                                }
+                                ArrayNode::Empty => {
+                                    if !ignore_empty {
+                                        values.push("".to_string())
+                                    }
+                                }
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::new_error(error, cell, String::new())
+                                }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
-                        message: "Arrays not supported yet".to_string(),
+                        message: "Lambdas not supported".to_string(),
                     }
                 }
             };
+        }
+        // Excel's ignore_empty skips empty cells and also empty texts, e.g.
+        // TEXTJOIN(",", TRUE, IF(A1:A5>2, A1:A5, "")) joins only the matches.
+        if ignore_empty {
+            values.retain(|v| !v.is_empty());
         }
         let result = values.join(&delimiter);
         CalcResult::String(result)

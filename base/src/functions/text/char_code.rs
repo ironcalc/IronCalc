@@ -1,8 +1,14 @@
 // CHAR, CODE, UNICHAR, CLEAN, ASC
 
+use super::common::broadcast_text;
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    cast::array_node_to_string,
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     model::Model,
 };
 
@@ -93,25 +99,16 @@ impl<'a> Model<'a> {
     }
 
     /// CODE(text) — Returns the Windows-1252 numeric code for the first character of text.
+    /// Broadcasts element-wise: a range or array argument yields an array of codes.
     pub(crate) fn fn_code(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
             Err(e) => return e,
         };
-        match s.chars().next() {
-            None => CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string()),
-            Some(c) => match char_to_win1252(c) {
-                Some(n) => CalcResult::Number(n as f64),
-                None => CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Character has no Windows-1252 code".to_string(),
-                ),
-            },
-        }
+        broadcast_text(cell, &[&text], |i, j| code_element(text.elem(i, j)))
     }
 
     /// UNICHAR(number) — Returns the Unicode character for the given code point.
@@ -148,6 +145,15 @@ impl<'a> Model<'a> {
         };
         CalcResult::String(asc_convert(&s))
     }
+}
+
+/// CODE of a single element: the Windows-1252 code of its first character.
+/// An empty text or a character outside Windows-1252 is `#VALUE!`.
+fn code_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
+    let s = array_node_to_string(text)?;
+    let c = s.chars().next().ok_or(Error::VALUE)?;
+    let n = char_to_win1252(c).ok_or(Error::VALUE)?;
+    Ok(ArrayNode::Number(n as f64))
 }
 
 /// Converts full-width Unicode characters to their ASCII half-width equivalents.
