@@ -4,6 +4,7 @@
 //! array of errors, not a single error. So does a function that works element
 //! by element when one argument is an array and another one an error.
 
+use crate::model::DefinedNameEntry;
 use crate::model::Model;
 use crate::test::util::new_empty_model;
 
@@ -171,13 +172,10 @@ fn iferror_replaces_every_element() {
 fn inside_a_lambda() {
     let mut model = model_with_numbers();
     model
-        .new_defined_name(
+        .new_defined_name(DefinedNameEntry::new(
             "layer_norm",
-            None,
             "=LAMBDA(range,(range-AVERAGE(range))/SQRT(VAR.P(range)+0.00001))",
-            false,
-            "",
-        )
+        ))
         .unwrap();
     // A row with numbers and an empty one
     model._set("A5", "=IFERROR(layer_norm(A1:C1), 0)");

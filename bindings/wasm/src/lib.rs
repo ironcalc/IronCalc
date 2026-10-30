@@ -14,8 +14,8 @@ use ironcalc_base::{
     },
     types::{CellType, Color, Link, Style, StyleIncludes},
     worksheet::NavigationDirection,
-    BorderArea, ClipboardData, UserModel as BaseModel, COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH,
-    DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
+    BorderArea, ClipboardData, DefinedNameEntry, UserModel as BaseModel, COLUMN_WIDTH_FACTOR,
+    DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
 };
 
 fn to_js_error(error: String) -> JsError {
@@ -1156,52 +1156,35 @@ impl Model {
         serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
     }
 
-    /// Creates a new defined name. `scope` is a sheet index or undefined for
-    /// a global name. A hidden name (`hidden` defaults to false) works like a
-    /// regular one but is not shown in the UI. The comment is free text of at most
-    /// 255 characters (defaults to none).
+    /// Creates a new defined name. Only `name` and `formula` are required:
+    /// `scope` (a sheet index) defaults to a global name, `hidden` to false
+    /// and `comment` to none. A hidden name works like a regular one but is
+    /// not shown in the UI. The comment is free text of at most 255 characters.
     #[wasm_bindgen(js_name = "newDefinedName")]
     pub fn new_defined_name(
         &mut self,
-        name: &str,
-        scope: Option<u32>,
-        formula: &str,
-        hidden: Option<bool>,
-        comment: Option<String>,
+        #[wasm_bindgen(unchecked_param_type = "DefinedNameInput")] entry: JsValue,
     ) -> Result<(), JsError> {
+        let entry: DefinedNameEntry =
+            serde_wasm_bindgen::from_value(entry).map_err(|e| to_js_error(e.to_string()))?;
         self.model
-            .new_defined_name(
-                name,
-                scope,
-                formula,
-                hidden.unwrap_or(false),
-                comment.as_deref().unwrap_or(""),
-            )
+            .new_defined_name(entry)
             .map_err(|e| to_js_error(e.to_string()))
     }
 
+    /// Replaces the defined name `name` with scope `scope` by `entry`: every
+    /// field takes the value in `entry`, with the same defaults as `newDefinedName`.
     #[wasm_bindgen(js_name = "updateDefinedName")]
-    #[allow(clippy::too_many_arguments)]
     pub fn update_defined_name(
         &mut self,
         name: &str,
         scope: Option<u32>,
-        new_name: &str,
-        new_scope: Option<u32>,
-        new_formula: &str,
-        new_hidden: bool,
-        new_comment: &str,
+        #[wasm_bindgen(unchecked_param_type = "DefinedNameInput")] entry: JsValue,
     ) -> Result<(), JsError> {
+        let entry: DefinedNameEntry =
+            serde_wasm_bindgen::from_value(entry).map_err(|e| to_js_error(e.to_string()))?;
         self.model
-            .update_defined_name(
-                name,
-                scope,
-                new_name,
-                new_scope,
-                new_formula,
-                new_hidden,
-                new_comment,
-            )
+            .update_defined_name(name, scope, entry)
             .map_err(|e| to_js_error(e.to_string()))
     }
 

@@ -372,6 +372,22 @@ export interface DefinedName {
 }
 
 /**
+ * A defined name to create or to replace an existing one with. Only `name`
+ * and `formula` are required: the name is global, visible and without a
+ * comment unless said otherwise.
+ */
+export interface DefinedNameInput {
+  name: string;
+  formula: string;
+  /** Index of the sheet the name is local to; omit or null for a global name */
+  scope?: number | null;
+  /** Hidden names work like regular ones but are not shown in the UI */
+  hidden?: boolean;
+  /** Free text of at most 255 characters */
+  comment?: string;
+}
+
+/**
  * A cell hyperlink. The link is cell metadata: the text displayed in the cell
  * is the cell content, not part of the link.
  * External links point to a resource outside the workbook (an URL, a mailto:
@@ -586,12 +602,17 @@ export declare class Model {
    */
   getDefinedNameList(): Array<DefinedName>
   /**
-   * Creates a new defined name. `scope` is a sheet index or null for global scope.
-   * A hidden name (`hidden` defaults to false) works like any other but is not shown in the UI.
-   * The comment is free text of at most 255 characters (defaults to none).
+   * Creates a new defined name. Only `name` and `formula` are required:
+   * `scope` (a sheet index) defaults to a global name, `hidden` to false and
+   * `comment` to none. A hidden name works like any other but is not shown in
+   * the UI. The comment is free text of at most 255 characters.
    */
-  newDefinedName(name: string, scope: number | undefined | null, formula: string, hidden?: boolean | undefined | null, comment?: string | undefined | null): void
-  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string, newHidden: boolean, newComment: string): void
+  newDefinedName(entry: DefinedNameInput): void
+  /**
+   * Replaces the defined name `name` with scope `scope` by `entry`: every
+   * field takes the value in `entry`, with the same defaults as `newDefinedName`.
+   */
+  updateDefinedName(name: string, scope: number | undefined | null, entry: DefinedNameInput): void
   deleteDefinedName(name: string, scope?: number | undefined | null): void
   /** Returns the workbook theme */
   getTheme(): IronCalcTheme
@@ -811,12 +832,17 @@ export declare class UserModel {
    */
   getDefinedNameList(): Array<DefinedName>
   /**
-   * Creates a new defined name. `scope` is a sheet index or null for global scope.
-   * A hidden name (`hidden` defaults to false) works like any other but is not shown in the UI.
-   * The comment is free text of at most 255 characters (defaults to none).
+   * Creates a new defined name. Only `name` and `formula` are required:
+   * `scope` (a sheet index) defaults to a global name, `hidden` to false and
+   * `comment` to none. A hidden name works like any other but is not shown in
+   * the UI. The comment is free text of at most 255 characters.
    */
-  newDefinedName(name: string, scope: number | undefined | null, formula: string, hidden?: boolean | undefined | null, comment?: string | undefined | null): void
-  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string, newHidden: boolean, newComment: string): void
+  newDefinedName(entry: DefinedNameInput): void
+  /**
+   * Replaces the defined name `name` with scope `scope` by `entry`: every
+   * field takes the value in `entry`, with the same defaults as `newDefinedName`.
+   */
+  updateDefinedName(name: string, scope: number | undefined | null, entry: DefinedNameInput): void
   deleteDefinedName(name: string, scope?: number | undefined | null): void
   /** Throws if the defined name is not valid */
   isValidDefinedName(name: string, scope: number | undefined | null, formula: string): void

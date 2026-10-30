@@ -4,6 +4,7 @@ use crate::{
     cf_types::ConditionalFormatting,
     constants::COLUMN_WIDTH_FACTOR,
     expressions::types::Area,
+    model::DefinedNameEntry,
     types::{ArrayKind, Cell, Style},
     UserModel,
 };
@@ -380,13 +381,13 @@ impl<'a> UserModel<'a> {
                     old_hidden,
                     old_comment,
                 } => {
-                    self.model.new_defined_name(
-                        name,
-                        *scope,
-                        old_value,
-                        *old_hidden,
-                        old_comment,
-                    )?;
+                    self.model.new_defined_name(DefinedNameEntry {
+                        name: name.clone(),
+                        scope: *scope,
+                        formula: old_value.clone(),
+                        hidden: *old_hidden,
+                        comment: old_comment.clone(),
+                    })?;
                 }
                 Diff::UpdateDefinedName {
                     name,
@@ -403,11 +404,13 @@ impl<'a> UserModel<'a> {
                     self.model.update_defined_name(
                         new_name,
                         *new_scope,
-                        name,
-                        *scope,
-                        old_formula,
-                        *old_hidden,
-                        old_comment,
+                        DefinedNameEntry {
+                            name: name.clone(),
+                            scope: *scope,
+                            formula: old_formula.clone(),
+                            hidden: *old_hidden,
+                            comment: old_comment.clone(),
+                        },
                     )?;
                 }
                 Diff::SetSheetState {
@@ -903,9 +906,13 @@ impl<'a> UserModel<'a> {
                     value,
                     hidden,
                     comment,
-                } => self
-                    .model
-                    .new_defined_name(name, *scope, value, *hidden, comment)?,
+                } => self.model.new_defined_name(DefinedNameEntry {
+                    name: name.clone(),
+                    scope: *scope,
+                    formula: value.clone(),
+                    hidden: *hidden,
+                    comment: comment.clone(),
+                })?,
                 Diff::DeleteDefinedName {
                     name,
                     scope,
@@ -927,11 +934,13 @@ impl<'a> UserModel<'a> {
                 } => self.model.update_defined_name(
                     name,
                     *scope,
-                    new_name,
-                    *new_scope,
-                    new_formula,
-                    *new_hidden,
-                    new_comment,
+                    DefinedNameEntry {
+                        name: new_name.clone(),
+                        scope: *new_scope,
+                        formula: new_formula.clone(),
+                        hidden: *new_hidden,
+                        comment: new_comment.clone(),
+                    },
                 )?,
                 Diff::SetSheetState {
                     index,

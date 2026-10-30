@@ -86,7 +86,13 @@ const NamedRanges = ({
       const scope_index = worksheets.findIndex((s) => s.name === scope);
       const newScope = scope_index >= 0 ? scope_index : null;
       try {
-        model.newDefinedName(name, newScope, formula, hidden, comment);
+        model.newDefinedName({
+          name,
+          scope: newScope,
+          formula,
+          hidden,
+          comment,
+        });
         setIsCreatingNew(false);
         onUpdate();
         return {
@@ -113,11 +119,7 @@ const NamedRanges = ({
         model.updateDefinedName(
           editingDefinedName.name,
           editingDefinedName.scope ?? null,
-          name,
-          newScope,
-          formula,
-          hidden,
-          comment,
+          { name, scope: newScope, formula, hidden, comment },
         );
         setEditingDefinedName(null);
         onUpdate();

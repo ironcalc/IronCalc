@@ -691,6 +691,7 @@ impl<'a> Model<'a> {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
+    use crate::model::DefinedNameEntry;
 
     use crate::cf_types::{CfRuleInput, ValueOperator};
     use crate::test::util::new_empty_model;
@@ -832,7 +833,7 @@ mod tests {
         let mut model = new_empty_model();
         model.set_user_input(0, 1, 1, "5".to_string()).unwrap();
         model
-            .new_defined_name("local_name", Some(0), "Sheet1!$A$1", false, "")
+            .new_defined_name(DefinedNameEntry::new("local_name", "Sheet1!$A$1").scope(0))
             .unwrap();
         model.evaluate();
 
@@ -859,10 +860,10 @@ mod tests {
         model.set_user_input(0, 1, 1, "5".to_string()).unwrap();
         // A global name referencing the source sheet, and one that doesn't.
         model
-            .new_defined_name("from_source", None, "Sheet1!$A$1", false, "")
+            .new_defined_name(DefinedNameEntry::new("from_source", "Sheet1!$A$1"))
             .unwrap();
         model
-            .new_defined_name("from_other", None, "Other!$A$1", false, "")
+            .new_defined_name(DefinedNameEntry::new("from_other", "Other!$A$1"))
             .unwrap();
         model.evaluate();
 
@@ -899,10 +900,10 @@ mod tests {
         let mut model = new_empty_model();
         // The global is created first (so it comes earlier in `defined_names`).
         model
-            .new_defined_name("shared", None, "Sheet1!$A$1", false, "")
+            .new_defined_name(DefinedNameEntry::new("shared", "Sheet1!$A$1"))
             .unwrap();
         model
-            .new_defined_name("shared", Some(0), "Sheet1!$B$2", false, "")
+            .new_defined_name(DefinedNameEntry::new("shared", "Sheet1!$B$2").scope(0))
             .unwrap();
         model.evaluate();
 

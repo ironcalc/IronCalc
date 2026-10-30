@@ -4,7 +4,7 @@ use ironcalc::{
   base::{
     cell::CellValue,
     types::{Link, SheetState, Style, Theme},
-    Model as BaseModel,
+    DefinedNameEntry, Model as BaseModel,
   },
   export::{save_to_icalc, save_to_xlsx},
   import::{load_from_icalc, load_from_xlsx},
@@ -752,53 +752,34 @@ impl Model {
     env.to_js_value(&data).map_err(to_js_error)
   }
 
-  /// Creates a new defined name. `scope` is a sheet index or null for global scope.
-  /// A hidden name (`hidden` defaults to false) works like any other but is not shown in the UI.
-  /// The comment is free text of at most 255 characters (defaults to none).
+  /// Creates a new defined name. Only `name` and `formula` are required:
+  /// `scope` (a sheet index) defaults to a global name, `hidden` to false and
+  /// `comment` to none. A hidden name works like any other but is not shown in
+  /// the UI. The comment is free text of at most 255 characters.
   #[napi]
   pub fn new_defined_name(
     &mut self,
-    name: String,
-    scope: Option<u32>,
-    formula: String,
-    hidden: Option<bool>,
-    comment: Option<String>,
+    env: Env,
+    #[napi(ts_arg_type = "DefinedNameInput")] entry: Unknown,
   ) -> Result<()> {
-    self
-      .model
-      .new_defined_name(
-        &name,
-        scope,
-        &formula,
-        hidden.unwrap_or(false),
-        comment.as_deref().unwrap_or(""),
-      )
-      .map_err(to_js_error)
+    let entry: DefinedNameEntry = env.from_js_value(entry).map_err(to_js_error)?;
+    self.model.new_defined_name(entry).map_err(to_js_error)
   }
 
+  /// Replaces the defined name `name` with scope `scope` by `entry`: every
+  /// field takes the value in `entry`, with the same defaults as `newDefinedName`.
   #[napi]
-  #[allow(clippy::too_many_arguments)]
   pub fn update_defined_name(
     &mut self,
+    env: Env,
     name: String,
     scope: Option<u32>,
-    new_name: String,
-    new_scope: Option<u32>,
-    new_formula: String,
-    new_hidden: bool,
-    new_comment: String,
+    #[napi(ts_arg_type = "DefinedNameInput")] entry: Unknown,
   ) -> Result<()> {
+    let entry: DefinedNameEntry = env.from_js_value(entry).map_err(to_js_error)?;
     self
       .model
-      .update_defined_name(
-        &name,
-        scope,
-        &new_name,
-        new_scope,
-        &new_formula,
-        new_hidden,
-        &new_comment,
-      )
+      .update_defined_name(&name, scope, entry)
       .map_err(to_js_error)
   }
 

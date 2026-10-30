@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::panic)]
 
+use ironcalc::base::DefinedNameEntry;
 use std::fs;
 
 use ironcalc::export::save_to_xlsx;
@@ -82,11 +83,11 @@ fn test_defined_name_comment_is_escaped_and_round_trips() {
     let mut model = ironcalc::base::Model::new_empty("comments", "en", "UTC", "en").unwrap();
     let text = "Tom & Jerry's <rate> is \"high\"";
     model
-        .new_defined_name("Rate", None, "Sheet1!$A$1", false, text)
+        .new_defined_name(DefinedNameEntry::new("Rate", "Sheet1!$A$1").comment(text))
         .unwrap();
     // No comment, no attribute
     model
-        .new_defined_name("Plain", None, "Sheet1!$A$2", false, "")
+        .new_defined_name(DefinedNameEntry::new("Plain", "Sheet1!$A$2"))
         .unwrap();
 
     let temp_file_name = "temp_file_test_defined_name_comment.xlsx";

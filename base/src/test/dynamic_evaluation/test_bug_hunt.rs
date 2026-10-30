@@ -10,6 +10,7 @@
 
 use crate::cell::CellValue;
 use crate::expressions::types::Area;
+use crate::model::DefinedNameEntry;
 
 use crate::test::util::new_empty_model;
 use crate::Model;
@@ -299,7 +300,7 @@ fn indirect_range_in_scalar_argument_intersects_with_the_row() {
 fn defined_name_cell_into_future_spill_area() {
     let mut model = new_empty_model();
     model
-        .new_defined_name("spot", None, "Sheet1!$C$3", false, "")
+        .new_defined_name(DefinedNameEntry::new("spot", "Sheet1!$C$3"))
         .unwrap();
     model._set("A1", "=SEQUENCE(spot)");
     model._set("C1", "=SEQUENCE(3)");
@@ -314,7 +315,7 @@ fn defined_name_cell_into_future_spill_area() {
 fn defined_name_range_over_future_spill_area() {
     let mut model = new_empty_model();
     model
-        .new_defined_name("area", None, "Sheet1!$C$1:$C$3", false, "")
+        .new_defined_name(DefinedNameEntry::new("area", "Sheet1!$C$1:$C$3"))
         .unwrap();
     model._set("A1", "=SEQUENCE(SUM(area))");
     model._set("C1", "=SEQUENCE(3)");

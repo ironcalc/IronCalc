@@ -282,8 +282,8 @@ class Model:
     def new_defined_name(
         self,
         name: str,
-        scope: int | None,
         formula: str,
+        scope: int | None = None,
         hidden: bool = False,
         comment: str = "",
     ) -> None: ...
@@ -292,10 +292,10 @@ class Model:
         name: str,
         scope: int | None,
         new_name: str,
-        new_scope: int | None,
         new_formula: str,
-        new_hidden: bool,
-        new_comment: str,
+        new_scope: int | None = None,
+        new_hidden: bool = False,
+        new_comment: str = "",
     ) -> None: ...
     def delete_defined_name(self, name: str, scope: int | None) -> None: ...
 
@@ -571,8 +571,8 @@ class UserModel:
     def new_defined_name(
         self,
         name: str,
-        scope: int | None,
         formula: str,
+        scope: int | None = None,
         hidden: bool = False,
         comment: str = "",
     ) -> None: ...
@@ -581,10 +581,10 @@ class UserModel:
         name: str,
         scope: int | None,
         new_name: str,
-        new_scope: int | None,
         new_formula: str,
-        new_hidden: bool,
-        new_comment: str,
+        new_scope: int | None = None,
+        new_hidden: bool = False,
+        new_comment: str = "",
     ) -> None: ...
     def delete_defined_name(self, name: str, scope: int | None) -> None: ...
     def is_valid_defined_name(

@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::model::DefinedNameEntry;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -125,22 +126,16 @@ fn whole_column_and_whole_row() {
 fn inside_a_lambda() {
     let mut model = new_empty_model();
     model
-        .new_defined_name(
+        .new_defined_name(DefinedNameEntry::new(
             "Last_Non_Empty_Row",
-            None,
             "=LAMBDA(range, SUMPRODUCT(MAX((range<>\"\")*ROW(range))))",
-            false,
-            "",
-        )
+        ))
         .unwrap();
     model
-        .new_defined_name(
+        .new_defined_name(DefinedNameEntry::new(
             "Last_Non_Empty_Column",
-            None,
             "=LAMBDA(range, SUMPRODUCT(MAX((range<>\"\")*COLUMN(range))))",
-            false,
-            "",
-        )
+        ))
         .unwrap();
     model._set("C1", "Prompt");
     model._set("C2", "Mike");
