@@ -1,0 +1,196 @@
+/* The list reuses the named-ranges layout; the actions only show on hover */
+.ic-named-functions-list-item {
+  cursor: default;
+}
+
+.ic-named-functions-list-item:hover {
+  padding-left: 12px;
+}
+
+.ic-named-functions-actions {
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.ic-named-functions-list-item:hover .ic-named-functions-actions,
+.ic-named-functions-list-item:focus-within .ic-named-functions-actions {
+  opacity: 1;
+}
+
+.ic-named-functions-formula {
+  white-space: pre-wrap;
+  line-height: 20px;
+}
+
+/* An argument shown as a chip */
+.ic-named-functions-chip {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 3px;
+  background-color: var(--palette-grey-100);
+  color: var(--palette-common-black);
+  font-family: var(--typography-font-family);
+  line-height: 18px;
+}
+
+.ic-named-functions-chip--unknown {
+  background-color: var(--palette-error-light, #fdecea);
+  color: var(--palette-error-main);
+}
+
+/* Inside the editable formula the chip is drawn under the typed text: the
+   padding is a box-shadow so it does not move the characters */
+.ic-named-functions-chip--inline {
+  display: inline;
+  padding: 0;
+  box-shadow: 0 0 0 3px var(--palette-grey-100);
+}
+
+.ic-named-functions-chip--inline.ic-named-functions-chip--unknown {
+  box-shadow: 0 0 0 3px var(--palette-error-light, #fdecea);
+}
+
+/* The editable formula: a textarea with transparent text over the chips */
+.ic-named-functions-formula-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ic-named-functions-formula-field > label {
+  display: block;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  font-weight: 500;
+  color: var(--palette-common-black);
+}
+
+.ic-named-functions-formula-control {
+  position: relative;
+}
+
+.ic-named-functions-formula-overlay,
+.ic-named-functions-formula-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 72px;
+  margin: 0;
+  padding: 8px 10px;
+  border: none;
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  letter-spacing: normal;
+}
+
+.ic-named-functions-formula-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--palette-common-black);
+}
+
+.ic-named-functions-formula-textarea {
+  position: relative;
+  display: block;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--palette-common-black);
+  resize: vertical;
+  outline: none;
+}
+
+.ic-named-functions-formula-textarea::placeholder {
+  color: var(--palette-grey-400);
+}
+
+.ic-named-functions-formula-textarea::selection {
+  background-color: var(--palette-primary-light, rgba(242, 153, 74, 0.3));
+}
+
+.ic-named-functions-helper {
+  margin: 0;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-grey-500);
+  line-height: 1.4;
+}
+
+.ic-named-functions-helper--error {
+  color: var(--palette-error-main);
+}
+
+/* Arguments */
+.ic-named-functions-arguments {
+  border-top: 1px solid var(--palette-grey-200);
+  gap: 8px;
+}
+
+.ic-named-functions-arguments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ic-named-functions-arguments-columns,
+.ic-named-functions-argument-row {
+  display: grid;
+  grid-template-columns: 16px 1fr 1fr 28px;
+  align-items: start;
+  gap: 6px;
+}
+
+.ic-named-functions-arguments-columns > span {
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-grey-600);
+}
+
+.ic-named-functions-arguments-columns > span:first-child {
+  grid-column: 2;
+}
+
+.ic-named-functions-argument-row--dragging {
+  opacity: 0.5;
+}
+
+.ic-named-functions-argument-handle {
+  all: unset;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  cursor: grab;
+  color: var(--palette-grey-400);
+}
+
+.ic-named-functions-argument-handle:focus-visible {
+  outline: 1px solid var(--palette-primary-main);
+  border-radius: 3px;
+}
+
+.ic-named-functions-argument-handle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ic-named-functions-formula-section {
+  border-top: 1px solid var(--palette-grey-200);
+}
+
+.ic-named-functions-usage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-grey-600);
+}
+
+.ic-named-functions-usage svg {
+  width: 14px;
+  height: 14px;
+}

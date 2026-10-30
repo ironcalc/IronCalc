@@ -7,6 +7,7 @@ import type {
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
+import NamedFunctions from "./NamedFunctions/NamedFunctions";
 import NamedRanges from "./NamedRanges/NamedRanges";
 import NamedStylesPanel from "./NamedStyles/NamedStylesPanel";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
@@ -27,6 +28,7 @@ const KEYBOARD_RESIZE_STEP = 16;
 
 export type DrawerType =
   | "namedRanges"
+  | "namedFunctions"
   | "namedStyles"
   | "regionalSettings"
   | "conditionalFormatting"
@@ -206,6 +208,10 @@ const RightDrawer = ({
             model={model}
             currentTheme={currentTheme}
           />
+        );
+      case "namedFunctions":
+        return (
+          <NamedFunctions onClose={onClose} model={model} onUpdate={onUpdate} />
         );
       case "themes":
         return (
