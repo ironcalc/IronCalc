@@ -115,20 +115,18 @@ impl<'a> Model<'a> {
     }
 
     /// UNICHAR(number) — Returns the Unicode character for the given code point.
+    /// Broadcasts element-wise: a range or array argument yields an array of characters.
     pub(crate) fn fn_unichar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return e,
-        };
-        match char::from_u32(n) {
-            Some(c) if n > 0 => CalcResult::String(c.to_string()),
-            _ => {
-                CalcResult::new_error(Error::VALUE, cell, "Invalid Unicode code point".to_string())
+        self.apply_number_to_text_unary(&args[0], cell, |f| {
+            let n = f.floor() as u32;
+            match char::from_u32(n) {
+                Some(c) if n > 0 => Ok(c.to_string()),
+                _ => Err(Error::VALUE),
             }
-        }
+        })
     }
 
     /// CLEAN(text) — Removes all non-printable characters (code points 0-31) from text.
