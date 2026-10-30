@@ -13,7 +13,7 @@ use crate::{
         util::from_wildcard_to_regex,
     },
     model::Model,
-    number_format::{number_to_text, to_precision},
+    number_format::to_precision,
 };
 
 /// An argument of a text function that works element by element (LEFT, MID,
@@ -129,6 +129,14 @@ fn mid_element(
 fn len_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
     Ok(ArrayNode::Number(s.chars().count() as f64))
+}
+
+/// UNICODE of a single element: the code point of its first character.
+/// An empty text (or an empty cell) is `#VALUE!`.
+fn unicode_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
+    let s = array_node_to_string(text)?;
+    let c = s.chars().next().ok_or(Error::VALUE)?;
+    Ok(ArrayNode::Number(c as u32 as f64))
 }
 
 /// Computes a single FIND or SEARCH result from one element of each argument.
@@ -624,58 +632,17 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// UNICODE(text) — Returns the code point of the first character of text.
+    /// Broadcasts element-wise: a range or array argument yields an array of code points.
     pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => number_to_text(v),
-                CalcResult::String(v) => v,
-                CalcResult::Boolean(b) => {
-                    if b {
-                        "TRUE".to_string()
-                    } else {
-                        "FALSE".to_string()
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::Range { .. } => {
-                    // Implicit Intersection not implemented
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Implicit Intersection not implemented".to_string(),
-                    };
-                }
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Empty cell".to_string(),
-                    }
-                }
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
-            };
-
-            match s.chars().next() {
-                Some(c) => {
-                    let unicode_number = c as u32;
-                    return CalcResult::Number(unicode_number as f64);
-                }
-                None => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Empty cell".to_string(),
-                    };
-                }
-            }
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
         }
-        CalcResult::new_args_number_error(cell)
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
+            Err(e) => return e,
+        };
+        broadcast_text(cell, &[&text], |i, j| unicode_element(text.elem(i, j)))
     }
 
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
