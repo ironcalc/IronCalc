@@ -169,9 +169,9 @@ fn cf_invalid_formula_is_rejected() {
 // Defined names
 // ---------------------------------------------------------------------------
 
-/// A LAMBDA defined name entered in English is stored in English, and after
-/// switching to Spanish it is displayed in Spanish and keeps evaluating —
-/// even after an edit that forces the defined names to be reparsed.
+/// A LAMBDA defined name is stored as a named function with its body in
+/// English, and after switching to Spanish it is displayed in Spanish and
+/// keeps evaluating — even after an edit that forces the names to be reparsed.
 #[test]
 fn defined_name_lambda_entered_in_english_survives_switch_to_spanish() {
     let mut model = new_empty_model();
@@ -182,21 +182,16 @@ fn defined_name_lambda_entered_in_english_survives_switch_to_spanish() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"1");
 
-    // Stored internally in English.
-    assert_eq!(
-        model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
-    );
+    // Stored internally in English, as a named function.
+    assert!(model.workbook.defined_names.is_empty());
+    assert_eq!(model.workbook.named_functions[0].formula, "IF(x>0,1,2)");
 
     model.set_language("es").unwrap();
 
     // Still stored in English, displayed in Spanish.
-    assert_eq!(
-        model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
-    );
-    let names = model.get_defined_name_list();
-    assert_eq!(names[0].formula, "=LAMBDA(x,SI(x>0,1,2))");
+    assert_eq!(model.workbook.named_functions[0].formula, "IF(x>0,1,2)");
+    let functions = model.get_named_function_list();
+    assert_eq!(functions[0].formula, "SI(x>0,1,2)");
 
     // An edit reparses the defined names; the English form must still parse.
     model
@@ -223,19 +218,10 @@ fn defined_name_lambda_entered_in_spanish_is_stored_in_english() {
     assert_eq!(model._get_text("A1"), *"1");
 
     // Stored in English even though it was entered in Spanish.
-    assert_eq!(
-        model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
-    );
+    assert_eq!(model.workbook.named_functions[0].formula, "IF(x>0,1,2)");
 
     // Displayed in Spanish, and in English after switching.
-    assert_eq!(
-        model.get_defined_name_list()[0].formula,
-        "=LAMBDA(x,SI(x>0,1,2))"
-    );
+    assert_eq!(model.get_named_function_list()[0].formula, "SI(x>0,1,2)");
     model.set_language("en").unwrap();
-    assert_eq!(
-        model.get_defined_name_list()[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
-    );
+    assert_eq!(model.get_named_function_list()[0].formula, "IF(x>0,1,2)");
 }

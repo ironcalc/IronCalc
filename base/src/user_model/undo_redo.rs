@@ -389,6 +389,13 @@ impl<'a> UserModel<'a> {
                         comment: old_comment.clone(),
                     })?;
                 }
+                Diff::CreateNamedFunction { function } => {
+                    self.model
+                        .delete_named_function(&function.name, function.scope)?;
+                }
+                Diff::DeleteNamedFunction { function } => {
+                    self.model.new_named_function(*function.clone())?;
+                }
                 Diff::UpdateDefinedName {
                     name,
                     scope,
@@ -920,6 +927,12 @@ impl<'a> UserModel<'a> {
                     old_hidden: _,
                     old_comment: _,
                 } => self.model.delete_defined_name(name, *scope)?,
+                Diff::CreateNamedFunction { function } => {
+                    self.model.new_named_function(*function.clone())?
+                }
+                Diff::DeleteNamedFunction { function } => self
+                    .model
+                    .delete_named_function(&function.name, function.scope)?,
                 Diff::UpdateDefinedName {
                     name,
                     scope,

@@ -79,6 +79,8 @@ pub use model::get_milliseconds_since_epoch;
 pub use model::DefinedNameEntry;
 pub use model::FmtSettings;
 pub use model::Model;
+pub use model::NamedFunctionEntry;
+pub use model::NamedFunctionParameterEntry;
 pub use user_model::BorderArea;
 pub use user_model::CellText;
 pub use user_model::CellsBlock;

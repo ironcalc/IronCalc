@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec::Vec;
 
+use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::arithmetic::power;
@@ -152,14 +153,22 @@ fn validate_defined_name_comment(comment: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Named function and parameter descriptions have the same limit as comments
+fn validate_description(description: &str) -> Result<(), String> {
+    if description.chars().count() > DEFINED_NAME_COMMENT_MAX_LENGTH {
+        return Err(format!(
+            "Description: Description must be at most {DEFINED_NAME_COMMENT_MAX_LENGTH} characters"
+        ));
+    }
+    Ok(())
+}
+
 #[derive(Clone)]
 pub(crate) enum ParsedDefinedName {
     /// CellReference (`=C4`)
     CellReference(CellReferenceIndex),
     /// A Range (`=C4:D6`)
     RangeReference(Range),
-    /// `=LAMBDA(params..., body)`
-    LambdaDefinition(Vec<NamedVariable>, Node),
     /// Any other formula: a constant (`=3.14`, `="Hello"`), an expression
     /// (`=SUM(Data!$E$2:$E$21)*2`) or a dynamic range (`=OFFSET(...)`).
     /// It is evaluated in the context of the cell that uses the name.
@@ -225,6 +234,107 @@ impl DefinedNameEntry {
     /// Sets the comment
     pub fn comment(mut self, comment: &str) -> Self {
         self.comment = comment.to_string();
+        self
+    }
+}
+
+/// A parameter of a named function as seen by the API
+#[derive(Serialize, Deserialize, Encode, Decode, Default, Debug, PartialEq, Eq, Clone)]
+pub struct NamedFunctionParameterEntry {
+    /// The name, as typed by the user
+    pub name: String,
+    /// Free text describing the parameter, at most 255 characters. Empty means
+    /// no description.
+    #[serde(default)]
+    pub description: String,
+    /// An optional parameter may be omitted when calling the function
+    #[serde(default)]
+    pub optional: bool,
+}
+
+impl NamedFunctionParameterEntry {
+    /// A required parameter without a description
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// Sets the description
+    pub fn description(mut self, description: &str) -> Self {
+        self.description = description.to_string();
+        self
+    }
+
+    /// Sets the optional flag
+    pub fn optional(mut self, optional: bool) -> Self {
+        self.optional = optional;
+        self
+    }
+}
+
+/// A named function as seen by the API, both when listing functions and when
+/// creating or updating one. `scope` is the index of the sheet the function is
+/// local to, or `None` for a workbook function. The formula is the body of the
+/// function (what goes after the parameters in a `LAMBDA`), in the active
+/// language/locale, without a leading `=`.
+///
+/// ```
+/// use ironcalc_base::{NamedFunctionEntry, NamedFunctionParameterEntry};
+/// let entry = NamedFunctionEntry::new("Profit", "(revenue-cost)/revenue")
+///     .parameters(vec![
+///         NamedFunctionParameterEntry::new("revenue"),
+///         NamedFunctionParameterEntry::new("cost").description("Total cost"),
+///     ])
+///     .scope(0);
+/// assert_eq!(entry.scope, Some(0));
+/// assert_eq!(entry.parameters.len(), 2);
+/// ```
+#[derive(Serialize, Deserialize, Encode, Decode, Default, Debug, PartialEq, Eq, Clone)]
+pub struct NamedFunctionEntry {
+    /// The name, as typed by the user
+    pub name: String,
+    /// Index of the sheet the function is local to, `None` for a workbook function
+    #[serde(default)]
+    pub scope: Option<u32>,
+    /// Free text describing the function, at most 255 characters. Empty means
+    /// no description.
+    #[serde(default)]
+    pub description: String,
+    /// The parameters, in order
+    #[serde(default)]
+    pub parameters: Vec<NamedFunctionParameterEntry>,
+    /// The body of the function in the active language/locale, without a
+    /// leading `=`
+    pub formula: String,
+}
+
+impl NamedFunctionEntry {
+    /// A workbook function without parameters or description
+    pub fn new(name: &str, formula: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            formula: formula.to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// Makes the function local to the sheet with index `sheet`
+    pub fn scope(mut self, sheet: u32) -> Self {
+        self.scope = Some(sheet);
+        self
+    }
+
+    /// Sets the description
+    pub fn description(mut self, description: &str) -> Self {
+        self.description = description.to_string();
+        self
+    }
+
+    /// Sets the parameters
+    pub fn parameters(mut self, parameters: Vec<NamedFunctionParameterEntry>) -> Self {
+        self.parameters = parameters;
         self
     }
 }
@@ -320,6 +430,9 @@ pub struct Model<'a> {
     pub parsed_formulas: Vec<Vec<(Arc<Node>, StaticResult)>>,
     /// A list of parsed defined names
     pub(crate) parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
+    /// The parsed named functions: parameters and body, keyed by (sheet index
+    /// the function is local to, lowercase name)
+    pub(crate) parsed_named_functions: HashMap<(Option<u32>, String), (Vec<NamedVariable>, Node)>,
     /// An optimization to lookup strings faster
     pub(crate) shared_strings: HashMap<String, usize>,
     /// An instance of the parser
@@ -526,8 +639,7 @@ impl<'a> Model<'a> {
                         ParsedDefinedName::Formula(formula) => {
                             return self.evaluate_node_with_reference(&formula, cell);
                         }
-                        ParsedDefinedName::LambdaDefinition(..)
-                        | ParsedDefinedName::InvalidDefinedNameFormula => {}
+                        ParsedDefinedName::InvalidDefinedNameFormula => {}
                     }
                 }
                 self.evaluate_node_in_context(node, cell)
@@ -549,11 +661,18 @@ impl<'a> Model<'a> {
                     ),
                 }
             }
-            Node::NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
+            // Not bound by LET or LAMBDA: a named function used as a value
+            // (`MAP(A1:A3, MyFn)`)
+            Node::NamedVariableKind { name, id: None } => {
+                match self.named_function_lambda(name, cell.sheet) {
+                    Some(lambda) => lambda,
+                    None => CalcResult::new_error(
+                        Error::NAME,
+                        cell,
+                        format!("Variable name \"{name}\" not found."),
+                    ),
+                }
+            }
             _ => CalcResult::new_error(Error::ERROR, cell, "Not a variable".to_string()),
         }
     }
@@ -897,22 +1016,10 @@ impl<'a> Model<'a> {
                         }
                     }
                 } else {
-                    // Not bound by LET — look up as a defined-name Lambda.
-                    // Prefer sheet-local (current sheet) over global (scope = None),
-                    // matching Excel's name resolution order.
-                    let name_lower = name.to_lowercase();
-                    let found = self
-                        .parsed_defined_names
-                        .get(&(Some(cell.sheet), name_lower.clone()))
-                        .or_else(|| self.parsed_defined_names.get(&(None, name_lower)))
-                        .cloned();
-                    match found {
-                        Some(ParsedDefinedName::LambdaDefinition(param_names, body)) => {
-                            let lambda_id = self.get_next_lambda_id();
-                            self.lambdas.insert(lambda_id, (param_names, body));
-                            CalcResult::Lambda(lambda_id)
-                        }
-                        _ => {
+                    // Not bound by LET: a named function
+                    match self.named_function_lambda(name, cell.sheet) {
+                        Some(lambda) => lambda,
+                        None => {
                             return CalcResult::new_error(
                                 Error::NAME,
                                 cell,
@@ -934,11 +1041,6 @@ impl<'a> Model<'a> {
                             left: range.left,
                             right: range.right,
                         },
-                        ParsedDefinedName::LambdaDefinition(param_names, body) => {
-                            let lambda_id = self.get_next_lambda_id();
-                            self.lambdas.insert(lambda_id, (param_names, body));
-                            CalcResult::Lambda(lambda_id)
-                        }
                         ParsedDefinedName::Formula(formula) => {
                             self.evaluate_node_in_context(&formula, cell)
                         }
@@ -948,6 +1050,9 @@ impl<'a> Model<'a> {
                             format!("Defined name \"{name}\" is not a valid formula."),
                         ),
                     }
+                } else if let Some(lambda) = self.named_function_lambda_in_scope(name, *scope) {
+                    // A named function qualified with a sheet: `Sheet1!MyFn`
+                    lambda
                 } else {
                     CalcResult::new_error(
                         Error::NAME,
@@ -1977,6 +2082,7 @@ impl<'a> Model<'a> {
             shared_formula_lookup: Vec::new(),
             shared_strings,
             parsed_defined_names: HashMap::new(),
+            parsed_named_functions: HashMap::new(),
             parser,
             language,
             locale,
@@ -1992,6 +2098,7 @@ impl<'a> Model<'a> {
 
         model.parse_formulas();
         model.parse_defined_names();
+        model.parse_named_functions();
         model.evaluate_conditional_formatting();
 
         Ok(model)
@@ -3064,6 +3171,45 @@ impl<'a> Model<'a> {
         Ok(None)
     }
 
+    /// The named function `name` as seen from `sheet`: the one local to the
+    /// sheet if there is one, the workbook one otherwise.
+    fn get_parsed_named_function(
+        &self,
+        name: &str,
+        sheet: u32,
+    ) -> Option<&(Vec<NamedVariable>, Node)> {
+        let name_lower = name.to_lowercase();
+        self.parsed_named_functions
+            .get(&(Some(sheet), name_lower.clone()))
+            .or_else(|| self.parsed_named_functions.get(&(None, name_lower)))
+    }
+
+    /// A lambda value for the named function `name` as seen from `sheet`
+    fn named_function_lambda(&mut self, name: &str, sheet: u32) -> Option<CalcResult> {
+        let (parameters, body) = self.get_parsed_named_function(name, sheet)?.clone();
+        let lambda_id = self.get_next_lambda_id();
+        self.lambdas.insert(lambda_id, (parameters, body));
+        Some(CalcResult::Lambda(lambda_id))
+    }
+
+    /// A lambda value for the named function `name` with exactly the scope
+    /// `scope`, falling back to the workbook function.
+    fn named_function_lambda_in_scope(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+    ) -> Option<CalcResult> {
+        let name_lower = name.to_lowercase();
+        let (parameters, body) = self
+            .parsed_named_functions
+            .get(&(scope, name_lower.clone()))
+            .or_else(|| self.parsed_named_functions.get(&(None, name_lower)))?
+            .clone();
+        let lambda_id = self.get_next_lambda_id();
+        self.lambdas.insert(lambda_id, (parameters, body));
+        Some(CalcResult::Lambda(lambda_id))
+    }
+
     /// Returns the defined name with `name` and `scope` (`None` is global,
     /// `Some(index)` is local to the sheet with that index).
     pub(crate) fn get_defined_name(
@@ -3119,6 +3265,46 @@ impl<'a> Model<'a> {
                     formula,
                     hidden: dn.hidden,
                     comment: dn.comment.clone(),
+                }
+            })
+            .collect()
+    }
+
+    /// Returns the list of named functions.
+    ///
+    /// Bodies are stored internally in English; they are translated into the
+    /// active language/locale for display.
+    pub fn get_named_function_list(&self) -> Vec<NamedFunctionEntry> {
+        let sheet_ids: Vec<u32> = self
+            .workbook
+            .worksheets
+            .iter()
+            .map(|s| s.sheet_id)
+            .collect();
+        self.workbook
+            .named_functions
+            .iter()
+            .map(|nf| {
+                let scope = nf
+                    .sheet_id
+                    .and_then(|sheet_id| sheet_ids.iter().position(|&id| id == sheet_id))
+                    .map(|pos| pos as u32);
+                let context = self.name_context(scope);
+                let formula = self.internal_formula_to_display(&nf.formula, &context);
+                NamedFunctionEntry {
+                    name: nf.name.clone(),
+                    scope,
+                    description: nf.description.clone(),
+                    parameters: nf
+                        .parameters
+                        .iter()
+                        .map(|p| NamedFunctionParameterEntry {
+                            name: p.name.clone(),
+                            description: p.description.clone(),
+                            optional: p.optional,
+                        })
+                        .collect(),
+                    formula,
                 }
             })
             .collect()
@@ -3744,16 +3930,225 @@ impl<'a> Model<'a> {
         // working when the user switches language/locale.
         let context = self.defined_name_context();
         let internal_formula = self.user_formula_to_internal(&formula, &context)?;
-        self.workbook.defined_names.push(DefinedName {
-            name,
-            formula: internal_formula,
-            sheet_id,
-            hidden,
-            comment,
-        });
+        if let Some((parameters, body)) = self.split_lambda_formula(&internal_formula, &context) {
+            // A name defined as a LAMBDA is a named function
+            self.workbook.named_functions.push(NamedFunction {
+                name,
+                sheet_id,
+                description: comment,
+                parameters,
+                formula: body,
+            });
+        } else {
+            self.workbook.defined_names.push(DefinedName {
+                name,
+                formula: internal_formula,
+                sheet_id,
+                hidden,
+                comment,
+            });
+        }
         self.reset_parsed_structures();
 
         Ok(())
+    }
+
+    /// If `formula`, in internal English form, is a LAMBDA definition returns
+    /// its parameters and its body, the body in internal English form.
+    fn split_lambda_formula(
+        &mut self,
+        formula: &str,
+        context: &CellReferenceRC,
+    ) -> Option<(Vec<NamedFunctionParameter>, String)> {
+        let body = formula.trim().strip_prefix('=').unwrap_or(formula);
+        match self.parse_internal_formula(body, context) {
+            Node::LambdaDefKind { parameters, body } => Some((
+                parameters
+                    .iter()
+                    .map(|p| NamedFunctionParameter {
+                        name: p.name.clone(),
+                        description: String::new(),
+                        optional: p.is_optional,
+                    })
+                    .collect(),
+                to_english_string(&body, context),
+            )),
+            _ => None,
+        }
+    }
+
+    /// The context used to parse/stringify a name local to `scope`: A1 of that
+    /// sheet, or of the first sheet for a workbook name.
+    pub(crate) fn name_context(&self, scope: Option<u32>) -> CellReferenceRC {
+        let sheet = match scope {
+            Some(index) => self.workbook.worksheets.get(index as usize),
+            None => self.workbook.worksheets.first(),
+        }
+        .map(|ws| ws.get_name())
+        .unwrap_or_else(|| "Sheet1".to_string());
+        CellReferenceRC {
+            sheet,
+            row: 1,
+            column: 1,
+        }
+    }
+
+    /// Adds a new named function. See [`NamedFunctionEntry`] for the meaning
+    /// of the fields.
+    pub fn new_named_function(&mut self, entry: NamedFunctionEntry) -> Result<(), String> {
+        let NamedFunctionEntry {
+            name,
+            scope,
+            description,
+            parameters,
+            formula,
+        } = entry;
+        let sheet_id = self.is_valid_named_function(&name, scope, &parameters, &formula)?;
+        validate_description(&description)?;
+        for parameter in &parameters {
+            validate_description(&parameter.description)?;
+        }
+        // Bodies are stored internally in English, without the leading '='
+        let context = self.name_context(scope);
+        let internal_formula = self.user_formula_to_internal(&formula, &context)?;
+        let internal_formula = internal_formula
+            .strip_prefix('=')
+            .unwrap_or(&internal_formula)
+            .to_string();
+        self.workbook.named_functions.push(NamedFunction {
+            name,
+            sheet_id,
+            description,
+            parameters: parameters
+                .into_iter()
+                .map(|p| NamedFunctionParameter {
+                    name: p.name,
+                    description: p.description,
+                    optional: p.optional,
+                })
+                .collect(),
+            formula: internal_formula,
+        });
+        self.reset_parsed_structures();
+        Ok(())
+    }
+
+    /// Deletes the named function `name` with scope `scope`
+    pub fn delete_named_function(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
+        let index = self.named_function_index(name, scope)?;
+        self.workbook.named_functions.remove(index);
+        self.reset_parsed_structures();
+        Ok(())
+    }
+
+    /// Returns the named function `name` with scope `scope` (`None` is
+    /// global, `Some(index)` is local to the sheet with that index).
+    pub(crate) fn get_named_function(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+    ) -> Result<&NamedFunction, String> {
+        let index = self.named_function_index(name, scope)?;
+        self.workbook
+            .named_functions
+            .get(index)
+            .ok_or_else(|| "Named function not found".to_string())
+    }
+
+    fn named_function_index(&self, name: &str, scope: Option<u32>) -> Result<usize, String> {
+        let sheet_id = match scope {
+            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
+            None => None,
+        };
+        let name_upper = name.to_uppercase();
+        self.workbook
+            .named_functions
+            .iter()
+            .position(|nf| nf.name.to_uppercase() == name_upper && nf.sheet_id == sheet_id)
+            .ok_or_else(|| "Named function not found".to_string())
+    }
+
+    /// Validates if a named function can be created. Returns the sheet id of
+    /// the scope.
+    pub fn is_valid_named_function(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        parameters: &[NamedFunctionParameterEntry],
+        formula: &str,
+    ) -> Result<Option<u32>, String> {
+        if !is_valid_identifier(name) {
+            return Err("Name: Invalid function name".to_string());
+        }
+        if self.is_builtin_function(name) {
+            return Err(format!(
+                "Name: {} is already a built-in function",
+                name.to_uppercase()
+            ));
+        }
+        let sheet_id = match scope {
+            Some(index) => match self.workbook.worksheet(index) {
+                Ok(ws) => Some(ws.sheet_id),
+                Err(_) => return Err("Scope: Invalid sheet index".to_string()),
+            },
+            None => None,
+        };
+        if self.name_exists(name, sheet_id) {
+            return Err(
+                "Name: A function or defined name with this name already exists".to_string(),
+            );
+        }
+        let mut seen: Vec<String> = Vec::new();
+        for parameter in parameters {
+            if !is_valid_identifier(&parameter.name) {
+                return Err(format!(
+                    "Parameters: Invalid parameter name '{}'",
+                    parameter.name
+                ));
+            }
+            let lower = parameter.name.to_lowercase();
+            if seen.contains(&lower) {
+                return Err(format!(
+                    "Parameters: Duplicate parameter name '{}'",
+                    parameter.name
+                ));
+            }
+            seen.push(lower);
+        }
+        // Accept the body whether it is written in the active language or
+        // already in the internal English form.
+        let context = self.name_context(scope);
+        let body = formula.trim().strip_prefix('=').unwrap_or(formula);
+        let mut node = self.parser.parse(body, &context);
+        if let Node::ParseErrorKind { .. } = node {
+            node = self.parse_internal_formula(body, &context);
+        }
+        if matches!(node, Node::ParseErrorKind { .. }) || has_unqualified_reference(&node) {
+            return Err("Formula: Invalid named function formula".to_string());
+        }
+        Ok(sheet_id)
+    }
+
+    /// True if `name` is a built-in function, in English or in the active
+    /// language
+    fn is_builtin_function(&self, name: &str) -> bool {
+        get_default_language().functions.lookup(name).is_some()
+            || self.language.functions.lookup(name).is_some()
+    }
+
+    /// True if there is a defined name or a named function called `name` with
+    /// scope `sheet_id`. Defined names and named functions share a namespace.
+    fn name_exists(&self, name: &str, sheet_id: Option<u32>) -> bool {
+        let name_upper = name.to_uppercase();
+        self.workbook
+            .defined_names
+            .iter()
+            .any(|df| df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id)
+            || self
+                .workbook
+                .named_functions
+                .iter()
+                .any(|nf| nf.name.to_uppercase() == name_upper && nf.sheet_id == sheet_id)
     }
 
     /// The context used to parse/stringify defined-name formulas. Defined names
@@ -3781,8 +4176,6 @@ impl<'a> Model<'a> {
         if !is_valid_identifier(name) {
             return Err("Name: Invalid defined name".to_string());
         }
-        let name_upper = name.to_uppercase();
-        let defined_names = &self.workbook.defined_names;
         let sheet_id = match scope {
             Some(index) => match self.workbook.worksheet(index) {
                 Ok(ws) => Some(ws.sheet_id),
@@ -3791,10 +4184,8 @@ impl<'a> Model<'a> {
             None => None,
         };
         // if the defined name already exist return error
-        for df in defined_names {
-            if df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id {
-                return Err("Name: Defined name already exists".to_string());
-            }
+        if self.name_exists(name, sheet_id) {
+            return Err("Name: Defined name already exists".to_string());
         }
 
         // Make sure the formula is valid: a cell/range reference or any

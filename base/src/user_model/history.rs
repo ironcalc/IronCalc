@@ -4,6 +4,7 @@ use bitcode::{Decode, Encode};
 
 use crate::{
     cf_types::CfRule,
+    model::NamedFunctionEntry,
     types::{
         Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
     },
@@ -215,6 +216,13 @@ pub(crate) enum Diff {
         old_value: String,
         old_hidden: bool,
         old_comment: String,
+    },
+    /// A named function, with its body in the internal (English) form
+    CreateNamedFunction {
+        function: Box<NamedFunctionEntry>,
+    },
+    DeleteNamedFunction {
+        function: Box<NamedFunctionEntry>,
     },
     UpdateDefinedName {
         name: String,
