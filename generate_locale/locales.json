@@ -789,12 +789,12 @@
         "standard": "#,##0.###"
       },
       "currencyFormats-numberSystem-latn": {
-        "standard": "¤#,##0.00",
-        "standard-alphaNextToNumber": "¤ #,##0.00",
-        "standard-noCurrency": "#,##0.00",
-        "accounting": "¤#,##0.00;(¤#,##0.00)",
-        "accounting-alphaNextToNumber": "¤ #,##0.00;(¤ #,##0.00)",
-        "accounting-noCurrency": "#,##0.00;(#,##0.00)"
+        "standard": "¤#,##0",
+        "standard-alphaNextToNumber": "¤ #,##0",
+        "standard-noCurrency": "#,##0",
+        "accounting": "¤#,##0;(¤#,##0)",
+        "accounting-alphaNextToNumber": "¤ #,##0;(¤ #,##0)",
+        "accounting-noCurrency": "#,##0;(#,##0)"
       }
     },
     "currency": {

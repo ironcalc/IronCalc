@@ -83,6 +83,7 @@ fn ja_locale() {
     assert_eq!(settings.short_date_example, "2025/12/15");
     assert_eq!(settings.long_date_example, "2025年12月15日");
     assert_eq!(settings.currency, "JPY");
+    assert_eq!(settings.currency_format, "\"￥\"#,##0");
 
     // The full CLDR date format uses the Japanese day names
     let locale = get_locale("ja").unwrap();

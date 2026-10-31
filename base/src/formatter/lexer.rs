@@ -13,7 +13,7 @@ pub enum Token {
     Color(i32),              // [Red] or [Color 23]
     Condition(Compare, f64), // [<=100] (Comparator, number)
     Currency(char),          // [$€] ($ currency symbol)
-    Literal(char), // €, $, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or escaped \X
+    Literal(char), // €, $, £, ¥ (other currency signs), (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or escaped \X
     Spacer(char),  // *X
     Ghost(char),   // _X
     Text(String),  // "Text"
@@ -332,6 +332,9 @@ impl Lexer {
             Some(x) => match x {
                 '$' | '€' | '(' | ')' | '/' | ':' | '+' | '-' | '^' | '\'' | '{' | '}' | '<'
                 | '=' | '!' | '~' | '>' | ' ' => Token::Literal(x),
+                // Other currency signs (e.g. the locale currency in "£#,##0" or "￥#,##0")
+                '¢' | '£' | '¥' | '₩' | '₪' | '₫' | '₱' | '₹' | '₺' | '₽' | '￠' | '￡' | '￥'
+                | '￦' => Token::Literal(x),
                 '?' => Token::QuestionMark,
                 ';' => Token::Separator,
                 '#' => Token::Sharp,

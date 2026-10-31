@@ -4,7 +4,7 @@ use std::fs;
 use bitcode::Encode;
 use serde::{Deserialize, Serialize};
 
-use crate::constants::Currency;
+use crate::constants::{Currency, CurrencyFormats};
 
 // This comes from cldr-core/supplemental/currencyData.json
 // {
@@ -45,7 +45,13 @@ struct Supplemental {
 }
 #[derive(Serialize, Deserialize, Encode)]
 struct CurrencyRegion {
+    pub fractions: HashMap<String, CurrencyFraction>,
     pub region: HashMap<String, Vec<HashMap<String, CurrencyRange>>>,
+}
+
+#[derive(Serialize, Deserialize, Encode)]
+struct CurrencyFraction {
+    pub _digits: String,
 }
 
 #[derive(Serialize, Deserialize, Encode)]
@@ -98,6 +104,48 @@ struct CurrencyDetails {
     display_name_count_one: Option<String>,
     #[serde(rename = "displayName-count-other")]
     display_name_count_other: Option<String>,
+}
+
+/// Number of decimal digits used by a currency (2 unless CLDR says otherwise, e.g. 0 for JPY)
+pub fn get_currency_digits(cldr_dir: &str, currency_code: &str) -> Result<usize, String> {
+    let numbers_file = format!(
+        "{}cldr-json/cldr-core/supplemental/currencyData.json",
+        cldr_dir
+    );
+    let contents =
+        fs::read_to_string(&numbers_file).or(Err("Failed reading 'currencyData.json'"))?;
+    let currency_data: CurrencyData = serde_json::from_str(&contents)
+        .or(Err(format!("Failed parsing '{}' file", numbers_file)))?;
+    let fractions = &currency_data.supplemental.currency_data.fractions;
+    let fraction = fractions
+        .get(currency_code)
+        .or_else(|| fractions.get("DEFAULT"))
+        .ok_or("No DEFAULT entry in currency fractions")?;
+    fraction
+        ._digits
+        .parse()
+        .or(Err(format!("Invalid digits for currency {}", currency_code)))
+}
+
+/// CLDR currency patterns do not depend on the currency ("¤#,##0.00" is also used for JPY).
+/// We bake the decimals of the locale currency into the patterns: "¤#,##0.00" => "¤#,##0"
+pub fn set_currency_digits(formats: &mut CurrencyFormats, digits: usize) {
+    let decimals = if digits == 0 {
+        "0".to_string()
+    } else {
+        format!("0.{}", "0".repeat(digits))
+    };
+    let fix = |pattern: &mut String| *pattern = pattern.replace("0.00", &decimals);
+    fix(&mut formats.standard);
+    fix(&mut formats.standard_no_currency);
+    fix(&mut formats.accounting);
+    fix(&mut formats.accounting_no_currency);
+    if let Some(pattern) = formats.standard_alpha_next_to_number.as_mut() {
+        fix(pattern);
+    }
+    if let Some(pattern) = formats.accounting_alpha_next_to_number.as_mut() {
+        fix(pattern);
+    }
 }
 
 pub fn get_locale_currency(cldr_dir: &str, locale_id: &str, id: &str) -> Result<Currency, String> {
