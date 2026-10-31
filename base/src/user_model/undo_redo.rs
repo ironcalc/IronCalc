@@ -249,6 +249,7 @@ impl<'a> UserModel<'a> {
                     row,
                     count: _,
                     old_data,
+                    old_formulas,
                 } => {
                     needs_evaluation = true;
                     self.model
@@ -261,6 +262,7 @@ impl<'a> UserModel<'a> {
                         }
                         worksheet.sheet_data.set_row(r, row_data.data.clone());
                     }
+                    self.model.restore_displaced_formulas(old_formulas)?;
                 }
                 Diff::InsertColumns {
                     sheet,
@@ -275,6 +277,7 @@ impl<'a> UserModel<'a> {
                     column,
                     count: _,
                     old_data,
+                    old_formulas,
                 } => {
                     needs_evaluation = true;
                     self.model
@@ -292,6 +295,7 @@ impl<'a> UserModel<'a> {
                             worksheet.set_column_width_and_style(c, width, hidden, style)?;
                         }
                     }
+                    self.model.restore_displaced_formulas(old_formulas)?;
                 }
                 Diff::SetFrozenRowsCount {
                     sheet,
@@ -810,6 +814,7 @@ impl<'a> UserModel<'a> {
                     row,
                     count,
                     old_data: _,
+                    old_formulas: _,
                 } => {
                     self.model.delete_rows(*sheet, *row, *count)?;
                     needs_evaluation = true;
@@ -827,6 +832,7 @@ impl<'a> UserModel<'a> {
                     column,
                     count,
                     old_data: _,
+                    old_formulas: _,
                 } => {
                     self.model.delete_columns(*sheet, *column, *count)?;
                     needs_evaluation = true;
