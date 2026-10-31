@@ -16,6 +16,29 @@ pub struct Formatted {
     pub error: Option<String>,
 }
 
+/// Rounds `value` to `decimals` places the way Excel displays numbers: it keeps 15 significant
+/// digits and then rounds halves away from zero (2.5 => 3, 1234.5 => 1235, -0.5 => -1).
+/// Rust's formatting rounds halves to even instead (2.5 => 2).
+/// Rounding to 15 digits first means that 1.005 (stored as 1.00499999999999989...) gives 1.01.
+fn round_half_away_from_zero(value: f64, decimals: i32) -> f64 {
+    if value == 0.0 || !value.is_finite() {
+        return value;
+    }
+    // Number of significant digits up to the last decimal shown
+    let digits = value.abs().log10().floor() as i32 + 1 + decimals;
+    if digits > 15 {
+        // We show more digits than Excel keeps; the formatter cuts them at 15
+        return value;
+    }
+    let value = to_precision(value, 15);
+    let scale = 10.0_f64.powi(decimals);
+    let scaled = to_precision(value * scale, 15);
+    if !scaled.is_finite() {
+        return value;
+    }
+    scaled.round() / scale
+}
+
 /// Returns the vector of chars of the fractional part of a *positive* number:
 /// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
 fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
@@ -438,10 +461,14 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let tokens = &p.tokens;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
             // p.precision is the number of significant digits _after_ the decimal point
-            value = to_precision(
-                value,
-                (p.precision as usize) + format!("{}", value.abs().floor()).len(),
-            );
+            value = if p.is_scientific {
+                to_precision(
+                    value,
+                    (p.precision as usize) + format!("{}", value.abs().floor()).len(),
+                )
+            } else {
+                round_half_away_from_zero(value, p.precision)
+            };
             let mut value_abs = value.abs();
             let mut exponent_part: Vec<char> = vec![];
             let mut exponent_is_negative = value_abs < 10.0;
