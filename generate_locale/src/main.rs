@@ -74,6 +74,7 @@ fn main() -> Result<(), String> {
             "fr" => "fr-FR",
             "de" => "de-DE",
             "it" => "it-IT",
+            "ja" => "ja-JP",
             _ => locale_id.as_str(),
         };
         let dates = get_dates_formatting(&cldr_dir, locale_id)?;

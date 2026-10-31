@@ -50,3 +50,19 @@ fn spanish() {
     assert_eq!(model._get_text("A1"), *"VERDADERO");
     assert_eq!(model._get_text("B1"), *"#¿NOMBRE?");
 }
+
+#[test]
+fn japanese() {
+    // Japanese Excel keeps the English function names, booleans and errors
+    let mut model = Model::new_empty("model", "ja", "UTC", "ja").unwrap();
+    model._set("A1", "=IF(1>2, 3, 4)");
+    model._set("B1", "=TRUE");
+    model._set("C1", "=1/0");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"4");
+    assert_eq!(model._get_formula("A1"), *"=IF(1>2,3,4)");
+    assert_eq!(model._get_text("B1"), *"TRUE");
+    assert_eq!(model._get_text("C1"), *"#DIV/0!");
+    assert_eq!(model.get_worksheets_properties()[0].name, "Sheet1");
+}
