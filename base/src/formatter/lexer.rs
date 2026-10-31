@@ -13,7 +13,7 @@ pub enum Token {
     Color(i32),              // [Red] or [Color 23]
     Condition(Compare, f64), // [<=100] (Comparator, number)
     Currency(char),          // [$€] ($ currency symbol)
-    Literal(char), // €, $, £, ¥ (other currency signs), (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or escaped \X
+    Literal(char), // non-ASCII (€, £, ¥, 年, ...), $, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or escaped \X
     Spacer(char),  // *X
     Ghost(char),   // _X
     Text(String),  // "Text"
@@ -51,6 +51,15 @@ pub enum Token {
     ElapsedMinutePadded, // [mm]
     ElapsedSecondPadded, // [ss]
     AMPM,                // AM/PM (or A/P)
+    // Japanese calendar
+    EraLetter,      // g   (R)
+    EraShortName,   // gg  (令)
+    EraName,        // ggg+ (令和)
+    EraYear,        // e   (year of the era)
+    EraYearPadded,  // ee+
+    WeekdayJaShort, // aaa  (月)
+    WeekdayJa,      // aaaa+ (月曜日)
+    LocaleTag,      // [$-411] or [$-ja-JP] (locale without currency, ignored)
     ILLEGAL,
     EOF,
 }
@@ -81,6 +90,13 @@ impl Token {
             || self == &Token::MonthLetter
             || self == &Token::YearShort
             || self == &Token::Year
+            || self == &Token::EraLetter
+            || self == &Token::EraShortName
+            || self == &Token::EraName
+            || self == &Token::EraYear
+            || self == &Token::EraYearPadded
+            || self == &Token::WeekdayJaShort
+            || self == &Token::WeekdayJa
     }
 }
 
@@ -114,6 +130,30 @@ impl Lexer {
         } else {
             None
         }
+    }
+
+    /// Number of times `c` repeats at the current position (without consuming)
+    fn count_repeated(&self, c: char) -> usize {
+        self.chars[self.position..]
+            .iter()
+            .take_while(|&&x| x == c)
+            .count()
+    }
+
+    /// Consumes the repetitions of `c` and returns how many there were
+    fn consume_repeated(&mut self, c: char) -> usize {
+        let count = self.count_repeated(c);
+        self.position += count;
+        count
+    }
+
+    fn consume_repeated_ignore_case(&mut self, c: char) -> usize {
+        let count = self.chars[self.position..]
+            .iter()
+            .take_while(|x| x.eq_ignore_ascii_case(&c))
+            .count();
+        self.position += count;
+        count
     }
 
     fn set_error(&mut self, error: &str) {
@@ -332,9 +372,9 @@ impl Lexer {
             Some(x) => match x {
                 '$' | '€' | '(' | ')' | '/' | ':' | '+' | '-' | '^' | '\'' | '{' | '}' | '<'
                 | '=' | '!' | '~' | '>' | ' ' => Token::Literal(x),
-                // Other currency signs (e.g. the locale currency in "£#,##0" or "￥#,##0")
-                '¢' | '£' | '¥' | '₩' | '₪' | '₫' | '₱' | '₹' | '₺' | '₽' | '￠' | '￡' | '￥'
-                | '￦' => Token::Literal(x),
+                // Any other non-ASCII character is shown as is, like Excel does: currency signs
+                // ("£#,##0", "￥#,##0") or Japanese text ("yyyy年m月d日")
+                c if !c.is_ascii() => Token::Literal(c),
                 '?' => Token::QuestionMark,
                 ';' => Token::Separator,
                 '#' => Token::Sharp,
@@ -362,6 +402,16 @@ impl Lexer {
                             //      Like [$$-409] (=1033 for en-US) or
                             //           [$$-40C] (=1036 for fr-FR)
                             self.read_next_char();
+                            if Some('-') == self.peek_char() {
+                                // Only a locale, no currency: [$-411] or [$-ja-JP]
+                                while let Some(c) = self.read_next_char() {
+                                    if c == ']' {
+                                        return Token::LocaleTag;
+                                    }
+                                }
+                                self.set_error("Failed to parse locale");
+                                return Token::ILLEGAL;
+                            }
                             if let Some(currency) = self.read_next_char() {
                                 // ignore the locale part for now, just check if it ends with ']'
                                 if Some('-') == self.peek_char() {
@@ -534,6 +584,32 @@ impl Lexer {
                         Token::ILLEGAL
                     }
                 }
+                'A' | 'a' if self.count_repeated(x) >= 2 => {
+                    // aaa / aaaa: Japanese weekday names
+                    let count = 1 + self.consume_repeated(x);
+                    match count {
+                        3 => Token::WeekdayJaShort,
+                        n if n > 3 => Token::WeekdayJa,
+                        _ => {
+                            self.set_error("Unexpected character after 'a'");
+                            Token::ILLEGAL
+                        }
+                    }
+                }
+                'e' => {
+                    if let Some('+') | Some('-') = self.peek_char() {
+                        // lowercase scientific notation (0.00e+00)
+                        if self.read_next_char() == Some('+') {
+                            Token::Scientific
+                        } else {
+                            Token::ScientificMinus
+                        }
+                    } else if self.consume_repeated('e') == 0 {
+                        Token::EraYear
+                    } else {
+                        Token::EraYearPadded
+                    }
+                }
                 'A' | 'a' => {
                     if let Some('M') | Some('m') = self.peek_char() {
                         self.read_next_char();
@@ -562,14 +638,21 @@ impl Lexer {
                     Token::AMPM
                 }
                 'g' | 'G' => {
-                    for c in "eneral".chars() {
-                        let cc = self.read_next_char();
-                        if Some(c) != cc {
-                            self.set_error(&format!("Unexpected character: {x}"));
-                            return Token::ILLEGAL;
-                        }
+                    let rest: String = self.chars[self.position..]
+                        .iter()
+                        .take(6)
+                        .collect::<String>()
+                        .to_lowercase();
+                    if rest == "eneral" {
+                        self.position += 6;
+                        return Token::General;
                     }
-                    Token::General
+                    // g, gg, ggg: Japanese era
+                    match 1 + self.consume_repeated_ignore_case('g') {
+                        1 => Token::EraLetter,
+                        2 => Token::EraShortName,
+                        _ => Token::EraName,
+                    }
                 }
                 _ => {
                     self.set_error(&format!("Unexpected character: {x}"));

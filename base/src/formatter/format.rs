@@ -16,6 +16,62 @@ pub struct Formatted {
     pub error: Option<String>,
 }
 
+/// Japanese weekday names used by the `aaa` (月) and `aaaa` (月曜日) codes, starting on Sunday.
+/// Excel shows them in Japanese whatever the locale.
+const JA_WEEKDAYS: [&str; 7] = ["日", "月", "火", "水", "木", "金", "土"];
+
+struct JapaneseEra {
+    start: (i32, u32, u32),   // first day (year, month, day)
+    letter: &'static str,     // g   (R)
+    short_name: &'static str, // gg  (令)
+    name: &'static str,       // ggg (令和)
+}
+
+/// Excel dates start in 1900, so Meiji is the oldest era we need
+const JAPANESE_ERAS: [JapaneseEra; 5] = [
+    JapaneseEra {
+        start: (2019, 5, 1),
+        letter: "R",
+        short_name: "令",
+        name: "令和",
+    },
+    JapaneseEra {
+        start: (1989, 1, 8),
+        letter: "H",
+        short_name: "平",
+        name: "平成",
+    },
+    JapaneseEra {
+        start: (1926, 12, 25),
+        letter: "S",
+        short_name: "昭",
+        name: "昭和",
+    },
+    JapaneseEra {
+        start: (1912, 7, 30),
+        letter: "T",
+        short_name: "大",
+        name: "大正",
+    },
+    JapaneseEra {
+        start: (1868, 1, 1),
+        letter: "M",
+        short_name: "明",
+        name: "明治",
+    },
+];
+
+/// Returns the Japanese era of a date and the year in that era (the first year is 1)
+fn japanese_era(date: &chrono::NaiveDate) -> (&'static JapaneseEra, i32) {
+    let ymd = (date.year(), date.month(), date.day());
+    // The last entry (Meiji) catches everything older
+    let era = JAPANESE_ERAS
+        .iter()
+        .find(|era| ymd >= era.start)
+        .unwrap_or(&JAPANESE_ERAS[JAPANESE_ERAS.len() - 1]);
+    (era, date.year() - era.start.0 + 1)
+}
+
 /// Rounds `value` to `decimals` places the way Excel displays numbers: it keeps 15 significant
 /// digits and then rounds halves away from zero (2.5 => 3, 1234.5 => 1235, -0.5 => -1).
 /// Rust's formatting rounds halves to even instead (2.5 => 2).
@@ -366,6 +422,36 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         };
                         text = format!("{}{}", text, date.format("%y"));
                     }
+                    TextToken::EraLetter
+                    | TextToken::EraShortName
+                    | TextToken::EraName
+                    | TextToken::EraYear
+                    | TextToken::EraYearPadded
+                    | TextToken::WeekdayJaShort
+                    | TextToken::WeekdayJa => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
+                        let (era, era_year) = japanese_era(&date);
+                        let weekday = date.weekday().num_days_from_sunday() as usize;
+                        let part = match token {
+                            TextToken::EraLetter => era.letter.to_string(),
+                            TextToken::EraShortName => era.short_name.to_string(),
+                            TextToken::EraName => era.name.to_string(),
+                            TextToken::EraYear => format!("{era_year}"),
+                            TextToken::EraYearPadded => format!("{era_year:02}"),
+                            TextToken::WeekdayJaShort => JA_WEEKDAYS[weekday].to_string(),
+                            _ => format!("{}曜日", JA_WEEKDAYS[weekday]),
+                        };
+                        text = format!("{text}{part}");
+                    }
                     TextToken::Year => {
                         let date = match date {
                             Some(d) => d,
@@ -668,6 +754,13 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::Second => {}
                     TextToken::SecondPadded => {}
                     TextToken::AMPM => {}
+                    TextToken::EraLetter
+                    | TextToken::EraShortName
+                    | TextToken::EraName
+                    | TextToken::EraYear
+                    | TextToken::EraYearPadded
+                    | TextToken::WeekdayJaShort
+                    | TextToken::WeekdayJa => {}
                     TextToken::ElapsedHour => {}
                     TextToken::ElapsedHourPadded => {}
                     TextToken::ElapsedMinute => {}
