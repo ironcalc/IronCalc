@@ -271,3 +271,9 @@
 .ic-worksheet-editor-wrapper span {
   min-width: 1px;
 }
+
+/* Not editing: the editor only holds the focus for the IME (see drawCellEditor) */
+.ic-worksheet-editor-wrapper--idle {
+  outline: none;
+  pointer-events: none;
+}

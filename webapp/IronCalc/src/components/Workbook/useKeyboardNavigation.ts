@@ -8,6 +8,15 @@ export enum Border {
   Left = "left",
 }
 
+// The cell editor's textarea while no cell is being edited (it keeps the focus for the IME)
+function isIdleCellInput(target: EventTarget): boolean {
+  return (
+    target instanceof HTMLTextAreaElement &&
+    target.dataset.cellInput !== undefined &&
+    target.closest(".ic-editor-container--hidden") !== null
+  );
+}
+
 interface Options {
   onCellsDeleted: () => void;
   onExpandAreaSelectedKeyboard: (
@@ -83,7 +92,8 @@ const useKeyboardNavigation = (
       if (!root.current) {
         return;
       }
-      if (event.target !== root.current) {
+      // Keys come from the root or from the cell input while it is not editing
+      if (event.target !== root.current && !isIdleCellInput(event.target)) {
         return;
       }
       const isCtrl = event.metaKey || event.ctrlKey;
