@@ -70,7 +70,7 @@ fn asc_jis_round_trip() {
 
 #[test]
 fn phonetic_returns_the_text() {
-    // Furigana are not kept, so the reading of a text is the text itself
+    // A cell without furigana gives its text
     let mut model = new_empty_model();
     model._set("A1", "山田");
     model._set("B1", "=PHONETIC(A1)");

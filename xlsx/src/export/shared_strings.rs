@@ -6,7 +6,7 @@ pub(crate) fn get_shared_strings_xml(model: &Workbook) -> String {
     let mut shared_strings: Vec<String> = vec![];
     let count = &model.shared_strings.len();
     let unique_count = &model.shared_strings.len();
-    for shared_string in &model.shared_strings {
+    for (index, shared_string) in model.shared_strings.iter().enumerate() {
         // Some engines drop the leading and trailing whitespace of a `<t>` element
         // unless the element asks for it to be kept.
         let space = if needs_space_preserve(shared_string) {
@@ -14,8 +14,20 @@ pub(crate) fn get_shared_strings_xml(model: &Workbook) -> String {
         } else {
             ""
         };
+        // The furigana go after the text (18.4.6 rPh)
+        let mut phonetic = String::new();
+        if let Some(runs) = model.phonetic_runs.get(&(index as i32)) {
+            for run in runs {
+                phonetic.push_str(&format!(
+                    "<rPh sb=\"{}\" eb=\"{}\"><t>{}</t></rPh>",
+                    run.start,
+                    run.end,
+                    escape_xml(&run.text)
+                ));
+            }
+        }
         shared_strings.push(format!(
-            "<si><t{space}>{}</t></si>",
+            "<si><t{space}>{}</t>{phonetic}</si>",
             escape_xml(shared_string)
         ));
     }

@@ -4,6 +4,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
+    types::{Cell, PhoneticRun},
 };
 
 // Half-width katakana (U+FF61..U+FF9F) and the full-width character of each one, in order
@@ -97,6 +98,27 @@ pub(crate) fn jis_convert(text: &str) -> String {
     result
 }
 
+/// Replaces the characters covered by each phonetic run with its reading:
+/// "山田さん" with a run for 山田 (0..2) read as ヤマダ gives "ヤマダさん".
+/// The positions are UTF-16 positions, as in Excel.
+fn apply_phonetic_runs(text: &str, runs: &[PhoneticRun]) -> String {
+    let mut result = String::new();
+    let mut position = 0;
+    let mut covered_until = 0;
+    for c in text.chars() {
+        if position >= covered_until {
+            if let Some(run) = runs.iter().find(|run| run.start == position) {
+                result.push_str(&run.text);
+                covered_until = run.end.max(position + 1);
+            } else {
+                result.push(c);
+            }
+        }
+        position += c.len_utf16() as u32;
+    }
+    result
+}
+
 impl<'a> Model<'a> {
     /// ASC(text) — Converts full-width characters to half-width ones
     pub(crate) fn fn_asc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -108,11 +130,19 @@ impl<'a> Model<'a> {
         self.apply_text_unary(args, cell, jis_convert)
     }
 
+    /// The furigana of the shared string in a cell, if it has any (imported from xlsx files)
+    fn phonetic_runs_of(&self, sheet: u32, row: i32, column: i32) -> Option<&Vec<PhoneticRun>> {
+        let cell = self.workbook.worksheet(sheet).ok()?.cell(row, column)?;
+        match *cell {
+            Cell::SharedString { si, .. } => self.workbook.phonetic_runs.get(&si),
+            _ => None,
+        }
+    }
+
     /// PHONETIC(reference) — Returns the furigana (reading) of the text in the reference.
-    /// IronCalc does not keep furigana (they are not imported from xlsx files), and like Excel
-    /// for a cell without furigana it returns the text itself. With a range, the texts of the
-    /// cells are joined, row by row. Numbers, booleans and formula results are skipped, as in
-    /// Excel.
+    /// Furigana are imported from xlsx files. Like Excel, for a cell without furigana it returns
+    /// the text itself. With a range, the readings of the cells are joined, row by row. Numbers,
+    /// booleans and formula results are skipped, as in Excel.
     pub(crate) fn fn_phonetic(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -147,7 +177,10 @@ impl<'a> Model<'a> {
                     row,
                     column,
                 }) {
-                    result.push_str(&text);
+                    match self.phonetic_runs_of(left.sheet, row, column) {
+                        Some(runs) => result.push_str(&apply_phonetic_runs(&text, runs)),
+                        None => result.push_str(&text),
+                    }
                 }
             }
         }
@@ -158,6 +191,28 @@ impl<'a> Model<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn run(start: u32, end: u32, text: &str) -> PhoneticRun {
+        PhoneticRun {
+            start,
+            end,
+            text: text.to_string(),
+        }
+    }
+
+    #[test]
+    fn phonetic_runs_replace_the_characters_they_cover() {
+        let runs = [run(0, 2, "ヤマダ"), run(2, 4, "タロウ")];
+        assert_eq!(apply_phonetic_runs("山田太郎", &runs), "ヤマダタロウ");
+        assert_eq!(
+            apply_phonetic_runs("田中さん", &[run(0, 2, "タナカ")]),
+            "タナカさん"
+        );
+        assert_eq!(apply_phonetic_runs("お茶", &[run(1, 2, "チャ")]), "おチャ");
+        assert_eq!(apply_phonetic_runs("山田", &[]), "山田");
+        // Positions are in UTF-16: 𠮷 (U+20BB7) takes two
+        assert_eq!(apply_phonetic_runs("𠮷野家", &[run(2, 3, "ノ")]), "𠮷ノ家");
+    }
 
     #[test]
     fn kana_tables_have_the_same_length() {

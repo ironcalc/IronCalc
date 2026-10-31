@@ -4901,7 +4901,7 @@
     "category": 10,
     "tags": [],
     "args": [["reference", "reference", "A cell or range with Japanese text"]],
-    "description": "Returns the furigana (reading) of Japanese text. IronCalc does not keep furigana, so it returns the text itself; with a range it joins the texts of the cells, skipping numbers and formula results.",
+    "description": "Returns the furigana (reading) of Japanese text, as imported from xlsx files. A cell without furigana gives its text; with a range it joins the readings of the cells, skipping numbers and formula results.",
     "examples": ["=PHONETIC(A1:C1) joins the texts in A1, B1 and C1."]
   },
   "pi": {
