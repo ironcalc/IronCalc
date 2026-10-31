@@ -224,6 +224,8 @@ pub enum Function {
     Clean,
     Code,
     Asc,
+    Jis,
+    Phonetic,
     Arraytotext,
     Dollar,
     Encodeurl,
@@ -776,6 +778,8 @@ impl_function_lookup! {
     clean       => Clean,
     code        => Code,
     asc         => Asc,
+    jis         => Jis,
+    phonetic    => Phonetic,
     arraytotext => Arraytotext,
     dollar      => Dollar,
     encodeurl   => Encodeurl,
@@ -1302,6 +1306,8 @@ impl Function {
             Function::Clean => functions.clean.clone(),
             Function::Code => functions.code.clone(),
             Function::Asc => functions.asc.clone(),
+            Function::Jis => functions.jis.clone(),
+            Function::Phonetic => functions.phonetic.clone(),
             Function::Arraytotext => functions.arraytotext.clone(),
             Function::Dollar => functions.dollar.clone(),
             Function::Encodeurl => functions.encodeurl.clone(),
@@ -1617,7 +1623,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 497> {
+    pub fn into_iter() -> IntoIter<Function, 499> {
         [
             Function::And,
             Function::False,
@@ -1763,6 +1769,8 @@ impl Function {
             Function::Clean,
             Function::Code,
             Function::Asc,
+            Function::Jis,
+            Function::Phonetic,
             Function::Arraytotext,
             Function::Dollar,
             Function::Encodeurl,
@@ -2426,6 +2434,8 @@ impl<'a> Model<'a> {
             Function::Clean => self.fn_clean(args, cell),
             Function::Code => self.fn_code(args, cell),
             Function::Asc => self.fn_asc(args, cell),
+            Function::Jis => self.fn_jis(args, cell),
+            Function::Phonetic => self.fn_phonetic(args, cell),
             Function::Arraytotext => self.fn_arraytotext(args, cell),
             Function::Dollar => self.fn_dollar(args, cell),
             Function::Encodeurl => self.fn_encodeurl(args, cell),

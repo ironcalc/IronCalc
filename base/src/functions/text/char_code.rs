@@ -1,4 +1,4 @@
-// CHAR, CODE, UNICHAR, CLEAN, ASC
+// CHAR, CODE, UNICHAR, CLEAN
 
 use super::common::broadcast_text;
 use crate::{
@@ -132,19 +132,6 @@ impl<'a> Model<'a> {
             s.chars().filter(|&c| (c as u32) >= 32).collect()
         })
     }
-
-    /// ASC(text) — For non-DBCS locales, returns text unchanged.
-    /// Full-width to half-width conversion is only meaningful in DBCS locales.
-    pub(crate) fn fn_asc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        CalcResult::String(asc_convert(&s))
-    }
 }
 
 /// CODE of a single element: the Windows-1252 code of its first character.
@@ -154,22 +141,4 @@ fn code_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
     let c = s.chars().next().ok_or(Error::VALUE)?;
     let n = char_to_win1252(c).ok_or(Error::VALUE)?;
     Ok(ArrayNode::Number(n as f64))
-}
-
-/// Converts full-width Unicode characters to their ASCII half-width equivalents.
-/// Full-width Latin/ASCII: U+FF01–U+FF5E → U+0021–U+007E
-/// Full-width space: U+3000 → U+0020
-fn asc_convert(text: &str) -> String {
-    text.chars()
-        .map(|c| {
-            let cp = c as u32;
-            if cp == 0x3000 {
-                ' '
-            } else if (0xFF01..=0xFF5E).contains(&cp) {
-                char::from_u32(cp - 0xFF01 + 0x0021).unwrap_or(c)
-            } else {
-                c
-            }
-        })
-        .collect()
 }

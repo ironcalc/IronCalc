@@ -1271,6 +1271,10 @@ export default defineConfig({
                 link: "/functions/text/fixed",
               },
               {
+                text: "JIS",
+                link: "/functions/text/jis",
+              },
+              {
                 text: "LEFT",
                 link: "/functions/text/left",
               },
