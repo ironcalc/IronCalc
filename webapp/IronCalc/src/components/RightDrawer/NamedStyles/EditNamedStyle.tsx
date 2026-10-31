@@ -189,6 +189,7 @@ const EditNamedStyle = ({
     NumberFormats.CURRENCY_EUR,
     NumberFormats.CURRENCY_USD,
     NumberFormats.CURRENCY_GBP,
+    NumberFormats.CURRENCY_JPY,
     formatOptions.short_date,
     formatOptions.long_date,
   ];
@@ -303,6 +304,10 @@ const EditNamedStyle = ({
     {
       value: NumberFormats.CURRENCY_GBP,
       label: t("toolbar.format_menu.currency_gbp"),
+    },
+    {
+      value: NumberFormats.CURRENCY_JPY,
+      label: t("toolbar.format_menu.currency_jpy"),
     },
     {
       value: formatOptions.short_date,

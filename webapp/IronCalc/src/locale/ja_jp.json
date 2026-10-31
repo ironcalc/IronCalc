@@ -430,6 +430,8 @@
       "currency_eur_example": "€",
       "currency_gbp": "英ポンド (GBP)",
       "currency_gbp_example": "£",
+      "currency_jpy": "日本円 (JPY)",
+      "currency_jpy_example": "￥",
       "currency_usd": "米ドル (USD)",
       "currency_usd_example": "$",
       "custom": "ユーザー定義",

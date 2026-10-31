@@ -154,6 +154,7 @@
         "currency_eur": "ユーロ (EUR)",
         "currency_usd": "米ドル (USD)",
         "currency_gbp": "英ポンド (GBP)",
+        "currency_jpy": "日本円 (JPY)",
         "date_short": "短い日付形式",
         "date_long": "長い日付形式",
         "custom": "ユーザー定義"
