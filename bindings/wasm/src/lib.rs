@@ -744,6 +744,40 @@ impl Model {
         self.model.unmerge_cells(&range).map_err(to_js_error)
     }
 
+    /// Furigana of the text in a cell (empty if there are none)
+    #[wasm_bindgen(
+        js_name = "getCellPhoneticRuns",
+        unchecked_return_type = "PhoneticRun[]"
+    )]
+    pub fn get_cell_phonetic_runs(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<JsValue, JsError> {
+        let runs = self
+            .model
+            .get_cell_phonetic_runs(sheet, row, column)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&runs).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Sets the furigana of the text in a cell (recorded from the IME while editing)
+    #[wasm_bindgen(js_name = "setCellPhoneticRuns")]
+    pub fn set_cell_phonetic_runs(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        #[wasm_bindgen(unchecked_param_type = "PhoneticRun[]")] runs: JsValue,
+    ) -> Result<(), JsError> {
+        let runs: Vec<ironcalc_base::types::PhoneticRun> =
+            serde_wasm_bindgen::from_value(runs).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .set_cell_phonetic_runs(sheet, row, column, runs)
+            .map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "getMergedCells", unchecked_return_type = "MergedCell[]")]
     pub fn get_merged_cells(&self, sheet: u32) -> Result<JsValue, JsError> {
         let merged_cells = self.model.get_merged_cells(sheet).map_err(to_js_error)?;

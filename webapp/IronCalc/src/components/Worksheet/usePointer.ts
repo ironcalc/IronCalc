@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
 } from "react";
+import { savePhoneticRuns } from "../Editor/phonetic";
 import { isInReferenceMode } from "../Editor/util";
 import type { Cell } from "../types";
 import {
@@ -459,11 +460,20 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           }
           // We are clicking away but we are not in reference mode
           // We finish the editing
+          const editingText = workbookState.getEditingText();
           model.setUserInput(
             editingCell.sheet,
             editingCell.row,
             editingCell.column,
-            workbookState.getEditingText(),
+            editingText,
+          );
+          savePhoneticRuns(
+            model,
+            editingCell.sheet,
+            editingCell.row,
+            editingCell.column,
+            editingCell.phonetic,
+            editingText,
           );
           workbookState.clearEditingCell();
           // we continue to select the new cell

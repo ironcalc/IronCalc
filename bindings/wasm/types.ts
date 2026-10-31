@@ -15,6 +15,14 @@ export interface MergedCell {
   height: number;
 }
 
+// The reading (furigana) of part of a text: the characters `start..end`
+// (UTF-16 positions, like JavaScript string indexes) read as `text`.
+export interface PhoneticRun {
+  start: number;
+  end: number;
+  text: string;
+}
+
 // Consecutive rows or columns (`first..=last`, 1-based) sharing a size in
 // pixels. A hidden row or column has size 0.
 export interface SizeRun {

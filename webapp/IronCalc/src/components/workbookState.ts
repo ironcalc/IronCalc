@@ -14,6 +14,7 @@
 //   Those are the ranges or cells that appear in the formula
 
 import type { CellStyle } from "@ironcalc/wasm";
+import type { PhoneticState } from "./Editor/phonetic";
 
 export interface SheetRange {
   sheet: number;
@@ -80,6 +81,8 @@ export interface EditingCell {
   mode: EditorMode;
   editorWidth: number;
   editorHeight: number;
+  // furigana recorded from the IME (see Editor/phonetic.ts)
+  phonetic?: PhoneticState;
 }
 
 // Those are styles that are copied

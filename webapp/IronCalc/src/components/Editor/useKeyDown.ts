@@ -6,7 +6,8 @@ import {
   rangeToStr,
 } from "../util";
 import { LAST_COLUMN, LAST_ROW } from "../WorksheetCanvas/constants";
-import type { SheetRange, WorkbookState } from "../workbookState";
+import type { EditingCell, SheetRange, WorkbookState } from "../workbookState";
+import { savePhoneticRuns } from "./phonetic";
 import { isInReferenceMode } from "./util";
 
 interface Options {
@@ -33,6 +34,24 @@ function isValidRange(range: SheetRange): boolean {
   }
 
   return true;
+}
+
+// Sets the text of the cell being edited and its furigana
+function setEditingInput(
+  model: Model,
+  cell: EditingCell,
+  workbookState: WorkbookState,
+): void {
+  const text = workbookState.getEditingText();
+  model.setUserInput(cell.sheet, cell.row, cell.column, text);
+  savePhoneticRuns(
+    model,
+    cell.sheet,
+    cell.row,
+    cell.column,
+    cell.phonetic,
+    text,
+  );
 }
 
 export const useKeyDown = (
@@ -84,12 +103,7 @@ export const useKeyDown = (
             model.onArrowDown();
           } else {
             // end edit and select cell bellow (or above if shiftKey)
-            model.setUserInput(
-              cell.sheet,
-              cell.row,
-              cell.column,
-              workbookState.getEditingText(),
-            );
+            setEditingInput(model, cell, workbookState);
             if (shiftKey) {
               model.onArrowUp();
             } else {
@@ -102,12 +116,7 @@ export const useKeyDown = (
         }
         case "Tab": {
           // end edit and select cell to the right (or left if ShiftKey)
-          model.setUserInput(
-            cell.sheet,
-            cell.row,
-            cell.column,
-            workbookState.getEditingText(),
-          );
+          setEditingInput(model, cell, workbookState);
           workbookState.clearEditingCell();
           if (shiftKey) {
             model.onArrowLeft();

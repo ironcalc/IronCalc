@@ -54,6 +54,14 @@ import {
 import { Alert } from "../Modal";
 import { useMenuPosition } from "../utils/useMenuPosition";
 import type { WorkbookState } from "../workbookState";
+import {
+  addRun,
+  compositionReading,
+  initialRuns,
+  isKana,
+  savePhoneticRuns,
+  shiftRuns,
+} from "./phonetic";
 import useKeyDown from "./useKeyDown";
 import getFormulaHTML from "./util";
 import "./editor.css";
@@ -108,6 +116,40 @@ const Editor = (options: EditorOptions) => {
   const formulaRef = useRef<HTMLDivElement>(null);
   const maskRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // The IME composition in progress: where it started, the last kana-only text and the
+  // last text seen (see compositionReading)
+  const compositionRef = useRef<{
+    start: number;
+    kana: string;
+    last: string;
+  } | null>(null);
+
+  // Follows the furigana of the cell as its text changes
+  const syncPhonetic = useCallback(
+    (value: string) => {
+      const cell = workbookState.getEditingCell();
+      if (!cell || type !== "cell") {
+        return;
+      }
+      if (!cell.phonetic) {
+        // The text before this change is the text the edit started with
+        cell.phonetic = {
+          text: cell.text,
+          runs: initialRuns(
+            model,
+            cell.sheet,
+            cell.row,
+            cell.column,
+            cell.text,
+          ),
+        };
+      }
+      const { phonetic } = cell;
+      phonetic.runs = shiftRuns(phonetic.runs, phonetic.text, value);
+      phonetic.text = value;
+    },
+    [workbookState, model, type],
+  );
 
   useEffect(() => {
     setText(originalText);
@@ -173,6 +215,7 @@ const Editor = (options: EditorOptions) => {
       return;
     }
     const value = textarea.value;
+    syncPhonetic(value);
     cell.text = value;
     cell.referencedRange = null;
     cell.cursorStart = textarea.selectionStart;
@@ -193,7 +236,7 @@ const Editor = (options: EditorOptions) => {
     // Should we stop propagations?
     // event.stopPropagation();
     // event.preventDefault();
-  }, [workbookState, model, onTextUpdated, type]);
+  }, [workbookState, model, onTextUpdated, type, syncPhonetic]);
 
   const onBlur = useCallback(() => {
     const cell = workbookState.getEditingCell();
@@ -210,11 +253,15 @@ const Editor = (options: EditorOptions) => {
     // onclick or onpointerdown events
     // If we are editing a cell finish that
     if (cell) {
-      model.setUserInput(
+      const text = workbookState.getEditingText();
+      model.setUserInput(cell.sheet, cell.row, cell.column, text);
+      savePhoneticRuns(
+        model,
         cell.sheet,
         cell.row,
         cell.column,
-        workbookState.getEditingText(),
+        cell.phonetic,
+        text,
       );
       workbookState.clearEditingCell();
     }
@@ -368,6 +415,12 @@ const Editor = (options: EditorOptions) => {
           defaultValue={text}
           spellCheck="false"
           onKeyDown={(event) => {
+            // While the IME is composing, keys like Enter (accept the conversion),
+            // Escape or the arrows belong to the IME
+            if (event.nativeEvent.isComposing || event.keyCode === 229) {
+              event.stopPropagation();
+              return;
+            }
             if (handleHelperKeyDown(event)) {
               return;
             }
@@ -386,6 +439,40 @@ const Editor = (options: EditorOptions) => {
           }}
           disabled={!canEdit}
           onChange={onChange}
+          onCompositionStart={(event) => {
+            compositionRef.current = {
+              start: event.currentTarget.selectionStart,
+              kana: "",
+              last: "",
+            };
+          }}
+          onCompositionUpdate={(event) => {
+            const composition = compositionRef.current;
+            if (composition) {
+              if (isKana(event.data)) {
+                composition.kana = event.data;
+              }
+              composition.last = event.data;
+            }
+          }}
+          onCompositionEnd={(event) => {
+            const composition = compositionRef.current;
+            compositionRef.current = null;
+            const cell = workbookState.getEditingCell();
+            if (!composition || !cell || type !== "cell") {
+              return;
+            }
+            // Some browsers fire the last input event after compositionend
+            syncPhonetic(event.currentTarget.value);
+            const reading = compositionReading(
+              event.data,
+              composition.kana,
+              composition.last,
+            );
+            if (reading && cell.phonetic) {
+              addRun(cell.phonetic, composition.start, event.data, reading);
+            }
+          }}
           onBlur={onBlur}
           onPointerDown={(event) => {
             if (!canEdit) {

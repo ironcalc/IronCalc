@@ -127,7 +127,7 @@ pub struct Workbook {
 
 /// The reading of part of a shared string: the characters `start..end` (UTF-16 positions, as
 /// in Excel) read as `text`. See 18.4.6 rPh (Phonetic Run) of the OOXML spec.
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct PhoneticRun {
     pub start: u32,
     pub end: u32,

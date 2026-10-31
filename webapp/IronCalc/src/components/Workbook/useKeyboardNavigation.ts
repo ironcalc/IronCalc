@@ -216,6 +216,14 @@ const useKeyboardNavigation = (
         return;
       }
 
+      // Typing with the IME on (Japanese, Chinese, Korean): the key is "Process" and the
+      // text comes from the composition, so we start editing an empty cell and let the
+      // IME go on in the editor. We must not prevent the default action here.
+      if (options.canEdit && (key === "Process" || event.keyCode === 229)) {
+        options.onEditKeyPressStart("");
+        event.stopPropagation();
+        return;
+      }
       if (options.canEdit && (isEditingKey(key) || key === "Backspace")) {
         const initText = key === "Backspace" ? "" : key;
         options.onEditKeyPressStart(initText);
