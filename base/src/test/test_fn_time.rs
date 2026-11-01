@@ -488,12 +488,9 @@ fn test_time_function_extreme_values() {
         ("D3", "=SECOND(0.999999999999)"),
     ]);
 
-    // Large fractional inputs should be floored and normalized
-    let result_a1 = model._get_text("A1").parse::<f64>().unwrap();
-    assert!(
-        (0.0..1.0).contains(&result_a1),
-        "Result should be valid time fraction"
-    );
+    // Large fractional inputs are floored, then rejected above 32767
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
 
     // Component extraction should work with very large values
     let hour_b1 = model._get_text("B1").parse::<i32>().unwrap();
@@ -575,37 +572,42 @@ fn test_performance_stress_with_extreme_values() {
         ("B2", "=MINUTE(1e15)"),
         ("B3", "=SECOND(1e15)"),
         // Edge of floating point precision
-        ("C1", "=HOUR(1.7976931348623157e+308)"), // Near max f64
-        ("C2", "=HOUR(2.2250738585072014e-308)"), // Near min positive f64
+        ("C1", "=HOUR(1.7976931348623157e+307)"), // Near max f64
+        ("C2", "=HOUR(2.2250738585072014e-307)"), // Near min positive f64
         // Multiple TIME function calls with large values
         ("D1", "=TIME(1000000, 1000000, 1000000)"), // Large normalized values
         ("D2", "=HOUR(D1)"),                        // Extract from large TIME result
         ("D3", "=MINUTE(D1)"),
         ("D4", "=SECOND(D1)"),
+        // Boundary of the accepted component range
+        ("E1", "=TIME(32767, 0, 0)"),
+        ("E2", "=TIME(32768, 0, 0)"),
     ]);
 
-    // All results should be valid (not errors) even with extreme inputs
-    for cell in ["A1", "A2", "A3", "B1", "B2", "B3", "D1", "D2", "D3", "D4"] {
-        let result = model._get_text(cell);
-        assert!(
-            result != *"#ERROR!" && result != *"#NUM!" && result != *"#VALUE!",
-            "Cell {cell} should not error with extreme values: {result}",
-        );
-    }
+    // Compared against TIME_HOUR_MINUTE_SECOND_issue_1362.xlsx
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
 
-    // Results should be mathematically valid
-    let hour_b1 = model._get_text("B1").parse::<i32>().unwrap();
-    let minute_b2 = model._get_text("B2").parse::<i32>().unwrap();
-    let second_b3 = model._get_text("B3").parse::<i32>().unwrap();
+    assert_eq!(model._get_text("B1"), *"#NUM!");
+    assert_eq!(model._get_text("B2"), *"#NUM!");
+    assert_eq!(model._get_text("B3"), *"#NUM!");
 
-    assert!((0..=23).contains(&hour_b1));
-    assert!((0..=59).contains(&minute_b2));
-    assert!((0..=59).contains(&second_b3));
+    assert_eq!(model._get_text("C1"), *"#NUM!");
+    assert_eq!(model._get_text("C2"), *"0");
 
-    // TIME function results should be valid time fractions
-    let time_d1 = model._get_text("D1").parse::<f64>().unwrap();
+    assert_eq!(model._get_text("D1"), *"#NUM!");
+    assert_eq!(model._get_text("D2"), *"#NUM!");
+    assert_eq!(model._get_text("D3"), *"#NUM!");
+    assert_eq!(model._get_text("D4"), *"#NUM!");
+
+    assert_eq!(model._get_text("E1"), *"0.291666667");
+    assert_eq!(model._get_text("E2"), *"#NUM!");
+
+    // TIME at the upper boundary should be a valid time fraction
+    let time_e1 = model._get_text("E1").parse::<f64>().unwrap();
     assert!(
-        (0.0..1.0).contains(&time_d1),
+        (0.0..1.0).contains(&time_e1),
         "TIME result should be valid fraction"
     );
 }

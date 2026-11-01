@@ -8,6 +8,7 @@ use chrono::Timelike;
 
 const SECONDS_PER_DAY: i32 = 86_400;
 const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
+const MAX_TIME_COMPONENT: f64 = 32_767.0;
 
 fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
@@ -174,7 +175,7 @@ macro_rules! time_part_fn {
                 Ok(v) => v,
                 Err(e) => return e,
             };
-            if value < 0.0 {
+            if value < 0.0 || value >= (MAXIMUM_DATE_SERIAL_NUMBER + 1) as f64 {
                 return CalcResult::Error {
                     error: Error::NUM,
                     origin: cell,
@@ -1391,7 +1392,15 @@ impl<'a> Model<'a> {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let total_seconds = hour.floor() * 3600.0 + minute.floor() * 60.0 + second.floor();
+        let (hour, minute, second) = (hour.floor(), minute.floor(), second.floor());
+        if hour > MAX_TIME_COMPONENT || minute > MAX_TIME_COMPONENT || second > MAX_TIME_COMPONENT {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Invalid time".to_string(),
+            };
+        }
+        let total_seconds = hour * 3600.0 + minute * 60.0 + second;
         if total_seconds < 0.0 {
             return CalcResult::Error {
                 error: Error::NUM,
