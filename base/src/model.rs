@@ -956,11 +956,15 @@ impl<'a> Model<'a> {
                     )
                 }
             }
-            TableNameKind(s) => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("table name \"{s}\" not supported."),
-            ),
+            // A table's name on its own, as in Table1[], is its data body (Table1[#Data]), as in Excel
+            TableNameKind(s) => match self.table_data_body(s) {
+                Some((left, right)) => CalcResult::Range { left, right },
+                None => CalcResult::new_error(
+                    Error::NAME,
+                    cell,
+                    format!("table name \"{s}\" not found."),
+                ),
+            },
             // A variable bound to a single cell is that cell's value here,
             // where a value is wanted; it is the reference itself where a
             // reference is wanted (see `evaluate_node_with_reference`).
@@ -1877,6 +1881,36 @@ impl<'a> Model<'a> {
         self.workbook.worksheets[cell_reference.sheet as usize]
             .sheet_data
             .cell(cell_reference.row, cell_reference.column)
+    }
+
+    /// The data body of a table: its range without the header row and the totals row, what
+    /// `Table1[]` and `Table1[#Data]` refer to.
+    ///
+    /// * `name` - the table's name, in any case.
+    ///
+    /// Returns the top left and bottom right cells, or `None` when there is no such table.
+    fn table_data_body(&self, name: &str) -> Option<(CellReferenceIndex, CellReferenceIndex)> {
+        let lower = name.to_lowercase();
+        let (_, table) = self
+            .workbook
+            .tables
+            .iter()
+            .find(|(table_name, _)| table_name.to_lowercase() == lower)?;
+        let sheet = self.get_sheet_index_by_name(&table.sheet_name)?;
+        let (column1, row1, column2, row2) =
+            crate::expressions::parser::parse_range(&table.reference).ok()?;
+        Some((
+            CellReferenceIndex {
+                sheet,
+                row: row1 + table.header_row_count as i32,
+                column: column1,
+            },
+            CellReferenceIndex {
+                sheet,
+                row: row2 - table.totals_row_count as i32,
+                column: column2,
+            },
+        ))
     }
 
     pub(crate) fn get_sheet_index_by_name(&self, name: &str) -> Option<u32> {
