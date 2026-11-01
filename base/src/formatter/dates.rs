@@ -20,6 +20,34 @@ fn is_date_within_range(date: NaiveDate) -> bool {
         && convert_to_serial_number(date) <= MAXIMUM_DATE_SERIAL_NUMBER
 }
 
+/// Serial 0 in the 1904 date system (1904-01-01) is serial 1462 in the 1900 date system.
+const DATE_1904_OFFSET: f64 = 1462.0;
+
+/// Converts a serial of the workbook's date system to the 1900-system serial that the date code
+/// computes with. A negative serial in the 1904 system is kept negative, so that range checks
+/// still reject it.
+pub(crate) fn to_1900_serial(serial: f64, date1904: bool) -> f64 {
+    if date1904 && serial >= 0.0 {
+        serial + DATE_1904_OFFSET
+    } else {
+        serial
+    }
+}
+
+/// Converts a 1900-system serial back to the workbook's date system.
+/// Returns `None` for a date before 1904-01-01 in the 1904 system.
+pub(crate) fn from_1900_serial(serial: f64, date1904: bool) -> Option<f64> {
+    if !date1904 {
+        return Some(serial);
+    }
+    let serial = serial - DATE_1904_OFFSET;
+    if serial < 0.0 {
+        None
+    } else {
+        Some(serial)
+    }
+}
+
 pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
     if days < MINIMUM_DATE_SERIAL_NUMBER as i64 {
         return Err(format!(

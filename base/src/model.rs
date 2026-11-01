@@ -29,7 +29,7 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_identifier, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_formatted_number},
+        format::{format_number, format_number_in_date_system, parse_formatted_number},
         lexer::is_likely_date_number_format,
     },
     implicit_intersection::implicit_intersection,
@@ -2692,9 +2692,12 @@ impl<'a> Model<'a> {
                 }
 
                 //  We try to parse as number
-                if let Ok((v, number_format)) =
-                    parse_formatted_number(&value, &currencies, self.locale)
-                {
+                if let Ok((v, number_format)) = parse_formatted_number(
+                    &value,
+                    &currencies,
+                    self.locale,
+                    self.workbook.settings.date1904,
+                ) {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:
                         // - we assign a date to already date-formatted cell
@@ -3189,9 +3192,10 @@ impl<'a> Model<'a> {
         match self.workbook.worksheet(sheet_index)?.cell(row, column) {
             Some(cell) => {
                 let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
+                let date1904 = self.workbook.settings.date1904;
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
-                        format_number(value, &format, self.locale).text
+                        format_number_in_date_system(value, &format, self.locale, date1904).text
                     });
                 Ok(formatted_value)
             }
@@ -3254,7 +3258,12 @@ impl<'a> Model<'a> {
                     if is_likely_date_number_format(&style.num_fmt) {
                         let value = cell.value(&self.workbook.shared_strings, self.language);
                         if let CellValue::Number(n) = value {
-                            let formatted = format_number(n, &style.num_fmt, self.locale);
+                            let formatted = format_number_in_date_system(
+                                n,
+                                &style.num_fmt,
+                                self.locale,
+                                self.workbook.settings.date1904,
+                            );
                             if formatted.error.is_none() {
                                 return Ok(formatted.text);
                             }

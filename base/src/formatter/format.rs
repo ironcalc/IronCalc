@@ -6,7 +6,7 @@ use crate::{
 };
 
 use super::{
-    dates::{date_to_serial_number, from_excel_date},
+    dates::{date_to_serial_number, from_1900_serial, from_excel_date, to_1900_serial},
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -60,6 +60,17 @@ fn use_group_separator(use_thousands: bool, digit_index: i32, group_sizes: &str)
 }
 
 pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
+    format_number_in_date_system(value_original, format, locale, false)
+}
+
+/// Formats `value_original` with the number format `format`, reading date serials in the
+/// 1904 date system when `date1904` is true and in the 1900 date system otherwise.
+pub fn format_number_in_date_system(
+    value_original: f64,
+    format: &str,
+    locale: &Locale,
+    date1904: bool,
+) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
     let parts = parser.parts;
@@ -174,7 +185,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let hours = (time_fract * 24.0).floor();
             let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
             let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-            let date = from_excel_date(value as i64).ok();
+            let date = from_excel_date(to_1900_serial(value, date1904) as i64).ok();
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -816,10 +827,12 @@ pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), 
 /// "$ 123,345.678" => (123345.678, "$#,##0.00")
 /// "30.34%" => (0.3034, "0.00%")
 /// 100€ => (100, "100€")
+/// A date is given as a serial of the 1904 date system when `date1904` is true.
 pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
     locale: &Locale,
+    date1904: bool,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
     let scientific_format = "0.00E+00";
@@ -879,7 +892,9 @@ pub(crate) fn parse_formatted_number(
 
     // check if it is a date. NOTE: we don't trim the original here
     if let Ok((serial_number, format)) = parse_date(original, locale) {
-        return Ok((serial_number as f64, Some(format)));
+        if let Some(serial_number) = from_1900_serial(serial_number as f64, date1904) {
+            return Ok((serial_number, Some(format)));
+        }
     }
 
     // Lastly we check if it is a number

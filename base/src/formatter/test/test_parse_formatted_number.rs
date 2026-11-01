@@ -9,17 +9,17 @@ const PARSE_ERROR_MSG: &str = "Could not parse number";
 
 fn parse(input: &str, currencies: &[&str]) -> Result<(f64, Option<String>), String> {
     let locale = get_default_locale();
-    parse_formatted_number(input, currencies, locale)
+    parse_formatted_number(input, currencies, locale, false)
 }
 
 fn parse_de(input: &str, currencies: &[&str]) -> Result<(f64, Option<String>), String> {
     let locale = get_locale("de").unwrap();
-    parse_formatted_number(input, currencies, locale)
+    parse_formatted_number(input, currencies, locale, false)
 }
 
 fn parse_fr(input: &str, currencies: &[&str]) -> Result<(f64, Option<String>), String> {
     let locale = get_locale("fr").unwrap();
-    parse_formatted_number(input, currencies, locale)
+    parse_formatted_number(input, currencies, locale, false)
 }
 
 #[test]

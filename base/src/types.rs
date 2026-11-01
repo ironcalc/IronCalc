@@ -106,6 +106,8 @@ pub struct Metadata {
 pub struct WorkbookSettings {
     pub tz: String,
     pub locale: String,
+    /// The workbook uses the 1904 date system: serial 0 is 1904-01-01 (`workbookPr date1904`)
+    pub date1904: bool,
 }
 
 /// An internal representation of an IronCalc Workbook
