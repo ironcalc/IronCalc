@@ -13,7 +13,7 @@ pub enum Token {
     Color(i32),              // [Red] or [Color 23]
     Condition(Compare, f64), // [<=100] (Comparator, number)
     Currency(char),          // [$€] ($ currency symbol)
-    Literal(char), // €, $, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or escaped \X
+    Literal(char), // $, ¢, £, ¥, €, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or escaped \X
     Spacer(char),  // *X
     Ghost(char),   // _X
     Text(String),  // "Text"
@@ -330,8 +330,10 @@ impl Lexer {
         let ch = self.read_next_char();
         match ch {
             Some(x) => match x {
-                '$' | '€' | '(' | ')' | '/' | ':' | '+' | '-' | '^' | '\'' | '{' | '}' | '<'
-                | '=' | '!' | '~' | '>' | ' ' => Token::Literal(x),
+                // The currency symbols Excel shows without quotes: $, and ¢ £ ¥ € (Excel's
+                // "Review guidelines for customizing a number format")
+                '$' | '¢' | '£' | '¥' | '€' | '(' | ')' | '/' | ':' | '+' | '-' | '^' | '\'' | '{'
+                | '}' | '<' | '=' | '!' | '~' | '>' | ' ' => Token::Literal(x),
                 '?' => Token::QuestionMark,
                 ';' => Token::Separator,
                 '#' => Token::Sharp,
