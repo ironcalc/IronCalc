@@ -50,25 +50,15 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_and(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.logical_nary(
-            args,
-            cell,
-            |acc, value| acc.unwrap_or(true) && value,
-            Some(false),
-        )
+        self.logical_nary(args, cell, |acc, value| acc.unwrap_or(true) && value)
     }
 
     pub(crate) fn fn_or(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.logical_nary(
-            args,
-            cell,
-            |acc, value| acc.unwrap_or(false) || value,
-            Some(true),
-        )
+        self.logical_nary(args, cell, |acc, value| acc.unwrap_or(false) || value)
     }
 
     pub(crate) fn fn_xor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.logical_nary(args, cell, |acc, value| acc.unwrap_or(false) ^ value, None)
+        self.logical_nary(args, cell, |acc, value| acc.unwrap_or(false) ^ value)
     }
 
     /// Base function for AND, OR, XOR. These are all n-ary functions that perform a boolean operation on a series of
@@ -85,16 +75,16 @@ impl<'a> Model<'a> {
     ///
     /// If no arguments are provided, or all arguments are ignored, the function returns a #VALUE! error
     ///
+    /// There is no short circuit, as in Excel: every argument is evaluated, so an error after a deciding value (a FALSE
+    /// for AND, a TRUE for OR) is still the result. `AND(FALSE, 1/0)` is #DIV/0!.
+    ///
     /// **`fold_fn`:** The function that combines the running result with the next value boolean value. The running result
     /// starts as `None`.
-    ///
-    /// **`short_circuit_value`:** If the running result reaches `short_circuit_value`, the function returns early.
     fn logical_nary(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
         fold_fn: fn(Option<bool>, bool) -> bool,
-        short_circuit_value: Option<bool>,
     ) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -137,13 +127,6 @@ impl<'a> Model<'a> {
                                     }
                                 }
                             }
-                            if let (Some(current_result), Some(short_circuit_value)) =
-                                (result, short_circuit_value)
-                            {
-                                if current_result == short_circuit_value {
-                                    return CalcResult::Boolean(current_result);
-                                }
-                            }
                         }
                     }
                 }
@@ -180,13 +163,6 @@ impl<'a> Model<'a> {
                                 }
                                 ArrayNode::String(_) | ArrayNode::Empty => {}
                             }
-                            if let (Some(current_result), Some(short_circuit_value)) =
-                                (result, short_circuit_value)
-                            {
-                                if current_result == short_circuit_value {
-                                    return CalcResult::Boolean(current_result);
-                                }
-                            }
                         }
                     }
                 }
@@ -196,13 +172,6 @@ impl<'a> Model<'a> {
                         origin: cell,
                         message: "Lambdas not supported".to_string(),
                     }
-                }
-            }
-
-            if let (Some(current_result), Some(short_circuit_value)) = (result, short_circuit_value)
-            {
-                if current_result == short_circuit_value {
-                    return CalcResult::Boolean(current_result);
                 }
             }
         }

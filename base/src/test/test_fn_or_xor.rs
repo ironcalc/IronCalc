@@ -270,3 +270,33 @@ fn fn_or_xor_missing_arguments() {
         assert_eq!(model._get_text("A5"), *"FALSE");
     }
 }
+
+#[test]
+fn fn_and_or_evaluate_every_argument() {
+    // Excel has no short circuit: an error after the deciding argument is the result.
+    // The shape of Microsoft's Loan Amortization template (cell E18, saved by Excel as #VALUE!
+    // with its inputs empty): every input is "" or empty, so B1+C1 is #VALUE!.
+    let mut model = new_empty_model();
+    model._set("A1", r#"="""#);
+    model._set("B1", r#"="""#);
+    model._set("D1", r#"="""#);
+    model._set(
+        "E1",
+        r#"=IF(AND(A1<>"",B1+C1<D1),C1,IF(AND(A1<>"",D1-B1>0),D1-B1,IF(A1<>"",0,"")))"#,
+    );
+    model._set("E2", r#"=AND(A1<>"",B1+C1<D1)"#);
+    model._set("E3", r#"=OR(A1="",B1+C1<D1)"#);
+    model._set("E4", r#"=IFERROR(AND(A1<>"",B1+C1<D1),"error")"#);
+    // Without an error the result is the same as before.
+    model._set("E5", r#"=AND(A1<>"",TRUE)"#);
+    model._set("E6", r#"=OR(A1="",FALSE)"#);
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("E1"), *"#VALUE!");
+    assert_eq!(model._get_text("E2"), *"#VALUE!");
+    assert_eq!(model._get_text("E3"), *"#VALUE!");
+    assert_eq!(model._get_text("E4"), *"error");
+    assert_eq!(model._get_text("E5"), *"FALSE");
+    assert_eq!(model._get_text("E6"), *"TRUE");
+}
