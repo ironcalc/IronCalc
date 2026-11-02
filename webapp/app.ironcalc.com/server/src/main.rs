@@ -16,7 +16,7 @@ use rocket::response::Responder;
 
 const MAX_SIZE_MB: u8 = 20;
 
-use rocket_db_pools::{Connection, Database};
+use rocket::State;
 
 #[derive(Responder)]
 struct FileResponder {
@@ -77,7 +77,7 @@ async fn download(data: Data<'_>) -> io::Result<FileResponder> {
 
 /// Saves the model on a file called
 #[post("/api/share", data = "<data>")]
-async fn share(db: Connection<IronCalcDB>, data: Data<'_>) -> io::Result<String> {
+async fn share(db: &State<IronCalcDB>, data: Data<'_>) -> io::Result<String> {
     println!("start share");
     let hash = id::new_id();
     let bytes = data.open(MAX_SIZE_MB.megabytes()).into_bytes().await?;
@@ -93,14 +93,14 @@ async fn share(db: Connection<IronCalcDB>, data: Data<'_>) -> io::Result<String>
 }
 
 #[get("/api/model/<hash>")]
-async fn get_model(db: Connection<IronCalcDB>, hash: &str) -> io::Result<Vec<u8>> {
+async fn get_model(db: &State<IronCalcDB>, hash: &str) -> io::Result<Vec<u8>> {
     let bytes = select_model(db, hash).await.unwrap();
     println!("Select model: '{}'", hash);
     Ok(bytes)
 }
 
 #[get("/api/list")]
-async fn get_model_list(db: Connection<IronCalcDB>) -> io::Result<String> {
+async fn get_model_list(db: &State<IronCalcDB>) -> io::Result<String> {
     let model_list = get_model_list_from_db(db).await.unwrap();
     println!("Model list: '{:?}'", model_list);
     Ok(model_list.join(","))
@@ -128,6 +128,6 @@ async fn upload(data: Data<'_>, name: &str) -> io::Result<Vec<u8>> {
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .attach(IronCalcDB::init())
+        .attach(database::init())
         .mount("/", routes![upload, download, share, get_model, get_model_list])
 }

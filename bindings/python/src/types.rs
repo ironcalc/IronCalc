@@ -5,7 +5,7 @@ use xlsx::base::types::{
 };
 
 #[derive(Clone)]
-#[pyclass]
+#[pyclass(from_py_object)]
 pub struct PySheetProperty {
     #[pyo3(get)]
     pub name: String,
@@ -17,7 +17,7 @@ pub struct PySheetProperty {
     pub color: Option<String>,
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct Cell {
     #[pyo3(get, set)]
@@ -26,7 +26,7 @@ pub struct Cell {
     pub column: i32,
 }
 
-#[pyclass(eq, eq_int)]
+#[pyclass(eq, eq_int, from_py_object)]
 #[derive(PartialEq, Clone)]
 pub enum PyHorizontalAlignment {
     Center,
@@ -39,7 +39,7 @@ pub enum PyHorizontalAlignment {
     Right,
 }
 
-#[pyclass(eq, eq_int)]
+#[pyclass(eq, eq_int, from_py_object)]
 #[derive(PartialEq, Clone)]
 pub enum PyVerticalAlignment {
     Bottom,
@@ -49,7 +49,7 @@ pub enum PyVerticalAlignment {
     Top,
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct PyAlignment {
     #[pyo3(get)]
@@ -60,7 +60,7 @@ pub struct PyAlignment {
     pub wrap_text: bool,
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct PyStyle {
     #[pyo3(get)]
@@ -77,7 +77,7 @@ pub struct PyStyle {
     pub quote_prefix: bool,
 }
 
-#[pyclass(eq, eq_int)]
+#[pyclass(eq, eq_int, from_py_object)]
 #[derive(PartialEq, Clone)]
 pub enum PyBorderStyle {
     Thin,
@@ -91,7 +91,7 @@ pub enum PyBorderStyle {
     MediumDashDot,
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct PyBorderItem {
     #[pyo3(get)]
@@ -100,7 +100,7 @@ pub struct PyBorderItem {
     pub color: Option<String>,
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct PyBorder {
     #[pyo3(get)]
@@ -119,7 +119,7 @@ pub struct PyBorder {
     pub diagonal: Option<PyBorderItem>,
 }
 
-#[pyclass(eq, eq_int)]
+#[pyclass(eq, eq_int, from_py_object)]
 #[derive(PartialEq, Clone)]
 pub enum PyFontScheme {
     Minor,
@@ -127,7 +127,7 @@ pub enum PyFontScheme {
     None,
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct PyFont {
     #[pyo3(get)]
@@ -150,7 +150,7 @@ pub struct PyFont {
     pub scheme: PyFontScheme,
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct PyFill {
     #[pyo3(get)]
@@ -161,7 +161,7 @@ pub struct PyFill {
     pub bg_color: Option<String>,
 }
 
-#[pyclass(eq, eq_int)]
+#[pyclass(eq, eq_int, from_py_object)]
 #[derive(PartialEq, Clone)]
 pub enum PyCellType {
     Number = 1,

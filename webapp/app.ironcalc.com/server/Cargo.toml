@@ -7,8 +7,4 @@ edition = "2021"
 rocket = "0.5"
 rand = "0.8"
 ironcalc = { path = "../../../xlsx/"}
-
-[dependencies.rocket_db_pools]
-version = "0.2.0"
-features = ["sqlx_sqlite"]
-
+sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
