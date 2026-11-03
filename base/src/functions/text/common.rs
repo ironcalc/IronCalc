@@ -13,7 +13,7 @@ use crate::{
         util::from_wildcard_to_regex,
     },
     model::Model,
-    number_format::to_precision,
+    number_format::{number_to_text, to_precision},
 };
 
 /// An argument of a text function that works element by element (LEFT, MID,
@@ -310,13 +310,21 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
+/// Numbers join the concatenation as Excel formats them (`number_to_text`),
+/// not with Rust's `{}` formatting (CONCAT, TEXTJOIN #1665).
+fn concat_number(result: String, value: f64) -> String {
+    result + &number_to_text(value)
+}
+
 impl<'a> Model<'a> {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = "".to_string();
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::String(value) => result = format!("{result}{value}"),
-                CalcResult::Number(value) => result = format!("{result}{value}"),
+                CalcResult::Number(value) => {
+                    result = concat_number(result, value);
+                }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                 CalcResult::Boolean(value) => {
                     if value {
@@ -344,7 +352,7 @@ impl<'a> Model<'a> {
                                 CalcResult::String(value) => {
                                     result = format!("{result}{value}");
                                 }
-                                CalcResult::Number(value) => result = format!("{result}{value}"),
+                                CalcResult::Number(value) => result = concat_number(result, value),
                                 CalcResult::Boolean(value) => {
                                     if value {
                                         result = format!("{result}TRUE");
@@ -373,7 +381,7 @@ impl<'a> Model<'a> {
                         for node in row {
                             match node {
                                 ArrayNode::String(value) => result.push_str(&value),
-                                ArrayNode::Number(value) => result = format!("{result}{value}"),
+                                ArrayNode::Number(value) => result = concat_number(result, value),
                                 ArrayNode::Boolean(value) => {
                                     result.push_str(if value { "TRUE" } else { "FALSE" })
                                 }
@@ -1011,7 +1019,7 @@ impl<'a> Model<'a> {
         let mut values = Vec::new();
         for arg in &args[2..] {
             match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => values.push(format!("{value}")),
+                CalcResult::Number(value) => values.push(concat_number(String::new(), value)),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -1039,7 +1047,7 @@ impl<'a> Model<'a> {
                                 column,
                             }) {
                                 CalcResult::Number(value) => {
-                                    values.push(format!("{value}"));
+                                    values.push(concat_number(String::new(), value));
                                 }
                                 CalcResult::String(value) => values.push(value),
                                 CalcResult::Boolean(value) => {
@@ -1088,7 +1096,9 @@ impl<'a> Model<'a> {
                     for row in array {
                         for node in row {
                             match node {
-                                ArrayNode::Number(value) => values.push(format!("{value}")),
+                                ArrayNode::Number(value) => {
+                                    values.push(concat_number(String::new(), value))
+                                }
                                 ArrayNode::String(value) => values.push(value),
                                 ArrayNode::Boolean(value) => {
                                     if value {

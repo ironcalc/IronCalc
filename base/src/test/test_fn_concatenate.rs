@@ -57,3 +57,22 @@ fn concat_arrays() {
     assert_eq!(model._get_text("B3"), *"x1272101B");
     assert_eq!(model._get_text("B4"), *"#VALUE!");
 }
+
+// CONCAT / TEXTJOIN must stringify numbers like Excel does, not with Rust's
+// `{}` (https://github.com/ironcalc/IronCalc/issues/1665)
+#[test]
+fn concat_number_to_text() {
+    let mut model = new_empty_model();
+    model._set("B1", "=CONCAT(0.1+0.2)");
+    model._set("B2", "=CONCAT(1E+20)");
+    model._set("B3", "=1E+15&\"\"");
+    model._set("B4", "=1E-15&\"\"");
+    model._set("B5", r#"=TEXTJOIN("-", TRUE, 0.1+0.2, 1E+20)"#);
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), *"0.3");
+    assert_eq!(model._get_text("B2"), *"1E+20");
+    assert_eq!(model._get_text("B3"), *"1000000000000000");
+    assert_eq!(model._get_text("B4"), *"0.000000000000001");
+    assert_eq!(model._get_text("B5"), *"0.3-1E+20");
+}
