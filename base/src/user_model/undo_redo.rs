@@ -249,6 +249,7 @@ impl<'a> UserModel<'a> {
                     row,
                     count: _,
                     old_data,
+                    old_drawings,
                 } => {
                     needs_evaluation = true;
                     self.model
@@ -261,6 +262,9 @@ impl<'a> UserModel<'a> {
                         }
                         worksheet.sheet_data.set_row(r, row_data.data.clone());
                     }
+                    // Re-inserting the rows shifts the drawings back, but not
+                    // the ones that were cut or removed
+                    worksheet.drawings = old_drawings.clone();
                 }
                 Diff::InsertColumns {
                     sheet,
@@ -275,10 +279,12 @@ impl<'a> UserModel<'a> {
                     column,
                     count: _,
                     old_data,
+                    old_drawings,
                 } => {
                     needs_evaluation = true;
                     self.model
                         .insert_columns(*sheet, *column, old_data.len() as i32)?;
+                    self.model.workbook.worksheet_mut(*sheet)?.drawings = old_drawings.clone();
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     for (i, col_data) in old_data.iter().enumerate() {
                         let c = *column + i as i32;
@@ -457,6 +463,7 @@ impl<'a> UserModel<'a> {
                     worksheet.color = old_data.color.clone();
                     worksheet.merged_cells = old_data.merged_cells.clone();
                     worksheet.shared_formulas = old_data.shared_formulas.clone();
+                    worksheet.drawings = old_data.drawings.clone();
                     self.model.reset_parsed_structures();
 
                     self.set_selected_sheet(sheet_index)?;
@@ -505,6 +512,32 @@ impl<'a> UserModel<'a> {
                     } else {
                         self.model.delete_row_style(*sheet, *row)?;
                     }
+                }
+                Diff::NewChart { sheet, drawing } => {
+                    self.model.remove_drawing(*sheet, drawing.id)?;
+                }
+                Diff::DeleteChart { sheet, index, old } => {
+                    self.model.insert_drawing_at(*sheet, *index, *old.clone())?;
+                }
+                Diff::UpdateChart { sheet, id, old, .. } => {
+                    self.model.update_chart(*sheet, *id, *old.clone())?;
+                }
+                Diff::MoveDrawing { sheet, id, old, .. } => {
+                    self.model.move_drawing(*sheet, *id, old.clone())?;
+                }
+                Diff::SetDrawingStyle {
+                    sheet,
+                    id,
+                    old_fill,
+                    old_border,
+                    ..
+                } => {
+                    self.model.set_drawing_style(
+                        *sheet,
+                        *id,
+                        old_fill.clone(),
+                        old_border.clone(),
+                    )?;
                 }
                 Diff::MoveColumns {
                     sheet,
@@ -810,6 +843,7 @@ impl<'a> UserModel<'a> {
                     row,
                     count,
                     old_data: _,
+                    old_drawings: _,
                 } => {
                     self.model.delete_rows(*sheet, *row, *count)?;
                     needs_evaluation = true;
@@ -827,6 +861,7 @@ impl<'a> UserModel<'a> {
                     column,
                     count,
                     old_data: _,
+                    old_drawings: _,
                 } => {
                     self.model.delete_columns(*sheet, *column, *count)?;
                     needs_evaluation = true;
@@ -987,6 +1022,34 @@ impl<'a> UserModel<'a> {
                     old_value: _,
                 } => {
                     self.model.delete_row_style(*sheet, *row)?;
+                }
+                Diff::NewChart { sheet, drawing } => {
+                    let len = self.model.workbook.worksheet(*sheet)?.drawings.len();
+                    self.model
+                        .insert_drawing_at(*sheet, len, *drawing.clone())?;
+                }
+                Diff::DeleteChart { sheet, old, .. } => {
+                    self.model.remove_drawing(*sheet, old.id)?;
+                }
+                Diff::UpdateChart { sheet, id, new, .. } => {
+                    self.model.update_chart(*sheet, *id, *new.clone())?;
+                }
+                Diff::MoveDrawing { sheet, id, new, .. } => {
+                    self.model.move_drawing(*sheet, *id, new.clone())?;
+                }
+                Diff::SetDrawingStyle {
+                    sheet,
+                    id,
+                    new_fill,
+                    new_border,
+                    ..
+                } => {
+                    self.model.set_drawing_style(
+                        *sheet,
+                        *id,
+                        new_fill.clone(),
+                        new_border.clone(),
+                    )?;
                 }
                 Diff::MoveColumns {
                     sheet,

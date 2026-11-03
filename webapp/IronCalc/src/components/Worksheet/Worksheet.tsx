@@ -1,4 +1,5 @@
 import { columnNameFromNumber, type Model } from "@ironcalc/wasm";
+import { Pencil, Trash2 } from "lucide-react";
 import {
   forwardRef,
   useEffect,
@@ -9,10 +10,18 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import Editor from "../Editor/Editor";
+import { Menu } from "../Menu/Menu";
+import { MenuItem } from "../Menu/MenuItem";
 import type { Cell } from "../types";
 import { getEditorSize } from "../util";
 import type { WorkbookActions } from "../Workbook/workbookActions";
 import type { LinkHoverCell } from "../WorksheetCanvas/cellLinks";
+import {
+  type Handle,
+  movedRect,
+  resizedRect,
+  type SheetRect,
+} from "../WorksheetCanvas/chartInteraction";
 import {
   headerColumnWidth,
   headerRowHeight,
@@ -67,12 +76,34 @@ const Worksheet = forwardRef(
     const areaOutline = useRef<HTMLDivElement>(null);
     const cellArrayStructure = useRef<HTMLDivElement>(null);
     const extendToOutline = useRef<HTMLDivElement>(null);
+    const chartsLayer = useRef<HTMLDivElement>(null);
     const columnResizeGuide = useRef<HTMLDivElement>(null);
     const rowResizeGuide = useRef<HTMLDivElement>(null);
     const columnHeaders = useRef<HTMLDivElement>(null);
     const worksheetCanvas = useRef<WorksheetCanvas | null>(null);
 
     const [cellContextMenuOpen, setCellContextMenuOpen] = useState(false);
+    // The menu of the selected chart, anchored under its button
+    const [chartMenu, setChartMenu] = useState<{
+      x: number;
+      y: number;
+      id: number;
+    } | null>(null);
+    // A drag of the selected chart in progress: moving it or resizing it
+    const chartDrag = useRef<{
+      kind: "move" | "resize";
+      handle: Handle | null;
+      id: number;
+      element: HTMLElement;
+      frame: HTMLElement | null;
+      startX: number;
+      startY: number;
+      start: SheetRect;
+      rect: SheetRect;
+      moved: boolean;
+      // The pending redraw of a resized chart, so it is laid out live
+      frame_request: number;
+    } | null>(null);
     const [colHeaderContextMenuOpen, setColHeaderContextMenuOpen] =
       useState(false);
     const [rowHeaderContextMenuOpen, setRowHeaderContextMenuOpen] =
@@ -281,6 +312,7 @@ const Worksheet = forwardRef(
       const area = areaOutline.current;
       const arrayStructure = cellArrayStructure.current;
       const extendTo = extendToOutline.current;
+      const charts = chartsLayer.current;
       const editor = editorElement.current;
 
       if (
@@ -292,6 +324,7 @@ const Worksheet = forwardRef(
         !outline ||
         !area ||
         !extendTo ||
+        !charts ||
         !scrollElement.current ||
         !editor ||
         !arrayStructure ||
@@ -313,6 +346,7 @@ const Worksheet = forwardRef(
           cellArrayStructure: arrayStructure,
           areaOutline: area,
           extendToOutline: extendTo,
+          chartsLayer: charts,
           editor: editor,
         },
         onColumnWidthChanges(sheet, column, width) {
@@ -480,6 +514,7 @@ const Worksheet = forwardRef(
       // This render supersedes any repaint a scroll had scheduled
       cancelPendingRender();
       canvas.renderSheet();
+      canvas.chartMenuButtonLabel = t("chart_editor.more_options");
       worksheetCanvas.current = canvas;
     });
 
@@ -594,6 +629,137 @@ const Worksheet = forwardRef(
       });
     };
 
+    const applyChartRect = (
+      element: HTMLElement,
+      frame: HTMLElement | null,
+      rect: SheetRect,
+    ) => {
+      for (const target of [element, frame]) {
+        if (!target) {
+          continue;
+        }
+        target.style.left = `${rect.x}px`;
+        target.style.top = `${rect.y}px`;
+        target.style.width = `${rect.width}px`;
+        target.style.height = `${rect.height}px`;
+      }
+    };
+
+    const onChartPointerDown = (event: React.PointerEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest(".ic-worksheet-chart-menu-button")) {
+        // The click handler opens the menu
+        event.stopPropagation();
+        return;
+      }
+      const layer = chartsLayer.current;
+      const handle = target.closest<HTMLElement>(".ic-worksheet-chart-handle");
+      const element = handle
+        ? layer?.querySelector<HTMLElement>(".ic-worksheet-chart--selected")
+        : target.closest<HTMLElement>(".ic-worksheet-chart");
+      if (!element || !layer) {
+        return;
+      }
+      event.stopPropagation();
+      event.preventDefault();
+      const id = Number(element.dataset.chartId);
+      const sheet = model.getSelectedSheet();
+      const selected = workbookState.getSelectedChart();
+      if (!selected || selected.sheet !== sheet || selected.id !== id) {
+        workbookState.setSelectedChart({ sheet, id });
+        refresh();
+      }
+      // Only the primary button moves or resizes a chart
+      if (!canEdit || event.button !== 0) {
+        return;
+      }
+      const start = {
+        x: Number.parseFloat(element.style.left),
+        y: Number.parseFloat(element.style.top),
+        width: Number.parseFloat(element.style.width),
+        height: Number.parseFloat(element.style.height),
+      };
+      chartDrag.current = {
+        kind: handle ? "resize" : "move",
+        handle: (handle?.dataset.handle as Handle | undefined) ?? null,
+        id,
+        element,
+        frame: layer.querySelector<HTMLElement>(".ic-worksheet-chart-frame"),
+        startX: event.clientX,
+        startY: event.clientY,
+        start,
+        rect: start,
+        moved: false,
+        frame_request: 0,
+      };
+      element.setPointerCapture(event.pointerId);
+    };
+
+    const onChartPointerMove = (event: React.PointerEvent) => {
+      const drag = chartDrag.current;
+      if (!drag) {
+        return;
+      }
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) {
+        return;
+      }
+      drag.moved = true;
+      drag.rect =
+        drag.kind === "resize" && drag.handle
+          ? resizedRect(drag.start, drag.handle, dx, dy)
+          : movedRect(drag.start, dx, dy);
+      applyChartRect(drag.element, drag.frame, drag.rect);
+      // A resized chart is laid out again at its new size as it goes, once
+      // per frame; a moved one just follows the pointer
+      if (drag.kind === "resize" && drag.frame_request === 0) {
+        drag.frame_request = requestAnimationFrame(() => {
+          const current = chartDrag.current;
+          if (!current) {
+            return;
+          }
+          current.frame_request = 0;
+          current.element.innerHTML = model.getChartSvg(
+            model.getSelectedSheet(),
+            current.id,
+            Math.round(current.rect.width),
+            Math.round(current.rect.height),
+          );
+        });
+      }
+    };
+
+    const onChartPointerUp = (event: React.PointerEvent) => {
+      const drag = chartDrag.current;
+      if (!drag) {
+        return;
+      }
+      chartDrag.current = null;
+      if (drag.frame_request !== 0) {
+        cancelAnimationFrame(drag.frame_request);
+      }
+      if (drag.element.hasPointerCapture(event.pointerId)) {
+        drag.element.releasePointerCapture(event.pointerId);
+      }
+      if (!drag.moved) {
+        return;
+      }
+      const canvas = worksheetCanvas.current;
+      if (!canvas) {
+        return;
+      }
+      const sheet = model.getSelectedSheet();
+      const { behavior } = model.getDrawingAnchor(sheet, drag.id);
+      const { x: left, y: top, width, height } = drag.rect;
+      model.moveDrawing(
+        sheet,
+        drag.id,
+        canvas.chartRectToAnchor({ left, top, width, height }, behavior),
+      );
+      refresh();
+    };
+
     return (
       <div
         ref={scrollElement}
@@ -605,7 +771,13 @@ const Worksheet = forwardRef(
         <div
           className="ic-worksheet-sheet-container"
           ref={worksheetElement}
-          onPointerDown={onPointerDown}
+          onPointerDown={(event) => {
+            // A click on the cells takes the selection frame off the chart
+            if (workbookState.getSelectedChart()) {
+              workbookState.setSelectedChart(null);
+            }
+            onPointerDown(event);
+          }}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
@@ -768,6 +940,54 @@ const Worksheet = forwardRef(
         >
           <canvas className="ic-worksheet-sheet-canvas" ref={canvasElement} />
           <div
+            className="ic-worksheet-charts"
+            ref={chartsLayer}
+            role="none"
+            onPointerDown={onChartPointerDown}
+            onPointerMove={onChartPointerMove}
+            onPointerUp={onChartPointerUp}
+            onPointerCancel={onChartPointerUp}
+            onContextMenu={(event) => {
+              // Charts have their own menu (the ellipsis button), so a
+              // right-click on one neither opens the browser's menu nor
+              // the cell context menu of the sheet underneath.
+              if (
+                (event.target as HTMLElement).closest(".ic-worksheet-chart")
+              ) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+            onClick={(event) => {
+              const button = (event.target as HTMLElement).closest<HTMLElement>(
+                ".ic-worksheet-chart-menu-button",
+              );
+              if (!button) {
+                return;
+              }
+              event.stopPropagation();
+              const rect = button.getBoundingClientRect();
+              setChartMenu({
+                x: rect.left,
+                y: rect.bottom + 4,
+                id: Number(button.dataset.chartId),
+              });
+            }}
+            onDoubleClick={(event) => {
+              const element = (
+                event.target as HTMLElement
+              ).closest<HTMLElement>(".ic-worksheet-chart");
+              if (!element) {
+                return;
+              }
+              event.stopPropagation();
+              const id = Number(element.dataset.chartId);
+              if (!Number.isNaN(id)) {
+                props.actions.openChart(model.getSelectedSheet(), id);
+              }
+            }}
+          />
+          <div
             className="ic-worksheet-cell-array-structure"
             ref={cellArrayStructure}
           />
@@ -812,6 +1032,36 @@ const Worksheet = forwardRef(
             />
           ) : null}
         </div>
+        <Menu
+          open={chartMenu !== null}
+          onClose={() => setChartMenu(null)}
+          anchorPosition={chartMenu ?? { x: 0, y: 0 }}
+        >
+          <MenuItem
+            icon={<Pencil />}
+            onClick={() => {
+              if (chartMenu) {
+                props.actions.openChart(model.getSelectedSheet(), chartMenu.id);
+              }
+            }}
+          >
+            {t("chart_editor.edit_chart")}
+          </MenuItem>
+          <MenuItem
+            icon={<Trash2 />}
+            destructive
+            onClick={() => {
+              if (chartMenu) {
+                props.actions.deleteChart(
+                  model.getSelectedSheet(),
+                  chartMenu.id,
+                );
+              }
+            }}
+          >
+            {t("chart_editor.delete_chart")}
+          </MenuItem>
+        </Menu>
         <CellContextMenu
           open={cellContextMenuOpen}
           onClose={() => setCellContextMenuOpen(false)}

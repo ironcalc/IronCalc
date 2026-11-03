@@ -271,3 +271,116 @@
 .ic-worksheet-editor-wrapper span {
   min-width: 1px;
 }
+
+/* The charts of the sheet: a clipping layer over the scrolling pane that lets
+   clicks through where there is no chart, and one element per chart */
+.ic-worksheet-charts {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+  /* Over the selection outlines and the fill handle, which stay hidden
+     behind a filled chart; under the cell editor */
+  z-index: 3;
+}
+
+.ic-worksheet-chart {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.ic-worksheet-chart svg {
+  display: block;
+}
+
+.ic-worksheet-chart {
+  cursor: move;
+}
+
+.ic-workbook-container--readonly .ic-worksheet-chart {
+  cursor: default;
+}
+
+.ic-worksheet-chart--selected {
+  z-index: 1;
+}
+
+/* The selection frame of a chart: a border, eight resize handles and a menu
+   button. Only the handles and the button take the pointer. */
+.ic-worksheet-chart-frame {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--palette-sheet-outline-color);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ic-worksheet-chart-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  background: var(--palette-common-white);
+  border: 1px solid var(--palette-sheet-outline-color);
+  border-radius: 2px;
+  pointer-events: auto;
+}
+
+.ic-workbook-container--readonly .ic-worksheet-chart-handle {
+  display: none;
+}
+
+.ic-worksheet-chart-handle[data-handle="nw"] {
+  left: -5px;
+  top: -5px;
+}
+.ic-worksheet-chart-handle[data-handle="n"] {
+  left: calc(50% - 4px);
+  top: -5px;
+}
+.ic-worksheet-chart-handle[data-handle="ne"] {
+  right: -5px;
+  top: -5px;
+}
+.ic-worksheet-chart-handle[data-handle="e"] {
+  right: -5px;
+  top: calc(50% - 4px);
+}
+.ic-worksheet-chart-handle[data-handle="se"] {
+  right: -5px;
+  bottom: -5px;
+}
+.ic-worksheet-chart-handle[data-handle="s"] {
+  left: calc(50% - 4px);
+  bottom: -5px;
+}
+.ic-worksheet-chart-handle[data-handle="sw"] {
+  left: -5px;
+  bottom: -5px;
+}
+.ic-worksheet-chart-handle[data-handle="w"] {
+  left: -5px;
+  top: calc(50% - 4px);
+}
+
+.ic-worksheet-chart-menu-button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--palette-grey-300);
+  border-radius: 4px;
+  background: var(--palette-common-white);
+  color: var(--palette-grey-700);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.ic-worksheet-chart-menu-button:hover {
+  background: var(--palette-grey-100);
+}

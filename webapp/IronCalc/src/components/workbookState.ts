@@ -91,6 +91,8 @@ export class WorkbookState {
   private cell: EditingCell | null;
   private cutRange: CutRange | null;
   private selecting: boolean;
+  // The chart with the selection frame, if any
+  private selectedChart: { sheet: number; id: number } | null;
 
   constructor() {
     // the extendTo area is the area we are covering
@@ -99,6 +101,15 @@ export class WorkbookState {
     this.cell = null;
     this.cutRange = null;
     this.selecting = false;
+    this.selectedChart = null;
+  }
+
+  getSelectedChart(): { sheet: number; id: number } | null {
+    return this.selectedChart;
+  }
+
+  setSelectedChart(chart: { sheet: number; id: number } | null): void {
+    this.selectedChart = chart;
   }
 
   isSelecting(): boolean {

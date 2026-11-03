@@ -1,8 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
 mod _rels;
+mod charts;
 mod conditional_formatting;
 mod doc_props;
+mod drawings;
 mod dxfs_styles;
 mod escape;
 mod shared_strings;
@@ -20,6 +22,7 @@ use std::{
     io::{Seek, Write},
 };
 
+use ironcalc_base::drawing_types::{Drawing, DrawingContent};
 use ironcalc_base::expressions::utils::number_to_column;
 use ironcalc_base::types::{SheetState, Workbook};
 use ironcalc_base::{get_milliseconds_since_epoch, Model};
@@ -31,7 +34,50 @@ use crate::error::XlsxError;
 #[cfg(test)]
 mod test;
 
-fn get_content_types_xml(workbook: &Workbook) -> String {
+/// The drawing part of a worksheet: its number (`xl/drawings/drawing{number}.xml`),
+/// the drawings it holds and the number of the chart part of each of them.
+struct DrawingPart<'a> {
+    number: usize,
+    drawings: Vec<&'a Drawing>,
+    chart_numbers: Vec<usize>,
+}
+
+/// Plans the drawing and chart parts: one drawing part per worksheet that has
+/// at least one chart, parts numbered in worksheet order. Drawings we cannot
+/// write are left out.
+fn plan_drawing_parts(workbook: &Workbook) -> Vec<Option<DrawingPart<'_>>> {
+    let mut drawing_number = 0;
+    let mut chart_number = 0;
+    workbook
+        .worksheets
+        .iter()
+        .map(|worksheet| {
+            let drawings: Vec<&Drawing> = worksheet
+                .drawings
+                .iter()
+                .filter(|drawing| matches!(drawing.content, DrawingContent::Chart(_)))
+                .collect();
+            if drawings.is_empty() {
+                return None;
+            }
+            drawing_number += 1;
+            let chart_numbers = drawings
+                .iter()
+                .map(|_| {
+                    chart_number += 1;
+                    chart_number
+                })
+                .collect();
+            Some(DrawingPart {
+                number: drawing_number,
+                drawings,
+                chart_numbers,
+            })
+        })
+        .collect()
+}
+
+fn get_content_types_xml(workbook: &Workbook, drawing_parts: &[Option<DrawingPart>]) -> String {
     // A list of all files in the zip
     let mut content = vec![
         r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">"#.to_string(),
@@ -45,6 +91,17 @@ fn get_content_types_xml(workbook: &Workbook) -> String {
             worksheet + 1
         );
         content.push(sheet);
+    }
+    for part in drawing_parts.iter().flatten() {
+        content.push(format!(
+            r#"<Override PartName="/xl/drawings/drawing{}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>"#,
+            part.number
+        ));
+        for chart_number in &part.chart_numbers {
+            content.push(format!(
+                r#"<Override PartName="/xl/charts/chart{chart_number}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>"#
+            ));
+        }
     }
     content.push(
         r#"<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>"#.to_string(),
@@ -86,9 +143,11 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
 
     let options = zip::write::SimpleFileOptions::default();
 
+    let drawing_parts = plan_drawing_parts(workbook);
+
     // root folder
     zip.start_file("[Content_Types].xml", options)?;
-    zip.write_all(get_content_types_xml(workbook).as_bytes())?;
+    zip.write_all(get_content_types_xml(workbook, &drawing_parts).as_bytes())?;
 
     zip.add_directory("docProps", options)?;
     zip.start_file("docProps/app.xml", options)?;
@@ -121,11 +180,39 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.start_file("xl/_rels/workbook.xml.rels", options)?;
     zip.write_all(workbook_xml_rels::get_workbook_xml_rels(workbook).as_bytes())?;
 
+    // drawings and charts
+    if drawing_parts.iter().any(Option::is_some) {
+        zip.add_directory("xl/drawings", options)?;
+        zip.add_directory("xl/drawings/_rels", options)?;
+        zip.add_directory("xl/charts", options)?;
+    }
+    for (sheet, part) in drawing_parts.iter().enumerate() {
+        let Some(part) = part else {
+            continue;
+        };
+        zip.start_file(format!("xl/drawings/drawing{}.xml", part.number), options)?;
+        zip.write_all(drawings::get_drawing_xml(&part.drawings).as_bytes())?;
+        zip.start_file(
+            format!("xl/drawings/_rels/drawing{}.xml.rels", part.number),
+            options,
+        )?;
+        zip.write_all(drawings::get_drawing_xml_rels(&part.chart_numbers).as_bytes())?;
+        for (drawing, chart_number) in part.drawings.iter().zip(&part.chart_numbers) {
+            if let DrawingContent::Chart(chart) = &drawing.content {
+                zip.start_file(format!("xl/charts/chart{chart_number}.xml"), options)?;
+                zip.write_all(
+                    charts::get_chart_xml(chart, drawing, sheet as u32, model).as_bytes(),
+                )?;
+            }
+        }
+    }
+
     zip.add_directory("xl/worksheets", options)?;
-    // sheet rels parts (one per sheet with external hyperlinks)
+    // sheet rels parts (one per sheet with external hyperlinks or drawings)
     let mut has_worksheet_rels = false;
     for (sheet_index, worksheet) in workbook.worksheets.iter().enumerate() {
-        if let Some(rels_xml) = worksheets::get_worksheet_xml_rels(worksheet) {
+        let drawing_number = drawing_parts[sheet_index].as_ref().map(|part| part.number);
+        if let Some(rels_xml) = worksheets::get_worksheet_xml_rels(worksheet, drawing_number) {
             if !has_worksheet_rels {
                 zip.add_directory("xl/worksheets/_rels", options)?;
                 has_worksheet_rels = true;
@@ -151,12 +238,15 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
         let max_row = dimension.max_row;
         let sheet_dimension_str = &format!("{column_min_str}{min_row}:{column_max_str}{max_row}");
         let is_sheet_selected = selected_sheet as usize == sheet_index;
+        let drawing_rel_id =
+            worksheets::get_drawing_rel_id(worksheet, drawing_parts[sheet_index].is_some());
         zip.write_all(
             worksheets::get_worksheet_xml(
                 worksheet,
                 &model.parsed_formulas[sheet_index],
                 sheet_dimension_str,
                 is_sheet_selected,
+                drawing_rel_id,
             )
             .as_bytes(),
         )?;

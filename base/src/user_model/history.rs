@@ -4,6 +4,8 @@ use bitcode::{Decode, Encode};
 
 use crate::{
     cf_types::CfRule,
+    charts::{Chart, Fill, Line},
+    drawing_types::{Anchor, Drawing},
     types::{
         Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
     },
@@ -136,6 +138,8 @@ pub(crate) enum Diff {
         row: i32,
         count: i32,
         old_data: Vec<RowData>,
+        // The drawings before: deleting rows moves, shrinks or removes them
+        old_drawings: Vec<Drawing>,
     },
     InsertColumns {
         sheet: u32,
@@ -147,6 +151,7 @@ pub(crate) enum Diff {
         column: i32,
         count: i32,
         old_data: Vec<ColumnData>,
+        old_drawings: Vec<Drawing>,
     },
     DeleteSheet {
         sheet: u32,
@@ -227,6 +232,36 @@ pub(crate) enum Diff {
         new_formula: String,
         new_hidden: bool,
         new_comment: String,
+    },
+    // Charts and the drawings that hold them
+    NewChart {
+        sheet: u32,
+        drawing: Box<Drawing>,
+    },
+    DeleteChart {
+        sheet: u32,
+        index: usize,
+        old: Box<Drawing>,
+    },
+    UpdateChart {
+        sheet: u32,
+        id: u32,
+        old: Box<Chart>,
+        new: Box<Chart>,
+    },
+    MoveDrawing {
+        sheet: u32,
+        id: u32,
+        old: Anchor,
+        new: Anchor,
+    },
+    SetDrawingStyle {
+        sheet: u32,
+        id: u32,
+        old_fill: Fill,
+        old_border: Line,
+        new_fill: Fill,
+        new_border: Line,
     },
     MoveColumns {
         sheet: u32,

@@ -4,6 +4,7 @@ import type {
   FmtSettings,
   HorizontalAlignment,
   IronCalcTheme,
+  Stacking,
   VerticalAlignment,
 } from "@ironcalc/wasm";
 import {
@@ -15,6 +16,7 @@ import {
   ArrowUpToLine,
   Bold,
   Brush,
+  ChartColumnBig,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -64,7 +66,7 @@ import {
 } from "../FormatMenu/formatUtil";
 import { Menu } from "../Menu/Menu";
 import { MenuDivider } from "../Menu/MenuDivider";
-import { MenuItem } from "../Menu/MenuItem";
+import { MenuItem, MenuItemWithSubmenu } from "../Menu/MenuItem";
 import ThemeMenu from "../ThemeMenu/ThemeMenu";
 import "./toolbar.css";
 import { Tooltip } from "../Tooltip/Tooltip";
@@ -125,6 +127,7 @@ type ToolbarProperties = {
   onOpenNamedStyles: () => void;
   isNamedStylesOpen: boolean;
   onOpenLinkDialog: () => void;
+  onInsertChart: (stacking: Stacking) => void;
   themes: IronCalcTheme[];
   currentTheme: IronCalcTheme;
   onThemePicked: (theme: IronCalcTheme) => void;
@@ -668,8 +671,42 @@ function Toolbar(properties: ToolbarProperties) {
 
         <div className="ic-toolbar-divider" />
 
-        {/* Links, checkboxes, dropdowns, etc */}
+        {/* Charts, links, checkboxes, dropdowns, etc */}
         <div className="ic-toolbar-button-group">
+          <Menu
+            trigger={
+              <div className="ic-toolbar-menu-anchor">
+                <Tooltip title={t("toolbar.insert_chart")}>
+                  <IconButton
+                    icon={<ChartColumnBig />}
+                    aria-label={t("toolbar.insert_chart")}
+                    disabled={!canEdit}
+                  />
+                </Tooltip>
+              </div>
+            }
+          >
+            <MenuItemWithSubmenu
+              icon={<ChartColumnBig />}
+              submenu={
+                <>
+                  <MenuItem onClick={() => properties.onInsertChart("None")}>
+                    {t("toolbar.chart_menu.clustered")}
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => properties.onInsertChart("Standard")}
+                  >
+                    {t("toolbar.chart_menu.stacked")}
+                  </MenuItem>
+                  <MenuItem onClick={() => properties.onInsertChart("Full")}>
+                    {t("toolbar.chart_menu.percent_stacked")}
+                  </MenuItem>
+                </>
+              }
+            >
+              {t("toolbar.chart_menu.column")}
+            </MenuItemWithSubmenu>
+          </Menu>
           <Tooltip title={t("toolbar.add_link")}>
             <IconButton
               icon={<Link2 />}

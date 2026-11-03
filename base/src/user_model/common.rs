@@ -1168,6 +1168,7 @@ impl<'a> UserModel<'a> {
         })?;
 
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_drawings = self.model.workbook.worksheet(sheet)?.drawings.clone();
         self.model.delete_rows(sheet, row, row_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
@@ -1177,6 +1178,7 @@ impl<'a> UserModel<'a> {
             row,
             count: row_count,
             old_data,
+            old_drawings,
         });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
@@ -1248,6 +1250,7 @@ impl<'a> UserModel<'a> {
         })?;
 
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_drawings = self.model.workbook.worksheet(sheet)?.drawings.clone();
         self.model.delete_columns(sheet, column, column_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
@@ -1257,6 +1260,7 @@ impl<'a> UserModel<'a> {
             column,
             count: column_count,
             old_data,
+            old_drawings,
         });
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();

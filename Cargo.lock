@@ -450,6 +450,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ironcharts"
+version = "0.9.1"
+dependencies = [
+ "ironcalc",
+ "ironcalc_base",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "itertools"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1086,6 +1096,7 @@ version = "0.9.1"
 dependencies = [
  "ironcalc",
  "ironcalc_base",
+ "ironcharts",
  "serde",
  "serde-wasm-bindgen",
  "time",

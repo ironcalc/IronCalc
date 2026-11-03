@@ -658,3 +658,230 @@ export interface IronCalcTheme {
   /** Followed-hyperlink color. */
   fol_hlink: string;
 }
+
+// ---------------------------------------------------------------------------
+// Charts
+// ---------------------------------------------------------------------------
+
+/** A corner of a drawing's frame: a cell (1-based) and an offset into it in EMU. */
+export interface AnchorPoint {
+  row: number;
+  column: number;
+  row_offset: number;
+  column_offset: number;
+}
+
+/** What a drawing does when the rows and columns under it change. */
+export type AnchorBehavior = "MoveAndResize" | "MoveOnly" | "Fixed";
+
+/** Where a drawing sits on the sheet: from one cell corner to another. */
+export interface Anchor {
+  from: AnchorPoint;
+  to: AnchorPoint;
+  behavior: AnchorBehavior;
+}
+
+/** A font in a chart. `size` is in points, `family` null inherits the theme font. */
+export interface Font {
+  size: number;
+  family: string | null;
+  bold: boolean;
+  italic: boolean;
+  color: Color | null;
+}
+
+export type TitleAlignment = "Left" | "Middle" | "Right";
+
+/** A second line under a title, with its own font. */
+export interface Subtitle {
+  text: string;
+  font: Font;
+}
+
+export interface Title {
+  text: string;
+  font: Font;
+  alignment: TitleAlignment;
+  /** Behind the text and the subtitle; null is no fill. */
+  fill: Color | null;
+  /** Around the text and the subtitle; style "Automatic" is no border. */
+  border: Line;
+  subtitle: Subtitle | null;
+}
+
+/** Where the legend goes. `Float` is a free position as fractions of the chart size. */
+export type Position = "None" | "Top" | "Right" | "Bottom" | "Left" | { Float: [number, number] };
+
+/** The background of a drawing or a plot. */
+export type Fill = "Automatic" | "None" | { Solid: Color };
+
+export type LineStyle = "Automatic" | "None" | "Thin" | "Thick" | "Dashed";
+
+export interface Line {
+  style: LineStyle;
+  color: Color | null;
+}
+
+export interface Legend {
+  position: Position;
+  /** Entries one per line (true) or in a row (false). */
+  vertical: boolean;
+  /** Padding inside the legend box: top, right, bottom, left in pixels. */
+  padding: [number, number, number, number] | null;
+  fill: Color | null;
+  border: Line;
+  font: Font;
+  /** Drawn over the plot area (true) or next to it (false). */
+  overlay: boolean;
+}
+
+/** How the series of a column chart combine: side by side, stacked, or stacked to 100%. */
+export type Stacking = "None" | "Standard" | "Full";
+
+export interface ValueFormat {
+  /** A number format, or null to use the format of the source cells. */
+  number_format: string | null;
+  font: Font;
+}
+
+/** The lines across the plot area at the ticks of an axis. */
+/** A tick mark on an axis line: on which side of the line it is drawn. */
+export type TickMark = "None" | "Inside" | "Outside" | "Cross";
+
+export interface Gridlines {
+  /** At every major tick; style "None" means no gridlines. */
+  major: Line;
+  /** Between the major ticks; style "None" means no minor gridlines. */
+  minor: Line;
+  /** The tick marks on the axis line at the major ticks. */
+  major_ticks: TickMark;
+  /** The tick marks at the minor ticks. */
+  minor_ticks: TickMark;
+}
+
+export interface CategoryAxis {
+  title: Title | null;
+  labels: Font;
+  /**
+   * Angle of the labels in degrees, positive counter-clockwise, -90 to 90.
+   * null lets the renderer choose.
+   */
+  rotation: number | null;
+  line: Line;
+  gridlines: Gridlines;
+}
+
+export interface ValueAxis {
+  title: Title | null;
+  labels: ValueFormat;
+  line: Line;
+  gridlines: Gridlines;
+}
+
+/** For a single-range source: series run down the columns or along the rows. */
+export type Orientation = "Columns" | "Rows";
+
+/** One series of a manual source. Both are references; a name in quotes is a literal, "" is no name. */
+export interface Series {
+  name: string;
+  values: string;
+}
+
+export type DataRange =
+  | { type: "Range"; range: string; orientation: Orientation }
+  | { type: "Manual"; categories: string; series: Series[] };
+
+export type EmptyCells = "Gaps" | "Zero";
+
+export interface DataSource {
+  range: DataRange;
+  empty_cells: EmptyCells;
+  na_as_empty: boolean;
+  show_hidden_data: boolean;
+}
+
+/** Where the label of a column sits. OutsideEnd is for clustered columns only. */
+export type DataLabelPosition = "Center" | "InsideEnd" | "InsideBase" | "OutsideEnd";
+
+/** The labels of one series: the value of every column, next to it. */
+/** Which way the text of the data labels runs: Excel's "text direction". */
+export type TextDirection = "Horizontal" | "Rotate90" | "Rotate270";
+
+export interface DataLabels {
+  position: DataLabelPosition;
+  direction: TextDirection;
+  /** A number format for the values, or null for the format of the cells. */
+  number_format: string | null;
+  font: Font;
+  /** Behind the text; null is no fill. */
+  fill: Color | null;
+  /** Around the text; style "Automatic" is no border. */
+  border: Line;
+}
+
+/** The spacing of clustered columns, in percent of a column's width. */
+export interface Bars {
+  /** Between the columns of one category and the next, 0 to 500. Excel's default is 219. */
+  gap: number;
+  /**
+   * Between neighbouring columns of a category, -100 to 100: negative leaves
+   * room, 0 makes them touch, 100 puts them on the same spot. Excel's default
+   * is -27; stacked columns are always at 100.
+   */
+  overlap: number;
+}
+
+export interface ColumnChart {
+  title: Title | null;
+  legend: Legend;
+  stacking: Stacking;
+  /** The spacing of the columns; stacked columns only use the gap. */
+  bars: Bars;
+  category_axis: CategoryAxis;
+  value_axis: ValueAxis;
+  data: DataSource;
+  /** One color per series; missing or null colors use the theme accents. */
+  colors: (Color | null)[];
+  /** The labels of each series, by position; null or missing is no labels. */
+  data_labels: (DataLabels | null)[];
+}
+
+export type Chart = { type: "ColumnChart" } & ColumnChart;
+
+/** The points of one series, in the order of the categories. */
+export interface SeriesData {
+  /** The resolved name; "" is an empty name. */
+  name: string;
+  /** One entry per cell: null is a cell with no point (empty or an error). */
+  values: (number | null)[];
+  number_format: string;
+}
+
+/** What a chart plots, from `getChartData`. */
+export interface ChartData {
+  /** The formatted text of the category cells. */
+  categories: string[];
+  series: SeriesData[];
+}
+
+/** One series as the chart editor shows it. */
+export interface ChartSeriesSetup {
+  /** The name reference or literal, as stored. */
+  name: string;
+  /** The values reference. */
+  values: string;
+  /** The name as text: the cell's text, the literal, or "". */
+  label: string;
+}
+
+/** A chart's data source expanded to explicit series, from `getChartSetup`. */
+export interface ChartSetup {
+  categories: string;
+  series: ChartSeriesSetup[];
+}
+
+/** The background and border of a drawing, from `getDrawingStyle`. */
+export interface DrawingStyle {
+  fill: Fill;
+  border: Line;
+}

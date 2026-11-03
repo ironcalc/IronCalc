@@ -7,6 +7,7 @@ mod cells_block;
 mod clipboard;
 mod common;
 mod conditional_formatting;
+mod drawings;
 pub(crate) mod history;
 mod links;
 mod merged_cells;

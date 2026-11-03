@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="339" viewBox="0 0 560 339">
+<rect class="chart-area" x="0" y="0" width="560" height="339" fill="#FFFFFF" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="34.7" y1="283.95" x2="552" y2="283.95" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="34.7" y1="228.76" x2="552" y2="228.76" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="34.7" y1="173.57" x2="552" y2="173.57" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="34.7" y1="118.38" x2="552" y2="118.38" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="34.7" y1="63.19" x2="552" y2="63.19" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="34.7" y1="8" x2="552" y2="8" stroke="#D9D9D9" stroke-width="1"/>
+<rect class="series-0" x="54.48" y="216.07" width="18.06" height="67.88" fill="#4472C4" stroke="none"/>
+<rect class="series-1" x="77.41" y="191.79" width="18.06" height="92.17" fill="#ED7D31" stroke="none"/>
+<rect class="series-2" x="100.34" y="217.73" width="18.06" height="66.23" fill="#A5A5A5" stroke="none"/>
+<rect class="series-0" x="157.93" y="271.26" width="18.06" height="12.69" fill="#4472C4" stroke="none"/>
+<rect class="series-1" x="180.87" y="32.28" width="18.06" height="251.67" fill="#ED7D31" stroke="none"/>
+<rect class="series-2" x="203.8" y="190.13" width="18.06" height="93.82" fill="#A5A5A5" stroke="none"/>
+<rect class="series-0" x="261.39" y="154.81" width="18.06" height="129.15" fill="#4472C4" stroke="none"/>
+<rect class="series-2" x="307.26" y="173.57" width="18.06" height="110.38" fill="#A5A5A5" stroke="none"/>
+<rect class="series-0" x="364.85" y="197.86" width="18.06" height="86.1" fill="#4472C4" stroke="none"/>
+<rect class="series-1" x="387.78" y="118.38" width="18.06" height="165.57" fill="#ED7D31" stroke="none"/>
+<rect class="series-2" x="410.71" y="145.98" width="18.06" height="137.98" fill="#A5A5A5" stroke="none"/>
+<rect class="series-0" x="468.31" y="216.07" width="18.06" height="67.88" fill="#4472C4" stroke="none"/>
+<rect class="series-1" x="491.24" y="93.55" width="18.06" height="190.41" fill="#ED7D31" stroke="none"/>
+<rect class="series-2" x="514.17" y="106.79" width="18.06" height="177.16" fill="#A5A5A5" stroke="none"/>
+<text class="data-label-0" x="63.5" y="210.17" font-family="Inter" font-size="12" fill="#404040" text-anchor="middle">123</text>
+<rect class="data-label-1" x="69.18" y="193.79" width="34.52" height="14.91" fill="#C55911" stroke="none"/>
+<text class="data-label-1" x="86.43" y="205.12" font-family="Inter" font-size="10.67" font-weight="600" fill="#FFFFFF" text-anchor="middle">167.0</text>
+<text class="data-label-0" x="166.96" y="265.36" font-family="Inter" font-size="12" fill="#404040" text-anchor="middle">23</text>
+<rect class="data-label-1" x="171.41" y="34.28" width="36.97" height="14.91" fill="#C55911" stroke="none"/>
+<text class="data-label-1" x="189.89" y="45.62" font-family="Inter" font-size="10.67" font-weight="600" fill="#FFFFFF" text-anchor="middle">456.0</text>
+<text class="data-label-0" x="270.42" y="148.91" font-family="Inter" font-size="12" fill="#404040" text-anchor="middle">234</text>
+<text class="data-label-0" x="373.88" y="191.96" font-family="Inter" font-size="12" fill="#404040" text-anchor="middle">156</text>
+<rect class="data-label-1" x="378.12" y="120.38" width="37.39" height="14.91" fill="#C55911" stroke="none"/>
+<text class="data-label-1" x="396.81" y="131.72" font-family="Inter" font-size="10.67" font-weight="600" fill="#FFFFFF" text-anchor="middle">300.0</text>
+<text class="data-label-0" x="477.34" y="210.17" font-family="Inter" font-size="12" fill="#404040" text-anchor="middle">123</text>
+<rect class="data-label-1" x="481.76" y="95.55" width="37.01" height="14.91" fill="#C55911" stroke="none"/>
+<text class="data-label-1" x="500.27" y="106.88" font-family="Inter" font-size="10.67" font-weight="600" fill="#FFFFFF" text-anchor="middle">345.0</text>
+<rect class="legend" x="168.35" y="316.14" width="7.2" height="7.2" fill="#4472C4" stroke="none"/>
+<text class="legend" x="180.35" y="324.1" font-family="Inter" font-size="12" fill="#595959" text-anchor="start">September</text>
+<rect class="legend" x="252.59" y="316.14" width="7.2" height="7.2" fill="#ED7D31" stroke="none"/>
+<text class="legend" x="264.59" y="324.1" font-family="Inter" font-size="12" fill="#595959" text-anchor="start">October</text>
+<rect class="legend" x="320.45" y="316.14" width="7.2" height="7.2" fill="#A5A5A5" stroke="none"/>
+<text class="legend" x="332.45" y="324.1" font-family="Inter" font-size="12" fill="#595959" text-anchor="start">November</text>
+<text class="value-axis" x="30.7" y="288.32" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">0</text>
+<text class="value-axis" x="30.7" y="233.13" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">100</text>
+<text class="value-axis" x="30.7" y="177.94" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">200</text>
+<text class="value-axis" x="30.7" y="122.75" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">300</text>
+<text class="value-axis" x="30.7" y="67.55" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">400</text>
+<text class="value-axis" x="30.7" y="12.36" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">500</text>
+<text class="category-axis" x="86.43" y="299.58" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">London</text>
+<text class="category-axis" x="189.89" y="299.58" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">Madrid</text>
+<text class="category-axis" x="293.35" y="299.58" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">Rome</text>
+<text class="category-axis" x="396.81" y="299.58" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">Paris</text>
+<text class="category-axis" x="500.27" y="299.58" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">Amsterdam</text>
+<line class="category-axis" x1="34.7" y1="283.95" x2="552" y2="283.95" stroke="#D9D9D9" stroke-width="1"/>
+<rect class="plot-area" x="34.7" y="8" width="517.3" height="275.95" fill="none" stroke="none"/>
+</svg>

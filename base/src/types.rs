@@ -2,7 +2,7 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
-use crate::{cf_types::ConditionalFormatting, expressions::token::Error};
+use crate::{cf_types::ConditionalFormatting, drawing_types::Drawing, expressions::token::Error};
 
 fn default_as_false() -> bool {
     false
@@ -243,6 +243,7 @@ pub struct Worksheet {
     pub conditional_formatting: Vec<ConditionalFormatting>,
     /// Hyperlinks in the worksheet, keyed by (row, column) of the cell they are attached to
     pub links: HashMap<(i32, i32), Link>,
+    pub drawings: Vec<Drawing>,
 }
 
 /// Internal representation of Excel's sheet_data

@@ -56,6 +56,7 @@ impl<'a> Model<'a> {
             show_grid_lines: true,
             conditional_formatting: vec![],
             links: HashMap::new(),
+            drawings: Vec::new(),
         }
     }
 

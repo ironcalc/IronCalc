@@ -6,12 +6,15 @@ use wasm_bindgen::{
 
 use ironcalc_base::{
     cf_types::CfRuleInput,
+    charts::{expand_data_range, Chart, ChartData, Fill, Line},
     colors,
+    drawing_types::Anchor,
     expressions::{
         lexer::util::get_tokens as tokenizer,
         types::Area,
         utils::{column_to_number, number_to_column, quote_name as quote_name_ic},
     },
+    locale::get_locale,
     types::{CellType, Color, Link, Style, StyleIncludes},
     worksheet::NavigationDirection,
     BorderArea, ClipboardData, DefinedNameEntry, UserModel as BaseModel, COLUMN_WIDTH_FACTOR,
@@ -20,6 +23,30 @@ use ironcalc_base::{
 
 fn to_js_error(error: String) -> JsError {
     JsError::new(&error.to_string())
+}
+
+/// One series of a chart as the editor shows it: the references and the
+/// name as text.
+#[derive(Serialize)]
+struct ChartSeriesSetup {
+    name: String,
+    values: String,
+    /// The name resolved to text: the cell's text, the literal, or ""
+    label: String,
+}
+
+/// The background and border of a drawing.
+#[derive(Serialize)]
+struct DrawingStyle {
+    fill: Fill,
+    border: Line,
+}
+
+/// The data source of a chart expanded to explicit series, for the editor.
+#[derive(Serialize)]
+struct ChartSetup {
+    categories: String,
+    series: Vec<ChartSeriesSetup>,
 }
 
 /// Return an array with a list of all the tokens from a formula
@@ -1294,6 +1321,193 @@ impl Model {
             .get_cell_array_structure(sheet, row, column)
             .map_err(|e| to_js_error(e.to_string()))?;
         serde_wasm_bindgen::to_value(&cell_structure).map_err(JsError::from)
+    }
+
+    // -----------------------------------------------------------------------
+    // Charts
+    // -----------------------------------------------------------------------
+
+    /// The ids of the charts of `sheet`, in drawing order.
+    #[wasm_bindgen(js_name = "getChartIds")]
+    pub fn get_chart_ids(&self, sheet: u32) -> Result<Vec<u32>, JsError> {
+        self.model.get_chart_ids(sheet).map_err(to_js_error)
+    }
+
+    /// The chart `id` of `sheet`.
+    #[wasm_bindgen(js_name = "getChart", unchecked_return_type = "Chart")]
+    pub fn get_chart(&self, sheet: u32, id: u32) -> Result<JsValue, JsError> {
+        let chart = self.model.get_chart(sheet, id).map_err(to_js_error)?;
+        // Missing values come back as null, as the TypeScript types say
+        chart
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// The chart `id` of `sheet` drawn as SVG, `width` by `height` pixels.
+    /// A chart whose data cannot be resolved is drawn empty.
+    #[wasm_bindgen(js_name = "getChartSvg")]
+    pub fn get_chart_svg(
+        &self,
+        sheet: u32,
+        id: u32,
+        width: f64,
+        height: f64,
+    ) -> Result<String, JsError> {
+        let chart = self.model.get_chart(sheet, id).map_err(to_js_error)?;
+        let Chart::ColumnChart(column_chart) = chart;
+        let data = self
+            .model
+            .get_chart_data(&column_chart.data)
+            .unwrap_or(ChartData {
+                categories: Vec::new(),
+                series: Vec::new(),
+            });
+        let (fill, border) = self
+            .model
+            .get_drawing_style(sheet, id)
+            .map_err(to_js_error)?;
+        let theme = self.model.get_theme();
+        let locale = get_locale(&self.model.get_locale()).map_err(to_js_error)?;
+        let context = ironcharts::layout::Context {
+            width,
+            height,
+            theme: &theme,
+            locale,
+            measurer: &ironcharts::text::Inter,
+        };
+        let scene = ironcharts::layout(column_chart, &data, &fill, &border, &context);
+        Ok(ironcharts::to_svg(&scene))
+    }
+
+    /// The values the chart `id` of `sheet` plots.
+    #[wasm_bindgen(js_name = "getChartData", unchecked_return_type = "ChartData")]
+    pub fn get_chart_data(&self, sheet: u32, id: u32) -> Result<JsValue, JsError> {
+        let chart = self.model.get_chart(sheet, id).map_err(to_js_error)?;
+        let Chart::ColumnChart(column_chart) = chart;
+        let data = self
+            .model
+            .get_chart_data(&column_chart.data)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// The data source of the chart `id` of `sheet` as explicit series,
+    /// with the name of each resolved to text.
+    #[wasm_bindgen(js_name = "getChartSetup", unchecked_return_type = "ChartSetup")]
+    pub fn get_chart_setup(&self, sheet: u32, id: u32) -> Result<JsValue, JsError> {
+        let chart = self.model.get_chart(sheet, id).map_err(to_js_error)?;
+        let Chart::ColumnChart(column_chart) = chart;
+        let (categories, series) = expand_data_range(&column_chart.data.range);
+        let labels: Vec<String> = match self.model.get_chart_data(&column_chart.data) {
+            Ok(data) => data.series.into_iter().map(|s| s.name).collect(),
+            Err(_) => Vec::new(),
+        };
+        let setup = ChartSetup {
+            categories,
+            series: series
+                .into_iter()
+                .enumerate()
+                .map(|(index, series)| ChartSeriesSetup {
+                    name: series.name,
+                    values: series.values,
+                    label: labels.get(index).cloned().unwrap_or_default(),
+                })
+                .collect(),
+        };
+        serde_wasm_bindgen::to_value(&setup).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// The frame the drawing `id` of `sheet` spans.
+    #[wasm_bindgen(js_name = "getDrawingAnchor", unchecked_return_type = "Anchor")]
+    pub fn get_drawing_anchor(&self, sheet: u32, id: u32) -> Result<JsValue, JsError> {
+        let anchor = self
+            .model
+            .get_drawing_anchor(sheet, id)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&anchor).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Adds `chart` to `sheet` in the frame `anchor` spans and returns its id.
+    #[wasm_bindgen(js_name = "newChart")]
+    pub fn new_chart(
+        &mut self,
+        sheet: u32,
+        #[wasm_bindgen(unchecked_param_type = "Anchor")] anchor: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "Chart")] chart: JsValue,
+    ) -> Result<u32, JsError> {
+        let anchor: Anchor =
+            serde_wasm_bindgen::from_value(anchor).map_err(|e| to_js_error(e.to_string()))?;
+        let chart: Chart =
+            serde_wasm_bindgen::from_value(chart).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .new_chart(sheet, anchor, chart)
+            .map_err(to_js_error)
+    }
+
+    /// Removes the chart `id` from `sheet`.
+    #[wasm_bindgen(js_name = "deleteChart")]
+    pub fn delete_chart(&mut self, sheet: u32, id: u32) -> Result<(), JsError> {
+        self.model.delete_chart(sheet, id).map_err(to_js_error)
+    }
+
+    /// Replaces the chart `id` of `sheet` by `chart`. Its frame is untouched.
+    #[wasm_bindgen(js_name = "updateChart")]
+    pub fn update_chart(
+        &mut self,
+        sheet: u32,
+        id: u32,
+        #[wasm_bindgen(unchecked_param_type = "Chart")] chart: JsValue,
+    ) -> Result<(), JsError> {
+        let chart: Chart =
+            serde_wasm_bindgen::from_value(chart).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .update_chart(sheet, id, chart)
+            .map_err(to_js_error)
+    }
+
+    /// Moves or resizes the drawing `id` of `sheet` to the frame `anchor` spans.
+    #[wasm_bindgen(js_name = "moveDrawing")]
+    pub fn move_drawing(
+        &mut self,
+        sheet: u32,
+        id: u32,
+        #[wasm_bindgen(unchecked_param_type = "Anchor")] anchor: JsValue,
+    ) -> Result<(), JsError> {
+        let anchor: Anchor =
+            serde_wasm_bindgen::from_value(anchor).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .move_drawing(sheet, id, anchor)
+            .map_err(to_js_error)
+    }
+
+    /// The background and the border of the drawing `id` of `sheet`.
+    #[wasm_bindgen(js_name = "getDrawingStyle", unchecked_return_type = "DrawingStyle")]
+    pub fn get_drawing_style(&self, sheet: u32, id: u32) -> Result<JsValue, JsError> {
+        let (fill, border) = self
+            .model
+            .get_drawing_style(sheet, id)
+            .map_err(to_js_error)?;
+        DrawingStyle { fill, border }
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Sets the background and the border of the drawing `id` of `sheet`.
+    #[wasm_bindgen(js_name = "setDrawingStyle")]
+    pub fn set_drawing_style(
+        &mut self,
+        sheet: u32,
+        id: u32,
+        #[wasm_bindgen(unchecked_param_type = "Fill")] fill: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "Line")] border: JsValue,
+    ) -> Result<(), JsError> {
+        let fill: Fill =
+            serde_wasm_bindgen::from_value(fill).map_err(|e| to_js_error(e.to_string()))?;
+        let border: Line =
+            serde_wasm_bindgen::from_value(border).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .set_drawing_style(sheet, id, fill, border)
+            .map_err(to_js_error)
     }
 
     // -----------------------------------------------------------------------

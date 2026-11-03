@@ -123,7 +123,6 @@ impl XmlNode {
     }
 
     /// The first child element with the local name `name`.
-    #[cfg(test)]
     pub(crate) fn child(&self, name: &str) -> Option<&XmlNode> {
         self.children.iter().find(|n| n.has_tag_name(name))
     }

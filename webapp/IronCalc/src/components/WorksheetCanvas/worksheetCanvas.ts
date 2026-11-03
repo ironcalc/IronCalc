@@ -1,4 +1,6 @@
 import type {
+  Anchor,
+  AnchorBehavior,
   CellLink,
   CellStyle,
   Color,
@@ -22,6 +24,8 @@ import {
   renderRating,
   underlayStyle,
 } from "./cfRenderer";
+import { anchorFromSheetRect, sheetRectFromAnchor } from "./chartInteraction";
+import { ChartLayer } from "./chartRenderer";
 import {
   cellPadding,
   headerColumnWidth,
@@ -49,6 +53,8 @@ export interface CanvasSettings {
     areaOutline: HTMLDivElement;
     cellArrayStructure: HTMLDivElement;
     extendToOutline: HTMLDivElement;
+    // The charts of the sheet float here, over the scrolling pane
+    chartsLayer: HTMLDivElement;
     columnGuide: HTMLDivElement;
     rowGuide: HTMLDivElement;
     columnHeaders: HTMLDivElement;
@@ -139,6 +145,11 @@ export default class WorksheetCanvas {
   cellOutlineHandle: HTMLDivElement;
 
   extendToOutline: HTMLDivElement;
+
+  private chartLayer: ChartLayer;
+
+  // Accessible name of the menu button on a selected chart
+  chartMenuButtonLabel = "";
 
   workbookState: WorkbookState;
 
@@ -243,6 +254,7 @@ export default class WorksheetCanvas {
     this.cellArrayStructure = options.elements.cellArrayStructure;
     this.areaOutline = options.elements.areaOutline;
     this.extendToOutline = options.elements.extendToOutline;
+    this.chartLayer = new ChartLayer(options.elements.chartsLayer);
     this.rowGuide = options.elements.rowGuide;
     this.columnGuide = options.elements.columnGuide;
     this.columnHeaders = options.elements.columnHeaders;
@@ -311,6 +323,11 @@ export default class WorksheetCanvas {
   // The scrolling pane on the canvas (the bottom-right one)
   private getScrollPane(): PaneRect {
     return this.getPanes()[3];
+  }
+
+  // The scrolling pane relative to the canvas: x, y, width, height
+  getScrollPaneRect(): PaneRect {
+    return this.getScrollPane();
   }
 
   // The size of the scrolling pane: the cells area less the headers and the
@@ -3010,8 +3027,62 @@ export default class WorksheetCanvas {
     this.drawExtendToArea();
     this.drawActiveRanges(topLeftCell, bottomRightCell);
     this.drawCutRange();
+    this.renderCharts();
 
     this.frame = null;
+  }
+
+  // Places the charts of the sheet over the scrolling pane
+  private renderCharts(): void {
+    this.chartLayer.render({
+      model: this.model,
+      selectedSheet: () => this.selectedSheet(),
+      getCoordinatesByCell: (row, column) =>
+        this.getCoordinatesByCell(row, column),
+      getScrollPaneRect: () => this.getScrollPaneRect(),
+      selectedChart: this.workbookState.getSelectedChart(),
+      menuButtonLabel: this.chartMenuButtonLabel,
+    });
+  }
+
+  /**
+   * The anchor of a chart whose frame is `rect`, relative to the scrolling
+   * pane (as the chart layer places it). The frame is kept inside the pane.
+   */
+  chartRectToAnchor(
+    rect: { left: number; top: number; width: number; height: number },
+    behavior: AnchorBehavior,
+  ): Anchor {
+    const [originX, originY] = this.getOrigin();
+    const scroll = this.getScroll();
+    return anchorFromSheetRect(
+      this.getAxes(),
+      {
+        x: Math.max(originX, originX + scroll.x + rect.left),
+        y: Math.max(originY, originY + scroll.y + rect.top),
+        width: rect.width,
+        height: rect.height,
+      },
+      behavior,
+    );
+  }
+
+  /** The frame of `anchor` relative to the scrolling pane. */
+  anchorToChartRect(anchor: Anchor): {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } {
+    const [originX, originY] = this.getOrigin();
+    const scroll = this.getScroll();
+    const rect = sheetRectFromAnchor(this.getAxes(), anchor);
+    return {
+      left: rect.x - originX - scroll.x,
+      top: rect.y - originY - scroll.y,
+      width: rect.width,
+      height: rect.height,
+    };
   }
 
   // Fetches the cells of the four panes (the frozen corner, the frozen rows,

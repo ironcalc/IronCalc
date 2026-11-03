@@ -22,6 +22,13 @@ import {
   getNewClipboardId,
 } from "../clipboard";
 import FormulaBar from "../FormulaBar/FormulaBar";
+import {
+  chartAnchor,
+  DEFAULT_CHART_HEIGHT,
+  DEFAULT_CHART_WIDTH,
+  defaultColumnChart,
+  expandRegion,
+} from "../RightDrawer/Chart/chartUtil";
 import type { SaveError } from "../RightDrawer/NamedStyles/EditNamedStyle";
 import RightDrawer, {
   DEFAULT_DRAWER_WIDTH,
@@ -90,6 +97,11 @@ const Workbook = (
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
   const [drawerType, setDrawerType] = useState<DrawerType>("namedRanges");
+  // The chart the drawer edits, when it shows the chart editor
+  const [editingChart, setEditingChart] = useState<{
+    sheet: number;
+    id: number;
+  } | null>(null);
   // The cell the link dialog operates on (null when the dialog is closed)
   const [linkDialogCell, setLinkDialogCell] = useState<{
     sheet: number;
@@ -526,6 +538,66 @@ const Workbook = (
     openCustomNumberFormat: whenEditable(() => {
       setFormatPickerOpen(true);
     }),
+    insertChart: whenEditable((stacking) => {
+      const view = model.getSelectedView();
+      const { sheet } = view;
+      let [rowStart, columnStart, rowEnd, columnEnd] = view.range;
+      if (rowStart === rowEnd && columnStart === columnEnd) {
+        // A single cell: the block of data around it, as Excel does
+        [rowStart, columnStart, rowEnd, columnEnd] = expandRegion(
+          (row, column) => model.getCellContent(sheet, row, column) === "",
+          rowStart,
+          columnStart,
+          { lastRow: LAST_ROW, lastColumn: LAST_COLUMN },
+        );
+      }
+      const names = model.getWorksheetsProperties().map((s) => s.name);
+      const range = getFullRangeToString(
+        { ...view, range: [rowStart, columnStart, rowEnd, columnEnd] },
+        names,
+      );
+      // To the right of the data, from the first visible row of it
+      const row = Math.max(rowStart, view.top_row);
+      const column = Math.min(columnEnd + 1, LAST_COLUMN - 8);
+      const anchor = chartAnchor(
+        model,
+        sheet,
+        row,
+        column,
+        DEFAULT_CHART_WIDTH,
+        DEFAULT_CHART_HEIGHT,
+      );
+      const id = model.newChart(
+        sheet,
+        anchor,
+        defaultColumnChart(range, stacking),
+      );
+      workbookState.setSelectedChart({ sheet, id });
+      setEditingChart({ sheet, id });
+      openDrawer("chart");
+      setRedrawId((id) => id + 1);
+    }),
+    openChart: whenEditable((sheet, id) => {
+      workbookState.setSelectedChart({ sheet, id });
+      setEditingChart({ sheet, id });
+      openDrawer("chart");
+    }),
+    deleteChart: whenEditable((sheet, id) => {
+      model.deleteChart(sheet, id);
+      const selected = workbookState.getSelectedChart();
+      if (selected && selected.sheet === sheet && selected.id === id) {
+        workbookState.setSelectedChart(null);
+      }
+      if (
+        editingChart &&
+        editingChart.sheet === sheet &&
+        editingChart.id === id
+      ) {
+        setEditingChart(null);
+        setDrawerOpen(false);
+      }
+      setRedrawId((id) => id + 1);
+    }),
     openLinkDialog: whenEditable(() => {
       const { sheet, row, column } = model.getSelectedView();
       openLinkDialog(sheet, row, column);
@@ -845,12 +917,78 @@ const Workbook = (
     setRedrawId((id) => id + 1);
   };
 
+  // Keys that act on the selected chart: Escape deselects, Delete removes it,
+  // the arrows nudge it by a pixel (ten with Shift). True when handled.
+  const onChartKeyDown = (event: React.KeyboardEvent): boolean => {
+    const selected = workbookState.getSelectedChart();
+    if (!selected || event.target !== rootRef.current) {
+      return false;
+    }
+    if (selected.sheet !== model.getSelectedSheet()) {
+      workbookState.setSelectedChart(null);
+      return false;
+    }
+    const { sheet, id } = selected;
+    switch (event.key) {
+      case "Escape": {
+        workbookState.setSelectedChart(null);
+        setRedrawId((id) => id + 1);
+        break;
+      }
+      case "Delete":
+      case "Backspace": {
+        if (!canEdit) {
+          return false;
+        }
+        actions.deleteChart(sheet, id);
+        break;
+      }
+      case "ArrowUp":
+      case "ArrowDown":
+      case "ArrowLeft":
+      case "ArrowRight": {
+        const canvas = worksheetRef.current?.getCanvas();
+        if (!canEdit || !canvas) {
+          return false;
+        }
+        const step = event.shiftKey ? 10 : 1;
+        const anchor = model.getDrawingAnchor(sheet, id);
+        const rect = canvas.anchorToChartRect(anchor);
+        if (event.key === "ArrowUp") {
+          rect.top -= step;
+        } else if (event.key === "ArrowDown") {
+          rect.top += step;
+        } else if (event.key === "ArrowLeft") {
+          rect.left -= step;
+        } else {
+          rect.left += step;
+        }
+        model.moveDrawing(
+          sheet,
+          id,
+          canvas.chartRectToAnchor(rect, anchor.behavior),
+        );
+        setRedrawId((id) => id + 1);
+        break;
+      }
+      default:
+        return false;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  };
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: This div needs to be focusable to handle keyboard events for the workbook
     <div
       className={`ic-workbook-container${canEdit ? "" : " ic-workbook-container--readonly"}`}
       ref={rootRef}
-      onKeyDown={onKeyDown}
+      onKeyDown={(event) => {
+        if (!onChartKeyDown(event)) {
+          onKeyDown(event);
+        }
+      }}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: This div needs to be focusable to handle keyboard events for the workbook
       tabIndex={0}
       onClick={(event: React.MouseEvent) => {
@@ -1110,6 +1248,7 @@ const Workbook = (
           onOpenNamedStyles={actions.openNamedStyles}
           isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
           onOpenLinkDialog={actions.openLinkDialog}
+          onInsertChart={actions.insertChart}
           themes={themes}
           currentTheme={currentTheme}
           onThemePicked={handleThemePicked}
@@ -1244,6 +1383,7 @@ const Workbook = (
           return getFullRangeToString(selectedView, worksheetNames);
         }}
         drawerType={drawerType}
+        chart={editingChart}
         themes={themes}
         currentTheme={model.getTheme()}
         onThemePicked={handleThemePicked}

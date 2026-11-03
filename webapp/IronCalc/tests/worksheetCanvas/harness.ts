@@ -48,6 +48,7 @@ export interface RenderOptions {
   width?: number;
   height?: number;
   themeVars?: Record<string, string>;
+  workbookState?: WorkbookState;
 }
 
 // Builds the WorksheetCanvas for `model` and renders one frame. Returns the
@@ -57,7 +58,11 @@ export interface RenderOptions {
 export async function renderWorksheet(
   model: Model,
   options: RenderOptions = {},
-): Promise<{ canvas: Canvas; worksheet: WorksheetCanvas }> {
+): Promise<{
+  canvas: Canvas;
+  worksheet: WorksheetCanvas;
+  chartsLayer: HTMLDivElement;
+}> {
   installDomGlobals(DEVICE_PIXEL_RATIO, options.themeVars);
   // Imported dynamically: the module reads `window` at load time, so the
   // fake DOM globals must be installed first
@@ -80,18 +85,20 @@ export async function renderWorksheet(
   );
   const div = (): HTMLDivElement =>
     container.appendChild(new FakeElement("div")) as unknown as HTMLDivElement;
+  const chartsLayer = div();
 
   const worksheet = new WorksheetCanvas({
     model,
     width,
     height,
-    workbookState: new WorkbookState(),
+    workbookState: options.workbookState ?? new WorkbookState(),
     elements: {
       canvas: canvasElement as unknown as HTMLCanvasElement,
       cellOutline: div(),
       areaOutline: div(),
       cellArrayStructure: div(),
       extendToOutline: div(),
+      chartsLayer,
       columnGuide: div(),
       rowGuide: div(),
       columnHeaders: div(),
@@ -103,7 +110,7 @@ export async function renderWorksheet(
     refresh: () => {},
   });
   worksheet.renderSheet();
-  return { canvas, worksheet };
+  return { canvas, worksheet, chartsLayer };
 }
 
 export async function renderToCanvas(

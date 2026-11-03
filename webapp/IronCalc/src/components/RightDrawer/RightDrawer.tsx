@@ -6,6 +6,7 @@ import type {
 } from "@ironcalc/wasm";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
+import ChartEditor from "./Chart/ChartEditor";
 import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
 import NamedRanges from "./NamedRanges/NamedRanges";
 import NamedStylesPanel from "./NamedStyles/NamedStylesPanel";
@@ -30,7 +31,8 @@ export type DrawerType =
   | "namedStyles"
   | "regionalSettings"
   | "conditionalFormatting"
-  | "themes";
+  | "themes"
+  | "chart";
 
 interface RightDrawerProps {
   isOpen: boolean;
@@ -41,6 +43,8 @@ interface RightDrawerProps {
   onUpdate: () => void;
   getSelectedArea: () => string;
   drawerType: DrawerType;
+  // Chart editor props
+  chart: { sheet: number; id: number } | null;
   // Themes props
   themes: IronCalcTheme[];
   currentTheme: IronCalcTheme;
@@ -72,6 +76,7 @@ const RightDrawer = ({
   model,
   onUpdate,
   drawerType,
+  chart,
   themes,
   currentTheme,
   onThemePicked,
@@ -207,6 +212,18 @@ const RightDrawer = ({
             currentTheme={currentTheme}
           />
         );
+      case "chart":
+        return chart ? (
+          <ChartEditor
+            model={model}
+            sheet={chart.sheet}
+            id={chart.id}
+            currentTheme={currentTheme}
+            onClose={onClose}
+            onUpdate={onUpdate}
+            getSelectedArea={getSelectedArea}
+          />
+        ) : null;
       case "themes":
         return (
           <Themes

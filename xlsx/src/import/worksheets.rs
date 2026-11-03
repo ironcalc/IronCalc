@@ -9,7 +9,9 @@ use std::{
     num::ParseIntError,
 };
 
+use super::drawings::load_drawings;
 use super::xml::XmlNode;
+use ironcalc_base::drawing_types::Drawing;
 use ironcalc_base::{
     expressions::{
         parser::{stringify::to_rc_format, DefinedNameS},
@@ -680,11 +682,12 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     path: &str,
     tables: &mut HashMap<String, Table>,
     sheet_name: &str,
-) -> Result<(Vec<Comment>, HashMap<String, String>), XlsxError> {
+) -> Result<SheetRels, XlsxError> {
     // ...xl/worksheets/sheet6.xml -> xl/worksheets/_rels/sheet6.xml.rels
     let mut comments = Vec::new();
     // relationship id ("rId4") -> target of the hyperlink
     let mut hyperlinks = HashMap::new();
+    let mut drawings = Vec::new();
     let v: Vec<&str> = path.split("/worksheets/").collect();
     let mut path = v[0].to_string();
     path.push_str("/worksheets/_rels/");
@@ -692,7 +695,11 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     path.push_str(".rels");
     let file = archive.by_name(&path);
     if file.is_err() {
-        return Ok((comments, hyperlinks));
+        return Ok(SheetRels {
+            comments,
+            hyperlinks,
+            drawings,
+        });
     }
     let doc = XmlNode::parse(BufReader::new(file?))?;
 
@@ -724,9 +731,31 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
 
             let table = load_table(archive, &path, sheet_name)?;
             tables.insert(table.name.clone(), table);
+        } else if t.ends_with("/drawing") {
+            let mut target = get_attribute(rel, "Target")?.to_string();
+            let path = if let Some(p) = target.strip_prefix('/') {
+                p.to_string()
+            } else {
+                // Target="../drawings/drawing1.xml"
+                target.replace_range(..2, v[0]);
+                target
+            };
+            drawings = load_drawings(archive, &path)?;
         }
     }
-    Ok((comments, hyperlinks))
+    Ok(SheetRels {
+        comments,
+        hyperlinks,
+        drawings,
+    })
+}
+
+/// What the rels part of a worksheet points to.
+struct SheetRels {
+    comments: Vec<Comment>,
+    /// relationship id ("rId4") -> target of the hyperlink
+    hyperlinks: HashMap<String, String>,
+    drawings: Vec<Drawing>,
 }
 
 /// Maximum number of cells a single `<hyperlink>` range is expanded to
@@ -901,6 +930,7 @@ pub(super) struct SheetSettings {
     pub comments: Vec<Comment>,
     /// hyperlink relationships in the sheet rels: relationship id -> target
     pub hyperlink_rels: HashMap<String, String>,
+    pub drawings: Vec<Drawing>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -989,6 +1019,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         show_grid_lines: sheet_view.show_grid_lines,
         conditional_formatting,
         links,
+        drawings: settings.drawings,
     })
 }
 
@@ -1037,15 +1068,16 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
             } else {
                 format!("xl/{path}")
             };
-            let (comments, hyperlink_rels) = sheet_rels
+            let rels = sheet_rels
                 .get(rel_id)
                 .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
             let settings = SheetSettings {
                 name: sheet_name.to_string(),
                 id: sheet.sheet_id,
                 state: state.clone(),
-                comments: comments.to_vec(),
-                hyperlink_rels: hyperlink_rels.clone(),
+                comments: rels.comments.to_vec(),
+                hyperlink_rels: rels.hyperlinks.clone(),
+                drawings: rels.drawings.clone(),
             };
             let s = load_sheet(
                 archive,

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="339" viewBox="0 0 500 339">
+<rect class="chart-area" x="0" y="0" width="500" height="339" fill="#FFFFFF" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="73.75" y1="248.91" x2="492" y2="248.91" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="73.75" y1="214.19" x2="492" y2="214.19" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="73.75" y1="179.47" x2="492" y2="179.47" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="73.75" y1="144.75" x2="492" y2="144.75" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="73.75" y1="110.04" x2="492" y2="110.04" stroke="#D9D9D9" stroke-width="1"/>
+<line class="gridlines" x1="73.75" y1="75.32" x2="492" y2="75.32" stroke="#D9D9D9" stroke-width="1"/>
+<rect class="series-0" x="89.74" y="206.21" width="14.6" height="42.7" fill="#4472C4" stroke="none"/>
+<rect class="series-1" x="108.28" y="190.93" width="14.6" height="57.98" fill="#ED7D31" stroke="none"/>
+<rect class="series-2" x="126.82" y="207.25" width="14.6" height="41.66" fill="#A5A5A5" stroke="none"/>
+<rect class="series-0" x="173.39" y="240.92" width="14.6" height="7.99" fill="#4472C4" stroke="none"/>
+<rect class="series-1" x="191.93" y="90.59" width="14.6" height="158.31" fill="#ED7D31" stroke="none"/>
+<rect class="series-2" x="210.47" y="189.89" width="14.6" height="59.02" fill="#A5A5A5" stroke="none"/>
+<rect class="series-0" x="257.04" y="167.67" width="14.6" height="81.24" fill="#4472C4" stroke="none"/>
+<rect class="series-2" x="294.12" y="179.47" width="14.6" height="69.44" fill="#A5A5A5" stroke="none"/>
+<rect class="series-0" x="340.69" y="194.75" width="14.6" height="54.16" fill="#4472C4" stroke="none"/>
+<rect class="series-1" x="359.23" y="144.75" width="14.6" height="104.15" fill="#ED7D31" stroke="none"/>
+<rect class="series-2" x="377.77" y="162.11" width="14.6" height="86.8" fill="#A5A5A5" stroke="none"/>
+<rect class="series-0" x="424.34" y="206.21" width="14.6" height="42.7" fill="#4472C4" stroke="none"/>
+<rect class="series-1" x="442.88" y="129.13" width="14.6" height="119.78" fill="#ED7D31" stroke="none"/>
+<rect class="series-2" x="461.42" y="137.46" width="14.6" height="111.45" fill="#A5A5A5" stroke="none"/>
+<text class="title" x="250" y="44.17" font-family="Inter" font-size="37.33" fill="#FF0000" text-anchor="middle">The main title is here</text>
+<text class="title" x="250" y="66.1" font-family="Inter" font-size="13.33" font-style="italic" fill="#808080" text-anchor="middle">and another line</text>
+<rect class="legend" x="138.35" y="316.14" width="7.2" height="7.2" fill="#4472C4" stroke="none"/>
+<text class="legend" x="150.35" y="324.1" font-family="Inter" font-size="12" fill="#595959" text-anchor="start">September</text>
+<rect class="legend" x="222.59" y="316.14" width="7.2" height="7.2" fill="#ED7D31" stroke="none"/>
+<text class="legend" x="234.59" y="324.1" font-family="Inter" font-size="12" fill="#595959" text-anchor="start">October</text>
+<rect class="legend" x="290.45" y="316.14" width="7.2" height="7.2" fill="#A5A5A5" stroke="none"/>
+<text class="legend" x="302.45" y="324.1" font-family="Inter" font-size="12" fill="#595959" text-anchor="start">November</text>
+<rect class="value-axis" x="8" y="158.51" width="33.05" height="60.77" fill="none" stroke="#D9D9D9" stroke-width="1"/>
+<text class="value-axis" x="22.92" y="188.9" font-family="Inter" font-size="13.33" font-weight="600" fill="#595959" text-anchor="middle" transform="rotate(-90 22.92 188.9)">Visitors</text>
+<text class="value-axis" x="36.47" y="188.9" font-family="Inter" font-size="10.67" font-style="italic" fill="#808080" text-anchor="middle" transform="rotate(-90 36.47 188.9)">thousands</text>
+<text class="category-axis" x="269.52" y="299.9" font-family="Inter" font-size="10.67" font-style="italic" fill="#808080" text-anchor="middle">autumn 2024</text>
+<text class="category-axis" x="269.52" y="286.35" font-family="Inter" font-size="13.33" font-weight="600" fill="#595959" text-anchor="middle">City</text>
+<text class="value-axis" x="69.75" y="253.27" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">0</text>
+<text class="value-axis" x="69.75" y="218.55" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">100</text>
+<text class="value-axis" x="69.75" y="183.84" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">200</text>
+<text class="value-axis" x="69.75" y="149.12" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">300</text>
+<text class="value-axis" x="69.75" y="114.4" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">400</text>
+<text class="value-axis" x="69.75" y="79.68" font-family="Inter" font-size="12" fill="#595959" text-anchor="end">500</text>
+<text class="category-axis" x="115.58" y="264.53" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">London</text>
+<text class="category-axis" x="199.23" y="264.53" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">Madrid</text>
+<text class="category-axis" x="282.88" y="264.53" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">Rome</text>
+<text class="category-axis" x="366.53" y="264.53" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">Paris</text>
+<text class="category-axis" x="450.18" y="264.53" font-family="Inter" font-size="12" fill="#595959" text-anchor="middle">Amsterdam</text>
+<line class="category-axis" x1="73.75" y1="248.91" x2="492" y2="248.91" stroke="#D9D9D9" stroke-width="1"/>
+<rect class="plot-area" x="73.75" y="75.32" width="418.25" height="173.59" fill="none" stroke="none"/>
+</svg>

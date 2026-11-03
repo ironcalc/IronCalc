@@ -125,9 +125,27 @@ fn get_tooltip_attribute(tooltip: &Option<String>) -> String {
     }
 }
 
+/// The relationship id of the drawing part of the worksheet, if it has one:
+/// the one after the external links.
+pub(crate) fn get_drawing_rel_id(worksheet: &Worksheet, has_drawing: bool) -> Option<usize> {
+    if !has_drawing {
+        return None;
+    }
+    let external_links = worksheet
+        .links
+        .values()
+        .filter(|link| matches!(link, Link::External { .. }))
+        .count();
+    Some(external_links + 1)
+}
+
 /// The rels part of the worksheet (`xl/worksheets/_rels/sheetN.xml.rels`) holding one
-/// relationship per external link, or `None` if the worksheet has no external links.
-pub(crate) fn get_worksheet_xml_rels(worksheet: &Worksheet) -> Option<String> {
+/// relationship per external link and one for the drawing part `drawing_number`,
+/// or `None` if the worksheet needs neither.
+pub(crate) fn get_worksheet_xml_rels(
+    worksheet: &Worksheet,
+    drawing_number: Option<usize>,
+) -> Option<String> {
     let mut relationships_str: Vec<String> = vec![];
     let mut rel_id = 0;
     for (_, link) in get_sorted_links(worksheet) {
@@ -138,6 +156,12 @@ pub(crate) fn get_worksheet_xml_rels(worksheet: &Worksheet) -> Option<String> {
                 "<Relationship Id=\"rId{rel_id}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"{target}\" TargetMode=\"External\"/>"
             ));
         }
+    }
+    if let Some(drawing_number) = drawing_number {
+        rel_id += 1;
+        relationships_str.push(format!(
+            "<Relationship Id=\"rId{rel_id}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing\" Target=\"../drawings/drawing{drawing_number}.xml\"/>"
+        ));
     }
     if relationships_str.is_empty() {
         return None;
@@ -185,6 +209,7 @@ pub(crate) fn get_worksheet_xml(
     parsed_formulas: &[(std::sync::Arc<Node>, StaticResult)],
     dimension: &str,
     is_sheet_selected: bool,
+    drawing_rel_id: Option<usize>,
 ) -> String {
     let mut sheet_data_str: Vec<String> = vec![];
     let mut cols_str: Vec<String> = vec![];
@@ -671,6 +696,11 @@ pub(crate) fn get_worksheet_xml(
 
     let hyperlinks_section = get_hyperlinks_section(worksheet);
 
+    let drawing_section = match drawing_rel_id {
+        Some(rel_id) => format!("<drawing r:id=\"rId{rel_id}\"/>"),
+        None => "".to_string(),
+    };
+
     format!(
         "{XML_DECLARATION}\
 <worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
@@ -687,6 +717,7 @@ pub(crate) fn get_worksheet_xml(
   {merge_cells_section}\
   {cf_sections}\
   {hyperlinks_section}\
+  {drawing_section}\
   {cf_ext_lst}\
 </worksheet>"
     )

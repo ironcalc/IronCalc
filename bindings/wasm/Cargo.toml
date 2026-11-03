@@ -20,6 +20,7 @@ xlsx = ["dep:ironcalc", "dep:time"]
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
 ironcalc_base = { path = "../../base", version = "0.9" }
 ironcalc = { path = "../../xlsx", version = "0.9", optional = true }
+ironcharts = { path = "../../charts", version = "0.9" }
 # zip's `time` feature needs the `time` crate's wasm-bindgen backend to read
 # the clock when writing xlsx archives. Feature-unifying it here keeps that
 # out of the xlsx crate itself.

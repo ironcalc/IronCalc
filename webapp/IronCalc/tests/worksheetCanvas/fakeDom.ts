@@ -13,6 +13,9 @@ export class FakeElement {
   // The renderer only ever assigns style properties, it never reads them back
   style: Record<string, string> = {};
   textContent = "";
+  // The chart layer tags its elements and fills them with SVG markup
+  dataset: Record<string, string> = {};
+  innerHTML = "";
 
   constructor(tagName: string) {
     this.tagName = tagName;
@@ -30,6 +33,7 @@ export class FakeElement {
     add: (name: string) => void;
     remove: (name: string) => void;
     contains: (name: string) => boolean;
+    toggle: (name: string, force?: boolean) => boolean;
   } {
     const classes = this.classSet;
     return {
@@ -40,7 +44,42 @@ export class FakeElement {
         classes.delete(name);
       },
       contains: (name: string) => classes.has(name),
+      toggle: (name: string, force?: boolean) => {
+        const on = force ?? !classes.has(name);
+        if (on) {
+          classes.add(name);
+        } else {
+          classes.delete(name);
+        }
+        return on;
+      },
     };
+  }
+
+  // Attributes set with setAttribute (the chart frame labels its button)
+  attributes: Record<string, string> = {};
+
+  setAttribute(name: string, value: string): void {
+    this.attributes[name] = value;
+  }
+
+  getAttribute(name: string): string | null {
+    return this.attributes[name] ?? null;
+  }
+
+  // Only class selectors (".name"), the one form the renderer uses
+  querySelector(selector: string): FakeElement | null {
+    const name = selector.replace(/^\./, "");
+    for (const child of this.childNodes) {
+      if (child.classSet.has(name)) {
+        return child;
+      }
+      const inner = child.querySelector(selector);
+      if (inner) {
+        return inner;
+      }
+    }
+    return null;
   }
 
   get children(): FakeElement[] {

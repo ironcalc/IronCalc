@@ -1,4 +1,8 @@
-import type { HorizontalAlignment, VerticalAlignment } from "@ironcalc/wasm";
+import type {
+  HorizontalAlignment,
+  Stacking,
+  VerticalAlignment,
+} from "@ironcalc/wasm";
 import type { MergeCellsOperation } from "../Toolbar/Toolbar";
 
 /**
@@ -37,6 +41,11 @@ export interface WorkbookActions {
   openThemes: () => void;
   openNamedStyles: () => void;
   openLinkDialog: () => void;
+  // Adds a column chart over the selection and opens its editor
+  insertChart: (stacking: Stacking) => void;
+  // Opens the editor of the chart `id` of `sheet`
+  openChart: (sheet: number, id: number) => void;
+  deleteChart: (sheet: number, id: number) => void;
   mergeCells: (operation: MergeCellsOperation) => void;
   getMergeCellsState: () => {
     canMerge: boolean;

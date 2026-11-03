@@ -4,6 +4,7 @@ resolver = "2"
 members = [
   "base",
   "xlsx",
+  "charts",
   "bindings/wasm",
   "bindings/python",
   "bindings/nodejs",

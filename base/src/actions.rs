@@ -97,6 +97,78 @@ where
         .collect();
 }
 
+/// What happens to a row (or column) index when rows (or columns) are
+/// inserted or deleted: it moves to a new index, or it is deleted.
+enum Shift {
+    Keep(i32),
+    Deleted,
+}
+
+/// Applies `map` to the row (`rows == true`) or the column of every anchor
+/// point of the drawings of the worksheet. A deleted index collapses onto
+/// `at` with no offset. A drawing that moves and resizes with the cells has
+/// each corner mapped on its own and disappears when both are deleted; one
+/// that only moves keeps its span; a fixed one does not change.
+fn displace_drawings<F>(worksheet: &mut Worksheet, rows: bool, at: i32, map: F)
+where
+    F: Fn(i32) -> Shift,
+{
+    use crate::drawing_types::{AnchorBehavior, AnchorPoint};
+    let apply = |point: &mut AnchorPoint| -> bool {
+        let (index, offset) = if rows {
+            (&mut point.row, &mut point.row_offset)
+        } else {
+            (&mut point.column, &mut point.column_offset)
+        };
+        match map(*index) {
+            Shift::Keep(new_index) => {
+                *index = new_index;
+                false
+            }
+            Shift::Deleted => {
+                *index = at;
+                *offset = 0;
+                true
+            }
+        }
+    };
+    let drawings = std::mem::take(&mut worksheet.drawings);
+    worksheet.drawings = drawings
+        .into_iter()
+        .filter_map(|mut drawing| {
+            match drawing.anchor.behavior {
+                AnchorBehavior::Fixed => {}
+                AnchorBehavior::MoveAndResize => {
+                    let from_deleted = apply(&mut drawing.anchor.from);
+                    let to_deleted = apply(&mut drawing.anchor.to);
+                    if from_deleted && to_deleted {
+                        return None;
+                    }
+                }
+                AnchorBehavior::MoveOnly => {
+                    let before = if rows {
+                        drawing.anchor.from.row
+                    } else {
+                        drawing.anchor.from.column
+                    };
+                    apply(&mut drawing.anchor.from);
+                    let delta = if rows {
+                        drawing.anchor.from.row - before
+                    } else {
+                        drawing.anchor.from.column - before
+                    };
+                    if rows {
+                        drawing.anchor.to.row += delta;
+                    } else {
+                        drawing.anchor.to.column += delta;
+                    }
+                }
+            }
+            Some(drawing)
+        })
+        .collect();
+}
+
 // Interval arithmetic for a move action: the moved group [group_start, group_end]
 // jumps by `delta` while the displaced zone shifts in the opposite direction.
 // Returns whether the interval [start, end] survives the move without being
@@ -741,6 +813,14 @@ impl<'a> Model<'a> {
         });
 
         // Merged ranges shift right or grow when columns are inserted inside them
+        // Charts and other drawings follow their cells
+        displace_drawings(self.workbook.worksheet_mut(sheet)?, false, column, |c| {
+            if c >= column {
+                Shift::Keep(c + column_count)
+            } else {
+                Shift::Keep(c)
+            }
+        });
         displace_merged_cells(
             self.workbook.worksheet_mut(sheet)?,
             |first_row, first_column, last_row, last_column| {
@@ -859,6 +939,16 @@ impl<'a> Model<'a> {
         });
 
         // Merged ranges shrink or shift left; fully deleted ones are removed
+        // Charts and other drawings follow their cells
+        displace_drawings(self.workbook.worksheet_mut(sheet)?, false, column, |c| {
+            if c < column {
+                Shift::Keep(c)
+            } else if c < column + column_count {
+                Shift::Deleted
+            } else {
+                Shift::Keep(c - column_count)
+            }
+        });
         displace_merged_cells(
             self.workbook.worksheet_mut(sheet)?,
             |first_row, first_column, last_row, last_column| {
@@ -1115,6 +1205,14 @@ impl<'a> Model<'a> {
         });
 
         // Merged ranges shift down or grow when rows are inserted inside them
+        // Charts and other drawings follow their cells
+        displace_drawings(self.workbook.worksheet_mut(sheet)?, true, row, |r| {
+            if r >= row {
+                Shift::Keep(r + row_count)
+            } else {
+                Shift::Keep(r)
+            }
+        });
         displace_merged_cells(
             self.workbook.worksheet_mut(sheet)?,
             |first_row, first_column, last_row, last_column| {
@@ -1210,6 +1308,16 @@ impl<'a> Model<'a> {
         });
 
         // Merged ranges shrink or shift up; fully deleted ones are removed
+        // Charts and other drawings follow their cells
+        displace_drawings(self.workbook.worksheet_mut(sheet)?, true, row, |r| {
+            if r < row {
+                Shift::Keep(r)
+            } else if r < row + row_count {
+                Shift::Deleted
+            } else {
+                Shift::Keep(r - row_count)
+            }
+        });
         displace_merged_cells(
             self.workbook.worksheet_mut(sheet)?,
             |first_row, first_column, last_row, last_column| {
