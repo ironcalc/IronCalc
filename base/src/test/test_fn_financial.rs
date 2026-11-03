@@ -489,3 +489,19 @@ fn fn_npv_whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "10.652588311");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
+
+#[test]
+fn fn_xnpv_wrong_number_of_arguments() {
+    let mut model = new_empty_model();
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("A1", "=XNPV(0.1)");
+    model._set("A2", "=XNPV(0.1,B1:B2)");
+    model._set("A3", "=XNPV(1,1)");
+    model._set("A4", "=XNPV(0.1,B1:B2,B1:B2,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+}
