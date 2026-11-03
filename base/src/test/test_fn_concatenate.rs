@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::number_format::number_to_text;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -75,4 +76,18 @@ fn concat_number_to_text() {
     assert_eq!(model._get_text("B3"), *"1000000000000000");
     assert_eq!(model._get_text("B4"), *"0.000000000000001");
     assert_eq!(model._get_text("B5"), *"0.3-1E+20");
+}
+
+// Excel switches to scientific notation when the plain representation (sign
+// excluded) does not fit its 20-character window, not at a fixed exponent
+// (https://github.com/ironcalc/IronCalc/pull/1677#issuecomment)
+#[test]
+fn concat_number_to_text_window() {
+    assert_eq!(number_to_text(1e-18), "0.000000000000000001");
+    assert_eq!(number_to_text(1e-19), "1E-19");
+    assert_eq!(number_to_text(1.5e-18), "1.5E-18");
+    assert_eq!(number_to_text(1.5e-19), "1.5E-19");
+    assert_eq!(number_to_text(1.23456789012345e-18), "1.23456789012345E-18");
+    assert_eq!(number_to_text(1.23456789012345e19), "12345678901234500000");
+    assert_eq!(number_to_text(-1e-19), "-1E-19");
 }
