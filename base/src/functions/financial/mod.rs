@@ -904,8 +904,7 @@ impl<'a> Model<'a> {
 
     // XNPV(rate, values, dates)
     pub(crate) fn fn_xnpv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(2..=3).contains(&arg_count) {
+        if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
         let rate = match self.get_number(&args[0], cell) {
