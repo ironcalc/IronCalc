@@ -25,7 +25,7 @@
 [discord-badge]: https://img.shields.io/discord/1206947691058171904.svg?logo=discord&style=flat-square
 [discord-url]: https://discord.gg/zZYWfh3RHJ
 
-IronCalc is a new, modern, work-in-progress spreadsheet engine and set of tools to work with spreadsheets in diverse settings.
+IronCalc is a new, modern spreadsheet engine and set of tools to work with spreadsheets in diverse settings.
 
 This repository contains the main engine and the xlsx reader and writer.
 
