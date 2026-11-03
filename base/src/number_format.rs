@@ -180,7 +180,19 @@ pub fn number_to_text(value: f64) -> String {
     let digits: String = mantissa.chars().filter(|c| *c != '.').collect();
     let digits = digits.trim_end_matches('0');
 
-    if !(-19..20).contains(&exponent) {
+    // Excel uses plain decimal notation while the plain representation
+    // (sign excluded) fits its 20-character window and switches to
+    // scientific notation otherwise.
+    let plain_len: i32 = if exponent >= 0 {
+        if digits.len() as i32 <= exponent + 1 {
+            exponent + 1
+        } else {
+            digits.len() as i32 + 1
+        }
+    } else {
+        digits.len() as i32 - exponent + 1
+    };
+    if plain_len > 20 {
         let mantissa = if digits.len() > 1 {
             format!("{}.{}", &digits[..1], &digits[1..])
         } else {
