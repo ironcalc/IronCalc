@@ -138,17 +138,23 @@ pub fn to_excel_precision_str(value: f64) -> String {
 }
 
 /// Converts a number to text the way Excel does when a formula needs a
-/// number as a string: the `&` operator, UPPER, ENCODEURL, ... It keeps at
-/// most 15 significant digits and uses plain decimal notation unless the
-/// decimal exponent is 15 or more, or -15 or less, when it switches to
+/// number as a string: the `&` operator, CONCAT, TEXTJOIN, ... It keeps at
+/// most 15 significant digits and uses plain decimal notation while the
+/// decimal expansion fits within Excel's ~20-character window; outside it
+/// (decimal exponent 20 or larger, or -20 or smaller) it switches to
 /// scientific notation:
 /// ```
 ///     use ironcalc_base::number_format::number_to_text;
 ///     assert_eq!(number_to_text(1.0 / 3.0), "0.333333333333333");
 ///     assert_eq!(number_to_text(0.1 + 0.2), "0.3");
 ///     assert_eq!(number_to_text(1e-7), "0.0000001");
+///     assert_eq!(number_to_text(1e19), "10000000000000000000");
+///     assert_eq!(number_to_text(1e-15), "0.000000000000001");
+///     assert_eq!(number_to_text(1e-19), "0.0000000000000000001");
+///     assert_eq!(number_to_text(1e-20), "1E-20");
 ///     assert_eq!(number_to_text(1e20), "1E+20");
-///     assert_eq!(number_to_text(123456789012345678.0), "1.23456789012346E+17");
+///     assert_eq!(number_to_text(1.23456789012346e21), "1.23456789012346E+21");
+///     assert_eq!(number_to_text(1.23456789012346e17), "123456789012346000");
 /// ```
 pub fn number_to_text(value: f64) -> String {
     if !value.is_finite() {
@@ -174,7 +180,7 @@ pub fn number_to_text(value: f64) -> String {
     let digits: String = mantissa.chars().filter(|c| *c != '.').collect();
     let digits = digits.trim_end_matches('0');
 
-    if !(-15 < exponent && exponent < 15) {
+    if !(-19 <= exponent && exponent < 20) {
         let mantissa = if digits.len() > 1 {
             format!("{}.{}", &digits[..1], &digits[1..])
         } else {
