@@ -140,9 +140,8 @@ pub fn to_excel_precision_str(value: f64) -> String {
 /// Converts a number to text the way Excel does when a formula needs a
 /// number as a string: the `&` operator, CONCAT, TEXTJOIN, ... It keeps at
 /// most 15 significant digits and uses plain decimal notation while the
-/// decimal expansion fits within Excel's ~20-character window; outside it
-/// (decimal exponent 20 or larger, or -20 or smaller) it switches to
-/// scientific notation:
+/// plain representation (sign excluded) fits within Excel's 20-character
+/// window; otherwise it switches to scientific notation:
 /// ```
 ///     use ironcalc_base::number_format::number_to_text;
 ///     assert_eq!(number_to_text(1.0 / 3.0), "0.333333333333333");
@@ -150,7 +149,7 @@ pub fn to_excel_precision_str(value: f64) -> String {
 ///     assert_eq!(number_to_text(1e-7), "0.0000001");
 ///     assert_eq!(number_to_text(1e19), "10000000000000000000");
 ///     assert_eq!(number_to_text(1e-15), "0.000000000000001");
-///     assert_eq!(number_to_text(1e-19), "0.0000000000000000001");
+///     assert_eq!(number_to_text(1e-19), "1E-19");
 ///     assert_eq!(number_to_text(1e-20), "1E-20");
 ///     assert_eq!(number_to_text(1e20), "1E+20");
 ///     assert_eq!(number_to_text(1.23456789012346e21), "1.23456789012346E+21");
