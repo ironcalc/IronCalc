@@ -450,37 +450,42 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     exponent_part = vec!['0'];
                     exponent_is_negative = false;
                 } else {
-                    // Rounding to the displayed precision can carry (99.96 ->
-                    // 100 with 0.00E+00), so round to the exact number of
-                    // significant digits first and only then pick the exponent.
-                    // The mantissa/exponent pair is extracted from the shortest
-                    // scientific form of the rounded value, which also avoids
-                    // 10^exponent underflowing to zero for subnormal numbers.
-                    let normalized = format!("{:e}", value_abs);
-                    let (mantissa_str, exponent_str) = normalized.split_once('e').unwrap();
+                    // Round the absolute value to the format's significant
+                    // digits FIRST (digit placeholders left of the decimal
+                    // plus precision), then pick the mantissa/exponent pair.
+                    // Rounding the mantissa alone after `{:e}` splits can lose
+                    // a half-up digit (33121200.49935805 with 15 sigs).
+                    // Deriving the pair from the rounded scientific form also
+                    // avoids 10^exponent underflowing for subnormals.
+                    let digit_count = p.digit_count.max(1);
+                    let max_sigs = (digit_count + p.precision).max(1) as usize;
+                    let rounded_abs = {
+                        let r = to_precision(value_abs, max_sigs);
+                        if r.is_finite() && r != 0.0 {
+                            r.abs()
+                        } else {
+                            // rounding f64::MAX up would overflow to inf; keep
+                            // the original magnitude in that edge case
+                            value_abs
+                        }
+                    };
+                    let normalized = format!("{:e}", rounded_abs);
+                    // `{value:e}` always contains 'e' for finite non-zero floats.
+                    let (mantissa_str, exponent_str) =
+                        normalized.split_once('e').unwrap_or(("1", "0"));
                     let mantissa0 = mantissa_str.parse::<f64>().unwrap_or(1.0);
                     let exponent0 = exponent_str.parse::<i32>().unwrap_or(0);
-                    let digit_count = p.digit_count.max(1);
                     let mut exponent = exponent0;
                     let mut mantissa = mantissa0;
-                    let sigs: usize;
-                    if p.digit_count > 1 {
-                        // Engineering notation: keep the exponent a multiple of
-                        // three so the integer part of the mantissa stays wider
-                        // than one digit (Excel shows 12.3E-3, not 1.2E-2).
-                        exponent = 3 * exponent0.div_euclid(3);
+                    if digit_count > 1 {
+                        // Excel engineering scientific: the exponent is a
+                        // multiple of the number of digit placeholders left of
+                        // the decimal (`#0.0E+0` → multiples of 2, `##0.0E+0`
+                        // → multiples of 3, …). That keeps the integer part of
+                        // the mantissa between 1 and `digit_count` digits wide.
+                        exponent = digit_count * exponent0.div_euclid(digit_count);
                         let shift = exponent0 - exponent;
                         mantissa = mantissa0 * 10.0_f64.powi(shift);
-                        // the integer part of the mantissa is `shift + 1` digits
-                        sigs = (p.precision + shift + 1).max(1) as usize;
-                    } else {
-                        sigs = (p.precision + 1).max(1) as usize;
-                    }
-                    let rounded =
-                        to_precision(if value < 0.0 { -mantissa } else { mantissa }, sigs);
-                    if rounded.is_finite() {
-                        // rounding f64::MAX up would overflow to inf
-                        mantissa = rounded.abs();
                     }
                     // A rounding carry can push the mantissa one digit wider
                     // than the format's integer part; bump the exponent.

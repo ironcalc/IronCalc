@@ -62,7 +62,25 @@ fn scientific_mantissa_rounding_carries_exponent() {
         format_number(f64::MAX, "0.00E+00", locale).text,
         "1.80E+308"
     );
-    // Engineering formats keep the exponent a multiple of three
+    // Engineering formats keep the exponent a multiple of digit_count (##0 → 3)
     assert_eq!(format_number(12.0, "##0.0E+0", locale).text, "12.0E+0");
     assert_eq!(format_number(0.0123, "##0.0E+0", locale).text, "12.3E-3");
+}
+
+#[test]
+fn scientific_excel_engineering_modulus() {
+    let locale = get_default_locale();
+    // Maintainer table from ironcalc/IronCalc#1678 (Excel reference)
+    assert_eq!(format_number(12345.0, "#0.0E+0", locale).text, "1.2E+4");
+    assert_eq!(
+        format_number(12345.0, "00.00E+00", locale).text,
+        "01.23E+04"
+    );
+    assert_eq!(format_number(12345.0, "#,##0.0E+0", locale).text, "1.2E+4");
+    assert_eq!(format_number(123456.0, "####0.0E+0", locale).text, "1.2E+5");
+    assert_eq!(format_number(1234.0, "#0.0E+0", locale).text, "12.3E+2");
+    assert_eq!(
+        format_number(33121200.49935805, "0.00000000000000E+00", locale).text,
+        "3.31212004993581E+07"
+    );
 }
