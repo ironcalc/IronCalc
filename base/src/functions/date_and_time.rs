@@ -1235,7 +1235,12 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Invalid weekend".to_string(),
             }),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(weekend),
+            CalcResult::EmptyArg => Ok(weekend),
+            CalcResult::EmptyCell => Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Invalid weekend".to_string(),
+            )),
             CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
