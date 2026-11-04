@@ -122,19 +122,23 @@ fn change_month(date: NaiveDate, num_months: i32, return_last: bool) -> Result<N
 }
 
 // Walks the coupon schedule backwards from maturity to find the previous coupon
-// date (<= settlement) and the next coupon date (> settlement). Port of
-// `findPcdNcd`/`findCouponDates` from ExcelFinancialFunctions, including the
-// end-of-month rule anchored on the maturity date.
+// date (<= settlement) and the next coupon date (> settlement), with the
+// end-of-month rule anchored on the maturity date. As in Excel, each coupon date
+// is maturity moved back a whole number of periods. Stepping from the previous
+// coupon date instead (as ExcelFinancialFunctions does) lets a maturity on the
+// 29th or 30th drift to the 28th once the schedule passes February.
 fn find_pcd_ncd(settlement: i64, maturity: i64, frequency: u32) -> Result<(i64, i64), String> {
     let months_per = (12 / frequency) as i32;
     let mat = from_excel_date(maturity)?;
     let return_last = is_last_day_of_month(mat);
 
+    let mut periods = 0;
     let mut front = mat;
     let mut trailing = mat;
     while naivedate_to_serial(front) > settlement {
         trailing = front;
-        front = change_month(front, -months_per, return_last)?;
+        periods += 1;
+        front = change_month(mat, -months_per * periods, return_last)?;
     }
     Ok((naivedate_to_serial(front), naivedate_to_serial(trailing)))
 }
@@ -181,6 +185,28 @@ fn coupon_days_e(
         3 => Ok(365.0 / frequency as f64),
         _ => Err("Invalid basis".to_string()),
     }
+}
+
+// COUPDAYS with the actual/actual basis. Excel does not count the days from
+// COUPPCD to COUPNCD here. It steps back from maturity one period at a time,
+// clamping the day to the length of the month and ignoring the end-of-month
+// rule, while the date stays after settlement, and returns the length of the
+// coupon period around settlement for a bond maturing on the last such date.
+// For example COUPDAYS(DATE(2024,4,1), DATE(2026,8,31), 2, 1) is 182 although
+// the coupon period from 2024-02-29 to 2024-08-31 has 184 days. PRICE, YIELD
+// and DURATION use the coupon period itself (`coupon_days_e`).
+fn coupdays_actual(settlement: i64, maturity: i64, frequency: u32) -> Result<f64, String> {
+    let months_per = (12 / frequency) as i32;
+    let mut date = from_excel_date(maturity)?;
+    loop {
+        let earlier = change_month(date, -months_per, false)?;
+        if naivedate_to_serial(earlier) <= settlement {
+            break;
+        }
+        date = earlier;
+    }
+    let (prev, next) = find_pcd_ncd(settlement, naivedate_to_serial(date), frequency)?;
+    Ok((next - prev) as f64)
 }
 
 // Accrued days from the previous coupon to settlement (A).
@@ -1319,7 +1345,12 @@ impl<'a> Model<'a> {
             Ok(v) => v,
             Err(e) => return e,
         };
-        match coupon_days_e(settlement, maturity, frequency, basis) {
+        let days = if basis == 1 {
+            coupdays_actual(settlement, maturity, frequency)
+        } else {
+            coupon_days_e(settlement, maturity, frequency, basis)
+        };
+        match days {
             Ok(v) => CalcResult::Number(v),
             Err(e) => map_date_err(e, cell),
         }
