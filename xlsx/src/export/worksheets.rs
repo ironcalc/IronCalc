@@ -127,7 +127,7 @@ fn get_tooltip_attribute(tooltip: &Option<String>) -> String {
 
 /// The rels part of the worksheet (`xl/worksheets/_rels/sheetN.xml.rels`) holding one
 /// relationship per external link, or `None` if the worksheet has no external links.
-pub(crate) fn get_worksheet_xml_rels(worksheet: &Worksheet) -> Option<String> {
+pub(crate) fn get_worksheet_xml_rels(worksheet: &Worksheet, sheet_id: usize) -> Option<String> {
     let mut relationships_str: Vec<String> = vec![];
     let mut rel_id = 0;
     for (_, link) in get_sorted_links(worksheet) {
@@ -139,6 +139,14 @@ pub(crate) fn get_worksheet_xml_rels(worksheet: &Worksheet) -> Option<String> {
             ));
         }
     }
+    if let Some((comments_id, vml_id)) = get_comments_rel_ids(worksheet) {
+        relationships_str.push(format!(
+            "<Relationship Id=\"rId{comments_id}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments\" Target=\"../comments{sheet_id}.xml\"/>"
+        ));
+        relationships_str.push(format!(
+            "<Relationship Id=\"rId{vml_id}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing\" Target=\"../drawings/vmlDrawing{sheet_id}.vml\"/>"
+        ));
+    }
     if relationships_str.is_empty() {
         return None;
     }
@@ -146,6 +154,20 @@ pub(crate) fn get_worksheet_xml_rels(worksheet: &Worksheet) -> Option<String> {
         "{XML_DECLARATION}\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">{}</Relationships>",
         relationships_str.join("")
     ))
+}
+
+/// The relationship ids of the comments and of their VML drawing, numbered after
+/// the external hyperlinks, or `None` if the worksheet has no comments.
+fn get_comments_rel_ids(worksheet: &Worksheet) -> Option<(usize, usize)> {
+    if worksheet.comments.is_empty() {
+        return None;
+    }
+    let external_links = worksheet
+        .links
+        .values()
+        .filter(|link| matches!(link, Link::External { .. }))
+        .count();
+    Some((external_links + 1, external_links + 2))
 }
 
 fn get_formula_attribute(
@@ -670,6 +692,10 @@ pub(crate) fn get_worksheet_xml(
         get_conditional_formatting_xml(&worksheet.conditional_formatting);
 
     let hyperlinks_section = get_hyperlinks_section(worksheet);
+    let legacy_drawing = match get_comments_rel_ids(worksheet) {
+        Some((_, vml_id)) => format!("<legacyDrawing r:id=\"rId{vml_id}\"/>"),
+        None => String::new(),
+    };
 
     format!(
         "{XML_DECLARATION}\
@@ -687,6 +713,7 @@ pub(crate) fn get_worksheet_xml(
   {merge_cells_section}\
   {cf_sections}\
   {hyperlinks_section}\
+  {legacy_drawing}\
   {cf_ext_lst}\
 </worksheet>"
     )

@@ -343,6 +343,13 @@ fn load_comments<R: Read + std::io::Seek>(
     let file = archive.by_name(path)?;
     let doc = XmlNode::parse(BufReader::new(file))?;
     let ws = &doc;
+    // A comment names its author by index into the list of authors.
+    let authors: Vec<String> = ws
+        .children()
+        .filter(|n| n.has_tag_name("authors"))
+        .flat_map(|n| n.children().filter(|a| a.has_tag_name("author")))
+        .map(|a| a.text().unwrap_or("").to_string())
+        .collect();
     let comment_list = ws
         .children()
         .filter(|n| n.has_tag_name("commentList"))
@@ -356,8 +363,12 @@ fn load_comments<R: Read + std::io::Seek>(
                 .collect::<Vec<String>>()
                 .join("");
             let cell_ref = get_attribute(comment, "ref")?.to_string();
-            // TODO: Read author_name from the list of authors
-            let author_name = "".to_string();
+            let author_name = comment
+                .attribute("authorId")
+                .and_then(|id| id.parse::<usize>().ok())
+                .and_then(|id| authors.get(id))
+                .cloned()
+                .unwrap_or_default();
             comments.push(Comment {
                 text,
                 author_name,
@@ -704,9 +715,14 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
         let t = get_attribute(rel, "Type")?.to_string();
         if t.ends_with("comments") {
             let mut target = get_attribute(rel, "Target")?.to_string();
-            // Target="../comments1.xlsx"
-            target.replace_range(..2, v[0]);
-            comments = load_comments(archive, &target)?;
+            let path = if let Some(p) = target.strip_prefix('/') {
+                p.to_string()
+            } else {
+                // Target="../comments1.xlsx"
+                target.replace_range(..2, v[0]);
+                target
+            };
+            comments = load_comments(archive, &path)?;
         } else if t.ends_with("hyperlink") {
             let id = get_attribute(rel, "Id")?.to_string();
             let target = get_attribute(rel, "Target")?.to_string();
