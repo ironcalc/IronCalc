@@ -345,3 +345,18 @@ fn networkdays_handles_large_date_ranges_efficiently() {
         "Large ranges should not error"
     );
 }
+
+#[test]
+fn networkdays_intl_empty_weekend_argument() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=NETWORKDAYS.INTL(DATE(2025,1,1),DATE(2026,1,1),B1)");
+    model._set("A2", "=NETWORKDAYS.INTL(DATE(2025,1,1),DATE(2026,1,1),)");
+    model._set("A3", "=NETWORKDAYS.INTL(DATE(2025,1,1),DATE(2026,1,1))");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "262");
+    assert_eq!(model._get_text("A3"), "262");
+}
