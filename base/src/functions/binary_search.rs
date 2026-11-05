@@ -1,6 +1,11 @@
 use std::cmp::Ordering;
 
-use crate::{calc_result::CalcResult, expressions::types::CellReferenceIndex, model::Model};
+use crate::{
+    calc_result::CalcResult,
+    constants::{LAST_COLUMN, LAST_ROW},
+    expressions::types::CellReferenceIndex,
+    model::Model,
+};
 
 use super::util::compare_values;
 
@@ -145,10 +150,20 @@ impl<'a> Model<'a> {
         right: &CellReferenceIndex,
         is_row_vector: bool,
     ) -> Vec<CalcResult> {
+        // A full-column or full-row reference spans the whole worksheet. Clamp
+        // the scan to the last stored cell in the lookup vector so that MATCH
+        // and vector LOOKUP do not walk 1,048,576 rows (or 16,384 columns) and
+        // return a position past the data. See issue #1414.
+        let (mut end_row, mut end_column) = (right.row, right.column);
+        if is_row_vector && right.row == LAST_ROW {
+            end_row = self.last_stored_row(left.sheet, left.row, left.column);
+        } else if !is_row_vector && right.column == LAST_COLUMN {
+            end_column = self.last_stored_column(left.sheet, left.row, left.column);
+        }
         let n = if is_row_vector {
-            right.row - left.row
+            end_row - left.row
         } else {
-            right.column - left.column
+            end_column - left.column
         } + 1;
         let mut result = vec![];
         for index in 0..n {
@@ -169,6 +184,36 @@ impl<'a> Model<'a> {
             result.push(value);
         }
         result
+    }
+
+    /// Returns the last row in `column` that has a stored cell, starting the
+    /// search at `start_row`. Returns `start_row` when the column has no stored
+    /// cells at or below `start_row`.
+    fn last_stored_row(&self, sheet: u32, start_row: i32, column: i32) -> i32 {
+        let mut last = start_row;
+        if let Ok(worksheet) = self.workbook.worksheet(sheet) {
+            for (row, col, _) in worksheet.sheet_data.cells() {
+                if col == column && row >= start_row && row > last {
+                    last = row;
+                }
+            }
+        }
+        last
+    }
+
+    /// Returns the last column in `row` that has a stored cell, starting the
+    /// search at `start_column`. Returns `start_column` when the row has no
+    /// stored cells at or to the right of `start_column`.
+    fn last_stored_column(&self, sheet: u32, row: i32, start_column: i32) -> i32 {
+        let mut last = start_column;
+        if let Ok(worksheet) = self.workbook.worksheet(sheet) {
+            for (r, col, _) in worksheet.sheet_data.cells() {
+                if r == row && col >= start_column && col > last {
+                    last = col;
+                }
+            }
+        }
+        last
     }
 }
 
