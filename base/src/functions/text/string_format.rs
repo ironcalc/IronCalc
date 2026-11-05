@@ -164,25 +164,30 @@ impl<'a> Model<'a> {
             return CalcResult::new_error(Error::VALUE, cell, "Invalid separators".to_string());
         }
 
-        // Spaces are ignored anywhere in the text, and an empty text is 0
-        let text: String = text.chars().filter(|c| !c.is_whitespace()).collect();
-        if text.is_empty() {
-            return CalcResult::Number(0.0);
-        }
+        // Spaces, tabs and line breaks are ignored anywhere in the text when there is
+        // a group separator. With an empty group separator they are only trimmed from
+        // the ends. Other characters, like the non-breaking space (CHAR(160)), are not.
+        let is_space = |c: char| matches!(c, ' ' | '\t'..='\r');
+        let text: String = if group_sep.is_some() {
+            text.chars().filter(|&c| !is_space(c)).collect()
+        } else {
+            text.trim_matches(is_space).to_string()
+        };
 
         // Handle percentage suffix
         let (trimmed, pct_count) = {
             let mut t = text.as_str();
             let mut count = 0u32;
-            while t.ends_with('%') {
-                t = &t[..t.len() - 1];
+            while let Some(rest) = t.strip_suffix('%') {
+                t = rest.trim_end_matches(is_space);
                 count += 1;
             }
             (t, count)
         };
 
+        // An empty text, or one with only percent signs, is 0
         if trimmed.is_empty() {
-            return CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string());
+            return CalcResult::Number(0.0);
         }
 
         // Group separators are ignored before the decimal separator,
