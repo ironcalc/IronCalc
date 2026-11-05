@@ -145,6 +145,45 @@ fn test_numbervalue_group_separator_position() {
     assert_eq!(model._get_text("A5"), "0.0009");
 }
 
+#[test]
+fn test_numbervalue_space_characters() {
+    // Tabs and line breaks are ignored like spaces, a non-breaking space is not
+    let mut model = new_empty_model();
+    model._set("A1", "=NUMBERVALUE(\"3\"&CHAR(9)&\"000\")");
+    model._set("A2", "=NUMBERVALUE(\"3\"&CHAR(10)&\"000\")");
+    model._set("A3", "=NUMBERVALUE(\"3\"&CHAR(160)&\"000\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3000");
+    assert_eq!(model._get_text("A2"), "3000");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+}
+
+#[test]
+fn test_numbervalue_empty_group_separator() {
+    // With an empty group separator, spaces are only trimmed from the ends
+    let mut model = new_empty_model();
+    model._set("A1", "=NUMBERVALUE(\"1 000\", \".\", \"\")");
+    model._set("A2", "=NUMBERVALUE(\" 5.5 \", \".\", \"\")");
+    model._set("A3", "=NUMBERVALUE(\"1,000\", \".\", \"\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "5.5");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+}
+
+#[test]
+fn test_numbervalue_percent_only() {
+    // A text with only percent signs is 0
+    let mut model = new_empty_model();
+    model._set("A1", "=NUMBERVALUE(\"%\")");
+    model._set("A2", "=NUMBERVALUE(\" % \")");
+    model._set("A3", "=NUMBERVALUE(\"9 %\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0");
+    assert_eq!(model._get_text("A2"), "0");
+    assert_eq!(model._get_text("A3"), "0.09");
+}
+
 // ── PROPER ────────────────────────────────────────────────────────────────────
 
 #[test]
