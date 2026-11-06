@@ -36,7 +36,7 @@ fn rounded_seconds_carry_into_minutes() {
     let locale = get_default_locale();
     // =DATE(2026,10,27)+TIME(14,30,0) is stored as 46322.604166666664: the nearest
     // double to 14:30 sits a whisker below the whole minute and must display 14:30
-    let value = 46322.604_166_666_664_f64;
+    let value = 46_322.604_166_666_664_f64;
     let formatted = format_number(value, "m/d/yy h:mm", locale);
     assert_eq!(formatted.text, "10/27/26 14:30");
 
