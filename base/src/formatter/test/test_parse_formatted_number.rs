@@ -318,3 +318,20 @@ fn long_dates_with_dots() {
         Ok((45353.0, Some("mm.dd.yyyy".to_string())))
     );
 }
+
+#[test]
+fn long_dates_with_trailing_dot() {
+    assert_eq!(
+        parse_de("02.03.2024.", &["$"]),
+        Ok((45353.0, Some("dd.mm.yyyy.".to_string())))
+    );
+    assert_eq!(
+        parse_de("2. 3. 2024.", &["$"]),
+        Ok((45353.0, Some("d. m. yyyy.".to_string())))
+    );
+    assert_eq!(
+        parse_de("02. 03. 2024", &["$"]),
+        Ok((45353.0, Some("dd. mm. yyyy".to_string())))
+    );
+    assert!(parse_de("02.03. 2024.", &["$"]).is_err());
+}
