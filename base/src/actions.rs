@@ -1,3 +1,5 @@
+use bitcode::{Decode, Encode};
+
 use crate::cf_types::{CfRule, Cfvo};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::cut_paste::cf_sqref_anchor;
@@ -11,6 +13,18 @@ use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
 use crate::types::{ArrayKind, Cell, FormulaValue, Link, MergedCell, Worksheet};
+
+/// A formula that was rewritten when rows or columns were deleted: where its
+/// cell was before the delete and the shared formula it had there. Undoing
+/// the delete puts it back, since re-inserting the lines cannot turn a
+/// `#REF!` or a shrunk range back into what it was.
+#[derive(Clone, Encode, Decode)]
+pub(crate) struct DisplacedFormula {
+    pub(crate) sheet: u32,
+    pub(crate) row: i32,
+    pub(crate) column: i32,
+    pub(crate) formula: i32,
+}
 
 /// Which cells changed place when rows or columns were inserted or deleted,
 /// so that their formulas can be read from where they were written. The
@@ -446,12 +460,13 @@ impl<'a> Model<'a> {
     /// formula that moved along with everything it reads does not change at
     /// all, which in a large sheet is the usual case, and such a cell is left
     /// alone. The spill cells of a moved array are pointed at their anchor's
-    /// new place.
+    /// new place. Returns the formulas that were rewritten, as they were.
     fn displace_formulas(
         &mut self,
         displace_data: &DisplaceData,
         moved: CellsMoved,
-    ) -> Result<(), String> {
+    ) -> Result<Vec<DisplacedFormula>, String> {
+        let mut displaced = Vec::new();
         let mut formulas: Vec<(u32, i32, i32, i32)> = Vec::new();
         let mut spills: Vec<(u32, i32, i32, (i32, i32))> = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
@@ -479,9 +494,10 @@ impl<'a> Model<'a> {
             }
         }
         for (sheet, row, column, formula) in formulas {
+            let from = moved.origin(sheet, row, column);
             let displacement = Displacement {
                 data: displace_data,
-                from: moved.origin(sheet, row, column),
+                from,
                 to: (row, column),
             };
             let node = &self.parsed_formulas[sheet as usize][formula as usize].0;
@@ -492,6 +508,30 @@ impl<'a> Model<'a> {
             let is_dynamic = !matches!(static_result, StaticResult::Scalar);
             let new_formula = self.shared_formula_index(sheet, new_node, static_result)?;
             self.set_cell_formula_index(sheet, row, column, new_formula, is_dynamic)?;
+            if new_formula != formula {
+                displaced.push(DisplacedFormula {
+                    sheet,
+                    row: from.0,
+                    column: from.1,
+                    formula,
+                });
+            }
+        }
+        Ok(displaced)
+    }
+
+    /// Gives the cells back the formulas a delete rewrote, once the deleted
+    /// lines are in place again.
+    pub(crate) fn restore_displaced_formulas(
+        &mut self,
+        formulas: &[DisplacedFormula],
+    ) -> Result<(), String> {
+        for d in formulas {
+            let is_dynamic = !matches!(
+                self.parsed_formulas[d.sheet as usize][d.formula as usize].1,
+                StaticResult::Scalar
+            );
+            self.set_cell_formula_index(d.sheet, d.row, d.column, d.formula, is_dynamic)?;
         }
         Ok(())
     }
@@ -820,6 +860,17 @@ impl<'a> Model<'a> {
         column: i32,
         column_count: i32,
     ) -> Result<(), String> {
+        self.delete_columns_displacing(sheet, column, column_count)
+            .map(|_| ())
+    }
+
+    /// [`Model::delete_columns`], returning the formulas it rewrote.
+    pub(crate) fn delete_columns_displacing(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<Vec<DisplacedFormula>, String> {
         if column_count <= 0 {
             return Err("Please use insert columns instead".to_string());
         }
@@ -889,7 +940,7 @@ impl<'a> Model<'a> {
             column,
             delta: -column_count,
         };
-        self.displace_formulas(
+        let displaced = self.displace_formulas(
             &disp,
             CellsMoved::Columns {
                 sheet,
@@ -957,7 +1008,7 @@ impl<'a> Model<'a> {
         }
         worksheet.cols = new_columns;
 
-        Ok(())
+        Ok(displaced)
     }
 
     // Returns true if inserting rows at `row` would not split any array formula.
@@ -1162,6 +1213,17 @@ impl<'a> Model<'a> {
     /// * `row` - The index of the first row to delete.
     /// * `row_count` - The number of rows to delete.
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        self.delete_rows_displacing(sheet, row, row_count)
+            .map(|_| ())
+    }
+
+    /// [`Model::delete_rows`], returning the formulas it rewrote.
+    pub(crate) fn delete_rows_displacing(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        row_count: i32,
+    ) -> Result<Vec<DisplacedFormula>, String> {
         if row_count <= 0 {
             return Err("Please use insert rows instead".to_string());
         }
@@ -1239,7 +1301,7 @@ impl<'a> Model<'a> {
             row,
             delta: -row_count,
         };
-        self.displace_formulas(
+        let displaced = self.displace_formulas(
             &disp,
             CellsMoved::Rows {
                 sheet,
@@ -1248,7 +1310,7 @@ impl<'a> Model<'a> {
             },
         )?;
         self.displace_cf_ranges(sheet, &disp);
-        Ok(())
+        Ok(displaced)
     }
 
     // Inner column move: no boundary/can check, no spill reset.
