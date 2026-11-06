@@ -43,6 +43,7 @@ interface MobileMenuProps {
   newModel: () => void;
   newModelFromTemplate: () => void;
   onDownload: () => Promise<void>;
+  onDownloadPdf?: () => Promise<void>;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
   isReadOnly: boolean;
@@ -102,6 +103,9 @@ export function MobileMenu(props: MobileMenuProps) {
         <MenuDivider />
         <MenuItem icon={<FileDown />} onClick={() => props.onDownload()}>
           {t("file_bar.file_menu.download")}
+        </MenuItem>
+        <MenuItem icon={<FileDown />} onClick={() => props.onDownloadPdf?.()}>
+          Download (.pdf)
         </MenuItem>
         <MenuItem
           destructive
