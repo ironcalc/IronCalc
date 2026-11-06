@@ -434,9 +434,11 @@ impl<'a> Model<'a> {
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
+                other => match self.typed_number(arg, other, cell) {
+                    Ok(Some(value)) => result += value * value,
+                    Ok(None) => {}
+                    Err(error) => return error,
+                },
             };
         }
         CalcResult::Number(result)

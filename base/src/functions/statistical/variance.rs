@@ -88,9 +88,11 @@ impl<'a> Model<'a> {
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // ignore non-numeric
-                }
+                other => match self.typed_number(arg, other, cell) {
+                    Ok(Some(value)) => accumulate(&mut sum, &mut sumsq, &mut count, value),
+                    Ok(None) => {}
+                    Err(error) => return error,
+                },
             }
         }
 
@@ -195,9 +197,11 @@ impl<'a> Model<'a> {
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // ignore non-numeric
-                }
+                other => match self.typed_number(arg, other, cell) {
+                    Ok(Some(value)) => accumulate(&mut sum, &mut sumsq, &mut count, value),
+                    Ok(None) => {}
+                    Err(error) => return error,
+                },
             }
         }
 

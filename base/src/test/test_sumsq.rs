@@ -36,3 +36,22 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "55");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
+
+// ── text and booleans typed into the argument list are counted, as in Excel ─────
+// Excel: SUMSQ("2","3",4) is 29 (Apache POI's FormulaEvalTestData_Copy.xlsx,
+// EverythingTests!N1332, saved by Excel). Values read from cells are left out.
+#[test]
+fn typed_text_and_booleans() {
+    let mut model = new_empty_model();
+    model._set("B1", "'2");
+    model._set("B2", "TRUE");
+    model._set("A1", r#"=SUMSQ("2","3",4)"#);
+    model._set("A2", r#"=SUMSQ(B1,B2,4)"#);
+    model._set("A3", r#"=SUMSQ(B1:B2,4)"#);
+    model._set("A4", r#"=SUMSQ("two",4)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"29");
+    assert_eq!(model._get_text("A2"), *"16");
+    assert_eq!(model._get_text("A3"), *"16");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+}
