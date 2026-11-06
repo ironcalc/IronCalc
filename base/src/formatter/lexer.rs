@@ -12,7 +12,7 @@ pub struct Lexer {
 pub enum Token {
     Color(i32),              // [Red] or [Color 23]
     Condition(Compare, f64), // [<=100] (Comparator, number)
-    Currency(char),          // [$€] ($ currency symbol)
+    Currency(String),        // [$€], [$ kr] (a currency symbol, empty in [$-409])
     Literal(char), // €, $, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or escaped \X
     Spacer(char),  // *X
     Ghost(char),   // _X
@@ -351,29 +351,32 @@ impl Lexer {
                                 Token::ILLEGAL
                             }
                         } else if c == '$' {
-                            // currency: [$<symbol>] or [$<symbol>-<locale>]
-                            // IronCalc ignores the currency/locale modifiers for now
-                            // They are of two types:
+                            // currency: [$<symbol>], [$<symbol>-<locale>] or [$-<locale>]
+                            // The symbol may be several characters, like [$ kr] or [$CHF],
+                            // or none. IronCalc ignores the locale for now. It is of two types:
                             //  * BCP-47 locale tag (like [$€-fr-FR])
                             //  * hex LCID (old format)
                             //      Like [$$-409] (=1033 for en-US) or
                             //           [$$-40C] (=1036 for fr-FR)
                             self.read_next_char();
-                            if let Some(currency) = self.read_next_char() {
-                                // ignore the locale part for now, just check if it ends with ']'
-                                if Some('-') == self.peek_char() {
-                                    self.read_next_char();
-
-                                    while let Some(c) = self.peek_char() {
-                                        if c == ']' {
-                                            break;
-                                        }
-                                        self.read_next_char();
+                            let mut symbol = String::new();
+                            while let Some(c) = self.peek_char() {
+                                if c == '-' || c == ']' {
+                                    break;
+                                }
+                                symbol.push(c);
+                                self.read_next_char();
+                            }
+                            if Some('-') == self.peek_char() {
+                                while let Some(c) = self.peek_char() {
+                                    if c == ']' {
+                                        break;
                                     }
+                                    self.read_next_char();
                                 }
-                                if self.read_next_char() == Some(']') {
-                                    return Token::Currency(currency);
-                                }
+                            }
+                            if self.read_next_char() == Some(']') {
+                                return Token::Currency(symbol);
                             }
                             self.set_error("Failed to parse currency");
                             Token::ILLEGAL
