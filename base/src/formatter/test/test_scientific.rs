@@ -37,3 +37,50 @@ fn scientific_negative() {
     let b = format_number(0.000002, "0.00E+00", locale);
     assert_eq!(b.text, "2.00E-06");
 }
+
+// Excel switches the mantissa/exponent as a pair when the mantissa rounds up
+// (https://github.com/ironcalc/IronCalc/issues/1628)
+#[test]
+fn scientific_mantissa_rounding_carries_exponent() {
+    let locale = get_default_locale();
+    assert_eq!(format_number(99.96, "0.00E+00", locale).text, "1.00E+02");
+    assert_eq!(format_number(9_996.0, "0.00E+00", locale).text, "1.00E+04");
+    assert_eq!(format_number(99_999.5, "0.00E+00", locale).text, "1.00E+05");
+    assert_eq!(format_number(99.94, "0.0E+0", locale).text, "1.0E+2");
+    assert_eq!(format_number(995.0, "0E+00", locale).text, "1E+03");
+    // The exponent sign is E+ for zero and positive exponents
+    assert_eq!(format_number(1.0, "0.00E+00", locale).text, "1.00E+00");
+    // Three-digit exponents overflow the two exponent digits of the format
+    assert_eq!(
+        format_number(1e15 - 1.0, "0.00E+00", locale).text,
+        "1.00E+15"
+    );
+    assert_eq!(format_number(1e100, "0.00E+00", locale).text, "1.00E+100");
+    assert_eq!(format_number(1e-300, "0.00E+00", locale).text, "1.00E-300");
+    // Subnormal numbers must not produce inf (Excel has none, we still show 5)
+    assert_eq!(
+        format_number(f64::MAX, "0.00E+00", locale).text,
+        "1.80E+308"
+    );
+    // Engineering formats keep the exponent a multiple of digit_count (##0 → 3)
+    assert_eq!(format_number(12.0, "##0.0E+0", locale).text, "12.0E+0");
+    assert_eq!(format_number(0.0123, "##0.0E+0", locale).text, "12.3E-3");
+}
+
+#[test]
+fn scientific_excel_engineering_modulus() {
+    let locale = get_default_locale();
+    // Maintainer table from ironcalc/IronCalc#1678 (Excel reference)
+    assert_eq!(format_number(12345.0, "#0.0E+0", locale).text, "1.2E+4");
+    assert_eq!(
+        format_number(12345.0, "00.00E+00", locale).text,
+        "01.23E+04"
+    );
+    assert_eq!(format_number(12345.0, "#,##0.0E+0", locale).text, "1.2E+4");
+    assert_eq!(format_number(123456.0, "####0.0E+0", locale).text, "1.2E+5");
+    assert_eq!(format_number(1234.0, "#0.0E+0", locale).text, "12.3E+2");
+    assert_eq!(
+        format_number(33121200.49935805, "0.00000000000000E+00", locale).text,
+        "3.31212004993581E+07"
+    );
+}
