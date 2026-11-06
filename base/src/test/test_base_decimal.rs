@@ -33,6 +33,22 @@ fn base_min_length_max_255() {
 }
 
 #[test]
+fn base_number_at_or_above_2_pow_53_is_num_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BASE(2^53-1, 16)");
+    model._set("A2", "=BASE(2^53, 2)");
+    model._set("A3", "=BASE(2^53, 2, B1)");
+    model._set("A4", "=BASE(1E+16, 16)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1FFFFFFFFFFFFF");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}
+
+#[test]
 fn base_negative_fraction_is_num_error() {
     let mut model = new_empty_model();
     model._set("A1", "=BASE(-0.5, 2)");

@@ -162,6 +162,14 @@ impl<'a> Model<'a> {
                 message: "Number must be non-negative".to_string(),
             };
         }
+        // Excel only converts numbers below 2^53
+        if number >= 9_007_199_254_740_992.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Number must be less than 2^53".to_string(),
+            };
+        }
         let mut value = number.trunc() as i64;
 
         let mut buf = String::new();
