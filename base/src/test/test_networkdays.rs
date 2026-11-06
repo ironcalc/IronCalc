@@ -345,3 +345,45 @@ fn networkdays_handles_large_date_ranges_efficiently() {
         "Large ranges should not error"
     );
 }
+
+#[test]
+fn networkdays_zero_and_blank_dates() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=NETWORKDAYS(0,10)");
+    model._set("A2", "=NETWORKDAYS(0,1)");
+    model._set("A3", "=NETWORKDAYS(B3,DATE(2025,1,10))");
+    model._set("A4", "=NETWORKDAYS(DATE(2025,1,1),B4)");
+    model._set("A5", "=NETWORKDAYS(B5,C5)");
+    model._set("A6", "=NETWORKDAYS.INTL(0,10)");
+    model._set("A7", "=NETWORKDAYS.INTL(B7,C7)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "7");
+    assert_eq!(model._get_text("A2"), "0");
+    assert_eq!(model._get_text("A3"), "32620");
+    assert_eq!(model._get_text("A4"), "-32613");
+    assert_eq!(model._get_text("A5"), "0");
+    assert_eq!(model._get_text("A6"), "7");
+    assert_eq!(model._get_text("A7"), "0");
+}
+
+#[test]
+fn networkdays_omitted_argument_is_na() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=NETWORKDAYS(,DATE(2025,1,1))");
+    model._set("A2", "=NETWORKDAYS(DATE(2025,1,10),)");
+    model._set("A3", "=NETWORKDAYS(,)");
+    model._set("A4", "=NETWORKDAYS.INTL(,DATE(2025,1,1))");
+    model._set("A5", "=NETWORKDAYS.INTL(DATE(2025,1,10),)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("A3"), "#N/A");
+    assert_eq!(model._get_text("A4"), "#N/A");
+    assert_eq!(model._get_text("A5"), "#N/A");
+}
