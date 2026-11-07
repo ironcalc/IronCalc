@@ -92,8 +92,12 @@ impl<'a> Model<'a> {
                     currencies.push(currency);
                 }
                 // Try to parse as a formatted number (e.g., dates, currencies, percentages)
-                if let Ok((v, _number_format)) = parse_formatted_number(s, &currencies, self.locale)
-                {
+                if let Ok((v, _number_format)) = parse_formatted_number(
+                    s,
+                    &currencies,
+                    self.locale,
+                    self.workbook.settings.date1904,
+                ) {
                     return Some(v);
                 }
                 // Or as a time of the day ("12:00", "3:30 PM")

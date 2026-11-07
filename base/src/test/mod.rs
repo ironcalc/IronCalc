@@ -108,6 +108,7 @@ mod test_arrays_and_errors;
 mod test_cell_info_n_sheets;
 mod test_combin_combina;
 mod test_cycle_reference;
+mod test_date1904;
 mod test_datetime_format;
 mod test_datevalue_rollover;
 mod test_datevalue_timevalue_spaces;

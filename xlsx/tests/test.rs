@@ -630,3 +630,33 @@ fn test_workbook_theme_colors() {
         "#C9211E".to_string()
     );
 }
+
+// date1904.xlsx (#1607) is in the 1904 date system. Its cached values are Excel's, from Apache
+// POI's DateFormatTests.xlsx (Tests!A2, A3, A5) and DateFormatNumberTests.xlsx (Tests!A11).
+#[test]
+fn test_date1904() {
+    let mut model = load_from_xlsx("tests/date1904.xlsx", "en", "UTC", "en").unwrap();
+    assert!(model.workbook.settings.date1904);
+    let expected = [
+        "11-10-52",
+        "11-10-52",
+        "Saturday-October-1952",
+        "1904-01-02 00:00:00",
+    ];
+    model.evaluate();
+    for (row, text) in expected.iter().enumerate() {
+        let row = row as i32 + 1;
+        assert_eq!(model.get_formatted_cell_value(0, row, 1).unwrap(), *text);
+    }
+
+    // The date system is written back on save
+    let temp_file_name = "temp_file_date1904.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    assert!(model.workbook.settings.date1904);
+
+    // and a workbook in the 1900 date system stays in it
+    let model = load_from_xlsx("tests/example.xlsx", "en", "UTC", "en").unwrap();
+    assert!(!model.workbook.settings.date1904);
+}

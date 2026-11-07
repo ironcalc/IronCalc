@@ -44,6 +44,7 @@ pub(crate) struct Sheet {
 pub(crate) struct WorkbookXML {
     pub(crate) worksheets: Vec<Sheet>,
     pub(crate) defined_names: Vec<DefinedName>,
+    pub(crate) date1904: bool,
 }
 
 pub(crate) struct Relationship {

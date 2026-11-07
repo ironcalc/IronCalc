@@ -646,6 +646,7 @@ impl<'a> Model<'a> {
             settings: WorkbookSettings {
                 tz: timezone.to_string(),
                 locale: locale_id.to_string(),
+                date1904: false,
             },
             metadata: Metadata {
                 application: APPLICATION.to_string(),
