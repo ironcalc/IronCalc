@@ -17,7 +17,7 @@ mod dates;
 mod numbers;
 mod util;
 
-use currency::get_locale_currency;
+use currency::{get_currency_digits, get_locale_currency, set_currency_digits};
 use dates::get_dates_formatting;
 use util::get_all_locales_id;
 
@@ -74,11 +74,14 @@ fn main() -> Result<(), String> {
             "fr" => "fr-FR",
             "de" => "de-DE",
             "it" => "it-IT",
+            "ja" => "ja-JP",
             _ => locale_id.as_str(),
         };
         let dates = get_dates_formatting(&cldr_dir, locale_id)?;
-        let numbers = get_numbers_formatting(&cldr_dir, locale_id)?;
+        let mut numbers = get_numbers_formatting(&cldr_dir, locale_id)?;
         let currency = get_locale_currency(&cldr_dir, full_locale_id, locale_id)?;
+        let digits = get_currency_digits(&cldr_dir, &currency.iso)?;
+        set_currency_digits(&mut numbers.currency_formats, digits);
         let currency = Currency {
             iso: currency.iso.clone(),
             symbol: currency.symbol.clone(),

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::io::{BufReader, Read};
 
+use ironcalc_base::types::PhoneticRun;
+
 use super::xml::XmlNode;
 
 use crate::error::XlsxError;
@@ -40,36 +42,67 @@ impl SharedStringTable {
     }
 }
 
+/// The shared strings and the furigana of those that have them (by index)
+pub(crate) type SharedStrings = (Vec<String>, HashMap<i32, Vec<PhoneticRun>>);
+
 /// Reads the list of shared strings in an Excel workbook
 /// Note than in IronCalc we lose _internal_ styling of a string
 /// See Section 18.4
 pub(crate) fn read_shared_strings<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
-) -> Result<Vec<String>, XlsxError> {
+) -> Result<SharedStrings, XlsxError> {
     match archive.by_name("xl/sharedStrings.xml") {
         Ok(file) => read_shared_strings_from_xml(XmlNode::parse(BufReader::new(file))?),
-        Err(_e) => Ok(Vec::new()),
+        Err(_e) => Ok((Vec::new(), HashMap::new())),
     }
 }
 
 #[cfg(test)]
-fn read_shared_strings_from_string(text: &str) -> Result<Vec<String>, XlsxError> {
+fn read_shared_strings_from_string(text: &str) -> Result<SharedStrings, XlsxError> {
     read_shared_strings_from_xml(XmlNode::parse(text.as_bytes())?)
 }
 
-fn read_shared_strings_from_xml(doc: XmlNode) -> Result<Vec<String>, XlsxError> {
+fn text_of(node: &XmlNode) -> String {
+    decode_xlsx_escapes(node.text().unwrap_or(""))
+}
+
+fn read_shared_strings_from_xml(doc: XmlNode) -> Result<SharedStrings, XlsxError> {
     let mut shared_strings = Vec::new();
+    let mut phonetic_runs = HashMap::new();
     let nodes: Vec<&XmlNode> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
-    for node in nodes {
-        let text = node
-            .descendants()
-            .filter(|n| n.has_tag_name("t"))
-            .map(|n| decode_xlsx_escapes(n.text().unwrap_or("")))
-            .collect::<Vec<String>>()
-            .join("");
+    for (index, node) in nodes.into_iter().enumerate() {
+        // The text is in <si><t> or in the rich text runs <si><r><t>. The <t> inside the
+        // phonetic runs <si><rPh><t> is the furigana, not part of the text.
+        let mut text = String::new();
+        let mut runs = Vec::new();
+        for child in node.children() {
+            if child.has_tag_name("t") {
+                text.push_str(&text_of(child));
+            } else if child.has_tag_name("r") {
+                for t in child.children().filter(|n| n.has_tag_name("t")) {
+                    text.push_str(&text_of(t));
+                }
+            } else if child.has_tag_name("rPh") {
+                let position = |name| child.attribute(name).and_then(|v| v.parse::<u32>().ok());
+                if let (Some(start), Some(end), Some(t)) = (
+                    position("sb"),
+                    position("eb"),
+                    child.children().find(|n| n.has_tag_name("t")),
+                ) {
+                    runs.push(PhoneticRun {
+                        start,
+                        end,
+                        text: text_of(t),
+                    });
+                }
+            }
+        }
+        if !runs.is_empty() {
+            phonetic_runs.insert(index as i32, runs);
+        }
         shared_strings.push(text);
     }
-    Ok(shared_strings)
+    Ok((shared_strings, phonetic_runs))
 }
 
 /// Decodes Excel's `_xXXXX_` escape sequences for characters that are invalid in XML 1.0.
@@ -143,13 +176,49 @@ mod tests {
         </r>
     </si>
 </sst>"#;
-        let shared_strings = read_shared_strings_from_string(xml_string.trim()).unwrap();
+        let (shared_strings, phonetic_runs) =
+            read_shared_strings_from_string(xml_string.trim()).unwrap();
+        assert!(phonetic_runs.is_empty());
         assert_eq!(
             shared_strings,
             [
                 "A string".to_string(),
                 "A second String".to_string(),
                 "Hello World".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn test_shared_strings_with_furigana() {
+        // As written by Japanese Excel: the <t> inside <rPh> is the furigana
+        let xml_string = r#"
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="2" uniqueCount="2">
+    <si><t>Plain</t></si>
+    <si>
+        <r><t>山田</t></r><r><rPr><b/></rPr><t>太郎</t></r>
+        <rPh sb="0" eb="2"><t>ヤマダ</t></rPh>
+        <rPh sb="2" eb="4"><t>タロウ</t></rPh>
+        <phoneticPr fontId="1"/>
+    </si>
+</sst>"#;
+        let (shared_strings, phonetic_runs) =
+            read_shared_strings_from_string(xml_string.trim()).unwrap();
+        assert_eq!(shared_strings, ["Plain", "山田太郎"]);
+        assert_eq!(phonetic_runs.len(), 1);
+        assert_eq!(
+            phonetic_runs[&1],
+            [
+                PhoneticRun {
+                    start: 0,
+                    end: 2,
+                    text: "ヤマダ".to_string()
+                },
+                PhoneticRun {
+                    start: 2,
+                    end: 4,
+                    text: "タロウ".to_string()
+                },
             ]
         );
     }

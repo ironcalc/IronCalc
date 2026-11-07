@@ -46,3 +46,31 @@ fn test_wrong_locale() {
     let formatted = format_number(2.3, "General", "ens");
     assert_eq!(formatted.text, "#ERROR!".to_string());
 }
+
+#[test]
+fn test_round_half_away_from_zero() {
+    // Excel rounds halves away from zero (Rust formatting rounds them to even)
+    let cases = [
+        (0.5, "0", "1"),
+        (1.5, "0", "2"),
+        (2.5, "0", "3"),
+        (-2.5, "0", "-3"),
+        (1234.5, "#,##0", "1,235"),
+        (1234.5, "$#,##0", "$1,235"),
+        (1.25, "0.0", "1.3"),
+        (0.125, "0.00", "0.13"),
+        (0.125, "0.0%", "12.5%"),
+        (0.0125, "0.0%", "1.3%"),
+        // 1.005 and 2.675 are stored just below the half
+        (1.005, "0.00", "1.01"),
+        (2.675, "0.00", "2.68"),
+        (0.0049, "0.00", "0.00"),
+        (-0.4, "0", "0"),
+    ];
+    for (value, format, expected) in cases {
+        let formatted = format_number(value, format, "en");
+        assert_eq!(formatted.text, expected, "{value} with '{format}'");
+    }
+    let formatted = format_number(1234.5, "\"￥\"#,##0", "ja");
+    assert_eq!(formatted.text, "￥1,235");
+}

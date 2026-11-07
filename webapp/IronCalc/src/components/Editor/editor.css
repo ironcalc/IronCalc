@@ -9,8 +9,11 @@
   font-size: var(--typography-font-size);
 }
 
+/* Not editing: invisible, but the textarea keeps the focus so that an IME composition
+   starts in it with the first key (see focusWorkbook) */
 .ic-editor-container--hidden {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .ic-editor-container--readonly {

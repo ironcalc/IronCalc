@@ -96,7 +96,8 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
 ) -> Result<Workbook, XlsxError> {
     let mut archive = zip::ZipArchive::new(reader)?;
 
-    let mut shared_strings = SharedStringTable::new(read_shared_strings(&mut archive)?);
+    let (strings, phonetic_runs) = read_shared_strings(&mut archive)?;
+    let mut shared_strings = SharedStringTable::new(strings);
     let mut workbook = load_workbook(&mut archive)?;
     let rels = load_relationships(&mut archive)?;
     let theme_path = resolve_theme_path(&rels);
@@ -150,6 +151,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         metadata,
         tables,
         theme,
+        phonetic_runs,
     })
 }
 

@@ -44,6 +44,7 @@ function FormatMenuItems({
   const isCurrencyEurosFormat = numFmt === NumberFormats.CURRENCY_EUR;
   const isCurrencyUsdFormat = numFmt === NumberFormats.CURRENCY_USD;
   const isCurrencyGbpFormat = numFmt === NumberFormats.CURRENCY_GBP;
+  const isCurrencyJpyFormat = numFmt === NumberFormats.CURRENCY_JPY;
   const isShortDateFormat = numFmt === formatOptions.short_date;
   const isLongDateFormat = numFmt === formatOptions.long_date;
   const isCustomFormat = !(
@@ -53,6 +54,7 @@ function FormatMenuItems({
     isCurrencyEurosFormat ||
     isCurrencyUsdFormat ||
     isCurrencyGbpFormat ||
+    isCurrencyJpyFormat ||
     isShortDateFormat ||
     isLongDateFormat
   );
@@ -105,6 +107,13 @@ function FormatMenuItems({
         secondaryText={t("toolbar.format_menu.currency_gbp_example")}
       >
         {t("toolbar.format_menu.currency_gbp")}
+      </MenuItem>
+      <MenuItem
+        checked={isCurrencyJpyFormat}
+        onClick={() => onSelect(NumberFormats.CURRENCY_JPY)}
+        secondaryText={t("toolbar.format_menu.currency_jpy_example")}
+      >
+        {t("toolbar.format_menu.currency_jpy")}
       </MenuItem>
 
       <MenuDivider />

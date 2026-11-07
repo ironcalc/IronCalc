@@ -16,7 +16,7 @@ use crate::{
     model::{DefinedNameEntry, FmtSettings, Model},
     types::{
         Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
-        MergedCell, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
+        MergedCell, PhoneticRun, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
     },
 };
 
@@ -539,6 +539,32 @@ impl<'a> UserModel<'a> {
     #[inline]
     pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
         self.model.get_localized_cell_content(sheet, row, column)
+    }
+
+    /// Returns the furigana of the text in a cell (empty if there are none)
+    pub fn get_cell_phonetic_runs(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Vec<PhoneticRun>, String> {
+        self.model.get_cell_phonetic_runs(sheet, row, column)
+    }
+
+    /// Sets the furigana of the text in a cell, as recorded from the IME by the editor.
+    /// It is not an undoable action: furigana go with the input that was just set.
+    pub fn set_cell_phonetic_runs(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        runs: Vec<PhoneticRun>,
+    ) -> Result<(), String> {
+        self.model
+            .set_cell_phonetic_runs(sheet, row, column, runs)?;
+        // PHONETIC formulas may read them
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Returns completion information for a formula being edited in a cell.

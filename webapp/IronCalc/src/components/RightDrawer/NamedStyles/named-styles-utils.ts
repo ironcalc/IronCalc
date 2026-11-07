@@ -97,6 +97,9 @@ export function getPreviewText(
   if (numFmt === NumberFormats.CURRENCY_GBP) {
     return t("toolbar.format_menu.currency_gbp_example");
   }
+  if (numFmt === NumberFormats.CURRENCY_JPY) {
+    return t("toolbar.format_menu.currency_jpy_example");
+  }
   if (
     numFmt === formatOptions.short_date ||
     numFmt === formatOptions.long_date

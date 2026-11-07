@@ -120,6 +120,18 @@ pub struct Workbook {
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
     pub theme: Theme,
+    /// Furigana (phonetic runs) of the shared strings that have them, by shared string index.
+    /// Japanese Excel stores the reading typed with the IME; PHONETIC returns it.
+    pub phonetic_runs: HashMap<i32, Vec<PhoneticRun>>,
+}
+
+/// The reading of part of a shared string: the characters `start..end` (UTF-16 positions, as
+/// in Excel) read as `text`. See 18.4.6 rPh (Phonetic Run) of the OOXML spec.
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct PhoneticRun {
+    pub start: u32,
+    pub end: u32,
+    pub text: String,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local.

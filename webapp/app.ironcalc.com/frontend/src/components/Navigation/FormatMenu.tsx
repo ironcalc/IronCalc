@@ -63,6 +63,7 @@ export function FormatMenu(props: {
     [NumberFormats.CURRENCY_EUR, "currency_eur", "€"],
     [NumberFormats.CURRENCY_USD, "currency_usd", "$"],
     [NumberFormats.CURRENCY_GBP, "currency_gbp", "£"],
+    [NumberFormats.CURRENCY_JPY, "currency_jpy", "￥"],
     null,
     [fmt.short_date, "date_short", fmt.short_date_example],
     [fmt.long_date, "date_long", fmt.long_date_example],

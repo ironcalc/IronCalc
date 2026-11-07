@@ -40,6 +40,14 @@ pub enum TextToken {
     ElapsedSecond,
     ElapsedSecondPadded,
     AMPM,
+    // Japanese calendar
+    EraLetter,
+    EraShortName,
+    EraName,
+    EraYear,
+    EraYearPadded,
+    WeekdayJaShort,
+    WeekdayJa,
 }
 pub struct NumberPart {
     pub color: Option<i32>,
@@ -334,6 +342,36 @@ impl Parser {
                     use_ampm = true;
                     tokens.push(TextToken::AMPM);
                 }
+                Token::EraLetter => {
+                    is_date = true;
+                    tokens.push(TextToken::EraLetter);
+                }
+                Token::EraShortName => {
+                    is_date = true;
+                    tokens.push(TextToken::EraShortName);
+                }
+                Token::EraName => {
+                    is_date = true;
+                    tokens.push(TextToken::EraName);
+                }
+                Token::EraYear => {
+                    is_date = true;
+                    tokens.push(TextToken::EraYear);
+                }
+                Token::EraYearPadded => {
+                    is_date = true;
+                    tokens.push(TextToken::EraYearPadded);
+                }
+                Token::WeekdayJaShort => {
+                    is_date = true;
+                    tokens.push(TextToken::WeekdayJaShort);
+                }
+                Token::WeekdayJa => {
+                    is_date = true;
+                    tokens.push(TextToken::WeekdayJa);
+                }
+                // The locale of the format ([$-411]) does not change how we display it
+                Token::LocaleTag => {}
                 Token::Scientific => {
                     if !is_scientific {
                         index = 0;

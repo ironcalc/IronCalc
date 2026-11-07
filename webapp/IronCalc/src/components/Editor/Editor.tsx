@@ -52,8 +52,17 @@ import {
   getCompletion,
 } from "../FormulaHelper/formulaCompletion";
 import { Alert } from "../Modal";
+import { getEditorSize } from "../util";
 import { useMenuPosition } from "../utils/useMenuPosition";
 import type { WorkbookState } from "../workbookState";
+import {
+  addRun,
+  compositionReading,
+  initialRuns,
+  isKana,
+  savePhoneticRuns,
+  shiftRuns,
+} from "./phonetic";
 import useKeyDown from "./useKeyDown";
 import getFormulaHTML from "./util";
 import "./editor.css";
@@ -108,6 +117,75 @@ const Editor = (options: EditorOptions) => {
   const formulaRef = useRef<HTMLDivElement>(null);
   const maskRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // The IME composition in progress: where it started, the last kana-only text and the
+  // last text seen (see compositionReading)
+  const compositionRef = useRef<{
+    start: number;
+    kana: string;
+    last: string;
+  } | null>(null);
+
+  // Text or an IME composition reached the cell input while no cell was being edited
+  // (it keeps the focus for that): start editing the selected cell in place, keeping
+  // the focus, so that the composition goes on. Usually the workbook has already
+  // started the edit on keydown, but dictation, some IMEs and mobile keyboards send no
+  // key we can see.
+  const startEditingInPlace = useCallback(
+    (text: string) => {
+      if (type !== "cell" || !canEdit || workbookState.getEditingCell()) {
+        return;
+      }
+      const { sheet, row, column } = model.getSelectedView();
+      const { width: editorWidth, height: editorHeight } = getEditorSize(
+        model,
+        sheet,
+        row,
+        column,
+      );
+      workbookState.setEditingCell({
+        sheet,
+        row,
+        column,
+        text: "",
+        cursorStart: text.length,
+        cursorEnd: text.length,
+        focus: "cell",
+        referencedRange: null,
+        activeRanges: [],
+        mode: "accept",
+        editorWidth,
+        editorHeight,
+      });
+    },
+    [type, canEdit, workbookState, model],
+  );
+
+  // Follows the furigana of the cell as its text changes
+  const syncPhonetic = useCallback(
+    (value: string) => {
+      const cell = workbookState.getEditingCell();
+      if (!cell || type !== "cell") {
+        return;
+      }
+      if (!cell.phonetic) {
+        // The text before this change is the text the edit started with
+        cell.phonetic = {
+          text: cell.text,
+          runs: initialRuns(
+            model,
+            cell.sheet,
+            cell.row,
+            cell.column,
+            cell.text,
+          ),
+        };
+      }
+      const { phonetic } = cell;
+      phonetic.runs = shiftRuns(phonetic.runs, phonetic.text, value);
+      phonetic.text = value;
+    },
+    [workbookState, model, type],
+  );
 
   useEffect(() => {
     setText(originalText);
@@ -118,7 +196,12 @@ const Editor = (options: EditorOptions) => {
     // text being edited and flows back in unchanged, so the DOM value already
     // matches; rewriting here would yank the caret to the end on every
     // keystroke (and break clicking in the middle).
-    if (textarea && textarea.value !== originalText) {
+    // Never while the IME composes: the composition is what is being typed
+    if (
+      textarea &&
+      textarea.value !== originalText &&
+      compositionRef.current === null
+    ) {
       textarea.value = originalText;
       // If the value changed because a reference is being inserted at the cursor
       // (cruise mode: clicking/dragging cells in the grid), keep the caret right
@@ -168,11 +251,15 @@ const Editor = (options: EditorOptions) => {
 
   const onChange = useCallback(() => {
     const textarea = textareaRef.current;
+    if (textarea) {
+      startEditingInPlace(textarea.value);
+    }
     const cell = workbookState.getEditingCell();
     if (!textarea || !cell) {
       return;
     }
     const value = textarea.value;
+    syncPhonetic(value);
     cell.text = value;
     cell.referencedRange = null;
     cell.cursorStart = textarea.selectionStart;
@@ -193,7 +280,14 @@ const Editor = (options: EditorOptions) => {
     // Should we stop propagations?
     // event.stopPropagation();
     // event.preventDefault();
-  }, [workbookState, model, onTextUpdated, type]);
+  }, [
+    workbookState,
+    model,
+    onTextUpdated,
+    type,
+    syncPhonetic,
+    startEditingInPlace,
+  ]);
 
   const onBlur = useCallback(() => {
     const cell = workbookState.getEditingCell();
@@ -210,16 +304,28 @@ const Editor = (options: EditorOptions) => {
     // onclick or onpointerdown events
     // If we are editing a cell finish that
     if (cell) {
-      model.setUserInput(
+      const text = workbookState.getEditingText();
+      model.setUserInput(cell.sheet, cell.row, cell.column, text);
+      savePhoneticRuns(
+        model,
         cell.sheet,
         cell.row,
         cell.column,
-        workbookState.getEditingText(),
+        cell.phonetic,
+        text,
       );
       workbookState.clearEditingCell();
     }
     onEditEnd();
   }, [model, workbookState, onEditEnd, type]);
+
+  // While editing, the clipboard works on the text. Not editing (the cell input only
+  // holds the focus for the IME) it works on the cells, in the workbook handlers.
+  const stopIfEditing = (event: { stopPropagation: () => void }) => {
+    if (workbookState.getEditingCell() || type === "formula-bar") {
+      event.stopPropagation();
+    }
+  };
 
   const cell = workbookState.getEditingCell();
 
@@ -367,7 +473,18 @@ const Editor = (options: EditorOptions) => {
           }}
           defaultValue={text}
           spellCheck="false"
+          data-cell-input={type === "cell" ? "" : undefined}
           onKeyDown={(event) => {
+            // While the IME is composing, keys like Enter (accept the conversion),
+            // Escape or the arrows belong to the IME. Not editing yet, the first key
+            // goes on to the workbook, which starts the edit.
+            if (
+              workbookState.getEditingCell() &&
+              (event.nativeEvent.isComposing || event.keyCode === 229)
+            ) {
+              event.stopPropagation();
+              return;
+            }
             if (handleHelperKeyDown(event)) {
               return;
             }
@@ -386,6 +503,41 @@ const Editor = (options: EditorOptions) => {
           }}
           disabled={!canEdit}
           onChange={onChange}
+          onCompositionStart={(event) => {
+            startEditingInPlace(event.currentTarget.value);
+            compositionRef.current = {
+              start: event.currentTarget.selectionStart,
+              kana: "",
+              last: "",
+            };
+          }}
+          onCompositionUpdate={(event) => {
+            const composition = compositionRef.current;
+            if (composition) {
+              if (isKana(event.data)) {
+                composition.kana = event.data;
+              }
+              composition.last = event.data;
+            }
+          }}
+          onCompositionEnd={(event) => {
+            const composition = compositionRef.current;
+            compositionRef.current = null;
+            const cell = workbookState.getEditingCell();
+            if (!composition || !cell || type !== "cell") {
+              return;
+            }
+            // Some browsers fire the last input event after compositionend
+            syncPhonetic(event.currentTarget.value);
+            const reading = compositionReading(
+              event.data,
+              composition.kana,
+              composition.last,
+            );
+            if (reading && cell.phonetic) {
+              addRun(cell.phonetic, composition.start, event.data, reading);
+            }
+          }}
           onBlur={onBlur}
           onPointerDown={(event) => {
             if (!canEdit) {
@@ -413,10 +565,10 @@ const Editor = (options: EditorOptions) => {
             // Track caret moves (arrows, clicks) so the helper follows along.
             setCursor(event.currentTarget.selectionStart);
           }}
-          onPaste={(event) => event.stopPropagation()}
-          onCopy={(event) => event.stopPropagation()}
+          onPaste={stopIfEditing}
+          onCopy={stopIfEditing}
           onDoubleClick={(event) => event.stopPropagation()}
-          onCut={(event) => event.stopPropagation()}
+          onCut={stopIfEditing}
         />
       </div>
       {showHelper

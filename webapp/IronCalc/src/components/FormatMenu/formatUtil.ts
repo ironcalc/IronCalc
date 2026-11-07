@@ -38,5 +38,7 @@ export enum NumberFormats {
   CURRENCY_EUR = '"€"#,##0.00',
   CURRENCY_USD = '"$"#,##0.00',
   CURRENCY_GBP = '"£"#,##0.00',
+  // The yen has no decimals
+  CURRENCY_JPY = '"￥"#,##0',
   PERCENTAGE = "0.00%",
 }

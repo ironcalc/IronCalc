@@ -54,6 +54,11 @@ pub fn cldr_to_excel_date_format(cldr_pattern: &str) -> String {
             // Italian-style with slashes
             m.insert("dd/MM/yy", "dd/mm/yy");
 
+            // Japanese with literal 年/月/日 (medium and short are both "y/MM/dd")
+            m.insert("y年M月d日EEEE", "yyyy\"年\"m\"月\"d\"日\"dddd");
+            m.insert("y年M月d日", "yyyy\"年\"m\"月\"d\"日\"");
+            m.insert("y/MM/dd", "yyyy/mm/dd");
+
             m
         })
         .get(cldr_pattern)

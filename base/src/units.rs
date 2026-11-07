@@ -351,10 +351,17 @@ impl<'a> Model<'a> {
         let num_fmt = standard_format.replace('¤', currency_symbol);
         // The "space" in the cldr is a weird space.
         let num_fmt = num_fmt.replace(' ', " ");
+        // Not all currencies have 2 decimals (e.g. "¥#,##0")
+        let mut parser = Parser::new(&num_fmt);
+        parser.parse();
+        let precision = match parser.parts.first() {
+            Some(ParsePart::Number(part)) => part.precision,
+            _ => 2,
+        };
         Some(Units::Currency {
             num_fmt,
             group_separator: true,
-            precision: 2,
+            precision,
             currency: currency_symbol.to_string(),
         })
     }

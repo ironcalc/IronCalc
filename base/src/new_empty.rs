@@ -657,6 +657,7 @@ impl<'a> Model<'a> {
             },
             tables: HashMap::new(),
             theme: Default::default(),
+            phonetic_runs: HashMap::new(),
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;

@@ -56,6 +56,8 @@ enum Tag {
     Formula,
     InlineString,
     Text,
+    // <rPh>: the furigana of an inline string, not part of its text
+    Phonetic,
     Other,
 }
 
@@ -67,6 +69,7 @@ fn tag_of(element: &BytesStart) -> Tag {
         "f" => Tag::Formula,
         "is" => Tag::InlineString,
         "t" => Tag::Text,
+        "rPh" => Tag::Phonetic,
         _ => Tag::Other,
     }
 }
@@ -239,7 +242,7 @@ impl SheetDataReader<'_, '_> {
                     cell.rich_text = Some(String::new());
                 }
             }
-            Tag::Text | Tag::Other => {}
+            Tag::Text | Tag::Phonetic | Tag::Other => {}
         }
         Ok(())
     }
@@ -267,7 +270,10 @@ impl SheetDataReader<'_, '_> {
                     formula.text.get_or_insert_with(String::new).push_str(text);
                 }
             }
-            Some(Tag::Text) if self.stack.contains(&Tag::InlineString) => {
+            Some(Tag::Text)
+                if self.stack.contains(&Tag::InlineString)
+                    && !self.stack.contains(&Tag::Phonetic) =>
+            {
                 if let Some(rich_text) = cell.rich_text.as_mut() {
                     rich_text.push_str(text);
                 }

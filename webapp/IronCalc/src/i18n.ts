@@ -4,6 +4,7 @@ import translationEN from "./locale/en_us.json";
 import translationES from "./locale/es_es.json";
 import translationFR from "./locale/fr_fr.json";
 import translationIT from "./locale/it_it.json";
+import translationJA from "./locale/ja_jp.json";
 
 const resources = {
   "en-US": { translation: translationEN },
@@ -12,6 +13,7 @@ const resources = {
   "fr-FR": { translation: translationFR },
   "de-DE": { translation: translationDE },
   "it-IT": { translation: translationIT },
+  "ja-JP": { translation: translationJA },
 };
 
 const instance: typeof i18n = i18n.createInstance({

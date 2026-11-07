@@ -542,3 +542,33 @@ fn input_dates() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "8/8/2028");
 }
+
+#[test]
+fn test_financial_functions_yen() {
+    // The yen has no decimals
+    let mut model = crate::Model::new_empty("model", "ja", "UTC", "ja").unwrap();
+    model
+        .set_user_input(0, 1, 1, "=PMT(0.2, 3, -200)".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 2, 1, "￥1,000".to_string())
+        .unwrap();
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"￥95");
+    assert_eq!(model._get_text("A2"), *"￥1,000");
+}
+
+#[test]
+fn test_pound_format() {
+    // "£#,##0" is a valid number format
+    let mut model = crate::Model::new_empty("model", "en-GB", "UTC", "en").unwrap();
+    model
+        .set_user_input(0, 1, 1, "=PMT(0.2, 3, -200)".to_string())
+        .unwrap();
+    model.set_user_input(0, 2, 1, "£1,000".to_string()).unwrap();
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"£94.95");
+    assert_eq!(model._get_text("A2"), *"£1,000");
+}

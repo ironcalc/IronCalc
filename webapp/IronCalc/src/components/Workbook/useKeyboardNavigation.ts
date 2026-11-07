@@ -8,6 +8,15 @@ export enum Border {
   Left = "left",
 }
 
+// The cell editor's textarea while no cell is being edited (it keeps the focus for the IME)
+function isIdleCellInput(target: EventTarget): boolean {
+  return (
+    target instanceof HTMLTextAreaElement &&
+    target.dataset.cellInput !== undefined &&
+    target.closest(".ic-editor-container--hidden") !== null
+  );
+}
+
 interface Options {
   onCellsDeleted: () => void;
   onExpandAreaSelectedKeyboard: (
@@ -83,7 +92,8 @@ const useKeyboardNavigation = (
       if (!root.current) {
         return;
       }
-      if (event.target !== root.current) {
+      // Keys come from the root or from the cell input while it is not editing
+      if (event.target !== root.current && !isIdleCellInput(event.target)) {
         return;
       }
       const isCtrl = event.metaKey || event.ctrlKey;
@@ -216,6 +226,14 @@ const useKeyboardNavigation = (
         return;
       }
 
+      // Typing with the IME on (Japanese, Chinese, Korean): the key is "Process" and the
+      // text comes from the composition, so we start editing an empty cell and let the
+      // IME go on in the editor. We must not prevent the default action here.
+      if (options.canEdit && (key === "Process" || event.keyCode === 229)) {
+        options.onEditKeyPressStart("");
+        event.stopPropagation();
+        return;
+      }
       if (options.canEdit && (isEditingKey(key) || key === "Backspace")) {
         const initText = key === "Backspace" ? "" : key;
         options.onEditKeyPressStart(initText);

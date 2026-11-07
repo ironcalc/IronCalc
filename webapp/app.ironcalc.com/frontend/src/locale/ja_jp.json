@@ -1,0 +1,206 @@
+{
+  "app": {
+    "title": "IronCalc"
+  },
+  "default_workbook_name": "ブック",
+  "errors": {
+    "model_not_found": "ブックが見つからないか、読み込めませんでした",
+    "example_not_found": "サンプルファイルが見つからないか、読み込めませんでした",
+    "storage_save_failed": "変更を保存できませんでした。ブラウザーの保存容量が不足している可能性があります。"
+  },
+  "unsaved_bar": {
+    "message": "読み取り専用のブックを表示しています。編集するにはコピーを保存してください。",
+    "save_copy": "コピーを保存"
+  },
+  "welcome_dialog": {
+    "title": "IronCalc へようこそ",
+    "subtitle": "新しく始める、データを持ち込む、できることを試す。",
+    "close_dialog": "ダイアログを閉じる",
+    "new": "新規",
+    "blank_workbook": "空白のブック",
+    "import_workbook": ".xlsx をインポート",
+    "storage_warning": "<warn>注意:</warn> このアプリは概念実証であり、完成品ではありません。自由に試したり、共有したり、ブックをアップロード・ダウンロードしたりできますが、機密情報や個人情報を含むブックは共有・アップロードしないでください。データは定期的に削除されます。<docsLink>詳しく見る</docsLink>",
+    "templates": {
+      "choose_template": "テンプレートを選択",
+      "templates": "テンプレート",
+      "see_all": "すべて表示",
+      "examples_and_templates": "サンプルとテンプレート",
+      "category_all": "すべて",
+      "category_finance": "財務",
+      "category_lifestyle": "ライフスタイル",
+      "category_project_management": "プロジェクト管理",
+      "category_games": "ゲーム",
+      "yearly_calendar": "年間カレンダー",
+      "yearly_calendar_description": "1 年間の予定を計画して見渡せます。",
+      "crossword": "クロスワード",
+      "crossword_description": "マスを埋めてヒントを解きましょう。",
+      "travel_expenses_tracker": "旅費管理",
+      "travel_expenses_tracker_description": "旅行の費用を記録して予算内に収めます。",
+      "invoice": "請求書",
+      "invoice_description": "取引先への請求書を作成・管理します。",
+      "gantt_project_tracker": "ガントチャートによるプロジェクト管理",
+      "gantt_project_tracker_description": "タスクとスケジュールをガントチャートで計画します。",
+      "weekly_timesheet": "週間タイムシート",
+      "weekly_timesheet_description": "毎週の作業時間を記録して確認します。",
+      "wordle": "Wordle",
+      "wordle_description": "隠された 5 文字の英単語を当てましょう。",
+      "event_calendar": "イベントカレンダー",
+      "event_calendar_description": "今後のイベントを整理して追跡します。"
+    },
+    "create_workbook": "ブックを作成",
+    "documentation": "ドキュメント",
+    "about_ironcalc": "IronCalc について"
+  },
+  "left_drawer": {
+    "new_workbook": "新しいブック",
+    "search_workbook": "ブックを検索",
+    "search_placeholder": "ブックを検索...",
+    "clear_search": "検索をクリア",
+    "empty_state": "ブックはまだありません。作成または保存したブックがここに表示されます。",
+    "search_no_results": "検索に一致するブックはありません。",
+    "pinned": "ピン留め",
+    "today": "今日",
+    "last_30_days": "過去 30 日間",
+    "older": "それ以前",
+    "workbook_menu": {
+      "download": "ダウンロード (.xlsx)",
+      "pin": "ピン留めする",
+      "unpin": "ピン留めを外す",
+      "duplicate": "複製",
+      "delete": "ブックを削除"
+    },
+    "alert": {
+      "close": "閉じる"
+    },
+    "documentation": "ドキュメント",
+    "cancel": "キャンセル",
+    "delete_workbooks_one": "{{count}} 個のブックを削除",
+    "delete_workbooks_other": "{{count}} 個のブックを削除",
+    "bulk_delete_message_one": "このブックは完全に削除されます。共有したリンクは引き続き使えます。",
+    "bulk_delete_message_other": "{{count}} 個のブックは完全に削除されます。共有したリンクは引き続き使えます。",
+    "select_workbook": "{{name}} を選択"
+  },
+  "file_bar": {
+    "open_sidebar": "サイドバーを開く",
+    "close_sidebar": "サイドバーを閉じる",
+    "cloud_warning": "<warn>注意:</warn> このアプリは概念実証であり、完成品ではありません。自由に試したり、共有したり、ブックをアップロード・ダウンロードしたりできますが、機密情報や個人情報を含むブックは共有・アップロードしないでください。データは定期的に削除されます。",
+    "file_menu": {
+      "button": "ファイル",
+      "new_blank_workbook": "空白のブックを新規作成",
+      "new_from_template": "テンプレートから新規作成",
+      "import": {
+        "button": "インポート",
+        "title": ".xlsx ファイルをインポート",
+        "subtitle": "ここにファイルをドラッグ アンド ドロップするか、",
+        "subtitle_link": "クリックして参照",
+        "learn_more": "IronCalc へのファイルのインポートについて詳しく見る",
+        "close_dialog": "ダイアログを閉じる",
+        "uploading": "{{fileName}} をアップロードしています...",
+        "drop_file_here": "ここにファイルをドロップ"
+      },
+      "download": "ダウンロード (.xlsx)",
+      "delete_workbook": {
+        "button": "ブックを削除",
+        "title": "よろしいですか?",
+        "subtitle": "ブック '{{workbookName}}' は完全に削除されます。",
+        "warning": "この操作は元に戻せません。共有したリンクは引き続き使えます。",
+        "confirm_button": "はい、削除します",
+        "cancel_button": "キャンセル"
+      },
+      "default_language": "既定の言語",
+      "appearance": "外観",
+      "appearance_light": "ライト",
+      "appearance_dark": "ダーク"
+    },
+    "edit_menu": {
+      "button": "編集",
+      "undo": "元に戻す",
+      "redo": "やり直し",
+      "cut": "切り取り",
+      "copy": "コピー",
+      "paste": "貼り付け"
+    },
+    "view_menu": {
+      "button": "表示",
+      "hide_gridlines": "枠線を非表示",
+      "show_gridlines": "枠線を表示",
+      "freeze": "固定",
+      "freeze_rows_one": "{{count}} 行を固定",
+      "freeze_rows_other": "{{count}} 行を固定",
+      "freeze_columns_one": "{{count}} 列を固定",
+      "freeze_columns_other": "{{count}} 列を固定",
+      "hidden_sheets": "非表示のシート",
+      "named_ranges": "名前付き範囲",
+      "download_png": "範囲を .png でダウンロード"
+    },
+    "insert_menu": {
+      "button": "挿入",
+      "rows": "行",
+      "row_above": "上に行を挿入",
+      "row_below": "下に行を挿入",
+      "columns": "列",
+      "column_left": "左に列を挿入",
+      "column_right": "右に列を挿入",
+      "sheet": "シート",
+      "link": "リンク"
+    },
+    "format_menu": {
+      "button": "書式",
+      "number_format": "表示形式",
+      "number_formats": {
+        "auto": "自動",
+        "number": "数値",
+        "percentage": "パーセンテージ",
+        "currency_eur": "ユーロ (EUR)",
+        "currency_usd": "米ドル (USD)",
+        "currency_gbp": "英ポンド (GBP)",
+        "currency_jpy": "日本円 (JPY)",
+        "date_short": "短い日付形式",
+        "date_long": "長い日付形式",
+        "custom": "ユーザー定義"
+      },
+      "text": "テキスト",
+      "bold": "太字",
+      "italic": "斜体",
+      "underline": "下線",
+      "strikethrough": "取り消し線",
+      "font_size": "フォント サイズ",
+      "alignment": "配置",
+      "align_left": "左揃え",
+      "align_center": "中央揃え",
+      "align_right": "右揃え",
+      "align_top": "上揃え",
+      "align_middle": "上下中央揃え",
+      "align_bottom": "下揃え",
+      "wrap_text": "折り返して全体を表示",
+      "overflow_text": "はみ出して表示",
+      "merge_cells": "セルの結合",
+      "merge_menu": {
+        "merge": "セルの結合",
+        "merge_center": "セルを結合して中央揃え",
+        "merge_across": "横方向に結合",
+        "merge_down": "縦方向に結合",
+        "unmerge": "セル結合の解除"
+      },
+      "cell_styles": "セルのスタイル",
+      "conditional_formatting": "条件付き書式",
+      "themes": "テーマ",
+      "clear_formatting": "書式のクリア"
+    },
+    "help_menu": {
+      "button": "ヘルプ",
+      "about": "IronCalc について",
+      "documentation": "ドキュメント",
+      "keyboard_shortcuts": "キーボード ショートカット"
+    },
+    "share_popover": {
+      "button": "共有",
+      "copy_url": "URL をコピー",
+      "copied": "コピーしました",
+      "info_text": "リンクを知っている人は誰でも、このブックのコピーにアクセスできます。共有したリンクは削除できません。"
+    }
+  },
+  "loading_screen": {
+    "message": "IronCalc を読み込んでいます"
+  }
+}

@@ -2383,7 +2383,24 @@ export default class WorksheetCanvas {
     const cell = this.workbookState.getEditingCell();
     const selectedSheet = this.selectedSheet();
     const { editor } = this;
-    if (!cell || cell.sheet !== selectedSheet) {
+    if (cell) {
+      editor.classList.remove("ic-worksheet-editor-wrapper--idle");
+    } else {
+      editor.classList.add("ic-worksheet-editor-wrapper--idle");
+    }
+    if (!cell) {
+      // Not editing: the (invisible) editor waits on the selected cell, so the IME
+      // shows its candidates there when you start typing
+      const { row, column } = this.model.getSelectedView();
+      const [x, y] = this.getCoordinatesByCell(row, column);
+      editor.style.left = `${x}px`;
+      editor.style.top = `${y}px`;
+      editor.style.width = `${this.getColumnWidth(selectedSheet, column)}px`;
+      editor.style.height = `${this.getRowHeight(selectedSheet, row)}px`;
+      editor.style.clip = "";
+      return;
+    }
+    if (cell.sheet !== selectedSheet) {
       // If the editing cell is not in the same sheet as the selected sheet
       // we take the editor out of view
       editor.style.left = "-9999px";

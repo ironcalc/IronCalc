@@ -121,6 +121,8 @@ pub struct Functions {
     pub clean: String,
     pub code: String,
     pub asc: String,
+    pub jis: String,
+    pub phonetic: String,
     pub arraytotext: String,
     pub dollar: String,
     pub findb: String,

@@ -60,6 +60,7 @@ mod implicit_intersection;
 pub mod links;
 mod merged_cells;
 mod model;
+mod phonetic;
 mod styles;
 mod tz;
 mod units;

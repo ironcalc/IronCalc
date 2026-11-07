@@ -154,6 +154,7 @@
         "currency_eur": "Euro (EUR)",
         "currency_usd": "Dollaro (USD)",
         "currency_gbp": "Sterlina britannica (GBP)",
+        "currency_jpy": "Yen giapponese (JPY)",
         "date_short": "Data breve",
         "date_long": "Data lunga",
         "custom": "Personalizzato"

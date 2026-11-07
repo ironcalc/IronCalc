@@ -125,6 +125,16 @@ const Workbook = (
       return;
     }
 
+    // The cell editor's textarea takes the focus even when we are not editing, so that
+    // typing with an IME composes in it from the first key. Its keys still reach the
+    // workbook handler while we are not editing (see useKeyboardNavigation).
+    const cellInput = rootRef.current?.querySelector<HTMLTextAreaElement>(
+      "textarea[data-cell-input]",
+    );
+    if (cellInput && !cellInput.disabled) {
+      cellInput.focus({ preventScroll: true });
+      return;
+    }
     if (rootRef.current) {
       rootRef.current.focus({ preventScroll: true });
       // HACK: We need to select something inside the root for onCopy to work

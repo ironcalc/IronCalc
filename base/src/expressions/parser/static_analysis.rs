@@ -1322,6 +1322,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Clean => args_signature_scalars(arg_count, 1, 0),
         Function::Code => args_signature_scalars(arg_count, 1, 0),
         Function::Asc => args_signature_scalars(arg_count, 1, 0),
+        Function::Jis => args_signature_scalars(arg_count, 1, 0),
+        Function::Phonetic => args_signature_one_vector(arg_count),
         Function::Arraytotext => args_signature_arraytotext(arg_count),
         Function::Dollar => args_signature_scalars(arg_count, 1, 1),
         Function::Encodeurl => args_signature_scalars(arg_count, 1, 0),
@@ -1835,7 +1837,10 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Clean => scalar_arguments(args),
         // CODE broadcasts element-wise: an array/range argument yields an array.
         Function::Code => scalar_arguments(args),
-        Function::Asc => not_implemented(args),
+        // ASC and JIS broadcast element-wise
+        Function::Asc => scalar_arguments(args),
+        Function::Jis => scalar_arguments(args),
+        Function::Phonetic => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
         Function::Dollar => not_implemented(args),
         Function::Encodeurl => scalar_arguments(args),

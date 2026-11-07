@@ -296,7 +296,7 @@ export async function initStorage(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 // Returns the default UI language based on the browser settings
-// ['en-US', 'en-GB', 'es-ES', 'fr-FR', 'de-DE', 'it-IT']
+// ['en-US', 'en-GB', 'es-ES', 'fr-FR', 'de-DE', 'it-IT', 'ja-JP']
 function getDefaultUILocale(): string {
   const lang = navigator.language || navigator.languages[0] || "en-US";
   if (lang.startsWith("es")) {
@@ -309,6 +309,8 @@ function getDefaultUILocale(): string {
     return "en-GB";
   } else if (lang.startsWith("it")) {
     return "it-IT";
+  } else if (lang.startsWith("ja")) {
+    return "ja-JP";
   }
 
   return "en-US";
@@ -329,6 +331,9 @@ export function getShortLocaleCode(longCode: string): string {
     case "it-IT": {
       return "it";
     }
+    case "ja-JP": {
+      return "ja";
+    }
     case "en-GB": {
       return "en-GB";
     }
@@ -338,7 +343,8 @@ export function getShortLocaleCode(longCode: string): string {
   }
 }
 
-// en-US => en, en-GB => en, es-ES => es, fr-FR => fr, de-DE => de, it-IT => it
+// en-US => en, en-GB => en, es-ES => es, fr-FR => fr, de-DE => de, it-IT => it,
+// ja-JP => ja
 export function getLanguageFromLocale(locale: string): string {
   return locale.split("-")[0];
 }
@@ -354,6 +360,7 @@ const SUPPORTED_LOCALES = [
   "fr-FR",
   "de-DE",
   "it-IT",
+  "ja-JP",
 ];
 
 export function loadDefaultLocaleFromStorage(): string {

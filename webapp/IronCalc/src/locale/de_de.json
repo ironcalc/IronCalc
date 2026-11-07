@@ -335,7 +335,8 @@
         "en": "English",
         "es": "Español",
         "fr": "Français",
-        "it": "Italiano"
+        "it": "Italiano",
+        "ja": "日本語"
       }
     },
     "locale": {
@@ -429,6 +430,8 @@
       "currency_eur_example": "€",
       "currency_gbp": "Britisches Pfund (GBP)",
       "currency_gbp_example": "£",
+      "currency_jpy": "Japanischer Yen (JPY)",
+      "currency_jpy_example": "￥",
       "currency_usd": "Dollar (USD)",
       "currency_usd_example": "$",
       "custom": "Benutzerdefiniert",

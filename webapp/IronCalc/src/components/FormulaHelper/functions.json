@@ -3521,6 +3521,16 @@
     "description": "Returns TRUE if a cell contains text. Use it to validate text inputs, filter text values in arrays, or guard against text accidentally entering a numeric calculation.",
     "examples": ["=ISTEXT(\"hello\") returns TRUE; =ISTEXT(42) returns FALSE."]
   },
+  "jis": {
+    "tier": 0,
+    "category": 10,
+    "tags": [],
+    "args": [
+      ["text", "text", "A string that may contain half-width characters"]
+    ],
+    "description": "Converts half-width (single-byte) characters to full-width (double-byte) equivalents, the reverse of ASC. Letters, digits, symbols, spaces and half-width katakana become full-width; a katakana followed by a voiced sound mark becomes one character.",
+    "examples": ["=JIS(\"ABC\") returns the full-width \"ＡＢＣ\"."]
+  },
   "kurt": {
     "tier": 0,
     "category": 9,
@@ -4885,6 +4895,14 @@
     "examples": [
       "=PHI(0) returns approximately 0.3989 (the peak of the bell curve)."
     ]
+  },
+  "phonetic": {
+    "tier": 0,
+    "category": 10,
+    "tags": [],
+    "args": [["reference", "reference", "A cell or range with Japanese text"]],
+    "description": "Returns the furigana (reading) of Japanese text, as imported from xlsx files. A cell without furigana gives its text; with a range it joins the readings of the cells, skipping numbers and formula results.",
+    "examples": ["=PHONETIC(A1:C1) joins the texts in A1, B1 and C1."]
   },
   "pi": {
     "tier": 0,
