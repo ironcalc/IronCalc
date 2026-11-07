@@ -753,6 +753,31 @@ fn test_fn_eomonth_out_of_bounds_returns_num() {
 }
 
 #[test]
+fn test_fn_eomonth_zero_and_blank_start_date() {
+    // Regression for #1409: Excel treats serial 0 / blank start cells as valid
+    // ("0 January 1900"), and an omitted start_date as #N/A (not #NUM!).
+    let mut model = new_empty_model();
+
+    model._set("C2", "=EOMONTH(0, 7)");
+    model._set("C3", "=EOMONTH(A3, 7)"); // A3 blank
+    model._set("C4", "=EOMONTH(, 9)");
+    model._set("C5", "=EOMONTH(0, 0)");
+    model._set("C6", "=EOMONTH(A6, 0)"); // A6 blank
+    model._set("C7", "=EOMONTH(, 0)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("C2"), *"244"); // 1900-08-31
+    assert_eq!(model._get_text("C3"), *"244");
+    assert_eq!(model._get_text("C4"), *"#N/A");
+    assert_eq!(model._get_text("C5"), *"31"); // 1900-01-31
+    assert_eq!(model._get_text("C6"), *"31");
+    assert_eq!(model._get_text("C7"), *"#N/A");
+}
+
+
+
+#[test]
 fn test_time_function() {
     let mut model = new_empty_model();
 
