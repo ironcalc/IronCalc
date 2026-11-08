@@ -29,11 +29,21 @@ pub(crate) fn compute_rate(
         return Err((Error::VALUE, "Rate initial guess must be > -1".to_string()));
     }
     for _ in 1..=max_iterations {
-        let t = (1.0 + rate).powf(nper - 1.0);
-        let tt = t * (1.0 + rate);
-        let f = pv * tt + pmt * (1.0 + rate * annuity_type) * (tt - 1.0) / rate + fv;
-        let f_prime = pv * nper * t - pmt * (tt - 1.0) / (rate * rate)
-            + pmt * (1.0 + rate * annuity_type) * t * nper / rate;
+        let (f, f_prime) = if rate == 0.0 {
+            // limits as rate -> 0, the general formulas divide by rate
+            (
+                pv + pmt * nper + fv,
+                pv * nper + pmt * nper * ((nper - 1.0) / 2.0 + annuity_type),
+            )
+        } else {
+            let t = (1.0 + rate).powf(nper - 1.0);
+            let tt = t * (1.0 + rate);
+            (
+                pv * tt + pmt * (1.0 + rate * annuity_type) * (tt - 1.0) / rate + fv,
+                pv * nper * t - pmt * (tt - 1.0) / (rate * rate)
+                    + pmt * (1.0 + rate * annuity_type) * t * nper / rate,
+            )
+        };
         let new_rate = rate - f / f_prime;
         if new_rate <= -1.0 {
             return Err((Error::NUM, "Failed to converge".to_string()));

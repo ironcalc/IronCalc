@@ -23,7 +23,7 @@ fn fn_arguments() {
 
     model._set("E1", "=RATE()");
     model._set("E2", "=RATE(1,1)");
-    model._set("E3", "=RATE(1,1,1,1,1,1)");
+    model._set("E3", "=RATE(1,1,1,1,1,1,1)");
 
     model.evaluate();
 
@@ -46,6 +46,40 @@ fn fn_arguments() {
     assert_eq!(model._get_text("E1"), *"#ERROR!");
     assert_eq!(model._get_text("E2"), *"#ERROR!");
     assert_eq!(model._get_text("E3"), *"#ERROR!");
+}
+
+#[test]
+fn fn_rate_guess() {
+    let mut model = new_empty_model();
+    // cash flows -100, 230, -132 have two rates: 10% and 20%
+    model._set("A1", "=RATE(2,230,-100,-362,0,0.05)");
+    model._set("A2", "=RATE(2,230,-100,-362,0,0.25)");
+    // a zero guess (explicit, empty argument or empty cell) still converges
+    model._set("A3", "=RATE(48,-200,8000,0,0,0)");
+    model._set("A4", "=RATE(48,-200,8000,0,0,)");
+    model._set("A5", "=RATE(48,-200,8000,0,0,Z1)");
+    model._set("A6", "=RATE(12,-1000,10000,0,1,0)");
+    model._set("A7", "=RATE(48,-200,8000,0,0,-1)");
+
+    model.evaluate();
+
+    // Values from Excel
+    let expected = [
+        ("A1", 0.09999999999201492),
+        ("A2", 0.2000000000113404),
+        ("A3", 0.007701472488195906),
+        ("A4", 0.007701472488195906),
+        ("A5", 0.007701472488195906),
+        ("A6", 0.03503153036128806),
+    ];
+    for (cell, value) in expected {
+        let result = model.get_cell_value_by_ref(&format!("Sheet1!{cell}"));
+        assert!(
+            matches!(result, Ok(CellValue::Number(v)) if (v - value).abs() < 1e-9),
+            "{cell}: {result:?}"
+        );
+    }
+    assert_eq!(model._get_text("A7"), *"#VALUE!");
 }
 
 #[test]
