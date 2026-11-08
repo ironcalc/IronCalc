@@ -36,6 +36,51 @@ fn test_xmatch_exact_number() {
     assert_eq!(model._get_text("C1"), "2");
 }
 
+#[test]
+fn test_xmatch_empty_optional_arguments_use_defaults() {
+    for (formula, expected) in [
+        ("=XMATCH(8,A1:A4)", "2"),
+        ("=XMATCH(8,A1:A4,)", "2"),
+        ("=XMATCH(8,A1:A4,,)", "2"),
+        ("=XMATCH(8,A1:A4,0,)", "2"),
+        ("=XMATCH(8,A1:A4,,1)", "2"),
+        ("=XMATCH(8,A1:A4,,-1)", "4"),
+        ("=XMATCH(6,A1:A4,-1,)", "1"),
+        ("=XMATCH(7,A1:A4,,)", "#N/A"),
+        ("=XMATCH(8,{5,8,1,8},,)", "2"),
+    ] {
+        let mut model = new_empty_model();
+        model._set("A1", "5");
+        model._set("A2", "8");
+        model._set("A3", "1");
+        model._set("A4", "8");
+        model._set("C1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("C1"), expected, "{formula}");
+    }
+}
+
+#[test]
+fn test_xmatch_explicit_optional_arguments_still_validate() {
+    for (formula, expected) in [
+        ("=XMATCH(2,A1:A3,0,0)", "#VALUE!"),
+        ("=XMATCH(2,A1:A3,0,Z99)", "#VALUE!"),
+        ("=XMATCH(2,A1:A3,0,\"\")", "#VALUE!"),
+        ("=XMATCH(2,A1:A3,0,NA())", "#N/A"),
+        ("=XMATCH(2,A1:A3,NA(),)", "#N/A"),
+        ("=XMATCH(2,A1:A3,0,1/0)", "#DIV/0!"),
+        ("=XMATCH(2,A1:A3,99,)", "#VALUE!"),
+    ] {
+        let mut model = new_empty_model();
+        model._set("A1", "1");
+        model._set("A2", "2");
+        model._set("A3", "3");
+        model._set("C1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("C1"), expected, "{formula}");
+    }
+}
+
 // ── next-smaller / next-larger (unsorted) ────────────────────────────────────
 
 #[test]
