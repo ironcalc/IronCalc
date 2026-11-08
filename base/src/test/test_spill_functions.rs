@@ -95,6 +95,67 @@ fn sort_invalid_sort_order() {
     assert_eq!(model._get_text("B1"), "#VALUE!");
 }
 
+#[test]
+fn sort_empty_optional_arguments_use_defaults() {
+    for (formula, expected) in [
+        ("=SORT(A1:A3)", ["1", "2", "3"]),
+        ("=SORT(A1:A3,)", ["1", "2", "3"]),
+        ("=SORT(A1:A3,,)", ["1", "2", "3"]),
+        ("=SORT(A1:A3,,,)", ["1", "2", "3"]),
+        ("=SORT(A1:A3,1,)", ["1", "2", "3"]),
+        ("=SORT(A1:A3,,-1)", ["3", "2", "1"]),
+    ] {
+        let mut model = new_empty_model();
+        model._set("A1", "3");
+        model._set("A2", "1");
+        model._set("A3", "2");
+        model._set("C1", formula);
+        model.evaluate();
+        assert_eq!(
+            ["C1", "C2", "C3"].map(|cell| model._get_text(cell)),
+            expected,
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn sort_empty_optional_arguments_for_column_sort() {
+    let mut model = new_empty_model();
+    model._set("A1", "3");
+    model._set("B1", "1");
+    model._set("C1", "2");
+    model._set("A3", "=SORT(A1:C1,,,TRUE)");
+    model.evaluate();
+    assert_eq!(
+        ["A3", "B3", "C3"].map(|cell| model._get_text(cell)),
+        ["1", "2", "3"]
+    );
+}
+
+#[test]
+fn sort_explicit_optional_arguments_still_validate() {
+    for (formula, expected) in [
+        ("=SORT(A1:A3,0)", "#VALUE!"),
+        ("=SORT(A1:A3,1,0)", "#VALUE!"),
+        ("=SORT(A1:A3,Z99)", "#VALUE!"),
+        ("=SORT(A1:A3,1,Z99)", "#VALUE!"),
+        ("=SORT(A1:A3,\"\")", "#VALUE!"),
+        ("=SORT(A1:A3,1,\"\")", "#VALUE!"),
+        ("=SORT(A1:A3,NA())", "#N/A"),
+        ("=SORT(A1:A3,1,1/0)", "#DIV/0!"),
+        ("=SORT(A1:A3,1,1,NA())", "#N/A"),
+    ] {
+        let mut model = new_empty_model();
+        model._set("A1", "3");
+        model._set("A2", "1");
+        model._set("A3", "2");
+        model._set("C1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("C1"), expected, "{formula}");
+    }
+}
+
 // ── SORTBY ────────────────────────────────────────────────────────────────────
 
 #[test]
@@ -158,6 +219,84 @@ fn sortby_wrong_arg_count() {
     model._set("A1", "=SORTBY(A2:A3,B2:B3,1,C2:C3)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
+}
+
+#[test]
+fn sortby_empty_optional_arguments_use_defaults() {
+    for formula in [
+        "=SORTBY(A1:A3,B1:B3)",
+        "=SORTBY(A1:A3,B1:B3,)",
+    ] {
+        let mut model = new_empty_model();
+        model._set("A1", "Charlie");
+        model._set("A2", "Alice");
+        model._set("A3", "Bob");
+        model._set("B1", "3");
+        model._set("B2", "1");
+        model._set("B3", "2");
+        model._set("C1", formula);
+        model.evaluate();
+        assert_eq!(
+            ["C1", "C2", "C3"].map(|cell| model._get_text(cell)),
+            ["Alice", "Bob", "Charlie"],
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn sortby_empty_optional_arguments_for_multiple_keys() {
+    for (formula, expected) in [
+        (
+            "=SORTBY(A1:B3,A1:A3,,B1:B3,)",
+            ["A", "1", "A", "3", "B", "2"],
+        ),
+        (
+            "=SORTBY(A1:B3,A1:A3,,B1:B3,-1)",
+            ["A", "3", "A", "1", "B", "2"],
+        ),
+        (
+            "=SORTBY(A1:B3,A1:A3,-1,B1:B3,)",
+            ["B", "2", "A", "1", "A", "3"],
+        ),
+    ] {
+        let mut model = new_empty_model();
+        model._set("A1", "B");
+        model._set("B1", "2");
+        model._set("A2", "A");
+        model._set("B2", "1");
+        model._set("A3", "A");
+        model._set("B3", "3");
+        model._set("C1", formula);
+        model.evaluate();
+        assert_eq!(
+            ["C1", "D1", "C2", "D2", "C3", "D3"].map(|cell| model._get_text(cell)),
+            expected,
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn sortby_explicit_optional_arguments_still_validate() {
+    for (formula, expected) in [
+        ("=SORTBY(A1:A3,A1:A3,0)", "#VALUE!"),
+        ("=SORTBY(A1:A3,A1:A3,Z99)", "#VALUE!"),
+        ("=SORTBY(A1:A3,A1:A3,\"\")", "#VALUE!"),
+        ("=SORTBY(A1:A3,A1:A3,NA())", "#N/A"),
+        ("=SORTBY(A1:A3,A1:A3,1,A1:A3,0)", "#VALUE!"),
+        ("=SORTBY(A1:A3,A1:A3,1,A1:A3,Z99)", "#VALUE!"),
+        ("=SORTBY(A1:A3,A1:A3,1,A1:A3,\"\")", "#VALUE!"),
+        ("=SORTBY(A1:A3,A1:A3,1,A1:A3,1/0)", "#DIV/0!"),
+    ] {
+        let mut model = new_empty_model();
+        model._set("A1", "3");
+        model._set("A2", "1");
+        model._set("A3", "2");
+        model._set("C1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("C1"), expected, "{formula}");
+    }
 }
 
 // ── UNIQUE ────────────────────────────────────────────────────────────────────
