@@ -139,3 +139,25 @@ fn leading_space_is_ignored() {
     assert_eq!(model._get_text("A1"), *"2");
     assert_eq!(model._get_text("A2"), *"255");
 }
+
+#[test]
+fn base_zero_with_blank_min_length_is_empty() {
+    let mut model = new_empty_model();
+    model._set("B1", "=BASE(0, 2, A1)");
+    model._set("B2", "=BASE(0.9, 2, A1)");
+    model._set("B3", "=BASE(9.9999999999999995E-8, 2, A1)");
+    model._set("B4", "=BASE(A1, 2, A1)");
+    model._set("B5", "=BASE(FALSE, 2, A1)");
+    model._set("B6", "=BASE(\"50%\", 2, A1)");
+    model._set("B7", "=BASE(\"12:30\", 16, A1)");
+    model._set("B8", "=BASE(0, 2)");
+    model._set("B9", "=BASE(5, 2, A1)");
+
+    model.evaluate();
+
+    for cell in ["B1", "B2", "B3", "B4", "B5", "B6", "B7"] {
+        assert_eq!(model._get_text(cell), *"", "{cell}");
+    }
+    assert_eq!(model._get_text("B8"), *"0");
+    assert_eq!(model._get_text("B9"), *"101");
+}
