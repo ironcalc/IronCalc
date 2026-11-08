@@ -121,8 +121,12 @@ impl<'a> Model<'a> {
             Err(s) => return s,
         };
         // optional min_length
+        // Return "" for a zero number when min_length is a blank cell
+        let mut min_length_blank = false;
         let min_length = if arg_count == 3 {
-            match self.get_number(&args[2], cell) {
+            let result = self.evaluate_node_in_context(&args[2], cell);
+            min_length_blank = matches!(result, CalcResult::EmptyCell);
+            match self.cast_to_number(result, cell) {
                 Ok(f) => {
                     if f < 0.0 {
                         return CalcResult::Error {
@@ -166,7 +170,9 @@ impl<'a> Model<'a> {
 
         let mut buf = String::new();
         if value == 0 {
-            buf.push('0');
+            if !min_length_blank {
+                buf.push('0');
+            }
         } else {
             while value > 0 {
                 let digit = (value % radix) as u8;
