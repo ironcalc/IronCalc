@@ -206,7 +206,7 @@ impl<'a> Model<'a> {
         let num_rows = data.len();
         let num_cols = data[0].len();
 
-        let sort_index: usize = if args.len() >= 2 {
+        let sort_index: usize = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
             match self.get_number(&args[1], cell) {
                 Ok(n) => {
                     let n = n as i64;
@@ -225,7 +225,7 @@ impl<'a> Model<'a> {
             1
         };
 
-        let ascending: bool = if args.len() >= 3 {
+        let ascending: bool = if args.len() >= 3 && !matches!(args[2], Node::EmptyArgKind) {
             match self.get_number(&args[2], cell) {
                 Ok(n) => match n as i32 {
                     1 => true,
@@ -338,7 +338,7 @@ impl<'a> Model<'a> {
                 )
             }
         };
-        let order1 = if n >= 3 {
+        let order1 = if n >= 3 && !matches!(args[2], Node::EmptyArgKind) {
             match self.get_number(&args[2], cell) {
                 Ok(v) => match v as i32 {
                     1 => true,
@@ -375,7 +375,7 @@ impl<'a> Model<'a> {
                     )
                 }
             };
-            let ascending = if i + 1 < n {
+            let ascending = if i + 1 < n && !matches!(args[i + 1], Node::EmptyArgKind) {
                 match self.get_number(&args[i + 1], cell) {
                     Ok(v) => match v as i32 {
                         1 => true,
