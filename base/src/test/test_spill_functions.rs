@@ -223,10 +223,7 @@ fn sortby_wrong_arg_count() {
 
 #[test]
 fn sortby_empty_optional_arguments_use_defaults() {
-    for formula in [
-        "=SORTBY(A1:A3,B1:B3)",
-        "=SORTBY(A1:A3,B1:B3,)",
-    ] {
+    for formula in ["=SORTBY(A1:A3,B1:B3)", "=SORTBY(A1:A3,B1:B3,)"] {
         let mut model = new_empty_model();
         model._set("A1", "Charlie");
         model._set("A2", "Alice");
