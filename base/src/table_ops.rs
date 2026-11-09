@@ -11,12 +11,11 @@ use crate::actions::CellsMoved;
 use crate::expressions::lexer::LexerMode;
 use crate::expressions::parser::stringify::{to_localized_string, to_rc_format, DisplaceData};
 use crate::expressions::parser::Node;
-use crate::expressions::token::{TableReference, TableSpecifier};
+use crate::expressions::token::TableReference;
 use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::expressions::utils::{is_valid_identifier, number_to_column};
 use crate::tables::{
-    find_table, for_each_node_mut, has_table_reference, resolve_structured_reference, table_area,
-    table_at, TableArea,
+    find_table, for_each_node_mut, has_table_reference, table_area, table_at, TableArea,
 };
 use crate::types::Table;
 use crate::Model;
@@ -699,8 +698,7 @@ impl Model<'_> {
         let table =
             find_table(&self.workbook.tables, name).ok_or(format!("No table named '{name}'"))?;
         let lower = table.name.to_lowercase();
-        let table_sheet = self
-            .get_sheet_index_by_name(&table.sheet_name)
+        self.get_sheet_index_by_name(&table.sheet_name)
             .ok_or("The table's sheet is gone")?;
         let mut out = Vec::new();
         for (sheet_index, worksheet) in self.workbook.worksheets.iter().enumerate() {
@@ -711,71 +709,10 @@ impl Model<'_> {
                     None => continue,
                 };
                 let node = &self.parsed_formulas[sheet_index][index as usize].0;
-                if !has_table_reference(node) {
-                    continue;
-                }
                 let cell = CellReferenceIndex { sheet, row, column };
-                let mut changed = false;
-                let mut node = (**node).clone();
-                for_each_node_mut(&mut node, &mut |n| {
-                    let (specifier, reference) = match n {
-                        Node::TableReferenceKind {
-                            table_name,
-                            specifier,
-                            table_reference,
-                        } if table_name.to_lowercase() == lower => {
-                            (specifier.clone(), table_reference.clone())
-                        }
-                        Node::TableNameKind(t) if t.to_lowercase() == lower => (None, None),
-                        _ => return,
-                    };
-                    changed = true;
-                    let mut resolved = resolve_structured_reference(
-                        table,
-                        table_sheet,
-                        &specifier,
-                        &reference,
-                        cell.row,
-                    );
-                    let this_row = specifier == Some(TableSpecifier::ThisRow);
-                    match &mut resolved {
-                        Node::ReferenceKind {
-                            sheet_name,
-                            absolute_row,
-                            row,
-                            ..
-                        } => {
-                            if table_sheet != sheet {
-                                *sheet_name = Some(table.sheet_name.clone());
-                            }
-                            if this_row {
-                                *absolute_row = false;
-                                *row -= cell.row;
-                            }
-                        }
-                        Node::RangeKind {
-                            sheet_name,
-                            absolute_row1,
-                            absolute_row2,
-                            row1,
-                            row2,
-                            ..
-                        } => {
-                            if table_sheet != sheet {
-                                *sheet_name = Some(table.sheet_name.clone());
-                            }
-                            if this_row {
-                                *absolute_row1 = false;
-                                *absolute_row2 = false;
-                                *row1 -= cell.row;
-                                *row2 -= cell.row;
-                            }
-                        }
-                        _ => {}
-                    }
-                    *n = resolved;
-                });
-                if changed {
+                let rewritten = self
+                    .table_references_as_cells_where(node, cell, &|t| t.to_lowercase() == lower);
+                if let Some(node) = rewritten {
                     let context = CellReferenceRC {
                         sheet: worksheet.get_name(),
                         row,

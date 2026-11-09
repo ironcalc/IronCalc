@@ -153,6 +153,8 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
         let is_sheet_selected = selected_sheet as usize == sheet_index;
         zip.write_all(
             worksheets::get_worksheet_xml(
+                model,
+                sheet_index as u32,
                 worksheet,
                 &model.parsed_formulas[sheet_index],
                 sheet_dimension_str,

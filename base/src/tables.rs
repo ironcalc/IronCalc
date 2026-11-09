@@ -16,6 +16,7 @@ use std::collections::HashMap;
 
 use crate::expressions::parser::{parse_range, Node};
 use crate::expressions::token::{Error, TableReference, TableSpecifier};
+use crate::expressions::types::CellReferenceIndex;
 use crate::types::{Table, TableColumn};
 
 /// The cells a table covers, header and total rows included.
@@ -340,11 +341,7 @@ pub(crate) fn has_table_reference(node: &Node) -> bool {
 impl crate::Model<'_> {
     /// A copy of `node` with every structured reference and bare table name
     /// replaced by the cells it stands for when evaluated in `cell`.
-    pub(crate) fn resolve_table_references(
-        &self,
-        node: &Node,
-        cell: crate::expressions::types::CellReferenceIndex,
-    ) -> Node {
+    pub(crate) fn resolve_table_references(&self, node: &Node, cell: CellReferenceIndex) -> Node {
         let mut resolved = node.clone();
         for_each_node_mut(&mut resolved, &mut |n| {
             let (table_name, specifier, table_reference) = match n {
@@ -376,5 +373,98 @@ impl crate::Model<'_> {
             };
         });
         resolved
+    }
+
+    /// `node`, the formula of `cell`, with every structured reference written
+    /// as the cells it stands for now, the way "Convert to Range" writes it;
+    /// `None` if it has none. The xlsx export writes formulas this way, as it
+    /// writes no table definitions yet: a workbook it saves calculates the
+    /// same when it is read again.
+    pub fn table_references_as_cells(&self, node: &Node, cell: CellReferenceIndex) -> Option<Node> {
+        self.table_references_as_cells_where(node, cell, &|_| true)
+    }
+
+    /// Like [`Self::table_references_as_cells`], for the references to the
+    /// tables whose name `include` accepts. `[@Price]` becomes `$C2`, its row
+    /// following the cell; everything else becomes an absolute reference, with
+    /// the table's sheet when it is not the cell's.
+    pub(crate) fn table_references_as_cells_where(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        include: &dyn Fn(&str) -> bool,
+    ) -> Option<Node> {
+        if !has_table_reference(node) {
+            return None;
+        }
+        let mut changed = false;
+        let mut node = node.clone();
+        for_each_node_mut(&mut node, &mut |n| {
+            let (table_name, specifier, table_reference) = match n {
+                Node::TableReferenceKind {
+                    table_name,
+                    specifier,
+                    table_reference,
+                } => (
+                    table_name.clone(),
+                    specifier.clone(),
+                    table_reference.clone(),
+                ),
+                Node::TableNameKind(name) => (name.clone(), None, None),
+                _ => return,
+            };
+            if !include(&table_name) {
+                return;
+            }
+            changed = true;
+            let Some((table, table_sheet)) = find_table(&self.workbook.tables, &table_name)
+                .and_then(|t| Some((t, self.get_sheet_index_by_name(&t.sheet_name)?)))
+            else {
+                *n = Node::ErrorKind(Error::REF);
+                return;
+            };
+            let mut resolved = resolve_structured_reference(
+                table,
+                table_sheet,
+                &specifier,
+                &table_reference,
+                cell.row,
+            );
+            let other_sheet = (table_sheet != cell.sheet).then(|| table.sheet_name.clone());
+            let this_row = specifier == Some(TableSpecifier::ThisRow);
+            match &mut resolved {
+                Node::ReferenceKind {
+                    sheet_name,
+                    absolute_row,
+                    row,
+                    ..
+                } => {
+                    *sheet_name = other_sheet;
+                    if this_row {
+                        *absolute_row = false;
+                        *row -= cell.row;
+                    }
+                }
+                Node::RangeKind {
+                    sheet_name,
+                    absolute_row1,
+                    absolute_row2,
+                    row1,
+                    row2,
+                    ..
+                } => {
+                    *sheet_name = other_sheet;
+                    if this_row {
+                        *absolute_row1 = false;
+                        *absolute_row2 = false;
+                        *row1 -= cell.row;
+                        *row2 -= cell.row;
+                    }
+                }
+                _ => {}
+            }
+            *n = resolved;
+        });
+        changed.then_some(node)
     }
 }

@@ -634,11 +634,13 @@ fn args_signature_sumif_spill(arg_count: usize) -> Vec<Signature> {
 }
 
 // 1 or none scalars
+// SHEET takes a reference as it is: `SHEET(Sheet2!A1:B3)` is 2, not the
+// implicit intersection of the range.
 fn args_signature_sheet(arg_count: usize) -> Vec<Signature> {
     if arg_count == 0 {
         vec![]
     } else if arg_count == 1 {
-        vec![Signature::Scalar]
+        vec![Signature::Vector]
     } else {
         vec![Signature::Error; arg_count]
     }

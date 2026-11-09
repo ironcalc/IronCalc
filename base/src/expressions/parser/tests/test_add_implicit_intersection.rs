@@ -80,6 +80,9 @@ fn simple_test() {
         ("INDIRECT(A1:A10,FALSE)", "@INDIRECT(@A1:A10,FALSE)"),
         ("SUM(INDIRECT(A1,FALSE))", "SUM(INDIRECT(A1,FALSE))"),
         // Information
+        // SHEET takes a reference as it is
+        ("_xlfn.SHEET(A1:A10)", "SHEET(A1:A10)"),
+        ("_xlfn.SHEET(A1)", "SHEET(A1)"),
         // ("ISBLANK(A1:A10)", "ISBLANK(A1:A10)"),
         // ("ISERR(A1:A10)", "ISERR(A1:A10)"),
         // ("ISERROR(A1:A10)", "ISERROR(A1:A10)"),
