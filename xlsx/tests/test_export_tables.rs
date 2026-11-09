@@ -4,8 +4,9 @@
 use ironcalc::compare::compare;
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::load_from_xlsx;
+use ironcalc_base::expressions::types::Area;
 use ironcalc_base::expressions::utils::number_to_column;
-use ironcalc_base::Model;
+use ironcalc_base::{DefinedNameEntry, Model, UserModel};
 
 fn save_and_reload(model: &Model) -> Model<'static> {
     let dir = std::env::temp_dir().join(format!("{}", uuid::Uuid::new_v4()));
@@ -74,4 +75,57 @@ fn tables_calculate_the_same_after_saving() {
         "=SHEET(WithHeaders!$A$2:$F$4)"
     );
     assert_eq!(formula(&reloaded, "Escape", 2, 5), "=SUBTOTAL(109,$B2:$D2)");
+}
+
+// A defined name that refers to a table is written the same way
+#[test]
+fn defined_names_that_refer_to_a_table_after_saving() {
+    let mut model = UserModel::new_empty("Sheet1", "en", "UTC", "en").unwrap();
+    for (row, (item, price)) in [("Item", "Price"), ("Pens", "1.5"), ("Ink", "10")]
+        .iter()
+        .enumerate()
+    {
+        model.set_user_input(0, row as i32 + 1, 1, item).unwrap();
+        model.set_user_input(0, row as i32 + 1, 2, price).unwrap();
+    }
+    let area = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 2,
+        height: 3,
+    };
+    model.create_table(&area, true, None).unwrap();
+    model
+        .new_defined_name(DefinedNameEntry::new("Prices", "Table1[Price]"))
+        .unwrap();
+    model
+        .new_defined_name(DefinedNameEntry::new("Sales", "Table1"))
+        .unwrap();
+    model.new_sheet().unwrap();
+    model.set_user_input(1, 1, 1, "=SUM(Prices)").unwrap();
+    model.set_user_input(1, 2, 1, "=ROWS(Sales)").unwrap();
+
+    let reloaded = save_and_reload(model.get_model());
+    let names: Vec<(String, String)> = reloaded
+        .get_defined_name_list()
+        .into_iter()
+        .map(|d| (d.name, d.formula))
+        .collect();
+    assert_eq!(
+        names,
+        [
+            ("Prices".to_string(), "Sheet1!$B$2:$B$3".to_string()),
+            ("Sales".to_string(), "Sheet1!$A$2:$B$3".to_string()),
+        ]
+    );
+    let sheet2 = sheet_index(&reloaded, "Sheet2");
+    assert_eq!(
+        reloaded.get_formatted_cell_value(sheet2, 1, 1).unwrap(),
+        "11.5"
+    );
+    assert_eq!(
+        reloaded.get_formatted_cell_value(sheet2, 2, 1).unwrap(),
+        "2"
+    );
 }

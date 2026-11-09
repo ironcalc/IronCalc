@@ -384,6 +384,18 @@ impl crate::Model<'_> {
         self.table_references_as_cells_where(node, cell, &|_| true)
     }
 
+    /// Like [`Self::table_references_as_cells`], for the formula of a defined
+    /// name: every reference names its sheet, as a defined name has none.
+    pub fn defined_name_table_references_as_cells(&self, node: &Node) -> Option<Node> {
+        // No sheet has this index, so no table is on the "same" sheet
+        let cell = CellReferenceIndex {
+            sheet: u32::MAX,
+            row: 1,
+            column: 1,
+        };
+        self.table_references_as_cells_where(node, cell, &|_| true)
+    }
+
     /// Like [`Self::table_references_as_cells`], for the references to the
     /// tables whose name `include` accepts. `[@Price]` becomes `$C2`, its row
     /// following the cell; everything else becomes an absolute reference, with

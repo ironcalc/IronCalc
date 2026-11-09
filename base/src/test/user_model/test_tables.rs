@@ -173,9 +173,16 @@ fn a_defined_name_can_refer_to_a_table() {
         .unwrap();
     model.set_user_input(0, 8, 1, "=SUM(Prices)").unwrap();
     assert_eq!(text(&model, (8, 1)), "15.5");
+    // and to the table on its own, its data
+    model
+        .new_defined_name(DefinedNameEntry::new("Sales", "Table1"))
+        .unwrap();
+    model.set_user_input(0, 9, 1, "=ROWS(Sales)").unwrap();
+    assert_eq!(text(&model, (9, 1)), "3");
     // The name follows the table as it grows
     model.set_user_input(0, 5, 3, "4.5").unwrap();
     assert_eq!(text(&model, (8, 1)), "20");
+    assert_eq!(text(&model, (9, 1)), "4");
 }
 
 #[test]

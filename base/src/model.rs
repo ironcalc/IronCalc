@@ -507,8 +507,9 @@ impl<'a> Model<'a> {
             },
             // A variable holds what it was bound to, a reference included
             Node::NamedVariableKind { .. } => self.variable_value(node, cell),
-            // A structured reference in a defined name (`=Table1[Price]`)
-            Node::TableReferenceKind { .. } => {
+            // A structured reference or a table's name in a defined name
+            // (`=Table1[Price]`, `=Table1`)
+            Node::TableReferenceKind { .. } | Node::TableNameKind(_) => {
                 let resolved = self.resolve_table_references(node, cell);
                 self.evaluate_node_with_reference(&resolved, cell)
             }
@@ -964,15 +965,10 @@ impl<'a> Model<'a> {
             }
             // A cell's formula has its table references resolved before it is
             // evaluated (`compute_formula`); a defined name's formula gets here.
-            TableReferenceKind { .. } => {
+            TableReferenceKind { .. } | TableNameKind(_) => {
                 let resolved = self.resolve_table_references(node, cell);
                 self.evaluate_node_in_context(&resolved, cell)
             }
-            TableNameKind(s) => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("table name \"{s}\" not supported."),
-            ),
             // A variable bound to a single cell is that cell's value here,
             // where a value is wanted; it is the reference itself where a
             // reference is wanted (see `evaluate_node_with_reference`).
