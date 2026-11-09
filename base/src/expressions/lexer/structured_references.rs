@@ -91,6 +91,13 @@ impl<'a> Lexer<'a> {
         }
         let chars: String = self.chars[self.position..position].iter().collect();
         if end_char == ']' {
+            if position >= self.len {
+                // "[Price" with no closing bracket
+                return Err(LexerError {
+                    position: self.position,
+                    message: "Invalid column name".to_string(),
+                });
+            }
             position += 1;
         }
         self.position = position;
@@ -149,6 +156,19 @@ impl<'a> Lexer<'a> {
     pub(crate) fn consume_implicit_structured_reference(&mut self) -> Result<TokenType> {
         self.position -= 1;
         self.consume_structured_reference("")
+    }
+
+    /// After a '[' token: the structured reference it starts, if it is one;
+    /// otherwise nothing is consumed.
+    pub(crate) fn try_implicit_structured_reference(&mut self) -> Option<TokenType> {
+        let position = self.position;
+        match self.consume_implicit_structured_reference() {
+            Ok(token @ TokenType::StructuredReference { .. }) => Some(token),
+            _ => {
+                self.position = position;
+                None
+            }
+        }
     }
 
     /// Possibilities:

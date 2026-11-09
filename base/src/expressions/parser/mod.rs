@@ -1183,9 +1183,9 @@ impl<'a> Parser<'a> {
                 position: 0,
                 message: format!("Unexpected token: '{next_token:?}'"),
             },
-            TokenType::LeftBracket => match self.lexer.consume_implicit_structured_reference() {
+            TokenType::LeftBracket => match self.lexer.try_implicit_structured_reference() {
                 // `[@Price]` inside a table: a reference to that table
-                Ok(TokenType::StructuredReference {
+                Some(TokenType::StructuredReference {
                     table_name,
                     specifier,
                     table_reference,
