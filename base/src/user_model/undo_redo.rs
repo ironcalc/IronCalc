@@ -660,6 +660,32 @@ impl<'a> UserModel<'a> {
                     needs_evaluation = true;
                     self.model.workbook.worksheet_mut(*sheet)?.merged_cells = old_value.clone();
                 }
+                Diff::SetTables {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_tables(old_value.clone());
+                }
+                Diff::RenameTable { old_name, new_name } => {
+                    self.model.rename_table(new_name, old_name)?;
+                }
+                Diff::RenameTableColumn {
+                    table,
+                    old_name,
+                    new_name,
+                } => {
+                    self.model.rename_table_column(table, new_name, old_name)?;
+                }
+                Diff::InsertCellsDown {
+                    sheet,
+                    row,
+                    first_column,
+                    last_column,
+                } => {
+                    needs_evaluation = true;
+                    self.model
+                        .delete_cells_up(*sheet, *row, *first_column, *last_column)?;
+                }
             }
         }
         if needs_evaluation {
@@ -1130,6 +1156,32 @@ impl<'a> UserModel<'a> {
                     // Merged cells block spilling, so a change can affect results
                     needs_evaluation = true;
                     self.model.workbook.worksheet_mut(*sheet)?.merged_cells = new_value.clone();
+                }
+                Diff::SetTables {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_tables(new_value.clone());
+                }
+                Diff::RenameTable { old_name, new_name } => {
+                    self.model.rename_table(old_name, new_name)?;
+                }
+                Diff::RenameTableColumn {
+                    table,
+                    old_name,
+                    new_name,
+                } => {
+                    self.model.rename_table_column(table, old_name, new_name)?;
+                }
+                Diff::InsertCellsDown {
+                    sheet,
+                    row,
+                    first_column,
+                    last_column,
+                } => {
+                    needs_evaluation = true;
+                    self.model
+                        .insert_cells_down(*sheet, *row, *first_column, *last_column)?;
                 }
             }
         }

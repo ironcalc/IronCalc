@@ -458,14 +458,25 @@ impl<'a> UserModel<'a> {
         } else {
             old_value
         };
-        let mut diff_list = vec![Diff::SetCellValue {
+        // Tables: a header renames its column; a cell beside a table makes it grow
+        let (mut diff_list, handled) =
+            self.table_effects_before_input(sheet, row, column, value)?;
+        if handled {
+            self.push_diff_list(diff_list);
+            self.evaluate_if_not_paused();
+            return Ok(());
+        }
+        diff_list.push(Diff::SetCellValue {
             sheet,
             row,
             column,
             new_value: value.to_string(),
             old_value: Box::new(old_value),
-        }];
+        });
         self.set_user_input_with_link_diffs(sheet, row, column, value.to_string(), &mut diff_list)?;
+        // and a formula in a table column can fill the column
+        let filled = self.table_effects_after_input(sheet, row, column, value)?;
+        diff_list.extend(filled);
 
         self.evaluate_if_not_paused();
 
@@ -1071,9 +1082,11 @@ impl<'a> UserModel<'a> {
     /// See also [`Model::insert_rows`].
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_tables = self.model.workbook.tables.clone();
         self.model.insert_rows(sheet, row, row_count)?;
 
-        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        let mut diff_list = self.tables_snapshot_diff(old_tables);
+        diff_list.extend(self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?);
         diff_list.push(Diff::InsertRows {
             sheet,
             row,
@@ -1103,9 +1116,11 @@ impl<'a> UserModel<'a> {
         column_count: i32,
     ) -> Result<(), String> {
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_tables = self.model.workbook.tables.clone();
         self.model.insert_columns(sheet, column, column_count)?;
 
-        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        let mut diff_list = self.tables_snapshot_diff(old_tables);
+        diff_list.extend(self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?);
         diff_list.push(Diff::InsertColumns {
             sheet,
             column,
@@ -1168,9 +1183,11 @@ impl<'a> UserModel<'a> {
         })?;
 
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_tables = self.model.workbook.tables.clone();
         self.model.delete_rows(sheet, row, row_count)?;
 
-        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        let mut diff_list = self.tables_snapshot_diff(old_tables);
+        diff_list.extend(self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?);
         diff_list.extend(link_diffs);
         diff_list.push(Diff::DeleteRows {
             sheet,
@@ -1248,9 +1265,11 @@ impl<'a> UserModel<'a> {
         })?;
 
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_tables = self.model.workbook.tables.clone();
         self.model.delete_columns(sheet, column, column_count)?;
 
-        let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        let mut diff_list = self.tables_snapshot_diff(old_tables);
+        diff_list.extend(self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?);
         diff_list.extend(link_diffs);
         diff_list.push(Diff::DeleteColumns {
             sheet,

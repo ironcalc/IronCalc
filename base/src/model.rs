@@ -3244,6 +3244,10 @@ impl<'a> Model<'a> {
                     row,
                     column,
                 };
+                // Inside a table, its own name is left out: [@Price]
+                let shown =
+                    self.with_own_table_names_omitted(formula, &cell_ref.sheet, row, column);
+                let formula = shown.as_ref().unwrap_or(formula);
                 Ok(format!(
                     "={}",
                     to_localized_string(formula, &cell_ref, self.locale, self.language)
