@@ -188,6 +188,31 @@ export interface CompletionContext {
   replace_from: number;
 }
 
+// An Excel table (getTables). The range includes the header and total rows.
+export interface TableInfo {
+  name: string;
+  sheet: number;
+  row: number;
+  column: number;
+  width: number;
+  height: number;
+  header_row: boolean;
+  total_row: boolean;
+  columns: TableColumnInfo[];
+  style: string | null;
+  banded_rows: boolean;
+  banded_columns: boolean;
+  first_column: boolean;
+  last_column: boolean;
+  filter_button: boolean;
+}
+
+export interface TableColumnInfo {
+  name: string;
+  total_function: string | null;
+  total_label: string | null;
+}
+
 export type CellArrayStructure =
   | "SingleCell"
   | { DynamicChild: [number, number, number, number] }

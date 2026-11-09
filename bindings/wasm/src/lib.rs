@@ -625,6 +625,80 @@ impl Model {
             .map_err(to_js_error)
     }
 
+    // -----------------------------------------------------------------------
+    // Tables
+    // -----------------------------------------------------------------------
+
+    /// Format as Table: turns `area` into a table and returns its name.
+    /// Without headers, a header row is inserted above the data.
+    #[wasm_bindgen(js_name = "createTable")]
+    pub fn create_table(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Area")] area: JsValue,
+        has_headers: bool,
+        name: Option<String>,
+    ) -> Result<String, JsError> {
+        let area: Area =
+            serde_wasm_bindgen::from_value(area).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .create_table(&area, has_headers, name.as_deref())
+            .map_err(to_js_error)
+    }
+
+    /// Renames a table; formulas that refer to it follow.
+    #[wasm_bindgen(js_name = "renameTable")]
+    pub fn rename_table(&mut self, name: &str, new_name: &str) -> Result<(), JsError> {
+        self.model.rename_table(name, new_name).map_err(to_js_error)
+    }
+
+    /// Convert to Range: references to the table become plain references.
+    #[wasm_bindgen(js_name = "convertTableToRange")]
+    pub fn convert_table_to_range(&mut self, name: &str) -> Result<(), JsError> {
+        self.model.convert_table_to_range(name).map_err(to_js_error)
+    }
+
+    /// Shows or hides a table's total row.
+    #[wasm_bindgen(js_name = "setTableTotalRow")]
+    pub fn set_table_total_row(&mut self, name: &str, show: bool) -> Result<(), JsError> {
+        self.model
+            .set_table_total_row(name, show)
+            .map_err(to_js_error)
+    }
+
+    /// The total row's function under a column: "none", "sum", "average",
+    /// "count", "countNums", "max", "min", "stdDev" or "var".
+    #[wasm_bindgen(js_name = "setTableColumnTotal")]
+    pub fn set_table_column_total(
+        &mut self,
+        name: &str,
+        column: &str,
+        function: &str,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_table_column_total(name, column, function)
+            .map_err(to_js_error)
+    }
+
+    /// Every table, or the tables on one sheet.
+    #[wasm_bindgen(js_name = "getTables", unchecked_return_type = "TableInfo[]")]
+    pub fn get_tables(&self, sheet: Option<u32>) -> Result<JsValue, JsError> {
+        let tables = self.model.get_tables(sheet).map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&tables).map_err(JsError::from)
+    }
+
+    /// The name of the table that covers a cell, or undefined.
+    #[wasm_bindgen(js_name = "getTableAt")]
+    pub fn get_table_at(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<String>, JsError> {
+        self.model
+            .get_table_at(sheet, row, column)
+            .map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "getFrozenRowsCount")]
     pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, JsError> {
         self.model.get_frozen_rows_count(sheet).map_err(to_js_error)

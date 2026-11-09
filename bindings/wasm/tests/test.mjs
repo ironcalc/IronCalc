@@ -389,3 +389,26 @@ test('Cells block', () => {
     assert.throws(() => model.getCellsBlock(0, 1, 1, 0, 1));
     assert.throws(() => model.getCellsBlock(3, 1, 1, 1, 1));
 });
+
+test('Tables', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    const cells = [["Item", "Qty"], ["Pens", "2"], ["Pads", "3"]];
+    cells.forEach((row, r) => row.forEach((v, c) => model.setUserInput(0, r + 1, c + 1, v)));
+    const name = model.createTable({ sheet: 0, row: 1, column: 1, width: 2, height: 3 }, true);
+    assert.strictEqual(name, "Table1");
+    model.setUserInput(0, 6, 1, "=SUM(Table1[Qty])");
+    assert.strictEqual(model.getFormattedCellValue(0, 6, 1), "5");
+    model.setUserInput(0, 4, 2, "4");
+    assert.strictEqual(model.getFormattedCellValue(0, 6, 1), "9");
+    const [table] = model.getTables(0);
+    assert.strictEqual(table.height, 4);
+    assert.deepStrictEqual(table.columns.map((c) => c.name), ["Item", "Qty"]);
+    model.renameTable("Table1", "Sales");
+    assert.strictEqual(model.getCellContent(0, 6, 1), "=SUM(Sales[Qty])");
+    model.setTableTotalRow("Sales", true);
+    assert.strictEqual(model.getFormattedCellValue(0, 5, 2), "9");
+    assert.strictEqual(model.getTableAt(0, 5, 2), "Sales");
+    model.convertTableToRange("Sales");
+    assert.deepStrictEqual(model.getTables(), []);
+    assert.strictEqual(model.getCellContent(0, 6, 1), "=SUM($B$2:$B$4)");
+});
