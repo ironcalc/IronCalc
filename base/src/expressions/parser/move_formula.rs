@@ -476,6 +476,11 @@ fn to_string_moved(
         }
         DefinedNameKind { name, sheet, .. } => defined_name_to_string(name, sheet),
         TableNameKind(name) => name.to_string(),
+        TableReferenceKind {
+            table_name,
+            specifier,
+            table_reference,
+        } => crate::tables::structured_reference_to_string(table_name, specifier, table_reference),
         NamedVariableKind { name, id: _ } => name.to_string(),
         CompareKind { kind, left, right } => format!(
             "{}{}{}",

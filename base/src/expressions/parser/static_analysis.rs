@@ -1,6 +1,7 @@
 use crate::functions::Function;
 
 use super::Node;
+use crate::expressions::token::{TableReference, TableSpecifier};
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use regex_lite as regex;
@@ -162,7 +163,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 }
             }
         }
-        Node::TableNameKind(_) => {
+        Node::TableNameKind(_) | Node::TableReferenceKind { .. } => {
             // noop for now
         }
         Node::FunctionKind { kind, args } => {
@@ -235,6 +236,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::DefinedNameKind { .. }
         | Node::NamedVariableKind { .. }
         | Node::TableNameKind(_)
+        | Node::TableReferenceKind { .. }
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
@@ -380,6 +382,14 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         }
         Node::NamedVariableKind { .. } => StaticResult::Scalar,
         Node::TableNameKind(_) => StaticResult::Unknown,
+        // `[@Price]` is one cell; any other structured reference is a range
+        // whose size changes with the table.
+        Node::TableReferenceKind {
+            specifier: Some(TableSpecifier::ThisRow),
+            table_reference: Some(TableReference::ColumnReference(_)),
+            ..
+        } => StaticResult::Scalar,
+        Node::TableReferenceKind { .. } => StaticResult::Unknown,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::SpillRangeOperator { .. } => StaticResult::Unknown,

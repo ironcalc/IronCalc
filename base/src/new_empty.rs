@@ -185,6 +185,7 @@ impl<'a> Model<'a> {
         let defined_names = self.workbook.get_defined_names_with_scope();
         self.parser
             .set_worksheets_and_names(self.workbook.get_worksheet_names(), defined_names);
+        self.parser.set_tables(self.workbook.tables.clone());
         self.parsed_formulas = vec![];
         self.parse_formulas();
         self.parsed_defined_names = HashMap::new();

@@ -61,6 +61,7 @@ pub mod links;
 mod merged_cells;
 mod model;
 mod styles;
+mod tables;
 mod tz;
 mod units;
 mod user_model;

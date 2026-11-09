@@ -496,13 +496,15 @@ pub(crate) fn displaced_node(node: &Node, displacement: &Displacement) -> Option
                 args: new_args.unwrap_or_else(|| args.clone()),
             })
         }
-        // Nothing in these points anywhere
+        // Nothing in these points anywhere (a structured reference follows
+        // its table, which is moved on its own)
         BooleanKind(_)
         | NumberKind(_)
         | StringKind(_)
         | ArrayKind(_)
         | DefinedNameKind { .. }
         | TableNameKind(_)
+        | TableReferenceKind { .. }
         | NamedVariableKind { .. }
         | ErrorKind(_)
         | ParseErrorKind { .. }

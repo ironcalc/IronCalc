@@ -132,6 +132,7 @@ fn has_unqualified_reference(node: &Node) -> bool {
         | Node::ArrayKind(_)
         | Node::DefinedNameKind { .. }
         | Node::TableNameKind(_)
+        | Node::TableReferenceKind { .. }
         | Node::NamedVariableKind { .. }
         | Node::ErrorKind(_)
         | Node::ParseErrorKind { .. }
@@ -506,6 +507,11 @@ impl<'a> Model<'a> {
             },
             // A variable holds what it was bound to, a reference included
             Node::NamedVariableKind { .. } => self.variable_value(node, cell),
+            // A structured reference in a defined name (`=Table1[Price]`)
+            Node::TableReferenceKind { .. } => {
+                let resolved = self.resolve_table_references(node, cell);
+                self.evaluate_node_with_reference(&resolved, cell)
+            }
             // A defined name that stands for a reference is that reference,
             // to a single cell as well
             Node::DefinedNameKind { name, scope, .. } => {
@@ -955,6 +961,12 @@ impl<'a> Model<'a> {
                         format!("Defined name \"{name}\" not found."),
                     )
                 }
+            }
+            // A cell's formula has its table references resolved before it is
+            // evaluated (`compute_formula`); a defined name's formula gets here.
+            TableReferenceKind { .. } => {
+                let resolved = self.resolve_table_references(node, cell);
+                self.evaluate_node_in_context(&resolved, cell)
             }
             TableNameKind(s) => CalcResult::new_error(
                 Error::NAME,
