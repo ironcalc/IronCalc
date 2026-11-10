@@ -1112,6 +1112,9 @@ impl<'a> Model<'a> {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        if matches!(args[0], Node::EmptyArgKind) || matches!(args[1], Node::EmptyArgKind) {
+            return CalcResult::new_error(Error::NA, cell, "Empty argument".to_string());
+        }
         let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(n) => n.floor() as i64,
             Err(e) => return e,
@@ -1138,7 +1141,7 @@ impl<'a> Model<'a> {
         };
         let mut count = 0i64;
         for serial in from..=to {
-            let date = match self.excel_date(serial, cell) {
+            let date = match self.workday_date(serial, cell) {
                 Ok(d) => d,
                 Err(e) => return e,
             };
@@ -1164,6 +1167,19 @@ impl<'a> Model<'a> {
                 message: "Out of range parameters for date".to_string(),
             }),
         }
+    }
+
+    fn workday_date(
+        &self,
+        serial: i64,
+        cell: CellReferenceIndex,
+    ) -> Result<chrono::NaiveDate, CalcResult> {
+        if serial == 0 {
+            if let Some(date) = chrono::NaiveDate::from_ymd_opt(1899, 12, 30) {
+                return Ok(date);
+            }
+        }
+        self.excel_date(serial, cell)
     }
 
     fn weekend_mask(
@@ -1252,6 +1268,9 @@ impl<'a> Model<'a> {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        if matches!(args[0], Node::EmptyArgKind) || matches!(args[1], Node::EmptyArgKind) {
+            return CalcResult::new_error(Error::NA, cell, "Empty argument".to_string());
+        }
         let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(n) => n.floor() as i64,
             Err(e) => return e,
@@ -1284,7 +1303,7 @@ impl<'a> Model<'a> {
         };
         let mut count = 0i64;
         for serial in from..=to {
-            let date = match self.excel_date(serial, cell) {
+            let date = match self.workday_date(serial, cell) {
                 Ok(d) => d,
                 Err(e) => return e,
             };
@@ -1803,11 +1822,14 @@ impl<'a> Model<'a> {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        if matches!(args[0], Node::EmptyArgKind) || matches!(args[1], Node::EmptyArgKind) {
+            return CalcResult::new_error(Error::NA, cell, "Empty argument".to_string());
+        }
         let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let mut date = match self.excel_date(start_serial, cell) {
+        let mut date = match self.workday_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -1883,11 +1905,14 @@ impl<'a> Model<'a> {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        if matches!(args[0], Node::EmptyArgKind) || matches!(args[1], Node::EmptyArgKind) {
+            return CalcResult::new_error(Error::NA, cell, "Empty argument".to_string());
+        }
         let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let mut date = match self.excel_date(start_serial, cell) {
+        let mut date = match self.workday_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
