@@ -71,3 +71,27 @@ fn table_totals_no_reference() {
     );
     assert_eq!(lx.next_token(), EOF);
 }
+
+#[test]
+fn tokens_of_the_short_form() {
+    use crate::expressions::lexer::util::get_tokens;
+    let tokens = get_tokens("=[@Qty]*2+[");
+    assert_eq!(
+        tokens[1].token,
+        StructuredReference {
+            table_name: "".to_string(),
+            specifier: Some(TableSpecifier::ThisRow),
+            table_reference: Some(TableReference::ColumnReference("Qty".to_string())),
+        }
+    );
+    assert_eq!((tokens[1].start, tokens[1].end), (1, 7));
+    // A bracket that starts nothing stays a bracket
+    assert_eq!(tokens.last().unwrap().token, LeftBracket);
+}
+
+#[test]
+fn an_unclosed_column_name_is_an_error() {
+    // Not a column called "Price"
+    let mut lx = new_lexer("tbInfo[Price");
+    assert!(matches!(lx.next_token(), Illegal(_)));
+}

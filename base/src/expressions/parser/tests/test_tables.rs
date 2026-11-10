@@ -69,11 +69,13 @@ fn simple_table() {
         column: 6,
     };
 
+    // Structured references stay structured (they are resolved when the
+    // formula is evaluated), written the way Excel writes them.
     let formula = "SUM(tblIncome[[#This Row],[Jan]:[Dec]])";
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUM($A$2:$E$2)"
+        "SUM(tblIncome[@[Jan]:[Dec]])"
     );
 
     // Cell A3
@@ -86,7 +88,7 @@ fn simple_table() {
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUBTOTAL(109,$A$2:$A$3)"
+        "SUBTOTAL(109,tblIncome[Jan])"
     );
 
     // Cell A3 in 'Second Sheet'
@@ -95,10 +97,76 @@ fn simple_table() {
         row: 4,
         column: 1,
     };
-    let formula = "SUBTOTAL(109, tblIncome[Jan])";
+    let formula = "SUBTOTAL(109, tblincome[jan])";
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUBTOTAL(109,'Sheet One'!$A$2:$A$3)"
+        "SUBTOTAL(109,tblIncome[Jan])"
     );
+}
+
+#[test]
+fn excel_short_forms() {
+    let worksheets = vec!["Sheet One".to_string()];
+    let column_names = ["Qty", "Unit Price", "Total $"];
+    let tables = create_test_table("Sales", &column_names, "A1", 4);
+    let mut parser = new_parser(worksheets, vec![], tables);
+    // C2, inside the table
+    let inside = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 2,
+        column: 3,
+    };
+    let cases = [
+        ("[@Qty]*[@[Unit Price]]", "Sales[@Qty]*Sales[@[Unit Price]]"),
+        ("Sales[@Qty]", "Sales[@Qty]"),
+        ("Sales[[#This Row],[Qty]]", "Sales[@Qty]"),
+        (
+            "SUM(Sales[@[Qty]:[Unit Price]])",
+            "SUM(Sales[@[Qty]:[Unit Price]])",
+        ),
+        ("SUM(Sales[@])", "SUM(Sales[@])"),
+        ("SUM([Total $])", "SUM(Sales[[Total $]])"),
+        ("SUM(Sales[[Total $]])", "SUM(Sales[[Total $]])"),
+        ("Sales[[#Totals],[Qty]]", "Sales[[#Totals],[Qty]]"),
+        (
+            "SUM(Sales[[#Headers],[Qty]:[Unit Price]])",
+            "SUM(Sales[[#Headers],[Qty]:[Unit Price]])",
+        ),
+        ("ROWS(Sales[#All])", "ROWS(Sales[#All])"),
+        (
+            "SUM(Sales[[Qty]:[Unit Price]])",
+            "SUM(Sales[[Qty]:[Unit Price]])",
+        ),
+    ];
+    for (formula, expected) in cases {
+        let t = parser.parse(formula, &inside);
+        assert_eq!(
+            to_english_localized_string(&t, &inside),
+            expected,
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn short_form_outside_a_table_is_an_error() {
+    let worksheets = vec!["Sheet One".to_string()];
+    let tables = create_test_table("Sales", &["Qty"], "A1", 4);
+    let mut parser = new_parser(worksheets, vec![], tables);
+    let outside = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 10,
+        column: 10,
+    };
+    let t = parser.parse("[@Qty]*2", &outside);
+    assert!(matches!(
+        t,
+        crate::expressions::parser::Node::ParseErrorKind { .. }
+    ));
+    let t = parser.parse("Sales[Nope]", &outside);
+    assert!(matches!(
+        t,
+        crate::expressions::parser::Node::ParseErrorKind { .. }
+    ));
 }

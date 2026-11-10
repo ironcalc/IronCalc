@@ -33,12 +33,14 @@ use std::collections::HashMap;
 
 use ironcalc_base::expressions::parser::{new_parser_english, stringify::to_excel_string};
 use ironcalc_base::expressions::types::CellReferenceRC;
-use ironcalc_base::types::{SheetState, Workbook};
+use ironcalc_base::types::SheetState;
+use ironcalc_base::Model;
 
 use super::escape::escape_xml;
 use super::xml_constants::XML_DECLARATION;
 
-pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> String {
+pub(crate) fn get_workbook_xml(model: &Model, selected_sheet: u32) -> String {
+    let workbook = &model.workbook;
     // sheets
     // <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
     let mut sheets_str: Vec<String> = vec![];
@@ -100,6 +102,11 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
             .strip_prefix('=')
             .unwrap_or(&defined_name.formula);
         let node = parser.parse(formula_body, &parse_context);
+        // The file has no table definitions yet: `Table1[Price]` is written
+        // as the cells it stands for, `Sheet1!$C$2:$C$9`.
+        let node = model
+            .defined_name_table_references_as_cells(&node)
+            .unwrap_or(node);
         let formula = to_excel_string(&node, &parse_context);
         let formula = escape_xml(&formula);
         let hidden = if defined_name.hidden {

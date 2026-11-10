@@ -108,7 +108,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.start_file("xl/styles.xml", options)?;
     zip.write_all(styles::get_styles_xml(workbook).as_bytes())?;
     zip.start_file("xl/workbook.xml", options)?;
-    zip.write_all(workbook::get_workbook_xml(workbook, selected_sheet).as_bytes())?;
+    zip.write_all(workbook::get_workbook_xml(model, selected_sheet).as_bytes())?;
     zip.start_file("xl/metadata.xml", options)?;
     let metadata_xml = include_str!("metadata.xml");
     zip.write_all(metadata_xml.as_bytes())?;
@@ -153,6 +153,8 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
         let is_sheet_selected = selected_sheet as usize == sheet_index;
         zip.write_all(
             worksheets::get_worksheet_xml(
+                model,
+                sheet_index as u32,
                 worksheet,
                 &model.parsed_formulas[sheet_index],
                 sheet_dimension_str,

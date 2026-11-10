@@ -40,6 +40,7 @@ mod test_row_column;
 mod test_sheet_state;
 mod test_sheets_undo_redo;
 mod test_styles;
+mod test_tables;
 mod test_to_from_bytes;
 mod test_undo_redo;
 mod test_user_input_dates_quote;

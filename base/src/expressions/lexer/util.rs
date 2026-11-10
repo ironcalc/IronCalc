@@ -74,6 +74,13 @@ pub fn get_tokens_with_locale(
                 break;
             }
             _ => {
+                // `[@Price]` inside a table is one structured reference
+                if next_token == token::TokenType::LeftBracket {
+                    if let Some(reference) = lexer.try_implicit_structured_reference() {
+                        next_token = reference;
+                        end = lexer.get_position();
+                    }
+                }
                 tokens.push(MarkedToken {
                     start,
                     end,

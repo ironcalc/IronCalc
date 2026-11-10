@@ -5,7 +5,8 @@ use bitcode::{Decode, Encode};
 use crate::{
     cf_types::CfRule,
     types::{
-        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
+        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Table, Theme,
+        Worksheet,
     },
 };
 
@@ -322,6 +323,33 @@ pub(crate) enum Diff {
         sheet: u32,
         old_value: Vec<MergedCell>,
         new_value: Vec<MergedCell>,
+    },
+    /// Sets every table of the workbook: apply installs `new_value`, undo
+    /// `old_value`. Table actions put it first in their list, so that on redo
+    /// the tables exist before the cell writes that follow. Structural actions
+    /// push it with `old_value == new_value`, like `SetMergedCells`.
+    SetTables {
+        old_value: HashMap<String, Table>,
+        new_value: HashMap<String, Table>,
+    },
+    /// Renames a table and every reference to it
+    RenameTable {
+        old_name: String,
+        new_name: String,
+    },
+    /// Renames a table column and every reference to it
+    RenameTableColumn {
+        table: String,
+        old_name: String,
+        new_name: String,
+    },
+    /// Shifts the cells of the columns down one row from `row` (a table made
+    /// from data without headers gets its header row this way)
+    InsertCellsDown {
+        sheet: u32,
+        row: i32,
+        first_column: i32,
+        last_column: i32,
     },
 }
 

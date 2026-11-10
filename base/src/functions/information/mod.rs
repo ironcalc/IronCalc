@@ -337,6 +337,10 @@ impl<'a> Model<'a> {
                     message: format!("Name not found: {name}"),
                 }
             }
+            // A reference (a table's resolves to one): the sheet it is on
+            Node::ReferenceKind { sheet_index, .. } | Node::RangeKind { sheet_index, .. } => {
+                return CalcResult::Number(*sheet_index as f64 + 1.0);
+            }
             arg => {
                 // Now it should be the name of a sheet
                 let sheet_name = match self.get_string(arg, cell) {

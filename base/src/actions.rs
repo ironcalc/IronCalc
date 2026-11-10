@@ -16,7 +16,7 @@ use crate::types::{ArrayKind, Cell, FormulaValue, Link, MergedCell, Worksheet};
 /// so that their formulas can be read from where they were written. The
 /// `first` row or column is the first one that moved, in its old place.
 #[derive(Clone, Copy)]
-enum CellsMoved {
+pub(crate) enum CellsMoved {
     None,
     Rows { sheet: u32, first: i32, delta: i32 },
     Columns { sheet: u32, first: i32, delta: i32 },
@@ -447,7 +447,7 @@ impl<'a> Model<'a> {
     /// all, which in a large sheet is the usual case, and such a cell is left
     /// alone. The spill cells of a moved array are pointed at their anchor's
     /// new place.
-    fn displace_formulas(
+    pub(crate) fn displace_formulas(
         &mut self,
         displace_data: &DisplaceData,
         moved: CellsMoved,
@@ -577,7 +577,7 @@ impl<'a> Model<'a> {
     /// * `source_column` - The column index of the cell's current location.
     /// * `target_row` - The row index of the cell's new location.
     /// * `target_column` - The column index of the cell's new location.
-    fn move_cell(
+    pub(crate) fn move_cell(
         &mut self,
         sheet: u32,
         source_row: i32,
@@ -803,6 +803,7 @@ impl<'a> Model<'a> {
         // TODO: If in a row the cell to the right and left have the same style we should copy it
 
         worksheet.cols = new_columns;
+        self.displace_tables_for_columns(sheet, column, column_count)?;
 
         Ok(())
     }
@@ -956,6 +957,7 @@ impl<'a> Model<'a> {
             }
         }
         worksheet.cols = new_columns;
+        self.displace_tables_for_columns(sheet, column, -column_count)?;
 
         Ok(())
     }
@@ -1150,6 +1152,7 @@ impl<'a> Model<'a> {
             },
         )?;
         self.displace_cf_ranges(sheet, &disp);
+        self.displace_tables_for_rows(sheet, row, row_count)?;
 
         Ok(())
     }
@@ -1248,6 +1251,7 @@ impl<'a> Model<'a> {
             },
         )?;
         self.displace_cf_ranges(sheet, &disp);
+        self.displace_tables_for_rows(sheet, row, -row_count)?;
         Ok(())
     }
 

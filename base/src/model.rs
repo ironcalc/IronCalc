@@ -132,6 +132,7 @@ fn has_unqualified_reference(node: &Node) -> bool {
         | Node::ArrayKind(_)
         | Node::DefinedNameKind { .. }
         | Node::TableNameKind(_)
+        | Node::TableReferenceKind { .. }
         | Node::NamedVariableKind { .. }
         | Node::ErrorKind(_)
         | Node::ParseErrorKind { .. }
@@ -506,6 +507,12 @@ impl<'a> Model<'a> {
             },
             // A variable holds what it was bound to, a reference included
             Node::NamedVariableKind { .. } => self.variable_value(node, cell),
+            // A structured reference or a table's name in a defined name
+            // (`=Table1[Price]`, `=Table1`)
+            Node::TableReferenceKind { .. } | Node::TableNameKind(_) => {
+                let resolved = self.resolve_table_references(node, cell);
+                self.evaluate_node_with_reference(&resolved, cell)
+            }
             // A defined name that stands for a reference is that reference,
             // to a single cell as well
             Node::DefinedNameKind { name, scope, .. } => {
@@ -956,11 +963,12 @@ impl<'a> Model<'a> {
                     )
                 }
             }
-            TableNameKind(s) => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("table name \"{s}\" not supported."),
-            ),
+            // A cell's formula has its table references resolved before it is
+            // evaluated (`compute_formula`); a defined name's formula gets here.
+            TableReferenceKind { .. } | TableNameKind(_) => {
+                let resolved = self.resolve_table_references(node, cell);
+                self.evaluate_node_in_context(&resolved, cell)
+            }
             // A variable bound to a single cell is that cell's value here,
             // where a value is wanted; it is the reference itself where a
             // reference is wanted (see `evaluate_node_with_reference`).
@@ -3232,6 +3240,10 @@ impl<'a> Model<'a> {
                     row,
                     column,
                 };
+                // Inside a table, its own name is left out: [@Price]
+                let shown =
+                    self.with_own_table_names_omitted(formula, &cell_ref.sheet, row, column);
+                let formula = shown.as_ref().unwrap_or(formula);
                 Ok(format!(
                     "={}",
                     to_localized_string(formula, &cell_ref, self.locale, self.language)

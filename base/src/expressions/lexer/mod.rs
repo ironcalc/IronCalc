@@ -99,6 +99,15 @@ fn is_identifier_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_' || c == '.'
 }
 
+/// "R", "C", "RC", "R2C", "R1C3"...: names that start an R1C1 reference when a '[' follows.
+fn looks_like_r1c1_reference(name_upper: &str) -> bool {
+    let rest = name_upper.strip_prefix('R').unwrap_or(name_upper);
+    let rest = rest.trim_start_matches(|c: char| c.is_ascii_digit());
+    let rest = rest.strip_prefix('C').unwrap_or(rest);
+    let rest = rest.trim_start_matches(|c: char| c.is_ascii_digit());
+    rest.is_empty()
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub enum LexerMode {
     A1,
@@ -363,6 +372,20 @@ impl<'a> Lexer<'a> {
                             }
                             if self.peek_char() == Some('(') {
                                 return TokenType::Ident(name);
+                            }
+                            // Formulas are stored in R1C1, so structured references
+                            // must read there too. `R[1]C` and `RC[2]` are references.
+                            if self.mode == LexerMode::R1C1
+                                && self.peek_char() == Some('[')
+                                && utils::is_valid_a1_identifier(&name)
+                                && !looks_like_r1c1_reference(&name_upper)
+                            {
+                                if let Ok(r) = self.consume_structured_reference(&name) {
+                                    return r;
+                                }
+                                return TokenType::Illegal(
+                                    self.set_error("Invalid structured reference", self.position),
+                                );
                             }
                             if self.mode == LexerMode::A1 {
                                 let parsed_reference = utils::parse_reference_a1(&name_upper);

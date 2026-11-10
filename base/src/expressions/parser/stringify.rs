@@ -209,6 +209,7 @@ fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::ArrayKind(_)
         | Node::DefinedNameKind { .. }
         | Node::TableNameKind(_)
+        | Node::TableReferenceKind { .. }
         | Node::ErrorKind(_)
         | Node::ParseErrorKind { .. }
         | Node::EmptyArgKind => {}
@@ -872,6 +873,7 @@ fn stringify(
                 | WrongReferenceKind { .. }
                 | DefinedNameKind { .. }
                 | TableNameKind(_)
+                | TableReferenceKind { .. }
                 | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     left,
@@ -917,6 +919,7 @@ fn stringify(
                 | WrongReferenceKind { .. }
                 | DefinedNameKind { .. }
                 | TableNameKind(_)
+                | TableReferenceKind { .. }
                 | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     right,
@@ -1012,6 +1015,11 @@ fn stringify(
             format!("{{{matrix_string}}}")
         }
         TableNameKind(value) => value.to_string(),
+        TableReferenceKind {
+            table_name,
+            specifier,
+            table_reference,
+        } => crate::tables::structured_reference_to_string(table_name, specifier, table_reference),
         DefinedNameKind { name, sheet, .. } => defined_name_to_string(name, sheet),
         NamedVariableKind { name, id: _ } => name.to_string(),
         UnaryKind { kind, right } => match kind {
@@ -1033,6 +1041,7 @@ fn stringify(
                     | ArrayKind(_)
                     | DefinedNameKind { .. }
                     | TableNameKind(_)
+                    | TableReferenceKind { .. }
                     | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
                     | SpillRangeOperator { .. }
@@ -1333,6 +1342,7 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
             }
         }
         Node::TableNameKind(_) => {}
+        Node::TableReferenceKind { .. } => {}
         Node::NamedVariableKind { .. } => {}
         Node::EmptyArgKind => {}
         Node::LambdaDefKind {
@@ -1441,6 +1451,7 @@ pub(crate) fn rename_defined_name_in_node(
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
         Node::TableNameKind(_) => {}
+        Node::TableReferenceKind { .. } => {}
         Node::NamedVariableKind { .. } => {}
         Node::LambdaDefKind {
             parameters: _,
