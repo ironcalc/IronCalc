@@ -69,7 +69,7 @@ pub struct CellLinkView {
     pub link: Link,
 }
 
-fn check_valid_cell(row: i32, column: i32) -> Result<(), String> {
+pub(crate) fn check_valid_cell(row: i32, column: i32) -> Result<(), String> {
     if !(1..=LAST_ROW).contains(&row) {
         return Err(format!("Invalid row: '{row}'"));
     }

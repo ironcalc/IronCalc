@@ -1,4 +1,5 @@
 use crate::cf_types::{CfRule, Cfvo};
+use crate::comments::displace_comments;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::cut_paste::cf_sqref_anchor;
 use crate::expressions::parser::displace::{displaced_node, Displacement};
@@ -732,13 +733,15 @@ impl<'a> Model<'a> {
             .displace_columns(column, column_count);
 
         // Links move with their cells
-        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+        let displace = |r: i32, c: i32| {
             if c >= column {
                 Some((r, c + column_count))
             } else {
                 Some((r, c))
             }
-        });
+        };
+        displace_links(self.workbook.worksheet_mut(sheet)?, displace);
+        displace_comments(self.workbook.worksheet_mut(sheet)?, displace);
 
         // Merged ranges shift right or grow when columns are inserted inside them
         displace_merged_cells(
@@ -848,7 +851,7 @@ impl<'a> Model<'a> {
             .displace_columns(column_end + 1, -column_count);
 
         // Links move with their cells; the links of the deleted columns are removed
-        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+        let displace = |r: i32, c: i32| {
             if c < column_start {
                 Some((r, c))
             } else if c <= column_end {
@@ -856,7 +859,9 @@ impl<'a> Model<'a> {
             } else {
                 Some((r, c - column_count))
             }
-        });
+        };
+        displace_links(self.workbook.worksheet_mut(sheet)?, displace);
+        displace_comments(self.workbook.worksheet_mut(sheet)?, displace);
 
         // Merged ranges shrink or shift left; fully deleted ones are removed
         displace_merged_cells(
@@ -1106,13 +1111,15 @@ impl<'a> Model<'a> {
         self.workbook.worksheets[sheet as usize].rows = new_rows;
 
         // Links move with their cells
-        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+        let displace = |r: i32, c: i32| {
             if r >= row {
                 Some((r + row_count, c))
             } else {
                 Some((r, c))
             }
-        });
+        };
+        displace_links(self.workbook.worksheet_mut(sheet)?, displace);
+        displace_comments(self.workbook.worksheet_mut(sheet)?, displace);
 
         // Merged ranges shift down or grow when rows are inserted inside them
         displace_merged_cells(
@@ -1199,7 +1206,7 @@ impl<'a> Model<'a> {
         self.workbook.worksheets[sheet as usize].rows = new_rows;
 
         // Links move with their cells; the links of the deleted rows are removed
-        displace_links(self.workbook.worksheet_mut(sheet)?, |r, c| {
+        let displace = |r: i32, c: i32| {
             if r < row {
                 Some((r, c))
             } else if r < row + row_count {
@@ -1207,7 +1214,9 @@ impl<'a> Model<'a> {
             } else {
                 Some((r - row_count, c))
             }
-        });
+        };
+        displace_links(self.workbook.worksheet_mut(sheet)?, displace);
+        displace_comments(self.workbook.worksheet_mut(sheet)?, displace);
 
         // Merged ranges shrink or shift up; fully deleted ones are removed
         displace_merged_cells(
@@ -1270,6 +1279,18 @@ impl<'a> Model<'a> {
         displace_links(worksheet, |r, c| {
             if c == column {
                 None
+            } else if delta > 0 && c > column && c <= target_column {
+                Some((r, c - 1))
+            } else if delta < 0 && c >= target_column && c < column {
+                Some((r, c + 1))
+            } else {
+                Some((r, c))
+            }
+        });
+        // Comments are not touched by the rebuild below, so they move in one go
+        displace_comments(worksheet, |r, c| {
+            if c == column {
+                Some((r, target_column))
             } else if delta > 0 && c > column && c <= target_column {
                 Some((r, c - 1))
             } else if delta < 0 && c >= target_column && c < column {
@@ -1426,6 +1447,18 @@ impl<'a> Model<'a> {
         displace_links(worksheet, |r, c| {
             if r == row {
                 None
+            } else if delta > 0 && r > row && r <= target_row {
+                Some((r - 1, c))
+            } else if delta < 0 && r >= target_row && r < row {
+                Some((r + 1, c))
+            } else {
+                Some((r, c))
+            }
+        });
+        // Comments are not touched by the rebuild below, so they move in one go
+        displace_comments(worksheet, |r, c| {
+            if r == row {
+                Some((target_row, c))
             } else if delta > 0 && r > row && r <= target_row {
                 Some((r - 1, c))
             } else if delta < 0 && r >= target_row && r < row {
