@@ -591,12 +591,13 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                             // 3. Exponent part
                             let index = digit.index;
                             if index == 0 {
+                                let e = p.exponent_letter;
                                 if exponent_is_negative {
-                                    text = format!("{text}E-");
+                                    text = format!("{text}{e}-");
                                 } else if p.scientific_minus {
-                                    text = format!("{text}E");
+                                    text = format!("{text}{e}");
                                 } else {
-                                    text = format!("{text}E+");
+                                    text = format!("{text}{e}+");
                                 }
                             }
                             let number_index = l_exp - (p.exponent_digit_count - index);

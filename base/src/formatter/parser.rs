@@ -52,6 +52,8 @@ pub struct NumberPart {
     pub precision: i32,   // number of digits to the right of the decimal point
     pub is_scientific: bool,
     pub scientific_minus: bool,
+    /// The exponent's letter as the format writes it: `E` or `e`
+    pub exponent_letter: char,
     pub exponent_digit_count: i32,
     pub currency: Option<char>,
 }
@@ -152,6 +154,7 @@ impl Parser {
         let mut tokens = vec![];
         let mut is_scientific = false;
         let mut scientific_minus = false;
+        let mut exponent_letter = 'E';
         let mut exponent_digit_count = 0;
         let mut number = NumberState::Integer;
         let mut index = 0;
@@ -334,14 +337,16 @@ impl Parser {
                     use_ampm = true;
                     tokens.push(TextToken::AMPM);
                 }
-                Token::Scientific => {
+                Token::Scientific(letter) => {
+                    exponent_letter = letter;
                     if !is_scientific {
                         index = 0;
                         number = NumberState::Exponent;
                     }
                     is_scientific = true;
                 }
-                Token::ScientificMinus => {
+                Token::ScientificMinus(letter) => {
+                    exponent_letter = letter;
                     if !is_scientific {
                         index = 0;
                         number = NumberState::Exponent;
@@ -406,12 +411,15 @@ impl Parser {
                 condition,
                 use_thousands,
                 percent,
-                comma,
+                // A comma does not scale a number in scientific notation: Excel's TEXT(123456.789,"#,e-#")
+                // and TEXT(123456.789,"#e-#,") are both "1e5"
+                comma: if is_scientific { 0 } else { comma },
                 tokens,
                 digit_count,
                 precision,
                 is_scientific,
                 scientific_minus,
+                exponent_letter,
                 exponent_digit_count,
                 currency,
             })
