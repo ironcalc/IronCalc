@@ -39,6 +39,8 @@ pub enum TextToken {
     ElapsedMinutePadded,
     ElapsedSecond,
     ElapsedSecondPadded,
+    /// Fractions of a second after a seconds code: `ss.000` is `SecondPadded, SecondFraction(3)`
+    SecondFraction(u32),
     AMPM,
 }
 pub struct NumberPart {
@@ -194,6 +196,31 @@ impl Parser {
                 Token::Percent => {
                     tokens.push(TextToken::Literal('%'));
                     percent += 1;
+                }
+                // Fractions of a second: a period and zeros right after a seconds code (`ss.000`,
+                // `[s].00`), as Excel reads them
+                Token::Period
+                    if next_token == Token::Zero
+                        && matches!(
+                            tokens.last(),
+                            Some(
+                                TextToken::Second
+                                    | TextToken::SecondPadded
+                                    | TextToken::ElapsedSecond
+                                    | TextToken::ElapsedSecondPadded
+                            )
+                        ) =>
+                {
+                    let mut digits = 0;
+                    let mut after = next_token;
+                    while after == Token::Zero {
+                        digits += 1;
+                        after = self.lexer.next_token();
+                    }
+                    tokens.push(TextToken::SecondFraction(digits));
+                    last_token_is_digit = false;
+                    token = after;
+                    continue;
                 }
                 Token::Period => {
                     if is_number && !found_decimal_dot {

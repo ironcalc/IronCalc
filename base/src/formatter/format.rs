@@ -171,10 +171,35 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let tokens = &p.tokens;
             let mut text = "".to_string();
             let time_fract = value.fract();
-            let hours = (time_fract * 24.0).floor();
-            let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
-            let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-            let date = from_excel_date(value as i64).ok();
+            let mut hours = (time_fract * 24.0).floor();
+            let mut minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
+            let mut seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
+            let mut date = from_excel_date(value as i64).ok();
+            // Elapsed time: the whole hours, minutes and seconds in the value
+            let mut elapsed_hours = (value * 24.0).floor();
+            let mut elapsed_minutes = (value * 24.0 * 60.0).floor();
+            let mut elapsed_seconds = (value * 24.0 * 60.0 * 60.0).floor();
+            // With fractions of a second (`ss.000`) Excel rounds the value to that many decimals of
+            // a second first, and every part comes from the rounded value: 75:23:53.376 is
+            // 75:23:53.4 with `[hh]:mm:ss.0`.
+            let mut fraction = 0.0;
+            if let Some(digits) = tokens.iter().find_map(|t| match t {
+                TextToken::SecondFraction(d) => Some(*d),
+                _ => None,
+            }) {
+                let scale = 10.0_f64.powi(digits as i32);
+                let total = (value * 86_400.0 * scale).round();
+                let whole = (total / scale).floor();
+                fraction = total - whole * scale;
+                let in_day = whole.rem_euclid(86_400.0);
+                hours = (in_day / 3600.0).floor();
+                minutes = ((in_day - hours * 3600.0) / 60.0).floor();
+                seconds = in_day - hours * 3600.0 - minutes * 60.0;
+                elapsed_hours = (whole / 3600.0).floor();
+                elapsed_minutes = (whole / 60.0).floor();
+                elapsed_seconds = whole;
+                date = from_excel_date((whole / 86_400.0).floor() as i64).ok();
+            }
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -399,28 +424,33 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = (value * 24.0).floor() as i32;
+                        let hour = elapsed_hours as i32;
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = (value * 24.0).floor() as i32;
+                        let hour = elapsed_hours as i32;
                         text = format!("{text}{hour:02}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        let minute = elapsed_minutes as i32;
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        let minute = elapsed_minutes as i32;
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        let second = elapsed_seconds as i32;
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        let second = elapsed_seconds as i32;
                         text = format!("{text}{second:02}");
+                    }
+                    TextToken::SecondFraction(digits) => {
+                        let digits = *digits as usize;
+                        let decimal = &locale.numbers.symbols.decimal;
+                        text = format!("{text}{decimal}{:0digits$}", fraction as u64);
                     }
                 }
             }
@@ -647,6 +677,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::ElapsedMinutePadded => {}
                     TextToken::ElapsedSecond => {}
                     TextToken::ElapsedSecondPadded => {}
+                    TextToken::SecondFraction(_) => {}
                 }
             }
             Formatted {

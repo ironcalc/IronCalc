@@ -70,3 +70,25 @@ fn elapsed_hour_padded() {
     let formatted = format_number(value, format, locale);
     assert_eq!(formatted.text, "02:24:00");
 }
+
+#[test]
+fn fractions_of_a_second() {
+    // Excel's results, from Apache POI's ElapsedFormatTests.xlsx (Tests!A2:A5) and
+    // DateFormatNumberTests.xlsx (Tests!A4:A10, the time part), both saved by Excel.
+    let locale = get_default_locale();
+    let value = 3.14159; // 75 hours, 23 minutes and 53.376 seconds
+    assert_eq!(format_number(value, "[h]:m:s.000", locale).text, "75:23:53.376");
+    assert_eq!(format_number(value, "[m]:s.000", locale).text, "4523:53.376");
+    assert_eq!(format_number(value, "[s].000", locale).text, "271433.376");
+    assert_eq!(format_number(value, "[hh]:mm:ss.0", locale).text, "75:23:53.4");
+
+    let value = 1.0032134017094001;
+    assert_eq!(format_number(value, "hh:mm:ss.000", locale).text, "00:04:37.638");
+    assert_eq!(format_number(value, "hh:mm:ss.00", locale).text, "00:04:37.64");
+    assert_eq!(format_number(value, "hh:mm:ss.0", locale).text, "00:04:37.6");
+    assert_eq!(format_number(value, "hh:mm:ss", locale).text, "00:04:38");
+    let value = 1.0000047870370301;
+    assert_eq!(format_number(value, "hh:mm:ss.000", locale).text, "00:00:00.414");
+    assert_eq!(format_number(value, "hh:mm:ss.00", locale).text, "00:00:00.41");
+    assert_eq!(format_number(value, "hh:mm:ss.0", locale).text, "00:00:00.4");
+}
