@@ -765,7 +765,8 @@ impl<'a> Model<'a> {
             }
         }
 
-        let formatted_number = parse_formatted_number(&criteria, &[], self.locale);
+        let formatted_number =
+            parse_formatted_number(&criteria, &[], self.locale, self.workbook.settings.date1904);
 
         match op {
             ">" | ">=" | "<" | "<=" => {

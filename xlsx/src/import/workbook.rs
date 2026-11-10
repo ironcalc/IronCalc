@@ -73,9 +73,15 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
             comment,
         })
     }
+    // `date1904` is an xsd:boolean on `workbookPr`, default false
+    let date1904 = doc
+        .descendants()
+        .find(|n| n.has_tag_name("workbookPr"))
+        .is_some_and(|n| matches!(n.attribute("date1904"), Some("1") | Some("true")));
     // read the relationships file
     Ok(WorkbookXML {
         worksheets: sheets,
         defined_names,
+        date1904,
     })
 }
