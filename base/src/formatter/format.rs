@@ -738,7 +738,7 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // short_date -> month separator year
 // long_date -> day separator month separator year
 // iso_date -> long_year separator number_month separator number_day
-// separator -> "/" | "-" | "."
+// separator -> "/" | "-" | "." | ". "
 // day -> number | padded number
 // month -> number_month | name_month
 // number_month -> number | padded number |
@@ -748,15 +748,25 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // NOTE 1: The separator has to be the same
 // NOTE 2: In some engines "2/3" is implemented ad "2/March of the present year"
 // NOTE 3: I did not implement the "short date"
+// NOTE 4: With dots the date may end in one, as in Croatian "17. 10. 2026."
 pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
     let separator = if value.contains('/') {
-        '/'
+        "/"
     } else if value.contains('-') {
-        '-'
+        "-"
     } else if value.contains('.') {
-        '.'
+        "."
     } else {
         return Err("Not a valid date".to_string());
+    };
+    let (value, suffix) = match value.strip_suffix('.') {
+        Some(stripped) if separator == "." => (stripped, "."),
+        _ => (value, ""),
+    };
+    let separator = if separator == "." && value.contains(". ") {
+        ". "
+    } else {
+        separator
     };
 
     let parts: Vec<&str> = value.split(separator).collect();
@@ -796,17 +806,17 @@ pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), 
     if is_iso_date {
         Ok((
             serial_number,
-            format!("yyyy{separator}{month_format}{separator}{day_format}"),
+            format!("yyyy{separator}{month_format}{separator}{day_format}{suffix}"),
         ))
     } else if !day_first {
         Ok((
             serial_number,
-            format!("{month_format}{separator}{day_format}{separator}{year_format}"),
+            format!("{month_format}{separator}{day_format}{separator}{year_format}{suffix}"),
         ))
     } else {
         Ok((
             serial_number,
-            format!("{day_format}{separator}{month_format}{separator}{year_format}"),
+            format!("{day_format}{separator}{month_format}{separator}{year_format}{suffix}"),
         ))
     }
 }
