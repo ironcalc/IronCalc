@@ -170,11 +170,17 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Date(p) => {
             let tokens = &p.tokens;
             let mut text = "".to_string();
-            let time_fract = value.fract();
-            let hours = (time_fract * 24.0).floor();
-            let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
-            let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-            let date = from_excel_date(value as i64).ok();
+            // Excel rounds the value to the nearest whole second, whatever the format,
+            // and then truncates to the displayed units. The rounding carries into the
+            // minutes, the hours and, at midnight, the date: a stored 14:29:59.7 displays
+            // as 14:30 (not 14:29:60), while 14:29:45 with "h:mm" still displays 14:29.
+            let display_value = (value * 86_400.0).round() / 86_400.0;
+            let time_fract = display_value.fract();
+            let total_seconds = (time_fract * 86_400.0).round() as i64;
+            let hours = (total_seconds / 3600) as f64;
+            let minutes = ((total_seconds % 3600) / 60) as f64;
+            let seconds = (total_seconds % 60) as f64;
+            let date = from_excel_date(display_value as i64).ok();
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {

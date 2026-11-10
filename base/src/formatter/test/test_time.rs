@@ -32,6 +32,64 @@ fn padded_vs_unpadded() {
 }
 
 #[test]
+fn rounded_seconds_carry_into_minutes() {
+    let locale = get_default_locale();
+    // =DATE(2026,10,27)+TIME(14,30,0) is stored as 46322.604166666664: the nearest
+    // double to 14:30 sits a whisker below the whole minute and must display 14:30
+    let value = 46_322.604_166_666_664_f64;
+    let formatted = format_number(value, "m/d/yy h:mm", locale);
+    assert_eq!(formatted.text, "10/27/26 14:30");
+
+    let formatted = format_number(value, "h:mm:ss", locale);
+    assert_eq!(formatted.text, "14:30:00");
+
+    let formatted = format_number(46322.0 + 14.5 / 24.0, "h:mm", locale);
+    assert_eq!(formatted.text, "14:30");
+}
+
+#[test]
+fn fractional_seconds_round_to_the_displayed_minute() {
+    let locale = get_default_locale();
+    // 14:29:59.7 with a minute-only format rounds to the next minute
+    let value = (14.0 * 3600.0 + 29.0 * 60.0 + 59.7) / (24.0 * 60.0 * 60.0);
+    let formatted = format_number(value, "h:mm", locale);
+    assert_eq!(formatted.text, "14:30");
+}
+
+#[test]
+fn rounding_at_midnight_carries_into_the_date() {
+    let locale = get_default_locale();
+    // 10/27/26 23:59:59.7 formatted with h:mm rounds to midnight of the 28th
+    let value = 46322.0 + ((23.0 * 60.0 + 59.0) * 60.0 + 59.7) / (24.0 * 60.0 * 60.0);
+    let formatted = format_number(value, "m/d/yy h:mm", locale);
+    assert_eq!(formatted.text, "10/28/26 0:00");
+}
+
+#[test]
+fn displayed_units_are_truncated_after_rounding_to_the_second() {
+    let locale = get_default_locale();
+    let time = |h: f64, m: f64, s: f64| (h * 3600.0 + m * 60.0 + s) / 86_400.0;
+    // Cases from #1690 review, checked against Excel
+    assert_eq!(
+        format_number(time(14.0, 29.0, 45.0), "h:mm", locale).text,
+        "14:29"
+    );
+    assert_eq!(format_number(time(14.0, 40.0, 0.0), "h", locale).text, "14");
+    assert_eq!(
+        format_number(time(14.0, 29.0, 30.0), "h:mm AM/PM", locale).text,
+        "2:29 PM"
+    );
+    let value = 46322.0 + time(23.0, 59.0, 45.0);
+    assert_eq!(
+        format_number(value, "m/d/yy h:mm", locale).text,
+        "10/27/26 23:59"
+    );
+    // With a date-only format Excel still rounds the seconds into the next day
+    let value = 46322.0 + time(23.0, 59.0, 59.7);
+    assert_eq!(format_number(value, "m/d/yy", locale).text, "10/28/26");
+}
+
+#[test]
 fn elapsed_hour() {
     let locale = get_default_locale();
     let format = "[hh]:mm:ss";
