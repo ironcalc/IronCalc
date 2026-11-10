@@ -66,6 +66,30 @@ fn rounding_at_midnight_carries_into_the_date() {
 }
 
 #[test]
+fn displayed_units_are_truncated_after_rounding_to_the_second() {
+    let locale = get_default_locale();
+    let time = |h: f64, m: f64, s: f64| (h * 3600.0 + m * 60.0 + s) / 86_400.0;
+    // Cases from #1690 review, checked against Excel
+    assert_eq!(
+        format_number(time(14.0, 29.0, 45.0), "h:mm", locale).text,
+        "14:29"
+    );
+    assert_eq!(format_number(time(14.0, 40.0, 0.0), "h", locale).text, "14");
+    assert_eq!(
+        format_number(time(14.0, 29.0, 30.0), "h:mm AM/PM", locale).text,
+        "2:29 PM"
+    );
+    let value = 46322.0 + time(23.0, 59.0, 45.0);
+    assert_eq!(
+        format_number(value, "m/d/yy h:mm", locale).text,
+        "10/27/26 23:59"
+    );
+    // With a date-only format Excel still rounds the seconds into the next day
+    let value = 46322.0 + time(23.0, 59.0, 59.7);
+    assert_eq!(format_number(value, "m/d/yy", locale).text, "10/28/26");
+}
+
+#[test]
 fn elapsed_hour() {
     let locale = get_default_locale();
     let format = "[hh]:mm:ss";

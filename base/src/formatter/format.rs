@@ -170,34 +170,13 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Date(p) => {
             let tokens = &p.tokens;
             let mut text = "".to_string();
-            // Excel rounds the time to the format's finest displayed unit first, so the
-            // rounding carries into the minutes, the hours and, at midnight, the date:
-            // a stored 14:29.999... displays as 14:30 rather than 14:29/14:29:60.
-            let has_second = tokens
-                .iter()
-                .any(|t| matches!(t, TextToken::Second | TextToken::SecondPadded));
-            let has_minute = tokens
-                .iter()
-                .any(|t| matches!(t, TextToken::Minute | TextToken::MinutePadded));
-            let has_hour = tokens
-                .iter()
-                .any(|t| matches!(t, TextToken::Hour | TextToken::HourPadded | TextToken::AMPM));
-            let units_per_day = if has_second {
-                24.0 * 60.0 * 60.0
-            } else if has_minute {
-                24.0 * 60.0
-            } else if has_hour {
-                24.0
-            } else {
-                1.0
-            };
-            let display_value = if units_per_day > 1.0 {
-                (value * units_per_day).round() / units_per_day
-            } else {
-                value
-            };
+            // Excel rounds the value to the nearest whole second, whatever the format,
+            // and then truncates to the displayed units. The rounding carries into the
+            // minutes, the hours and, at midnight, the date: a stored 14:29:59.7 displays
+            // as 14:30 (not 14:29:60), while 14:29:45 with "h:mm" still displays 14:29.
+            let display_value = (value * 86_400.0).round() / 86_400.0;
             let time_fract = display_value.fract();
-            let total_seconds = (time_fract * 24.0 * 60.0 * 60.0).round() as i64;
+            let total_seconds = (time_fract * 86_400.0).round() as i64;
             let hours = (total_seconds / 3600) as f64;
             let minutes = ((total_seconds % 3600) / 60) as f64;
             let seconds = (total_seconds % 60) as f64;
