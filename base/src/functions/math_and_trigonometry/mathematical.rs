@@ -121,11 +121,12 @@ impl<'a> Model<'a> {
             Err(s) => return s,
         };
         // optional min_length
-        // Return "" for a zero number when min_length is a blank cell
-        let mut min_length_blank = false;
+        // A zero number gives "0" only when min_length is omitted; otherwise
+        // the result is just min_length zeros (so "" when min_length is 0)
+        let mut min_length_omitted = arg_count == 2;
         let min_length = if arg_count == 3 {
             let result = self.evaluate_node_in_context(&args[2], cell);
-            min_length_blank = matches!(result, CalcResult::EmptyCell);
+            min_length_omitted = matches!(result, CalcResult::EmptyArg);
             match self.cast_to_number(result, cell) {
                 Ok(f) => {
                     if f < 0.0 {
@@ -170,7 +171,7 @@ impl<'a> Model<'a> {
 
         let mut buf = String::new();
         if value == 0 {
-            if !min_length_blank {
+            if min_length_omitted {
                 buf.push('0');
             }
         } else {
