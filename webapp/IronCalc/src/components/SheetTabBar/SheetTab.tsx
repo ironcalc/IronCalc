@@ -266,7 +266,7 @@ function SheetTab(props: SheetTabProps) {
         defaultColor=""
         title={t("color_picker.no_fill")}
         onChange={(nextColor): void => {
-          props.onColorChanged(nextColor || undefined);
+          props.onColorChanged(nextColor === "" ? undefined : nextColor);
           setColorPickerOpen(false);
         }}
         onClose={() => {
