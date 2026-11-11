@@ -141,8 +141,10 @@ fn leading_space_is_ignored() {
 }
 
 #[test]
-fn base_zero_with_blank_min_length_is_empty() {
+fn base_zero_with_min_length_is_padding_only() {
     let mut model = new_empty_model();
+    model._set("A2", "=\"\"");
+    model._set("A3", "0");
     model._set("B1", "=BASE(0, 2, A1)");
     model._set("B2", "=BASE(0.9, 2, A1)");
     model._set("B3", "=BASE(9.9999999999999995E-8, 2, A1)");
@@ -152,12 +154,22 @@ fn base_zero_with_blank_min_length_is_empty() {
     model._set("B7", "=BASE(\"12:30\", 16, A1)");
     model._set("B8", "=BASE(0, 2)");
     model._set("B9", "=BASE(5, 2, A1)");
+    model._set("C1", "=BASE(0, 2, 0)");
+    model._set("C2", "=BASE(0, 2, A3)");
+    model._set("C3", "=BASE(0, 2, )");
+    model._set("C4", "=BASE(0, 2, A2)");
+    model._set("C5", "=BASE(0, 2, 1)");
+    model._set("C6", "=BASE(0, 2, 3)");
 
     model.evaluate();
 
-    for cell in ["B1", "B2", "B3", "B4", "B5", "B6", "B7"] {
+    for cell in ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "C1", "C2"] {
         assert_eq!(model._get_text(cell), *"", "{cell}");
     }
     assert_eq!(model._get_text("B8"), *"0");
     assert_eq!(model._get_text("B9"), *"101");
+    assert_eq!(model._get_text("C3"), *"0");
+    assert_eq!(model._get_text("C4"), *"#VALUE!");
+    assert_eq!(model._get_text("C5"), *"0");
+    assert_eq!(model._get_text("C6"), *"000");
 }
