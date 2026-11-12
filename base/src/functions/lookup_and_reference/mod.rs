@@ -7,7 +7,7 @@ use crate::{
     utils::ParsedReference,
 };
 
-use super::binary_search::binary_search_on_array;
+use super::binary_search::{binary_search_on_array, LookupVector};
 use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex, values_are_equal};
 
 mod address_areas;
@@ -83,18 +83,54 @@ impl LookupTable {
         }
     }
 
-    /// Materializes the first row of the table (the search vector for HLOOKUP).
-    fn first_row(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
-        (0..self.columns())
-            .map(|column| self.get(model, 0, column, cell))
-            .collect()
+    /// The first row of the table (the search vector for HLOOKUP). A whole row
+    /// is read only as far as the sheet's used area (see `LookupVector`).
+    fn first_row(
+        &self,
+        model: &mut Model,
+        cell: CellReferenceIndex,
+    ) -> Result<LookupVector, CalcResult> {
+        match self {
+            LookupTable::Range { left, right } => {
+                let last = CellReferenceIndex {
+                    sheet: left.sheet,
+                    row: left.row,
+                    column: right.column,
+                };
+                model
+                    .lookup_vector(left, &last, false)
+                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))
+            }
+            LookupTable::Array(_) => Ok((0..self.columns())
+                .map(|column| self.get(model, 0, column, cell))
+                .collect::<Vec<_>>()
+                .into()),
+        }
     }
 
-    /// Materializes the first column of the table (the search vector for VLOOKUP).
-    fn first_column(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
-        (0..self.rows())
-            .map(|row| self.get(model, row, 0, cell))
-            .collect()
+    /// The first column of the table (the search vector for VLOOKUP). A whole
+    /// column is read only as far as the sheet's used area (see `LookupVector`).
+    fn first_column(
+        &self,
+        model: &mut Model,
+        cell: CellReferenceIndex,
+    ) -> Result<LookupVector, CalcResult> {
+        match self {
+            LookupTable::Range { left, right } => {
+                let last = CellReferenceIndex {
+                    sheet: left.sheet,
+                    row: right.row,
+                    column: left.column,
+                };
+                model
+                    .lookup_vector(left, &last, true)
+                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))
+            }
+            LookupTable::Array(_) => Ok((0..self.rows())
+                .map(|row| self.get(model, row, 0, cell))
+                .collect::<Vec<_>>()
+                .into()),
+        }
     }
 }
 
@@ -105,7 +141,7 @@ impl LookupTable {
 /// Returns `None` when the value is not found.
 fn lookup_index(
     lookup_value: &CalcResult,
-    search_vector: &[CalcResult],
+    search_vector: &LookupVector,
     is_sorted: bool,
 ) -> Option<usize> {
     if is_sorted {
@@ -125,7 +161,7 @@ fn lookup_index(
                 let lookup_value = lookup_value.clone();
                 Box::new(move |x| compare_values(x, &lookup_value) == 0)
             };
-        search_vector.iter().position(result_matches)
+        search_vector.position(result_matches)
     }
 }
 
@@ -200,12 +236,13 @@ impl<'a> Model<'a> {
     /// single column) into a flat list of values. Accepts both range references
     /// and in-formula array literals. Used by the vector-based lookup functions
     /// (MATCH, LOOKUP). Returns the appropriate error `CalcResult` when the value
-    /// is not a vector or not a valid source.
+    /// is not a vector or not a valid source. A whole column or row is read only
+    /// as far as the sheet's used area (see `LookupVector`).
     fn as_vector(
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<CalcResult>, CalcResult> {
+    ) -> Result<LookupVector, CalcResult> {
         match value {
             CalcResult::Range { left, right } => {
                 let is_row_vector = if left.row == right.row {
@@ -219,7 +256,8 @@ impl<'a> Model<'a> {
                         message: "Argument must be a vector".to_string(),
                     });
                 };
-                Ok(self.prepare_array(&left, &right, is_row_vector))
+                self.lookup_vector(&left, &right, is_row_vector)
+                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))
             }
             CalcResult::Array(array) => {
                 // An array is a vector if it is a single row or a single column.
@@ -235,7 +273,8 @@ impl<'a> Model<'a> {
                     .iter()
                     .flatten()
                     .map(|node| array_node_to_calc_result(node, cell))
-                    .collect())
+                    .collect::<Vec<_>>()
+                    .into())
             }
             error @ CalcResult::Error { .. } => Err(error),
             _ => Err(CalcResult::Error {
@@ -425,7 +464,7 @@ impl<'a> Model<'a> {
                 let mut r = values.len();
                 while l < r {
                     let m = (l + r) / 2;
-                    if compare_values(&values[m], &target) >= 0 {
+                    if compare_values(values.get(m), &target) >= 0 {
                         l = m + 1;
                     } else {
                         r = m;
@@ -455,10 +494,8 @@ impl<'a> Model<'a> {
                     } else {
                         Box::new(move |x| values_are_equal(x, &target))
                     };
-                for (l, value) in values.iter().enumerate() {
-                    if result_matches(value) {
-                        return CalcResult::Number(l as f64 + 1.0);
-                    }
+                if let Some(l) = values.position(result_matches) {
+                    return CalcResult::Number(l as f64 + 1.0);
                 }
                 CalcResult::Error {
                     error: Error::NA,
@@ -535,7 +572,10 @@ impl<'a> Model<'a> {
             };
         }
         // We look for `lookup_value` in the first row of the table
-        let search_vector = table.first_row(self, cell);
+        let search_vector = match table.first_row(self, cell) {
+            Ok(vector) => vector,
+            Err(error) => return error,
+        };
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
             Some(column) => table.get(self, row_index - 1, column as i32, cell),
             None => CalcResult::Error {
@@ -599,7 +639,10 @@ impl<'a> Model<'a> {
             };
         }
         // We look for `lookup_value` in the first column of the table
-        let search_vector = table.first_column(self, cell);
+        let search_vector = match table.first_column(self, cell) {
+            Ok(vector) => vector,
+            Err(error) => return error,
+        };
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
             Some(row) => table.get(self, row as i32, column_index - 1, cell),
             None => CalcResult::Error {
@@ -656,7 +699,10 @@ impl<'a> Model<'a> {
                 Ok(values) => values,
                 Err(error) => return error,
             };
-            return result_vector.into_iter().nth(l).unwrap_or(not_found);
+            if l >= result_vector.len() {
+                return not_found;
+            }
+            return result_vector.get(l).clone();
         }
 
         // Array form (also covers a plain vector, where the first and last
@@ -676,14 +722,20 @@ impl<'a> Model<'a> {
         };
         if table.columns() > table.rows() {
             // Search the first row, return from the last row.
-            let search_vector = table.first_row(self, cell);
+            let search_vector = match table.first_row(self, cell) {
+                Ok(vector) => vector,
+                Err(error) => return error,
+            };
             match lookup_index(&target, &search_vector, true) {
                 Some(column) => table.get(self, table.rows() - 1, column as i32, cell),
                 None => not_found,
             }
         } else {
             // Search the first column, return from the last column.
-            let search_vector = table.first_column(self, cell);
+            let search_vector = match table.first_column(self, cell) {
+                Ok(vector) => vector,
+                Err(error) => return error,
+            };
             match lookup_index(&target, &search_vector, true) {
                 Some(row) => table.get(self, row as i32, table.columns() - 1, cell),
                 None => not_found,
