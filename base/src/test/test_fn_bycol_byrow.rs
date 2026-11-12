@@ -214,3 +214,63 @@ fn bycol_lambda_counta() {
     assert_eq!(model._get_text("H1"), "1");
     assert_eq!(model._get_text("I1"), "2");
 }
+
+// Microsoft's BYROW and BYCOL pages both say: "Not providing a LAMBDA function or anything but a
+// single value returned from the LAMBDA function returns a #CALC error."
+// https://support.microsoft.com/en-us/office/byrow-function-2e04c677-78c8-4e6b-8c10-a4602f2602bb
+// https://support.microsoft.com/en-us/office/bycol-function-58463999-7de5-49ce-8f38-b7f7a2192bfb
+// The expected values below were captured from Excel for Mac 16.113.3, en-US locale, on
+// 8 October 2026 (published in the Formulon project's oracle goldens, Apache-2.0).
+
+#[test]
+fn byrow_lambda_returning_several_values_is_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYROW({1,2,3;4,5,6}, LAMBDA(row, row*2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+    assert_eq!(model._get_text("A2"), "#CALC!");
+}
+
+#[test]
+fn bycol_lambda_returning_several_values_is_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYCOL({1,2,3;4,5,6}, LAMBDA(col, col*2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+    assert_eq!(model._get_text("B1"), "#CALC!");
+    assert_eq!(model._get_text("C1"), "#CALC!");
+}
+
+#[test]
+fn byrow_lambda_returning_a_range_is_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("D1", "=BYROW(A1:B1, LAMBDA(row, A1:B1))");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#CALC!");
+}
+
+#[test]
+fn byrow_lambda_returning_a_one_by_one_array() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYROW({1;2;3}, LAMBDA(row, row*10))");
+    model._set("B1", "=BYCOL({1,2,3}, LAMBDA(col, col*10))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "10");
+    assert_eq!(model._get_text("A2"), "20");
+    assert_eq!(model._get_text("A3"), "30");
+    assert_eq!(model._get_text("B1"), "10");
+    assert_eq!(model._get_text("C1"), "20");
+    assert_eq!(model._get_text("D1"), "30");
+}
+
+#[test]
+fn byrow_bycol_single_line_input_gives_a_single_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYROW({1,2,3}, LAMBDA(row, SUM(row)))");
+    model._set("B1", "=BYCOL({1;2;3}, LAMBDA(col, SUM(col)))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "6");
+    assert_eq!(model._get_text("B1"), "6");
+}

@@ -21,6 +21,26 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
 }
 
 impl<'a> Model<'a> {
+    /// BYCOL and BYROW need a single value from each call to the LAMBDA. A 1x1 array or a
+    /// single cell counts as one. A larger array or range is `#CALC!`, as in Excel.
+    fn lambda_result_to_array_node(&mut self, result: CalcResult) -> ArrayNode {
+        match result {
+            CalcResult::Array(array) => match array.as_slice() {
+                [row] if row.len() == 1 => row[0].clone(),
+                _ => ArrayNode::Error(Error::CALC),
+            },
+            CalcResult::Range { left, right } => {
+                if left.sheet == right.sheet && left.row == right.row && left.column == right.column
+                {
+                    calc_result_to_array_node(self.evaluate_cell(left))
+                } else {
+                    ArrayNode::Error(Error::CALC)
+                }
+            }
+            other => calc_result_to_array_node(other),
+        }
+    }
+
     /// `=BYCOL(array, lambda)`
     ///
     /// Applies a LAMBDA to each column of `array`, returning a 1-row array of results.
@@ -50,7 +70,7 @@ impl<'a> Model<'a> {
         for j in 0..num_cols {
             let column: Vec<Vec<ArrayNode>> = data.iter().map(|row| vec![row[j].clone()]).collect();
             let result = self.call_lambda(lambda_result.clone(), &[Node::ArrayKind(column)], cell);
-            results.push(calc_result_to_array_node(result));
+            results.push(self.lambda_result_to_array_node(result));
         }
 
         CalcResult::Array(vec![results])
@@ -87,7 +107,7 @@ impl<'a> Model<'a> {
                 &[Node::ArrayKind(vec![row.clone()])],
                 cell,
             );
-            results.push(vec![calc_result_to_array_node(result)]);
+            results.push(vec![self.lambda_result_to_array_node(result)]);
         }
 
         CalcResult::Array(results)
