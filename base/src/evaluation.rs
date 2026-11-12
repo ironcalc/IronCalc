@@ -395,6 +395,11 @@ pub(crate) struct Evaluation {
     pub(crate) seen: HashMap<CellKey, SeenRecord, KeyBuild>,
     /// Rectangles read as empty in one go, with their root (`SeenRange`).
     pub(crate) seen_ranges: Vec<SeenRange>,
+    /// The used area of each sheet a whole column or row was clipped to in the
+    /// current pass, as its last row and last column (`Model::used_area`).
+    /// Finding it walks every cell of the sheet, so it is found once a pass,
+    /// and kept up to date as the pass writes cells (`note_cells_written`).
+    pub(crate) used_areas: HashMap<u32, (i32, i32)>,
     /// Set when the current pass must be abandoned. Every evaluation in
     /// progress then returns without storing anything.
     pub(crate) restart: Option<Restart>,
@@ -467,6 +472,7 @@ impl Default for Evaluation {
             circular: HashSet::default(),
             seen: HashMap::default(),
             seen_ranges: Vec::new(),
+            used_areas: HashMap::new(),
             restart: None,
             in_pass: false,
             record_reads: false,
@@ -714,6 +720,8 @@ impl<'a> Model<'a> {
         state.stack.clear();
         state.seen.clear();
         state.seen_ranges.clear();
+        // What an abandoned pass wrote is undone before the next one starts.
+        state.used_areas.clear();
         state.restart = None;
         state.depth = 0;
         state.unwinding = false;
@@ -1095,22 +1103,63 @@ impl<'a> Model<'a> {
         if !whole_rows && !whole_columns {
             return Ok((row2, column2));
         }
-        let dimension = self
-            .workbook
-            .worksheet(sheet)
-            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
-            .dimension();
-        let last_row = if whole_rows { dimension.max_row } else { row2 };
-        let last_column = if whole_columns {
-            dimension.max_column
-        } else {
-            column2
-        };
+        let (max_row, max_column) = self.used_area(sheet)?;
+        let last_row = if whole_rows { max_row } else { row2 };
+        let last_column = if whole_columns { max_column } else { column2 };
         // The remainder: the rows below the used area over the whole width,
         // and the columns beyond it within the rows that are walked.
         self.record_seen_empty_range(sheet, last_row + 1, column1, row2, column2);
         self.record_seen_empty_range(sheet, row1, last_column + 1, last_row, column2);
         Ok((last_row, last_column))
+    }
+
+    /// The last row and the last column of the sheet's used area. Finding it
+    /// walks every cell of the sheet. Inside a pass it is found once and kept,
+    /// and every cell the pass writes, an array formula's or a spill's, is
+    /// added to it (`note_cells_written`). A cell the pass removes is not
+    /// taken away: an area that is too large only makes a walk visit cells
+    /// that are empty. Outside a pass it is found every time.
+    pub(crate) fn used_area(&mut self, sheet: u32) -> Result<(i32, i32), String> {
+        if self.evaluation.in_pass {
+            if let Some(&area) = self.evaluation.used_areas.get(&sheet) {
+                debug_assert!(
+                    self.used_area_covers(sheet, area),
+                    "the used area kept for sheet {sheet} misses a cell written in the pass"
+                );
+                return Ok(area);
+            }
+        }
+        let dimension = self
+            .workbook
+            .worksheet(sheet)
+            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
+            .dimension();
+        let area = (dimension.max_row, dimension.max_column);
+        if self.evaluation.in_pass {
+            self.evaluation.used_areas.insert(sheet, area);
+        }
+        Ok(area)
+    }
+
+    /// Whether `area` reaches every cell of the sheet. For the check in
+    /// `used_area`.
+    fn used_area_covers(&self, sheet: u32, (max_row, max_column): (i32, i32)) -> bool {
+        match self.workbook.worksheet(sheet) {
+            Ok(worksheet) => {
+                let dimension = worksheet.dimension();
+                dimension.max_row <= max_row && dimension.max_column <= max_column
+            }
+            Err(_) => true,
+        }
+    }
+
+    /// Adds cells the pass wrote, up to (`last_row`, `last_column`), to the
+    /// used area kept for the sheet, if one is (see `used_area`).
+    pub(crate) fn note_cells_written(&mut self, sheet: u32, last_row: i32, last_column: i32) {
+        if let Some((max_row, max_column)) = self.evaluation.used_areas.get_mut(&sheet) {
+            *max_row = (*max_row).max(last_row);
+            *max_column = (*max_column).max(last_column);
+        }
     }
 
     /// Checks, on behalf of the dynamic anchor about to commit, whether writing
