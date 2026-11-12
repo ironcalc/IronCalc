@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use wasm_bindgen::{
     prelude::{wasm_bindgen, JsError},
-    JsValue,
+    JsCast, JsValue,
 };
 
 use ironcalc_base::{
@@ -128,58 +128,54 @@ impl From<ironcalc_base::FmtSettings> for FmtSettings {
     }
 }
 
-/// The kind of a cell given to `setCellsBatch`
-#[derive(Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum CellInputKind {
-    Text,
-    Number,
-    Boolean,
-    Formula,
-    Input,
+#[wasm_bindgen]
+extern "C" {
+    /// A cell given to `setCellsBatch`, `CellInput` in types.ts. Its fields are read one
+    /// by one, which is faster than deserializing the whole object.
+    type CellInputObject;
+    #[wasm_bindgen(method, getter, structural, catch)]
+    fn row(this: &CellInputObject) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(method, getter, structural, catch)]
+    fn column(this: &CellInputObject) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(method, getter, structural, catch)]
+    fn kind(this: &CellInputObject) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(method, getter, structural, catch)]
+    fn value(this: &CellInputObject) -> Result<JsValue, JsValue>;
 }
 
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum CellInputValue {
-    Number(f64),
-    Boolean(bool),
-    Text(String),
-}
-
-/// A cell given to `setCellsBatch`, `CellInput` in types.ts
-#[derive(Deserialize)]
-struct CellInput {
-    row: i32,
-    column: i32,
-    kind: CellInputKind,
-    value: CellInputValue,
+fn whole_number(value: Result<JsValue, JsValue>, name: &str) -> Result<i32, String> {
+    match value.ok().and_then(|v| v.as_f64()) {
+        Some(n) if n.fract() == 0.0 && (i32::MIN as f64..=i32::MAX as f64).contains(&n) => {
+            Ok(n as i32)
+        }
+        _ => Err(format!("{name} must be a whole number")),
+    }
 }
 
 fn set_cell_input(model: &mut BaseModel, sheet: u32, cell: JsValue) -> Result<(), String> {
-    let CellInput {
-        row,
-        column,
-        kind,
-        value,
-    } = serde_wasm_bindgen::from_value(cell).map_err(|e| e.to_string())?;
-    match (kind, value) {
-        (CellInputKind::Text, CellInputValue::Text(text)) => {
-            model.set_cell_text(sheet, row, column, &text)
+    let cell: CellInputObject = cell.unchecked_into();
+    let row = whole_number(cell.row(), "row")?;
+    let column = whole_number(cell.column(), "column")?;
+    let kind = cell
+        .kind()
+        .ok()
+        .and_then(|k| k.as_string())
+        .unwrap_or_default();
+    let value = cell.value().unwrap_or(JsValue::UNDEFINED);
+    let mismatch = || format!("a {kind} cell needs a value of that type");
+    match kind.as_str() {
+        "text" => model.set_cell_text(sheet, row, column, &value.as_string().ok_or_else(mismatch)?),
+        "number" => model.set_cell_number(sheet, row, column, value.as_f64().ok_or_else(mismatch)?),
+        "boolean" => {
+            model.set_cell_boolean(sheet, row, column, value.as_bool().ok_or_else(mismatch)?)
         }
-        (CellInputKind::Number, CellInputValue::Number(number)) => {
-            model.set_cell_number(sheet, row, column, number)
+        "formula" => {
+            model.set_cell_formula(sheet, row, column, &value.as_string().ok_or_else(mismatch)?)
         }
-        (CellInputKind::Boolean, CellInputValue::Boolean(boolean)) => {
-            model.set_cell_boolean(sheet, row, column, boolean)
+        "input" => {
+            model.set_cell_input(sheet, row, column, &value.as_string().ok_or_else(mismatch)?)
         }
-        (CellInputKind::Formula, CellInputValue::Text(formula)) => {
-            model.set_cell_formula(sheet, row, column, &formula)
-        }
-        (CellInputKind::Input, CellInputValue::Text(input)) => {
-            model.set_cell_input(sheet, row, column, &input)
-        }
-        _ => Err("the value does not match the kind".to_string()),
+        _ => Err(format!("unknown kind \"{kind}\"")),
     }
 }
 
