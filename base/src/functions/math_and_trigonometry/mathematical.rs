@@ -581,67 +581,47 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round(args, Rounding::Nearest, cell)
+    }
+
+    pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round(args, Rounding::AwayFromZero, cell)
+    }
+
+    pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round(args, Rounding::TowardZero, cell)
+    }
+
+    // ROUND, ROUNDUP and ROUNDDOWN (number, num_digits)
+    // If the number or the digits are arrays it works element by element.
+    fn round(&mut self, args: &[Node], mode: Rounding, cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             // Incorrect number of arguments
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => to_precision(f, 15),
-            Err(s) => return s,
+        let round = |value: f64, digits: f64| {
+            let digits = if digits > 0.0 {
+                digits.floor()
+            } else {
+                digits.ceil()
+            };
+            round_to_digits(to_precision(value, 15), digits, mode).ok_or(Error::NUM)
         };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
+        let value = self.get_number_or_array(&args[0], cell);
+        let digits = self.get_number_or_array(&args[1], cell);
+        match (value, digits) {
+            (Ok(NumberOrArray::Number(value)), Ok(NumberOrArray::Number(digits))) => {
+                match round(value, digits) {
+                    Ok(result) => CalcResult::Number(result),
+                    Err(error) => CalcResult::Error {
+                        error,
+                        origin: cell,
+                        message: "Result is too large".to_string(),
+                    },
                 }
             }
-            Err(s) => return s,
-        };
-        round_result(value, number_of_digits, Rounding::Nearest, cell)
-    }
-
-    pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
+            (value, digits) => self.arithmetic_on_values(value, digits, cell, &round),
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => to_precision(f, 15),
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
-            Err(s) => return s,
-        };
-        round_result(value, number_of_digits, Rounding::AwayFromZero, cell)
-    }
-
-    pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => to_precision(f, 15),
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
-            Err(s) => return s,
-        };
-        round_result(value, number_of_digits, Rounding::TowardZero, cell)
     }
 
     // (number, divisor)
