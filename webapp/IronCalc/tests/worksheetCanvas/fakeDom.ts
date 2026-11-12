@@ -178,9 +178,9 @@ export const testDarkThemeVars: Record<string, string> = {
   "--palette-sheet-default-text-color": "#e4e4e4",
 };
 
-// worksheetCanvas.ts reads `window.devicePixelRatio` at module load time, so
-// this must run before that module is imported (the harness imports it
-// dynamically afterwards).
+// Installs the globals worksheetCanvas.ts reads (`window.devicePixelRatio`,
+// `document`, `getComputedStyle`). The harness imports that module
+// dynamically afterwards.
 export function installDomGlobals(
   devicePixelRatio: number,
   themeVars = testThemeVars,

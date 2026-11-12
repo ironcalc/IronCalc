@@ -546,10 +546,11 @@ const Workbook = (
         rowEnd + 1,
         columnEnd + 1,
       );
-      const width = (x1 - x) * devicePixelRatio;
-      const height = (y1 - y) * devicePixelRatio;
-      x *= devicePixelRatio;
-      y *= devicePixelRatio;
+      const ratio = devicePixelRatio();
+      const width = (x1 - x) * ratio;
+      const height = (y1 - y) * ratio;
+      x *= ratio;
+      y *= ratio;
 
       const capturedCanvas = document.createElement("canvas");
       capturedCanvas.width = width;
