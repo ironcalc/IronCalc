@@ -65,7 +65,9 @@ export interface CanvasSettings {
   refresh: () => void;
 }
 
-export const devicePixelRatio = window.devicePixelRatio || 1;
+// Read at each use, not once at module load: browser zoom changes the ratio,
+// and a canvas sized with a stale value is stretched and blurry (#290)
+export const devicePixelRatio = (): number => window.devicePixelRatio || 1;
 
 // The last row or column with any part before `edge` (an offset along the
 // axis): the one holding the edge, or the one ending exactly at it
@@ -464,11 +466,12 @@ export default class WorksheetCanvas {
       );
     }
     // If the devicePixelRatio is 2 then the canvas is twice as large to avoid blurring.
-    canvas.width = width * devicePixelRatio;
-    canvas.height = height * devicePixelRatio;
+    const ratio = devicePixelRatio();
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    context.scale(devicePixelRatio, devicePixelRatio);
+    context.scale(ratio, ratio);
     return context;
   }
 
