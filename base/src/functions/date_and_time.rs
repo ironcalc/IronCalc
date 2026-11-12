@@ -986,10 +986,18 @@ impl<'a> Model<'a> {
 
         let months_abs = months.unsigned_abs();
 
+        // Months beyond what chrono can represent are out of bounds, not a panic.
         let native_date = if months > 0 {
-            date + Months::new(months_abs)
+            date.checked_add_months(Months::new(months_abs))
         } else {
-            date - Months::new(months_abs)
+            date.checked_sub_months(Months::new(months_abs))
+        };
+        let Some(native_date) = native_date else {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "EDATE out of bounds".to_string(),
+            };
         };
 
         let serial_number = native_date.num_days_from_ce() - EXCEL_DATE_BASE;
