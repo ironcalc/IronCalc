@@ -40,8 +40,14 @@ import {
 
 export interface CanvasSettings {
   model: Model;
+  // The size of the canvas in sheet pixels: the CSS size the container is
+  // scaled from (see `zoom`)
   width: number;
   height: number;
+  // The factor the container (the canvas and its overlays) is scaled by, 1
+  // by default. The canvas keeps rendering in sheet pixels; the zoom only
+  // raises its backing resolution and converts pointer positions back.
+  zoom?: number;
   workbookState: WorkbookState;
   elements: {
     canvas: HTMLCanvasElement;
@@ -67,7 +73,7 @@ export interface CanvasSettings {
 
 // Read at each use, not once at module load: browser zoom changes the ratio,
 // and a canvas sized with a stale value is stretched and blurry (#290)
-export const devicePixelRatio = (): number => window.devicePixelRatio || 1;
+const devicePixelRatio = (): number => window.devicePixelRatio || 1;
 
 // The last row or column with any part before `edge` (an offset along the
 // axis): the one holding the edge, or the one ending exactly at it
@@ -125,6 +131,8 @@ export default class WorksheetCanvas {
   width: number;
 
   height: number;
+
+  zoom: number;
 
   ctx: CanvasRenderingContext2D;
 
@@ -230,6 +238,7 @@ export default class WorksheetCanvas {
     this.canvas = options.elements.canvas;
     this.width = options.width;
     this.height = options.height;
+    this.zoom = options.zoom ?? 1;
     this.ctx = this.setContext();
     this.workbookState = options.workbookState;
     this.editor = options.elements.editor;
@@ -466,13 +475,32 @@ export default class WorksheetCanvas {
       );
     }
     // If the devicePixelRatio is 2 then the canvas is twice as large to avoid blurring.
-    const ratio = devicePixelRatio();
+    const ratio = this.backingScale();
     canvas.width = width * ratio;
     canvas.height = height * ratio;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     context.scale(ratio, ratio);
     return context;
+  }
+
+  // Backing pixels per sheet pixel: a sheet pixel covers `zoom` CSS pixels,
+  // each of `devicePixelRatio` device pixels
+  backingScale(): number {
+    return devicePixelRatio() * this.zoom;
+  }
+
+  // The sheet coordinates (relative to the canvas, in sheet pixels) of a
+  // pointer event: the screen offset is in CSS pixels, scaled by the zoom
+  eventCoordinates(event: { clientX: number; clientY: number }): {
+    x: number;
+    y: number;
+  } {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.x) / this.zoom,
+      y: (event.clientY - rect.y) / this.zoom,
+    };
   }
 
   setSize(size: { width: number; height: number }): void {
@@ -1759,11 +1787,14 @@ export default class WorksheetCanvas {
     this.columnHeaders.insertBefore(div, null);
 
     let initPageX = 0;
+    // The drag in sheet pixels (the pointer moves in CSS pixels)
+    const dragX = (event: MouseEvent): number =>
+      (event.pageX - initPageX) / this.zoom;
     const resizeHandleMove = (event: MouseEvent): void => {
-      if (columnWidth + event.pageX - initPageX > 0) {
-        div.style.left = `${x + event.pageX - initPageX - 1}px`;
+      if (columnWidth + dragX(event) > 0) {
+        div.style.left = `${x + dragX(event) - 1}px`;
         this.columnGuide.style.left = `${
-          headerColumnWidth + x + event.pageX - initPageX
+          headerColumnWidth + x + dragX(event)
         }px`;
       }
     };
@@ -1772,7 +1803,7 @@ export default class WorksheetCanvas {
       this.columnGuide.style.display = "none";
       document.removeEventListener("pointermove", resizeHandleMove);
       document.removeEventListener("pointerup", resizeHandleUp);
-      const newColumnWidth = columnWidth + event.pageX - initPageX;
+      const newColumnWidth = columnWidth + dragX(event);
       if (newColumnWidth !== columnWidth) {
         this.onColumnWidthChanges(this.selectedSheet(), column, newColumnWidth);
       }
@@ -1831,11 +1862,14 @@ export default class WorksheetCanvas {
     const sheet = this.selectedSheet();
     this.canvas.parentElement?.insertBefore(div, null);
     let initPageY = 0;
+    // The drag in sheet pixels (the pointer moves in CSS pixels)
+    const dragY = (event: MouseEvent): number =>
+      (event.pageY - initPageY) / this.zoom;
     /* istanbul ignore next */
     const resizeHandleMove = (event: MouseEvent): void => {
-      if (rowHeight + event.pageY - initPageY > 0) {
-        div.style.top = `${y + event.pageY - initPageY - 1}px`;
-        this.rowGuide.style.top = `${y + event.pageY - initPageY}px`;
+      if (rowHeight + dragY(event) > 0) {
+        div.style.top = `${y + dragY(event) - 1}px`;
+        this.rowGuide.style.top = `${y + dragY(event)}px`;
       }
     };
     let resizeHandleUp = (event: MouseEvent): void => {
@@ -1843,7 +1877,7 @@ export default class WorksheetCanvas {
       this.rowGuide.style.display = "none";
       document.removeEventListener("pointermove", resizeHandleMove);
       document.removeEventListener("pointerup", resizeHandleUp);
-      const newRowHeight = rowHeight + event.pageY - initPageY;
+      const newRowHeight = rowHeight + dragY(event);
       if (newRowHeight !== rowHeight) {
         this.onRowHeightChanges(sheet, row, newRowHeight);
       }
@@ -2675,9 +2709,10 @@ export default class WorksheetCanvas {
       }
     }
 
+    // The handle's screen size, scaled by the zoom, back in sheet pixels
     const handleBBox = cellOutlineHandle.getBoundingClientRect();
-    const handleWidth = handleBBox.width;
-    const handleHeight = handleBBox.height;
+    const handleWidth = handleBBox.width / this.zoom;
+    const handleHeight = handleBBox.height / this.zoom;
     cellOutlineHandle.style.left = `${handleX - handleWidth / 2 - 1}px`;
     cellOutlineHandle.style.top = `${handleY - handleHeight / 2 - 1}px`;
   }

@@ -46,4 +46,9 @@ export interface WorkbookActions {
   };
   openCustomNumberFormat: () => void;
   downloadSelectionAsPng: () => void;
+  /** The zoom of the sheet in percent, clamped to 10%..400%. */
+  setZoom: (zoom: number) => void;
+  /** The next zoom level in steps of 10%. */
+  zoomIn: () => void;
+  zoomOut: () => void;
 }

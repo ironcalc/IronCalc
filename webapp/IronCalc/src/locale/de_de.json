@@ -470,6 +470,12 @@
     "vertical_align_bottom": "Unten ausrichten",
     "vertical_align_middle": "Mittig ausrichten",
     "vertical_align_top": "Oben ausrichten",
-    "wrap_text": "Text umbrechen"
+    "wrap_text": "Text umbrechen",
+    "zoom": "Zoom",
+    "zoom_menu": {
+      "zoom_in": "Vergrößern",
+      "zoom_out": "Verkleinern",
+      "zoom_to": "Zoom auf {{percent}} %"
+    }
   }
 }

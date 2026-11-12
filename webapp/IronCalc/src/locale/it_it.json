@@ -470,6 +470,12 @@
     "vertical_align_bottom": "Allinea in basso",
     "vertical_align_middle": "Allinea al centro",
     "vertical_align_top": "Allinea in alto",
-    "wrap_text": "Testo a capo"
+    "wrap_text": "Testo a capo",
+    "zoom": "Zoom",
+    "zoom_menu": {
+      "zoom_in": "Ingrandisci",
+      "zoom_out": "Riduci",
+      "zoom_to": "Zoom al {{percent}} %"
+    }
   }
 }

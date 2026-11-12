@@ -4,6 +4,7 @@
 // * What are we editing
 // * Are we copying styles?
 // * Are we extending a cell? (by pulling the cell outline handle down, for instance)
+// * The zoom of the sheet
 //
 // Editing the cell is the most complex operation.
 //
@@ -85,12 +86,32 @@ export interface EditingCell {
 // Those are styles that are copied
 type AreaStyles = CellStyle[][];
 
+// The zoom of the sheet, in percent (Excel's range)
+export const MIN_ZOOM = 10;
+export const MAX_ZOOM = 400;
+const ZOOM_STEP = 10;
+
+export function clampZoom(zoom: number): number {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
+}
+
+// The next zoom levels in steps of 10%, from the current one: 105% goes to
+// 110% and to 100%
+export function zoomInLevel(zoom: number): number {
+  return clampZoom((Math.floor(zoom / ZOOM_STEP) + 1) * ZOOM_STEP);
+}
+
+export function zoomOutLevel(zoom: number): number {
+  return clampZoom((Math.ceil(zoom / ZOOM_STEP) - 1) * ZOOM_STEP);
+}
+
 export class WorkbookState {
   private extendToArea: Area | null;
   private copyStyles: AreaStyles | null;
   private cell: EditingCell | null;
   private cutRange: CutRange | null;
   private selecting: boolean;
+  private zoom: number;
 
   constructor() {
     // the extendTo area is the area we are covering
@@ -99,6 +120,16 @@ export class WorkbookState {
     this.cell = null;
     this.cutRange = null;
     this.selecting = false;
+    this.zoom = 100;
+  }
+
+  // The zoom of the sheet, in percent
+  getZoom(): number {
+    return this.zoom;
+  }
+
+  setZoom(zoom: number): void {
+    this.zoom = clampZoom(zoom);
   }
 
   isSelecting(): boolean {

@@ -71,11 +71,8 @@ export class CellLinks {
       if (target.closest?.(".ic-worksheet-link-tooltip")) {
         return;
       }
-      const rect = canvas.getBoundingClientRect();
-      const cell = this.getLinkCellAt(
-        event.clientX - rect.left,
-        event.clientY - rect.top,
-      );
+      const { x, y } = this.worksheet.eventCoordinates(event);
+      const cell = this.getLinkCellAt(x, y);
       this.options.onLinkHover?.(cell);
     };
     container.onpointerleave = () => {
@@ -91,11 +88,8 @@ export class CellLinks {
       if (target.closest?.(".ic-worksheet-link-tooltip")) {
         return;
       }
-      const rect = canvas.getBoundingClientRect();
-      const cell = this.getLinkCellAt(
-        event.clientX - rect.left,
-        event.clientY - rect.top,
-      );
+      const { x, y } = this.worksheet.eventCoordinates(event);
+      const cell = this.getLinkCellAt(x, y);
       if (!cell) {
         return;
       }
