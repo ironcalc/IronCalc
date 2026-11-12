@@ -159,6 +159,7 @@ function Toolbar(properties: ToolbarProperties) {
   const { t } = useTranslation();
 
   const { canEdit, currentTheme, mergeCellsState } = properties;
+  const zoomPercent = Math.round(properties.zoom);
 
   useEffect(() => {
     setFontSizeInput(`${properties.fontSize}`);
@@ -255,11 +256,11 @@ function Toolbar(properties: ToolbarProperties) {
                     variant="ghost"
                     size="sm"
                     className="ic-toolbar-zoom-button"
-                    aria-label={t("toolbar.zoom")}
+                    aria-label={`${t("toolbar.zoom")}: ${zoomPercent}%`}
                     style={{ gap: 0, paddingLeft: 4, paddingRight: 2 }}
                     endIcon={<ChevronDown size={12} />}
                   >
-                    {`${Math.round(properties.zoom)}%`}
+                    {`${zoomPercent}%`}
                   </Button>
                 </Tooltip>
               </div>
@@ -283,6 +284,7 @@ function Toolbar(properties: ToolbarProperties) {
             {ZOOM_LEVELS.map((level) => (
               <MenuItem
                 key={level}
+                checked={level === zoomPercent}
                 onClick={() => properties.onSetZoom(level)}
                 secondaryText={level === 100 ? "Ctrl 0" : undefined}
               >

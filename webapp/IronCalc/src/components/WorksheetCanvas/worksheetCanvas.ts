@@ -2830,7 +2830,7 @@ export default class WorksheetCanvas {
   }
 
   renderSheet(): void {
-    const { canvas, ctx: context } = this;
+    const { ctx: context } = this;
     const selectedSheet = this.selectedSheet();
     // Row heights and column widths may have changed since the last render
     this.axes = null;
@@ -2838,8 +2838,10 @@ export default class WorksheetCanvas {
     context.textAlign = "center";
     context.textBaseline = "middle";
 
-    // Clear the canvas
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    // Clear the canvas. The context is scaled by the backing scale, so the
+    // rectangle is in sheet pixels: the backing size would clear too little
+    // when the scale is below 1 (a zoomed-out sheet on a low-density screen)
+    context.clearRect(0, 0, this.width, this.height);
 
     this.removeHandles();
 
