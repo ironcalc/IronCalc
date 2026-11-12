@@ -299,3 +299,43 @@ test('CF: list index resolves the right dxf after a priority swap', () => {
         assert.strictEqual(dxf.fill.color, expected[view.range]);
     }
 });
+
+test('CF: getCellConditionalFormat gives the outcome apart from the style', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    for (let row = 1; row <= 5; row += 1) {
+        model.setCellNumber(0, row, 1, row * 10);
+        model.setCellNumber(0, row, 2, row);
+    }
+    model.updateRangeStyle({ sheet: 0, row: 1, column: 1, width: 1, height: 5 }, 'font.b', 'true');
+    model.addConditionalFormatting(0, 'A1:A5', {
+        type: 'Formula', formula: '=A1>20', format: { fill: { color: '#FF0000' } }, stop_if_true: false,
+    });
+    // Overrides that equal the defaults: not bold, black
+    model.addConditionalFormatting(0, 'A1:A5', {
+        type: 'Formula', formula: '=A1>30', format: { font: { b: false, color: '#000000' } }, stop_if_true: false,
+    });
+    model.addConditionalFormatting(0, 'B1:B5', COLOR_SCALE);
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);
+    model.evaluate();
+
+    assert.strictEqual(model.getCellConditionalFormat(0, 1, 1), null);
+    // Fields that are not set come as undefined, which JSON leaves out
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(model.getCellConditionalFormat(0, 4, 1))), {
+        row: 4,
+        column: 1,
+        dxfs: [{ fill: { color: '#FF0000' } }, { font: { b: false, color: '#000000' } }],
+    });
+    const scaled = model.getCellConditionalFormat(0, 5, 2);
+    assert.deepStrictEqual(scaled.dxfs, []);
+    assert.strictEqual(scaled.fill, '#00FF00');
+    assert.strictEqual(scaled.data_bar.value, 1);
+    assert.strictEqual(scaled.data_bar.positive_color, '#0000FF');
+    // getCellStyle merges the override in: the cell is no longer bold there, with nothing to say why
+    assert.strictEqual(model.getCellStyle(0, 4, 1).style.font.b, undefined);
+
+    const block = model.getConditionalFormatsBlock(0, 1, 1, 2, 5);
+    assert.deepStrictEqual(
+        block.map(({ row, column, dxfs }) => [row, column, dxfs.length]),
+        [[1, 2, 0], [2, 2, 0], [3, 1, 1], [3, 2, 0], [4, 1, 2], [4, 2, 0], [5, 1, 2], [5, 2, 0]],
+    );
+});

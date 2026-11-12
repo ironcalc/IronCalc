@@ -513,3 +513,104 @@ test('setCellsBatch stops at the first bad cell', () => {
     ]), { name: 'Error', message: "Cell 1: Invalid row" });
     assert.strictEqual(model.getFormattedCellValue(0, 5, 1), "five");
 });
+
+test('getCellValue gives values unformatted', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.setCellNumber(0, 1, 1, 3.14159);
+    model.updateRangeStyle({ sheet: 0, row: 1, column: 1, width: 1, height: 1 }, "num_fmt", "0.00");
+    model.setCellText(0, 2, 1, "001");
+    model.setCellBoolean(0, 3, 1, false);
+    model.setCellFormula(0, 4, 1, "=VLOOKUP(9,A1:A3,1,FALSE)");
+    model.setCellFormula(0, 5, 1, "=A1*2");
+    model.setCellFormula(0, 1, 2, "=SEQUENCE(3)");
+    model.evaluate();
+
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 1), "3.14");
+    assert.deepStrictEqual(model.getCellValue(0, 1, 1), { type: "number", value: 3.14159 });
+    assert.deepStrictEqual(model.getCellValue(0, 2, 1), { type: "text", value: "001" });
+    assert.deepStrictEqual(model.getCellValue(0, 3, 1), { type: "boolean", value: false });
+    assert.deepStrictEqual(model.getCellValue(0, 4, 1), { type: "error", value: "#N/A" });
+    assert.deepStrictEqual(model.getCellValue(0, 5, 1), { type: "number", value: 6.28318 });
+    assert.deepStrictEqual(model.getCellValue(0, 9, 9), { type: "empty" });
+    // A cell the formula spills into
+    assert.deepStrictEqual(model.getCellValue(0, 3, 2), { type: "number", value: 3 });
+
+    assert.deepStrictEqual(model.getCellValuesBlock(0, 2, 1, 2, 2), [
+        [{ type: "text", value: "001" }, { type: "number", value: 2 }],
+        [{ type: "boolean", value: false }, { type: "number", value: 3 }],
+    ]);
+    assert.throws(() => model.getCellValuesBlock(0, 1, 1, 0, 1));
+});
+
+test('setCellFormula and getCellFormula use English whatever the locale', () => {
+    const model = new Model('Workbook1', 'de', 'UTC', 'de');
+    model.setCellNumber(0, 1, 1, 1.5);
+    model.setCellNumber(0, 2, 1, 2.25);
+    model.setCellFormula(0, 1, 2, '=SUM(A1,A2,0.25)');
+    model.setCellsBatch(0, [{ row: 2, column: 2, kind: "formula", value: '=IF(A1>1,"big","small")' }]);
+    model.evaluate();
+
+    assert.deepStrictEqual(model.getCellValue(0, 1, 2), { type: "number", value: 4 });
+    assert.deepStrictEqual(model.getCellValue(0, 2, 2), { type: "text", value: "big" });
+    assert.strictEqual(model.getCellFormula(0, 1, 2), '=SUM(A1,A2,0.25)');
+    assert.strictEqual(model.getCellFormula(0, 2, 2), '=IF(A1>1,"big","small")');
+    assert.strictEqual(model.getCellFormula(0, 1, 1), undefined);
+    // What the user sees and types is localised
+    assert.strictEqual(model.getCellContent(0, 1, 2), '=SUMME(A1;A2;0,25)');
+    model.setUserInput(0, 3, 2, '=SUMME(A1;A2;0,25)');
+    assert.deepStrictEqual(model.getCellValue(0, 3, 2), { type: "number", value: 4 });
+});
+
+test('evaluateFormula evaluates in the context of a cell without storing', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    [4, 7, 7, 9].forEach((value, index) => model.setCellNumber(0, index + 1, 2, value));
+    model.evaluate();
+
+    // Relative references are relative to the cell
+    assert.deepStrictEqual(
+        model.evaluateFormula(0, 2, 2, '=AND(B2>0,COUNTIF($B$1:$B$4,B2)=1)'),
+        { type: "boolean", value: false },
+    );
+    assert.deepStrictEqual(
+        model.evaluateFormula(0, 4, 2, 'AND(B4>0,COUNTIF($B$1:$B$4,B4)=1)'),
+        { type: "boolean", value: true },
+    );
+    assert.deepStrictEqual(model.evaluateFormula(0, 1, 1, '=1/0'), { type: "error", value: "#DIV/0!" });
+    // An array or a range gives its top-left value
+    assert.deepStrictEqual(model.evaluateFormula(0, 1, 1, '=B2:B4*10'), { type: "number", value: 70 });
+    assert.throws(() => model.evaluateFormula(0, 1, 1, '=SUM(1,'));
+
+    // Nothing was stored
+    assert.deepStrictEqual(model.getCellValue(0, 2, 2), { type: "number", value: 7 });
+    assert.deepStrictEqual(model.getCellValue(0, 1, 1), { type: "empty" });
+    assert.strictEqual(model.canUndo(), false);
+});
+
+test('TODAY, NOW and RAND read the clock and the RNG of JavaScript on every evaluation', () => {
+    const { now, random } = { now: Date.now, random: Math.random };
+    try {
+        const model = new Model('Workbook1', 'en', 'UTC', 'en');
+        model.setCellFormula(0, 1, 1, '=TODAY()');
+        model.setCellFormula(0, 2, 1, '=NOW()');
+        model.setCellFormula(0, 3, 1, '=RAND()');
+        model.setCellFormula(0, 4, 1, '=RANDBETWEEN(1,100)');
+        model.setCellFormula(0, 5, 1, '=RANDARRAY(1,2)');
+
+        Date.now = () => Date.UTC(2026, 0, 15, 12, 0, 0);
+        Math.random = () => 0.25;
+        model.evaluate();
+        assert.deepStrictEqual(model.getCellValuesBlock(0, 1, 1, 2, 5).map((row) => row.map((v) => v.value)), [
+            [46037, undefined], [46037.5, undefined], [0.25, undefined], [26, undefined], [0.25, 0.25],
+        ]);
+
+        Date.now = () => Date.UTC(2026, 0, 16, 18, 0, 0);
+        Math.random = () => 0.75;
+        model.evaluate();
+        assert.deepStrictEqual(model.getCellValuesBlock(0, 1, 1, 2, 5).map((row) => row.map((v) => v.value)), [
+            [46038, undefined], [46038.75, undefined], [0.75, undefined], [76, undefined], [0.75, 0.75],
+        ]);
+    } finally {
+        Date.now = now;
+        Math.random = random;
+    }
+});

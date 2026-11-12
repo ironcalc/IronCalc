@@ -1,7 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::expressions::token::Error;
 use crate::expressions::types::Area;
 use crate::test::user_model::util::new_empty_user_model;
+use crate::types::FormulaValue;
+use crate::UserModel;
 
 #[test]
 fn set_cell_values_clear_spills() {
@@ -66,4 +69,24 @@ fn set_cell_values_are_not_undoable() {
     assert!(!model.can_undo());
     assert_eq!(model.get_formatted_cell_value(0, 1, 4).unwrap(), "2");
     assert_eq!(model.get_formatted_cell_value(0, 1, 5).unwrap(), "12%");
+}
+
+#[test]
+fn formulas_are_english_whatever_the_locale() {
+    let mut model = UserModel::new_empty("model", "fr", "UTC", "fr").unwrap();
+    model.set_cell_number(0, 1, 1, 1.5).unwrap();
+    model.set_cell_formula(0, 1, 2, "=SUM(A1,0.5)").unwrap();
+    // The language and locale of the model are back for what the user types
+    model.set_user_input(0, 2, 2, "=SOMME(A1;0,5)").unwrap();
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2).unwrap(), "2");
+
+    // Evaluating a formula in a cell leaves the model as it is
+    let value = model.evaluate_formula(0, 1, 1, "=A1*2+SUM(1,0.5)").unwrap();
+    assert_eq!(value, FormulaValue::Number(4.5));
+    let value = model.evaluate_formula(0, 1, 1, "=1/0").unwrap();
+    assert!(matches!(value, FormulaValue::Error { ei: Error::DIV, .. }));
+    assert!(model.evaluate_formula(0, 1, 1, "=SUM(1,").is_err());
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "1,5");
 }

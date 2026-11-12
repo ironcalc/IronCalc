@@ -526,6 +526,34 @@ export interface CfRating {
   show_value: boolean;
 }
 
+/**
+ * The unformatted value of a cell, see `Model.getCellValue`. An error is
+ * given by its code in English, like "#N/A".
+ */
+export type CellValue =
+  | { type: "number"; value: number }
+  | { type: "text"; value: string }
+  | { type: "boolean"; value: boolean }
+  | { type: "error"; value: string }
+  | { type: "empty" };
+
+/**
+ * What conditional formatting does to a cell, apart from its own style, see
+ * `Model.getCellConditionalFormat`. `dxfs` are the formats of the matched
+ * rules in the order they are applied, from the lowest priority to the
+ * highest: where two set the same property, the later one wins. `fill` is the
+ * colour given by a colour scale.
+ */
+export interface CellConditionalFormat {
+  row: number;
+  column: number;
+  dxfs: Dxf[];
+  fill?: Color;
+  data_bar?: CfDataBar;
+  icon?: CfIcon;
+  rating?: CfRating;
+}
+
 export interface ExtendedCellStyle {
   style: CellStyle;
   icon: CfIcon | null;
