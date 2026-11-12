@@ -606,10 +606,37 @@ fn whole_days_in_time(time: &str) -> i32 {
     (total_seconds / 86400.0).floor().min(i32::MAX as f64) as i32
 }
 
+// Excel also reads a textual month separated by spaces, with an optional comma after the
+// first two words: "Mar 15, 2026", "March 15 2026" and "15 March 2026" are all "15-Mar-2026".
+// Returns the date in that form, followed by whatever came after it (e.g. a time).
+fn dash_textual_month_date(text: &str) -> Option<String> {
+    let words: Vec<&str> = text.split_whitespace().collect();
+    if words.len() < 3 {
+        return None;
+    }
+    let first = words[0].trim_end_matches(',');
+    let second = words[1].trim_end_matches(',');
+    let is_month_name = |s: &str| s.len() > 2 && parse_month_simple(s).is_ok();
+    let (day, month) = if is_month_name(first) {
+        (second, first)
+    } else if is_month_name(second) {
+        (first, second)
+    } else {
+        return None;
+    };
+    let mut date = format!("{day}-{month}-{}", words[2]);
+    for word in &words[3..] {
+        date.push(' ');
+        date.push_str(word);
+    }
+    Some(date)
+}
+
 pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     // Trim whitespace and split off any time component (e.g., "2024-02-29 06:00" -> "2024-02-29").
     // The time component only counts through its whole days (e.g., "24:00:00" is the next day).
     let squeezed = squeeze_separator_spaces(value.trim(), &['/', '-']);
+    let squeezed = dash_textual_month_date(&squeezed).unwrap_or(squeezed);
     let mut date_str = squeezed.as_str();
     let mut time_str = "";
     if let Some(idx) = date_str.find('T') {
