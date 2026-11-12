@@ -533,6 +533,12 @@ export interface ExtendedCellStyle {
   rating: CfRating | null;
 }
 
+export interface FocusOnOpen {
+  sheet: number;
+  row: number;
+  column: number;
+}
+
 export interface SelectedView {
   sheet: number;
   row: number;

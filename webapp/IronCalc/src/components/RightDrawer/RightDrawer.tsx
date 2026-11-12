@@ -1,5 +1,6 @@
 import type {
   FmtSettings,
+  FocusOnOpen,
   IronCalcTheme,
   Model,
   NamedStyle,
@@ -9,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
 import NamedRanges from "./NamedRanges/NamedRanges";
 import NamedStylesPanel from "./NamedStyles/NamedStylesPanel";
-import RegionalSettings from "./RegionalSettings/RegionalSettings";
+import Settings from "./Settings/Settings";
 import Themes from "./Themes/themes";
 import "./rightdrawer.css";
 import { useTranslation } from "react-i18next";
@@ -28,7 +29,7 @@ const KEYBOARD_RESIZE_STEP = 16;
 export type DrawerType =
   | "namedRanges"
   | "namedStyles"
-  | "regionalSettings"
+  | "settings"
   | "conditionalFormatting"
   | "themes";
 
@@ -56,11 +57,16 @@ interface RightDrawerProps {
     payload: NamedStyleSavePayload,
   ) => SaveError;
   onDeleteNamedStyle: (name: string) => void;
-  // Regional settings props
+  // Settings props
   initialLocale: string;
   initialTimezone: string;
   initialLanguage: string;
-  onSettingsSave: (locale: string, timezone: string, language: string) => void;
+  onSettingsSave: (
+    locale: string,
+    timezone: string,
+    language: string,
+    focusOnOpen: FocusOnOpen | null,
+  ) => void;
 }
 
 const RightDrawer = ({
@@ -186,13 +192,19 @@ const RightDrawer = ({
             onDeleteNamedStyle={onDeleteNamedStyle}
           />
         );
-      case "regionalSettings":
+      case "settings":
         return (
-          <RegionalSettings
+          <Settings
             onClose={onClose}
             initialLocale={initialLocale}
             initialTimezone={initialTimezone}
             initialLanguage={initialLanguage}
+            initialFocusOnOpen={model.getFocusOnOpen()}
+            worksheets={model.getWorksheetsProperties()}
+            getSelectedCell={() => {
+              const { sheet, row, column } = model.getSelectedView();
+              return { sheet, row, column };
+            }}
             onSave={onSettingsSave}
           />
         );

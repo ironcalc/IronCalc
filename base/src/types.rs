@@ -106,6 +106,19 @@ pub struct Metadata {
 pub struct WorkbookSettings {
     pub tz: String,
     pub locale: String,
+    /// The cell the workbook focuses on when it is opened. If `None` the
+    /// workbook opens on its first visible sheet with A1 selected.
+    pub focus_on_open: Option<FocusOnOpen>,
+}
+
+/// The cell a workbook focuses on when it is opened.
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Copy)]
+pub struct FocusOnOpen {
+    /// The `sheet_id` of the sheet (not its index: it is stable across sheet
+    /// insertions, deletions and moves)
+    pub sheet_id: u32,
+    pub row: i32,
+    pub column: i32,
 }
 
 /// An internal representation of an IronCalc Workbook

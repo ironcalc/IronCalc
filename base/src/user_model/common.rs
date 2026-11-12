@@ -252,13 +252,15 @@ impl<'a> Debug for UserModel<'a> {
 impl<'a> UserModel<'a> {
     /// Creates a user model from an existing model
     pub fn from_model(model: Model) -> UserModel {
-        UserModel {
+        let mut user_model = UserModel {
             model,
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
             view: WorkbookView::default(),
-        }
+        };
+        user_model.apply_focus_on_open();
+        user_model
     }
 
     /// Creates a new UserModel.
@@ -287,13 +289,7 @@ impl<'a> UserModel<'a> {
     /// * [Model::from_bytes]
     pub fn from_bytes(s: &[u8], language_id: &'a str) -> Result<UserModel<'a>, String> {
         let model = Model::from_bytes(s, language_id)?;
-        Ok(UserModel {
-            model,
-            history: History::default(),
-            send_queue: vec![],
-            pause_evaluation: false,
-            view: WorkbookView::default(),
-        })
+        Ok(UserModel::from_model(model))
     }
 
     /// Returns the internal representation of a model
@@ -2249,6 +2245,34 @@ impl<'a> UserModel<'a> {
         }];
         self.push_diff_list(diff_list);
         self.model.set_locale(locale)
+    }
+
+    /// Returns the cell the workbook focuses on when it is opened, as
+    /// `(sheet, row, column)`, or `None` if the setting is off.
+    ///
+    /// See also:
+    /// * [Model::get_focus_on_open]
+    pub fn get_focus_on_open(&self) -> Option<(u32, i32, i32)> {
+        self.model.get_focus_on_open()
+    }
+
+    /// Sets the cell the workbook focuses on when it is opened, as
+    /// `(sheet, row, column)`. With `None` the workbook opens on its first
+    /// visible sheet with A1 selected.
+    ///
+    /// See also:
+    /// * [Model::set_focus_on_open]
+    pub fn set_focus_on_open(&mut self, focus: Option<(u32, i32, i32)>) -> Result<(), String> {
+        let old_value = self.model.workbook.settings.focus_on_open;
+        self.model.set_focus_on_open(focus)?;
+        let new_value = self.model.workbook.settings.focus_on_open;
+        if old_value != new_value {
+            self.push_diff_list(vec![Diff::SetFocusOnOpen {
+                old_value,
+                new_value,
+            }]);
+        }
+        Ok(())
     }
 
     /// Gets the timezone of the model

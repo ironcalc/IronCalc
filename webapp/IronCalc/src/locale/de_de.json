@@ -328,7 +328,18 @@
     "save": "Speichern",
     "title": "Benutzerdefiniertes Zahlenformat"
   },
-  "regional_settings": {
+  "right_drawer": {
+    "close": "Schließen",
+    "resize_drawer": "Größe der Seitenleiste ändern"
+  },
+  "settings": {
+    "focus_on_open": {
+      "cell_label": "Zelle",
+      "helper": "Die Arbeitsmappe wird mit diesem Blatt und dieser Zelle geöffnet. Dies wird auch beim Export nach Excel gespeichert.",
+      "invalid_cell": "Ungültiger Zellbezug",
+      "sheet_label": "Blatt",
+      "title": "Blatt beim Öffnen anzeigen"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",
@@ -347,17 +358,13 @@
       "locale_label": "Regionaleinstellung",
       "title": "Regionaleinstellung"
     },
-    "open_regional_settings": "Regionaleinstellungen öffnen",
+    "open_settings": "Einstellungen öffnen",
     "timezone": {
       "timezone_helper": "Das Ändern dieser Einstellung wirkt sich auf datums- und zeitbezogene Funktionen aus, einschließlich HEUTE() und JETZT().",
       "timezone_label": "Zeitzone",
       "title": "Zeitzone"
     },
-    "title": "Regionaleinstellungen"
-  },
-  "right_drawer": {
-    "close": "Schließen",
-    "resize_drawer": "Größe der Seitenleiste ändern"
+    "title": "Einstellungen"
   },
   "sheet_delete": {
     "cancel": "Abbrechen",

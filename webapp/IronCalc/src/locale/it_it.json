@@ -328,7 +328,18 @@
     "save": "Salva",
     "title": "Formato numero personalizzato"
   },
-  "regional_settings": {
+  "right_drawer": {
+    "close": "Chiudi",
+    "resize_drawer": "Ridimensiona pannello"
+  },
+  "settings": {
+    "focus_on_open": {
+      "cell_label": "Cella",
+      "helper": "La cartella di lavoro si apre su questo foglio e questa cella. Viene salvato anche nell'esportazione in Excel.",
+      "invalid_cell": "Riferimento di cella non valido",
+      "sheet_label": "Foglio",
+      "title": "Mostra un foglio all'apertura"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",
@@ -347,17 +358,13 @@
       "locale_label": "Impostazioni locali",
       "title": "Impostazioni locali"
     },
-    "open_regional_settings": "Apri impostazioni regionali",
+    "open_settings": "Apri impostazioni",
     "timezone": {
       "timezone_helper": "La modifica di questa impostazione influirà sulle funzioni relative a data e ora, incluse ADESSO() e OGGI().",
       "timezone_label": "Fuso orario",
       "title": "Fuso orario"
     },
-    "title": "Impostazioni regionali"
-  },
-  "right_drawer": {
-    "close": "Chiudi",
-    "resize_drawer": "Ridimensiona pannello"
+    "title": "Impostazioni"
   },
   "sheet_delete": {
     "cancel": "Annulla",

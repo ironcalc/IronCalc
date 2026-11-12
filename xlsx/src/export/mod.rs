@@ -75,13 +75,23 @@ pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
 
 pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<W, XlsxError> {
     let workbook = &model.workbook;
-    // IronCalc does not keep track of the selected sheet: the active tab is
-    // the first visible sheet.
-    let selected_sheet = workbook
-        .worksheets
-        .iter()
-        .position(|ws| ws.state == SheetState::Visible)
-        .unwrap_or(0) as u32;
+    // IronCalc does not keep track of the selected sheet or cell. The workbook
+    // opens on the "focus on open" cell if it is set (and its sheet is
+    // visible), and on A1 of the first visible sheet otherwise.
+    let focus_on_open = model.get_focus_on_open().filter(|(sheet, _, _)| {
+        workbook
+            .worksheets
+            .get(*sheet as usize)
+            .is_some_and(|ws| ws.state == SheetState::Visible)
+    });
+    let selected_sheet = match focus_on_open {
+        Some((sheet, _, _)) => sheet,
+        None => workbook
+            .worksheets
+            .iter()
+            .position(|ws| ws.state == SheetState::Visible)
+            .unwrap_or(0) as u32,
+    };
     let mut zip = zip::ZipWriter::new(writer);
 
     let options = zip::write::SimpleFileOptions::default();
@@ -151,12 +161,17 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
         let max_row = dimension.max_row;
         let sheet_dimension_str = &format!("{column_min_str}{min_row}:{column_max_str}{max_row}");
         let is_sheet_selected = selected_sheet as usize == sheet_index;
+        let selected_cell = match focus_on_open {
+            Some((sheet, row, column)) if sheet as usize == sheet_index => (row, column),
+            _ => (1, 1),
+        };
         zip.write_all(
             worksheets::get_worksheet_xml(
                 worksheet,
                 &model.parsed_formulas[sheet_index],
                 sheet_dimension_str,
                 is_sheet_selected,
+                selected_cell,
             )
             .as_bytes(),
         )?;

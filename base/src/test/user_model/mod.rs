@@ -18,6 +18,7 @@ mod test_duplicate_sheet;
 mod test_dynamic_arrays;
 mod test_evaluation;
 mod test_fn_formulatext;
+mod test_focus_on_open;
 mod test_general;
 mod test_grid_lines;
 mod test_hidden_columns;

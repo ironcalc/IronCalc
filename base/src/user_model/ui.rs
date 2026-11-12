@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     constants::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH, LAST_COLUMN, LAST_ROW},
     expressions::utils::{is_valid_column_number, is_valid_row},
+    types::SheetState,
     worksheet::NavigationDirection,
 };
 
@@ -255,6 +256,72 @@ impl<'a> UserModel<'a> {
             (max_column, min_column)
         };
         Ok([new_start_row, new_start_column, new_end_row, new_end_column])
+    }
+
+    /// Moves the view to the cell the workbook is set to focus on when opened
+    /// (see [crate::Model::set_focus_on_open]).
+    ///
+    /// Does nothing if the setting is off, or if its sheet no longer exists
+    /// or is hidden.
+    pub(crate) fn apply_focus_on_open(&mut self) {
+        let Some((sheet, row, column)) = self.model.get_focus_on_open() else {
+            return;
+        };
+        let Ok(worksheet) = self.model.workbook.worksheet(sheet) else {
+            return;
+        };
+        if worksheet.state != SheetState::Visible {
+            return;
+        }
+        if self.select_single_cell(sheet, row, column).is_err() {
+            return;
+        }
+        self.view.sheet = sheet;
+        // The view is new: it is scrolled to the top left corner. If the cell
+        // does not fit in the window from there we scroll the sheet so that
+        // the cell is the first visible one.
+        let _ = self.scroll_to_selected_cell(sheet);
+    }
+
+    // Scrolls a sheet whose view is at the top left corner so that the
+    // selected cell is visible.
+    fn scroll_to_selected_cell(&mut self, sheet: u32) -> Result<(), String> {
+        let view = self.sheet_view(sheet)?;
+        let (row, column) = (view.row, view.column);
+        // Cells in the frozen panes are always visible
+        let frozen_rows = self.model.get_frozen_rows_count(sheet)?;
+        let frozen_columns = self.model.get_frozen_columns_count(sheet)?;
+
+        let mut top_row = view.top_row;
+        if row > frozen_rows {
+            let window_height = self.view.window_height as f64;
+            let mut height = 0.0;
+            for r in top_row..=row {
+                height += self.ui_row_height(sheet, r)?;
+                if height > window_height {
+                    top_row = row;
+                    break;
+                }
+            }
+        }
+
+        let mut left_column = view.left_column;
+        if column > frozen_columns {
+            let window_width = self.view.window_width as f64;
+            let mut width = 0.0;
+            for c in left_column..=column {
+                width += self.ui_column_width(sheet, c)?;
+                if width > window_width {
+                    left_column = column;
+                    break;
+                }
+            }
+        }
+
+        let view = self.sheet_view_mut(sheet)?;
+        view.top_row = top_row;
+        view.left_column = left_column;
+        Ok(())
     }
 
     /// Returns the selected sheet index

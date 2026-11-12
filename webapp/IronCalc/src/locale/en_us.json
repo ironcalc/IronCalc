@@ -328,7 +328,18 @@
     "save": "Save",
     "title": "Custom number format"
   },
-  "regional_settings": {
+  "right_drawer": {
+    "close": "Close",
+    "resize_drawer": "Resize drawer"
+  },
+  "settings": {
+    "focus_on_open": {
+      "cell_label": "Cell",
+      "helper": "The workbook opens on this sheet and cell. It is also saved when exporting to Excel.",
+      "invalid_cell": "Invalid cell reference",
+      "sheet_label": "Sheet",
+      "title": "Focus on sheet when open"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",
@@ -347,17 +358,13 @@
       "locale_label": "Locale",
       "title": "Locale"
     },
-    "open_regional_settings": "Open regional settings",
+    "open_settings": "Open settings",
     "timezone": {
       "timezone_helper": "Modifying this setting will impact date- and time-related functions, including TODAY() and NOW().",
       "timezone_label": "Timezone",
       "title": "Timezone"
     },
-    "title": "Regional Settings"
-  },
-  "right_drawer": {
-    "close": "Close",
-    "resize_drawer": "Resize drawer"
+    "title": "Settings"
   },
   "sheet_delete": {
     "cancel": "Cancel",

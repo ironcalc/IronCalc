@@ -180,11 +180,18 @@ fn get_array_formula_attribute(
     escape_xml(formula).to_string()
 }
 
+// IronCalc does not know the size of the window the file will be opened in.
+// A selected cell further than this from the top left corner is scrolled into
+// view (it becomes the top left cell) when exporting.
+const SCROLL_TO_SELECTION_ROWS: i32 = 20;
+const SCROLL_TO_SELECTION_COLUMNS: i32 = 8;
+
 pub(crate) fn get_worksheet_xml(
     worksheet: &Worksheet,
     parsed_formulas: &[(std::sync::Arc<Node>, StaticResult)],
     dimension: &str,
     is_sheet_selected: bool,
+    selected_cell: (i32, i32),
 ) -> String {
     let mut sheet_data_str: Vec<String> = vec![];
     let mut cols_str: Vec<String> = vec![];
@@ -612,9 +619,20 @@ pub(crate) fn get_worksheet_xml(
         ""
     };
 
-    // IronCalc does not keep track of the selection: it is always A1.
-    let active_cell = "A1";
-    let sqref = "A1";
+    // IronCalc does not keep track of the selection: it is A1 unless this is
+    // the sheet the workbook focuses on when opened. The selection is a single
+    // cell, or the whole merged cell if it is in one.
+    let (selected_row, selected_column) = worksheet.merge_anchor(selected_cell.0, selected_cell.1);
+    let selected_column_name = number_to_column(selected_column).unwrap_or("A".to_string());
+    let active_cell = &format!("{selected_column_name}{selected_row}");
+    let sqref = &match worksheet.merged_cell_containing(selected_row, selected_column) {
+        Some(m) => format!(
+            "{active_cell}:{}{}",
+            number_to_column(m.last_column()).unwrap_or("A".to_string()),
+            m.last_row()
+        ),
+        None => active_cell.to_string(),
+    };
 
     let merge_cells_section = if merged_cells_count > 0 {
         format!(
@@ -629,41 +647,62 @@ pub(crate) fn get_worksheet_xml(
     let frozen_rows = worksheet.frozen_rows;
     let frozen_columns = worksheet.frozen_columns;
 
-    let pane = if frozen_rows > 0 && frozen_columns > 0 {
+    // Where the sheet is scrolled to: the first row and column after the
+    // frozen panes. If the selected cell is far from there we scroll to it,
+    // otherwise it might not be visible when the file is opened.
+    let scroll_row = if selected_row > frozen_rows + SCROLL_TO_SELECTION_ROWS {
+        selected_row
+    } else {
+        frozen_rows + 1
+    };
+    let scroll_column = if selected_column > frozen_columns + SCROLL_TO_SELECTION_COLUMNS {
+        selected_column
+    } else {
+        frozen_columns + 1
+    };
+    let scroll_column_name = number_to_column(scroll_column).unwrap_or("A".to_string());
+    // The top left cell of the scrollable (bottom right) pane.
+    let top_left_cell = format!("{scroll_column_name}{scroll_row}");
+
+    // The `topLeftCell` of the sheet view is the top left cell of the top left
+    // pane: it shares its rows with the top right pane and its columns with
+    // the bottom left one.
+    let (sheet_view_top_left_cell, pane) = if frozen_rows > 0 && frozen_columns > 0 {
         // There are both frozen rows and columns. There are four panes.
         // The first column is the first column after the last frozen column.
         let first_column = number_to_column(frozen_columns + 1).unwrap_or("A".to_string());
-        // This is the top left cell of the bottom right pane.
-        let top_left_cell = format!("{}{}", first_column, frozen_rows + 1);
         // The meaning of the next two is irrelevant for IronCalc.
         let top_right_active_cell = format!("{first_column}1");
         let bottom_left_active_cell = format!("A{}", frozen_rows + 1);
         // The bottom right active cell is the "true" selected cell and it does not need to reside on this pane.
-        format!(
+        ("A1".to_string(), format!(
             "<pane xSplit=\"{frozen_columns}\" ySplit=\"{frozen_rows}\" topLeftCell=\"{top_left_cell}\" activePane=\"bottomRight\" state=\"frozen\"/>\
              <selection pane=\"topRight\" activeCell=\"{top_right_active_cell}\" sqref=\"{top_right_active_cell}\"/>\
              <selection pane=\"bottomLeft\" activeCell=\"{bottom_left_active_cell}\" sqref=\"{bottom_left_active_cell}\"/>\
              <selection pane=\"bottomRight\" activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>",
-        )
+        ))
     } else if frozen_rows > 0 {
         // Only frozen rows
-        let top_left_cell = format!("A{}", frozen_rows + 1);
-        format!(
+        (format!("{scroll_column_name}1"), format!(
             "<pane ySplit=\"{frozen_rows}\" topLeftCell=\"{top_left_cell}\" activePane=\"bottomLeft\" state=\"frozen\"/>\
             <selection pane=\"bottomLeft\" activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>",
-        )
+        ))
     } else if frozen_columns > 0 {
-        let top_left_cell = format!(
-            "{}1",
-            number_to_column(frozen_columns + 1).unwrap_or("A".to_string())
-        );
-        format!(
+        (format!("A{scroll_row}"), format!(
             "<pane xSplit=\"{frozen_columns}\" topLeftCell=\"{top_left_cell}\" activePane=\"topRight\" state=\"frozen\"/>\
              <selection pane=\"topRight\" activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>"
-        )
+        ))
     } else {
         // No frozen rows or columns
-        format!(r#"<selection activeCell="{active_cell}" sqref="{sqref}"/>"#)
+        (
+            top_left_cell,
+            format!(r#"<selection activeCell="{active_cell}" sqref="{sqref}"/>"#),
+        )
+    };
+    let sheet_view_top_left_cell = if sheet_view_top_left_cell == "A1" {
+        "".to_string()
+    } else {
+        format!(" topLeftCell=\"{sheet_view_top_left_cell}\"")
     };
 
     let (cf_sections, cf_ext_lst) =
@@ -676,7 +715,7 @@ pub(crate) fn get_worksheet_xml(
 <worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
   <dimension ref=\"{dimension}\"/>\
   <sheetViews>\
-    <sheetView workbookViewId=\"0\"{show_grid_lines}{tab_selected}>\
+    <sheetView workbookViewId=\"0\"{show_grid_lines}{tab_selected}{sheet_view_top_left_cell}>\
         {pane}\
     </sheetView>\
   </sheetViews>\

@@ -328,7 +328,18 @@
     "save": "Enregistrer",
     "title": "Format de nombre personnalisé"
   },
-  "regional_settings": {
+  "right_drawer": {
+    "close": "Fermer",
+    "resize_drawer": "Redimensionner le panneau"
+  },
+  "settings": {
+    "focus_on_open": {
+      "cell_label": "Cellule",
+      "helper": "Le classeur s'ouvre sur cette feuille et cette cellule. Ce réglage est aussi enregistré lors de l'export vers Excel.",
+      "invalid_cell": "Référence de cellule non valide",
+      "sheet_label": "Feuille",
+      "title": "Afficher une feuille à l'ouverture"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",
@@ -347,17 +358,13 @@
       "locale_label": "Paramètres régionaux",
       "title": "Paramètres régionaux"
     },
-    "open_regional_settings": "Ouvrir les paramètres régionaux",
+    "open_settings": "Ouvrir les paramètres",
     "timezone": {
       "timezone_helper": "Modifier ce paramètre aura un impact sur les fonctions liées à la date et à l’heure, y compris AUJOURDHUI() et MAINTENANT().",
       "timezone_label": "Fuseau horaire",
       "title": "Fuseau horaire"
     },
-    "title": "Paramètres régionaux"
-  },
-  "right_drawer": {
-    "close": "Fermer",
-    "resize_drawer": "Redimensionner le panneau"
+    "title": "Paramètres"
   },
   "sheet_delete": {
     "cancel": "Annuler",
