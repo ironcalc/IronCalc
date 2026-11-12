@@ -6,6 +6,7 @@ use crate::{
     model::Model,
 };
 
+#[derive(PartialEq, Clone, Copy)]
 enum Temperature {
     Kelvin,
     Celsius,
@@ -14,30 +15,57 @@ enum Temperature {
     Fahrenheit,
 }
 
-// To Kelvin
+impl Temperature {
+    /// Kelvin and Rankine start at absolute zero. Celsius, Fahrenheit and Réaumur are
+    /// measured from the freezing point of water (Fahrenheit with an extra offset of 32).
+    fn is_absolute(self) -> bool {
+        matches!(self, Temperature::Kelvin | Temperature::Rankine)
+    }
+}
+
+// Within the same family the conversion is a plain factor (and the 32 offset of Fahrenheit),
+// so the 273.15 offset is only added or removed when going from one family to the other.
+// Going through Kelvin every time would make CONVERT(100,"C","F") 211.99999999999994 and
+// CONVERT(0.00075,"C","C") 0.000749999999982 instead of 212 and 0.00075.
+//
 // T_K = T_C + 273.15
-// T_K = 5/9 * T_rank
-// T_K = (T_R-273.15)*4/5
-// T_K = 5/9 ( T_F + 459.67)
+// T_K = 5/9 * T_Rank
+// T_C = (T_F - 32) * 5/9
+// T_C = 5/4 * T_Reau
 fn convert_temperature(
     value: f64,
     from_temperature: Temperature,
     to_temperature: Temperature,
 ) -> f64 {
-    let from_t_kelvin = match from_temperature {
-        Temperature::Kelvin => value,
-        Temperature::Celsius => value + 273.15,
-        Temperature::Rankine => 5.0 * value / 9.0,
-        Temperature::Reaumur => 5.0 * value / 4.0 + 273.15,
-        Temperature::Fahrenheit => 5.0 / 9.0 * (value + 459.67),
-    };
-
-    match to_temperature {
-        Temperature::Kelvin => from_t_kelvin,
-        Temperature::Celsius => from_t_kelvin - 273.5,
-        Temperature::Rankine => 9.0 * from_t_kelvin / 5.0,
-        Temperature::Reaumur => 4.0 * (from_t_kelvin - 273.15) / 5.0,
-        Temperature::Fahrenheit => 9.0 * from_t_kelvin / 5.0 - 459.67,
+    if from_temperature == to_temperature {
+        return value;
+    }
+    if from_temperature.is_absolute() || to_temperature.is_absolute() {
+        let kelvin = match from_temperature {
+            Temperature::Kelvin => value,
+            Temperature::Rankine => value * 5.0 / 9.0,
+            Temperature::Celsius => value + 273.15,
+            Temperature::Fahrenheit => (value - 32.0) * 5.0 / 9.0 + 273.15,
+            Temperature::Reaumur => value * 5.0 / 4.0 + 273.15,
+        };
+        match to_temperature {
+            Temperature::Kelvin => kelvin,
+            Temperature::Rankine => kelvin * 9.0 / 5.0,
+            Temperature::Celsius => kelvin - 273.15,
+            Temperature::Fahrenheit => (kelvin - 273.15) * 9.0 / 5.0 + 32.0,
+            Temperature::Reaumur => (kelvin - 273.15) * 4.0 / 5.0,
+        }
+    } else {
+        let celsius = match from_temperature {
+            Temperature::Fahrenheit => (value - 32.0) * 5.0 / 9.0,
+            Temperature::Reaumur => value * 5.0 / 4.0,
+            _ => value,
+        };
+        match to_temperature {
+            Temperature::Fahrenheit => celsius * 9.0 / 5.0 + 32.0,
+            Temperature::Reaumur => celsius * 4.0 / 5.0,
+            _ => celsius,
+        }
     }
 }
 
