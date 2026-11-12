@@ -879,11 +879,21 @@ impl<'a> Model<'a> {
             if year < 1900 {
                 year += 1900;
             }
-            match permissive_date_to_serial_number(
-                day_f.floor() as i32,
-                month_f.floor() as i32,
-                year,
-            ) {
+            // Excel keeps month and day in 16 bits, but treats them differently:
+            // a month outside -32767..=32766 is #NUM!, e.g. DATE(2025, 32767, 1),
+            // while a day outside the i16 range is replaced by 32767, so
+            // DATE(2025, 1, 1E15) is the same as DATE(2025, 1, 32767).
+            let month = month_f.floor();
+            if !(-32767.0..=32766.0).contains(&month) {
+                return ArrayNode::Error(Error::NUM);
+            }
+            let day = day_f.floor();
+            let day = if (-32768.0..=32767.0).contains(&day) {
+                day as i32
+            } else {
+                32767
+            };
+            match permissive_date_to_serial_number(day, month as i32, year) {
                 Ok(n) => ArrayNode::Number(n as f64),
                 Err(_) => ArrayNode::Error(Error::NUM),
             }
