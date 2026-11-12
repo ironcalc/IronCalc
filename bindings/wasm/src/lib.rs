@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::{
     prelude::{wasm_bindgen, JsError},
     JsValue,
@@ -125,6 +125,61 @@ impl From<ironcalc_base::FmtSettings> for FmtSettings {
             number_fmt: settings.number_fmt,
             number_example: settings.number_example,
         }
+    }
+}
+
+/// The kind of a cell given to `setCellsBatch`
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum CellInputKind {
+    Text,
+    Number,
+    Boolean,
+    Formula,
+    Input,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum CellInputValue {
+    Number(f64),
+    Boolean(bool),
+    Text(String),
+}
+
+/// A cell given to `setCellsBatch`, `CellInput` in types.ts
+#[derive(Deserialize)]
+struct CellInput {
+    row: i32,
+    column: i32,
+    kind: CellInputKind,
+    value: CellInputValue,
+}
+
+fn set_cell_input(model: &mut BaseModel, sheet: u32, cell: JsValue) -> Result<(), String> {
+    let CellInput {
+        row,
+        column,
+        kind,
+        value,
+    } = serde_wasm_bindgen::from_value(cell).map_err(|e| e.to_string())?;
+    match (kind, value) {
+        (CellInputKind::Text, CellInputValue::Text(text)) => {
+            model.set_cell_text(sheet, row, column, &text)
+        }
+        (CellInputKind::Number, CellInputValue::Number(number)) => {
+            model.set_cell_number(sheet, row, column, number)
+        }
+        (CellInputKind::Boolean, CellInputValue::Boolean(boolean)) => {
+            model.set_cell_boolean(sheet, row, column, boolean)
+        }
+        (CellInputKind::Formula, CellInputValue::Text(formula)) => {
+            model.set_cell_formula(sheet, row, column, &formula)
+        }
+        (CellInputKind::Input, CellInputValue::Text(input)) => {
+            model.set_cell_input(sheet, row, column, &input)
+        }
+        _ => Err("the value does not match the kind".to_string()),
     }
 }
 
@@ -604,6 +659,79 @@ impl Model {
         self.model
             .set_user_input(sheet, row, column, input)
             .map_err(to_js_error)
+    }
+
+    /// Sets the text of a cell as it is: unlike `setUserInput` it is not parsed,
+    /// so "001", "=1+1" and "3/4" stay text. The cell keeps its style, except for
+    /// the quote prefix, which is added or removed as needed.
+    ///
+    /// The typed setters (`setCellText`, `setCellNumber`, `setCellBoolean` and
+    /// `setCellsBatch`) load cells whose type is already known. They do not
+    /// evaluate the workbook (call `evaluate` when done) and the changes are not
+    /// recorded in the undo history. Like `setUserInput` they clear the spill the
+    /// cell is part of and refuse cells inside a merged cell or an array formula.
+    #[wasm_bindgen(js_name = "setCellText")]
+    pub fn set_cell_text(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        text: &str,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_cell_text(sheet, row, column, text)
+            .map_err(to_js_error)
+    }
+
+    /// Sets a number in a cell, keeping its style. See `setCellText`.
+    #[wasm_bindgen(js_name = "setCellNumber")]
+    pub fn set_cell_number(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: f64,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_cell_number(sheet, row, column, value)
+            .map_err(to_js_error)
+    }
+
+    /// Sets a boolean in a cell, keeping its style. See `setCellText`.
+    #[wasm_bindgen(js_name = "setCellBoolean")]
+    pub fn set_cell_boolean(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: bool,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_cell_boolean(sheet, row, column, value)
+            .map_err(to_js_error)
+    }
+
+    /// Sets cells of a sheet in one call. A `text`, `number` or `boolean` cell is
+    /// set like `setCellText`, `setCellNumber` or `setCellBoolean` set it, a
+    /// `formula` keeps the style of the cell, and an `input` is read as
+    /// `setUserInput` reads it. As with the other typed setters the workbook is
+    /// not evaluated and nothing is recorded in the undo history.
+    ///
+    /// The cells are set in order. If one cannot be set, because the entry is
+    /// malformed or the cell cannot be written to, this throws an error whose
+    /// message starts with "Cell <index>:", `index` being its position in
+    /// `cells`. The cells before it stay set; it and the cells after it are not.
+    #[wasm_bindgen(js_name = "setCellsBatch")]
+    pub fn set_cells_batch(
+        &mut self,
+        sheet: u32,
+        #[wasm_bindgen(unchecked_param_type = "CellInput[]")] cells: Vec<JsValue>,
+    ) -> Result<(), JsError> {
+        for (index, cell) in cells.into_iter().enumerate() {
+            set_cell_input(&mut self.model, sheet, cell)
+                .map_err(|error| JsError::new(&format!("Cell {index}: {error}")))?;
+        }
+        Ok(())
     }
 
     #[wasm_bindgen(js_name = "setUserArrayFormula")]
