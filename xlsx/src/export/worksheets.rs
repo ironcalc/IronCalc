@@ -40,7 +40,6 @@ use ironcalc_base::{
 
 use crate::export::conditional_formatting::get_conditional_formatting_xml;
 use crate::units::{pixels_to_column_width, pixels_to_points};
-use ironcalc_base::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
 
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
 
@@ -205,6 +204,7 @@ pub(crate) fn get_worksheet_xml(
     dimension: &str,
     is_sheet_selected: bool,
     selected_cell: (i32, i32),
+    max_digit_width: f64,
 ) -> String {
     let mut sheet_data_str: Vec<String> = vec![];
     let mut cols_str: Vec<String> = vec![];
@@ -216,11 +216,14 @@ pub(crate) fn get_worksheet_xml(
         let max = col.max;
         // Columns without a custom width have the default width.
         // IronCalc works in pixels, the file has the width in characters
-        let width = pixels_to_column_width(if col.custom_width {
-            col.width
-        } else {
-            DEFAULT_COLUMN_WIDTH
-        });
+        let width = pixels_to_column_width(
+            if col.custom_width {
+                col.width
+            } else {
+                worksheet.default_column_width
+            },
+            max_digit_width,
+        );
         let custom_width = i32::from(col.custom_width);
         let column_style = match col.style {
             Some(s) => format!(" style=\"{s}\""),
@@ -737,12 +740,12 @@ pub(crate) fn get_worksheet_xml(
 
     let hyperlinks_section = get_hyperlinks_section(worksheet);
 
-    // Rows and columns without an explicit size have IronCalc's default size
-    // that is not the one a spreadsheet application would use otherwise.
+    // The size of the rows and columns without an explicit size. It is always
+    // written: the defaults of IronCalc are not the ones of other applications.
     let sheet_format = format!(
         "<sheetFormatPr defaultColWidth=\"{}\" defaultRowHeight=\"{}\" customHeight=\"1\"/>",
-        pixels_to_column_width(DEFAULT_COLUMN_WIDTH),
-        pixels_to_points(DEFAULT_ROW_HEIGHT)
+        pixels_to_column_width(worksheet.default_column_width, max_digit_width),
+        pixels_to_points(worksheet.default_row_height)
     );
 
     format!(

@@ -172,6 +172,8 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
                 sheet_dimension_str,
                 is_sheet_selected,
                 selected_cell,
+                // The unit of the column widths: it depends on the default font
+                crate::units::max_digit_width(&workbook.styles),
             )
             .as_bytes(),
         )?;

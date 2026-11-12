@@ -31,6 +31,7 @@ use crate::error::XlsxError;
 
 use shared_strings::{read_shared_strings, SharedStringTable};
 
+use crate::units::max_digit_width;
 use metadata::load_metadata;
 use styles::load_styles;
 use util::get_attribute;
@@ -106,6 +107,8 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     // stored in x14 `extLst` extensions carry inline `<x14:dxf>` formats that we
     // append to `styles.dxfs`, referencing them back by index from the rule.
     let mut styles = load_styles(&mut archive, &theme)?;
+    // The unit of the column widths: it depends on the default font
+    let max_digit_width = max_digit_width(&styles);
     let worksheets = load_sheets(
         &mut archive,
         &rels,
@@ -114,6 +117,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         &mut shared_strings,
         &theme,
         &mut styles.dxfs,
+        max_digit_width,
     )?;
     // reparse formulas in defined names, since they may refer to sheets and tables that have been loaded
     let worksheet_names = worksheets

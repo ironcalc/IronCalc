@@ -56,6 +56,8 @@ impl<'a> Model<'a> {
             show_grid_lines: true,
             conditional_formatting: vec![],
             links: HashMap::new(),
+            default_row_height: crate::constants::DEFAULT_ROW_HEIGHT,
+            default_column_width: crate::constants::DEFAULT_COLUMN_WIDTH,
         }
     }
 

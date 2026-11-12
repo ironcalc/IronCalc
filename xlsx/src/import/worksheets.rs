@@ -25,13 +25,12 @@ use ironcalc_base::{
 use thiserror::Error;
 
 use crate::error::XlsxError;
-use crate::units::column_width_to_pixels;
-use ironcalc_base::DEFAULT_COLUMN_WIDTH;
+use crate::units::{base_column_width_to_pixels, column_width_to_pixels, points_to_pixels};
 
 use super::{
     conditional_formatting::load_conditional_formatting,
     shared_strings::{decode_xlsx_escapes, SharedStringTable},
-    sheet_data::{read_sheet_data, SheetDataXml},
+    sheet_data::{read_sheet_data, SheetDataXml, HEIGHT_NOT_SET},
     tables::load_table,
     util::{get_attribute, get_bool_false, get_color},
 };
@@ -210,7 +209,11 @@ fn load_dimension(ws: &XmlNode) -> String {
     }
 }
 
-fn load_columns(ws: &XmlNode, default_width: f64) -> Result<Vec<Col>, XlsxError> {
+fn load_columns(
+    ws: &XmlNode,
+    default_width: f64,
+    max_digit_width: f64,
+) -> Result<Vec<Col>, XlsxError> {
     // cols
     // <cols>
     //     <col min="5" max="5" width="38.26953125" customWidth="1"/>
@@ -233,7 +236,7 @@ fn load_columns(ws: &XmlNode, default_width: f64) -> Result<Vec<Col>, XlsxError>
             let max = max.parse::<i32>()?;
             // `width` is in characters, IronCalc works in pixels
             let width = match col.attribute("width") {
-                Some(width) => column_width_to_pixels(width.parse::<f64>()?),
+                Some(width) => column_width_to_pixels(width.parse::<f64>()?, max_digit_width),
                 None => default_width,
             };
             let custom_width = get_bool_false(col, "customWidth");
@@ -254,23 +257,44 @@ fn load_columns(ws: &XmlNode, default_width: f64) -> Result<Vec<Col>, XlsxError>
     Ok(cols)
 }
 
-/// Sheet default column width in pixels, from
-/// `<sheetFormatPr defaultColWidth="..."/>` (ECMA-376 Part 1, 18.3.1.81).
-/// Falls back to IronCalc's default when the element or the attribute is
-/// absent or unparseable.
-fn get_default_column_width(ws: &XmlNode) -> f64 {
+/// The `sheetFormatPr` element of a worksheet (ECMA-376 Part 1, 18.3.1.81):
+/// `<sheetFormatPr baseColWidth="10" defaultColWidth="9.1640625" defaultRowHeight="16"/>`
+fn get_sheet_format(ws: &XmlNode) -> Option<&XmlNode> {
     let format = ws
         .children()
         .filter(|n| n.has_tag_name("sheetFormatPr"))
         .collect::<Vec<&XmlNode>>();
-    if format.len() != 1 {
-        return DEFAULT_COLUMN_WIDTH;
+    if format.len() == 1 {
+        Some(format[0])
+    } else {
+        None
     }
-    format[0]
-        .attribute("defaultColWidth")
-        .and_then(|w| w.parse::<f64>().ok())
-        .map(column_width_to_pixels)
-        .unwrap_or(DEFAULT_COLUMN_WIDTH)
+}
+
+/// The width in pixels of the columns of the sheet that do not have a width.
+///
+/// It is the `defaultColWidth` of `sheetFormatPr`. If it is missing it is
+/// computed, like Excel does, from `baseColWidth`: the number of characters
+/// that fit in a column, 8 if it is missing as well.
+fn get_default_column_width(ws: &XmlNode, max_digit_width: f64) -> f64 {
+    let format = get_sheet_format(ws);
+    let attribute = |name: &str| format.and_then(|f| f.attribute(name)?.parse::<f64>().ok());
+    match attribute("defaultColWidth") {
+        Some(width) => column_width_to_pixels(width, max_digit_width),
+        None => {
+            base_column_width_to_pixels(attribute("baseColWidth").unwrap_or(8.0), max_digit_width)
+        }
+    }
+}
+
+/// The height in pixels of the rows of the sheet that do not have a height:
+/// the `defaultRowHeight` of `sheetFormatPr`, 15 points if it is missing.
+fn get_default_row_height(ws: &XmlNode) -> f64 {
+    let height = get_sheet_format(ws)
+        .and_then(|f| f.attribute("defaultRowHeight")?.parse::<f64>().ok())
+        .filter(|height| *height > 0.0)
+        .unwrap_or(15.0);
+    points_to_pixels(height)
 }
 
 fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {
@@ -926,6 +950,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     defined_names: Vec<DefinedNameS>,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
+    max_digit_width: f64,
 ) -> Result<Worksheet, XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
@@ -940,7 +965,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let SheetDataXml {
         worksheet,
         mut sheet_data,
-        rows,
+        mut rows,
         shared_formulas,
     } = read_sheet_data(
         BufReader::new(file),
@@ -954,8 +979,14 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let sheet_view = get_sheet_view(ws);
 
-    let default_column_width = get_default_column_width(ws);
-    let cols = load_columns(ws, default_column_width)?;
+    let default_column_width = get_default_column_width(ws, max_digit_width);
+    let default_row_height = get_default_row_height(ws);
+    for row in rows.iter_mut() {
+        if row.height == HEIGHT_NOT_SET {
+            row.height = default_row_height;
+        }
+    }
+    let cols = load_columns(ws, default_column_width, max_digit_width)?;
     let color = load_sheet_color(ws, theme)?;
 
     let merged_cells = load_merge_cells(ws)?;
@@ -1001,9 +1032,12 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         show_grid_lines: sheet_view.show_grid_lines,
         conditional_formatting,
         links,
+        default_row_height,
+        default_column_width,
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn load_sheets<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
     rels: &HashMap<String, Relationship>,
@@ -1012,6 +1046,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     shared_strings: &mut SharedStringTable,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
+    max_digit_width: f64,
 ) -> Result<Vec<Worksheet>, XlsxError> {
     // load comments, tables and hyperlink relationships
     let mut sheet_rels = HashMap::new();
@@ -1069,6 +1104,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 defined_names.clone(),
                 theme,
                 dxfs,
+                max_digit_width,
             )?;
             sheets.push(s);
         }
@@ -1084,10 +1120,10 @@ mod tests {
 
     use crate::import::xml::XmlNode;
     use crate::units::column_width_to_pixels;
-    use ironcalc_base::DEFAULT_COLUMN_WIDTH;
 
     use crate::import::worksheets::{
-        get_default_column_width, load_columns, load_hyperlinks, parse_cell_number, parse_reference,
+        get_default_column_width, get_default_row_height, load_columns, load_hyperlinks,
+        parse_cell_number, parse_reference,
     };
 
     #[test]
@@ -1124,11 +1160,13 @@ mod tests {
         let ws = &doc;
 
         // widths are in characters in the file, in pixels in IronCalc
-        let default_width = column_width_to_pixels(9.1640625);
-        assert_eq!(get_default_column_width(ws), default_width);
-        let cols = load_columns(ws, get_default_column_width(ws)).unwrap();
+        let default_width = column_width_to_pixels(9.1640625, 7.0);
+        assert_eq!(get_default_column_width(ws, 7.0), default_width);
+        // 12 points
+        assert_eq!(get_default_row_height(ws), 16.0);
+        let cols = load_columns(ws, get_default_column_width(ws, 7.0), 7.0).unwrap();
         assert_eq!(cols.len(), 2);
-        assert_eq!(cols[0].width, column_width_to_pixels(5.25));
+        assert_eq!(cols[0].width, column_width_to_pixels(5.25, 7.0));
         assert!(cols[0].custom_width);
         // No width attribute: sheet default applies, and the column is not
         // marked as custom width.
@@ -1139,7 +1177,7 @@ mod tests {
     }
 
     #[test]
-    fn load_columns_missing_width_without_sheet_format_uses_default() {
+    fn load_columns_missing_width_without_sheet_format_uses_excel_default() {
         let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
             <cols>
                 <col min="3" max="3" style="2"/>
@@ -1148,10 +1186,13 @@ mod tests {
         let doc = XmlNode::parse_str(xml).unwrap();
         let ws = &doc;
 
-        assert_eq!(get_default_column_width(ws), DEFAULT_COLUMN_WIDTH);
-        let cols = load_columns(ws, get_default_column_width(ws)).unwrap();
+        // 8 characters: 64 pixels
+        assert_eq!(get_default_column_width(ws, 7.0), 64.0);
+        // 15 points
+        assert_eq!(get_default_row_height(ws), 20.0);
+        let cols = load_columns(ws, get_default_column_width(ws, 7.0), 7.0).unwrap();
         assert_eq!(cols.len(), 1);
-        assert_eq!(cols[0].width, DEFAULT_COLUMN_WIDTH);
+        assert_eq!(cols[0].width, 64.0);
         assert!(!cols[0].custom_width);
     }
 

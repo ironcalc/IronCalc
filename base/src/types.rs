@@ -256,6 +256,10 @@ pub struct Worksheet {
     pub conditional_formatting: Vec<ConditionalFormatting>,
     /// Hyperlinks in the worksheet, keyed by (row, column) of the cell they are attached to
     pub links: HashMap<(i32, i32), Link>,
+    /// Height in pixels of the rows that do not have a height of their own
+    pub default_row_height: f64,
+    /// Width in pixels of the columns that do not have a width of their own
+    pub default_column_width: f64,
 }
 
 /// Internal representation of Excel's sheet_data

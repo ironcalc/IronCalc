@@ -16,7 +16,6 @@ use quick_xml::events::{BytesEnd, BytesStart, Event};
 
 use crate::error::XlsxError;
 use crate::units::points_to_pixels;
-use ironcalc_base::DEFAULT_ROW_HEIGHT;
 
 use super::shared_strings::SharedStringTable;
 use super::util::parse_bool_with_default;
@@ -37,12 +36,16 @@ use quick_xml::XmlVersion;
 //     </c>
 // </row>
 
+/// The height of the rows that do not have one in the file
+pub(super) const HEIGHT_NOT_SET: f64 = -1.0;
+
 /// What `read_sheet_data` reads from a worksheet part.
 pub(super) struct SheetDataXml {
     /// The worksheet with the `sheetData` element removed.
     pub(super) worksheet: XmlNode,
     pub(super) sheet_data: SheetData,
-    /// The rows that carry a height, a style or a flag.
+    /// The rows that carry a height, a style or a flag. Those without a
+    /// height have [`HEIGHT_NOT_SET`]: they take the default of the sheet.
     pub(super) rows: Vec<Row>,
     pub(super) shared_formulas: Vec<String>,
 }
@@ -283,7 +286,7 @@ impl SheetDataReader<'_, '_> {
         // Unused attributes:
         // * thickBot, thickTop, ph, collapsed, outlineLevel
         let mut index = None;
-        let mut height = DEFAULT_ROW_HEIGHT;
+        let mut height = HEIGHT_NOT_SET;
         let mut has_height_attribute = false;
         let mut custom_height = false;
         let mut style = 0;
@@ -300,7 +303,7 @@ impl SheetDataReader<'_, '_> {
                     height = value
                         .parse::<f64>()
                         .map(points_to_pixels)
-                        .unwrap_or(DEFAULT_ROW_HEIGHT);
+                        .unwrap_or(HEIGHT_NOT_SET);
                 }
                 "customHeight" => custom_height = parse_bool_with_default(Some(&value), false),
                 "s" => style = value.parse::<i32>().unwrap_or(0),

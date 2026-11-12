@@ -94,7 +94,7 @@ impl Worksheet {
         self.cols = vec![Col {
             min: 1,
             max: constants::LAST_COLUMN,
-            width: constants::DEFAULT_COLUMN_WIDTH,
+            width: self.default_column_width,
             custom_width: false,
             style: Some(style_index),
             hidden: false,
@@ -105,7 +105,7 @@ impl Worksheet {
     pub fn set_column_style(&mut self, column: i32, style_index: i32) -> Result<(), String> {
         let width = self
             .get_column_width(column)
-            .unwrap_or(constants::DEFAULT_COLUMN_WIDTH);
+            .unwrap_or(self.default_column_width);
         let hidden = self.is_column_hidden(column)?;
         self.set_column_width_and_style(column, width, hidden, Some(style_index))
     }
@@ -121,7 +121,7 @@ impl Worksheet {
             }
         }
         self.rows.push(Row {
-            height: constants::DEFAULT_ROW_HEIGHT,
+            height: self.default_row_height,
             r: row,
             custom_format,
             custom_height: false,
@@ -404,7 +404,7 @@ impl Worksheet {
             }
         }
         rows.push(Row {
-            height: constants::DEFAULT_ROW_HEIGHT,
+            height: self.default_row_height,
             r: row,
             custom_format: false,
             custom_height: false,
@@ -460,7 +460,7 @@ impl Worksheet {
     pub fn set_column_hidden(&mut self, column: i32, hidden: bool) -> Result<(), String> {
         let width = self
             .get_actual_column_width(column)
-            .unwrap_or(constants::DEFAULT_COLUMN_WIDTH);
+            .unwrap_or(self.default_column_width);
         let style = self.get_column_style(column)?;
         self.set_column_width_and_style(column, width, hidden, style)
     }
@@ -478,12 +478,13 @@ impl Worksheet {
         if width < 0.0 {
             return Err(format!("Can not set a negative width: {width}"));
         }
+        let custom_width = width != self.default_column_width;
         let cols = &mut self.cols;
         let mut col = Col {
             min: column,
             max: column,
             width,
-            custom_width: width != constants::DEFAULT_COLUMN_WIDTH,
+            custom_width,
             style,
             hidden,
         };
@@ -496,7 +497,7 @@ impl Worksheet {
                 if min == column && max == column {
                     c.style = style;
                     c.width = width;
-                    c.custom_width = width != constants::DEFAULT_COLUMN_WIDTH;
+                    c.custom_width = custom_width;
                     c.hidden = hidden;
                     return Ok(());
                 }
@@ -563,7 +564,7 @@ impl Worksheet {
                 break;
             }
         }
-        Ok(constants::DEFAULT_COLUMN_WIDTH)
+        Ok(self.default_column_width)
     }
 
     /// Return the actual width of a column in pixels, ignoring hidden status
@@ -583,7 +584,7 @@ impl Worksheet {
                 break;
             }
         }
-        Ok(constants::DEFAULT_COLUMN_WIDTH)
+        Ok(self.default_column_width)
     }
 
     /// Returns true if the column is hidden
@@ -676,7 +677,7 @@ impl Worksheet {
                 return Ok(r.height);
             }
         }
-        Ok(constants::DEFAULT_ROW_HEIGHT)
+        Ok(self.default_row_height)
     }
 
     /// Calculates dimension of the sheet. This function isn't cheap to calculate.

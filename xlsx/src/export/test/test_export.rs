@@ -468,6 +468,33 @@ fn sizes_are_pixels_in_the_model_and_points_in_the_file() {
 }
 
 #[test]
+fn sheet_default_sizes_are_imported_and_exported() {
+    // <sheetFormatPr baseColWidth="10" defaultRowHeight="16"/>
+    // Row 1 has ht="19", row 6 does not have a height. Column H does not have a width.
+    let model = load_from_xlsx("tests/calc_tests/named_ranges.xlsx", "en", "UTC", "en").unwrap();
+    let check = |model: &Model| {
+        let worksheet = model.workbook.worksheet(0).unwrap();
+        // 16 points
+        assert!((worksheet.default_row_height - 64.0 / 3.0).abs() < 1e-5);
+        // The default font is Aptos Narrow 12pt: a character is 8 pixels
+        assert_eq!(worksheet.default_column_width, 88.0);
+        assert!((model.get_row_height(0, 1).unwrap() - 19.0 * 4.0 / 3.0).abs() < 1e-5);
+        assert!((model.get_row_height(0, 6).unwrap() - 64.0 / 3.0).abs() < 1e-5);
+        assert!((model.get_row_height(0, 1000).unwrap() - 64.0 / 3.0).abs() < 1e-5);
+        assert_eq!(model.get_column_width(0, 1).unwrap(), 40.0);
+        // 23.33203125 characters
+        assert!((model.get_column_width(0, 2).unwrap() - 186.65625).abs() < 1e-5);
+        assert_eq!(model.get_column_width(0, 8).unwrap(), 88.0);
+    };
+    check(&model);
+    let temp_file_name = "temp_file_test_sheet_default_sizes.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    check(&model);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
 fn theme_tints_keep_every_digit() {
     let mut model = new_empty_model();
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
