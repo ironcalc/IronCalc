@@ -854,10 +854,12 @@ impl<'a> Model<'a> {
                     }
                 }
             },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
+            CalcResult::Range { left, right } => {
+                match self.values_from_used_range(left, right, cell) {
+                    Ok(v) => v,
+                    Err(e) => return e,
+                }
+            }
             CalcResult::Boolean(value) => {
                 if !matches!(args[0], Node::ReferenceKind { .. }) {
                     vec![Some(if value { 1.0 } else { 0.0 })]
@@ -954,10 +956,12 @@ impl<'a> Model<'a> {
                     }
                 }
             },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
+            CalcResult::Range { left, right } => {
+                match self.values_from_used_range(left, right, cell) {
+                    Ok(v) => v,
+                    Err(e) => return e,
+                }
+            }
             CalcResult::Boolean(value) => {
                 if !matches!(args[0], Node::ReferenceKind { .. }) {
                     vec![Some(if value { 1.0 } else { 0.0 })]

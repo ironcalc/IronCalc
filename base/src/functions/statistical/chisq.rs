@@ -285,6 +285,26 @@ impl<'a> Model<'a> {
         Ok(values)
     }
 
+    /// `values_from_range` for a function that skips empty cells (LARGE,
+    /// SMALL): a whole column or row is read only as far as the sheet's used
+    /// area, since the cells past it are all empty (`clip_to_used_area`).
+    pub(crate) fn values_from_used_range(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        let (row, column) = self
+            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+        let right = CellReferenceIndex {
+            sheet: left.sheet,
+            row,
+            column,
+        };
+        self.values_from_range(left, right)
+    }
+
     pub(crate) fn values_from_array(
         &mut self,
         array: Vec<Vec<ArrayNode>>,
