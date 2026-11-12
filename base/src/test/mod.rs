@@ -7,6 +7,7 @@ mod test_ceiling_floor;
 mod test_cell;
 mod test_cell_clear_contents;
 mod test_circular_references;
+mod test_close_to_zero;
 mod test_column_width;
 mod test_criteria;
 mod test_database;
