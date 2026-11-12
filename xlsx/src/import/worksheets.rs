@@ -31,7 +31,7 @@ use super::{
     shared_strings::{decode_xlsx_escapes, SharedStringTable},
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
-    util::{get_attribute, get_bool_false, get_color, get_number},
+    util::{get_attribute, get_bool_false, get_color},
 };
 
 pub(crate) struct Sheet {
@@ -883,8 +883,8 @@ fn get_sheet_view(ws: &XmlNode) -> SheetView {
             // TODO: Should we assert that topLeft is consistent?
             // let top_left_cell = pane[0].attribute("topLeftCell").unwrap_or("A1").to_string();
 
-            frozen_columns = get_number(pane[0], "xSplit");
-            frozen_rows = get_number(pane[0], "ySplit");
+            frozen_columns = get_split(pane[0], "xSplit");
+            frozen_rows = get_split(pane[0], "ySplit");
         }
     }
     SheetView {
@@ -892,6 +892,15 @@ fn get_sheet_view(ws: &XmlNode) -> SheetView {
         frozen_columns,
         show_grid_lines,
     }
+}
+
+/// The number of frozen columns (`xSplit`) or rows (`ySplit`) of a pane, 0 when
+/// absent. ECMA-376 types both as `xsd:double` (18.3.1.66 pane), and Google
+/// Sheets writes them that way: `ySplit="6.0"`.
+fn get_split(pane: &XmlNode, name: &str) -> i32 {
+    pane.attribute(name)
+        .and_then(|value| value.parse::<f64>().ok())
+        .map_or(0, |split| split.round() as i32)
 }
 
 pub(super) struct SheetSettings {
