@@ -66,6 +66,31 @@ fn test_datevalue_month_name() {
 }
 
 #[test]
+fn test_datevalue_month_name_with_spaces() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEVALUE(\"Mar 15, 2026\")");
+    model._set("A2", "=DATEVALUE(\"June 27, 2026\")");
+    model._set("A3", "=DATEVALUE(\"Apr 02, 2025\")");
+    model._set("A4", "=DATEVALUE(\"March 15 2026\")");
+    model._set("A5", "=DATEVALUE(\"15 March 2026\")");
+    model._set("A6", "=DATEVALUE(\"  Mar   15,  2026  \")");
+    model._set("A7", "=DATEVALUE(\"Mar 15, 2026 10:30\")");
+    model._set("A8", "=DATEVALUE(\"Mar 15, 26\")");
+    model._set("A9", "=DATEVALUE(\"Feb 30, 2026\")");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"46096");
+    assert_eq!(model._get_text("A2"), *"46200");
+    assert_eq!(model._get_text("A3"), *"45749");
+    assert_eq!(model._get_text("A4"), *"46096");
+    assert_eq!(model._get_text("A5"), *"46096");
+    assert_eq!(model._get_text("A6"), *"46096");
+    assert_eq!(model._get_text("A7"), *"46096");
+    assert_eq!(model._get_text("A8"), *"46096");
+    assert_eq!(model._get_text("A9"), *"#VALUE!");
+}
+
+#[test]
 fn test_datevalue_ambiguous_ddmm() {
     // 01/02/2023 interpreted as MM/DD -> 2-Jan-2023
     assert_eq!(
