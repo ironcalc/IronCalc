@@ -45,9 +45,12 @@ export async function newModel(): Promise<Model> {
 export interface RenderOptions {
   // 430x230 fits the 30px/28px headers plus four 100px columns and eight
   // 25px rows
+  // The size of the sheet area in sheet pixels; a zoomed sheet shows
+  // `width * zoom` CSS pixels of it
   width?: number;
   height?: number;
-  // The factor the sheet container is scaled by (1 by default)
+  // The factor the sheet container is scaled by (1 by default). As in the
+  // browser, the canvas gets `zoom` times the backing resolution.
   zoom?: number;
   themeVars?: Record<string, string>;
 }
@@ -69,10 +72,8 @@ export async function renderWorksheet(
 
   const width = options.width ?? 430;
   const height = options.height ?? 230;
-  const canvas = createCanvas(
-    width * DEVICE_PIXEL_RATIO,
-    height * DEVICE_PIXEL_RATIO,
-  );
+  const scale = DEVICE_PIXEL_RATIO * (options.zoom ?? 1);
+  const canvas = createCanvas(width * scale, height * scale);
 
   const root = new FakeElement("div");
   root.className = "ic-root";
@@ -116,20 +117,17 @@ export async function renderToCanvas(
   const { canvas } = await renderWorksheet(model, options);
   const width = options.width ?? 430;
   const height = options.height ?? 230;
+  const scale = DEVICE_PIXEL_RATIO * (options.zoom ?? 1);
 
   // Crop the headers away: the column headers are HTML and never appear on
   // the canvas (so they show as a blank band), and without them the row
   // headers are just noise — the screenshots show the cell area only.
   const cropped = createCanvas(
-    (width - headerColumnWidth) * DEVICE_PIXEL_RATIO,
-    (height - headerRowHeight) * DEVICE_PIXEL_RATIO,
+    (width - headerColumnWidth) * scale,
+    (height - headerRowHeight) * scale,
   );
   cropped
     .getContext("2d")
-    .drawImage(
-      canvas,
-      -headerColumnWidth * DEVICE_PIXEL_RATIO,
-      -headerRowHeight * DEVICE_PIXEL_RATIO,
-    );
+    .drawImage(canvas, -headerColumnWidth * scale, -headerRowHeight * scale);
   return cropped;
 }
