@@ -243,6 +243,16 @@ pub(crate) fn selected_sheet_after_move(selected: u32, from: u32, to: u32) -> u3
     }
 }
 
+fn check_row_and_column(row: i32, column: i32) -> Result<(), String> {
+    if !is_valid_column_number(column) {
+        return Err("Invalid column".to_string());
+    }
+    if !is_valid_row(row) {
+        return Err("Invalid row".to_string());
+    }
+    Ok(())
+}
+
 impl<'a> Debug for UserModel<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UserModel").finish()
@@ -526,6 +536,105 @@ impl<'a> UserModel<'a> {
             new_value: Box::new(new_link),
         });
         Ok(())
+    }
+
+    /// Sets the text of a cell as it is. Unlike [UserModel::set_user_input] the text is not
+    /// parsed, so "001", "=1+1" and "3/4" stay text. The cell keeps its style, except for the
+    /// quote prefix that [Model::update_cell_with_text] adds or removes.
+    ///
+    /// This and the other `set_cell_*` functions load cells whose type is already known. They
+    /// do not evaluate the model, and the change is not recorded in the undo history nor sent
+    /// to other models. Like [UserModel::set_user_input] they clear the spill the cell is part
+    /// of and refuse cells covered by a merged cell or inside an array formula.
+    ///
+    /// See also:
+    /// * [Model::update_cell_with_text]
+    pub fn set_cell_text(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+    ) -> Result<(), String> {
+        self.prepare_cell_for_value(sheet, row, column)?;
+        self.model.update_cell_with_text(sheet, row, column, value)
+    }
+
+    /// Sets a number in a cell, keeping its style. See [UserModel::set_cell_text].
+    ///
+    /// See also:
+    /// * [Model::update_cell_with_number]
+    pub fn set_cell_number(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: f64,
+    ) -> Result<(), String> {
+        self.prepare_cell_for_value(sheet, row, column)?;
+        self.model
+            .update_cell_with_number(sheet, row, column, value)
+    }
+
+    /// Sets a boolean in a cell, keeping its style. See [UserModel::set_cell_text].
+    ///
+    /// See also:
+    /// * [Model::update_cell_with_bool]
+    pub fn set_cell_boolean(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: bool,
+    ) -> Result<(), String> {
+        self.prepare_cell_for_value(sheet, row, column)?;
+        self.model.update_cell_with_bool(sheet, row, column, value)
+    }
+
+    /// Sets a formula, which must start with "=", in a cell, keeping its style. Unlike
+    /// [UserModel::set_user_input] the number format is not changed to suit the formula.
+    /// See [UserModel::set_cell_text].
+    ///
+    /// See also:
+    /// * [Model::update_cell_with_formula]
+    pub fn set_cell_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+    ) -> Result<(), String> {
+        // Checked first, so that the cell and its spill are left alone if it is not a formula
+        if self.model.formula_without_prefix(formula).is_none() {
+            return Err(format!("\"{formula}\" is not a valid formula"));
+        }
+        self.prepare_cell_for_value(sheet, row, column)?;
+        self.model
+            .update_cell_with_formula(sheet, row, column, formula.to_string())
+    }
+
+    /// Sets the input of a cell, read as [UserModel::set_user_input] reads it, but like the
+    /// other `set_cell_*` functions: the model is not evaluated and the change is not recorded
+    /// in the undo history nor sent to other models. See [UserModel::set_cell_text].
+    ///
+    /// See also:
+    /// * [Model::set_user_input]
+    pub fn set_cell_input(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+    ) -> Result<(), String> {
+        check_row_and_column(row, column)?;
+        self.model
+            .set_user_input(sheet, row, column, value.to_string())
+    }
+
+    // Checks that the cell can be written to and clears the spill it is part of, if any.
+    fn prepare_cell_for_value(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        check_row_and_column(row, column)?;
+        self.model.prepare_cell_for_user_input(sheet, row, column)
     }
 
     /// Returns the content of a cell

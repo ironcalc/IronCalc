@@ -407,3 +407,109 @@ test('focus on open', () => {
     model = Model.fromBytes(model.toBytes(), 'en');
     assert.deepStrictEqual(Array.from(model.getSelectedCell()), [0, 1, 1]);
 });
+
+test('Typed setters keep text as text', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    const texts = ["001", "=1+1", "3/4"];
+    texts.forEach((text, index) => model.setCellText(0, index + 1, 1, text));
+    model.evaluate();
+
+    texts.forEach((text, index) => {
+        assert.strictEqual(model.getCellType(0, index + 1, 1), 2);
+        assert.strictEqual(model.getFormattedCellValue(0, index + 1, 1), text);
+    });
+});
+
+test('Typed setters store numbers and booleans as they are', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    const numbers = [42, -3.5, 0.000001, 123456789.125, 1e20];
+    numbers.forEach((number, index) => model.setCellNumber(0, index + 1, 1, number));
+    model.setCellBoolean(0, 1, 2, true);
+    model.setCellBoolean(0, 2, 2, false);
+    model.setCellsBatch(0, [{ row: 3, column: 2, kind: "formula", value: "=AND(B1,NOT(B2))" }]);
+    model.evaluate();
+
+    numbers.forEach((number, index) => {
+        assert.strictEqual(model.getCellType(0, index + 1, 1), 1);
+        assert.strictEqual(Number(model.getCellContent(0, index + 1, 1)), number);
+    });
+    assert.strictEqual(model.getCellType(0, 1, 2), 4);
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 2), "TRUE");
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 2), "FALSE");
+    assert.strictEqual(model.getFormattedCellValue(0, 3, 2), "TRUE");
+});
+
+test('Typed setters keep the style of the cell', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.updateRangeStyle({ sheet: 0, row: 1, column: 1, width: 1, height: 3 }, "font.b", "true");
+    model.updateRangeStyle({ sheet: 0, row: 1, column: 1, width: 1, height: 1 }, "num_fmt", "0.00");
+    model.setCellNumber(0, 1, 1, 3);
+    model.setCellText(0, 2, 1, "001");
+    model.setCellBoolean(0, 3, 1, true);
+    model.evaluate();
+
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 1), "3.00");
+    assert.strictEqual(model.getCellStyle(0, 1, 1).style.num_fmt, "0.00");
+    for (let row = 1; row <= 3; row += 1) {
+        assert.strictEqual(model.getCellStyle(0, row, 1).style.font.b, true);
+    }
+    // A text that would read as a number gets a quote prefix
+    assert.strictEqual(model.getCellStyle(0, 2, 1).style.quote_prefix, true);
+});
+
+test('setCellsBatch loads cells like setUserInput', () => {
+    const cells = [];
+    for (let row = 1; row <= 2000; row += 1) {
+        cells.push({ row, column: 1, kind: "number", value: row * 1.5 });
+        cells.push({ row, column: 2, kind: "text", value: `item ${row}` });
+        cells.push({ row, column: 3, kind: "boolean", value: row % 3 === 0 });
+        cells.push({ row, column: 4, kind: "formula", value: `=IF(C${row},A${row}*2,LEN(B${row}))` });
+        cells.push({ row, column: 5, kind: "input", value: row % 2 ? `${row}%` : `=SUM(A$1:A${row})` });
+    }
+    assert.strictEqual(cells.length, 10000);
+    const batched = new Model('Workbook1', 'en', 'UTC', 'en');
+    batched.setCellsBatch(0, cells);
+    batched.evaluate();
+
+    // The same cells typed in
+    const typed = new Model('Workbook1', 'en', 'UTC', 'en');
+    typed.pauseEvaluation();
+    for (const { row, column, kind, value } of cells) {
+        const input = kind === "boolean" ? (value ? "TRUE" : "FALSE") : String(value);
+        typed.setUserInput(0, row, column, input);
+    }
+    typed.evaluate();
+
+    for (const { row, column } of cells) {
+        assert.strictEqual(batched.getCellType(0, row, column), typed.getCellType(0, row, column));
+        assert.strictEqual(
+            batched.getFormattedCellValue(0, row, column),
+            typed.getFormattedCellValue(0, row, column),
+        );
+    }
+    assert.strictEqual(batched.getFormattedCellValue(0, 4, 5), "15");
+    assert.strictEqual(batched.canUndo(), false);
+});
+
+test('setCellsBatch stops at the first bad cell', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.throws(() => model.setCellsBatch(0, [
+        { row: 1, column: 1, kind: "number", value: 1 },
+        { row: 2, column: 1, kind: "text", value: "two" },
+        { row: 3, column: 1, kind: "number", value: "three" },
+        { row: 4, column: 1, kind: "number", value: 4 },
+    ]), { name: 'Error', message: /^Cell 2: / });
+    model.evaluate();
+    // The cells before the bad one are set, the others are not
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 1), "1");
+    assert.strictEqual(model.getFormattedCellValue(0, 2, 1), "two");
+    assert.strictEqual(model.getFormattedCellValue(0, 3, 1), "");
+    assert.strictEqual(model.getFormattedCellValue(0, 4, 1), "");
+
+    // A cell the engine refuses
+    assert.throws(() => model.setCellsBatch(0, [
+        { row: 5, column: 1, kind: "text", value: "five" },
+        { row: 0, column: 1, kind: "text", value: "zero" },
+    ]), { name: 'Error', message: "Cell 1: Invalid row" });
+    assert.strictEqual(model.getFormattedCellValue(0, 5, 1), "five");
+});

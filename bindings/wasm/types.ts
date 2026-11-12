@@ -597,6 +597,17 @@ export interface DefinedNameInput {
 }
 
 /**
+ * A cell for `Model.setCellsBatch`. `text`, `number` and `boolean` values are
+ * stored as they are, like `setCellText`, `setCellNumber` and
+ * `setCellBoolean` do; a `formula` must start with "="; an `input` is read as
+ * `setUserInput` reads it.
+ */
+export type CellInput =
+  | { row: number; column: number; kind: "text" | "formula" | "input"; value: string }
+  | { row: number; column: number; kind: "number"; value: number }
+  | { row: number; column: number; kind: "boolean"; value: boolean };
+
+/**
  * A cell hyperlink. The link is cell metadata: the text displayed in the cell
  * is the cell content, not part of the link.
  * External links point to a resource outside the workbook (an URL, a mailto:
