@@ -574,7 +574,7 @@ impl<'a> Model<'a> {
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut total = 0.0;
         let sum = |value| total += value;
-        if let Err(e) = self.apply_ifs(args, cell, sum) {
+        if let Err(e) = self.apply_ifs(args, cell, true, sum) {
             return e;
         }
         CalcResult::Number(total)
