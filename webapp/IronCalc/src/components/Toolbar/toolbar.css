@@ -40,27 +40,47 @@
 
 /* Font size box */
 .ic-toolbar-font-size-box {
-  width: 28px;
   height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
+  gap: 3px;
   color: var(--palette-common-black);
   font-family: var(--typography-font-family);
   font-size: var(--typography-font-size);
   border: 1px solid var(--palette-grey-300);
   border-radius: 6px;
-  min-width: 24px;
   background: transparent;
   cursor: text;
-  outline: none;
-  padding: 0;
+  padding: 0 6px;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
-.ic-toolbar-font-size-box:focus {
+.ic-toolbar-font-size-box:focus-within {
   background: var(--palette-common-white);
   border: 1px solid var(--palette-grey-500);
+}
+/* The input is as wide as its text, "12" or "14.67" */
+.ic-toolbar-font-size-box > input {
+  field-sizing: content;
+  min-width: 2ch;
+  max-width: 6ch;
+  text-align: right;
+  color: inherit;
+  font: inherit;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 0;
+}
+@supports not (field-sizing: content) {
+  .ic-toolbar-font-size-box > input {
+    width: 5ch;
+  }
+}
+.ic-toolbar-font-size-unit {
+  color: var(--palette-grey-500);
+  user-select: none;
 }
 
 /* Button group */

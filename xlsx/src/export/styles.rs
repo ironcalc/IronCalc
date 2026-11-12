@@ -5,13 +5,15 @@ use crate::export::{
     styles_util::{get_alignment, get_border_xml, get_fill_xml},
 };
 
+use crate::units::pixels_to_points;
+
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
 
 fn get_fonts_xml(styles: &Styles) -> String {
     let fonts = &styles.fonts;
     let mut fonts_str: Vec<String> = vec![];
     for font in fonts {
-        let size = format!("<sz val=\"{}\"/>", font.sz);
+        let size = format!("<sz val=\"{}\"/>", pixels_to_points(font.sz));
         let color = match &font.color {
             Color::Rgb(s) => format!("<color rgb=\"FF{}\"/>", s.trim_start_matches('#')),
             Color::Theme(idx, tint) => {

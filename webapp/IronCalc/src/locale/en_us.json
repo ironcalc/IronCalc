@@ -12,7 +12,8 @@
   },
   "common": {
     "apply": "Apply",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "default_size": "Default: {{value}} px"
   },
   "conditional_formatting": {
     "add_new_rule": "Add a new rule",

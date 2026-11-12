@@ -25,6 +25,8 @@ use ironcalc_base::{
 use thiserror::Error;
 
 use crate::error::XlsxError;
+use crate::units::column_width_to_pixels;
+use ironcalc_base::DEFAULT_COLUMN_WIDTH;
 
 use super::{
     conditional_formatting::load_conditional_formatting,
@@ -229,8 +231,9 @@ fn load_columns(ws: &XmlNode, default_width: f64) -> Result<Vec<Col>, XlsxError>
             let min = min.parse::<i32>()?;
             let max = get_attribute(col, "max")?;
             let max = max.parse::<i32>()?;
+            // `width` is in characters, IronCalc works in pixels
             let width = match col.attribute("width") {
-                Some(width) => width.parse::<f64>()?,
+                Some(width) => column_width_to_pixels(width.parse::<f64>()?),
                 None => default_width,
             };
             let custom_width = get_bool_false(col, "customWidth");
@@ -251,23 +254,23 @@ fn load_columns(ws: &XmlNode, default_width: f64) -> Result<Vec<Col>, XlsxError>
     Ok(cols)
 }
 
-/// Sheet default column width in Excel character units, from
+/// Sheet default column width in pixels, from
 /// `<sheetFormatPr defaultColWidth="..."/>` (ECMA-376 Part 1, 18.3.1.81).
-/// Falls back to Excel's own default of 8.43 when the element or the
-/// attribute is absent or unparseable.
+/// Falls back to IronCalc's default when the element or the attribute is
+/// absent or unparseable.
 fn get_default_column_width(ws: &XmlNode) -> f64 {
-    const EXCEL_DEFAULT_COLUMN_WIDTH: f64 = 8.43;
     let format = ws
         .children()
         .filter(|n| n.has_tag_name("sheetFormatPr"))
         .collect::<Vec<&XmlNode>>();
     if format.len() != 1 {
-        return EXCEL_DEFAULT_COLUMN_WIDTH;
+        return DEFAULT_COLUMN_WIDTH;
     }
     format[0]
         .attribute("defaultColWidth")
         .and_then(|w| w.parse::<f64>().ok())
-        .unwrap_or(EXCEL_DEFAULT_COLUMN_WIDTH)
+        .map(column_width_to_pixels)
+        .unwrap_or(DEFAULT_COLUMN_WIDTH)
 }
 
 fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {
@@ -1080,6 +1083,8 @@ mod tests {
     use ironcalc_base::types::Link;
 
     use crate::import::xml::XmlNode;
+    use crate::units::column_width_to_pixels;
+    use ironcalc_base::DEFAULT_COLUMN_WIDTH;
 
     use crate::import::worksheets::{
         get_default_column_width, load_columns, load_hyperlinks, parse_cell_number, parse_reference,
@@ -1118,21 +1123,23 @@ mod tests {
         let doc = XmlNode::parse_str(xml).unwrap();
         let ws = &doc;
 
-        assert_eq!(get_default_column_width(ws), 9.1640625);
+        // widths are in characters in the file, in pixels in IronCalc
+        let default_width = column_width_to_pixels(9.1640625);
+        assert_eq!(get_default_column_width(ws), default_width);
         let cols = load_columns(ws, get_default_column_width(ws)).unwrap();
         assert_eq!(cols.len(), 2);
-        assert_eq!(cols[0].width, 5.25);
+        assert_eq!(cols[0].width, column_width_to_pixels(5.25));
         assert!(cols[0].custom_width);
         // No width attribute: sheet default applies, and the column is not
         // marked as custom width.
-        assert_eq!(cols[1].width, 9.1640625);
+        assert_eq!(cols[1].width, default_width);
         assert!(!cols[1].custom_width);
         assert!(cols[1].hidden);
         assert_eq!(cols[1].style, Some(1));
     }
 
     #[test]
-    fn load_columns_missing_width_without_sheet_format_uses_excel_default() {
+    fn load_columns_missing_width_without_sheet_format_uses_default() {
         let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
             <cols>
                 <col min="3" max="3" style="2"/>
@@ -1141,10 +1148,10 @@ mod tests {
         let doc = XmlNode::parse_str(xml).unwrap();
         let ws = &doc;
 
-        assert_eq!(get_default_column_width(ws), 8.43);
+        assert_eq!(get_default_column_width(ws), DEFAULT_COLUMN_WIDTH);
         let cols = load_columns(ws, get_default_column_width(ws)).unwrap();
         assert_eq!(cols.len(), 1);
-        assert_eq!(cols[0].width, 8.43);
+        assert_eq!(cols[0].width, DEFAULT_COLUMN_WIDTH);
         assert!(!cols[0].custom_width);
     }
 

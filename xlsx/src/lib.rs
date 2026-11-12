@@ -47,6 +47,7 @@ pub mod compare;
 pub mod error;
 pub mod export;
 pub mod import;
+mod units;
 pub mod util;
 pub use ironcalc_base as base;
 

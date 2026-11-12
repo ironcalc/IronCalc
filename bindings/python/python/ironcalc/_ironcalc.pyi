@@ -28,7 +28,7 @@ class FontDict(TypedDict, total=False):
     u: bool
     b: bool
     i: bool
-    sz: int
+    sz: float  # font size in pixels
     color: Color
     name: str
     family: int

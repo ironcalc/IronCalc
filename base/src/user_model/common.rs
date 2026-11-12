@@ -117,21 +117,21 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
             style.font.color = Color::from_param(value)?;
         }
         "font.size" => {
-            let new_size: i32 = value
+            let new_size: f64 = value
                 .parse()
                 .map_err(|_| format!("Invalid value for font size: '{value}'."))?;
-            if new_size < 1 {
+            if !new_size.is_finite() || new_size < 1.0 {
                 return Err(format!("Invalid value for font size: '{new_size}'."));
             }
             style.font.sz = new_size;
         }
         "font.size_delta" => {
             // This is a special case, we need to add the value to the current size
-            let size_delta: i32 = value
+            let size_delta: f64 = value
                 .parse()
                 .map_err(|_| format!("Invalid value for font size: '{value}'."))?;
             let new_size = style.font.sz + size_delta;
-            if new_size < 1 {
+            if !new_size.is_finite() || new_size < 1.0 {
                 return Err(format!("Invalid value for font size: '{new_size}'."));
             }
             style.font.sz = new_size;
@@ -470,10 +470,13 @@ impl<'a> UserModel<'a> {
         let line_count = value.split('\n').count() as f64;
         let row_height = self.model.get_row_height(sheet, row)?;
         // This is in sync with the front-end auto fit row
-        let font_size = style.font.sz as f64;
+        let font_size = style.font.sz;
         let line_height = font_size * 1.5;
         let cell_height = (line_count - 1.0) * line_height + 8.0 + font_size;
-        if cell_height > row_height {
+        // The row only grows if the text does not fit: a line needs 1.36 times the
+        // font size, a font of 11pt fits in the row of 15pt (20px) of most xlsx files
+        let minimum_height = (line_count - 1.0) * line_height + font_size * 1.36;
+        if minimum_height > row_height {
             diff_list.push(Diff::SetRowHeight {
                 sheet,
                 row,

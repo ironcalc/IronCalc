@@ -320,3 +320,19 @@ export function getFocusableElements(root: HTMLElement | null): HTMLElement[] {
       el.tabIndex !== -1,
   );
 }
+
+/**
+ * The model works in pixels (96 per inch), font sizes and row heights are
+ * points (72 per inch) in an xlsx file.
+ */
+export function pixelsToPoints(pixels: number): number {
+  return formatSize(pixels * 0.75);
+}
+
+/**
+ * Rounds a size to two decimals for display: sizes that come from points are
+ * not always a whole number of pixels, 11pt is 14.666...px
+ */
+export function formatSize(size: number): number {
+  return Math.round(size * 100) / 100;
+}

@@ -222,6 +222,7 @@ interface CellStyleFont {
   b: boolean;
   i: boolean;
   strike: boolean;
+  /** Font size in pixels */
   sz: number;
   color?: Color;
   name: string;
@@ -422,6 +423,7 @@ export interface DxfFont {
   u?: boolean;
   b?: boolean;
   i?: boolean;
+  /** Font size in pixels */
   sz?: number;
   color?: Color;
   name?: string;

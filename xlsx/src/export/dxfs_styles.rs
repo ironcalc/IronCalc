@@ -2,6 +2,7 @@ use crate::export::styles_util::{get_alignment, get_border_xml, get_dxf_fill_xml
 use ironcalc_base::types::{Color, Dxf, DxfFont, NumFmt, Styles};
 
 use super::escape::escape_xml;
+use crate::units::pixels_to_points;
 
 fn get_dxf_font_xml(font: &DxfFont) -> String {
     let mut parts: Vec<String> = Vec::new();
@@ -18,7 +19,7 @@ fn get_dxf_font_xml(font: &DxfFont) -> String {
         parts.push("<strike/>".to_string());
     }
     if let Some(sz) = font.sz {
-        parts.push(format!("<sz val=\"{sz}\"/>"));
+        parts.push(format!("<sz val=\"{}\"/>", pixels_to_points(sz)));
     }
     match &font.color {
         Color::Rgb(s) => {

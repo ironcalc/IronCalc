@@ -41,6 +41,9 @@ A cell style looks like this:
        "quote_prefix": False,
    }
 
+Sizes are in pixels (96 per inch): the font size ``sz``, the row heights and
+the column widths. A font of 12 pixels is saved as 9 points in an xlsx file.
+
 Note that boolean flags that are false (like ``font.b``) and empty colors are
 omitted from the dictionaries, so prefer ``style["font"].get("b")`` over
 ``style["font"]["b"]`` when reading.

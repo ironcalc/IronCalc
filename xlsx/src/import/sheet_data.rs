@@ -15,6 +15,8 @@ use ironcalc_base::types::{Cell, Row, SheetData};
 use quick_xml::events::{BytesEnd, BytesStart, Event};
 
 use crate::error::XlsxError;
+use crate::units::points_to_pixels;
+use ironcalc_base::DEFAULT_ROW_HEIGHT;
 
 use super::shared_strings::SharedStringTable;
 use super::util::parse_bool_with_default;
@@ -34,8 +36,6 @@ use quick_xml::XmlVersion;
 //         <f>C1+1</f>
 //     </c>
 // </row>
-
-const DEFAULT_ROW_HEIGHT: f64 = 14.5;
 
 /// What `read_sheet_data` reads from a worksheet part.
 pub(super) struct SheetDataXml {
@@ -296,7 +296,11 @@ impl SheetDataReader<'_, '_> {
                 "r" => index = Some(value.parse::<i32>()?),
                 "ht" => {
                     has_height_attribute = true;
-                    height = value.parse::<f64>().unwrap_or(DEFAULT_ROW_HEIGHT);
+                    // `ht` is in points, IronCalc works in pixels
+                    height = value
+                        .parse::<f64>()
+                        .map(points_to_pixels)
+                        .unwrap_or(DEFAULT_ROW_HEIGHT);
                 }
                 "customHeight" => custom_height = parse_bool_with_default(Some(&value), false),
                 "s" => style = value.parse::<i32>().unwrap_or(0),

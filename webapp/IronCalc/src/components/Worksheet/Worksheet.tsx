@@ -11,7 +11,7 @@ import {
 import { useTranslation } from "react-i18next";
 import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
-import { getEditorSize } from "../util";
+import { formatSize, getEditorSize, pixelsToPoints } from "../util";
 import type { WorkbookActions } from "../Workbook/workbookActions";
 import type { LinkHoverCell } from "../WorksheetCanvas/cellLinks";
 import {
@@ -274,6 +274,17 @@ const Worksheet = forwardRef(
 
     const { model, workbookState, refresh, canEdit, actions } = props;
     const { t } = useTranslation();
+
+    // The helper text of the size dialogs: the size in points and the default
+    // size, "67.5 pt · Default: 90 px". The model works in pixels.
+    const sizeHelperText = (value: string, defaultSize: number): string => {
+      const defaultText = t("common.default_size", { value: defaultSize });
+      const pixels = Number.parseFloat(value);
+      if (!Number.isFinite(pixels) || pixels < 0) {
+        return defaultText;
+      }
+      return `${pixelsToPoints(pixels)} pt · ${defaultText}`;
+    };
     // Re-renders (and so re-creates the canvas, below) on window resizes
     useWindowSize();
 
@@ -958,7 +969,7 @@ const Worksheet = forwardRef(
           onSetColumnWidth={(): void => {
             const view = model.getSelectedView();
             const width = model.getColumnWidth(view.sheet, view.range[1]);
-            setColumnWidthDefault(`${width}`);
+            setColumnWidthDefault(`${formatSize(width)}`);
             setColumnWidthDialogOpen(true);
             setColHeaderContextMenuOpen(false);
           }}
@@ -1068,7 +1079,7 @@ const Worksheet = forwardRef(
           onSetRowHeight={(): void => {
             const view = model.getSelectedView();
             const height = model.getRowHeight(view.sheet, view.range[0]);
-            setRowHeightDefault(`${height}`);
+            setRowHeightDefault(`${formatSize(height)}`);
             setRowHeightDialogOpen(true);
             setRowHeaderContextMenuOpen(false);
           }}
@@ -1142,6 +1153,12 @@ const Worksheet = forwardRef(
           confirmLabel={t("common.apply")}
           cancelLabel={t("common.cancel")}
           defaultValue={columnWidthDefault}
+          helperText={(value) =>
+            sizeHelperText(
+              value,
+              model.getColumnSizes(model.getSelectedSheet()).default_size,
+            )
+          }
           inputProps={{
             type: "number",
             min: 0,
@@ -1167,6 +1184,12 @@ const Worksheet = forwardRef(
           confirmLabel={t("common.apply")}
           cancelLabel={t("common.cancel")}
           defaultValue={rowHeightDefault}
+          helperText={(value) =>
+            sizeHelperText(
+              value,
+              model.getRowSizes(model.getSelectedSheet()).default_size,
+            )
+          }
           inputProps={{
             type: "number",
             min: 0,

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::constants::{COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH};
+use crate::constants::DEFAULT_COLUMN_WIDTH;
 use crate::test::util::new_empty_model;
 use crate::types::Col;
 
@@ -52,9 +52,7 @@ fn test_column_width_lower_edge() {
     let worksheet = model.workbook.worksheet(0).unwrap();
     assert!((worksheet.get_column_width(4).unwrap() - DEFAULT_COLUMN_WIDTH).abs() < f64::EPSILON);
     assert!((worksheet.get_column_width(5).unwrap() - 30.0).abs() < f64::EPSILON);
-    assert!(
-        (worksheet.get_column_width(6).unwrap() - 10.0 * COLUMN_WIDTH_FACTOR).abs() < f64::EPSILON
-    );
+    assert!((worksheet.get_column_width(6).unwrap() - 10.0).abs() < f64::EPSILON);
     assert_eq!(model.get_cell_style_index(0, 23, 5), Ok(1));
 }
 
@@ -78,9 +76,7 @@ fn test_column_width_higher_edge() {
         .unwrap();
     assert_eq!(model.workbook.worksheets[0].cols.len(), 2);
     let worksheet = model.workbook.worksheet(0).unwrap();
-    assert!(
-        (worksheet.get_column_width(15).unwrap() - 10.0 * COLUMN_WIDTH_FACTOR).abs() < f64::EPSILON
-    );
+    assert!((worksheet.get_column_width(15).unwrap() - 10.0).abs() < f64::EPSILON);
     assert!((worksheet.get_column_width(16).unwrap() - 30.0).abs() < f64::EPSILON);
     assert!((worksheet.get_column_width(17).unwrap() - DEFAULT_COLUMN_WIDTH).abs() < f64::EPSILON);
     assert_eq!(model.get_cell_style_index(0, 23, 16), Ok(1));

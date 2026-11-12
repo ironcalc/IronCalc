@@ -248,7 +248,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style, StyleIncludes)> {
         "Title".to_string(),
         Style {
             font: Font {
-                sz: 18,
+                sz: 18.0,
                 color: Color::Theme(IDX_DK2, 0.0),
                 scheme: FontScheme::Major,
                 ..Default::default()
@@ -262,7 +262,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style, StyleIncludes)> {
         Style {
             font: Font {
                 b: true,
-                sz: 15,
+                sz: 15.0,
                 color: Color::Theme(IDX_DK2, 0.0),
                 ..Default::default()
             },
@@ -276,7 +276,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style, StyleIncludes)> {
         Style {
             font: Font {
                 b: true,
-                sz: 13,
+                sz: 13.0,
                 color: Color::Theme(IDX_DK2, 0.0),
                 ..Default::default()
             },

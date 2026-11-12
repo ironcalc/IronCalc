@@ -12,7 +12,8 @@
   },
   "common": {
     "apply": "Anwenden",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "default_size": "Standard: {{value}} px"
   },
   "conditional_formatting": {
     "add_new_rule": "Neue Regel hinzufügen",

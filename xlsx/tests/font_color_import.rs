@@ -6,6 +6,11 @@ use ironcalc::export::save_to_xlsx;
 use ironcalc::import::load_from_xlsx;
 use std::fs;
 
+// Font sizes are in pixels in IronCalc, in points in the file
+fn has_size(f: &ironcalc_base::types::Font, points: f64) -> bool {
+    (f.sz * 0.75 - points).abs() < 1e-9
+}
+
 #[test]
 // A <font> with no <color> child is semantically equivalent to <color auto="1"/> in OOXML —
 // both mean "use the automatic/default color." The importer must surface this as
@@ -23,10 +28,10 @@ fn test_font_with_no_color_element_is_none() {
     .unwrap();
     let fonts = &model.workbook.styles.fonts;
 
-    let no_color_font = fonts.iter().find(|f| f.sz == 8).unwrap();
+    let no_color_font = fonts.iter().find(|f| has_size(f, 8.0)).unwrap();
     assert_eq!(no_color_font.color, Color::None);
 
-    let themed_fonts: Vec<_> = fonts.iter().filter(|f| f.sz == 11).collect();
+    let themed_fonts: Vec<_> = fonts.iter().filter(|f| has_size(f, 11.0)).collect();
     assert!(!themed_fonts.is_empty());
     for font in themed_fonts {
         assert!(font.color.is_some());
@@ -42,7 +47,7 @@ fn test_font_with_no_color_element_is_none() {
         .styles
         .fonts
         .iter()
-        .find(|f| f.sz == 8)
+        .find(|f| has_size(f, 8.0))
         .unwrap();
     assert_eq!(reloaded_no_color.color, Color::None);
 }

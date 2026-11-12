@@ -1070,7 +1070,11 @@ export default class WorksheetCanvas {
       let textY: number;
       // The idea is that in the present font-size and default row heigh,
       // top/bottom and center horizontalAlign coincide
-      const verticalPadding = 6.5; // default row height is 25 and font size is 13, so (25 - 13) / 2
+      // In rows that are too short for that padding (a row of 20px with a
+      // font of 11pt is common in imported files) the padding is reduced so
+      // that the text stays inside of the cell.
+      const textHeight = (lineCount - 1) * lineHeight + fontSize;
+      const verticalPadding = Math.max(0, Math.min(6.5, height - textHeight)); // default row height is 25 and font size is 13, so (25 - 13) / 2
       if (horizontalAlign === "right") {
         textX = width - cellPadding + x - textWidth / 2;
       } else if (horizontalAlign === "center") {

@@ -121,7 +121,7 @@ impl Worksheet {
             }
         }
         self.rows.push(Row {
-            height: constants::DEFAULT_ROW_HEIGHT / constants::ROW_HEIGHT_FACTOR,
+            height: constants::DEFAULT_ROW_HEIGHT,
             r: row,
             custom_format,
             custom_height: false,
@@ -404,7 +404,7 @@ impl Worksheet {
             }
         }
         rows.push(Row {
-            height: constants::DEFAULT_ROW_HEIGHT / constants::ROW_HEIGHT_FACTOR,
+            height: constants::DEFAULT_ROW_HEIGHT,
             r: row,
             custom_format: false,
             custom_height: false,
@@ -430,13 +430,13 @@ impl Worksheet {
         let rows = &mut self.rows;
         for r in rows.iter_mut() {
             if r.r == row {
-                r.height = height / constants::ROW_HEIGHT_FACTOR;
+                r.height = height;
                 r.custom_height = true;
                 return Ok(());
             }
         }
         rows.push(Row {
-            height: height / constants::ROW_HEIGHT_FACTOR,
+            height,
             r: row,
             custom_format: false,
             custom_height: true,
@@ -482,7 +482,7 @@ impl Worksheet {
         let mut col = Col {
             min: column,
             max: column,
-            width: width / constants::COLUMN_WIDTH_FACTOR,
+            width,
             custom_width: width != constants::DEFAULT_COLUMN_WIDTH,
             style,
             hidden,
@@ -495,7 +495,7 @@ impl Worksheet {
             if min <= column && column <= max {
                 if min == column && max == column {
                     c.style = style;
-                    c.width = width / constants::COLUMN_WIDTH_FACTOR;
+                    c.width = width;
                     c.custom_width = width != constants::DEFAULT_COLUMN_WIDTH;
                     c.hidden = hidden;
                     return Ok(());
@@ -558,7 +558,7 @@ impl Worksheet {
                     return Ok(0.0);
                 }
                 if col.custom_width {
-                    return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
+                    return Ok(col.width);
                 }
                 break;
             }
@@ -578,7 +578,7 @@ impl Worksheet {
             let max = col.max;
             if column >= min && column <= max {
                 if col.custom_width {
-                    return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
+                    return Ok(col.width);
                 }
                 break;
             }
@@ -673,7 +673,7 @@ impl Worksheet {
                 if r.hidden {
                     return Ok(0.0);
                 }
-                return Ok(r.height * constants::ROW_HEIGHT_FACTOR);
+                return Ok(r.height);
             }
         }
         Ok(constants::DEFAULT_ROW_HEIGHT)

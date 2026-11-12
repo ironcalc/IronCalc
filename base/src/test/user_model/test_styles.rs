@@ -482,25 +482,25 @@ fn basic_font_size() {
     };
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.font.sz, 12);
+    assert_eq!(style.font.sz, 12.0);
 
     model.update_range_style(&range, "font.size", "24").unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.font.sz, 24);
+    assert_eq!(style.font.sz, 24.0);
 
     model.undo().unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.font.sz, 12);
+    assert_eq!(style.font.sz, 12.0);
 
     model.redo().unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.font.sz, 24);
+    assert_eq!(style.font.sz, 24.0);
 
     let send_queue = model.flush_send_queue();
     let mut model2 = new_empty_user_model();
     model2.apply_external_diffs(&send_queue).unwrap();
     let style = model2.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.font.sz, 24);
+    assert_eq!(style.font.sz, 24.0);
 }
 
 #[test]

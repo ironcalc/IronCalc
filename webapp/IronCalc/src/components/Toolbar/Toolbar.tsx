@@ -70,6 +70,7 @@ import { MenuItem } from "../Menu/MenuItem";
 import ThemeMenu from "../ThemeMenu/ThemeMenu";
 import "./toolbar.css";
 import { Tooltip } from "../Tooltip/Tooltip";
+import { formatSize } from "../util";
 
 // The zoom levels offered by the zoom menu, in percent
 const ZOOM_LEVELS = [50, 100, 150, 200];
@@ -147,7 +148,10 @@ function Toolbar(properties: ToolbarProperties) {
   const [borderPickerOpen, setBorderPickerOpen] = useState(false);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
-  const [fontSizeInput, setFontSizeInput] = useState(`${properties.fontSize}`);
+  // Font sizes are in pixels. Imported sizes are in points and might not be
+  // a whole number of pixels (11pt is 14.666...px), we show two decimals.
+  const fontSizeText = `${formatSize(properties.fontSize)}`;
+  const [fontSizeInput, setFontSizeInput] = useState(fontSizeText);
 
   const fontColorButton = useRef(null);
   const fillColorButton = useRef(null);
@@ -162,8 +166,8 @@ function Toolbar(properties: ToolbarProperties) {
   const zoomPercent = Math.round(properties.zoom);
 
   useEffect(() => {
-    setFontSizeInput(`${properties.fontSize}`);
-  }, [properties.fontSize]);
+    setFontSizeInput(fontSizeText);
+  }, [fontSizeText]);
 
   const scrollLeft = () =>
     toolbarRef.current?.scrollBy({ left: -200, behavior: "smooth" });
@@ -379,57 +383,80 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-          <input
-            ref={fontSizeInputRef}
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: clicking the unit focuses the input */}
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: the input handles the keyboard */}
+          <div
             className="ic-toolbar-font-size-box"
-            type="text"
-            inputMode="numeric"
-            aria-label={t("toolbar.font_size")}
-            value={fontSizeInput}
-            disabled={!canEdit}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.currentTarget.select();
-            }}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => setFontSizeInput(e.target.value)}
-            onBlur={() => {
-              if (cancelFontSizeCommit.current) {
-                cancelFontSizeCommit.current = false;
-                return;
-              }
-              const parsed = Number(fontSizeInput.trim());
-              if (Number.isInteger(parsed) && parsed > 0 && parsed <= 400) {
-                properties.onSetFontSize(parsed);
-              } else {
-                setFontSizeInput(`${properties.fontSize}`);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.currentTarget.blur();
-              } else if (e.key === "Escape") {
-                cancelFontSizeCommit.current = true;
-                setFontSizeInput(`${properties.fontSize}`);
-                e.currentTarget.blur();
-              } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            onMouseDown={(e) => {
+              if (e.target !== fontSizeInputRef.current) {
                 e.preventDefault();
-                const current = Number(fontSizeInput.trim());
-                if (Number.isInteger(current)) {
-                  const delta = e.shiftKey ? 10 : 1;
-                  const next =
-                    e.key === "ArrowUp"
-                      ? Math.min(current + delta, 400)
-                      : Math.max(current - delta, 1);
-                  setFontSizeInput(`${next}`);
-                  properties.onSetFontSize(next);
-                  requestAnimationFrame(() =>
-                    fontSizeInputRef.current?.focus(),
-                  );
-                }
+                fontSizeInputRef.current?.focus();
               }
             }}
-          />
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              ref={fontSizeInputRef}
+              type="text"
+              inputMode="decimal"
+              aria-label={t("toolbar.font_size")}
+              value={fontSizeInput}
+              disabled={!canEdit}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.currentTarget.select();
+              }}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => setFontSizeInput(e.target.value)}
+              onBlur={() => {
+                if (cancelFontSizeCommit.current) {
+                  cancelFontSizeCommit.current = false;
+                  return;
+                }
+                const text = fontSizeInput.trim();
+                if (text === fontSizeText) {
+                  // Not edited: do not replace the size with its rounded value
+                  return;
+                }
+                const parsed = Number(text);
+                if (
+                  text !== "" &&
+                  Number.isFinite(parsed) &&
+                  parsed >= 1 &&
+                  parsed <= 400
+                ) {
+                  properties.onSetFontSize(parsed);
+                } else {
+                  setFontSizeInput(fontSizeText);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                } else if (e.key === "Escape") {
+                  cancelFontSizeCommit.current = true;
+                  setFontSizeInput(fontSizeText);
+                  e.currentTarget.blur();
+                } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const current = Number(fontSizeInput.trim());
+                  if (fontSizeInput.trim() !== "" && Number.isFinite(current)) {
+                    const delta = e.shiftKey ? 10 : 1;
+                    const next =
+                      e.key === "ArrowUp"
+                        ? Math.min(current + delta, 400)
+                        : Math.max(current - delta, 1);
+                    setFontSizeInput(`${next}`);
+                    properties.onSetFontSize(next);
+                    requestAnimationFrame(() =>
+                      fontSizeInputRef.current?.focus(),
+                    );
+                  }
+                }
+              }}
+            />
+            <span className="ic-toolbar-font-size-unit">px</span>
+          </div>
           <Tooltip title={t("toolbar.increase_font_size")}>
             <IconButton
               icon={<Plus />}

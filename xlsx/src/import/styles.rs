@@ -9,6 +9,7 @@ use std::io::BufReader;
 use super::xml::XmlNode;
 
 use crate::error::XlsxError;
+use crate::units::points_to_pixels;
 
 use super::util::{get_attribute, get_bool, get_bool_false, get_color_indexed, get_number};
 
@@ -119,7 +120,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     let mut fonts = Vec::new();
     let font_nodes = style_sheet.children().find(|n| n.has_tag_name("fonts"));
     for font in font_nodes.iter().flat_map(|n| n.children()) {
-        let mut sz = 11;
+        // Font sizes are in points in the file, in pixels in IronCalc
+        let mut sz = points_to_pixels(11.0);
         let mut name = "Inter".to_string();
         // NOTE: In Excel you can have simple underline or double underline
         // In IronCalc convert double underline to simple
@@ -138,11 +140,13 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         for feature in font.children() {
             match feature.tag_name() {
                 "sz" => {
-                    sz = feature
-                        .attribute("val")
-                        .unwrap_or("11")
-                        .parse::<i32>()
-                        .unwrap_or(11);
+                    sz = points_to_pixels(
+                        feature
+                            .attribute("val")
+                            .unwrap_or("11")
+                            .parse::<f64>()
+                            .unwrap_or(11.0),
+                    );
                 }
                 "color" => {
                     color = get_color_indexed(feature, theme, indexed)?;
@@ -518,12 +522,12 @@ pub(super) fn parse_dxf(
                             f.strike = Some(true);
                         }
                         "sz" => {
-                            f.sz = Some(
+                            f.sz = Some(points_to_pixels(
                                 feat.attribute("val")
                                     .unwrap_or("11")
-                                    .parse::<i32>()
-                                    .unwrap_or(11),
-                            );
+                                    .parse::<f64>()
+                                    .unwrap_or(11.0),
+                            ));
                         }
                         _ => {}
                     }

@@ -267,6 +267,7 @@ pub use crate::sheet_data::SheetData;
 pub struct Row {
     /// Row index
     pub r: i32,
+    /// Height of the row in pixels
     pub height: f64,
     pub custom_format: bool,
     pub custom_height: bool,
@@ -282,6 +283,7 @@ pub struct Col {
     pub min: i32,
     /// Last column affected by this record. Settings apply to column in \[min, max\] range.
     pub max: i32,
+    /// Width of the columns in pixels
     pub width: f64,
     pub custom_width: bool,
     pub hidden: bool,
@@ -487,7 +489,8 @@ pub struct DxfFont {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub i: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sz: Option<i32>,
+    /// Font size in pixels
+    pub sz: Option<f64>,
     #[serde(skip_serializing_if = "Color::is_none")]
     #[serde(default)]
     pub color: Color,
@@ -609,7 +612,8 @@ pub struct Font {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
     pub i: bool,
-    pub sz: i32,
+    /// Font size in pixels
+    pub sz: f64,
     #[serde(skip_serializing_if = "Color::is_none")]
     #[serde(default)]
     pub color: Color,
@@ -630,7 +634,7 @@ impl Default for Font {
             u: false,
             b: false,
             i: false,
-            sz: 12,
+            sz: crate::constants::DEFAULT_FONT_SIZE,
             color: Color::None,
             name: "Inter".to_string(),
             family: 2,

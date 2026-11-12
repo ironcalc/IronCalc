@@ -14,8 +14,8 @@ use ironcalc_base::{
     },
     types::{CellType, Color, Link, Style, StyleIncludes},
     worksheet::NavigationDirection,
-    BorderArea, ClipboardData, DefinedNameEntry, UserModel as BaseModel, COLUMN_WIDTH_FACTOR,
-    DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
+    BorderArea, ClipboardData, DefinedNameEntry, UserModel as BaseModel, DEFAULT_COLUMN_WIDTH,
+    DEFAULT_ROW_HEIGHT,
 };
 
 fn to_js_error(error: String) -> JsError {
@@ -547,11 +547,7 @@ impl Model {
             .map(|row| SizeRun {
                 first: row.r,
                 last: row.r,
-                size: if row.hidden {
-                    0.0
-                } else {
-                    row.height * ROW_HEIGHT_FACTOR
-                },
+                size: if row.hidden { 0.0 } else { row.height },
             })
             .collect();
         serde_wasm_bindgen::to_value(&AxisSizes {
@@ -579,11 +575,7 @@ impl Model {
             .map(|col| SizeRun {
                 first: col.min,
                 last: col.max,
-                size: if col.hidden {
-                    0.0
-                } else {
-                    col.width * COLUMN_WIDTH_FACTOR
-                },
+                size: if col.hidden { 0.0 } else { col.width },
             })
             .collect();
         serde_wasm_bindgen::to_value(&AxisSizes {

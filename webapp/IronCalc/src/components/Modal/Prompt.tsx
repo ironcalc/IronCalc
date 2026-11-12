@@ -15,6 +15,8 @@ export interface PromptProperties {
   title: string;
   message?: ReactNode;
   defaultValue?: string;
+  /** Helper text below the input, computed from the current value. */
+  helperText?: (value: string) => ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   closeLabel?: string;
@@ -29,6 +31,7 @@ export function Prompt({
   title,
   message,
   defaultValue = "",
+  helperText,
   confirmLabel = "OK",
   cancelLabel = "Cancel",
   closeLabel = "Close",
@@ -90,6 +93,7 @@ export function Prompt({
         <Input
           autoFocus
           {...inputProps}
+          helperText={helperText ? helperText(value) : inputProps?.helperText}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={(event) => {

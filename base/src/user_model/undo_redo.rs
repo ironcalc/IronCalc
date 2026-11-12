@@ -2,7 +2,6 @@
 
 use crate::{
     cf_types::ConditionalFormatting,
-    constants::COLUMN_WIDTH_FACTOR,
     expressions::types::Area,
     model::DefinedNameEntry,
     types::{ArrayKind, Cell, Style},
@@ -286,7 +285,7 @@ impl<'a> UserModel<'a> {
                             worksheet.update_cell(*row, c, cell.clone())?;
                         }
                         if let Some(col) = &col_data.column {
-                            let width = col.width * COLUMN_WIDTH_FACTOR;
+                            let width = col.width;
                             let style = col.style;
                             let hidden = col.hidden;
                             worksheet.set_column_width_and_style(c, width, hidden, style)?;

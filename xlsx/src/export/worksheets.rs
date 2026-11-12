@@ -39,6 +39,8 @@ use ironcalc_base::{
 };
 
 use crate::export::conditional_formatting::get_conditional_formatting_xml;
+use crate::units::{pixels_to_column_width, pixels_to_points};
+use ironcalc_base::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT};
 
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
 
@@ -212,7 +214,13 @@ pub(crate) fn get_worksheet_xml(
         // <col min="4" max="4" width="12" customWidth="1"/>
         let min = col.min;
         let max = col.max;
-        let width = col.width;
+        // Columns without a custom width have the default width.
+        // IronCalc works in pixels, the file has the width in characters
+        let width = pixels_to_column_width(if col.custom_width {
+            col.width
+        } else {
+            DEFAULT_COLUMN_WIDTH
+        });
         let custom_width = i32::from(col.custom_width);
         let column_style = match col.style {
             Some(s) => format!(" style=\"{s}\""),
@@ -592,7 +600,8 @@ pub(crate) fn get_worksheet_xml(
                 format!(
                     r#" s="{}" ht="{}" customHeight="{}" customFormat="{}"{}"#,
                     row_style.s,
-                    row_style.height,
+                    // IronCalc works in pixels, the file has the height in points
+                    pixels_to_points(row_style.height),
                     i32::from(row_style.custom_height),
                     i32::from(row_style.custom_format),
                     hidden_str,
@@ -728,6 +737,14 @@ pub(crate) fn get_worksheet_xml(
 
     let hyperlinks_section = get_hyperlinks_section(worksheet);
 
+    // Rows and columns without an explicit size have IronCalc's default size
+    // that is not the one a spreadsheet application would use otherwise.
+    let sheet_format = format!(
+        "<sheetFormatPr defaultColWidth=\"{}\" defaultRowHeight=\"{}\" customHeight=\"1\"/>",
+        pixels_to_column_width(DEFAULT_COLUMN_WIDTH),
+        pixels_to_points(DEFAULT_ROW_HEIGHT)
+    );
+
     format!(
         "{XML_DECLARATION}\
 <worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
@@ -737,6 +754,7 @@ pub(crate) fn get_worksheet_xml(
         {pane}\
     </sheetView>\
   </sheetViews>\
+  {sheet_format}\
   {cols}\
   <sheetData>\
   {sheet_data}\

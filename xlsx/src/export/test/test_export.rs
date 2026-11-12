@@ -415,6 +415,59 @@ fn rows_without_cells_keep_height_and_hidden() {
 }
 
 #[test]
+fn sizes_are_pixels_in_the_model_and_points_in_the_file() {
+    let mut model = new_empty_model();
+    // 48px is 36pt, 20px is 15pt, 64px is Excel's default column width
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.sz = 48.0;
+    model.set_cell_style(0, 1, 1, &style).unwrap();
+    // 11pt is not a whole number of pixels
+    let mut style = model.get_style_for_cell(0, 2, 1).unwrap();
+    style.font.sz = 11.0 * 4.0 / 3.0;
+    model.set_cell_style(0, 2, 1, &style).unwrap();
+    model.set_row_height(0, 1, 20.0).unwrap();
+    model.set_column_width(0, 2, 64.0).unwrap();
+    model.set_column_width(0, 3, 123.5).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_sizes_are_pixels.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let read_part = |name: &str| {
+        let file = fs::File::open(temp_file_name).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut part = String::new();
+        std::io::Read::read_to_string(&mut archive.by_name(name).unwrap(), &mut part).unwrap();
+        part
+    };
+    let styles = read_part("xl/styles.xml");
+    assert!(styles.contains(r#"<sz val="36"/>"#));
+    assert!(styles.contains(r#"<sz val="11"/>"#));
+    // The default font is 12px
+    assert!(styles.contains(r#"<sz val="9"/>"#));
+    let sheet = read_part("xl/worksheets/sheet1.xml");
+    assert!(sheet.contains(r#"ht="15""#));
+    assert!(sheet.contains(r#"<col min="2" max="2" width="9.142857" customWidth="1"/>"#));
+    // Rows and columns without a size have IronCalc's default: 25px and 90px
+    assert!(sheet.contains(
+        r#"<sheetFormatPr defaultColWidth="12.857143" defaultRowHeight="18.75" customHeight="1"/>"#
+    ));
+
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_eq!(model.get_style_for_cell(0, 1, 1).unwrap().font.sz, 48.0);
+    assert_eq!(
+        model.get_style_for_cell(0, 2, 1).unwrap().font.sz,
+        11.0 * 4.0 / 3.0
+    );
+    assert_eq!(model.get_style_for_cell(0, 3, 1).unwrap().font.sz, 12.0);
+    assert_eq!(model.get_row_height(0, 1).unwrap(), 20.0);
+    assert_eq!(model.get_row_height(0, 2).unwrap(), 25.0);
+    assert_eq!(model.get_column_width(0, 1).unwrap(), 90.0);
+    assert_eq!(model.get_column_width(0, 2).unwrap(), 64.0);
+    assert!((model.get_column_width(0, 3).unwrap() - 123.5).abs() < 1e-5);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
 fn theme_tints_keep_every_digit() {
     let mut model = new_empty_model();
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
