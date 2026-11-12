@@ -41,3 +41,20 @@ fn test_simple_errors() {
     assert_eq!(model._get_text("B2"), "TRUE");
     assert_eq!(model._get_text("B3"), "FALSE");
 }
+
+#[test]
+fn sheet_reference_to_deleted_cells() {
+    // `Sheet1!#REF!` is what Excel writes in a formula when the cells it
+    // read on another sheet are deleted
+    let mut model = new_empty_model();
+    model.add_sheet("Other Sheet").unwrap();
+    model._set("A1", "=Sheet1!#REF!");
+    model._set("A2", r#"=IFERROR('Other Sheet'!#REF!, "caught")"#);
+    // only for #REF!
+    model._set("A3", "=Sheet1!#DIV/0!");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#REF!");
+    assert_eq!(model._get_text("A2"), "caught");
+    assert_eq!(model._get_text("A3"), "#ERROR!");
+}
