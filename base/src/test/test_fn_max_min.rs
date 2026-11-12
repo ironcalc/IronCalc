@@ -276,3 +276,39 @@ fn defined_names() {
     assert_eq!(model._get_text("Sheet2!A1"), *"0");
     assert_eq!(model._get_text("Sheet2!A2"), *"20");
 }
+
+// ── whole columns and rows ───────────────────────────────────────────────────
+
+// A whole column or row is walked only as far as the sheet's used area: the
+// cells past it are empty, and MIN and MAX skip empty cells.
+#[test]
+fn whole_columns_and_rows() {
+    let mut model = new_empty_model();
+    model._set("D1", "5");
+    model._set("D2", "text");
+    model._set("D4", "-2");
+    model._set("D5", "3");
+    model._set("B7", "7");
+    model._set("C7", "9");
+    model._set("A1", "=MAX(D:D)");
+    model._set("A2", "=MIN(D:D)");
+    model._set("A3", "=MAX(7:7)");
+    model._set("A4", "=MIN(F:F)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model._get_text("A2"), "-2");
+    assert_eq!(model._get_text("A3"), "9");
+    assert_eq!(model._get_text("A4"), "0");
+}
+
+// The skipped part is on record, so a spill into it restarts the pass.
+#[test]
+fn whole_column_sees_a_spill_beyond_the_used_area() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(1,1,MAX(D:D))");
+    model._set("C1", "=SEQUENCE(3,1,10)");
+    model._set("D1", "=SEQUENCE(5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model.evaluation.restarts_in_last_evaluation, 1);
+}

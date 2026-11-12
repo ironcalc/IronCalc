@@ -348,3 +348,60 @@ fn test_logest_basic() {
     assert!((m - 3.0).abs() < 0.01, "m should be ≈3, got {m}");
     assert!((b - 2.0).abs() < 0.01, "b should be ≈2, got {b}");
 }
+
+// ── whole columns ────────────────────────────────────────────────────────────
+
+// A whole column is read only as far as the sheet's used area: the cells past
+// it are empty, and RANK, PERCENTILE, QUARTILE, MODE, FREQUENCY and PROB skip
+// empty cells. FREQUENCY spills one count per number in its bins, so a whole
+// column of bins gives the same shape.
+#[test]
+fn test_whole_columns() {
+    let mut model = new_empty_model();
+    model._set("D1", "1");
+    model._set("D2", "2");
+    model._set("D3", "2");
+    model._set("D4", "text");
+    model._set("D5", "5");
+    model._set("E1", "2");
+    model._set("E2", "4");
+    model._set("F1", "0.25");
+    model._set("F2", "0.5");
+    model._set("F3", "0.25");
+    model._set("G1", "1");
+    model._set("G2", "2");
+    model._set("G3", "3");
+    model._set("A1", "=RANK.EQ(2,D:D)");
+    model._set("A2", "=RANK.AVG(2,D:D,1)");
+    model._set("A3", "=PERCENTILE.INC(D:D,0.5)");
+    model._set("A4", "=QUARTILE.INC(D:D,3)");
+    model._set("A5", "=MODE.SNGL(D:D)");
+    model._set("A6", "=PROB(G:G,F:F,2)");
+    model._set("A7", "=PERCENTRANK.INC(D:D,2)");
+    model._set("B1", "=FREQUENCY(D:D,E:E)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+    assert_eq!(model._get_text("A2"), "2.5");
+    assert_eq!(model._get_text("A3"), "2");
+    assert_eq!(model._get_text("A4"), "2.75");
+    assert_eq!(model._get_text("A5"), "2");
+    assert_eq!(model._get_text("A6"), "0.5");
+    assert_eq!(model._get_text("A7"), "0.333");
+    assert_eq!(model._get_text("B1"), "3");
+    assert_eq!(model._get_text("B2"), "0");
+    assert_eq!(model._get_text("B3"), "1");
+    assert_eq!(model._get_text("B4"), "");
+}
+
+#[test]
+fn test_whole_column_sees_a_spill_beyond_the_used_area() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(1,1,PERCENTILE.INC(D:D,1))");
+    model._set("B1", "=SEQUENCE(1,1,RANK.EQ(1,D:D))");
+    model._set("C1", "=SEQUENCE(3,1,10)");
+    model._set("D1", "=SEQUENCE(5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model._get_text("B1"), "5");
+    assert!(model.evaluation.restarts_in_last_evaluation >= 1);
+}

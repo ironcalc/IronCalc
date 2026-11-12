@@ -34,3 +34,18 @@ fn arrays() {
     assert_eq!(model._get_text("D1"), *"0.503243397");
     assert_eq!(model._get_text("D2"), *"0.780710987");
 }
+
+// A whole column is read only as far as the used area: the cells past it are
+// empty, and Z.TEST skips empty cells.
+#[test]
+fn test_fn_z_test_whole_column() {
+    let mut model = new_empty_model();
+    for (row, x) in [3, 5, 2, 8, 6].iter().enumerate() {
+        model._set(&format!("D{}", row + 1), &x.to_string());
+    }
+    model._set("A1", "=Z.TEST(D:D,4)=Z.TEST(D1:D5,4)");
+    model._set("A2", "=Z.TEST(D:D,4,2)=Z.TEST(D1:D5,4,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "TRUE");
+    assert_eq!(model._get_text("A2"), "TRUE");
+}

@@ -305,6 +305,39 @@ impl<'a> Model<'a> {
         self.values_from_range(left, right)
     }
 
+    /// The bottom-right corners to read two ranges of the same shape to, for a
+    /// function that pairs their cells position by position and gives a pair
+    /// of empty cells no weight. A whole column or row is read only as far as
+    /// the used area of its sheet, and both ranges as far as the longer of the
+    /// two, so the pairs stay aligned and only pairs of two empty cells are
+    /// left out. Ranges of different shapes are read whole.
+    pub(crate) fn paired_used_corners(
+        &mut self,
+        (left1, right1): (CellReferenceIndex, CellReferenceIndex),
+        (left2, right2): (CellReferenceIndex, CellReferenceIndex),
+        cell: CellReferenceIndex,
+    ) -> Result<(CellReferenceIndex, CellReferenceIndex), CalcResult> {
+        if right1.row - left1.row != right2.row - left2.row
+            || right1.column - left1.column != right2.column - left2.column
+        {
+            return Ok((right1, right2));
+        }
+        let mut clip = |left: CellReferenceIndex, right: CellReferenceIndex| {
+            self.clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))
+        };
+        let (row1, column1) = clip(left1, right1)?;
+        let (row2, column2) = clip(left2, right2)?;
+        let height = (row1 - left1.row).max(row2 - left2.row);
+        let width = (column1 - left1.column).max(column2 - left2.column);
+        let corner = |left: CellReferenceIndex| CellReferenceIndex {
+            sheet: left.sheet,
+            row: left.row + height,
+            column: left.column + width,
+        };
+        Ok((corner(left1), corner(left2)))
+    }
+
     pub(crate) fn values_from_array(
         &mut self,
         array: Vec<Vec<ArrayNode>>,
@@ -330,11 +363,13 @@ impl<'a> Model<'a> {
 
     // CHISQ.TEST(actual_range, expected_range)
     pub(crate) fn fn_chisq_test(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (width, height, values_left, values_right) = match self.fn_get_two_matrices(args, cell)
-        {
-            Ok(v) => v,
-            Err(r) => return r,
-        };
+        // Every pair counts here, a pair of empty cells too (it is taken as 1
+        // observed against 1 expected), so whole columns are read whole.
+        let (width, height, values_left, values_right) =
+            match self.fn_get_two_matrices_unclipped(args, cell) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
 
         let mut values = Vec::with_capacity(values_left.len());
 

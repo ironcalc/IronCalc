@@ -308,10 +308,12 @@ impl<'a> Model<'a> {
         }
 
         let values1_opts = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
+            CalcResult::Range { left, right } => {
+                match self.values_from_used_range(left, right, cell) {
+                    Ok(v) => v,
+                    Err(error) => return error,
+                }
+            }
             CalcResult::Array(a) => match self.values_from_array(a) {
                 Ok(v) => v,
                 Err(error) => {
@@ -332,10 +334,12 @@ impl<'a> Model<'a> {
         };
 
         let values2_opts = match self.evaluate_node_in_context(&args[1], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
+            CalcResult::Range { left, right } => {
+                match self.values_from_used_range(left, right, cell) {
+                    Ok(v) => v,
+                    Err(error) => return error,
+                }
+            }
             CalcResult::Array(a) => match self.values_from_array(a) {
                 Ok(v) => v,
                 Err(error) => {
