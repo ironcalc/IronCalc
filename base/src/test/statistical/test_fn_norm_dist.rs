@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -167,4 +168,46 @@ fn test_fn_norm_arguments() {
     assert_eq!(model._get_text("D1"), *"#ERROR!");
     assert_eq!(model._get_text("D2"), *"0");
     assert_eq!(model._get_text("D3"), *"#ERROR!");
+}
+
+#[test]
+fn test_fn_norm_dist_cumulative_full_precision() {
+    // Values captured from Excel for Mac 16.114.1, en-US locale, on 25 October 2026
+    // (published in the Formulon project's oracle goldens, Apache-2.0).
+    // statrs' erfc is only good to about 1e-11 here: NORM.DIST(1, 0, 1, TRUE) used to be
+    // 0.8413447460549428.
+    let cases = [
+        ("=NORM.DIST(1, 0, 1, TRUE)", 0.841344746068543),
+        ("=NORM.DIST(105, 100, 15, TRUE)", 0.6305586598182364),
+        ("=NORMDIST(1, 0, 1, TRUE)", 0.841344746068543),
+        ("=NORM.S.DIST(2, TRUE)", 0.9772498680518208),
+        ("=NORM.S.DIST(-1, TRUE)", 0.158655253931457),
+        ("=NORMSDIST(-1)", 0.158655253931457),
+        ("=GAUSS(1)", 0.34134474606854304),
+        ("=GAUSS(2)", 0.4772498680518208),
+        ("=GAUSS(6)", 0.4999999990134123),
+        // LOGNORM.DIST takes "the mean of ln(x)" and "the standard deviation of ln(x)", so with
+        // x = 1, mean = -1 and standard_dev = 1 it is NORM.S.DIST(1, TRUE).
+        ("=LOGNORM.DIST(1, -1, 1, TRUE)", 0.841344746068543),
+        ("=LOGNORMDIST(1, -1, 1)", 0.841344746068543),
+        // Microsoft's Z.TEST page:
+        // "Z.TEST(array,x,sigma) = 1-Norm.S.Dist((Average(array)- x) / (sigma/√n),TRUE)"
+        // https://support.microsoft.com/en-us/office/z-test-function-d633d5a3-2031-4614-a016-92180ad82bee
+        ("=Z.TEST({1}, 0, 1)", 1.0 - 0.841344746068543),
+    ];
+    let mut model = new_empty_model();
+    for (index, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", index + 1), formula);
+    }
+    model.evaluate();
+    for (index, (formula, expected)) in cases.iter().enumerate() {
+        let cell_value = model.get_cell_value_by_ref(&format!("Sheet1!A{}", index + 1));
+        let Ok(CellValue::Number(value)) = cell_value else {
+            unreachable!("{formula} gave {cell_value:?}");
+        };
+        assert!(
+            ((value - expected) / expected).abs() < 1e-15,
+            "{formula} gave {value}, Excel gives {expected}"
+        );
+    }
 }
