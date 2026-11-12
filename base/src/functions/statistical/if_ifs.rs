@@ -17,6 +17,19 @@ fn same_size(a: &Range, b: &Range) -> bool {
         && a.right.column - a.left.column == b.right.column - b.left.column
 }
 
+/// The range that starts at the top left cell of `range` and has the size of
+/// `shape`, as far as the sheet goes.
+fn resize_range(range: &Range, shape: &Range) -> Range {
+    Range {
+        left: range.left,
+        right: CellReferenceIndex {
+            sheet: range.left.sheet,
+            row: (range.left.row + shape.right.row - shape.left.row).min(LAST_ROW),
+            column: (range.left.column + shape.right.column - shape.left.column).min(LAST_COLUMN),
+        },
+    }
+}
+
 /// Converts a single array element into the equivalent scalar `CalcResult`,
 /// used to feed `build_criteria` from an inline-array criteria argument.
 fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
@@ -192,7 +205,8 @@ impl<'a> Model<'a> {
     }
 
     /// With `check_sizes` the criteria ranges must have the size of the sum
-    /// range, as SUMIFS, AVERAGEIFS, MAXIFS and MINIFS need.
+    /// range, as SUMIFS, AVERAGEIFS, MAXIFS and MINIFS need. Without it the sum
+    /// range takes the size of the criteria range, as in SUMIF and AVERAGEIF.
     pub(crate) fn apply_ifs<F>(
         &mut self,
         args: &[Node],
@@ -207,7 +221,7 @@ impl<'a> Model<'a> {
         if args_count < 3 || args_count.is_multiple_of(2) {
             return Err(CalcResult::new_args_number_error(cell));
         }
-        let sum_range = self.node_to_range(&args[0], cell)?;
+        let mut sum_range = self.node_to_range(&args[0], cell)?;
 
         let case_count = (args_count - 1) / 2;
         // NB: this is a beautiful example of the borrow checker
@@ -224,9 +238,9 @@ impl<'a> Model<'a> {
             // because criterion doesn't live long enough
             ranges.push(self.node_to_range(&args[case_index * 2 - 1], cell)?);
         }
-        // TODO in SUMIF and AVERAGEIF the sum range should take the size of
-        // the criteria range instead
-        if check_sizes && ranges.iter().any(|range| !same_size(range, &sum_range)) {
+        if !check_sizes {
+            sum_range = resize_range(&sum_range, &ranges[0]);
+        } else if ranges.iter().any(|range| !same_size(range, &sum_range)) {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -261,12 +275,14 @@ impl<'a> Model<'a> {
         let mut right_row = sum_range.right.row;
         let mut right_column = sum_range.right.column;
 
-        match self.clip_to_used_area(
+        // A resized sum range seldom starts at the first row: B2:B1048576
+        match self.clip_range_to_used_area(
             sum_range.left.sheet,
             left_row,
             left_column,
             right_row,
             right_column,
+            true,
         ) {
             Ok((r, c)) => {
                 right_row = r;
@@ -401,7 +417,7 @@ impl<'a> Model<'a> {
                 })
                 .collect(),
             _ => {
-                // Single criterion: a scalar, as SUMIFS but without its size check.
+                // Single criterion: a scalar, as SUMIFS but with the sum range resized.
                 let arguments = vec![sum_range.clone(), criteria_range.clone(), criteria.clone()];
                 let mut total = 0.0;
                 if let Err(e) = self.apply_ifs(&arguments, cell, false, |value| total += value) {
@@ -421,6 +437,7 @@ impl<'a> Model<'a> {
             Ok(r) => r,
             Err(e) => return e,
         };
+        let sum_range = resize_range(&sum_range, &criteria_range);
 
         let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(criteria_grid.len());
         for criteria_row in &criteria_grid {
