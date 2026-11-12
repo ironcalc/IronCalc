@@ -31,6 +31,7 @@ use ironcalc_base::{
             stringify::{to_excel_array_formula_string, to_excel_string},
             Node,
         },
+        token::Error,
         types::CellReferenceRC,
         utils::number_to_column,
     },
@@ -46,6 +47,16 @@ fn get_range_str(row: i32, column: i32, width: i32, height: i32) -> Option<Strin
     let column2 = number_to_column(column + width - 1)?;
     let row2 = row + height - 1;
     Some(format!("{}{}:{}{}", column1, row, column2, row2))
+}
+
+/// The `t="e"` attribute and the cached `<v>` of a formula that evaluates to an error.
+/// Excel only knows the xlsx errors: a cached #CIRC!, #ERROR! or #N/IMPL makes it offer to
+/// repair the file, so for those both are left out and Excel calculates the formula itself.
+fn get_formula_error_parts(ei: &Error) -> (&'static str, String) {
+    match ei {
+        Error::CIRC | Error::ERROR | Error::NIMPL => ("", String::new()),
+        _ => (" t=\"e\"", format!("<v>{ei}</v>")),
+    }
 }
 
 fn get_cell_style_attribute(s: i32) -> String {
@@ -271,16 +282,21 @@ pub(crate) fn get_worksheet_xml(
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!("<c r=\"{cell_name}\"{style}><v>{v}</v></c>"));
                 }
-                Cell::ErrorCell { ei, s }
-                | Cell::SpillCell {
-                    v: SpillValue::Error(ei),
-                    s,
-                    ..
-                } => {
+                Cell::ErrorCell { ei, s } => {
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\" t=\"e\"{style}><v>{ei}</v></c>"
                     ));
+                }
+                Cell::SpillCell {
+                    v: SpillValue::Error(ei),
+                    s,
+                    ..
+                } => {
+                    // A spilled value is calculated again from its anchor formula
+                    let style = get_cell_style_attribute(*s);
+                    let (t, v) = get_formula_error_parts(ei);
+                    row_data_str.push(format!("<c r=\"{cell_name}\"{t}{style}>{v}</c>"));
                 }
                 Cell::SharedString { si, s } => {
                     // Example:
@@ -384,8 +400,9 @@ pub(crate) fn get_worksheet_xml(
                         &parsed_formulas[*f as usize].0,
                     );
                     let style = get_cell_style_attribute(*s);
+                    let (t, v) = get_formula_error_parts(ei);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"e\"{style}><f>{formula}</f><v>{ei}</v></c>"
+                        "<c r=\"{cell_name}\"{t}{style}><f>{formula}</f>{v}</c>"
                     ));
                 }
                 Cell::SpillCell {
@@ -558,8 +575,9 @@ pub(crate) fn get_worksheet_xml(
                     } else {
                         ""
                     };
+                    let (t, v) = get_formula_error_parts(ei);
                     row_data_str.push(format!(
-                        r#"<c r="{cell_name}"{style} t="e"{cm}><f t="array" ref="{range}">{formula}</f><v>{ei}</v></c>"#
+                        r#"<c r="{cell_name}"{style}{t}{cm}><f t="array" ref="{range}">{formula}</f>{v}</c>"#
                     ));
                 }
             }
