@@ -89,3 +89,65 @@ fn test_fn_countif_whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
 }
+
+// ── whole columns and rows ───────────────────────────────────────────────────
+
+// A whole column or row is walked only as far as the sheet's used area. COUNT
+// and COUNTA skip the empty cells past it; COUNTBLANK counts them without
+// visiting them.
+#[test]
+fn test_fn_count_whole_columns_and_rows() {
+    let mut model = new_empty_model();
+    model._set("D1", "5");
+    model._set("D2", "text");
+    model._set("D4", "=\"\"");
+    model._set("D5", "3");
+    model._set("B7", "7");
+    model._set("A1", "=COUNT(D:D)");
+    model._set("A2", "=COUNTA(D:D)");
+    model._set("A3", "=COUNTBLANK(D:D)");
+    model._set("A4", "=COUNTBLANK(D1:D5)");
+    model._set("A5", "=COUNTBLANK(7:7)");
+    model._set("A6", "=COUNTBLANK(F:G)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+    assert_eq!(model._get_text("A2"), "4");
+    assert_eq!(model._get_text("A3"), "1048573");
+    assert_eq!(model._get_text("A4"), "2");
+    assert_eq!(model._get_text("A5"), "16383");
+    assert_eq!(model._get_text("A6"), "2097152");
+}
+
+// The skipped part is on record, so a spill into it restarts the pass, and the
+// cells the spill fills are no longer blank.
+#[test]
+fn test_fn_countblank_whole_column_sees_a_spill_beyond_the_used_area() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(1,1,COUNTBLANK(D:D))");
+    model._set("B1", "=SEQUENCE(1,1,COUNTA(D:D))");
+    model._set("C1", "=SEQUENCE(3,1,10)");
+    model._set("D1", "=SEQUENCE(5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1048571");
+    assert_eq!(model._get_text("B1"), "5");
+    assert!(model.evaluation.restarts_in_last_evaluation >= 1);
+
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1048571");
+    assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
+}
+
+// The skipped part is one rectangle on record, not one entry per cell.
+#[test]
+fn test_fn_counta_whole_column_records_one_rectangle() {
+    let mut model = new_empty_model();
+    model._set("A1", "=COUNTA(D:D)");
+    model._set("F1", "=SEQUENCE(1)");
+    model._set("D1", "1");
+    model._set("D2", "2");
+    model._set("D3", "3");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    assert!(model.evaluation.seen.len() <= 4);
+    assert_eq!(model.evaluation.seen_ranges.len(), 1);
+}

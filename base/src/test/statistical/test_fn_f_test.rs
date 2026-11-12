@@ -33,3 +33,17 @@ fn test_fn_f_test_sanity() {
     assert_eq!(model._get_text("A8"), *"#ERROR!");
     assert_eq!(model._get_text("A9"), *"#ERROR!");
 }
+
+// Whole columns are read only as far as the used area: the cells past it are
+// empty, and F.TEST skips empty cells.
+#[test]
+fn test_fn_f_test_whole_columns() {
+    let mut model = new_empty_model();
+    for (row, (x, y)) in [(3, 4), (5, 9), (2, 2), (8, 11), (6, 7)].iter().enumerate() {
+        model._set(&format!("D{}", row + 1), &x.to_string());
+        model._set(&format!("E{}", row + 1), &y.to_string());
+    }
+    model._set("A1", "=F.TEST(D:D,E:E)=F.TEST(D1:D5,E1:E5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "TRUE");
+}

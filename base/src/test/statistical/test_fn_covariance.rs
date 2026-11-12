@@ -76,3 +76,31 @@ fn arguments() {
     assert_eq!(model._get_text("A5"), *"0");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 }
+
+// ── whole columns ────────────────────────────────────────────────────────────
+
+// Two whole columns are read only as far as the used area of either sheet,
+// so the cells stay paired by position: Sheet2's used area is longer, and the
+// pairs past Sheet1's data are a text cell against empty cells. Pairs of two
+// empty cells, the ones left out, carry no weight.
+#[test]
+fn test_fn_covariance_whole_columns_on_two_sheets() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set("D1", "3");
+    model._set("D2", "9");
+    model._set("D3", "2");
+    model._set("Sheet2!D1", "1");
+    model._set("Sheet2!D2", "4");
+    model._set("Sheet2!D3", "5");
+    model._set("Sheet2!D6", "text");
+    model._set("A1", "=COVARIANCE.P(D:D,Sheet2!D:D)");
+    model._set("A2", "=COVARIANCE.S(D:D,Sheet2!D:D)");
+    model._set("A3", "=COVARIANCE.P(D1:D3,Sheet2!D1:D3)");
+    model._set("A4", "=COVARIANCE.P(D:D,Sheet2!D1:D3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), model._get_text("A3"));
+    assert_eq!(model._get_text("A1"), "0.777777778");
+    assert_eq!(model._get_text("A2"), "1.166666667");
+    assert_eq!(model._get_text("A4"), "#N/A");
+}

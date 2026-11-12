@@ -39,3 +39,25 @@ fn test_fn_t_test_smoke() {
     assert_eq!(model._get_text("C5"), *"0.200489197");
     assert_eq!(model._get_text("C6"), *"0.210720639");
 }
+
+// Whole columns are read only as far as the used area: the cells past it are
+// empty, and T.TEST skips empty cells, in pairs for the paired test.
+#[test]
+fn test_fn_t_test_whole_columns() {
+    let mut model = new_empty_model();
+    for (row, (x, y)) in [(3, 4), (5, 9), (2, 2), (8, 11), (6, 7)].iter().enumerate() {
+        model._set(&format!("D{}", row + 1), &x.to_string());
+        model._set(&format!("E{}", row + 1), &y.to_string());
+    }
+    model._set("E7", "text");
+    for test_type in 1..=3 {
+        model._set(
+            &format!("A{test_type}"),
+            &format!("=T.TEST(D:D,E:E,2,{test_type})=T.TEST(D1:D5,E1:E5,2,{test_type})"),
+        );
+    }
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "TRUE");
+    assert_eq!(model._get_text("A2"), "TRUE");
+    assert_eq!(model._get_text("A3"), "TRUE");
+}

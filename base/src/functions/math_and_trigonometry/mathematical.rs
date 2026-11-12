@@ -55,8 +55,19 @@ impl<'a> Model<'a> {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
+                    // A whole column or row is walked only as far as the used area.
+                    let (last_row, last_column) = match self.clip_to_used_area(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(corner) => corner,
+                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
+                    };
+                    for row in left.row..(last_row + 1) {
+                        for column in left.column..(last_column + 1) {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
