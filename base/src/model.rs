@@ -4075,6 +4075,55 @@ impl<'a> Model<'a> {
         self.workbook.settings.locale.clone()
     }
 
+    /// Returns the cell the workbook focuses on when it is opened, as
+    /// `(sheet, row, column)` where `sheet` is the sheet index.
+    ///
+    /// Returns `None` if the setting is off or if the sheet no longer exists.
+    ///
+    /// See also:
+    /// * [Model::set_focus_on_open]
+    pub fn get_focus_on_open(&self) -> Option<(u32, i32, i32)> {
+        let focus = self.workbook.settings.focus_on_open?;
+        let sheet = self
+            .workbook
+            .worksheets
+            .iter()
+            .position(|ws| ws.sheet_id == focus.sheet_id)?;
+        Some((sheet as u32, focus.row, focus.column))
+    }
+
+    /// Sets the cell the workbook focuses on when it is opened, as
+    /// `(sheet, row, column)` where `sheet` is the sheet index.
+    /// With `None` the workbook opens on its first visible sheet with A1 selected.
+    ///
+    /// The setting is honored by [crate::UserModel] when it is created and it
+    /// is exported to xlsx as the active tab and the selected cell.
+    /// If the sheet is hidden when the workbook is opened the setting is ignored.
+    ///
+    /// See also:
+    /// * [Model::get_focus_on_open]
+    pub fn set_focus_on_open(&mut self, focus: Option<(u32, i32, i32)>) -> Result<(), String> {
+        let focus = match focus {
+            Some((sheet, row, column)) => {
+                let sheet_id = self.workbook.worksheet(sheet)?.sheet_id;
+                if !is_valid_row(row) {
+                    return Err(format!("Invalid row: '{row}'"));
+                }
+                if !is_valid_column_number(column) {
+                    return Err(format!("Invalid column: '{column}'"));
+                }
+                Some(FocusOnOpen {
+                    sheet_id,
+                    row,
+                    column,
+                })
+            }
+            None => None,
+        };
+        self.workbook.settings.focus_on_open = focus;
+        Ok(())
+    }
+
     /// Gets the formatting settings based on the locale
     pub fn get_fmt_settings(&self) -> FmtSettings {
         let day_example = 46006.0; // December 15, 2025

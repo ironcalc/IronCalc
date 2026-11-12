@@ -389,3 +389,21 @@ test('Cells block', () => {
     assert.throws(() => model.getCellsBlock(0, 1, 1, 0, 1));
     assert.throws(() => model.getCellsBlock(3, 1, 1, 1, 1));
 });
+
+test('focus on open', () => {
+    let model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.strictEqual(model.getFocusOnOpen(), undefined);
+    model.newSheet();
+    model.setFocusOnOpen(1, 5, 3);
+    assert.deepStrictEqual(model.getFocusOnOpen(), { sheet: 1, row: 5, column: 3 });
+    assert.throws(() => model.setFocusOnOpen(7, 1, 1));
+
+    // The workbook opens on that cell
+    model = Model.fromBytes(model.toBytes(), 'en');
+    assert.deepStrictEqual(Array.from(model.getSelectedCell()), [1, 5, 3]);
+
+    model.clearFocusOnOpen();
+    assert.strictEqual(model.getFocusOnOpen(), undefined);
+    model = Model.fromBytes(model.toBytes(), 'en');
+    assert.deepStrictEqual(Array.from(model.getSelectedCell()), [0, 1, 1]);
+});

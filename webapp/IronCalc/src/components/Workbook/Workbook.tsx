@@ -1221,8 +1221,8 @@ const Workbook = (
             model.moveSheet(fromIndex, toIndex);
             setRedrawId((value) => value + 1);
           }}
-          onOpenRegionalSettings={() => {
-            openDrawer("regionalSettings");
+          onOpenSettings={() => {
+            openDrawer("settings");
           }}
           model={model}
         />
@@ -1296,10 +1296,19 @@ const Workbook = (
         initialLocale={model.getLocale()}
         initialTimezone={model.getTimezone()}
         initialLanguage={model.getLanguage()}
-        onSettingsSave={(locale, timezone, language) => {
+        onSettingsSave={(locale, timezone, language, focusOnOpen) => {
           model.setLocale(locale);
           model.setTimezone(timezone);
           model.setLanguage(language);
+          if (focusOnOpen) {
+            model.setFocusOnOpen(
+              focusOnOpen.sheet,
+              focusOnOpen.row,
+              focusOnOpen.column,
+            );
+          } else {
+            model.clearFocusOnOpen();
+          }
           setRedrawId((id) => id + 1);
         }}
       />

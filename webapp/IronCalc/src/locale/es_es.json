@@ -328,7 +328,18 @@
     "save": "Guardar",
     "title": "Formato de número personalizado"
   },
-  "regional_settings": {
+  "right_drawer": {
+    "close": "Cerrar",
+    "resize_drawer": "Cambiar tamaño del panel"
+  },
+  "settings": {
+    "focus_on_open": {
+      "cell_label": "Celda",
+      "helper": "El libro se abre en esta hoja y celda. También se guarda al exportar a Excel.",
+      "invalid_cell": "Referencia de celda no válida",
+      "sheet_label": "Hoja",
+      "title": "Enfocar hoja al abrir"
+    },
     "language": {
       "display_language": {
         "de": "Deutsch",
@@ -347,17 +358,13 @@
       "locale_label": "Configuración regional",
       "title": "Configuración regional"
     },
-    "open_regional_settings": "Abrir configuración regional",
+    "open_settings": "Abrir configuración",
     "timezone": {
       "timezone_helper": "Modificar esta configuración afectará a las funciones relacionadas con fecha y hora, incluyendo HOY() y AHORA().",
       "timezone_label": "Zona horaria",
       "title": "Zona horaria"
     },
-    "title": "Configuración regional"
-  },
-  "right_drawer": {
-    "close": "Cerrar",
-    "resize_drawer": "Cambiar tamaño del panel"
+    "title": "Configuración"
   },
   "sheet_delete": {
     "cancel": "Cancelar",

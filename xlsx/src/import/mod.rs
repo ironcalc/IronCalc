@@ -146,6 +146,8 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         settings: WorkbookSettings {
             tz: tz.to_string(),
             locale: locale.to_string(),
+            // The selected tab and cell of the file are ignored on import
+            focus_on_open: None,
         },
         metadata,
         tables,

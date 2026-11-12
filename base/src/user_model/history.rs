@@ -5,7 +5,8 @@ use bitcode::{Decode, Encode};
 use crate::{
     cf_types::CfRule,
     types::{
-        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
+        Cell, Col, Color, FocusOnOpen, Link, MergedCell, Row, SheetState, Style, StyleIncludes,
+        Theme, Worksheet,
     },
 };
 
@@ -251,6 +252,10 @@ pub(crate) enum Diff {
     SetTimezone {
         old_value: String,
         new_value: String,
+    },
+    SetFocusOnOpen {
+        old_value: Option<FocusOnOpen>,
+        new_value: Option<FocusOnOpen>,
     },
     // Named style diffs
     CreateNamedStyle {

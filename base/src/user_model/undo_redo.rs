@@ -542,6 +542,12 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.set_timezone(old_value)?;
                 }
+                Diff::SetFocusOnOpen {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.workbook.settings.focus_on_open = *old_value;
+                }
                 Diff::SetWorkbookName {
                     old_value,
                     new_value: _,
@@ -1019,6 +1025,12 @@ impl<'a> UserModel<'a> {
                     new_value,
                 } => {
                     self.model.set_timezone(new_value)?;
+                }
+                Diff::SetFocusOnOpen {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.workbook.settings.focus_on_open = *new_value;
                 }
                 Diff::SetWorkbookName {
                     old_value: _,

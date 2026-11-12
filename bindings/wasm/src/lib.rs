@@ -93,6 +93,14 @@ struct AxisSizes {
     runs: Vec<SizeRun>,
 }
 
+/// The cell a workbook focuses on when it is opened.
+#[derive(Serialize)]
+struct FocusOnOpen {
+    sheet: u32,
+    row: i32,
+    column: i32,
+}
+
 #[derive(Serialize)]
 struct FmtSettings {
     currency: String,
@@ -1244,6 +1252,37 @@ impl Model {
         self.model
             .set_locale(locale)
             .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Returns the cell the workbook focuses on when it is opened, or
+    /// undefined if the setting is off (the workbook then opens on A1 of the
+    /// first visible sheet).
+    #[wasm_bindgen(
+        js_name = "getFocusOnOpen",
+        unchecked_return_type = "FocusOnOpen | undefined"
+    )]
+    pub fn get_focus_on_open(&self) -> Result<JsValue, JsError> {
+        let focus = self
+            .model
+            .get_focus_on_open()
+            .map(|(sheet, row, column)| FocusOnOpen { sheet, row, column });
+        serde_wasm_bindgen::to_value(&focus).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Sets the cell the workbook focuses on when it is opened.
+    /// It is also the active tab and selected cell of an exported xlsx file.
+    #[wasm_bindgen(js_name = "setFocusOnOpen")]
+    pub fn set_focus_on_open(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), JsError> {
+        self.model
+            .set_focus_on_open(Some((sheet, row, column)))
+            .map_err(to_js_error)
+    }
+
+    /// Turns off the "focus on open" setting: the workbook opens on A1 of the
+    /// first visible sheet.
+    #[wasm_bindgen(js_name = "clearFocusOnOpen")]
+    pub fn clear_focus_on_open(&mut self) -> Result<(), JsError> {
+        self.model.set_focus_on_open(None).map_err(to_js_error)
     }
 
     /// Gets the timezone of the model

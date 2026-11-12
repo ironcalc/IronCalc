@@ -1,12 +1,12 @@
 /* Container */
-.ic-regional-settings-container {
+.ic-settings-container {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 /* Header */
-.ic-regional-settings-header {
+.ic-settings-header {
   height: 40px;
   display: flex;
   align-items: center;
@@ -17,13 +17,13 @@
 }
 
 /* Header title */
-.ic-regional-settings-header-title {
+.ic-settings-header-title {
   width: 100%;
   font-size: 12px;
 }
 
 /* Content */
-.ic-regional-settings-content {
+.ic-settings-content {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -32,7 +32,7 @@
 }
 
 /* Form section */
-.ic-regional-settings-section {
+.ic-settings-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -40,11 +40,11 @@
   border-bottom: 1px solid var(--palette-grey-300);
 }
 
-.ic-regional-settings-section:last-child {
+.ic-settings-section:last-child {
   border-bottom: none;
 }
 
-.ic-regional-settings-section-title {
+.ic-settings-section-title {
   font-size: 14px;
   font-weight: 600;
   font-family: var(--typography-font-family);
@@ -53,7 +53,7 @@
 }
 
 /* Helper box */
-.ic-regional-settings-helper-box {
+.ic-settings-helper-box {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -70,7 +70,7 @@
 }
 
 /* Row */
-.ic-regional-settings-row {
+.ic-settings-row {
   display: flex;
   flex-direction: row;
   gap: 4px;
@@ -80,20 +80,20 @@
 }
 
 /* Row value */
-.ic-regional-settings-row-value {
+.ic-settings-row-value {
   font-size: 12px;
   font-family: var(--typography-font-family);
   font-weight: normal;
   color: var(--palette-grey-500);
 }
 
-.ic-regional-settings-field-wrapper {
+.ic-settings-field-wrapper {
   display: flex;
   flex-direction: column;
   width: 100%;
 }
 
-.ic-regional-settings-footer {
+.ic-settings-footer {
   color: var(--palette-grey-700);
   display: flex;
   align-items: center;
@@ -102,4 +102,21 @@
   justify-content: flex-end;
   padding: 8px;
   gap: 8px;
+}
+
+/* Switch that turns a whole section on or off: it is the title of the section */
+.ic-settings-section-switch {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.ic-settings-section-switch .ic-switch-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ic-settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
