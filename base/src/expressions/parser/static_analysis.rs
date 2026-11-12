@@ -416,6 +416,19 @@ fn not_implemented(_args: &[Node]) -> StaticResult {
     StaticResult::Scalar
 }
 
+/// XLOOKUP gives a single value when return_array is a single cell, row or column. When it has
+/// several rows and columns it gives the whole row (or column) of the match.
+fn static_analysis_xlookup(args: &[Node]) -> StaticResult {
+    match args.get(2).map(run_static_analysis_on_node) {
+        None | Some(StaticResult::Scalar) => StaticResult::Scalar,
+        // The dimensions of a range are differences: 0 for a single row or column
+        Some(StaticResult::Range(rows, columns)) if rows == 0 || columns == 0 => {
+            StaticResult::Scalar
+        }
+        _ => StaticResult::Unknown,
+    }
+}
+
 /// ROW and COLUMN give a single number for a single cell, and when the
 /// reference stays within one row (ROW) or one column (COLUMN). Otherwise they
 /// give a vector of numbers, one for each row or column of the reference.
@@ -1775,7 +1788,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Vstack => StaticResult::Unknown,
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
-        Function::Xlookup => not_implemented(args),
+        Function::Xlookup => static_analysis_xlookup(args),
         Function::Xmatch => not_implemented(args),
         Function::Trimrange => StaticResult::Unknown,
         Function::Sort => StaticResult::Unknown,
