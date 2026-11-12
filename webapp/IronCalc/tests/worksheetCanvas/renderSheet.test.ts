@@ -292,48 +292,57 @@ test.each([
 test.each([
   ["50", 0.5, 1500, 900],
   ["150", 1.5, 500, 300],
-])("colors, links and borders at %s%% zoom", async (name, zoom, width, height) => {
-  const model = await newModel();
-  labelTopLeftCell(model);
-  // B2: bold colored text on a fill
-  model.setUserInput(0, 2, 2, "Bold on fill");
-  model.updateRangeStyle(cell(2, 2), "font.b", "true");
-  model.updateRangeStyle(cell(2, 2), "font.color", "#C0392B");
-  model.updateRangeStyle(cell(2, 2), "fill.color", "#FDEBD0");
-  // C2: a number formatted as a percentage, right-aligned by default
-  model.setUserInput(0, 2, 3, "0.4567");
-  model.updateRangeStyle(cell(2, 3), "num_fmt", "0.00%");
-  // B4: an external link with a label, C4: an internal one
-  model.setCellLink(
-    0,
-    4,
-    2,
-    { type: "External", target: "https://www.ironcalc.com" },
-    "IronCalc",
-  );
-  model.setCellLink(0, 4, 3, { type: "Internal", location: "A1" }, "Go to A1");
-  // D2: a double border; B6:C7: medium borders on every edge
-  model.setAreaWithBorder(cell(2, 4), {
-    item: { style: BorderStyle.Double, color: "#000000" },
-    type: BorderType.Outer,
-  });
-  model.setAreaWithBorder(cell(6, 2, 2, 2), {
-    item: { style: BorderStyle.Medium, color: "#1F618D" },
-    type: BorderType.All,
-  });
-  // D4:E5: a merged range with a fill and centered text
-  model.setUserInput(0, 4, 4, "Merged");
-  model.updateRangeStyle(cell(4, 4, 2, 2), "fill.color", "#D9EAD3");
-  model.updateRangeStyle(cell(4, 4, 2, 2), "alignment.horizontal", "center");
-  model.updateRangeStyle(cell(4, 4, 2, 2), "alignment.vertical", "center");
-  model.mergeCells(cell(4, 4, 2, 2));
-  // D6: wrapped text in a taller row
-  model.setRowsHeight(0, 6, 7, 40);
-  model.setUserInput(0, 6, 4, "Wrapped text in a taller row");
-  model.updateRangeStyle(cell(6, 4), "alignment.wrap_text", "true");
+])(
+  "colors, links and borders at %s%% zoom",
+  async (name, zoom, width, height) => {
+    const model = await newModel();
+    labelTopLeftCell(model);
+    // B2: bold colored text on a fill
+    model.setUserInput(0, 2, 2, "Bold on fill");
+    model.updateRangeStyle(cell(2, 2), "font.b", "true");
+    model.updateRangeStyle(cell(2, 2), "font.color", "#C0392B");
+    model.updateRangeStyle(cell(2, 2), "fill.color", "#FDEBD0");
+    // C2: a number formatted as a percentage, right-aligned by default
+    model.setUserInput(0, 2, 3, "0.4567");
+    model.updateRangeStyle(cell(2, 3), "num_fmt", "0.00%");
+    // B4: an external link with a label, C4: an internal one
+    model.setCellLink(
+      0,
+      4,
+      2,
+      { type: "External", target: "https://www.ironcalc.com" },
+      "IronCalc",
+    );
+    model.setCellLink(
+      0,
+      4,
+      3,
+      { type: "Internal", location: "A1" },
+      "Go to A1",
+    );
+    // D2: a double border; B6:C7: medium borders on every edge
+    model.setAreaWithBorder(cell(2, 4), {
+      item: { style: BorderStyle.Double, color: "#000000" },
+      type: BorderType.Outer,
+    });
+    model.setAreaWithBorder(cell(6, 2, 2, 2), {
+      item: { style: BorderStyle.Medium, color: "#1F618D" },
+      type: BorderType.All,
+    });
+    // D4:E5: a merged range with a fill and centered text
+    model.setUserInput(0, 4, 4, "Merged");
+    model.updateRangeStyle(cell(4, 4, 2, 2), "fill.color", "#D9EAD3");
+    model.updateRangeStyle(cell(4, 4, 2, 2), "alignment.horizontal", "center");
+    model.updateRangeStyle(cell(4, 4, 2, 2), "alignment.vertical", "center");
+    model.mergeCells(cell(4, 4, 2, 2));
+    // D6: wrapped text in a taller row
+    model.setRowsHeight(0, 6, 7, 40);
+    model.setUserInput(0, 6, 4, "Wrapped text in a taller row");
+    model.updateRangeStyle(cell(6, 4), "alignment.wrap_text", "true");
 
-  await expectScreenshot(
-    await renderToCanvas(model, { width, height, zoom }),
-    `zoom-${name}`,
-  );
-});
+    await expectScreenshot(
+      await renderToCanvas(model, { width, height, zoom }),
+      `zoom-${name}`,
+    );
+  },
+);
