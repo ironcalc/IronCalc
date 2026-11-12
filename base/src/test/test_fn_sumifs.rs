@@ -150,3 +150,40 @@ fn test_fn_sumifs_whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
 }
+
+#[test]
+fn test_fn_not_equal_text_criterion_counts_blanks_and_numbers() {
+    let mut model = new_empty_model();
+
+    // B: Done, Open, (empty), 7, Done
+    model._set("B1", "Done");
+    model._set("B2", "Open");
+    model._set("B4", "7");
+    model._set("B5", "Done");
+    // C: 100, 200, 300, 400, 500
+    model._set("C1", "100");
+    model._set("C2", "200");
+    model._set("C3", "300");
+    model._set("C4", "400");
+    model._set("C5", "500");
+
+    model._set("A1", "=COUNTIF(B1:B5,\"<>Done\")");
+    model._set("A2", "=COUNTIFS(B1:B5,\"<>Done\")");
+    model._set("A3", "=SUMIF(B1:B5,\"<>Done\",C1:C5)");
+    model._set("A4", "=SUMIFS(C1:C5,B1:B5,\"<>Done\")");
+    model._set("A5", "=AVERAGEIF(B1:B5,\"<>Done\",C1:C5)");
+    // Unchanged: "<>" is "not empty", and a number criterion
+    model._set("A6", "=COUNTIF(B1:B5,\"<>\")");
+    model._set("A7", "=COUNTIF(B1:B5,\"<>7\")");
+
+    model.evaluate();
+
+    // Open, the empty cell and 7 are not "Done"
+    assert_eq!(model._get_text("A1"), *"3");
+    assert_eq!(model._get_text("A2"), *"3");
+    assert_eq!(model._get_text("A3"), *"900");
+    assert_eq!(model._get_text("A4"), *"900");
+    assert_eq!(model._get_text("A5"), *"300");
+    assert_eq!(model._get_text("A6"), *"4");
+    assert_eq!(model._get_text("A7"), *"4");
+}

@@ -280,3 +280,17 @@ fn test_build_criteria_date_localized_month_name() {
     let fn_en = build_criteria(&c, en_locale());
     assert!(!fn_en(&CalcResult::Number(44941.0)));
 }
+
+#[test]
+fn test_build_criteria_not_equal_string() {
+    // "<>done" matches every value that is not the string "done": other
+    // strings, and numbers, booleans, errors and empty cells too.
+    let c = CalcResult::String("<>Done".to_string());
+    let fn_criteria = build_criteria(&c, en_locale());
+    assert!(!fn_criteria(&CalcResult::String("Done".to_string())));
+    assert!(!fn_criteria(&CalcResult::String("done".to_string())));
+    assert!(fn_criteria(&CalcResult::String("Open".to_string())));
+    assert!(fn_criteria(&CalcResult::Number(1.0)));
+    assert!(fn_criteria(&CalcResult::Boolean(true)));
+    assert!(fn_criteria(&CalcResult::EmptyCell));
+}
