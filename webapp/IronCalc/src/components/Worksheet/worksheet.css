@@ -20,12 +20,17 @@
   width: 5000px;
 }
 
-/* Sheet container */
+/* Sheet container. It is laid out in sheet pixels and scaled by the zoom
+   (--ic-zoom, set inline), so that at any zoom it fills the scroller and
+   everything in it (the canvas, the outlines, the editor) scales together. */
 .ic-worksheet-sheet-container {
   position: sticky;
   top: 0;
   left: 0;
-  height: 100%;
+  width: calc(100% / var(--ic-zoom, 1));
+  height: calc(100% / var(--ic-zoom, 1));
+  transform: scale(var(--ic-zoom, 1));
+  transform-origin: 0 0;
 }
 
 /* Column resize handle */

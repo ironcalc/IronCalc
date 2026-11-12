@@ -470,6 +470,12 @@
     "vertical_align_bottom": "Align bottom",
     "vertical_align_middle": "Align middle",
     "vertical_align_top": "Align top",
-    "wrap_text": "Wrap text"
+    "wrap_text": "Wrap text",
+    "zoom": "Zoom",
+    "zoom_menu": {
+      "zoom_in": "Zoom in",
+      "zoom_out": "Zoom out",
+      "zoom_to": "Zoom to {{percent}}%"
+    }
   }
 }

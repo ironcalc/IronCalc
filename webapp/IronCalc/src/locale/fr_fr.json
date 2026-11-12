@@ -470,6 +470,12 @@
     "vertical_align_bottom": "Aligner en bas",
     "vertical_align_middle": "Aligner au milieu",
     "vertical_align_top": "Aligner en haut",
-    "wrap_text": "Renvoyer à la ligne"
+    "wrap_text": "Renvoyer à la ligne",
+    "zoom": "Zoom",
+    "zoom_menu": {
+      "zoom_in": "Zoom avant",
+      "zoom_out": "Zoom arrière",
+      "zoom_to": "Zoom à {{percent}} %"
+    }
   }
 }

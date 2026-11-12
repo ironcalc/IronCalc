@@ -47,6 +47,8 @@ import {
   Underline,
   Undo2,
   WrapText,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -68,6 +70,9 @@ import { MenuItem } from "../Menu/MenuItem";
 import ThemeMenu from "../ThemeMenu/ThemeMenu";
 import "./toolbar.css";
 import { Tooltip } from "../Tooltip/Tooltip";
+
+// The zoom levels offered by the zoom menu, in percent
+const ZOOM_LEVELS = [50, 100, 150, 200];
 
 export type MergeCellsOperation =
   | "merge"
@@ -97,6 +102,11 @@ type ToolbarProperties = {
   onIncreaseFontSize: (delta: number) => void;
   onSetFontSize: (size: number) => void;
   onDownloadPNG: () => void;
+  // The zoom of the sheet, in percent
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onSetZoom: (zoom: number) => void;
   fillColor: Color;
   fontColor: Color;
   fontSize: number;
@@ -237,6 +247,49 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
+          <Menu
+            trigger={
+              <div className="ic-toolbar-menu-anchor">
+                <Tooltip title={t("toolbar.zoom")}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ic-toolbar-zoom-button"
+                    aria-label={t("toolbar.zoom")}
+                    style={{ gap: 0, paddingLeft: 4, paddingRight: 2 }}
+                    endIcon={<ChevronDown size={12} />}
+                  >
+                    {`${Math.round(properties.zoom)}%`}
+                  </Button>
+                </Tooltip>
+              </div>
+            }
+          >
+            <MenuItem
+              icon={<ZoomIn />}
+              onClick={properties.onZoomIn}
+              secondaryText="Ctrl +"
+            >
+              {t("toolbar.zoom_menu.zoom_in")}
+            </MenuItem>
+            <MenuItem
+              icon={<ZoomOut />}
+              onClick={properties.onZoomOut}
+              secondaryText="Ctrl -"
+            >
+              {t("toolbar.zoom_menu.zoom_out")}
+            </MenuItem>
+            <MenuDivider />
+            {ZOOM_LEVELS.map((level) => (
+              <MenuItem
+                key={level}
+                onClick={() => properties.onSetZoom(level)}
+                secondaryText={level === 100 ? "Ctrl 0" : undefined}
+              >
+                {t("toolbar.zoom_menu.zoom_to", { percent: level })}
+              </MenuItem>
+            ))}
+          </Menu>
         </div>
 
         <div className="ic-toolbar-divider" />

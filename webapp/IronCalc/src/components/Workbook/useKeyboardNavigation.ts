@@ -34,6 +34,9 @@ interface Options {
   onEscape: () => void;
   onSelectColumn: () => void;
   onSelectRow: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onZoomReset: () => void;
   /** When false, editing/mutation keys are ignored (navigation still works). */
   canEdit: boolean;
   root: RefObject<HTMLDivElement | null>;
@@ -57,6 +60,9 @@ interface Options {
 // * F2: start editing
 // * Ctrl+Space: select column
 // * Shift+Space: select row
+// * Ctrl+Plus/Minus: zoom in/out, Ctrl+0: zoom to 100%
+//   (NB: the same keys as the browser's zoom, which they replace while the
+//    workbook has the focus)
 //
 // # Not implemented yet:
 // * Ctrl+a: select all (continuous area around the selection, if it exists,
@@ -145,6 +151,26 @@ const useKeyboardNavigation = (
             event.preventDefault();
             break;
           }
+          // Ctrl+= is the unshifted key of Ctrl++ on most layouts
+          case "+":
+          case "=": {
+            options.onZoomIn();
+            event.stopPropagation();
+            event.preventDefault();
+            break;
+          }
+          case "-": {
+            options.onZoomOut();
+            event.stopPropagation();
+            event.preventDefault();
+            break;
+          }
+          case "0": {
+            options.onZoomReset();
+            event.stopPropagation();
+            event.preventDefault();
+            break;
+          }
           // No default
         }
         if (isNavigationKey(key)) {
@@ -160,6 +186,14 @@ const useKeyboardNavigation = (
         switch (lowerKey) {
           case "z": {
             options.onRedo();
+            event.stopPropagation();
+            event.preventDefault();
+            break;
+          }
+          // Ctrl++ needs Shift on the layouts where + is above =
+          case "+":
+          case "=": {
+            options.onZoomIn();
             event.stopPropagation();
             event.preventDefault();
             break;

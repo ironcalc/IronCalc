@@ -22,9 +22,7 @@ export function attachOutlineHandle(
 
   // cell handle events
   const resizeHandleMove = (event: MouseEvent): void => {
-    const canvasRect = worksheet.canvas.getBoundingClientRect();
-    const x = event.clientX - canvasRect.x;
-    const y = event.clientY - canvasRect.y;
+    const { x, y } = worksheet.eventCoordinates(event);
 
     const cell = worksheet.getCellByCoordinates(x, y);
     if (!cell) {

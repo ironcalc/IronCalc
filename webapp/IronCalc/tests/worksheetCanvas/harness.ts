@@ -47,6 +47,8 @@ export interface RenderOptions {
   // 25px rows
   width?: number;
   height?: number;
+  // The factor the sheet container is scaled by (1 by default)
+  zoom?: number;
   themeVars?: Record<string, string>;
 }
 
@@ -85,6 +87,7 @@ export async function renderWorksheet(
     model,
     width,
     height,
+    zoom: options.zoom,
     workbookState: new WorkbookState(),
     elements: {
       canvas: canvasElement as unknown as HTMLCanvasElement,

@@ -155,9 +155,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       if (!worksheet || !canvas) {
         return;
       }
-      const canvasRect = canvas.getBoundingClientRect();
-      const x = event.clientX - canvasRect.x;
-      const y = event.clientY - canvasRect.y;
+      const { x, y } = worksheet.eventCoordinates(event);
 
       if (isSelectingRows.current) {
         // Prevent text selection during row dragging
@@ -324,8 +322,6 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       if (event.button === 2) {
         return;
       }
-      let x = event.clientX;
-      let y = event.clientY;
       const {
         canvasElement,
         model,
@@ -344,15 +340,13 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       if (!canvas || !worksheet || !worksheetWrapper) {
         return;
       }
-      const canvasRect = canvas.getBoundingClientRect();
-      x -= canvasRect.x;
-      y -= canvasRect.y;
+      const { x, y } = worksheet.eventCoordinates(event);
       // Makes sure is in the sheet area
       if (
-        x > canvasRect.width ||
+        x > worksheet.width ||
         x < headerColumnWidth ||
         y < headerRowHeight ||
-        y > canvasRect.height
+        y > worksheet.height
       ) {
         if (x < headerColumnWidth && y < headerRowHeight) {
           // Click on the top left corner
@@ -361,7 +355,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           x > 0 &&
           x < headerColumnWidth &&
           y > headerRowHeight &&
-          y < canvasRect.height
+          y < worksheet.height
         ) {
           // Click on a row number
           const cell = worksheet.getCellByCoordinates(headerColumnWidth, y);
@@ -380,7 +374,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           }
         } else if (
           x > headerColumnWidth &&
-          x < canvasRect.width &&
+          x < worksheet.width &&
           y > 0 &&
           y < headerRowHeight
         ) {

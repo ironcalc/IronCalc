@@ -1,5 +1,6 @@
 import { columnNameFromNumber, type Model } from "@ironcalc/wasm";
 import {
+  type CSSProperties,
   forwardRef,
   useEffect,
   useImperativeHandle,
@@ -176,6 +177,10 @@ const Worksheet = forwardRef(
       rows: number;
       columns: number;
     } | null>(null);
+    // The zoom as of the last render: the scroller's position is in scaled
+    // pixels, so when the zoom changes the sheet offset is restored from the
+    // remembered one instead of being read back from the scroller
+    const lastZoom = useRef<number | null>(null);
     // The cell to bring into view after a render, if the selection moved
     // since the last one: the active cell when it moved (keyboard
     // navigation, a click, the end of an edit, a link, ...); otherwise the
@@ -207,10 +212,16 @@ const Worksheet = forwardRef(
       return null;
     };
 
+    // The zoom of the sheet, as a factor. The sheet container is scaled by
+    // it (CSS, below): the canvas and its overlays keep working in sheet
+    // pixels, each of which covers `zoom` pixels of the scroller.
+    const zoom = props.workbookState.getZoom() / 100;
+
     // The spacer makes the scroller scrollable: as wide and tall as the
     // sheet. Browsers cap the scrollable extent at some tens of millions of
     // pixels, less than a million rows, so it only reaches well past the
-    // current position and grows as the user scrolls.
+    // current position and grows as the user scrolls. `left` and `top` are
+    // in sheet pixels.
     const resizeSpacer = (
       canvas: WorksheetCanvas,
       left: number,
@@ -222,8 +233,8 @@ const Worksheet = forwardRef(
         return;
       }
       const max = canvas.getMaxScroll();
-      const width = `${Math.min(max.x, left + 100_000) + scroller.clientWidth}px`;
-      const height = `${Math.min(max.y, top + 500_000) + scroller.clientHeight}px`;
+      const width = `${Math.min(max.x, left + 100_000) * zoom + scroller.clientWidth}px`;
+      const height = `${Math.min(max.y, top + 500_000) * zoom + scroller.clientHeight}px`;
       if (spacer.style.width !== width) {
         spacer.style.width = width;
       }
@@ -300,8 +311,10 @@ const Worksheet = forwardRef(
         return;
       }
       const canvas = new WorksheetCanvas({
+        // the container is laid out in sheet pixels and scaled by the zoom
         width: worksheetRef.clientWidth,
         height: worksheetRef.clientHeight,
+        zoom,
         model,
         workbookState,
         elements: {
@@ -397,8 +410,10 @@ const Worksheet = forwardRef(
       // moved. Comparing cells rather than pixel positions lets the
       // scroller sit mid-cell without being "corrected" to the cell
       // boundary by every unrelated re-render (e.g. the link tooltip on
-      // pointer moves). On a sheet switch the sheet's remembered offset is
-      // restored, as long as the engine still has the same cell at it.
+      // pointer moves). On a sheet switch (or a zoom change) the sheet's
+      // remembered offset is restored, as long as the engine still has the
+      // same cell at it. The scroller's position is in scaled pixels; the
+      // offsets here are in sheet pixels.
       const scroller = scrollElement.current;
       const view = currentView();
       const synced = syncedView.current;
@@ -406,6 +421,7 @@ const Worksheet = forwardRef(
       const sheetId = selectedSheetId();
       const remembered = sheetScroll.current.get(sheetId);
       const sameSheet = synced !== null && synced.sheet === view.sheet;
+      const sameZoom = lastZoom.current === zoom;
       const frozen = {
         sheet: view.sheet,
         rows: model.getFrozenRowsCount(view.sheet),
@@ -429,16 +445,16 @@ const Worksheet = forwardRef(
       const engine = canvas.getScroll();
       let x = engine.x;
       let y = engine.y;
-      if (sameSheet) {
+      if (sameSheet && sameZoom) {
         if (frozenColumnsChanged) {
           x = 0;
         } else if (target || synced.leftColumn === view.leftColumn) {
-          x = scroller.scrollLeft;
+          x = scroller.scrollLeft / zoom;
         }
         if (frozenRowsChanged) {
           y = 0;
         } else if (target || synced.topRow === view.topRow) {
-          y = scroller.scrollTop;
+          y = scroller.scrollTop / zoom;
         }
       } else if (remembered) {
         // The remembered offset, where the engine's cell is still the one
@@ -459,13 +475,14 @@ const Worksheet = forwardRef(
       }
       lastSelection.current = selection;
       lastFrozen.current = frozen;
+      lastZoom.current = zoom;
       ({ x, y } = canvas.getScroll());
       sheetScroll.current.set(sheetId, { x, y, selection });
       resizeSpacer(canvas, x, y);
       const previousLeft = scroller.scrollLeft;
       const previousTop = scroller.scrollTop;
-      scroller.scrollLeft = x;
-      scroller.scrollTop = y;
+      scroller.scrollLeft = x * zoom;
+      scroller.scrollTop = y * zoom;
       if (
         scroller.scrollLeft !== previousLeft ||
         scroller.scrollTop !== previousTop
@@ -482,6 +499,34 @@ const Worksheet = forwardRef(
       canvas.renderSheet();
       worksheetCanvas.current = canvas;
     });
+
+    // Ctrl+wheel zooms the sheet (a trackpad pinch arrives as the same
+    // event). The listener is native and registered once: React registers
+    // wheel listeners as passive, so they cannot stop the browser's own zoom.
+    const actionsRef = useRef(actions);
+    actionsRef.current = actions;
+    useEffect(() => {
+      const scroller = scrollElement.current;
+      if (!scroller) {
+        return;
+      }
+      const onWheel = (event: WheelEvent): void => {
+        if (!event.ctrlKey) {
+          return;
+        }
+        event.preventDefault();
+        // About 10% per notch of a mouse wheel (100 units, or 3 lines);
+        // a pinch comes in many small steps
+        const delta =
+          event.deltaMode === WheelEvent.DOM_DELTA_LINE
+            ? event.deltaY * 33
+            : event.deltaY;
+        const current = props.workbookState.getZoom();
+        actionsRef.current.setZoom(current * Math.exp(-delta / 1000));
+      };
+      scroller.addEventListener("wheel", onWheel, { passive: false });
+      return () => scroller.removeEventListener("wheel", onWheel);
+    }, [props.workbookState]);
 
     const {
       onPointerMove,
@@ -573,8 +618,9 @@ const Worksheet = forwardRef(
         ignoreScrollEventRef.current = false;
         return;
       }
-      const left = scrollElement.current.scrollLeft;
-      const top = scrollElement.current.scrollTop;
+      // the scroller's position, in sheet pixels
+      const left = scrollElement.current.scrollLeft / zoom;
+      const top = scrollElement.current.scrollTop / zoom;
 
       const canvas = worksheetCanvas.current;
       canvas.setScrollPosition({ left, top });
@@ -605,6 +651,7 @@ const Worksheet = forwardRef(
         <div
           className="ic-worksheet-sheet-container"
           ref={worksheetElement}
+          style={{ "--ic-zoom": zoom } as CSSProperties}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -632,16 +679,14 @@ const Worksheet = forwardRef(
             });
 
             // Detect if right-click is on column header or row header
-            const canvas = canvasElement.current;
+            const canvas = worksheetCanvas.current;
             if (canvas) {
-              const canvasRect = canvas.getBoundingClientRect();
-              const x = event.clientX - canvasRect.x;
-              const y = event.clientY - canvasRect.y;
+              const { x, y } = canvas.eventCoordinates(event);
 
               // Check if click is in column header area
               if (
                 x > headerColumnWidth &&
-                x < canvasRect.width &&
+                x < canvas.width &&
                 y > 0 &&
                 y < headerRowHeight
               ) {
@@ -681,7 +726,7 @@ const Worksheet = forwardRef(
                 x > 0 &&
                 x < headerColumnWidth &&
                 y > headerRowHeight &&
-                y < canvasRect.height
+                y < canvas.height
               ) {
                 const view = model.getSelectedView();
                 const rowStart = view.range[0];

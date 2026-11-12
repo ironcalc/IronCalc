@@ -54,6 +54,17 @@ From within your keyboard you can navigate and interact with the spreadsheet.
 | Next sheet     | Alt + Arrow Down | ⌥ + Arrow Down |
 | Previous sheet | Alt + Arrow Up   | ⌥ + Arrow Up   |
 
+## Zoom
+
+| Action       | Linux/Windows       | Mac               |
+| ------------ | ------------------- | ----------------- |
+| Zoom in      | Ctrl + Plus         | ⌘ + Plus          |
+| Zoom out     | Ctrl + Minus        | ⌘ + Minus         |
+| Zoom to 100% | Ctrl + 0            | ⌘ + 0             |
+
+Ctrl + mouse wheel (or a trackpad pinch) also zooms. The zoom menu in the
+toolbar offers the same actions and a few preset levels.
+
 ## Miscellaneous
 
 | Action        | Linux/Windows/Mac    |

@@ -38,8 +38,11 @@ import {
 import Worksheet from "../Worksheet/Worksheet";
 import { LAST_COLUMN, LAST_ROW } from "../WorksheetCanvas/constants";
 import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
-import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
-import type { WorkbookState } from "../workbookState";
+import {
+  type WorkbookState,
+  zoomInLevel,
+  zoomOutLevel,
+} from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 import type { WorkbookActions } from "./workbookActions";
 import "./workbook.css";
@@ -546,7 +549,7 @@ const Workbook = (
         rowEnd + 1,
         columnEnd + 1,
       );
-      const ratio = devicePixelRatio();
+      const ratio = worksheetCanvas.backingScale();
       const width = (x1 - x) * ratio;
       const height = (y1 - y) * ratio;
       x *= ratio;
@@ -576,6 +579,18 @@ const Workbook = (
       downloadLink.href = capturedCanvas.toDataURL("image/png");
       downloadLink.download = "ironcalc.png";
       downloadLink.click();
+    },
+    setZoom: (zoom: number): void => {
+      workbookState.setZoom(zoom);
+      setRedrawId((id) => id + 1);
+    },
+    zoomIn: (): void => {
+      workbookState.setZoom(zoomInLevel(workbookState.getZoom()));
+      setRedrawId((id) => id + 1);
+    },
+    zoomOut: (): void => {
+      workbookState.setZoom(zoomOutLevel(workbookState.getZoom()));
+      setRedrawId((id) => id + 1);
     },
   };
 
@@ -747,6 +762,9 @@ const Workbook = (
       model.setSelectedRange(row, 1, row, LAST_COLUMN);
       setRedrawId((id) => id + 1);
     },
+    onZoomIn: actions.zoomIn,
+    onZoomOut: actions.zoomOut,
+    onZoomReset: (): void => actions.setZoom(100),
     root: rootRef,
   });
 
@@ -1057,6 +1075,10 @@ const Workbook = (
           onIncreaseFontSize={actions.increaseFontSize}
           onSetFontSize={actions.setFontSize}
           onDownloadPNG={actions.downloadSelectionAsPng}
+          zoom={workbookState.getZoom()}
+          onZoomIn={actions.zoomIn}
+          onZoomOut={actions.zoomOut}
+          onSetZoom={actions.setZoom}
           onBorderChanged={(border: BorderOptions): void => {
             const {
               sheet,
