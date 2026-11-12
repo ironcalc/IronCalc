@@ -129,6 +129,17 @@ fn test_freeze() {
 }
 
 #[test]
+fn test_freeze_google_sheets() {
+    // Saved by Google Sheets, which writes the split as a decimal:
+    // <pane xSplit="1.0" ySplit="2.0" .../> (#472)
+    let model = load_from_xlsx("tests/freeze_google_sheets.xlsx", "en", "UTC", "en")
+        .unwrap()
+        .workbook;
+    assert_eq!(model.worksheets[0].frozen_rows, 2);
+    assert_eq!(model.worksheets[0].frozen_columns, 1);
+}
+
+#[test]
 fn test_split() {
     // We test that a workbook with split panes do not produce frozen rows and columns
     let model = load_from_xlsx("tests/split.xlsx", "en", "UTC", "en")
