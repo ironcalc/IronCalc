@@ -73,32 +73,34 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
         return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
     }
 
+    // Months or days that move the date beyond what chrono can represent are out of range too,
+    // so the shifts are checked rather than allowed to panic.
     date = {
-        let month_diff = month - 1;
+        let month_diff = month.saturating_sub(1);
         let abs_month = month_diff.unsigned_abs();
-        if month_diff <= 0 {
-            date = date - Months::new(abs_month);
+        let shifted = if month_diff <= 0 {
+            date.checked_sub_months(Months::new(abs_month))
         } else {
-            date = date + Months::new(abs_month);
+            date.checked_add_months(Months::new(abs_month))
+        };
+        match shifted {
+            Some(date) if is_date_within_range(date) => date,
+            _ => return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
         }
-        if !is_date_within_range(date) {
-            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
-        }
-        date
     };
 
     date = {
-        let day_diff = day - 1;
+        let day_diff = day.saturating_sub(1);
         let abs_day = day_diff.unsigned_abs() as u64;
-        if day_diff <= 0 {
-            date = date - Days::new(abs_day);
+        let shifted = if day_diff <= 0 {
+            date.checked_sub_days(Days::new(abs_day))
         } else {
-            date = date + Days::new(abs_day);
+            date.checked_add_days(Days::new(abs_day))
+        };
+        match shifted {
+            Some(date) if is_date_within_range(date) => date,
+            _ => return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
         }
-        if !is_date_within_range(date) {
-            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
-        }
-        date
     };
 
     Ok(convert_to_serial_number(date))

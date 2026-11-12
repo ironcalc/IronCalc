@@ -707,6 +707,27 @@ fn test_edate_function() {
 }
 
 #[test]
+fn test_date_edate_overflow_returns_num() {
+    // DATE and EDATE must return #NUM! (not panic) when the months or days move the
+    // date far outside Excel's supported range, including values that do not fit in i32.
+    let mut model = new_empty_model();
+    model._set("A1", "=DATE(2020,1E10,1)");
+    model._set("A2", "=DATE(2020,-1E10,1)");
+    model._set("A3", "=DATE(2020,1,1E10)");
+    model._set("A4", "=DATE(2020,1,-1E10)");
+    model._set("A5", "=EDATE(1,1E12)");
+    model._set("A6", "=EDATE(1,-1E12)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+}
+
+#[test]
 fn test_fn_eomonth_wrong_arguments() {
     let mut model = new_empty_model();
 
