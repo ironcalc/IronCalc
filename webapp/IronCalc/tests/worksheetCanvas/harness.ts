@@ -52,6 +52,8 @@ export interface RenderOptions {
   // The factor the sheet container is scaled by (1 by default). As in the
   // browser, the canvas gets `zoom` times the backing resolution.
   zoom?: number;
+  // The screen's density (2 by default, like a retina display)
+  devicePixelRatio?: number;
   themeVars?: Record<string, string>;
 }
 
@@ -63,7 +65,8 @@ export async function renderWorksheet(
   model: Model,
   options: RenderOptions = {},
 ): Promise<{ canvas: Canvas; worksheet: WorksheetCanvas }> {
-  installDomGlobals(DEVICE_PIXEL_RATIO, options.themeVars);
+  const devicePixelRatio = options.devicePixelRatio ?? DEVICE_PIXEL_RATIO;
+  installDomGlobals(devicePixelRatio, options.themeVars);
   // Imported dynamically: the module reads `window` at load time, so the
   // fake DOM globals must be installed first
   const { default: WorksheetCanvas } = await import(
@@ -72,7 +75,7 @@ export async function renderWorksheet(
 
   const width = options.width ?? 430;
   const height = options.height ?? 230;
-  const scale = DEVICE_PIXEL_RATIO * (options.zoom ?? 1);
+  const scale = devicePixelRatio * (options.zoom ?? 1);
   const canvas = createCanvas(width * scale, height * scale);
 
   const root = new FakeElement("div");
@@ -117,7 +120,8 @@ export async function renderToCanvas(
   const { canvas } = await renderWorksheet(model, options);
   const width = options.width ?? 430;
   const height = options.height ?? 230;
-  const scale = DEVICE_PIXEL_RATIO * (options.zoom ?? 1);
+  const scale =
+    (options.devicePixelRatio ?? DEVICE_PIXEL_RATIO) * (options.zoom ?? 1);
 
   // Crop the headers away: the column headers are HTML and never appear on
   // the canvas (so they show as a blank band), and without them the row
