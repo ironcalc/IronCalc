@@ -300,3 +300,14 @@ fn test_german_locale() {
     let locale = get_locale("de").expect("");
     assert_eq!(format_number(1234.56, "General", locale).text, "1234,56");
 }
+
+#[test]
+fn currency_symbols_without_quotes() {
+    // Excel shows $ ¢ £ ¥ € in a format without quotes. Excel's TEXT(12.3,"£000.00") is "£012.30"
+    // (Apache POI's NumberFormatTests.xlsx, Tests!A5, saved by Excel).
+    let locale = get_default_locale();
+    assert_eq!(format_number(12.3, "£000.00", locale).text, "£012.30");
+    assert_eq!(format_number(12.3, "¥0", locale).text, "¥12");
+    assert_eq!(format_number(12.3, "0.0¢", locale).text, "12.3¢");
+    assert_eq!(format_number(12.3, "€#,##0.00", locale).text, "€12.30");
+}
