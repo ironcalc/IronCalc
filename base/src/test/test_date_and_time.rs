@@ -708,8 +708,10 @@ fn test_edate_function() {
 
 #[test]
 fn test_date_edate_overflow_returns_num() {
-    // DATE and EDATE must return #NUM! (not panic) when the months or days move the
-    // date far outside Excel's supported range, including values that do not fit in i32.
+    // DATE and EDATE must not panic when the months or days move the date far
+    // outside Excel's supported range, including values that do not fit in i32.
+    // Excel returns #NUM! for a month outside -32767..=32766, but replaces a day
+    // outside the i16 range with 32767: DATE(2020,1,1E10) = DATE(2020,1,32767).
     let mut model = new_empty_model();
     model._set("A1", "=DATE(2020,1E10,1)");
     model._set("A2", "=DATE(2020,-1E10,1)");
@@ -717,14 +719,25 @@ fn test_date_edate_overflow_returns_num() {
     model._set("A4", "=DATE(2020,1,-1E10)");
     model._set("A5", "=EDATE(1,1E12)");
     model._set("A6", "=EDATE(1,-1E12)");
+    model._set("A7", "=DATE(2020,1,32767)");
+    model._set("A8", "=DATE(2025,32767,1)");
+    model._set("A9", "=DATE(2025,32766,1)");
+    model._set("A10", "=DATE(9999,-32767,1)");
+    model._set("A11", "=DATE(9999,-32768,1)");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
     assert_eq!(model._get_text("A2"), *"#NUM!");
-    assert_eq!(model._get_text("A3"), *"#NUM!");
-    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"9/17/2109");
+    assert_eq!(model._get_text("A4"), *"9/17/2109");
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_eq!(model._get_text("A7"), *"9/17/2109");
+    assert_eq!(model._get_text("A8"), *"#NUM!");
+    // 2025 + 32765 / 12 = 4755, month 6
+    assert_eq!(model._get_text("A9"), *"6/1/4755");
+    assert_eq!(model._get_text("A10"), *"5/1/7268");
+    assert_eq!(model._get_text("A11"), *"#NUM!");
 }
 
 #[test]
