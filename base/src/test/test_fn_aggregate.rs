@@ -78,10 +78,12 @@ fn example_in_the_excel_documentation() {
     }
     model._set("C1", "=AGGREGATE(4,6,A1:A11)");
     model._set("C2", "=MAX(A1:A2)");
+    model._set("C3", "=AGGREGATE(12,6,A1:A11,B1:B11)");
     model.evaluate();
     assert_eq!(model._get_text("A4"), "#NUM!");
     assert_eq!(model._get_text("C1"), "96");
     assert_eq!(model._get_text("C2"), "#DIV/0!");
+    assert_eq!(model._get_text("C3"), "68");
 }
 
 #[test]
@@ -116,6 +118,8 @@ fn hidden_rows_and_nested_totals() {
     model._set("E1", "=AGGREGATE(9,,A1:A5)");
     // SUBTOTAL leaves out the AGGREGATE in A4 as well
     model._set("E2", "=SUBTOTAL(9,A1:A5)");
+    // so does MEDIAN: 1, 20, 300
+    model._set("E3", "=AGGREGATE(12,0,A1:A5)");
     model.evaluate();
     for (function, column, expected) in cases {
         for (options, value) in expected.iter().enumerate() {
@@ -128,6 +132,7 @@ fn hidden_rows_and_nested_totals() {
     }
     assert_eq!(model._get_text("E1"), "321");
     assert_eq!(model._get_text("E2"), "321");
+    assert_eq!(model._get_text("E3"), "20");
 }
 
 #[test]
@@ -141,8 +146,8 @@ fn wrong_arguments() {
     model._set("B3", "=AGGREGATE(20,6,A1:A2)");
     model._set("B4", "=AGGREGATE(9,8,A1:A2)");
     model._set("B5", "=AGGREGATE(9,-1,A1:A2)");
-    // MEDIAN: not yet
-    model._set("B6", "=AGGREGATE(12,6,A1:A2)");
+    // LARGE: not yet
+    model._set("B6", "=AGGREGATE(14,6,A1:A2,1)");
     // the two numbers are truncated: option 7 would leave out the hidden row
     model._set("B7", "=AGGREGATE(9.9,6.9,A1:A2)");
     // What is not a reference is #VALUE!, as in Excel. SUM, COUNT and COUNTA each read
@@ -324,4 +329,50 @@ fn a_total_inside_another_formula_is_a_nested_total() {
     assert_eq!(model._get_text("D2"), "6");
     assert_eq!(model._get_text("E2"), "6");
     assert_eq!(model._get_text("F2"), "16");
+}
+
+#[test]
+fn median_and_mode() {
+    let mut model = new_empty_model();
+    model._set("A1", "4");
+    model._set("A2", "7");
+    model._set("A3", "=1/0");
+    model._set("A4", "7");
+    model._set("A5", "10");
+    model._set("A6", "10");
+    model.set_row_hidden(0, 2, true).unwrap();
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("B3", "3");
+    // 4, 7, 7, 10, 10
+    model._set("C1", "=AGGREGATE(12,6,A1:A6)");
+    model._set("D1", "=AGGREGATE(13,6,A1:A6)");
+    // without the hidden row: 4, 7, 10, 10
+    model._set("C2", "=AGGREGATE(12,7,A1:A6)");
+    model._set("D2", "=AGGREGATE(13,7,A1:A6)");
+    // with the error
+    model._set("C3", "=AGGREGATE(12,4,A1:A6)");
+    model._set("D3", "=AGGREGATE(13,4,A1:A6)");
+    // two references: 1, 2, 3, 4, 7, 7, 10, 10
+    model._set("C4", "=AGGREGATE(12,6,A1:A6,B1:B3)");
+    // no numbers, and no number twice: the errors of MEDIAN and MODE.SNGL
+    model._set("C5", "=AGGREGATE(12,6,E1:E2)");
+    model._set("D5", "=AGGREGATE(13,6,B1:B3)");
+    // a calculation or a number where a reference is expected
+    model._set("C6", "=AGGREGATE(12,6,B1:B3*2)");
+    model._set("D6", "=AGGREGATE(13,6,B1:B3*2)");
+    model._set("C7", "=AGGREGATE(12,6,5)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "7");
+    assert_eq!(model._get_text("D1"), "7");
+    assert_eq!(model._get_text("C2"), "8.5");
+    assert_eq!(model._get_text("D2"), "10");
+    assert_eq!(model._get_text("C3"), "#DIV/0!");
+    assert_eq!(model._get_text("D3"), "#DIV/0!");
+    assert_eq!(model._get_text("C4"), "5.5");
+    assert_eq!(model._get_text("C5"), "#NUM!");
+    assert_eq!(model._get_text("D5"), "#N/A");
+    assert_eq!(model._get_text("C6"), "#VALUE!");
+    assert_eq!(model._get_text("D6"), "#VALUE!");
+    assert_eq!(model._get_text("C7"), "#VALUE!");
 }

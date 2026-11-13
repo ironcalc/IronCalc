@@ -1,7 +1,7 @@
 use crate::{
     calc_result::CalcResult,
     expressions::{
-        parser::{parse_range, Node},
+        parser::{parse_range, ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
@@ -139,6 +139,11 @@ fn holds_subtotal(node: &Node) -> bool {
         | Node::ParseErrorKind { .. }
         | Node::EmptyArgKind => false,
     }
+}
+
+// The numbers that AGGREGATE hands to another function, as an array of one row
+fn array_of(values: Vec<f64>) -> Node {
+    Node::ArrayKind(vec![values.into_iter().map(ArrayNode::Number).collect()])
 }
 
 #[derive(PartialEq, Debug)]
@@ -342,8 +347,9 @@ impl<'a> Model<'a> {
     /// `=AGGREGATE(function_num, options, ref1, [ref2], ...)`
     ///
     /// function_num 1 to 11 are the functions of SUBTOTAL, in the same order.
-    /// 12 to 19 (MEDIAN, MODE.SNGL, LARGE, SMALL, the percentiles and the
-    /// quartiles) are not implemented yet.
+    /// 12 is MEDIAN and 13 is MODE.SNGL.
+    /// 14 to 19 (LARGE, SMALL, the percentiles and the quartiles) are not
+    /// implemented yet.
     ///
     /// options 0 to 3 leave out nested SUBTOTAL and AGGREGATE, 4 to 7 do not.
     /// On top of that 1, 3, 5 and 7 leave out hidden rows,
@@ -385,7 +391,20 @@ impl<'a> Model<'a> {
             9 => self.subtotal_sum(args, cell, mode),
             10 => self.subtotal_vars(args, cell, mode),
             11 => self.subtotal_varp(args, cell, mode),
-            12..=19 => CalcResult::new_error(
+            12 | 13 => {
+                // MEDIAN and MODE.SNGL get the numbers that are left, as an array
+                let values = match self.subtotal_get_values(args, cell, mode) {
+                    Ok(s) => s,
+                    Err(s) => return s,
+                };
+                let numbers = [array_of(values)];
+                if function == 12 {
+                    self.fn_median(&numbers, cell)
+                } else {
+                    self.fn_mode_sngl(&numbers, cell)
+                }
+            }
+            14..=19 => CalcResult::new_error(
                 Error::NIMPL,
                 cell,
                 format!("AGGREGATE function {function} is not implemented yet"),
