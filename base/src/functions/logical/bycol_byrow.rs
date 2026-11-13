@@ -20,7 +20,37 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// The error for a LAMBDA that returns several values in BYCOL or BYROW.
+fn several_values_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::CALC,
+        cell,
+        "LAMBDA must return a single value".to_string(),
+    )
+}
+
 impl<'a> Model<'a> {
+    /// BYCOL and BYROW need a single value from each call to the LAMBDA. A 1x1 array or a
+    /// single cell counts as one. A larger array or range returns `None`: the caller then
+    /// gives a single `#CALC!` for the whole formula, as in Excel.
+    fn lambda_result_to_array_node(&mut self, result: CalcResult) -> Option<ArrayNode> {
+        match result {
+            CalcResult::Array(array) => match array.as_slice() {
+                [row] if row.len() == 1 => Some(row[0].clone()),
+                _ => None,
+            },
+            CalcResult::Range { left, right } => {
+                if left.sheet == right.sheet && left.row == right.row && left.column == right.column
+                {
+                    Some(calc_result_to_array_node(self.evaluate_cell(left)))
+                } else {
+                    None
+                }
+            }
+            other => Some(calc_result_to_array_node(other)),
+        }
+    }
+
     /// `=BYCOL(array, lambda)`
     ///
     /// Applies a LAMBDA to each column of `array`, returning a 1-row array of results.
@@ -50,7 +80,10 @@ impl<'a> Model<'a> {
         for j in 0..num_cols {
             let column: Vec<Vec<ArrayNode>> = data.iter().map(|row| vec![row[j].clone()]).collect();
             let result = self.call_lambda(lambda_result.clone(), &[Node::ArrayKind(column)], cell);
-            results.push(calc_result_to_array_node(result));
+            match self.lambda_result_to_array_node(result) {
+                Some(node) => results.push(node),
+                None => return several_values_error(cell),
+            }
         }
 
         CalcResult::Array(vec![results])
@@ -87,7 +120,10 @@ impl<'a> Model<'a> {
                 &[Node::ArrayKind(vec![row.clone()])],
                 cell,
             );
-            results.push(vec![calc_result_to_array_node(result)]);
+            match self.lambda_result_to_array_node(result) {
+                Some(node) => results.push(vec![node]),
+                None => return several_values_error(cell),
+            }
         }
 
         CalcResult::Array(results)
