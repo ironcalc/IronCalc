@@ -79,11 +79,15 @@ fn example_in_the_excel_documentation() {
     model._set("C1", "=AGGREGATE(4,6,A1:A11)");
     model._set("C2", "=MAX(A1:A2)");
     model._set("C3", "=AGGREGATE(12,6,A1:A11,B1:B11)");
+    model._set("C4", "=AGGREGATE(14,6,A1:A11,3)");
+    model._set("C5", "=AGGREGATE(15,6,A1:A11)");
     model.evaluate();
     assert_eq!(model._get_text("A4"), "#NUM!");
     assert_eq!(model._get_text("C1"), "96");
     assert_eq!(model._get_text("C2"), "#DIV/0!");
     assert_eq!(model._get_text("C3"), "68");
+    assert_eq!(model._get_text("C4"), "72");
+    assert_eq!(model._get_text("C5"), "#VALUE!");
 }
 
 #[test]
@@ -118,8 +122,9 @@ fn hidden_rows_and_nested_totals() {
     model._set("E1", "=AGGREGATE(9,,A1:A5)");
     // SUBTOTAL leaves out the AGGREGATE in A4 as well
     model._set("E2", "=SUBTOTAL(9,A1:A5)");
-    // so does MEDIAN: 1, 20, 300
+    // so do MEDIAN and LARGE: 1, 20, 300
     model._set("E3", "=AGGREGATE(12,0,A1:A5)");
+    model._set("E4", "=AGGREGATE(14,0,A1:A5,2)");
     model.evaluate();
     for (function, column, expected) in cases {
         for (options, value) in expected.iter().enumerate() {
@@ -133,6 +138,7 @@ fn hidden_rows_and_nested_totals() {
     assert_eq!(model._get_text("E1"), "321");
     assert_eq!(model._get_text("E2"), "321");
     assert_eq!(model._get_text("E3"), "20");
+    assert_eq!(model._get_text("E4"), "20");
 }
 
 #[test]
@@ -146,8 +152,8 @@ fn wrong_arguments() {
     model._set("B3", "=AGGREGATE(20,6,A1:A2)");
     model._set("B4", "=AGGREGATE(9,8,A1:A2)");
     model._set("B5", "=AGGREGATE(9,-1,A1:A2)");
-    // LARGE: not yet
-    model._set("B6", "=AGGREGATE(14,6,A1:A2,1)");
+    // LARGE takes an array and k, nothing more
+    model._set("B6", "=AGGREGATE(14,6,A1:A2,1,1)");
     // the two numbers are truncated: option 7 would leave out the hidden row
     model._set("B7", "=AGGREGATE(9.9,6.9,A1:A2)");
     // What is not a reference is #VALUE!, as in Excel. SUM, COUNT and COUNTA each read
@@ -207,7 +213,7 @@ fn wrong_arguments() {
     assert_eq!(model._get_text("B3"), "#VALUE!");
     assert_eq!(model._get_text("B4"), "#VALUE!");
     assert_eq!(model._get_text("B5"), "#VALUE!");
-    assert_eq!(model._get_text("B6"), "#N/IMPL!");
+    assert_eq!(model._get_text("B6"), "#VALUE!");
     assert_eq!(model._get_text("B7"), "8");
     for (row, formula) in not_references.iter().enumerate() {
         assert_eq!(
@@ -300,14 +306,16 @@ fn what_gives_a_reference_is_a_reference() {
 fn a_total_inside_another_formula_is_a_nested_total() {
     // Row 4 holds a total inside another formula. The values are those of Excel
     let mut model = new_empty_model();
-    for column in ["A", "B"] {
+    for column in ["A", "B", "C"] {
         model._set(&format!("{column}1"), "1");
         model._set(&format!("{column}2"), "2");
         model._set(&format!("{column}3"), "3");
     }
     model._set("A4", "=AGGREGATE(9,4,A1:A3)+1");
     model._set("B4", "=IF(FALSE,SUBTOTAL(9,B1:B3),10)");
-    for (row, column) in [(1, "A"), (2, "B")] {
+    // with an array and k it is a total as well
+    model._set("C4", "=AGGREGATE(14,4,C1:C3,1)");
+    for (row, column) in [(1, "A"), (2, "B"), (3, "C")] {
         model._set(
             &format!("D{row}"),
             &format!("=SUBTOTAL(9,{column}1:{column}4)"),
@@ -329,6 +337,9 @@ fn a_total_inside_another_formula_is_a_nested_total() {
     assert_eq!(model._get_text("D2"), "6");
     assert_eq!(model._get_text("E2"), "6");
     assert_eq!(model._get_text("F2"), "16");
+    assert_eq!(model._get_text("D3"), "6");
+    assert_eq!(model._get_text("E3"), "6");
+    assert_eq!(model._get_text("F3"), "9");
 }
 
 #[test]
@@ -375,4 +386,107 @@ fn median_and_mode() {
     assert_eq!(model._get_text("C6"), "#VALUE!");
     assert_eq!(model._get_text("D6"), "#VALUE!");
     assert_eq!(model._get_text("C7"), "#VALUE!");
+}
+
+#[test]
+fn functions_with_an_array_and_k() {
+    let mut model = new_empty_model();
+    model._set("A1", "4");
+    model._set("A2", "7");
+    model._set("A3", "=1/0");
+    model._set("A4", "7");
+    model._set("A5", "10");
+    model._set("A6", "10");
+    model.set_row_hidden(0, 2, true).unwrap();
+    // function_num and k, the result with option 6 (4, 7, 7, 10, 10)
+    // and with option 7 (without the hidden row: 4, 7, 10, 10)
+    let cases = [
+        (14, "4", "7", "4"),
+        (15, "3", "7", "10"),
+        (16, "0.25", "7", "6.25"),
+        (17, "1", "7", "6.25"),
+        (18, "0.25", "5.5", "4.75"),
+        (19, "1", "5.5", "4.75"),
+    ];
+    for (function, k, _, _) in cases {
+        model._set(
+            &format!("C{function}"),
+            &format!("=AGGREGATE({function},6,A1:A6,{k})"),
+        );
+        model._set(
+            &format!("D{function}"),
+            &format!("=AGGREGATE({function},7,A1:A6,{k})"),
+        );
+    }
+    // with the error
+    model._set("E1", "=AGGREGATE(14,4,A1:A6,1)");
+    // k in a cell
+    model._set("F1", "3");
+    model._set("E2", "=AGGREGATE(15,6,A1:A6,F1)");
+    // the errors of LARGE: k is too large, there are no numbers
+    model._set("E3", "=AGGREGATE(14,6,A1:A6,9)");
+    model._set("E4", "=AGGREGATE(14,6,G1:G2,1)");
+    // a range of two columns
+    model._set("B5", "50");
+    model._set("E5", "=AGGREGATE(14,6,A1:B6,1)");
+    model.evaluate();
+    for (function, _, option_6, option_7) in cases {
+        assert_eq!(
+            model._get_text(&format!("C{function}")),
+            option_6,
+            "function {function}, option 6"
+        );
+        assert_eq!(
+            model._get_text(&format!("D{function}")),
+            option_7,
+            "function {function}, option 7"
+        );
+    }
+    assert_eq!(model._get_text("E1"), "#DIV/0!");
+    assert_eq!(model._get_text("E2"), "7");
+    assert_eq!(model._get_text("E3"), "#NUM!");
+    assert_eq!(model._get_text("E4"), "#NUM!");
+    assert_eq!(model._get_text("E5"), "50");
+}
+
+#[test]
+fn array_that_is_a_calculation() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "3");
+    model._set("A3", "5");
+    model._set("A4", "8");
+    model.set_row_hidden(0, 2, true).unwrap();
+    // 1/0, 3, 5, 8: the error is left out, or not
+    model._set("B1", "=AGGREGATE(15,6,A1:A4/(A1:A4>2),1)");
+    model._set("B2", "=AGGREGATE(14,6,A1:A4/(A1:A4>2),1)");
+    model._set("B3", "=AGGREGATE(15,4,A1:A4/(A1:A4>2),1)");
+    // a calculation has no hidden rows, a range has
+    model._set("B4", "=AGGREGATE(15,7,A1:A4*1,2)");
+    model._set("B5", "=AGGREGATE(15,7,A1:A4,2)");
+    // FALSE, 3, 5, 8: what is not a number is not counted
+    model._set("B6", "=AGGREGATE(15,6,IF(A1:A4>2,A1:A4),1)");
+    // an argument that is an error gives that error, with every option (as in Excel)
+    model._set("B7", "=AGGREGATE(14,6,1/0,1)");
+    // one value is an array of one
+    model._set("B8", "=AGGREGATE(14,6,A3*2,1)");
+    // the one cell that INDEX or IF gives (as in Excel)
+    model._set("B9", "=AGGREGATE(14,6,INDEX(A1:A4,2),1)");
+    model._set("B10", "=AGGREGATE(14,6,IF(TRUE,A2),1)");
+    // That cell arrives as its value, so an error in it is the result, whatever the
+    // option. Excel was not asked
+    model._set("C1", "=1/0");
+    model._set("B11", "=AGGREGATE(14,6,INDEX(C1:C2,1),1)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "3");
+    assert_eq!(model._get_text("B2"), "8");
+    assert_eq!(model._get_text("B3"), "#DIV/0!");
+    assert_eq!(model._get_text("B4"), "3");
+    assert_eq!(model._get_text("B5"), "5");
+    assert_eq!(model._get_text("B6"), "3");
+    assert_eq!(model._get_text("B7"), "#DIV/0!");
+    assert_eq!(model._get_text("B8"), "10");
+    assert_eq!(model._get_text("B9"), "3");
+    assert_eq!(model._get_text("B10"), "3");
+    assert_eq!(model._get_text("B11"), "#DIV/0!");
 }

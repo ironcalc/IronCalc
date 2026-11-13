@@ -1,5 +1,6 @@
 use crate::{
     calc_result::CalcResult,
+    cast::calc_result_to_array_node,
     expressions::{
         parser::{parse_range, ArrayNode, Node},
         token::Error,
@@ -344,12 +345,71 @@ impl<'a> Model<'a> {
         }
     }
 
+    // The array of function 14 to 19 is a range or a calculation.
+    // A calculation has no rows to hide and no nested totals, only errors.
+    fn aggregate_array_values(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+        mode: SubTotalMode,
+    ) -> Result<Vec<f64>, CalcResult> {
+        let array = match self.evaluate_node_with_reference(arg, cell) {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                // The range goes on as a plain reference, so that what gave it is
+                // not evaluated a second time
+                let range = Node::RangeKind {
+                    sheet_name: None,
+                    sheet_index: left.sheet,
+                    absolute_row1: true,
+                    absolute_column1: true,
+                    row1: left.row,
+                    column1: left.column,
+                    absolute_row2: true,
+                    absolute_column2: true,
+                    row2: right.row,
+                    column2: right.column,
+                };
+                return self.subtotal_get_values(&[range], cell, mode);
+            }
+            CalcResult::Array(array) => array,
+            // an argument that is an error gives that error, whatever the option
+            error @ CalcResult::Error { .. } => return Err(error),
+            // one value is an array of one
+            value => vec![vec![calc_result_to_array_node(value)]],
+        };
+        let mut result = Vec::new();
+        for value in array.into_iter().flatten() {
+            match value {
+                ArrayNode::Number(f) => result.push(f),
+                ArrayNode::Error(_) if mode.skips_errors() => {}
+                ArrayNode::Error(error) => {
+                    return Err(CalcResult::new_error(
+                        error,
+                        cell,
+                        "Error in array".to_string(),
+                    ))
+                }
+                _ => {}
+            }
+        }
+        Ok(result)
+    }
+
     /// `=AGGREGATE(function_num, options, ref1, [ref2], ...)`
+    ///
+    /// `=AGGREGATE(function_num, options, array, k)` for function_num 14 to 19
     ///
     /// function_num 1 to 11 are the functions of SUBTOTAL, in the same order.
     /// 12 is MEDIAN and 13 is MODE.SNGL.
-    /// 14 to 19 (LARGE, SMALL, the percentiles and the quartiles) are not
-    /// implemented yet.
+    /// 14 is LARGE, 15 SMALL, 16 PERCENTILE.INC, 17 QUARTILE.INC,
+    /// 18 PERCENTILE.EXC and 19 QUARTILE.EXC.
     ///
     /// options 0 to 3 leave out nested SUBTOTAL and AGGREGATE, 4 to 7 do not.
     /// On top of that 1, 3, 5 and 7 leave out hidden rows,
@@ -404,11 +464,29 @@ impl<'a> Model<'a> {
                     self.fn_mode_sngl(&numbers, cell)
                 }
             }
-            14..=19 => CalcResult::new_error(
-                Error::NIMPL,
-                cell,
-                format!("AGGREGATE function {function} is not implemented yet"),
-            ),
+            14..=19 => {
+                // LARGE and the others get the numbers that are left, and k
+                if args.len() != 2 {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        format!("AGGREGATE function {function} takes an array and k"),
+                    );
+                }
+                let values = match self.aggregate_array_values(&args[0], cell, mode) {
+                    Ok(s) => s,
+                    Err(s) => return s,
+                };
+                let args = [array_of(values), args[1].clone()];
+                match function {
+                    14 => self.fn_large(&args, cell),
+                    15 => self.fn_small(&args, cell),
+                    16 => self.fn_percentile_inc(&args, cell),
+                    17 => self.fn_quartile_inc(&args, cell),
+                    18 => self.fn_percentile_exc(&args, cell),
+                    _ => self.fn_quartile_exc(&args, cell),
+                }
+            }
             _ => CalcResult::new_error(
                 Error::VALUE,
                 cell,
