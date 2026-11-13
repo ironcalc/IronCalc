@@ -181,7 +181,7 @@ impl<'a> Model<'a> {
             MatchMode::Exact
         };
 
-        let search_mode = if args.len() == 4 {
+        let search_mode = if args.len() == 4 && !matches!(args[3], Node::EmptyArgKind) {
             match self.get_number(&args[3], cell) {
                 Ok(n) => match n.floor() as i32 {
                     1 => SearchMode::FirstToLast,
