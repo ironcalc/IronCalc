@@ -1,10 +1,8 @@
 import type { Color, Model } from "@ironcalc/wasm";
 import { Menu as MenuIcon, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
 import { Menu } from "../Menu/Menu";
-import { getLocaleDisplayName } from "../RightDrawer/Settings/Settings";
 import { Tooltip } from "../Tooltip/Tooltip";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
@@ -110,24 +108,8 @@ function SheetTabBar(props: SheetTabBarProps) {
       {props.canEdit && (
         <div className="ic-sheet-tab-bar-right-container">
           <Tooltip title={t("settings.open_settings")}>
-            <Button
-              className="ic-sheet-tab-bar-settings-button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                props.onOpenSettings();
-              }}
-            >
-              {getLocaleDisplayName(props.model.getLocale())}
-              <div className="ic-sheet-tab-bar-text-divider" />
-              {t(
-                `settings.language.display_language.${props.model.getLanguage()}`,
-              )}
-            </Button>
-          </Tooltip>
-          <Tooltip title={t("settings.open_settings")}>
             <IconButton
-              className="ic-sheet-tab-bar-settings-icon-button"
+              className="ic-sheet-tab-bar-settings-button"
               aria-label={t("settings.open_settings")}
               icon={<Settings />}
               onClick={props.onOpenSettings}

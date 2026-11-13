@@ -340,29 +340,19 @@
       "sheet_label": "Blatt",
       "title": "Blatt beim Öffnen anzeigen"
     },
-    "language": {
-      "display_language": {
-        "de": "Deutsch",
-        "en": "English",
-        "es": "Español",
-        "fr": "Français",
-        "it": "Italiano"
-      }
-    },
     "locale": {
       "delimiter_comma": "Komma",
       "delimiter_semicolon": "Semikolon",
       "locale_example1": "Zahl",
       "locale_example2": "Datum und Uhrzeit",
       "locale_example3": "Formeltrennzeichen",
-      "locale_label": "Regionaleinstellung",
-      "title": "Regionaleinstellung"
+      "locale_label": "Regionaleinstellung"
     },
     "open_settings": "Einstellungen öffnen",
+    "regional_title": "Regionale Einstellungen",
     "timezone": {
       "timezone_helper": "Das Ändern dieser Einstellung wirkt sich auf datums- und zeitbezogene Funktionen aus, einschließlich HEUTE() und JETZT().",
-      "timezone_label": "Zeitzone",
-      "title": "Zeitzone"
+      "timezone_label": "Zeitzone"
     },
     "title": "Einstellungen"
   },

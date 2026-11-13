@@ -340,29 +340,19 @@
       "sheet_label": "Hoja",
       "title": "Enfocar hoja al abrir"
     },
-    "language": {
-      "display_language": {
-        "de": "Deutsch",
-        "en": "English",
-        "es": "Español",
-        "fr": "Français",
-        "it": "Italiano"
-      }
-    },
     "locale": {
       "delimiter_comma": "Coma",
       "delimiter_semicolon": "Punto y coma",
       "locale_example1": "Número",
       "locale_example2": "Fecha y hora",
       "locale_example3": "Delimitador de fórmulas",
-      "locale_label": "Configuración regional",
-      "title": "Configuración regional"
+      "locale_label": "Configuración regional"
     },
     "open_settings": "Abrir configuración",
+    "regional_title": "Configuración regional",
     "timezone": {
       "timezone_helper": "Modificar esta configuración afectará a las funciones relacionadas con fecha y hora, incluyendo HOY() y AHORA().",
-      "timezone_label": "Zona horaria",
-      "title": "Zona horaria"
+      "timezone_label": "Zona horaria"
     },
     "title": "Configuración"
   },
