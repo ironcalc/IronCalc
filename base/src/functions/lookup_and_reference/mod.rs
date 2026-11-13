@@ -22,7 +22,7 @@ mod wrapcols_wraprows;
 mod xmatch;
 
 /// Converts a single array element into a scalar [`CalcResult`].
-fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
+pub(super) fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
     match node {
         ArrayNode::Number(n) => CalcResult::Number(*n),
         ArrayNode::Boolean(b) => CalcResult::Boolean(*b),

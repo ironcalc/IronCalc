@@ -10,4 +10,5 @@ mod test_fn_rows_columns;
 mod test_fn_trimrange;
 mod test_fn_vlookup;
 mod test_fn_wrapcols_wraprows;
+mod test_fn_xlookup;
 mod test_fn_xmatch;
