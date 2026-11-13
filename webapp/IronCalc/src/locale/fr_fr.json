@@ -335,10 +335,10 @@
   "settings": {
     "focus_on_open": {
       "cell_label": "Cellule",
-      "helper": "Le classeur s'ouvre sur cette feuille et cette cellule. Ce réglage est aussi enregistré lors de l'export vers Excel.",
+      "helper": "Choisissez la feuille et la cellule à l'ouverture de ce classeur.",
       "invalid_cell": "Référence de cellule non valide",
       "sheet_label": "Feuille",
-      "title": "Afficher une feuille à l'ouverture"
+      "title": "Ouvrir sur une cellule précise"
     },
     "locale": {
       "delimiter_comma": "Virgule",

@@ -335,10 +335,10 @@
   "settings": {
     "focus_on_open": {
       "cell_label": "Cell",
-      "helper": "The workbook opens on this sheet and cell. It is also saved when exporting to Excel.",
+      "helper": "Choose the sheet and cell this workbook opens on.",
       "invalid_cell": "Invalid cell reference",
       "sheet_label": "Sheet",
-      "title": "Focus on sheet when open"
+      "title": "Open at a specific cell"
     },
     "locale": {
       "delimiter_comma": "Comma",

@@ -335,10 +335,10 @@
   "settings": {
     "focus_on_open": {
       "cell_label": "Celda",
-      "helper": "El libro se abre en esta hoja y celda. También se guarda al exportar a Excel.",
+      "helper": "Elige la hoja y la celda en la que se abre este libro.",
       "invalid_cell": "Referencia de celda no válida",
       "sheet_label": "Hoja",
-      "title": "Enfocar hoja al abrir"
+      "title": "Abrir en una celda concreta"
     },
     "locale": {
       "delimiter_comma": "Coma",

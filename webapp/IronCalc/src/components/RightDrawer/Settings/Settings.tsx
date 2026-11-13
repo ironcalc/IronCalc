@@ -7,7 +7,7 @@ import {
   type WorksheetProperties,
 } from "@ironcalc/wasm";
 import { Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
@@ -137,6 +137,7 @@ const Settings = (properties: SettingsProps) => {
   const [focusEnabled, setFocusEnabled] = useState(initialFocusEnabled);
   const [focusSheet, setFocusSheet] = useState(initialFocusSheet);
   const [focusCell, setFocusCell] = useState(initialFocusCell);
+  const focusDescriptionId = useId();
 
   useEffect(() => {
     setSelectedLocale(properties.initialLocale);
@@ -278,7 +279,11 @@ const Settings = (properties: SettingsProps) => {
             label={t("settings.focus_on_open.title")}
             checked={focusEnabled}
             onChange={handleFocusToggle}
+            aria-describedby={focusDescriptionId}
           />
+          <p id={focusDescriptionId} className="ic-settings-description">
+            {t("settings.focus_on_open.helper")}
+          </p>
           {focusEnabled && (
             <div className="ic-settings-fields">
               <Select
@@ -292,9 +297,7 @@ const Settings = (properties: SettingsProps) => {
                 value={focusCell}
                 error={focusCellError}
                 helperText={
-                  focusCellError
-                    ? t("settings.focus_on_open.invalid_cell")
-                    : t("settings.focus_on_open.helper")
+                  focusCellError && t("settings.focus_on_open.invalid_cell")
                 }
                 onChange={(event) => setFocusCell(event.target.value)}
                 onKeyDown={(event) => event.stopPropagation()}
