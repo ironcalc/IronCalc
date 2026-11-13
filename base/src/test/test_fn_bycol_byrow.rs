@@ -222,13 +222,15 @@ fn bycol_lambda_counta() {
 // The expected values below were captured from Excel for Mac 16.113.3, en-US locale, on
 // 8 October 2026 (published in the Formulon project's oracle goldens, Apache-2.0).
 
+// The whole formula is a single #CALC!, it does not spill one #CALC! per row or column.
 #[test]
 fn byrow_lambda_returning_several_values_is_calc_error() {
     let mut model = new_empty_model();
     model._set("A1", "=BYROW({1,2,3;4,5,6}, LAMBDA(row, row*2))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#CALC!");
-    assert_eq!(model._get_text("A2"), "#CALC!");
+    assert_eq!(model._get_text("A2"), "");
+    assert_eq!(model._get_text("B1"), "");
 }
 
 #[test]
@@ -237,8 +239,59 @@ fn bycol_lambda_returning_several_values_is_calc_error() {
     model._set("A1", "=BYCOL({1,2,3;4,5,6}, LAMBDA(col, col*2))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#CALC!");
-    assert_eq!(model._get_text("B1"), "#CALC!");
+    assert_eq!(model._get_text("A2"), "");
+    assert_eq!(model._get_text("B1"), "");
+    assert_eq!(model._get_text("C1"), "");
+}
+
+#[test]
+fn bycol_lambda_returning_several_values_does_not_spill_into_text() {
+    let mut model = new_empty_model();
+    // A spill of one #CALC! per column would be blocked by B1 and give #SPILL!.
+    model._set("B1", "note");
+    model._set("A1", "=BYCOL({1,2,3;4,5,6}, LAMBDA(col, col*2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+    assert_eq!(model._get_text("B1"), "note");
+}
+
+#[test]
+fn rows_and_columns_of_several_values_result_are_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(BYROW({1,2,3;4,5,6}, LAMBDA(row, row*2)))");
+    model._set("A2", "=COLUMNS(BYCOL({1,2,3;4,5,6}, LAMBDA(col, col*2)))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+    assert_eq!(model._get_text("A2"), "#CALC!");
+}
+
+#[test]
+fn byrow_bycol_one_call_returning_several_values_is_calc_error() {
+    let mut model = new_empty_model();
+    // Only the second row and the second column return several values.
+    model._set(
+        "A1",
+        "=BYROW({1;2;3}, LAMBDA(row, IF(SUM(row)=2, {1,2}, SUM(row))))",
+    );
+    model._set(
+        "C1",
+        "=BYCOL({1,2,3}, LAMBDA(col, IF(SUM(col)=2, {1;2}, SUM(col))))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+    assert_eq!(model._get_text("A2"), "");
     assert_eq!(model._get_text("C1"), "#CALC!");
+    assert_eq!(model._get_text("D1"), "");
+}
+
+#[test]
+fn byrow_bycol_error_from_one_call_stays_in_its_place() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYROW({1;0;2}, LAMBDA(row, 1/SUM(row)))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "#DIV/0!");
+    assert_eq!(model._get_text("A3"), "0.5");
 }
 
 #[test]
