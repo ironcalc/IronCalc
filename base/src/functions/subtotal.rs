@@ -7,6 +7,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
+    types::Cell,
 };
 
 /// Excel has a complicated way of filtering + hidden rows
@@ -23,6 +24,46 @@ use crate::{
 enum SubTotalMode {
     Full,
     SkipHidden,
+}
+
+/// True if the formula holds a SUBTOTAL anywhere, as in `=SUBTOTAL(9,A1:A3)+1`
+/// or `=IF(B1,SUBTOTAL(9,A1:A3),0)`. Excel leaves such a cell out of another
+/// SUBTOTAL. It does not look into the formula of a defined name.
+fn holds_subtotal(node: &Node) -> bool {
+    match node {
+        Node::FunctionKind { kind, args } => {
+            *kind == Function::Subtotal || args.iter().any(holds_subtotal)
+        }
+        Node::NamedFunctionKind { args, .. } => args.iter().any(holds_subtotal),
+        Node::OpRangeKind { left, right }
+        | Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right }
+        | Node::CompareKind { left, right, .. } => holds_subtotal(left) || holds_subtotal(right),
+        Node::UnaryKind { right, .. } => holds_subtotal(right),
+        Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
+            holds_subtotal(child)
+        }
+        Node::LambdaDefKind { body, .. } => holds_subtotal(body),
+        Node::LambdaCallKind { lambda, args } => {
+            holds_subtotal(lambda) || args.iter().any(holds_subtotal)
+        }
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ReferenceKind { .. }
+        | Node::RangeKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
+        | Node::ArrayKind(_)
+        | Node::DefinedNameKind { .. }
+        | Node::TableNameKind(_)
+        | Node::NamedVariableKind { .. }
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::EmptyArgKind => false,
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -80,24 +121,15 @@ impl<'a> Model<'a> {
 
     // FIXME(TD): This is too much
     fn cell_is_subtotal(&self, sheet_index: u32, row: i32, column: i32) -> bool {
-        let cell = match self.workbook.worksheets[sheet_index as usize].cell(row, column) {
-            Some(c) => c,
-            None => {
-                return false;
-            }
-        };
+        let worksheet = &self.workbook.worksheets[sheet_index as usize];
+        let mut cell = worksheet.cell(row, column);
+        // A cell that a formula spills into is judged by that formula
+        if let Some(&Cell::SpillCell { a: anchor, .. }) = cell.as_deref() {
+            cell = worksheet.cell(anchor.0, anchor.1);
+        }
 
-        match cell.get_formula() {
-            Some(f) => {
-                let node: &Node = &self.parsed_formulas[sheet_index as usize][f as usize].0;
-                matches!(
-                    node,
-                    Node::FunctionKind {
-                        kind: Function::Subtotal,
-                        args: _
-                    }
-                )
-            }
+        match cell.and_then(|c| c.get_formula()) {
+            Some(f) => holds_subtotal(&self.parsed_formulas[sheet_index as usize][f as usize].0),
             None => false,
         }
     }
