@@ -164,10 +164,11 @@ fn fn_received_example() {
     // investment=1000000, discount=0.0575, basis=2 (actual/360)
     // 90 days / 360 = 0.25 yearfrac
     // RECEIVED = 1000000 / (1 - 0.0575 * 0.25) ≈ 1014584.654
+    // shown with Excel's 15 significant digits: 1014584.65440710
     let mut model = new_empty_model();
     model._set("A1", "=RECEIVED(39493, 39583, 1000000, 0.0575, 2)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"1014584.654407102");
+    assert_eq!(model._get_text("A1"), *"1014584.6544071");
 }
 
 #[test]
