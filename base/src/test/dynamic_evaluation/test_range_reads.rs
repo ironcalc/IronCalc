@@ -173,6 +173,28 @@ fn a_subtotal_over_a_whole_column_or_row_records_one_rectangle() {
     assert_eq!(model.evaluation.seen_ranges.len(), 6);
 }
 
+// SUBTOTAL asks once, for each range, for the hidden rows of the sheet that
+// the range is in.
+#[test]
+fn a_subtotal_leaves_out_the_hidden_rows_of_the_sheet_that_it_reads() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set("Sheet2!A1", "1");
+    model._set("Sheet2!A2", "20");
+    model._set("Sheet2!A3", "300");
+    model.set_row_hidden(1, 2, true).unwrap();
+    // a row with an entry of its own that is not hidden
+    model.set_row_height(1, 3, 30.0).unwrap();
+    // one for each of the three walks
+    model._set("A1", "=SUBTOTAL(109,Sheet2!A1:A3)");
+    model._set("A2", "=SUBTOTAL(102,Sheet2!A1:A3)");
+    model._set("A3", "=SUBTOTAL(103,Sheet2!A1:A3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "301");
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("A3"), "2");
+}
+
 // XLOOKUP clips its whole-column arrays like the others; it has no test
 // file of its own, so its case lives here. The other clipped functions are
 // tested the same way in their own files.

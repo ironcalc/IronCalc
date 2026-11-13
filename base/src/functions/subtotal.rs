@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -53,28 +55,32 @@ impl<'a> Model<'a> {
         false
     }
 
+    // The hidden rows of a sheet. A walk asks for them once, not for every row that it reads
+    fn hidden_rows(&self, sheet_index: u32) -> Result<HashSet<i32>, String> {
+        let worksheet = self.workbook.worksheet(sheet_index)?;
+        Ok(worksheet
+            .rows
+            .iter()
+            .filter(|row| row.hidden)
+            .map(|row| row.r)
+            .collect())
+    }
+
     fn cell_hidden_status(
         &self,
+        hidden_rows: &HashSet<i32>,
         sheet_index: u32,
         row: i32,
         column: i32,
-    ) -> Result<CellTableStatus, String> {
-        let worksheet = self.workbook.worksheet(sheet_index)?;
-        let mut hidden = false;
-        for row_style in &worksheet.rows {
-            if row_style.r == row {
-                hidden = row_style.hidden;
-                break;
-            }
-        }
-        if !hidden {
-            return Ok(CellTableStatus::Normal);
+    ) -> CellTableStatus {
+        if !hidden_rows.contains(&row) {
+            return CellTableStatus::Normal;
         }
         // The row is hidden we need to know if the table has filters
         if self.get_table_for_cell(sheet_index, row, column) {
-            Ok(CellTableStatus::Filtered)
+            CellTableStatus::Filtered
         } else {
-            Ok(CellTableStatus::Hidden)
+            CellTableStatus::Hidden
         }
     }
 
@@ -149,12 +155,12 @@ impl<'a> Model<'a> {
                                 }
                             }
 
+                            let hidden_rows = self.hidden_rows(left.sheet).map_err(|message| {
+                                CalcResult::new_error(Error::ERROR, cell, message)
+                            })?;
                             for row in row1..=row2 {
-                                let cell_status = self
-                                    .cell_hidden_status(left.sheet, row, column1)
-                                    .map_err(|message| {
-                                        CalcResult::new_error(Error::ERROR, cell, message)
-                                    })?;
+                                let cell_status =
+                                    self.cell_hidden_status(&hidden_rows, left.sheet, row, column1);
                                 if cell_status == CellTableStatus::Filtered {
                                     continue;
                                 }
@@ -406,15 +412,15 @@ impl<'a> Model<'a> {
                                 }
                             }
 
+                            let hidden_rows = match self.hidden_rows(left.sheet) {
+                                Ok(s) => s,
+                                Err(message) => {
+                                    return CalcResult::new_error(Error::ERROR, cell, message);
+                                }
+                            };
                             for row in row1..=row2 {
-                                let cell_status = match self
-                                    .cell_hidden_status(left.sheet, row, column1)
-                                {
-                                    Ok(s) => s,
-                                    Err(message) => {
-                                        return CalcResult::new_error(Error::ERROR, cell, message);
-                                    }
-                                };
+                                let cell_status =
+                                    self.cell_hidden_status(&hidden_rows, left.sheet, row, column1);
                                 if cell_status == CellTableStatus::Filtered {
                                     continue;
                                 }
@@ -498,15 +504,15 @@ impl<'a> Model<'a> {
                                 }
                             }
 
+                            let hidden_rows = match self.hidden_rows(left.sheet) {
+                                Ok(s) => s,
+                                Err(message) => {
+                                    return CalcResult::new_error(Error::ERROR, cell, message);
+                                }
+                            };
                             for row in row1..=row2 {
-                                let cell_status = match self
-                                    .cell_hidden_status(left.sheet, row, column1)
-                                {
-                                    Ok(s) => s,
-                                    Err(message) => {
-                                        return CalcResult::new_error(Error::ERROR, cell, message);
-                                    }
-                                };
+                                let cell_status =
+                                    self.cell_hidden_status(&hidden_rows, left.sheet, row, column1);
                                 if cell_status == CellTableStatus::Filtered {
                                     continue;
                                 }
