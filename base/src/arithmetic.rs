@@ -4,7 +4,7 @@ use crate::{
     cast::{array_node_to_string, NumberOrArray, StringOrArray, ValueOrArray},
     expressions::{
         parser::{ArrayNode, Node},
-        token::{Error, OpCompare},
+        token::{Error, OpCompare, OpSum},
         types::CellReferenceIndex,
     },
     functions::util::compare_values,
@@ -100,7 +100,38 @@ pub(crate) fn array_of_errors(
     )
 }
 
+/// How close to the left operand a sum must cancel out to be taken as 0 in
+/// [`Model::formula_sum`]: 2⁻⁵⁰, Excel's threshold.
+const SUM_CANCELLATION_TOLERANCE: f64 = 1.0 / (1u64 << 50) as f64;
+
 impl<'a> Model<'a> {
+    /// The value of a formula whose last operation is a sum or a difference
+    /// (`=A1-B1`), as Excel gives it: a result that cancels out to within 2⁻⁵⁰
+    /// of the left operand is 0, so `=0.1+0.2-0.3` and `=1.1*3-3.3` are 0 where
+    /// binary arithmetic leaves 5.55E-17 (`=1E+15+0.3-1E+15` is 0 too,
+    /// `=1-(1-2^-49)` is not). Excel does it for the last operation of the
+    /// formula only: `=1*(0.5-0.4-0.1)` and `=SUM(0.1+0.2-0.3)` keep the
+    /// residue.
+    pub(crate) fn formula_sum(
+        &mut self,
+        kind: &OpSum,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let snap = |a: f64, sum: f64| {
+            if sum.abs() <= a.abs() * SUM_CANCELLATION_TOLERANCE {
+                0.0
+            } else {
+                sum
+            }
+        };
+        match kind {
+            OpSum::Add => self.handle_arithmetic(left, right, cell, &|a, b| Ok(snap(a, a + b))),
+            OpSum::Minus => self.handle_arithmetic(left, right, cell, &|a, b| Ok(snap(a, a - b))),
+        }
+    }
+
     /// Applies `op` element‐wise for arrays/numbers.
     pub(crate) fn handle_arithmetic(
         &mut self,
