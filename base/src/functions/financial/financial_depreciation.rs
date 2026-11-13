@@ -537,14 +537,15 @@ impl<'a> Model<'a> {
         if !(0..=4).contains(&basis) || basis == 2 {
             return CalcResult::new_error(Error::NUM, cell, "invalid basis".to_string());
         }
-        // Asset life must not fall in the [0, 3] or [4, 5) ranges. A life of exactly
-        // 5 years uses the "between 5 and 6 years" coefficient (2).
+        // Excel returns #NUM! for an asset life shorter than 3 years. Longer lives,
+        // including those between 4 and 5 years that the documentation lists as
+        // errors, are computed with the coefficient of the rounded-up life.
         let asset_life = 1.0 / rate;
-        if (0.0..=3.0).contains(&asset_life) || (4.0..5.0).contains(&asset_life) {
+        if asset_life < 3.0 {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "asset life cannot be in [0,3] or [4,5)".to_string(),
+                "asset life cannot be shorter than 3 years".to_string(),
             );
         }
         let date_purchased = match from_excel_date(date_purchased_serial) {
