@@ -20,19 +20,94 @@ use crate::{
 /// If you try to hide rows in a table with filtered rows they will behave as if filtered
 /// // Also subtotals ignore subtotals
 ///
-#[derive(PartialEq)]
+#[derive(Clone, Copy)]
 enum SubTotalMode {
     Full,
     SkipHidden,
+    /// AGGREGATE says in its second argument what it leaves out
+    Aggregate {
+        hidden: bool,
+        errors: bool,
+        nested: bool,
+    },
 }
 
-/// True if the formula holds a SUBTOTAL anywhere, as in `=SUBTOTAL(9,A1:A3)+1`
-/// or `=IF(B1,SUBTOTAL(9,A1:A3),0)`. Excel leaves such a cell out of another
-/// SUBTOTAL. It does not look into the formula of a defined name.
+impl SubTotalMode {
+    fn skips_row(self, status: &CellTableStatus) -> bool {
+        match self {
+            SubTotalMode::Full => *status == CellTableStatus::Filtered,
+            SubTotalMode::SkipHidden => *status != CellTableStatus::Normal,
+            SubTotalMode::Aggregate { hidden, .. } => hidden && *status != CellTableStatus::Normal,
+        }
+    }
+
+    fn skips_errors(self) -> bool {
+        matches!(self, SubTotalMode::Aggregate { errors: true, .. })
+    }
+
+    // SUBTOTAL always leaves out the cells that hold another SUBTOTAL or an AGGREGATE
+    fn skips_nested(self) -> bool {
+        !matches!(self, SubTotalMode::Aggregate { nested: false, .. })
+    }
+
+    // AGGREGATE takes references. For Excel a number or a calculation written
+    // as an argument is #VALUE!
+    fn takes_only_references(self) -> bool {
+        matches!(self, SubTotalMode::Aggregate { .. })
+    }
+}
+
+// A reference, or an error that the argument has of its own.
+fn is_reference(arg: &Node, value: &CalcResult) -> bool {
+    match value {
+        CalcResult::Range { .. } | CalcResult::Error { .. } => true,
+        CalcResult::Array(_) | CalcResult::Lambda(_) => false,
+        // the value of one cell
+        _ => may_give_a_cell(arg),
+    }
+}
+
+// INDEX, IF, CHOOSE, XLOOKUP and a defined name can stand for one cell. For Excel
+// that cell is a reference. Here they give its value, so this looks at what they
+// pick from: `IF(A1>0,B2)` can give a cell, `IF(A1>0,5)` cannot
+fn may_give_a_cell(node: &Node) -> bool {
+    match node {
+        Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::DefinedNameKind { .. } => true,
+        // OFFSET and INDIRECT
+        Node::FunctionKind { kind, .. } if kind.returns_reference() => true,
+        Node::FunctionKind {
+            kind: Function::Index,
+            args,
+        } => args.first().is_some_and(may_give_a_cell),
+        Node::FunctionKind {
+            kind: Function::If | Function::Choose,
+            args,
+        } => args.iter().skip(1).any(may_give_a_cell),
+        Node::FunctionKind {
+            kind: Function::Xlookup,
+            args,
+        } => args.get(2).is_some_and(may_give_a_cell),
+        _ => false,
+    }
+}
+
+fn not_a_reference(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "AGGREGATE takes references here, not values".to_string(),
+    )
+}
+
+/// True if the formula holds a SUBTOTAL or an AGGREGATE anywhere, as in
+/// `=SUBTOTAL(9,A1:A3)+1` or `=IF(B1,AGGREGATE(9,6,A1:A3),0)`. Excel leaves
+/// such a cell out of another SUBTOTAL, and out of an AGGREGATE whose option
+/// says so. It does not look into the formula of a defined name.
 fn holds_subtotal(node: &Node) -> bool {
     match node {
         Node::FunctionKind { kind, args } => {
-            *kind == Function::Subtotal || args.iter().any(holds_subtotal)
+            matches!(kind, Function::Subtotal | Function::Aggregate)
+                || args.iter().any(holds_subtotal)
         }
         Node::NamedFunctionKind { args, .. } => args.iter().any(holds_subtotal),
         Node::OpRangeKind { left, right }
@@ -146,11 +221,15 @@ impl<'a> Model<'a> {
                 Node::FunctionKind {
                     kind: Function::Subtotal,
                     args: _,
-                } => {
+                } if !mode.takes_only_references() => {
                     // skip
                 }
                 _ => {
-                    match self.evaluate_node_with_reference(arg, cell) {
+                    let value = self.evaluate_node_with_reference(arg, cell);
+                    if mode.takes_only_references() && !is_reference(arg, &value) {
+                        return Err(not_a_reference(cell));
+                    }
+                    match value {
                         CalcResult::String(_) | CalcResult::Boolean(_) => {
                             // Skip
                         }
@@ -178,16 +257,13 @@ impl<'a> Model<'a> {
                                     .map_err(|message| {
                                         CalcResult::new_error(Error::ERROR, cell, message)
                                     })?;
-                                if cell_status == CellTableStatus::Filtered {
-                                    continue;
-                                }
-                                if mode == SubTotalMode::SkipHidden
-                                    && cell_status == CellTableStatus::Hidden
-                                {
+                                if mode.skips_row(&cell_status) {
                                     continue;
                                 }
                                 for column in column1..=column2 {
-                                    if self.cell_is_subtotal(left.sheet, row, column) {
+                                    if mode.skips_nested()
+                                        && self.cell_is_subtotal(left.sheet, row, column)
+                                    {
                                         continue;
                                     }
                                     match self.evaluate_cell(CellReferenceIndex {
@@ -198,6 +274,7 @@ impl<'a> Model<'a> {
                                         CalcResult::Number(value) => {
                                             result.push(value);
                                         }
+                                        CalcResult::Error { .. } if mode.skips_errors() => {}
                                         error @ CalcResult::Error { .. } => return Err(error),
                                         _ => {
                                             // We ignore booleans and strings
@@ -206,6 +283,8 @@ impl<'a> Model<'a> {
                                 }
                             }
                         }
+                        // an empty cell that INDEX or IF gives to AGGREGATE is not a number
+                        CalcResult::EmptyCell if mode.takes_only_references() => {}
                         CalcResult::EmptyCell | CalcResult::EmptyArg => result.push(0.0),
                         CalcResult::Array(_) | CalcResult::Lambda(_) => {
                             return Err(CalcResult::Error {
@@ -256,6 +335,65 @@ impl<'a> Model<'a> {
                 Error::VALUE,
                 cell,
                 format!("Invalid value for SUBTOTAL: {value}"),
+            ),
+        }
+    }
+
+    /// `=AGGREGATE(function_num, options, ref1, [ref2], ...)`
+    ///
+    /// function_num 1 to 11 are the functions of SUBTOTAL, in the same order.
+    /// 12 to 19 (MEDIAN, MODE.SNGL, LARGE, SMALL, the percentiles and the
+    /// quartiles) are not implemented yet.
+    ///
+    /// options 0 to 3 leave out nested SUBTOTAL and AGGREGATE, 4 to 7 do not.
+    /// On top of that 1, 3, 5 and 7 leave out hidden rows,
+    /// and 2, 3, 6 and 7 leave out errors.
+    pub(crate) fn fn_aggregate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let function = match self.get_number(&args[0], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let options = match self.get_number(&args[1], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        if !(0..=7).contains(&options) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("Invalid options for AGGREGATE: {options}"),
+            );
+        }
+        let mode = SubTotalMode::Aggregate {
+            hidden: options & 1 != 0,
+            errors: options & 2 != 0,
+            nested: options & 4 == 0,
+        };
+        let args = &args[2..];
+        match function {
+            1 => self.subtotal_average(args, cell, mode),
+            2 => self.subtotal_count(args, cell, mode),
+            3 => self.subtotal_counta(args, cell, mode),
+            4 => self.subtotal_max(args, cell, mode),
+            5 => self.subtotal_min(args, cell, mode),
+            6 => self.subtotal_product(args, cell, mode),
+            7 => self.subtotal_stdevs(args, cell, mode),
+            8 => self.subtotal_stdevp(args, cell, mode),
+            9 => self.subtotal_sum(args, cell, mode),
+            10 => self.subtotal_vars(args, cell, mode),
+            11 => self.subtotal_varp(args, cell, mode),
+            12..=19 => CalcResult::new_error(
+                Error::NIMPL,
+                cell,
+                format!("AGGREGATE function {function} is not implemented yet"),
+            ),
+            _ => CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("Invalid function for AGGREGATE: {function}"),
             ),
         }
     }
@@ -398,11 +536,15 @@ impl<'a> Model<'a> {
                 Node::FunctionKind {
                     kind: Function::Subtotal,
                     args: _,
-                } => {
+                } if !mode.takes_only_references() => {
                     // skip
                 }
                 _ => {
-                    match self.evaluate_node_with_reference(arg, cell) {
+                    let value = self.evaluate_node_with_reference(arg, cell);
+                    if mode.takes_only_references() && !is_reference(arg, &value) {
+                        return not_a_reference(cell);
+                    }
+                    match value {
                         CalcResult::EmptyCell | CalcResult::EmptyArg => {
                             // skip
                         }
@@ -429,16 +571,13 @@ impl<'a> Model<'a> {
                                         return CalcResult::new_error(Error::ERROR, cell, message);
                                     }
                                 };
-                                if cell_status == CellTableStatus::Filtered {
-                                    continue;
-                                }
-                                if mode == SubTotalMode::SkipHidden
-                                    && cell_status == CellTableStatus::Hidden
-                                {
+                                if mode.skips_row(&cell_status) {
                                     continue;
                                 }
                                 for column in column1..=column2 {
-                                    if self.cell_is_subtotal(left.sheet, row, column) {
+                                    if mode.skips_nested()
+                                        && self.cell_is_subtotal(left.sheet, row, column)
+                                    {
                                         continue;
                                     }
                                     match self.evaluate_cell(CellReferenceIndex {
@@ -449,10 +588,15 @@ impl<'a> Model<'a> {
                                         CalcResult::EmptyCell | CalcResult::EmptyArg => {
                                             // skip
                                         }
+                                        CalcResult::Error { .. } if mode.skips_errors() => {}
                                         _ => counta += 1,
                                     }
                                 }
                             }
+                        }
+                        // for AGGREGATE an argument that is an error gives that error
+                        error @ CalcResult::Error { .. } if mode.takes_only_references() => {
+                            return error;
                         }
                         CalcResult::String(_)
                         | CalcResult::Number(_)
@@ -484,11 +628,15 @@ impl<'a> Model<'a> {
                 Node::FunctionKind {
                     kind: Function::Subtotal,
                     args: _,
-                } => {
+                } if !mode.takes_only_references() => {
                     // skip
                 }
                 _ => {
-                    match self.evaluate_node_with_reference(arg, cell) {
+                    let value = self.evaluate_node_with_reference(arg, cell);
+                    if mode.takes_only_references() && !is_reference(arg, &value) {
+                        return not_a_reference(cell);
+                    }
+                    match value {
                         CalcResult::Range { left, right } => {
                             if left.sheet != right.sheet {
                                 return CalcResult::new_error(
@@ -512,16 +660,13 @@ impl<'a> Model<'a> {
                                         return CalcResult::new_error(Error::ERROR, cell, message);
                                     }
                                 };
-                                if cell_status == CellTableStatus::Filtered {
-                                    continue;
-                                }
-                                if mode == SubTotalMode::SkipHidden
-                                    && cell_status == CellTableStatus::Hidden
-                                {
+                                if mode.skips_row(&cell_status) {
                                     continue;
                                 }
                                 for column in column1..=column2 {
-                                    if self.cell_is_subtotal(left.sheet, row, column) {
+                                    if mode.skips_nested()
+                                        && self.cell_is_subtotal(left.sheet, row, column)
+                                    {
                                         continue;
                                     }
                                     if let CalcResult::Number(_) =
@@ -535,6 +680,10 @@ impl<'a> Model<'a> {
                                     }
                                 }
                             }
+                        }
+                        // for AGGREGATE an argument that is an error gives that error
+                        error @ CalcResult::Error { .. } if mode.takes_only_references() => {
+                            return error;
                         }
                         // This hasn't been tested
                         CalcResult::Number(_) => count += 1,
