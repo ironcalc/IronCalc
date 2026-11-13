@@ -116,3 +116,25 @@ fn qualified_reference_followed_by_an_invalid_name_is_illegal() {
     let mut lx = new_lexer(&formula, true);
     assert!(matches!(lx.next_token(), Illegal(_)));
 }
+
+// Like Excel, `?` can appear in a name after its first character (#1632)
+#[test]
+fn identifier_with_question_mark() {
+    for a1_mode in [true, false] {
+        let mut lx = new_lexer("Rate?*a.b?c", a1_mode);
+        assert_eq!(lx.next_token(), Ident("Rate?".to_string()));
+        lx.next_token();
+        assert_eq!(lx.next_token(), Ident("a.b?c".to_string()));
+        assert_eq!(lx.next_token(), EOF);
+
+        let mut lx = new_lexer("Data!Rate?", a1_mode);
+        assert_eq!(
+            lx.next_token(),
+            QualifiedIdent {
+                sheet: "Data".to_string(),
+                name: "Rate?".to_string()
+            }
+        );
+        assert_eq!(lx.next_token(), EOF);
+    }
+}
