@@ -1,9 +1,6 @@
 use chrono::Datelike;
 
-use crate::{
-    locale::Locale,
-    number_format::{parse_finite_number, to_precision},
-};
+use crate::{locale::Locale, number_format::parse_finite_number};
 
 use super::{
     dates::{date_to_serial_number, from_excel_date},
@@ -16,30 +13,112 @@ pub struct Formatted {
     pub error: Option<String>,
 }
 
-/// Returns the vector of chars of the fractional part of a *positive* number:
-/// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
-fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
-    let b = format!("{:.1$}", value.fract(), precision as usize)
-        .chars()
-        .collect::<Vec<char>>();
-    let l = b.len() - 1;
-    let mut last_non_zero = b.len() - 1;
-    for i in 0..l {
-        if b[l - i] != '0' {
-            last_non_zero = l - i + 1;
-            break;
+/// The absolute value of a number as Excel shows it.
+///
+/// Excel keeps 15 significant digits of a number, and when it shows the number
+/// it rounds that decimal half away from zero, not the binary number underneath:
+/// 1.005 is 1.00499999999999989... in binary, but its 15 digits are
+/// 1.00500000000000, so "0.00" shows 1.01.
+///
+/// The number is 0.d1d2d3... × 10^point: `digits` are d1, d2, d3, ... without
+/// trailing zeros, and empty for zero. 1.25 is [1, 2, 5] with point 1 and
+/// 0.0125 is [1, 2, 5] with point -1.
+struct Digits {
+    digits: Vec<u8>,
+    point: i32,
+}
+
+impl Digits {
+    fn new(value: f64) -> Digits {
+        let value = value.abs();
+        if value == 0.0 || !value.is_finite() {
+            return Digits {
+                digits: vec![],
+                point: 0,
+            };
+        }
+        // 15 significant digits: "1.23450000000000e4"
+        let formatted = format!("{value:.14e}");
+        let (mantissa, exponent) = formatted.split_once('e').unwrap_or((&formatted, "0"));
+        let mut digits: Vec<u8> = mantissa
+            .bytes()
+            .filter(u8::is_ascii_digit)
+            .map(|c| c - b'0')
+            .collect();
+        while digits.last() == Some(&0) {
+            digits.pop();
+        }
+        Digits {
+            digits,
+            point: exponent.parse::<i32>().unwrap_or(0) + 1,
         }
     }
-    if last_non_zero < 2 {
-        return vec![];
+
+    fn is_zero(&self) -> bool {
+        self.digits.is_empty()
     }
-    let max_len = if int_len > 15 {
-        2_usize
-    } else {
-        15_usize - int_len + 1
-    };
-    let last_non_zero = usize::min(last_non_zero, max_len + 1);
-    b[2..last_non_zero].to_vec()
+
+    /// Multiplies the number by 10^n
+    fn shift(&mut self, n: i32) {
+        if !self.is_zero() {
+            self.point += n;
+        }
+    }
+
+    /// Rounds the number to `decimals` digits after the decimal point, half away from zero
+    fn round(&mut self, decimals: i32) {
+        let keep = self.point + decimals;
+        if keep >= self.digits.len() as i32 {
+            return;
+        }
+        // The first digit that goes is digits[keep], or a zero before d1
+        let round_up = keep >= 0 && self.digits[keep as usize] >= 5;
+        self.digits.truncate(keep.max(0) as usize);
+        if round_up {
+            let mut carry = true;
+            for digit in self.digits.iter_mut().rev() {
+                if *digit == 9 {
+                    *digit = 0;
+                } else {
+                    *digit += 1;
+                    carry = false;
+                    break;
+                }
+            }
+            if carry {
+                // 0.96 to 1.0
+                self.digits.insert(0, 1);
+                self.point += 1;
+            }
+        }
+        while self.digits.last() == Some(&0) {
+            self.digits.pop();
+        }
+        if self.is_zero() {
+            self.point = 0;
+        }
+    }
+
+    /// The digits before the decimal point, none if it is zero: 1234.5 is ['1', '2', '3', '4']
+    fn integer_part(&self) -> Vec<char> {
+        (0..self.point).map(|i| self.digit(i)).collect()
+    }
+
+    /// The digits after the decimal point, without trailing zeros: 3.05 is ['0', '5']
+    fn fractional_part(&self) -> Vec<char> {
+        (self.point..self.digits.len() as i32)
+            .map(|i| self.digit(i))
+            .collect()
+    }
+
+    fn digit(&self, index: i32) -> char {
+        let digit = if index < 0 {
+            0
+        } else {
+            self.digits.get(index as usize).copied().unwrap_or(0)
+        };
+        char::from(b'0' + digit)
+    }
 }
 
 /// Return true if we need to add a separator in position digit_index
@@ -127,10 +206,21 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::General(..) => {
             // FIXME: This is "General formatting"
             // We should have different codepaths for general formatting and errors
-            let value_abs = value.abs();
-            if (1.0e-8..1.0e+11).contains(&value_abs) {
-                let mut text = format!("{value:.9}");
-                text = text.trim_end_matches('0').trim_end_matches('.').to_string();
+            let mut number = Digits::new(value);
+            let sign = if value < 0.0 { "-" } else { "" };
+            // 1e-8 <= |value| < 1e11
+            if (-7..=11).contains(&number.point) && !number.is_zero() {
+                number.round(9);
+                let mut int_part: String = number.integer_part().into_iter().collect();
+                if int_part.is_empty() {
+                    int_part = "0".to_string();
+                }
+                let fract_part: String = number.fractional_part().into_iter().collect();
+                let mut text = if fract_part.is_empty() {
+                    format!("{sign}{int_part}")
+                } else {
+                    format!("{sign}{int_part}.{fract_part}")
+                };
                 if locale.numbers.symbols.decimal != "." {
                     text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
                 }
@@ -140,23 +230,25 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     error: None,
                 }
             } else {
-                if value_abs == 0.0 {
+                if number.is_zero() {
                     return Formatted {
                         text: "0".to_string(),
                         color: None,
                         error: None,
                     };
                 }
-                let exponent = value_abs.log10().floor();
-                value /= 10.0_f64.powf(exponent);
-                let sign = if exponent < 0.0 { '-' } else { '+' };
-                let s = format!("{value:.5}");
-                let mut text = format!(
-                    "{}E{}{:02}",
-                    s.trim_end_matches('0').trim_end_matches('.'),
-                    sign,
-                    exponent.abs()
-                );
+                // Six significant digits
+                number.round(6 - number.point);
+                let exponent = number.point - 1;
+                number.shift(-exponent);
+                let exponent_sign = if exponent < 0 { '-' } else { '+' };
+                let fract_part: String = number.fractional_part().into_iter().collect();
+                let mantissa = if fract_part.is_empty() {
+                    format!("{}", number.digit(0))
+                } else {
+                    format!("{}.{fract_part}", number.digit(0))
+                };
+                let mut text = format!("{sign}{mantissa}E{exponent_sign}{:02}", exponent.abs());
                 if locale.numbers.symbols.decimal != "." {
                     text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
                 }
@@ -436,39 +528,31 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                 text = format!("{c}");
             }
             let tokens = &p.tokens;
-            value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
-            // p.precision is the number of significant digits _after_ the decimal point
-            value = to_precision(
-                value,
-                (p.precision as usize) + format!("{}", value.abs().floor()).len(),
-            );
-            let mut value_abs = value.abs();
+            // Each % multiplies the number by 100 and each trailing comma divides it by 1000
+            let mut number = Digits::new(value);
+            number.shift(2 * p.percent - 3 * p.comma);
             let mut exponent_part: Vec<char> = vec![];
-            let mut exponent_is_negative = value_abs < 10.0;
+            let mut exponent_is_negative = false;
             if p.is_scientific {
-                if value_abs == 0.0 {
+                if number.is_zero() {
                     exponent_part = vec!['0'];
-                    exponent_is_negative = false;
                 } else {
                     // TODO: Implement engineering formatting.
-                    let exponent = value_abs.log10().floor();
+                    // One digit before the decimal point: the mantissa rounds to
+                    // p.precision decimals, and rounding up can change the exponent
+                    number.round(p.precision + 1 - number.point);
+                    let exponent = number.point - 1;
+                    number.shift(-exponent);
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
-                    value /= 10.0_f64.powf(exponent);
-                    value = to_precision(value, 15);
-                    value_abs = value.abs();
+                    exponent_is_negative = exponent < 0;
                 }
+            } else {
+                // p.precision is the number of digits _after_ the decimal point
+                number.round(p.precision);
             }
             let l_exp = exponent_part.len() as i32;
-            let int_number = if p.precision == 0 {
-                value_abs.round()
-            } else {
-                value_abs.floor()
-            };
-            let mut int_part: Vec<char> = format!("{}", int_number).chars().collect();
-            if int_number as i64 == 0 {
-                int_part = vec![];
-            }
-            let fract_part = get_fract_part(value_abs, p.precision, int_part.len());
+            let int_part = number.integer_part();
+            let fract_part = number.fractional_part();
             // ln is the number of digits of the integer part of the value
             let ln = int_part.len() as i32;
             // digit count is the number of digit tokens ('0', '?' and '#') to the left of the decimal point
@@ -480,8 +564,8 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let group_sizes = locale.numbers.decimal_formats.standard.to_owned();
             let group_separator = symbols.group.to_owned();
             let decimal_separator = symbols.decimal.to_owned();
-            // There probably are better ways to check if a number at a given precision is negative :/
-            let is_negative = value < -(10.0_f64.powf(-(p.precision as f64)));
+            // A negative number that rounds to zero shows no sign
+            let is_negative = value < 0.0 && !number.is_zero();
             let mut needs_period = false;
 
             for token in tokens {

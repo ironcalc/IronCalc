@@ -206,10 +206,9 @@ fn format_scientific() {
     assert_eq!(r3.text, "1.E+03");
 }
 
-// skip test: Wrong rounding
+// 1.2345 rounds half away from zero
 #[test]
-#[ignore]
-fn format_scientific_failing() {
+fn format_scientific_half() {
     let locale = get_default_locale();
     let r1 = format_number(12_345.0, "0.###E+00", locale);
 
