@@ -340,29 +340,19 @@
       "sheet_label": "Sheet",
       "title": "Focus on sheet when open"
     },
-    "language": {
-      "display_language": {
-        "de": "Deutsch",
-        "en": "English",
-        "es": "Español",
-        "fr": "Français",
-        "it": "Italiano"
-      }
-    },
     "locale": {
       "delimiter_comma": "Comma",
       "delimiter_semicolon": "Semicolon",
       "locale_example1": "Number",
       "locale_example2": "Date and Time",
       "locale_example3": "Formula delimiter",
-      "locale_label": "Locale",
-      "title": "Locale"
+      "locale_label": "Locale"
     },
     "open_settings": "Open settings",
+    "regional_title": "Regional settings",
     "timezone": {
       "timezone_helper": "Modifying this setting will impact date- and time-related functions, including TODAY() and NOW().",
-      "timezone_label": "Timezone",
-      "title": "Timezone"
+      "timezone_label": "Timezone"
     },
     "title": "Settings"
   },

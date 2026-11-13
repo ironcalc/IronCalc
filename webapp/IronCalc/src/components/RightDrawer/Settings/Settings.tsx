@@ -108,7 +108,7 @@ const localeFormatExamples: Record<
   },
 };
 
-export const getLocaleDisplayName = (locale: string): string => {
+const getLocaleDisplayName = (locale: string): string => {
   return localeDisplayNames[locale] ?? locale;
 };
 
@@ -212,7 +212,7 @@ const Settings = (properties: SettingsProps) => {
       <div className="ic-settings-content">
         <div className="ic-settings-section">
           <div className="ic-settings-section-title">
-            {t("settings.locale.title")}
+            {t("settings.regional_title")}
           </div>
           <div className="ic-settings-field-wrapper">
             <Select
@@ -257,11 +257,6 @@ const Settings = (properties: SettingsProps) => {
                 </span>
               </div>
             </div>
-          </div>
-        </div>
-        <div className="ic-settings-section">
-          <div className="ic-settings-section-title">
-            {t("settings.timezone.title")}
           </div>
           <div className="ic-settings-field-wrapper">
             <Select
