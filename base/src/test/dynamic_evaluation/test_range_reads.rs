@@ -132,6 +132,47 @@ fn a_whole_column_read_records_one_rectangle() {
     assert_eq!(range.row2, crate::constants::LAST_ROW);
 }
 
+// SUBTOTAL reads the cells in three places of its own: for the numbers, for
+// COUNT and for COUNTA. Each clips, down and across, to the used area of the
+// sheet that it reads: it visits the cells of that area and records one
+// rectangle for the rest.
+#[test]
+fn a_subtotal_over_a_whole_column_or_row_records_one_rectangle() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    // The used area of Sheet2 goes further down than that of Sheet1.
+    model._set("Sheet2!D5", "1");
+    model._set("Sheet2!D6", "2");
+    model._set("Sheet2!D7", "x");
+    for (row, function) in [(1, 9), (2, 2), (3, 3)] {
+        model._set(
+            &format!("A{row}"),
+            &format!("=SUBTOTAL({function},Sheet2!D:D)"),
+        );
+        model._set(
+            &format!("B{row}"),
+            &format!("=SUBTOTAL({function},Sheet2!6:6)"),
+        );
+    }
+    // As above: reads are kept only when there is a dynamic anchor.
+    model._set("F1", "=SEQUENCE(1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("A3"), "3");
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("B2"), "1");
+    assert_eq!(model._get_text("B3"), "1");
+    // the empty cells that were visited: D1:D4 and A6:C6
+    assert_eq!(
+        model.evaluation.seen.len(),
+        7,
+        "{:?}",
+        model.evaluation.seen
+    );
+    assert_eq!(model.evaluation.seen_ranges.len(), 6);
+}
+
 // XLOOKUP clips its whole-column arrays like the others; it has no test
 // file of its own, so its case lives here. The other clipped functions are
 // tested the same way in their own files.

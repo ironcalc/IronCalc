@@ -134,11 +134,20 @@ impl<'a> Model<'a> {
                                     "Ranges are in different sheets".to_string(),
                                 ));
                             }
-                            // We are not expecting subtotal to have open ranges
                             let row1 = left.row;
-                            let row2 = right.row;
+                            let mut row2 = right.row;
                             let column1 = left.column;
-                            let column2 = right.column;
+                            let mut column2 = right.column;
+
+                            match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
+                                Ok((r, c)) => {
+                                    row2 = r;
+                                    column2 = c;
+                                }
+                                Err(message) => {
+                                    return Err(CalcResult::new_error(Error::ERROR, cell, message))
+                                }
+                            }
 
                             for row in row1..=row2 {
                                 let cell_status = self
@@ -382,11 +391,20 @@ impl<'a> Model<'a> {
                                     "Ranges are in different sheets".to_string(),
                                 );
                             }
-                            // We are not expecting subtotal to have open ranges
                             let row1 = left.row;
-                            let row2 = right.row;
+                            let mut row2 = right.row;
                             let column1 = left.column;
-                            let column2 = right.column;
+                            let mut column2 = right.column;
+
+                            match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
+                                Ok((r, c)) => {
+                                    row2 = r;
+                                    column2 = c;
+                                }
+                                Err(message) => {
+                                    return CalcResult::new_error(Error::ERROR, cell, message)
+                                }
+                            }
 
                             for row in row1..=row2 {
                                 let cell_status = match self
@@ -465,11 +483,20 @@ impl<'a> Model<'a> {
                                     "Ranges are in different sheets".to_string(),
                                 );
                             }
-                            // We are not expecting subtotal to have open ranges
                             let row1 = left.row;
-                            let row2 = right.row;
+                            let mut row2 = right.row;
                             let column1 = left.column;
-                            let column2 = right.column;
+                            let mut column2 = right.column;
+
+                            match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
+                                Ok((r, c)) => {
+                                    row2 = r;
+                                    column2 = c;
+                                }
+                                Err(message) => {
+                                    return CalcResult::new_error(Error::ERROR, cell, message)
+                                }
+                            }
 
                             for row in row1..=row2 {
                                 let cell_status = match self
