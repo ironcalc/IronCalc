@@ -95,3 +95,15 @@ fn test_wraprows_2d_input_error() {
     model.evaluate();
     assert_eq!(model._get_text("D1"), "#VALUE!");
 }
+
+// "Excel returns a #NUM! when wrap_count is less than 1."
+// Expected values captured from Excel for Mac 16.113.3 (en-US).
+#[test]
+fn test_wrap_count_below_one_is_num() {
+    let mut model = new_empty_model();
+    model._set("A1", "=WRAPCOLS({1,2,3}, 0)");
+    model._set("A3", "=WRAPROWS({1,2,3}, 0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+}

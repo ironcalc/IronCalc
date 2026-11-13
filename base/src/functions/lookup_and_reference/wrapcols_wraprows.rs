@@ -32,11 +32,7 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
         if wrap_count < 1 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "wrap_count must be >= 1".to_string(),
-            );
+            return CalcResult::new_error(Error::NUM, cell, "wrap_count must be >= 1".to_string());
         }
 
         let pad = match self.get_pad_with(args, cell) {
@@ -84,11 +80,7 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
         if wrap_count < 1 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "wrap_count must be >= 1".to_string(),
-            );
+            return CalcResult::new_error(Error::NUM, cell, "wrap_count must be >= 1".to_string());
         }
 
         let pad = match self.get_pad_with(args, cell) {
