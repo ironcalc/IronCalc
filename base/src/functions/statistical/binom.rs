@@ -205,7 +205,8 @@ impl<'a> Model<'a> {
         if trials < 0.0
             || trials > u64::MAX as f64
             || p.is_nan()
-            || !(0.0..1.0).contains(&p)
+            || p <= 0.0
+            || p >= 1.0
             || alpha.is_nan()
             || alpha <= 0.0
             || alpha >= 1.0
