@@ -870,6 +870,15 @@ impl<'a> Model<'a> {
                 message: "argument must be 0 or 1".to_string(),
             };
         };
+        if delimiter.is_empty() {
+            // An empty delimiter matches immediately: at the start of the text when
+            // searching from the front and at the end when searching from the back.
+            return if instance_num > 0 {
+                CalcResult::String(text)
+            } else {
+                CalcResult::String("".to_string())
+            };
+        }
         match text_after(&text, &delimiter, instance_num, match_mode) {
             Some(s) => CalcResult::String(s),
             None => {
@@ -975,6 +984,15 @@ impl<'a> Model<'a> {
                 message: "argument must be 0 or 1".to_string(),
             };
         };
+        if delimiter.is_empty() {
+            // An empty delimiter matches immediately: at the start of the text when
+            // searching from the front and at the end when searching from the back.
+            return if instance_num > 0 {
+                CalcResult::String("".to_string())
+            } else {
+                CalcResult::String(text)
+            };
+        }
         match text_before(&text, &delimiter, instance_num, match_mode) {
             Some(s) => CalcResult::String(s),
             None => {
