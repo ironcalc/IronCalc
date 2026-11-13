@@ -139,3 +139,29 @@ fn fn_forecast_ets_family_not_implemented() {
     assert_eq!(model._get_text("A3"), *"#N/IMPL!");
     assert_eq!(model._get_text("A4"), *"#N/IMPL!");
 }
+
+// A rate of 0.2 is an asset life of exactly 5 years, which uses the
+// "Between 5 and 6 years" coefficient of 2.
+// Expected values captured from Excel for Mac 16.114.1 (en-US).
+#[test]
+fn fn_amordegrc_life_of_five_years() {
+    let mut model = new_empty_model();
+    model._set("A1", "=AMORDEGRC(10000,43831,44196,1000,0,0.2,4)");
+    model._set("A2", "=AMORDEGRC(10000,43831,44196,1000,1,0.2,4)");
+    model._set("A3", "=AMORDEGRC(10000,43831,44196,1000,2,0.2,4)");
+    model._set("A4", "=AMORDEGRC(10000,43831,44196,1000,3,0.2,4)");
+    model._set("A5", "=AMORDEGRC(10000,43831,44196,1000,4,0.2,4)");
+    model._set("A6", "=AMORDEGRC(10000,43831,44196,1000,0,0.2,2)");
+    model._set("A7", "=AMORDEGRC(10000,43831,44196,1000.00,0,0.5,0)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"3989");
+    assert_eq!(model._get_text("A2"), *"2404");
+    assert_eq!(model._get_text("A3"), *"1443");
+    assert_eq!(model._get_text("A4"), *"1082");
+    assert_eq!(model._get_text("A5"), *"1082");
+    // basis 2 is not valid for AMORDEGRC
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+    // an asset life of 2 years is rejected
+    assert_eq!(model._get_text("A7"), *"#NUM!");
+}
