@@ -462,3 +462,33 @@ fn computed_database_and_criteria_references() {
     assert_eq!(model._get_text("D2"), *"2");
     assert_eq!(model._get_text("D3"), *"2100");
 }
+
+// "You can use any range for the criteria argument, as long as it includes at least one
+// column label and at least one cell below the column label for specifying the condition."
+// Expected values captured from Excel for Mac 16.113.3 (en-US).
+#[test]
+fn criteria_with_labels_only() {
+    let mut model = new_empty_model();
+    let data = [
+        ["Fruit", "Region", "Sales"],
+        ["Apple", "East", "100"],
+        ["Apple", "West", "200"],
+        ["Pear", "East", "50"],
+        ["Banana", "West", "300"],
+    ];
+    for (row, values) in data.iter().enumerate() {
+        for (column, value) in ["A", "B", "C"].iter().zip(values) {
+            model._set(&format!("{column}{}", row + 1), value);
+        }
+    }
+    model._set("E1", "Fruit");
+
+    model._set("G1", "=DCOUNT(A1:C5, \"Sales\", E1:E1)");
+    model._set("G2", "=DCOUNTA(A1:C5, \"Sales\", E1:E1)");
+    model._set("G3", "=DSUM(A1:C5, \"Sales\", E1:E1)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("G1"), *"#VALUE!");
+    assert_eq!(model._get_text("G2"), *"#VALUE!");
+    assert_eq!(model._get_text("G3"), *"#VALUE!");
+}
