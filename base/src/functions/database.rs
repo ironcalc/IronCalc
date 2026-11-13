@@ -24,8 +24,8 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
+        let criteria = match self.get_db_criteria(&args[2], cell) {
+            Ok(c) => c,
             Err(e) => return e,
         };
 
@@ -87,8 +87,8 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
+        let criteria = match self.get_db_criteria(&args[2], cell) {
+            Ok(c) => c,
             Err(e) => return e,
         };
 
@@ -137,8 +137,8 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
+        let criteria = match self.get_db_criteria(&args[2], cell) {
+            Ok(c) => c,
             Err(e) => return e,
         };
 
@@ -210,8 +210,8 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
+        let criteria = match self.get_db_criteria(&args[2], cell) {
+            Ok(c) => c,
             Err(e) => return e,
         };
 
@@ -264,8 +264,8 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
+        let criteria = match self.get_db_criteria(&args[2], cell) {
+            Ok(c) => c,
             Err(e) => return e,
         };
 
@@ -311,8 +311,8 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
+        let criteria = match self.get_db_criteria(&args[2], cell) {
+            Ok(c) => c,
             Err(e) => return e,
         };
 
@@ -373,10 +373,7 @@ impl<'a> Model<'a> {
 
         let field_col = self.resolve_db_field_column(db_left, db_right, &args[1], cell)?;
 
-        let criteria = {
-            let r = self.get_reference(&args[2], cell)?;
-            (r.left, r.right)
-        };
+        let criteria = self.get_db_criteria(&args[2], cell)?;
 
         if db_right.row <= db_left.row {
             // no data rows
@@ -597,6 +594,24 @@ impl<'a> Model<'a> {
             origin: cell,
             message: "Field header not found".to_string(),
         })
+    }
+
+    /// Reads the criteria range of a database function. It must hold the column labels
+    /// and at least one row of conditions below them, otherwise the result is #VALUE!.
+    fn get_db_criteria(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(CellReferenceIndex, CellReferenceIndex), CalcResult> {
+        let r = self.get_reference(node, cell)?;
+        if r.right.row <= r.left.row {
+            return Err(CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Criteria range has no rows below the labels".to_string(),
+            });
+        }
+        Ok((r.left, r.right))
     }
 
     /// Check whether a database row matches the criteria range.
@@ -874,8 +889,8 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
+        let criteria = match self.get_db_criteria(&args[2], cell) {
+            Ok(c) => c,
             Err(e) => return e,
         };
 
