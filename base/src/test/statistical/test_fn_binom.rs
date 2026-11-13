@@ -190,3 +190,21 @@ fn test_booleans() {
     assert_eq!(model._get_text("A3"), *"1");
     assert_eq!(model._get_text("A4"), *"0.7");
 }
+
+// "If probability_s is <= 0 or probability_s => 1, BINOM.INV returns the #NUM! error value."
+// Expected values captured from Excel for Mac 16.113.4 and 16.114.1 (en-US).
+#[test]
+fn test_fn_binom_inv_probability_bounds() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BINOM.INV(10,0,0.8)");
+    model._set("A2", "=BINOM.INV(10,B1,0.8)");
+    model._set("A3", "=BINOM.INV(10,,0.8)");
+    model._set("A4", "=BINOM.INV(10,0,0.5)");
+    model._set("A5", "=BINOM.INV(10,,0.5)");
+    model._set("A6", "=BINOM.INV(10,1,0.8)");
+    model.evaluate();
+
+    for cell in ["A1", "A2", "A3", "A4", "A5", "A6"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+}
