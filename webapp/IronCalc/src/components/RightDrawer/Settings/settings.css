@@ -115,6 +115,14 @@
   font-weight: 600;
 }
 
+.ic-settings-description {
+  margin: -4px 0 0;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  line-height: 1.4;
+  color: var(--palette-grey-500);
+}
+
 .ic-settings-fields {
   display: flex;
   flex-direction: column;

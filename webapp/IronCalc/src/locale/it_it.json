@@ -335,10 +335,10 @@
   "settings": {
     "focus_on_open": {
       "cell_label": "Cella",
-      "helper": "La cartella di lavoro si apre su questo foglio e questa cella. Viene salvato anche nell'esportazione in Excel.",
+      "helper": "Scegli il foglio e la cella su cui si apre questa cartella di lavoro.",
       "invalid_cell": "Riferimento di cella non valido",
       "sheet_label": "Foglio",
-      "title": "Mostra un foglio all'apertura"
+      "title": "Apri su una cella specifica"
     },
     "locale": {
       "delimiter_comma": "Virgola",
