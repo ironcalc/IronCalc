@@ -287,7 +287,9 @@ fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &str) -> bool
             }
             false
         }
-        _ => false,
+        // A number, a boolean, an error or an empty cell is not equal to any
+        // string, as in the other result_is_not_equal_to_* functions.
+        _ => true,
     }
 }
 
