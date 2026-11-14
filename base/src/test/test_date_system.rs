@@ -185,8 +185,8 @@ fn ironcalc_system_typed_dates_before_the_epoch() {
 }
 
 // ---------------------------------------------------------------------------
-// Excel 1900 date system: the two months before 1900-03-01 follow Excel where
-// an explicit year/month/day is given and are #N/IMPL! otherwise
+// Excel 1900 date system: the two months before 1900-03-01 follow Excel's
+// calendar, with its "0 January" and "29 February" 1900
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -409,4 +409,113 @@ fn excel_1904_system_calendar() {
     assert_eq!(model._get_text("C6"), "-6:00");
     assert_eq!(model._get_text("C7"), "6");
     assert_eq!(model._get_text("C8"), "#NUM!");
+}
+
+// ---------------------------------------------------------------------------
+// Financial functions around January and February 1900. The expected values
+// were computed by Excel (xlsx/tests/calc_tests/FINANCIAL/FINANCIAL_around_1900.xlsx)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn excel_1900_system_coupon_functions() {
+    let mut model = new_empty_model_excel_1900();
+    // 7 August 1900 pays coupons on 7 February 1900 (serial 38) and, before
+    // 1900, on 7 August 1899
+    model._set("A1", "=COUPPCD(100,220,2)");
+    model._set("A2", "=COUPPCD(30,220,2)"); // before 1900: reported as 0
+    model._set("A3", "=COUPNCD(30,220,2)");
+    model._set("A4", "=COUPNUM(30,220,2)"); // before 1900: an error
+    model._set("A5", "=COUPNUM(70,220,2)");
+    model._set("A6", "=COUPDAYBS(30,220,2,1)"); // counted from serial 0
+    model._set("A7", "=COUPDAYS(30,220,2,1)"); // 7 August 1899 to 7 February 1900
+    model._set("A8", "=COUPDAYSNC(30,220,2,0)");
+    // 28 February 1901 is a month end, so its coupons are month ends too; but
+    // 28 February 1900 (serial 59) is not one in Excel's calendar, where the
+    // month has 29 days, so COUPDAYS steps back to 28 August 1899, not the 31st
+    model._set("B1", "=COUPNCD(30,425,2)");
+    model._set("B2", "=COUPDAYS(30,425,2,1)");
+    model._set("B3", "=COUPDAYS(30,425,4,1)");
+    model._set("B4", "=COUPDAYSNC(30,425,2,0)");
+    model._set("B5", "=COUPDAYS(60,425,2,1)");
+    model.evaluate();
+
+    assert_eq!(raw(&model, "A1"), "38");
+    assert_eq!(raw(&model, "A2"), "0");
+    assert_eq!(raw(&model, "A3"), "38");
+    assert_eq!(model._get_text("A4"), "#NUM!");
+    assert_eq!(raw(&model, "A5"), "1");
+    assert_eq!(raw(&model, "A6"), "30");
+    assert_eq!(raw(&model, "A7"), "184");
+    assert_eq!(raw(&model, "A8"), "7");
+    assert_eq!(raw(&model, "B1"), "59");
+    assert_eq!(raw(&model, "B2"), "184");
+    assert_eq!(raw(&model, "B3"), "92");
+    assert_eq!(raw(&model, "B4"), "30");
+    assert_eq!(raw(&model, "B5"), "182");
+}
+
+#[test]
+fn excel_1900_system_bond_functions() {
+    let mut model = new_empty_model_excel_1900();
+    // A coupon date before 1900 is an error
+    model._set("A1", "=PRICE(30,220,0.05,0.06,100,2)");
+    model._set("A2", "=DURATION(1,1100,0.05,0.06,2)");
+    model._set("A3", "=ACCRINT(10,40,50,0.1,1000,2)");
+    model._set("A4", "=ODDLPRICE(100,220,30,0.05,0.06,100,2,0)");
+    // Dates from January 1900 on are fine
+    model._set("B1", "=ROUND(DURATION(60,425,0.05,0.06,2,0),9)");
+    model._set("B2", "=ROUND(ACCRINT(61,425,300,0.1,1000,2,2),6)");
+    model._set("B3", "=ROUND(ODDLPRICE(61,220,59,0.05,0.06,100,2,0),6)");
+    model._set("B4", "=ROUND(ODDLPRICE(150,425,60,0.05,0.06,100,2,1),6)");
+    // The first coupon must be on the coupon schedule of the maturity
+    model._set("C1", "=ODDFPRICE(100,790,30,220,0.05,0.06,100,2,0)");
+    model._set("C2", "=ODDFYIELD(70,790,60,220,0.05,97,100,2,1)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+    assert_eq!(model._get_text("A4"), "#NUM!");
+    assert_eq!(raw(&model, "B1"), "0.990524625");
+    assert_eq!(raw(&model, "B2"), "66.388889");
+    assert_eq!(raw(&model, "B3"), "99.572664");
+    assert_eq!(raw(&model, "B4"), "99.226358");
+    assert_eq!(model._get_text("C1"), "#NUM!");
+    assert_eq!(model._get_text("C2"), "#NUM!");
+}
+
+#[test]
+fn excel_1900_system_depreciation_functions() {
+    let mut model = new_empty_model_excel_1900();
+    model._set("A1", "=AMORDEGRC(1000,10,40,100,0,0.2,0)");
+    model._set("A2", "=AMORDEGRC(1000,59,120,100,1,0.2,1)");
+    model._set("A3", "=ROUND(AMORLINC(1000,0,60,100,0,0.2,1),6)");
+    model._set("A4", "=ROUND(AMORLINC(1000,60,120,100,0,0.2,0),6)");
+    model._set("A5", "=AMORLINC(1000,20,50,1000,1,0.2)");
+    model.evaluate();
+
+    assert_eq!(raw(&model, "A1"), "32");
+    assert_eq!(raw(&model, "A2"), "373");
+    assert_eq!(raw(&model, "A3"), "32.876712");
+    assert_eq!(raw(&model, "A4"), "33.333333");
+    assert_eq!(raw(&model, "A5"), "0");
+}
+
+// In the IronCalc system every serial is a date, so coupon schedules reach
+// back before 1900 without clamping or errors
+#[test]
+fn ironcalc_system_coupon_schedule_before_1900() {
+    let mut model = new_empty_model();
+    model._set("A1", "=COUPPCD(30,220,2)"); // 7 August 1899
+    model._set("A2", "=COUPNUM(30,220,2)");
+    model._set("A3", "=COUPDAYBS(30,220,2,1)");
+    model._set("A4", "=COUPDAYS(30,220,2,1)");
+    model._set("A5", "=TEXT(A1,\"yyyy-mm-dd\")");
+    model.evaluate();
+
+    assert_eq!(raw(&model, "A1"), "-145");
+    assert_eq!(raw(&model, "A2"), "2");
+    assert_eq!(raw(&model, "A3"), "175");
+    assert_eq!(raw(&model, "A4"), "184");
+    assert_eq!(model._get_text("A5"), "1899-08-07");
 }

@@ -5,7 +5,7 @@ use crate::{
 };
 
 use super::{
-    dates::{calendar_year, serial_to_weekday, serial_to_ymd, ymd_to_serial, DateError},
+    dates::{calendar_year, serial_to_weekday, serial_to_ymd, ymd_to_serial},
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -189,22 +189,12 @@ pub fn format_number(
             let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
             let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
             let serial = value.floor() as i64;
-            let (date, date_error) = match serial_to_ymd(serial, date_system) {
-                Ok(ymd) => (Some(ymd), None),
-                Err(e) => (None, Some(e)),
-            };
+            let date = serial_to_ymd(serial, date_system).ok();
             let weekday = serial_to_weekday(serial, date_system).ok();
-            let invalid_date = |value: f64| match date_error {
-                Some(DateError::NotImplemented) => Formatted {
-                    text: "#N/IMPL!".to_owned(),
-                    color: None,
-                    error: Some(format!("Date system not implemented for: '{value}'")),
-                },
-                _ => Formatted {
-                    text: "#VALUE!".to_owned(),
-                    color: None,
-                    error: Some(format!("Invalid date value: '{value}'")),
-                },
+            let invalid_date = |value: f64| Formatted {
+                text: "#VALUE!".to_owned(),
+                color: None,
+                error: Some(format!("Invalid date value: '{value}'")),
             };
             for token in tokens {
                 match token {

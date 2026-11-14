@@ -7,7 +7,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::{format_number, parse_formatted_number, Formatted},
+    formatter::format::{format_number, parse_formatted_number},
     functions::{
         text::util::{substitute, text_after, text_before, Case},
         util::from_wildcard_to_regex,
@@ -316,16 +316,6 @@ fn concat_number(result: String, value: f64) -> String {
     result + &number_to_text(value)
 }
 
-/// The error TEXT returns when the formatter failed: #N/IMPL! when the date
-/// system is not implemented for the value, #VALUE! otherwise.
-fn format_error(formatted: &Formatted) -> Error {
-    if formatted.text == "#N/IMPL!" {
-        Error::NIMPL
-    } else {
-        Error::VALUE
-    }
-}
-
 impl<'a> Model<'a> {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = "".to_string();
@@ -450,7 +440,7 @@ impl<'a> Model<'a> {
                             ArrayNode::Number(f) => {
                                 let d = format_number(f, &format_code, locale, date_system);
                                 if d.error.is_some() {
-                                    ArrayNode::Error(format_error(&d))
+                                    ArrayNode::Error(Error::VALUE)
                                 } else {
                                     ArrayNode::String(d.text)
                                 }
@@ -458,7 +448,7 @@ impl<'a> Model<'a> {
                             ArrayNode::Empty => {
                                 let d = format_number(0.0, &format_code, locale, date_system);
                                 if d.error.is_some() {
-                                    ArrayNode::Error(format_error(&d))
+                                    ArrayNode::Error(Error::VALUE)
                                 } else {
                                     ArrayNode::String(d.text)
                                 }
@@ -500,7 +490,7 @@ impl<'a> Model<'a> {
                 let d = format_number(value, &format_code, self.locale, self.date_system());
                 if d.error.is_some() {
                     return CalcResult::Error {
-                        error: format_error(&d),
+                        error: Error::VALUE,
                         origin: cell,
                         message: "Invalid format code".to_string(),
                     };

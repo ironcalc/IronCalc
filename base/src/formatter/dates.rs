@@ -9,8 +9,10 @@
 //!   serial 60 is the fictional 29 February 1900, so 1900 has 366 days. From
 //!   serial 61 (1900-03-01) onwards the serials agree with the IronCalc system.
 //!   Calendar work goes through [`Ymd`], which can hold those two days that
-//!   `chrono` cannot; [`serial_to_date`] and [`date_to_serial`] are only for
-//!   code that needs a real `NaiveDate` and refuse the two odd months.
+//!   `chrono` cannot. [`serial_to_date`] and [`date_to_serial`] are for code
+//!   that needs a real `NaiveDate`: before 1900-03-01 they map serial 1 to
+//!   1900-01-01 and serial 59 to 1900-02-28, and the two days with no real
+//!   date (serials 0 and 60) are out of range.
 //! * `Excel1904`: the Gregorian calendar with serial 0 on 1904-01-01, so every
 //!   serial is 1462 below the IronCalc one. Serials below 0 are not dates.
 //!   Excel still formats a negative serial, as the date of its absolute value
@@ -31,22 +33,18 @@ use crate::expressions::token::Error;
 use crate::types::DateSystem;
 
 pub const DATE_OUT_OF_RANGE_MESSAGE: &str = "Out of range parameters for date";
-pub const DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE: &str = "Date system not implemented";
 
 /// Why a conversion between a serial number and a date failed
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DateError {
     /// Not a valid date, or outside the range of the date system
     OutOfRange,
-    /// The conversion is not implemented for the date system
-    NotImplemented,
 }
 
 impl Display for DateError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DateError::OutOfRange => write!(f, "{DATE_OUT_OF_RANGE_MESSAGE}"),
-            DateError::NotImplemented => write!(f, "{DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE}"),
         }
     }
 }
@@ -55,7 +53,6 @@ impl From<DateError> for Error {
     fn from(e: DateError) -> Error {
         match e {
             DateError::OutOfRange => Error::NUM,
-            DateError::NotImplemented => Error::NIMPL,
         }
     }
 }
@@ -128,7 +125,9 @@ fn epoch_plus(serial: i64) -> Result<NaiveDate, DateError> {
         .ok_or(DateError::OutOfRange)
 }
 
-/// The calendar date of a serial number (date part only)
+/// The calendar date of a serial number (date part only). In the Excel 1900
+/// system serials 0 and 60 ("0 January" and "29 February" 1900) are not real
+/// dates and are out of range; see [`serial_to_ymd`] for them.
 pub fn serial_to_date(serial: i64, system: DateSystem) -> Result<NaiveDate, DateError> {
     if serial > maximum_serial(system) {
         return Err(DateError::OutOfRange);
@@ -136,12 +135,12 @@ pub fn serial_to_date(serial: i64, system: DateSystem) -> Result<NaiveDate, Date
     match system {
         DateSystem::IronCalc => epoch_plus(serial),
         DateSystem::Excel1900 => {
-            if serial < 0 {
+            if serial <= 0 || serial == 60 {
                 Err(DateError::OutOfRange)
             } else if serial < EXCEL_1900_FIRST_SHARED_SERIAL {
-                // Serials 0..=60 are Excel's "0 January 1900" to "29 February
-                // 1900", which do not map to real dates.
-                Err(DateError::NotImplemented)
+                // Before the fictional leap day Excel is one day ahead: serial
+                // 1 is 1900-01-01
+                epoch_plus(serial + 1)
             } else {
                 epoch_plus(serial)
             }
@@ -368,16 +367,10 @@ pub fn date_to_serial(date: NaiveDate, system: DateSystem) -> Result<i64, DateEr
     let serial = match system {
         DateSystem::IronCalc => ironcalc_serial(date),
         DateSystem::Excel1900 => {
-            let serial = ironcalc_serial(date);
+            let serial = excel_1900_serial(date);
             if serial < 1 {
-                // Before 1899-12-31 ("0 January 1900"), which Excel rejects
+                // Before 1900-01-01: Excel's serial 0 is not a real date
                 return Err(DateError::OutOfRange);
-            }
-            if serial < EXCEL_1900_FIRST_SHARED_SERIAL {
-                // A real date in January or February 1900 reached by calendar
-                // arithmetic may be off by Excel's fictional leap day; calendar
-                // work in this system goes through `Ymd` instead.
-                return Err(DateError::NotImplemented);
             }
             serial
         }
@@ -540,13 +533,17 @@ mod tests {
     fn excel_1900_serials() {
         let s = DateSystem::Excel1900;
         assert_eq!(serial_to_date(61, s), Ok(ymd(1900, 3, 1)));
-        assert_eq!(serial_to_date(60, s), Err(DateError::NotImplemented));
-        assert_eq!(serial_to_date(0, s), Err(DateError::NotImplemented));
+        assert_eq!(serial_to_date(59, s), Ok(ymd(1900, 2, 28)));
+        assert_eq!(serial_to_date(1, s), Ok(ymd(1900, 1, 1)));
+        assert_eq!(serial_to_date(60, s), Err(DateError::OutOfRange));
+        assert_eq!(serial_to_date(0, s), Err(DateError::OutOfRange));
         assert_eq!(serial_to_date(-1, s), Err(DateError::OutOfRange));
         assert_eq!(date_to_serial(ymd(1900, 3, 1), s), Ok(61));
+        assert_eq!(date_to_serial(ymd(1900, 2, 28), s), Ok(59));
+        assert_eq!(date_to_serial(ymd(1900, 1, 1), s), Ok(1));
         assert_eq!(
-            date_to_serial(ymd(1900, 2, 28), s),
-            Err(DateError::NotImplemented)
+            date_to_serial(ymd(1899, 12, 31), s),
+            Err(DateError::OutOfRange)
         );
         assert_eq!(
             date_to_serial(ymd(1899, 12, 30), s),

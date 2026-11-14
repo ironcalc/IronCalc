@@ -172,7 +172,6 @@ use crate::formatter::dates::maximum_serial;
 use crate::formatter::dates::permissive_ymd_to_serial;
 use crate::formatter::dates::rolled_year_month;
 use crate::formatter::dates::rolled_ymd_to_serial;
-use crate::formatter::dates::serial_to_date;
 use crate::formatter::dates::serial_to_iso_week;
 use crate::formatter::dates::serial_to_weekday;
 use crate::formatter::dates::serial_to_ymd;
@@ -181,7 +180,6 @@ use crate::formatter::dates::ymd_to_serial;
 use crate::formatter::dates::DateError;
 use crate::formatter::dates::Ymd;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
-use crate::formatter::dates::DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE;
 use crate::types::DateSystem;
 use crate::{
     calc_result::CalcResult,
@@ -594,13 +592,10 @@ fn whole_days_in_time(time: &str) -> i32 {
 
 /// Parses the text of DATEVALUE into a date serial of the given date system.
 /// The error is the one DATEVALUE returns: #VALUE! for text that is not a date
-/// in the system, #N/IMPL! when the date system is not implemented.
+/// in the system.
 pub(crate) fn parse_datevalue_text(value: &str, system: DateSystem) -> Result<i64, Error> {
     let (day, month, year, extra_days) = parse_datevalue_parts(value).map_err(|_| Error::VALUE)?;
-    let serial = ymd_to_serial(day, month, year, system).map_err(|e| match e {
-        DateError::OutOfRange => Error::VALUE,
-        DateError::NotImplemented => Error::NIMPL,
-    })?;
+    let serial = ymd_to_serial(day, month, year, system).map_err(|_| Error::VALUE)?;
     let serial = serial.saturating_add(extra_days as i64);
     // The time part may roll the date forward beyond the last day
     if serial > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
@@ -849,7 +844,6 @@ impl<'a> Model<'a> {
             match permissive_ymd_to_serial(day, month, year as i32, system) {
                 Ok(n) => ArrayNode::Number(n as f64),
                 Err(DateError::OutOfRange) => ArrayNode::Error(invalid.clone()),
-                Err(DateError::NotImplemented) => ArrayNode::Error(Error::NIMPL),
             }
         };
 
@@ -857,11 +851,6 @@ impl<'a> Model<'a> {
             (NumberOrArray::Number(yr), NumberOrArray::Number(mo), NumberOrArray::Number(dy)) => {
                 match date_node(*yr, *mo, *dy) {
                     ArrayNode::Number(n) => CalcResult::Number(n),
-                    ArrayNode::Error(Error::NIMPL) => CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE.to_string(),
-                    },
                     ArrayNode::Error(e) => CalcResult::Error {
                         error: e,
                         origin: cell,
@@ -1140,15 +1129,6 @@ impl<'a> Model<'a> {
             origin: cell,
             message: error.to_string(),
         }
-    }
-
-    /// The calendar date of a serial number in the workbook's date system
-    pub(crate) fn date_from_serial(
-        &self,
-        serial: i64,
-        cell: CellReferenceIndex,
-    ) -> Result<chrono::NaiveDate, CalcResult> {
-        serial_to_date(serial, self.date_system()).map_err(|e| Self::date_error(e, cell))
     }
 
     /// The year, month and day of a serial number in the workbook's date system

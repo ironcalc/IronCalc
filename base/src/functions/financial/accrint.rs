@@ -1,26 +1,13 @@
-use chrono::{Datelike, NaiveDate};
-
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
+    types::DateSystem,
 };
 
-fn last_day_of_month(year: i32, month: u32) -> u32 {
-    match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 => {
-            // Gregorian leap-year rule
-            if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
-                29
-            } else {
-                28
-            }
-        }
-        _ => 30,
-    }
-}
+use super::calendar::{
+    actual_days, add_months, day_from_ymd, day_of, is_last_day_of_month, last_day_of_month, Day,
+};
 
 // ---------------------------------------------------------------------------
 // ACCRINT day-count helpers
@@ -30,44 +17,26 @@ fn last_day_of_month(year: i32, month: u32) -> u32 {
 // See https://github.com/fsprojects/ExcelFinancialFunctions
 // ---------------------------------------------------------------------------
 
-fn acc_is_last_day(d: NaiveDate) -> bool {
-    d.day() == last_day_of_month(d.year(), d.month())
+// The 30/360 rules look at the Gregorian end of February
+fn acc_is_last_feb(d: Day) -> bool {
+    d.month == 2 && d.day == last_day_of_month(d.year, 2)
 }
 
-fn acc_is_last_feb(d: NaiveDate) -> bool {
-    d.month() == 2 && acc_is_last_day(d)
+// EFF `changeMonth`: AddMonths (clamping the day of the month to the length of
+// the target month), then optionally snap to the last day of the target month.
+// `return_last_day` is fixed for the whole coupon schedule (= whether
+// `first_interest` is an end-of-month date).
+fn acc_change_month(
+    d: Day,
+    n: i32,
+    return_last_day: bool,
+    system: DateSystem,
+) -> Result<Day, String> {
+    add_months(d, n, return_last_day, system)
 }
 
-// .NET DateTime.AddMonths semantics: shift the month, clamping the
-// day-of-month to the last day of the target month when it overflows
-// (e.g. Jan 31 + 1 month = Feb 28).
-fn acc_add_months(d: NaiveDate, n: i32) -> Result<NaiveDate, String> {
-    let total = d.year() * 12 + (d.month() as i32 - 1) + n;
-    let y = total.div_euclid(12);
-    let m = (total.rem_euclid(12) + 1) as u32;
-    let day = d.day().min(last_day_of_month(y, m));
-    NaiveDate::from_ymd_opt(y, m, day).ok_or_else(|| "Invalid date".to_string())
-}
-
-// EFF `changeMonth`: AddMonths, then optionally snap to the last day of the
-// target month. `return_last_day` is fixed for the whole coupon schedule
-// (= whether `first_interest` is an end-of-month date).
-fn acc_change_month(d: NaiveDate, n: i32, return_last_day: bool) -> Result<NaiveDate, String> {
-    let nd = acc_add_months(d, n)?;
-    if return_last_day {
-        NaiveDate::from_ymd_opt(
-            nd.year(),
-            nd.month(),
-            last_day_of_month(nd.year(), nd.month()),
-        )
-        .ok_or_else(|| "Invalid date".to_string())
-    } else {
-        Ok(nd)
-    }
-}
-
-fn acc_days(after: NaiveDate, before: NaiveDate) -> f64 {
-    (after - before).num_days() as f64
+fn acc_days(after: Day, before: Day) -> f64 {
+    actual_days(before, after)
 }
 
 fn acc_date_diff_360(sd: i32, sm: i32, sy: i32, ed: i32, em: i32, ey: i32) -> f64 {
@@ -76,9 +45,9 @@ fn acc_date_diff_360(sd: i32, sm: i32, sy: i32, ed: i32, em: i32, ey: i32) -> f6
 
 // US (NASD) 30/360 day count, basis 0 and the denominator convention of the
 // Actual/360 basis. `modify_both` selects Excel's `ModifyBothDates` variant.
-fn acc_date_diff_360_us(start: NaiveDate, end: NaiveDate, modify_both: bool) -> f64 {
-    let (mut sd, sm, sy) = (start.day() as i32, start.month() as i32, start.year());
-    let (mut ed, em, ey) = (end.day() as i32, end.month() as i32, end.year());
+fn acc_date_diff_360_us(start: Day, end: Day, modify_both: bool) -> f64 {
+    let (mut sd, sm, sy) = (start.day as i32, start.month as i32, start.year);
+    let (mut ed, em, ey) = (end.day as i32, end.month as i32, end.year);
     if acc_is_last_feb(end) && (acc_is_last_feb(start) || modify_both) {
         ed = 30;
     }
@@ -95,54 +64,49 @@ fn acc_date_diff_360_us(start: NaiveDate, end: NaiveDate, modify_both: bool) -> 
 }
 
 // European 30/360 day count, basis 4.
-fn acc_date_diff_360_eu(start: NaiveDate, end: NaiveDate) -> f64 {
-    let sd = if start.day() == 31 {
+fn acc_date_diff_360_eu(start: Day, end: Day) -> f64 {
+    let sd = if start.day == 31 {
         30
     } else {
-        start.day() as i32
+        start.day as i32
     };
-    let ed = if end.day() == 31 {
-        30
-    } else {
-        end.day() as i32
-    };
+    let ed = if end.day == 31 { 30 } else { end.day as i32 };
     acc_date_diff_360(
         sd,
-        start.month() as i32,
-        start.year(),
+        start.month as i32,
+        start.year,
         ed,
-        end.month() as i32,
-        end.year(),
+        end.month as i32,
+        end.year,
     )
 }
 
 // Excel's Actual/365 denominator convention (basis 3).
-fn acc_date_diff_365(start: NaiveDate, end: NaiveDate) -> Result<f64, String> {
-    let sd = if start.day() > 28 && start.month() == 2 {
+fn acc_date_diff_365(start: Day, end: Day, system: DateSystem) -> Result<f64, String> {
+    let sd = if start.day > 28 && start.month == 2 {
         28
     } else {
-        start.day()
+        start.day
     };
-    let ed = if end.day() > 28 && end.month() == 2 {
+    let ed = if end.day > 28 && end.month == 2 {
         28
     } else {
-        end.day()
+        end.day
     };
-    let startd = NaiveDate::from_ymd_opt(start.year(), start.month(), sd)
-        .ok_or_else(|| "Invalid date".to_string())?;
-    let endd = NaiveDate::from_ymd_opt(end.year(), end.month(), ed)
-        .ok_or_else(|| "Invalid date".to_string())?;
-    Ok(((end.year() - start.year()) * 365) as f64 + acc_days(endd, startd))
+    let startd = day_from_ymd(start.year, start.month, sd, system)?;
+    let endd = day_from_ymd(end.year, end.month, ed, system)?;
+    Ok(((end.year - start.year) * 365) as f64 + acc_days(endd, startd))
 }
 
 // EFF `findPcdNcd`: step coupon boundaries from `start` by `num_months` until
 // `end` is reached, returning (front, trailing) at the stopping point.
 fn acc_find_pcd_ncd(
-    start: NaiveDate,
-    end: NaiveDate,
+    start: Day,
+    end: Day,
     num_months: i32,
     return_last: bool,
-) -> Result<(NaiveDate, NaiveDate), String> {
+    system: DateSystem,
+) -> Result<(Day, Day), String> {
     let mut front = start;
     let mut trailing = end;
     loop {
@@ -155,17 +119,18 @@ fn acc_find_pcd_ncd(
             return Ok((front, trailing));
         }
         trailing = front;
-        front = acc_change_month(front, num_months, return_last)?;
+        front = acc_change_month(front, num_months, return_last, system)?;
     }
 }
 
 // EFF `DaysBetween` for a given basis. `numerator` selects the numerator vs
 // denominator convention used by the Actual/360 and Actual/365 bases.
 pub(super) fn acc_days_between(
-    start: NaiveDate,
-    end: NaiveDate,
+    start: Day,
+    end: Day,
     numerator: bool,
     basis: i32,
+    system: DateSystem,
 ) -> Result<f64, String> {
     let days = match basis {
         0 => acc_date_diff_360_us(start, end, false),
@@ -181,7 +146,7 @@ pub(super) fn acc_days_between(
             if numerator {
                 acc_days(end, start)
             } else {
-                acc_date_diff_365(start, end)?
+                acc_date_diff_365(start, end, system)?
             }
         }
         _ => acc_days(end, start), // Actual/Actual (basis 1)
@@ -191,13 +156,25 @@ pub(super) fn acc_days_between(
 
 // EFF `CoupDays`: the normal length of a coupon period. For Actual/Actual it
 // is the actual length of the period bracketing `settl`, anchored on `mat`.
-fn acc_coup_days(settl: NaiveDate, mat: NaiveDate, freq: i32, basis: i32) -> Result<f64, String> {
+fn acc_coup_days(
+    settl: Day,
+    mat: Day,
+    freq: i32,
+    basis: i32,
+    system: DateSystem,
+) -> Result<f64, String> {
     let coup_days = match basis {
         0 | 2 | 4 => 360.0 / freq as f64,
         3 => 365.0 / freq as f64,
         _ => {
             let num_months = -(12 / freq);
-            let (pcd, ncd) = acc_find_pcd_ncd(mat, settl, num_months, acc_is_last_day(mat))?;
+            let (pcd, ncd) = acc_find_pcd_ncd(
+                mat,
+                settl,
+                num_months,
+                is_last_day_of_month(mat, system),
+                system,
+            )?;
             acc_days(ncd, pcd)
         }
     };
@@ -215,9 +192,10 @@ fn acc_coup_days(settl: NaiveDate, mat: NaiveDate, freq: i32, basis: i32) -> Res
 // slice.
 #[allow(clippy::too_many_arguments)]
 fn compute_accrint(
-    issue: NaiveDate,
-    first_interest: NaiveDate,
-    settlement: NaiveDate,
+    system: DateSystem,
+    issue: Day,
+    first_interest: Day,
+    settlement: Day,
     rate: f64,
     par: f64,
     frequency: i32,
@@ -226,31 +204,38 @@ fn compute_accrint(
 ) -> Result<f64, String> {
     let num_months = 12 / frequency;
     let freq = frequency as f64;
-    let end_month_bond = acc_is_last_day(first_interest);
+    let end_month_bond = is_last_day_of_month(first_interest, system);
     let calc = if calc_method { 1.0 } else { 0.0 };
 
     // Regular coupon period [reg_pcd, first_interest]; its length is the
     // denominator used for the settlement slice.
-    let reg_pcd = acc_change_month(first_interest, -num_months, end_month_bond)?;
+    let reg_pcd = acc_change_month(first_interest, -num_months, end_month_bond, system)?;
     // Coupon date immediately before settlement. When settlement is past
     // first_interest (only meaningful for the default calc_method) walk the
     // schedule forward to find it; otherwise it is the regular coupon start.
     let pcd = if settlement > first_interest && calc_method {
-        acc_find_pcd_ncd(first_interest, settlement, num_months, end_month_bond)?.1
+        acc_find_pcd_ncd(
+            first_interest,
+            settlement,
+            num_months,
+            end_month_bond,
+            system,
+        )?
+        .1
     } else {
         reg_pcd
     };
 
     let first_date = if issue > pcd { issue } else { pcd };
-    let days0 = acc_days_between(first_date, settlement, true, basis)?;
-    let coup_days0 = acc_coup_days(reg_pcd, first_interest, frequency, basis)?;
+    let days0 = acc_days_between(first_date, settlement, true, basis, system)?;
+    let coup_days0 = acc_coup_days(reg_pcd, first_interest, frequency, basis, system)?;
     let mut acc = days0 / coup_days0;
 
     // Walk coupon periods backward from `pcd` toward `issue`.
     let mut front = pcd;
     while front > issue {
         let period_end = front;
-        front = acc_change_month(front, -num_months, end_month_bond)?;
+        front = acc_change_month(front, -num_months, end_month_bond, system)?;
         let period_start = front;
         if issue <= period_start {
             // Full coupon period inside the accrual span.
@@ -260,14 +245,20 @@ fn compute_accrint(
             let numerator = if basis == 0 {
                 acc_date_diff_360_us(issue, period_end, false)
             } else {
-                acc_days_between(issue, period_end, true, basis)?
+                acc_days_between(issue, period_end, true, basis, system)?
             };
+            // The normal length of the period. For the Actual/360 and
+            // Actual/365 bases it is the fixed 360/frequency and 365/frequency
+            // (Excel: ACCRINT(61,425,300,0.1,1000,2,2) divides the stub that
+            // ends on 31 August 1900 by 180, not by its 30/360 length 181)
             let denominator = if basis == 0 {
                 acc_date_diff_360_us(period_start, period_end, true)
+            } else if basis == 2 {
+                360.0 / freq
             } else if basis == 3 {
                 365.0 / freq
             } else {
-                acc_days_between(period_start, period_end, false, basis)?
+                acc_days_between(period_start, period_end, false, basis, system)?
             };
             acc += numerator / denominator;
         }
@@ -376,20 +367,21 @@ impl<'a> Model<'a> {
             );
         }
 
-        let issue = match self.date_from_serial(issue_serial, cell) {
+        let system = self.date_system();
+        let days = (|| -> Result<(Day, Day, Day), String> {
+            Ok((
+                day_of(issue_serial, system)?,
+                day_of(first_interest_serial, system)?,
+                day_of(settlement_serial, system)?,
+            ))
+        })();
+        let (issue, first_interest, settlement) = match days {
             Ok(d) => d,
-            Err(e) => return e,
-        };
-        let first_interest = match self.date_from_serial(first_interest_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let settlement = match self.date_from_serial(settlement_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
         };
 
         match compute_accrint(
+            system,
             issue,
             first_interest,
             settlement,
