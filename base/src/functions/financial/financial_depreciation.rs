@@ -1,12 +1,13 @@
-use chrono::{Datelike, NaiveDate};
-
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    formatter::dates::is_gregorian_leap_year,
     model::Model,
+    types::DateSystem,
 };
 
 use super::accrint::acc_days_between;
+use super::calendar::{day_from_ymd, day_of, Day};
 
 // ---------------------------------------------------------------------------
 // VDB / AMORDEGRC / AMORLINC
@@ -139,18 +140,14 @@ pub(super) fn ddb_depreciation(
     ddb.max(0.0)
 }
 
-fn is_leap_year(year: i32) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
-}
-
 // `daysInYear` for the AMOR* functions. Actual/Actual (basis 1) uses the
 // length of the calendar year that contains `date`; Actual/365 (basis 3)
 // uses 365; the 30/360 bases (0 and 4) use 360. Actual/360 (basis 2) is
 // rejected before reaching here.
-fn amor_days_in_year(date: NaiveDate, basis: i32) -> f64 {
+fn amor_days_in_year(date: Day, basis: i32) -> f64 {
     match basis {
         1 => {
-            if is_leap_year(date.year()) {
+            if is_gregorian_leap_year(date.year) {
                 366.0
             } else {
                 365.0
@@ -163,12 +160,11 @@ fn amor_days_in_year(date: NaiveDate, basis: i32) -> f64 {
 
 // `fix29February`: for the actual-day bases (1 and 3) a Feb 29 (or any late
 // February day) is snapped to Feb 28 so leap days don't distort the day count.
-fn amor_fix_29_february(d: NaiveDate, basis: i32) -> NaiveDate {
-    if (basis == 1 || basis == 3) && is_leap_year(d.year()) && d.month() == 2 && d.day() >= 28 {
-        // Feb 28 always exists.
-        NaiveDate::from_ymd_opt(d.year(), 2, 28).unwrap_or(d)
+fn amor_fix_29_february(d: Day, basis: i32, system: DateSystem) -> Result<Day, String> {
+    if (basis == 1 || basis == 3) && is_gregorian_leap_year(d.year) && d.month == 2 && d.day >= 28 {
+        day_from_ymd(d.year, 2, 28, system)
     } else {
-        d
+        Ok(d)
     }
 }
 
@@ -177,17 +173,18 @@ fn amor_fix_29_february(d: NaiveDate, basis: i32) -> NaiveDate {
 #[allow(clippy::too_many_arguments)]
 fn amor_first_depr_linc(
     cost: f64,
-    date_purchased: NaiveDate,
-    first_period: NaiveDate,
+    date_purchased: Day,
+    first_period: Day,
     salvage: f64,
     rate: f64,
     ass_life: f64,
     basis: i32,
+    system: DateSystem,
 ) -> Result<(f64, f64), String> {
     let days_in_yr = amor_days_in_year(date_purchased, basis);
-    let date_purchased = amor_fix_29_february(date_purchased, basis);
-    let first_period = amor_fix_29_february(first_period, basis);
-    let first_len = acc_days_between(date_purchased, first_period, true, basis)?;
+    let date_purchased = amor_fix_29_february(date_purchased, basis, system)?;
+    let first_period = amor_fix_29_february(first_period, basis, system)?;
+    let first_len = acc_days_between(date_purchased, first_period, true, basis, system)?;
     let first_depr_temp = first_len / days_in_yr * rate * cost;
     let first_depr = if first_depr_temp == 0.0 {
         cost * rate
@@ -207,14 +204,16 @@ fn amor_first_depr_linc(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn amor_linc(
     cost: f64,
-    date_purchased: NaiveDate,
-    first_period: NaiveDate,
+    date_purchased: Day,
+    first_period: Day,
     salvage: f64,
     period: f64,
     rate: f64,
     basis: i32,
+    system: DateSystem,
 ) -> Result<f64, String> {
     let asset_life_temp = (1.0 / rate).ceil();
     if cost == salvage || period > asset_life_temp {
@@ -228,6 +227,7 @@ fn amor_linc(
         rate,
         asset_life_temp,
         basis,
+        system,
     )?;
     if period == 0.0 {
         return Ok(first_depr);
@@ -272,14 +272,16 @@ fn amor_round(x: f64) -> f64 {
     k.round()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn amor_degrc(
     cost: f64,
-    date_purchased: NaiveDate,
-    first_period: NaiveDate,
+    date_purchased: Day,
+    first_period: Day,
     salvage: f64,
     period: f64,
     rate: f64,
     basis: i32,
+    system: DateSystem,
 ) -> Result<f64, String> {
     let ass_life = (1.0 / rate).ceil();
     if cost == salvage || period > ass_life {
@@ -295,6 +297,7 @@ fn amor_degrc(
         depr_r,
         ass_life,
         basis,
+        system,
     )?;
     let first_depr = amor_round(first_depr_linc);
     if period == 0.0 {
@@ -448,9 +451,10 @@ impl<'a> Model<'a> {
         } else {
             0
         };
+        // Excel gives 0 when salvage equals cost
         if cost < 0.0
             || salvage < 0.0
-            || salvage >= cost
+            || salvage > cost
             || period < 0.0
             || rate <= 0.0
             || date_purchased_serial >= first_period_serial
@@ -460,13 +464,12 @@ impl<'a> Model<'a> {
         if !(0..=4).contains(&basis) || basis == 2 {
             return CalcResult::new_error(Error::NUM, cell, "invalid basis".to_string());
         }
-        let date_purchased = match self.date_from_serial(date_purchased_serial, cell) {
+        let system = self.date_system();
+        let (date_purchased, first_period) = match day_of(date_purchased_serial, system)
+            .and_then(|d| Ok((d, day_of(first_period_serial, system)?)))
+        {
             Ok(d) => d,
-            Err(e) => return e,
-        };
-        let first_period = match self.date_from_serial(first_period_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
         };
         match amor_linc(
             cost,
@@ -476,6 +479,7 @@ impl<'a> Model<'a> {
             period,
             rate,
             basis,
+            system,
         ) {
             Ok(f) => CalcResult::Number(f),
             Err(s) => CalcResult::new_error(Error::NUM, cell, s),
@@ -524,9 +528,10 @@ impl<'a> Model<'a> {
         } else {
             0
         };
+        // Excel gives 0 when salvage equals cost
         if cost < 0.0
             || salvage < 0.0
-            || salvage >= cost
+            || salvage > cost
             || period < 0.0
             || rate <= 0.0
             || date_purchased_serial >= first_period_serial
@@ -536,22 +541,22 @@ impl<'a> Model<'a> {
         if !(0..=4).contains(&basis) || basis == 2 {
             return CalcResult::new_error(Error::NUM, cell, "invalid basis".to_string());
         }
-        // Asset life must not fall in the (0, 3] or (4, 5] ranges.
+        // Asset life must not fall in the (0, 3] or (4, 5) ranges. Excel
+        // accepts a life of exactly 5 years (a rate of 0.2).
         let asset_life = 1.0 / rate;
-        if (0.0..=3.0).contains(&asset_life) || (4.0..=5.0).contains(&asset_life) {
+        if (0.0..=3.0).contains(&asset_life) || (4.0..5.0).contains(&asset_life) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
                 "asset life cannot be in [0,3] or [4,5]".to_string(),
             );
         }
-        let date_purchased = match self.date_from_serial(date_purchased_serial, cell) {
+        let system = self.date_system();
+        let (date_purchased, first_period) = match day_of(date_purchased_serial, system)
+            .and_then(|d| Ok((d, day_of(first_period_serial, system)?)))
+        {
             Ok(d) => d,
-            Err(e) => return e,
-        };
-        let first_period = match self.date_from_serial(first_period_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
         };
         match amor_degrc(
             cost,
@@ -561,6 +566,7 @@ impl<'a> Model<'a> {
             period,
             rate,
             basis,
+            system,
         ) {
             Ok(f) => CalcResult::Number(f),
             Err(s) => CalcResult::new_error(Error::NUM, cell, s),

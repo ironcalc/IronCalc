@@ -12,6 +12,7 @@ use crate::{
 };
 
 mod accrint;
+mod calendar;
 mod financial_bonds;
 mod financial_depreciation;
 mod financial_util;

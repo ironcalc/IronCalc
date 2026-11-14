@@ -1,33 +1,27 @@
-use chrono::{Datelike, Months, NaiveDate};
-
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::{date_to_serial, serial_to_date, DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE},
     model::Model,
     types::DateSystem,
+};
+
+use super::calendar::{
+    actual_days, add_months, clamp_to_first, day_of, is_before_first, is_last_day_of_month,
+    last_day_of_month, unchecked_add_months, Day,
 };
 
 // ============================================================
 // Date helpers
 // ============================================================
 
-// The bond helpers report dates problems as strings; `map_date_err` turns the
-// not-implemented message back into #N/IMPL!.
-fn to_date(serial: i64, system: DateSystem) -> Result<NaiveDate, String> {
-    serial_to_date(serial, system).map_err(|e| e.to_string())
-}
-
-fn to_serial(d: NaiveDate, system: DateSystem) -> Result<i64, String> {
-    date_to_serial(d, system).map_err(|e| e.to_string())
+// The bond helpers report date problems as strings, which the functions turn
+// into #NUM!.
+fn to_date(serial: i64, system: DateSystem) -> Result<Day, String> {
+    day_of(serial, system)
 }
 
 fn last_day_of_feb(year: i32) -> u32 {
-    if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
-        29
-    } else {
-        28
-    }
+    last_day_of_month(year, 2)
 }
 
 // Days d1→d2 via the US (NASD) 30/360 convention (basis 0).
@@ -37,16 +31,16 @@ fn last_day_of_feb(year: i32) -> u32 {
 // Numerator position). The order matters: the `day == 31 → 30` adjustment for
 // the end date tests the *original* start day, before the start day is itself
 // normalised.
-fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let mut day1 = d1.day() as i32;
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let mut day2 = d2.day() as i32;
+fn days_30_360_us(d1: Day, d2: Day) -> f64 {
+    let y1 = d1.year;
+    let m1 = d1.month as i32;
+    let mut day1 = d1.day as i32;
+    let y2 = d2.year;
+    let m2 = d2.month as i32;
+    let mut day2 = d2.day as i32;
 
-    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
-    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+    let start_is_feb_last = m1 == 2 && d1.day == last_day_of_feb(y1);
+    let end_is_feb_last = m2 == 2 && d2.day == last_day_of_feb(y2);
 
     if end_is_feb_last && start_is_feb_last {
         day2 = 30;
@@ -64,22 +58,18 @@ fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
 }
 
 // Days d1→d2 via the EU 30/360 convention (basis 4).
-fn days_30_360_eu(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let day1 = (d1.day() as i32).min(30);
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let day2 = (d2.day() as i32).min(30);
+fn days_30_360_eu(d1: Day, d2: Day) -> f64 {
+    let y1 = d1.year;
+    let m1 = d1.month as i32;
+    let day1 = (d1.day as i32).min(30);
+    let y2 = d2.year;
+    let m2 = d2.month as i32;
+    let day2 = (d2.day as i32).min(30);
     (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
 }
 
-fn actual_days(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    (d2 - d1).num_days() as f64
-}
-
 // Basis-aware days from d1 to d2.
-fn basis_days(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
+fn basis_days(d1: Day, d2: Day, basis: u32) -> f64 {
     match basis {
         0 => days_30_360_us(d1, d2),
         1..=3 => actual_days(d1, d2),
@@ -92,39 +82,19 @@ fn basis_days(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
 // Coupon-schedule helpers
 // ============================================================
 
-fn last_day_of_month(year: i32, month: u32) -> u32 {
-    match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 => last_day_of_feb(year),
-        _ => 30,
-    }
-}
-
-fn is_last_day_of_month(d: NaiveDate) -> bool {
-    d.day() == last_day_of_month(d.year(), d.month())
-}
-
-// Shifts `date` by `num_months` (clamping the day to the target month.
+// Shifts `date` by `num_months` (clamping the day to the target month).
 // When `return_last` is set the result rounds to the last
 // day of the target month.
 // The end-of-month coupon rule: when maturity
 // falls on a month end, every coupon date does too (so a 11/30 maturity yields
 // coupons on 5/31, not 5/30).
-fn change_month(date: NaiveDate, num_months: i32, return_last: bool) -> Result<NaiveDate, String> {
-    let shifted = if num_months >= 0 {
-        date.checked_add_months(Months::new(num_months as u32))
-    } else {
-        date.checked_sub_months(Months::new((-num_months) as u32))
-    }
-    .ok_or("Date arithmetic error")?;
-    if return_last {
-        let last = last_day_of_month(shifted.year(), shifted.month());
-        NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), last)
-            .ok_or("Date error".to_string())
-    } else {
-        Ok(shifted)
-    }
+fn change_month(
+    date: Day,
+    num_months: i32,
+    return_last: bool,
+    system: DateSystem,
+) -> Result<Day, String> {
+    add_months(date, num_months, return_last, system)
 }
 
 // Walks the coupon schedule backwards from maturity to find the previous coupon
@@ -133,6 +103,11 @@ fn change_month(date: NaiveDate, num_months: i32, return_last: bool) -> Result<N
 // is maturity moved back a whole number of periods. Stepping from the previous
 // coupon date instead (as ExcelFinancialFunctions does) lets a maturity on the
 // 29th or 30th drift to the 28th once the schedule passes February.
+//
+// The previous coupon date may be before the first day of the date system (a
+// negative serial): Excel keeps counting with it in COUPDAYS, reports it as
+// serial 0 in COUPPCD and COUPDAYBS (`clamp_to_first`) and fails with #NUM! in
+// the other functions (`checked_pcd`).
 fn find_pcd_ncd(
     system: DateSystem,
     settlement: i64,
@@ -141,20 +116,29 @@ fn find_pcd_ncd(
 ) -> Result<(i64, i64), String> {
     let months_per = (12 / frequency) as i32;
     let mat = to_date(maturity, system)?;
-    let return_last = is_last_day_of_month(mat);
+    let return_last = is_last_day_of_month(mat, system);
 
     let mut periods = 0;
     let mut front = mat;
     let mut trailing = mat;
-    while to_serial(front, system)? > settlement {
+    while front.serial > settlement {
         trailing = front;
         periods += 1;
-        front = change_month(mat, -months_per * periods, return_last)?;
+        front = unchecked_add_months(mat, -months_per * periods, return_last, system)?;
     }
-    Ok((to_serial(front, system)?, to_serial(trailing, system)?))
+    Ok((front.serial, trailing.serial))
+}
+
+// A previous coupon date before the first day of the date system is an error
+fn checked_pcd(system: DateSystem, pcd: i64) -> Result<i64, String> {
+    if is_before_first(pcd, system) {
+        return Err("coupon date before the first date of the date system".to_string());
+    }
+    Ok(pcd)
 }
 
 // Latest coupon date that is <= settlement, anchored by maturity & frequency.
+// It may be before the first day of the date system, see `find_pcd_ncd`.
 fn prev_coupon_date(
     system: DateSystem,
     settlement: i64,
@@ -182,14 +166,14 @@ fn coupon_count(
     frequency: u32,
 ) -> Result<u32, String> {
     let months_per = 12 / frequency as i32;
-    let next = to_date(
-        next_coupon_date(system, settlement, maturity, frequency)?,
-        system,
-    )?;
+    // Excel's COUPNUM fails when the previous coupon date is before 1900
+    let (pcd, ncd) = find_pcd_ncd(system, settlement, maturity, frequency)?;
+    checked_pcd(system, pcd)?;
+    let next = to_date(ncd, system)?;
     let mat = to_date(maturity, system)?;
 
-    let next_months = next.year() * 12 + next.month() as i32;
-    let mat_months = mat.year() * 12 + mat.month() as i32;
+    let next_months = next.year * 12 + next.month as i32;
+    let mat_months = mat.year * 12 + mat.month as i32;
     let diff = mat_months - next_months;
     if diff < 0 {
         return Err("Maturity before next coupon".to_string());
@@ -208,14 +192,9 @@ fn coupon_days_e(
     match basis {
         0 | 2 | 4 => Ok(360.0 / frequency as f64),
         1 => {
-            let prev = to_date(
-                prev_coupon_date(system, settlement, maturity, frequency)?,
-                system,
-            )?;
-            let next = to_date(
-                next_coupon_date(system, settlement, maturity, frequency)?,
-                system,
-            )?;
+            let (pcd, ncd) = find_pcd_ncd(system, settlement, maturity, frequency)?;
+            let prev = to_date(checked_pcd(system, pcd)?, system)?;
+            let next = to_date(ncd, system)?;
             Ok(actual_days(prev, next))
         }
         3 => Ok(365.0 / frequency as f64),
@@ -231,6 +210,10 @@ fn coupon_days_e(
 // For example COUPDAYS(DATE(2024,4,1), DATE(2026,8,31), 2, 1) is 182 although
 // the coupon period from 2024-02-29 to 2024-08-31 has 184 days. PRICE, YIELD
 // and DURATION use the coupon period itself (`coupon_days_e`).
+//
+// The period may start before the first day of the date system: in the Excel
+// 1900 system COUPDAYS(30, 220, 2, 1) is 184, the days from 7 August 1899 to
+// 7 February 1900.
 fn coupdays_actual(
     system: DateSystem,
     settlement: i64,
@@ -240,17 +223,19 @@ fn coupdays_actual(
     let months_per = (12 / frequency) as i32;
     let mut date = to_date(maturity, system)?;
     loop {
-        let earlier = change_month(date, -months_per, false)?;
-        if to_serial(earlier, system)? <= settlement {
+        let earlier = unchecked_add_months(date, -months_per, false, system)?;
+        if earlier.serial <= settlement {
             break;
         }
         date = earlier;
     }
-    let (prev, next) = find_pcd_ncd(system, settlement, to_serial(date, system)?, frequency)?;
+    let (prev, next) = find_pcd_ncd(system, settlement, date.serial, frequency)?;
     Ok((next - prev) as f64)
 }
 
-// Accrued days from the previous coupon to settlement (A).
+// Accrued days from the previous coupon to settlement (A). A previous coupon
+// date before the first day of the date system counts from that first day
+// (serial 0, "0 January 1900", in the Excel 1900 system), as in Excel.
 fn coupon_days_a(
     system: DateSystem,
     settlement: i64,
@@ -258,10 +243,8 @@ fn coupon_days_a(
     frequency: u32,
     basis: u32,
 ) -> Result<f64, String> {
-    let prev = to_date(
-        prev_coupon_date(system, settlement, maturity, frequency)?,
-        system,
-    )?;
+    let pcd = prev_coupon_date(system, settlement, maturity, frequency)?;
+    let prev = to_date(clamp_to_first(pcd, system), system)?;
     let set = to_date(settlement, system)?;
     Ok(basis_days(prev, set, basis))
 }
@@ -295,10 +278,28 @@ fn validate_basis(basis: u32, cell: CellReferenceIndex) -> Result<(), CalcResult
 }
 
 fn map_date_err(e: String, cell: CellReferenceIndex) -> CalcResult {
-    if e == DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE {
-        return CalcResult::new_error(Error::NIMPL, cell, e);
-    }
     CalcResult::new_error(Error::NUM, cell, e)
+}
+
+// ODDFPRICE and ODDFYIELD need the first coupon to be a date of the coupon
+// schedule anchored on maturity. Excel does not document the check but applies
+// it (ExcelFinancialFunctions: "not in the docs, but nevertheless is needed").
+fn validate_first_coupon(
+    system: DateSystem,
+    first_coupon: i64,
+    maturity: i64,
+    frequency: u32,
+    cell: CellReferenceIndex,
+) -> Result<(), CalcResult> {
+    match prev_coupon_date(system, first_coupon, maturity, frequency) {
+        Ok(pcd) if pcd == first_coupon => Ok(()),
+        Ok(_) => Err(CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "first_coupon must be a coupon date of the maturity schedule".to_string(),
+        )),
+        Err(e) => Err(map_date_err(e, cell)),
+    }
 }
 
 // ============================================================
@@ -429,16 +430,16 @@ fn compute_yield_from_price(
 
 // Days d1→d2 via US 30/360 with the `ModifyBothDates` rule — the "PSA hack"
 // the odd-last-coupon code uses for basis 0.
-fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let mut day1 = d1.day() as i32;
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let mut day2 = d2.day() as i32;
+fn days_30_360_us_both(d1: Day, d2: Day) -> f64 {
+    let y1 = d1.year;
+    let m1 = d1.month as i32;
+    let mut day1 = d1.day as i32;
+    let y2 = d2.year;
+    let m2 = d2.month as i32;
+    let mut day2 = d2.day as i32;
 
-    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
-    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+    let start_is_feb_last = m1 == 2 && d1.day == last_day_of_feb(y1);
+    let end_is_feb_last = m2 == 2 && d2.day == last_day_of_feb(y2);
 
     if end_is_feb_last {
         day2 = 30;
@@ -456,12 +457,12 @@ fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
 }
 
 // `DaysBetween` (Numerator position), clamped to be non-negative.
-fn days_between_not_neg(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
+fn days_between_not_neg(d1: Day, d2: Day, basis: u32) -> f64 {
     basis_days(d1, d2, basis).max(0.0)
 }
 
 // As above, but basis 0 uses the 30/360 ModifyBothDates rule.
-fn days_between_not_neg_with_hack(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
+fn days_between_not_neg_with_hack(d1: Day, d2: Day, basis: u32) -> f64 {
     if basis == 0 {
         days_30_360_us_both(d1, d2).max(0.0)
     } else {
@@ -483,28 +484,28 @@ fn coup_number(
     let settl_d = to_date(settl, system)?;
 
     let coupons_temp = if is_whole_number { 0.0 } else { 1.0 };
-    let end_of_month_temp = is_last_day_of_month(mat_d);
+    let end_of_month_temp = is_last_day_of_month(mat_d, system);
     let end_of_month = if !end_of_month_temp
-        && mat_d.month() != 2
-        && mat_d.day() > 28
-        && mat_d.day() < last_day_of_month(mat_d.year(), mat_d.month())
+        && mat_d.month != 2
+        && mat_d.day > 28
+        && mat_d.day < last_day_of_month(mat_d.year, mat_d.month)
     {
-        is_last_day_of_month(settl_d)
+        is_last_day_of_month(settl_d, system)
     } else {
         end_of_month_temp
     };
 
-    let start_date = change_month(settl_d, 0, end_of_month)?;
+    let start_date = change_month(settl_d, 0, end_of_month, system)?;
     let mut coupons = if settl_d < start_date {
         coupons_temp + 1.0
     } else {
         coupons_temp
     };
 
-    let mut front = change_month(start_date, num_months, end_of_month)?;
+    let mut front = change_month(start_date, num_months, end_of_month, system)?;
     while front < mat_d {
         coupons += 1.0;
-        front = change_month(front, num_months, end_of_month)?;
+        front = change_month(front, num_months, end_of_month, system)?;
     }
     Ok(coupons)
 }
@@ -567,7 +568,7 @@ fn compute_oddfprice(
         let mut dcnl = 0.0_f64;
         let mut anl = 0.0_f64;
         for index in (1..=nc).rev() {
-            let early_coupon = change_month(late_coupon, -num_months, false)?;
+            let early_coupon = change_month(late_coupon, -num_months, false, system)?;
             let nl = if basis == 1 {
                 days_between_not_neg(early_coupon, late_coupon, basis)
             } else {
@@ -593,10 +594,8 @@ fn compute_oddfprice(
             )?;
             days_between_not_neg(settlement_d, ncd, basis)
         } else {
-            let pcd = to_date(
-                prev_coupon_date(system, settlement, first_coupon, frequency)?,
-                system,
-            )?;
+            let pcd = prev_coupon_date(system, settlement, first_coupon, frequency)?;
+            let pcd = to_date(checked_pcd(system, pcd)?, system)?;
             e - basis_days(pcd, settlement_d, basis)
         };
 
@@ -649,7 +648,7 @@ fn odd_l_func(
     let mut anl = 0.0_f64;
     let mut dscnl = 0.0_f64;
     for index in 1..=nc {
-        let late_coupon = change_month(early_coupon, num_months, false)?;
+        let late_coupon = change_month(early_coupon, num_months, false, system)?;
         let nl = days_between_not_neg_with_hack(early_coupon, late_coupon, basis);
         let dci = if index < nc {
             nl
@@ -1135,6 +1134,9 @@ impl<'a> Model<'a> {
         if issue >= first_coupon || first_coupon > maturity || settlement >= maturity {
             return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
         }
+        if let Err(e) = validate_first_coupon(system, first_coupon, maturity, frequency, cell) {
+            return e;
+        }
         if rate < 0.0 || yld < 0.0 || redemption <= 0.0 {
             return CalcResult::new_error(
                 Error::NUM,
@@ -1216,6 +1218,9 @@ impl<'a> Model<'a> {
         }
         if issue >= first_coupon || first_coupon > maturity || settlement >= maturity {
             return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
+        }
+        if let Err(e) = validate_first_coupon(system, first_coupon, maturity, frequency, cell) {
+            return e;
         }
         if rate < 0.0 || pr <= 0.0 || redemption <= 0.0 {
             return CalcResult::new_error(
@@ -1461,7 +1466,7 @@ impl<'a> Model<'a> {
             // (ModifyBothDates) minus the days from its start to settlement
             // (ModifyStartDate). This is *not* simply 30/360(settlement, next).
             let prev = match prev_coupon_date(system, settlement, maturity, frequency) {
-                Ok(v) => v,
+                Ok(v) => clamp_to_first(v, system),
                 Err(e) => return map_date_err(e, cell),
             };
             let prev_date = match to_date(prev, system) {
@@ -1505,6 +1510,8 @@ impl<'a> Model<'a> {
 
     // COUPPCD(settlement, maturity, frequency, [basis])
     // Most recent coupon date at or before settlement (returned as an Excel serial date).
+    // Excel reports a coupon date before the first day of the date system as
+    // serial 0.
     pub(crate) fn fn_couppcd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let system = self.date_system();
         let (settlement, maturity, frequency, _basis) = match parse_coupon_args(self, args, cell) {
@@ -1512,7 +1519,7 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
         match prev_coupon_date(system, settlement, maturity, frequency) {
-            Ok(serial) => CalcResult::Number(serial as f64),
+            Ok(serial) => CalcResult::Number(clamp_to_first(serial, system) as f64),
             Err(e) => map_date_err(e, cell),
         }
     }
