@@ -511,6 +511,10 @@ fn parse_day_simple(day_str: &str) -> Result<u32, String> {
     }
 }
 
+const MONTH_ABBREVIATIONS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 fn parse_month_simple(month_str: &str) -> Result<u32, String> {
     let bytes_len = month_str.len();
     if bytes_len == 0 {
@@ -606,30 +610,44 @@ fn whole_days_in_time(time: &str) -> i32 {
     (total_seconds / 86400.0).floor().min(i32::MAX as f64) as i32
 }
 
-// Excel also reads a textual month separated by spaces, with an optional comma after the
-// first two words: "Mar 15, 2026", "March 15 2026" and "15 March 2026" are all "15-Mar-2026".
-// Returns the date in that form, followed by whatever came after it (e.g. a time).
+// Excel also reads a month name separated by spaces, in two orders only:
+//   "Mar 15, 2026" or "Mar, 15, 2026": the month first, a comma after the day
+//   "15 Mar 2026": the day first, no commas
+// either one optionally followed by a time. "March 15 2026", "15 Mar, 2026", "2026 Mar 15"
+// and "Mar 15, 2026 abc" are #VALUE! in Excel. Returns the date written with dashes
+// ("15-Mar-2026"), followed by the time, so the rules for day, month and year apply.
 fn dash_textual_month_date(text: &str) -> Option<String> {
     let words: Vec<&str> = text.split_whitespace().collect();
     if words.len() < 3 {
         return None;
     }
-    let first = words[0].trim_end_matches(',');
-    let second = words[1].trim_end_matches(',');
-    let is_month_name = |s: &str| s.len() > 2 && parse_month_simple(s).is_ok();
-    let (day, month) = if is_month_name(first) {
-        (second, first)
-    } else if is_month_name(second) {
-        (first, second)
-    } else {
-        return None;
+    let is_day = |s: &str| (1..=2).contains(&s.len()) && s.chars().all(|c| c.is_ascii_digit());
+    // A month name, written as its abbreviation so that the date has no 'T' ("OCT")
+    let month_name = |s: &str| match parse_month_simple(s) {
+        Ok(m) if s.len() > 2 => Some(MONTH_ABBREVIATIONS[m as usize - 1]),
+        _ => None,
     };
-    let mut date = format!("{day}-{month}-{}", words[2]);
-    for word in &words[3..] {
-        date.push(' ');
-        date.push_str(word);
+    let (day, month) = if let (Some(month), Some(day)) = (
+        month_name(words[0].strip_suffix(',').unwrap_or(words[0])),
+        words[1].strip_suffix(','),
+    ) {
+        (day, month)
+    } else {
+        (words[0], month_name(words[1])?)
+    };
+    if !is_day(day) {
+        return None;
     }
-    Some(date)
+    let year = words[2];
+    let time = words[3..].join(" ");
+    if time.is_empty() {
+        return Some(format!("{day}-{month}-{year}"));
+    }
+    // Only a time may follow the year
+    if parse_time_string(&time).is_none() && whole_days_in_time(&time) == 0 {
+        return None;
+    }
+    Some(format!("{day}-{month}-{year} {time}"))
 }
 
 pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
