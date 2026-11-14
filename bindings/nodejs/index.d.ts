@@ -622,6 +622,18 @@ export declare class Model {
   setTimezone(timezone: string): void
   getLocale(): string
   setLocale(locale: string): void
+  /**
+   * Returns the date system of the workbook: "IronCalc" (the default, serial
+   * 0 is 1899-12-30 and negative serials are dates before it), "Excel1900"
+   * (Excel's default, with its 29 February 1900) or "Excel1904" (serial 0 is
+   * 1904-01-01).
+   */
+  getDateSystem(): string
+  /**
+   * Sets the date system of the workbook. The stored values do not change,
+   * so existing dates are read in the new system.
+   */
+  setDateSystem(dateSystem: string): void
   getLanguage(): string
   setLanguage(language: string): void
   /** Returns locale dependent formatting settings (currency, date formats, ...) */
@@ -673,6 +685,18 @@ export declare class UserModel {
   setTimezone(timezone: string): void
   getLocale(): string
   setLocale(locale: string): void
+  /**
+   * Returns the date system of the workbook: "IronCalc" (the default, serial
+   * 0 is 1899-12-30 and negative serials are dates before it), "Excel1900"
+   * (Excel's default, with its 29 February 1900) or "Excel1904" (serial 0 is
+   * 1904-01-01).
+   */
+  getDateSystem(): string
+  /**
+   * Sets the date system of the workbook. The stored values do not change,
+   * so existing dates are read in the new system.
+   */
+  setDateSystem(dateSystem: string): void
   getLanguage(): string
   setLanguage(language: string): void
   /** Returns locale dependent formatting settings (currency, date formats, ...) */
