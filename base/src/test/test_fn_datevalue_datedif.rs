@@ -82,12 +82,62 @@ fn test_datevalue_month_name_with_spaces() {
     assert_eq!(model._get_text("A1"), *"46096");
     assert_eq!(model._get_text("A2"), *"46200");
     assert_eq!(model._get_text("A3"), *"45749");
-    assert_eq!(model._get_text("A4"), *"46096");
+    // Month first needs the comma after the day
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
     assert_eq!(model._get_text("A5"), *"46096");
     assert_eq!(model._get_text("A6"), *"46096");
     assert_eq!(model._get_text("A7"), *"46096");
     assert_eq!(model._get_text("A8"), *"46096");
     assert_eq!(model._get_text("A9"), *"#VALUE!");
+}
+
+// Excel reads a month name and spaces in two orders only: "Mar 15, 2026" (the comma
+// after the day is needed, one after the month is allowed) and "15 Mar 2026" (no
+// commas), each optionally followed by a time. These are Excel's results, from the
+// workbook in xlsx/tests/calc_tests/DATE_AND_TIME/DATEVALUE_issue_1378.xlsx.
+#[test]
+fn test_datevalue_month_name_forms_excel_reads() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEVALUE(\"Mar, 15, 2026\")");
+    model._set("A2", "=DATEVALUE(\"Sept 15, 2026\")");
+    model._set("A3", "=DATEVALUE(\"mar 15, 2026\")");
+    model._set("A4", "=DATEVALUE(\"4 Feb 2026\")");
+    model._set("A5", "=DATEVALUE(\"15 Mar 99\")");
+    model._set("A6", "=DATEVALUE(\"Mar 15, 2026 1:30 PM\")");
+    model._set("A7", "=DATEVALUE(\"Feb 29, 2024\")");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"46096");
+    assert_eq!(model._get_text("A2"), *"46280");
+    assert_eq!(model._get_text("A3"), *"46096");
+    assert_eq!(model._get_text("A4"), *"46057");
+    assert_eq!(model._get_text("A5"), *"36234");
+    assert_eq!(model._get_text("A6"), *"46096");
+    assert_eq!(model._get_text("A7"), *"45351");
+}
+
+// Everything else with a month name and spaces is #VALUE! in Excel: the month first
+// without the comma after the day, a comma after the month when the day comes first,
+// the year first, anything after the year that is not a time, a period after the
+// month, a weekday in front, a word that is not a month and day 0.
+#[test]
+fn test_datevalue_month_name_forms_excel_rejects() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEVALUE(\"March 15 2026\")");
+    model._set("A2", "=DATEVALUE(\"15 Mar, 2026\")");
+    model._set("A3", "=DATEVALUE(\"2026 Mar 15\")");
+    model._set("A4", "=DATEVALUE(\"Mar 15, 2026 abc\")");
+    model._set("A5", "=DATEVALUE(\"Mar. 15, 2026\")");
+    model._set("A6", "=DATEVALUE(\"Sunday, March 15, 2026\")");
+    model._set("A7", "=DATEVALUE(\"Marc 15 2026\")");
+    model._set("A8", "=DATEVALUE(\"Ma 15 2026\")");
+    model._set("A9", "=DATEVALUE(\"Mar 0, 2026\")");
+    model._set("A10", "=DATEVALUE(\"MARCH 15 2026\")");
+    model.evaluate();
+
+    for row in 1..=10 {
+        assert_eq!(model._get_text(&format!("A{row}")), *"#VALUE!", "A{row}");
+    }
 }
 
 #[test]
