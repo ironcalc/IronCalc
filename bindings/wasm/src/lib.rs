@@ -1285,6 +1285,27 @@ impl Model {
         self.model.set_focus_on_open(None).map_err(to_js_error)
     }
 
+    /// Returns the date system of the workbook: "IronCalc" (the default,
+    /// serial 0 is 1899-12-30 and negative serials are dates before it),
+    /// "Excel1900" (Excel's default, with its 29 February 1900) or "Excel1904"
+    /// (serial 0 is 1904-01-01).
+    #[wasm_bindgen(js_name = "getDateSystem", unchecked_return_type = "DateSystem")]
+    pub fn get_date_system(&self) -> String {
+        self.model.get_date_system().to_string()
+    }
+
+    /// Sets the date system of the workbook. The stored values do not change,
+    /// so existing dates are read in the new system.
+    #[wasm_bindgen(js_name = "setDateSystem")]
+    pub fn set_date_system(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "DateSystem")] date_system: &str,
+    ) -> Result<(), JsError> {
+        let date_system = date_system.parse().map_err(to_js_error)?;
+        self.model.set_date_system(date_system);
+        Ok(())
+    }
+
     /// Gets the timezone of the model
     #[wasm_bindgen(js_name = "getTimezone")]
     pub fn get_timezone(&self) -> String {

@@ -15,8 +15,9 @@ use crate::{
     },
     model::{DefinedNameEntry, FmtSettings, Model},
     types::{
-        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
-        MergedCell, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
+        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, DateSystem,
+        HorizontalAlignment, MergedCell, SheetProperties, SheetState, Style, Theme,
+        VerticalAlignment,
     },
 };
 
@@ -2273,6 +2274,31 @@ impl<'a> UserModel<'a> {
             }]);
         }
         Ok(())
+    }
+
+    /// Returns the date system of the workbook
+    ///
+    /// See also:
+    /// * [Model::get_date_system]
+    pub fn get_date_system(&self) -> DateSystem {
+        self.model.get_date_system()
+    }
+
+    /// Sets the date system of the workbook. The stored values do not change,
+    /// so existing dates are read in the new system.
+    ///
+    /// See also:
+    /// * [Model::set_date_system]
+    pub fn set_date_system(&mut self, date_system: DateSystem) {
+        let old_value = self.model.get_date_system();
+        if old_value == date_system {
+            return;
+        }
+        self.push_diff_list(vec![Diff::SetDateSystem {
+            old_value,
+            new_value: date_system,
+        }]);
+        self.model.set_date_system(date_system);
     }
 
     /// Gets the timezone of the model

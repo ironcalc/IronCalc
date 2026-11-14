@@ -390,6 +390,32 @@ test('Cells block', () => {
     assert.throws(() => model.getCellsBlock(3, 1, 1, 1, 1));
 });
 
+test('date system', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    assert.strictEqual(model.getDateSystem(), 'IronCalc');
+    model.setUserInput(0, 1, 1, '=YEAR(0)');
+    model.evaluate();
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 1), '1899');
+
+    // The values do not change, their meaning does
+    model.setDateSystem('Excel1904');
+    assert.strictEqual(model.getDateSystem(), 'Excel1904');
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 1), '1904');
+
+    model.undo();
+    assert.strictEqual(model.getDateSystem(), 'IronCalc');
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 1), '1899');
+    model.redo();
+    assert.strictEqual(model.getDateSystem(), 'Excel1904');
+
+    assert.throws(() => model.setDateSystem('Excel2000'));
+    assert.strictEqual(model.getDateSystem(), 'Excel1904');
+
+    // It is saved with the workbook
+    const model2 = Model.fromBytes(model.toBytes(), 'en');
+    assert.strictEqual(model2.getDateSystem(), 'Excel1904');
+});
+
 test('focus on open', () => {
     let model = new Model('Workbook1', 'en', 'UTC', 'en');
     assert.strictEqual(model.getFocusOnOpen(), undefined);

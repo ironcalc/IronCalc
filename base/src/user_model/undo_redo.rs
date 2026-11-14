@@ -548,6 +548,12 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.workbook.settings.focus_on_open = *old_value;
                 }
+                Diff::SetDateSystem {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_date_system(*old_value);
+                }
                 Diff::SetWorkbookName {
                     old_value,
                     new_value: _,
@@ -1031,6 +1037,12 @@ impl<'a> UserModel<'a> {
                     new_value,
                 } => {
                     self.model.workbook.settings.focus_on_open = *new_value;
+                }
+                Diff::SetDateSystem {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_date_system(*new_value);
                 }
                 Diff::SetWorkbookName {
                     old_value: _,
