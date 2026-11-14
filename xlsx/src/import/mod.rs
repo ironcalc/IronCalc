@@ -88,6 +88,25 @@ fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, 
     Ok(to_english_string(&t, &cell_reference))
 }
 
+/// Picks the date system of an imported file.
+///
+/// * `workbookPr/@date1904` wins: the file stores every date serial in the
+///   1904 system.
+/// * Otherwise files written by LibreOffice use its own system (serial 0 is
+///   1899-12-30, no 29 February 1900), which is the IronCalc one. LibreOffice
+///   writes `date1904="false"` for it. Files written by IronCalc itself have
+///   always used that system too.
+/// * Anything else is assumed to be the Excel 1900 system.
+fn date_system_for(date1904: bool, application: &str) -> DateSystem {
+    if date1904 {
+        DateSystem::Excel1904
+    } else if application.starts_with("LibreOffice") || application.starts_with("IronCalc") {
+        DateSystem::IronCalc
+    } else {
+        DateSystem::Excel1900
+    }
+}
+
 fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     name: String,
     reader: R,
@@ -137,6 +156,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
             }
         }
     };
+    let date_system = date_system_for(workbook.date1904, &metadata.application);
     Ok(Workbook {
         shared_strings: shared_strings.into_strings(),
         defined_names: workbook.defined_names,
@@ -148,9 +168,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
             locale: locale.to_string(),
             // The selected tab and cell of the file are ignored on import
             focus_on_open: None,
-            // Excel files use the 1900 system unless `workbookPr/@date1904` says
-            // otherwise. Reading that attribute is not implemented yet.
-            date_system: DateSystem::Excel1900,
+            date_system,
         },
         metadata,
         tables,

@@ -17,6 +17,13 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
     let doc = XmlNode::parse(BufReader::new(file))?;
     let mut defined_names = Vec::new();
     let mut sheets = Vec::new();
+    // Date system. `date1904` is an xsd:boolean ("1"/"true" or "0"/"false") and
+    // defaults to false (the 1900 date system)
+    let date1904 = doc
+        .descendants()
+        .find(|n| n.has_tag_name("workbookPr"))
+        .map(|n| matches!(n.attribute("date1904"), Some("1") | Some("true")))
+        .unwrap_or(false);
     // Get the sheets
     let sheet_nodes: Vec<&XmlNode> = doc
         .descendants()
@@ -77,5 +84,6 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
     Ok(WorkbookXML {
         worksheets: sheets,
         defined_names,
+        date1904,
     })
 }
