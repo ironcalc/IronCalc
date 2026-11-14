@@ -27,16 +27,13 @@ pub(crate) const LAST_ROW: i32 = 1_048_576;
 /// Excel uses 15 significant digits of precision for all numeric calculations.
 pub(crate) const EXCEL_PRECISION: usize = 15;
 
-/// 693_594 is computed as:
-/// NaiveDate::from_ymd(1900, 1, 1).num_days_from_ce() - 2
-/// The 2 days offset is because of Excel 1900 bug
+/// Days from CE of 1899-12-30, which is serial 0 in the IronCalc (LibreOffice)
+/// date system and, from 1900-03-01 onwards, in the Excel 1900 system too.
+/// 693_594 is `NaiveDate::from_ymd(1900, 1, 1).num_days_from_ce() - 2`.
 pub(crate) const EXCEL_DATE_BASE: i32 = 693_594;
 
-/// We do not support dates before 1899-12-31.
-pub(crate) const MINIMUM_DATE_SERIAL_NUMBER: i32 = 1;
-
-/// Excel can handle dates until the year 9999-12-31
-/// 2958465 is the number of days from 1900-01-01 to 9999-12-31
+/// We do not support dates after 9999-12-31, which is serial 2958465 in the
+/// IronCalc and Excel 1900 date systems.
 pub(crate) const MAXIMUM_DATE_SERIAL_NUMBER: i32 = 2_958_465;
 
 #[cfg(test)]

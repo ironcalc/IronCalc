@@ -1,12 +1,13 @@
 use chrono::Datelike;
 
+use crate::types::DateSystem;
 use crate::{
     locale::Locale,
     number_format::{parse_finite_number, to_precision},
 };
 
 use super::{
-    dates::{date_to_serial_number, from_excel_date},
+    dates::{calendar_year, serial_to_date, serial_to_weekday, ymd_to_serial, DateError},
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -59,7 +60,12 @@ fn use_group_separator(use_thousands: bool, digit_index: i32, group_sizes: &str)
     false
 }
 
-pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
+pub fn format_number(
+    value_original: f64,
+    format: &str,
+    locale: &Locale,
+    date_system: DateSystem,
+) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
     let parts = parser.parts;
@@ -170,11 +176,32 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Date(p) => {
             let tokens = &p.tokens;
             let mut text = "".to_string();
-            let time_fract = value.fract();
+            // The time of day is the fraction above the floor, so that a
+            // negative serial (a date before the epoch) formats correctly.
+            let time_fract = value.rem_euclid(1.0);
             let hours = (time_fract * 24.0).floor();
             let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
             let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-            let date = from_excel_date(value as i64).ok();
+            let serial = value.floor() as i64;
+            let (date, date_error) = match serial_to_date(serial, date_system) {
+                Ok(date) => (Some(date), None),
+                Err(e) => (None, Some(e)),
+            };
+            // The weekday is known even when the date is not (Excel 1900
+            // serials below 61)
+            let weekday = serial_to_weekday(serial, date_system).ok();
+            let invalid_date = |value: f64| match date_error {
+                Some(DateError::NotImplemented) => Formatted {
+                    text: "#N/IMPL!".to_owned(),
+                    color: None,
+                    error: Some(format!("Date system not implemented for: '{value}'")),
+                },
+                _ => Formatted {
+                    text: "#VALUE!".to_owned(),
+                    color: None,
+                    error: Some(format!("Invalid date value: '{value}'")),
+                },
+            };
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -203,57 +230,31 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                             let day = date.day() as usize;
                             text = format!("{text}{day}");
                         }
-                        None => {
-                            return Formatted {
-                                text: "#VALUE!".to_owned(),
-                                color: None,
-                                error: Some(format!("Invalid date value: '{value}'")),
-                            }
-                        }
+                        None => return invalid_date(value),
                     },
                     TextToken::DayPadded => {
                         let date = match date {
                             Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                            None => return invalid_date(value),
                         };
                         let day = date.day() as usize;
                         text = format!("{text}{day:02}");
                     }
                     TextToken::DayNameShort => {
-                        let date = match date {
-                            Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        let Some(weekday) = weekday else {
+                            return invalid_date(value);
                         };
-                        let mut day = date.weekday().number_from_monday() as usize;
+                        let mut day = weekday.number_from_monday() as usize;
                         if day == 7 {
                             day = 0;
                         }
                         text = format!("{}{}", text, locale.dates.day_names_short[day]);
                     }
                     TextToken::DayName => {
-                        let date = match date {
-                            Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        let Some(weekday) = weekday else {
+                            return invalid_date(value);
                         };
-                        let mut day = date.weekday().number_from_monday() as usize;
+                        let mut day = weekday.number_from_monday() as usize;
                         if day == 7 {
                             day = 0;
                         }
@@ -262,13 +263,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::Month => {
                         let date = match date {
                             Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                            None => return invalid_date(value),
                         };
                         let month = date.month() as usize;
                         text = format!("{text}{month}");
@@ -276,13 +271,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::MonthPadded => {
                         let date = match date {
                             Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                            None => return invalid_date(value),
                         };
                         let month = date.month() as usize;
                         text = format!("{text}{month:02}");
@@ -290,13 +279,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::MonthNameShort => {
                         let date = match date {
                             Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                            None => return invalid_date(value),
                         };
                         let month = date.month() as usize;
                         text = format!("{}{}", text, locale.dates.months_short[month - 1]);
@@ -304,13 +287,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::MonthName => {
                         let date = match date {
                             Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                            None => return invalid_date(value),
                         };
                         let month = date.month() as usize;
                         text = format!("{}{}", text, locale.dates.months[month - 1]);
@@ -318,13 +295,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::MonthLetter => {
                         let date = match date {
                             Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                            None => return invalid_date(value),
                         };
                         let month = date.month() as usize;
                         let months_letter = &locale.dates.months_letter[month - 1];
@@ -333,28 +304,16 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::YearShort => {
                         let date = match date {
                             Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                            None => return invalid_date(value),
                         };
                         text = format!("{}{}", text, date.format("%y"));
                     }
                     TextToken::Year => {
                         let date = match date {
                             Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                            None => return invalid_date(value),
                         };
-                        text = format!("{}{}", text, date.year());
+                        text = format!("{}{}", text, calendar_year(date));
                     }
                     TextToken::Hour => {
                         let mut hour = hours as i32;
@@ -748,7 +707,11 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // NOTE 1: The separator has to be the same
 // NOTE 2: In some engines "2/3" is implemented ad "2/March of the present year"
 // NOTE 3: I did not implement the "short date"
-pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
+pub(crate) fn parse_date(
+    value: &str,
+    locale: &Locale,
+    date_system: DateSystem,
+) -> Result<(i64, String), String> {
     let separator = if value.contains('/') {
         '/'
     } else if value.contains('-') {
@@ -789,7 +752,7 @@ pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), 
     let (day, day_format) = parse_day(day_str)?;
     let (month, month_format) = parse_month(month_str, locale)?;
     let (year, year_format) = parse_year(year_str)?;
-    let serial_number = match date_to_serial_number(day, month, year) {
+    let serial_number = match ymd_to_serial(day, month, year, date_system) {
         Ok(n) => n,
         Err(_) => return Err("Not a valid date".to_string()),
     };
@@ -820,6 +783,7 @@ pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
     locale: &Locale,
+    date_system: DateSystem,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
     let scientific_format = "0.00E+00";
@@ -878,7 +842,7 @@ pub(crate) fn parse_formatted_number(
     }
 
     // check if it is a date. NOTE: we don't trim the original here
-    if let Ok((serial_number, format)) = parse_date(original, locale) {
+    if let Ok((serial_number, format)) = parse_date(original, locale, date_system) {
         return Ok((serial_number as f64, Some(format)));
     }
 

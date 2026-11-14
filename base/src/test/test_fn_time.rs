@@ -401,7 +401,7 @@ fn test_time_component_function_errors() {
         ("A4", "=HOUR(1, 2)"),   // Too many arguments
         ("A5", "=MINUTE(1, 2)"), // Too many arguments
         ("A6", "=SECOND(1, 2)"), // Too many arguments
-        // Negative values should return #NUM!
+        // Negative values are times of day on dates before the epoch
         ("B1", "=HOUR(-0.5)"),        // Negative value
         ("B2", "=MINUTE(-1)"),        // Negative value
         ("B3", "=SECOND(-1)"),        // Negative value
@@ -418,13 +418,14 @@ fn test_time_component_function_errors() {
     assert_eq!(model._get_text("A5"), *"#ERROR!");
     assert_eq!(model._get_text("A6"), *"#ERROR!");
 
-    // Negative values should return #NUM!
-    assert_eq!(model._get_text("B1"), *"#NUM!");
-    assert_eq!(model._get_text("B2"), *"#NUM!");
-    assert_eq!(model._get_text("B3"), *"#NUM!");
-    assert_eq!(model._get_text("B4"), *"#NUM!");
-    assert_eq!(model._get_text("B5"), *"#NUM!");
-    assert_eq!(model._get_text("B6"), *"#NUM!");
+    // In the IronCalc date system -0.5 is 1899-12-29 12:00 and -0.000001 is
+    // 1899-12-29 23:59:59.9
+    assert_eq!(model._get_text("B1"), *"12");
+    assert_eq!(model._get_text("B2"), *"0");
+    assert_eq!(model._get_text("B3"), *"0");
+    assert_eq!(model._get_text("B4"), *"23");
+    assert_eq!(model._get_text("B5"), *"59");
+    assert_eq!(model._get_text("B6"), *"59");
 }
 
 #[test]

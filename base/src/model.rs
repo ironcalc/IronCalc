@@ -2693,7 +2693,7 @@ impl<'a> Model<'a> {
 
                 //  We try to parse as number
                 if let Ok((v, number_format)) =
-                    parse_formatted_number(&value, &currencies, self.locale)
+                    parse_formatted_number(&value, &currencies, self.locale, self.date_system())
                 {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:
@@ -3191,7 +3191,7 @@ impl<'a> Model<'a> {
                 let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
-                        format_number(value, &format, self.locale).text
+                        format_number(value, &format, self.locale, self.date_system()).text
                     });
                 Ok(formatted_value)
             }
@@ -3254,7 +3254,8 @@ impl<'a> Model<'a> {
                     if is_likely_date_number_format(&style.num_fmt) {
                         let value = cell.value(&self.workbook.shared_strings, self.language);
                         if let CellValue::Number(n) = value {
-                            let formatted = format_number(n, &style.num_fmt, self.locale);
+                            let formatted =
+                                format_number(n, &style.num_fmt, self.locale, self.date_system());
                             if formatted.error.is_none() {
                                 return Ok(formatted.text);
                             }
@@ -4133,8 +4134,11 @@ impl<'a> Model<'a> {
         let short_date = &self.locale.dates.date_formats.short;
         // "M/d/yyyy"
         let long_date = &self.locale.dates.date_formats.long;
-        let short_date_example = format_number(day_example, short_date, self.locale).text;
-        let long_date_example = format_number(day_example, long_date, self.locale).text;
+        let date_system = self.date_system();
+        let short_date_example =
+            format_number(day_example, short_date, self.locale, date_system).text;
+        let long_date_example =
+            format_number(day_example, long_date, self.locale, date_system).text;
         // Number format ("#,##0.###")
         // The CLDR formats are a bit different than Excel's
         // let number_fmt = self.locale.numbers.decimal_formats.standard.clone();
@@ -4145,7 +4149,7 @@ impl<'a> Model<'a> {
             .replace(" ", " ");
 
         let number_fmt = "#,##0.00".to_string();
-        let number_example = format_number(1234.567, &number_fmt, self.locale).text;
+        let number_example = format_number(1234.567, &number_fmt, self.locale, date_system).text;
         FmtSettings {
             currency,
             currency_format,

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use crate::expressions::utils::parse_reference_a1;
-use crate::formatter::dates::{date_to_serial_number, from_excel_date};
+use crate::formatter::dates::{date_to_serial, serial_to_date};
 use crate::number_format::parse_finite_number;
+use crate::types::DateSystem;
 use crate::{
     calc_result::CalcResult,
     cell::CellValue,
@@ -111,9 +112,10 @@ fn compute_icon_index(v: f64, thresholds: &[(f64, bool)]) -> u32 {
 /// Parses a date bound of a Between/NotBetween time-period rule: either a
 /// date string in any format DATEVALUE accepts (e.g. "2025-04-25",
 /// "4/25/2025") or a plain Excel serial number.
-fn parse_cf_date_bound(value: &str) -> Option<f64> {
+fn parse_cf_date_bound(value: &str, date_system: DateSystem) -> Option<f64> {
     let trimmed = value.trim();
-    if let Ok(serial) = crate::functions::date_and_time::parse_datevalue_text(trimmed) {
+    if let Ok(serial) = crate::functions::date_and_time::parse_datevalue_text(trimmed, date_system)
+    {
         return Some(serial as f64);
     }
     parse_finite_number(trimmed).map(f64::floor)
@@ -885,14 +887,14 @@ impl<'a> Model<'a> {
             Some(s) => s.floor() as i64,
             None => return,
         };
-        let today = match from_excel_date(today_serial) {
+        let date_system = self.date_system();
+        let today = match serial_to_date(today_serial, date_system) {
             Ok(d) => d,
             Err(_) => return,
         };
 
-        let serial_of = |d: NaiveDate| -> f64 {
-            date_to_serial_number(d.day(), d.month(), d.year()).unwrap_or(0) as f64
-        };
+        let serial_of =
+            |d: NaiveDate| -> f64 { date_to_serial(d, date_system).unwrap_or(0) as f64 };
 
         let range: (f64, f64) = match period {
             PeriodType::Yesterday => {
@@ -989,8 +991,10 @@ impl<'a> Model<'a> {
                 let (Some(d1), Some(d2)) = (date1, date2) else {
                     return;
                 };
-                let (Some(s1), Some(s2)) = (parse_cf_date_bound(d1), parse_cf_date_bound(d2))
-                else {
+                let (Some(s1), Some(s2)) = (
+                    parse_cf_date_bound(d1, date_system),
+                    parse_cf_date_bound(d2, date_system),
+                ) else {
                     return;
                 };
                 (s1.min(s2), s1.max(s2))

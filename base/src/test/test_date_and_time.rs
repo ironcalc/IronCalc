@@ -4,7 +4,10 @@
 /// Either because Excel does not have that feature (i.e. wrong number of arguments)
 /// or because we differ from Excel throwing #NUM! on invalid dates
 /// We can also enter examples that illustrate/document a part of the function
-use crate::{cell::CellValue, test::util::new_empty_model};
+use crate::{
+    cell::CellValue,
+    test::util::{new_empty_model, new_empty_model_excel_1900},
+};
 
 // Excel uses a serial date system where Jan 1, 1900 = 1 (though it treats 1900 as a leap year)
 // Most test dates are documented inline, but we define boundary values here:
@@ -79,8 +82,9 @@ fn test_date_out_of_range() {
     assert_eq!(model._get_text("B1"), *"4/30/2042");
     assert_eq!(model._get_text("B2"), *"6/1/2025");
 
-    assert_eq!(model._get_text("C1"), *"#NUM!");
-    assert_eq!(model._get_text("C2"), *"#NUM!");
+    // An invalid DATE is #VALUE! in the IronCalc date system (as in LibreOffice)
+    assert_eq!(model._get_text("C1"), *"#VALUE!");
+    assert_eq!(model._get_text("C2"), *"#VALUE!");
 }
 
 #[test]
@@ -133,9 +137,9 @@ fn test_year_booleans() {
 
     model.evaluate();
 
-    // We start counting from Dec 31, 1899 (serial 1)
+    // Serial 1 is Dec 31, 1899 and serial 0 is Dec 30, 1899
     assert_eq!(model._get_text("A1"), *"1899");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1899");
 }
 
 #[test]
@@ -146,9 +150,9 @@ fn test_month_booleans() {
 
     model.evaluate();
 
-    // We start counting from Dec 31, 1899 (serial 1)
+    // Serial 1 is Dec 31, 1899 and serial 0 is Dec 30, 1899
     assert_eq!(model._get_text("A1"), *"12");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"12");
 }
 
 #[test]
@@ -159,9 +163,9 @@ fn test_day_booleans() {
 
     model.evaluate();
 
-    // We start counting from Dec 31, 1899 (serial 1)
+    // Serial 1 is Dec 31, 1899 and serial 0 is Dec 30, 1899
     assert_eq!(model._get_text("A1"), *"31");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"30");
 }
 
 #[test]
@@ -175,8 +179,9 @@ fn test_day_small_serial() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    // Serial 0 is Dec 30, 1899 and negative serials are earlier dates
+    assert_eq!(model._get_text("A1"), *"29");
+    assert_eq!(model._get_text("A2"), *"30");
     // Excel thinks is Feb 29, 1900
     assert_eq!(model._get_text("A3"), *"28");
 
@@ -195,8 +200,8 @@ fn test_month_small_serial() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A1"), *"12");
+    assert_eq!(model._get_text("A2"), *"12");
     // We agree with Excel here (We are both in Feb)
     assert_eq!(model._get_text("A3"), *"2");
 
@@ -215,8 +220,8 @@ fn test_year_small_serial() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A1"), *"1899");
+    assert_eq!(model._get_text("A2"), *"1899");
 
     assert_eq!(model._get_text("A3"), *"1900");
 
@@ -295,8 +300,9 @@ fn test_days_function() {
     assert_eq!(model._get_text("A6"), *"#ERROR!");
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"#ERROR!");
-    assert_eq!(model._get_text("A9"), *"#NUM!");
-    assert_eq!(model._get_text("A10"), *"#NUM!");
+    // DAYS does not check the serials in the IronCalc date system
+    assert_eq!(model._get_text("A9"), *"-44562");
+    assert_eq!(model._get_text("A10"), *"-2913905");
 }
 
 #[test]
@@ -343,7 +349,8 @@ fn test_days360_function() {
     assert_eq!(model._get_text("A10"), *"#ERROR!");
     assert_eq!(model._get_text("A11"), *"#ERROR!");
     assert_eq!(model._get_text("A12"), *"#ERROR!");
-    assert_eq!(model._get_text("A13"), *"#NUM!");
+    // Serial -1 is 1899-12-29
+    assert_eq!(model._get_text("A13"), *"43922");
     assert_eq!(model._get_text("A14"), *"#NUM!");
 }
 
@@ -381,7 +388,8 @@ fn test_weekday_function() {
     // Error cases
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"#NUM!");
-    assert_eq!(model._get_text("A9"), *"#NUM!");
+    // Serial -1 is Friday 1899-12-29
+    assert_eq!(model._get_text("A9"), *"6");
 }
 
 #[test]
@@ -442,7 +450,8 @@ fn test_weeknum_function() {
     assert_eq!(model._get_text("A14"), *"#NUM!");
     assert_eq!(model._get_text("A15"), *"#NUM!");
 
-    assert_eq!(model._get_text("A17"), *"#NUM!");
+    // Serial -1 is 1899-12-29
+    assert_eq!(model._get_text("A17"), *"52");
     assert_eq!(model._get_text("A18"), *"#NUM!");
 }
 
@@ -516,9 +525,10 @@ fn test_workday_function() {
     assert_eq!(model._get_text("A13"), *"#ERROR!");
     assert_eq!(model._get_text("A14"), *"#ERROR!");
     assert_eq!(model._get_text("A15"), *"#ERROR!");
-    assert_eq!(model._get_text("A16"), *"#NUM!");
+    // Serial -1 is Friday 1899-12-29; the next workday is Monday 1900-01-01
+    assert_eq!(model._get_text("A16"), *"2");
     assert_eq!(model._get_text("A17"), *"#NUM!");
-    assert_eq!(model._get_text("A18"), *"#NUM!"); // Invalid holiday
+    assert_eq!(model._get_text("A18"), *"44561"); // A negative holiday is a valid date
 }
 
 #[test]
@@ -566,7 +576,7 @@ fn test_workday_intl_function() {
     assert_eq!(model._get_text("A9"), *"#ERROR!");
     assert_eq!(model._get_text("A10"), *"#NUM!");
     assert_eq!(model._get_text("A11"), *"#VALUE!");
-    assert_eq!(model._get_text("A12"), *"#NUM!");
+    assert_eq!(model._get_text("A12"), *"2"); // From Friday 1899-12-29
 }
 
 #[test]
@@ -601,7 +611,7 @@ fn test_yearfrac_function() {
     // Error cases
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"#NUM!"); // Invalid basis should return #NUM!
-    assert_eq!(model._get_text("A9"), *"#NUM!");
+    assert_eq!(model._get_text("A9"), *"123.00613822"); // From 1899-12-29
 }
 
 #[test]
@@ -634,7 +644,7 @@ fn test_isoweeknum_function() {
 
     // Error cases
     assert_eq!(model._get_text("A6"), *"#ERROR!");
-    assert_eq!(model._get_text("A7"), *"#NUM!");
+    assert_eq!(model._get_text("A7"), *"52"); // Friday 1899-12-29
 }
 
 // Regression: DATE must apply Excel's size-1 broadcasting when its array
@@ -700,10 +710,11 @@ fn test_edate_function() {
     // Error cases
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"#ERROR!");
-    assert_eq!(model._get_text("A9"), *"#NUM!");
+    assert_eq!(model._get_text("A9"), *"30"); // 1899-12-29 + 1 month
     assert_eq!(model._get_text("A10"), *"#VALUE!");
     assert_eq!(model._get_text("A11"), *"#NUM!");
-    assert_eq!(model._get_text("A12"), *"#NUM!");
+    // There is no lower limit in the IronCalc date system: 6310 BC
+    assert_eq!(model._get_text("A12"), *"-2998337");
 }
 
 #[test]
@@ -712,13 +723,13 @@ fn test_date_edate_overflow_returns_num() {
     // outside Excel's supported range, including values that do not fit in i32.
     // Excel returns #NUM! for a month outside -32767..=32766, but replaces a day
     // outside the i16 range with 32767: DATE(2020,1,1E10) = DATE(2020,1,32767).
-    let mut model = new_empty_model();
+    let mut model = new_empty_model_excel_1900();
     model._set("A1", "=DATE(2020,1E10,1)");
     model._set("A2", "=DATE(2020,-1E10,1)");
     model._set("A3", "=DATE(2020,1,1E10)");
     model._set("A4", "=DATE(2020,1,-1E10)");
-    model._set("A5", "=EDATE(1,1E12)");
-    model._set("A6", "=EDATE(1,-1E12)");
+    model._set("A5", "=EDATE(61,1E12)");
+    model._set("A6", "=EDATE(61,-1E12)");
     model._set("A7", "=DATE(2020,1,32767)");
     model._set("A8", "=DATE(2025,32767,1)");
     model._set("A9", "=DATE(2025,32766,1)");
@@ -767,7 +778,7 @@ fn test_fn_eomonth_out_of_bounds_returns_num() {
     model._set("A1", "=EOMONTH(DATE(9999,12,1), 1)");
     // +12000 months lands on 3023-03-31 — still inside Excel's range (was a panic)
     model._set("A2", "=EOMONTH(DATE(2023,3,2), 12000)");
-    // -12000 months lands before 1900 — #NUM! (was a panic)
+    // -12000 months lands on 1023-03-31, a valid negative serial (was a panic)
     model._set("A3", "=EOMONTH(DATE(2023,3,2), -12000)");
     // Months that do not fit in i32 — #NUM! (was a panic via chrono Add)
     model._set("A4", "=EOMONTH(DATE(2023,3,2), 1E+15)");
@@ -779,7 +790,7 @@ fn test_fn_eomonth_out_of_bounds_returns_num() {
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
     assert_eq!(model._get_text("A2"), *"410258"); // 3023-03-31
-    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"-320227");
     assert_eq!(model._get_text("A4"), *"#NUM!");
     assert_eq!(model._get_text("A5"), *"#NUM!");
     // 2023-04-30
@@ -832,8 +843,8 @@ fn test_hour_function() {
     model._set("A2", "=HOUR(0.5)"); // Noon
     model._set("A3", "=HOUR(0)"); // Midnight
 
-    // Error cases
-    model._set("A4", "=HOUR(-1)"); // Negative serial
+    // Negative serial (1899-12-29)
+    model._set("A4", "=HOUR(-1)");
     model._set("A5", "=HOUR(\"abc\")"); // Non-numeric text
     model._set("A6", "=HOUR(1/0)"); // Error propagates
 
@@ -848,8 +859,8 @@ fn test_hour_function() {
     assert_eq!(model._get_text("A2"), *"12");
     assert_eq!(model._get_text("A3"), *"0");
 
-    // Error cases
-    assert_eq!(model._get_text("A4"), *"#NUM!");
+    // A negative serial is a date before the epoch, at midnight
+    assert_eq!(model._get_text("A4"), *"0");
     assert_eq!(model._get_text("A5"), *"#VALUE!");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 
@@ -867,8 +878,8 @@ fn test_minute_function() {
     model._set("A2", "=MINUTE(0.5)"); // Noon
     model._set("A3", "=MINUTE(TIME(12, 59, 59))"); // Last minute of the hour
 
-    // Error cases
-    model._set("A4", "=MINUTE(-1)"); // Negative serial
+    // Negative serial (1899-12-29)
+    model._set("A4", "=MINUTE(-1)");
     model._set("A5", "=MINUTE(\"abc\")"); // Non-numeric text
     model._set("A6", "=MINUTE(1/0)"); // Error propagates
 
@@ -883,8 +894,8 @@ fn test_minute_function() {
     assert_eq!(model._get_text("A2"), *"0");
     assert_eq!(model._get_text("A3"), *"59");
 
-    // Error cases
-    assert_eq!(model._get_text("A4"), *"#NUM!");
+    // A negative serial is a date before the epoch, at midnight
+    assert_eq!(model._get_text("A4"), *"0");
     assert_eq!(model._get_text("A5"), *"#VALUE!");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 
@@ -902,8 +913,8 @@ fn test_second_function() {
     model._set("A2", "=SECOND(0.5)"); // Noon
     model._set("A3", "=SECOND(TIME(12, 59, 59))"); // Last second of the minute
 
-    // Error cases
-    model._set("A4", "=SECOND(-1)"); // Negative serial
+    // Negative serial (1899-12-29)
+    model._set("A4", "=SECOND(-1)");
     model._set("A5", "=SECOND(\"abc\")"); // Non-numeric text
     model._set("A6", "=SECOND(1/0)"); // Error propagates
 
@@ -918,8 +929,8 @@ fn test_second_function() {
     assert_eq!(model._get_text("A2"), *"0");
     assert_eq!(model._get_text("A3"), *"59");
 
-    // Error cases
-    assert_eq!(model._get_text("A4"), *"#NUM!");
+    // A negative serial is a date before the epoch, at midnight
+    assert_eq!(model._get_text("A4"), *"0");
     assert_eq!(model._get_text("A5"), *"#VALUE!");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 
@@ -932,7 +943,8 @@ fn test_second_function() {
 fn test_fn_weekday_weeknum_isoweeknum_day_zero() {
     let mut model = new_empty_model();
 
-    // Date serial 0 is 0 Jan 1900 in Excel, a valid date. We return #NUM! instead.
+    // Date serial 0 is 0 Jan 1900 in Excel; in the IronCalc date system it is
+    // Saturday 30 Dec 1899.
     model._set("A1", "=WEEKDAY(0)");
     model._set("A2", "=WEEKNUM(0)");
     model._set("A3", "=ISOWEEKNUM(0)");
@@ -944,13 +956,13 @@ fn test_fn_weekday_weeknum_isoweeknum_day_zero() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
-    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A1"), *"7");
+    assert_eq!(model._get_text("A2"), *"52");
+    assert_eq!(model._get_text("A3"), *"52");
 
-    assert_eq!(model._get_text("B1"), *"#NUM!");
-    assert_eq!(model._get_text("B2"), *"#NUM!");
-    assert_eq!(model._get_text("B3"), *"#NUM!");
+    assert_eq!(model._get_text("B1"), *"7");
+    assert_eq!(model._get_text("B2"), *"52");
+    assert_eq!(model._get_text("B3"), *"52");
 }
 
 #[test]

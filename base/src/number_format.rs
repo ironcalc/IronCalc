@@ -1,3 +1,4 @@
+use crate::types::DateSystem;
 use crate::{
     formatter::{self, format::Formatted},
     locale::get_locale,
@@ -249,7 +250,12 @@ pub fn to_precision_str(value: f64, precision: usize) -> String {
     text.to_string()
 }
 
-pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
+pub fn format_number(
+    value: f64,
+    format_code: &str,
+    locale: &str,
+    date_system: DateSystem,
+) -> Formatted {
     let locale = match get_locale(locale) {
         Ok(l) => l,
         Err(_) => {
@@ -260,7 +266,7 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
             }
         }
     };
-    formatter::format::format_number(value, format_code, locale)
+    formatter::format::format_number(value, format_code, locale, date_system)
 }
 
 #[cfg(test)]
@@ -314,7 +320,7 @@ mod tests {
             5, 6, 7, 8, 11, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 48, 49,
         ] {
             let code = get_num_fmt(id, &[]);
-            let out = format_number(1234.5, &code, "en");
+            let out = format_number(1234.5, &code, "en", DateSystem::IronCalc);
             if out.error.is_some() || out.text.contains("#VALUE!") || out.text.contains("#ERROR!") {
                 failures.push((id, code, out.text, out.error));
             }
@@ -328,7 +334,7 @@ mod tests {
     // The specific regression: id 39 formats 175000 as a grouped 2-decimal number, not `#VALUE!`.
     #[test]
     fn id_39_formats_currency_value() {
-        let out = format_number(175000.0, &get_num_fmt(39, &[]), "en");
+        let out = format_number(175000.0, &get_num_fmt(39, &[]), "en", DateSystem::IronCalc);
         assert!(out.error.is_none());
         assert!(out.text.contains("175,000.00"), "got {:?}", out.text);
     }

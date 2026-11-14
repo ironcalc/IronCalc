@@ -3,7 +3,6 @@ use chrono::{Datelike, NaiveDate};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
     model::Model,
 };
 
@@ -461,13 +460,13 @@ impl<'a> Model<'a> {
         if !(0..=4).contains(&basis) || basis == 2 {
             return CalcResult::new_error(Error::NUM, cell, "invalid basis".to_string());
         }
-        let date_purchased = match from_excel_date(date_purchased_serial) {
+        let date_purchased = match self.date_from_serial(date_purchased_serial, cell) {
             Ok(d) => d,
-            Err(s) => return CalcResult::new_error(Error::NUM, cell, s),
+            Err(e) => return e,
         };
-        let first_period = match from_excel_date(first_period_serial) {
+        let first_period = match self.date_from_serial(first_period_serial, cell) {
             Ok(d) => d,
-            Err(s) => return CalcResult::new_error(Error::NUM, cell, s),
+            Err(e) => return e,
         };
         match amor_linc(
             cost,
@@ -546,13 +545,13 @@ impl<'a> Model<'a> {
                 "asset life cannot be in [0,3] or [4,5]".to_string(),
             );
         }
-        let date_purchased = match from_excel_date(date_purchased_serial) {
+        let date_purchased = match self.date_from_serial(date_purchased_serial, cell) {
             Ok(d) => d,
-            Err(s) => return CalcResult::new_error(Error::NUM, cell, s),
+            Err(e) => return e,
         };
-        let first_period = match from_excel_date(first_period_serial) {
+        let first_period = match self.date_from_serial(first_period_serial, cell) {
             Ok(d) => d,
-            Err(s) => return CalcResult::new_error(Error::NUM, cell, s),
+            Err(e) => return e,
         };
         match amor_degrc(
             cost,

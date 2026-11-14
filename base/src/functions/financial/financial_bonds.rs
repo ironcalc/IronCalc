@@ -2,18 +2,24 @@ use chrono::{Datelike, Months, NaiveDate};
 
 use crate::{
     calc_result::CalcResult,
-    constants::EXCEL_DATE_BASE,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
+    formatter::dates::{date_to_serial, serial_to_date, DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE},
     model::Model,
+    types::DateSystem,
 };
 
 // ============================================================
 // Date helpers
 // ============================================================
 
-fn naivedate_to_serial(d: NaiveDate) -> i64 {
-    (d.num_days_from_ce() - EXCEL_DATE_BASE) as i64
+// The bond helpers report dates problems as strings; `map_date_err` turns the
+// not-implemented message back into #N/IMPL!.
+fn to_date(serial: i64, system: DateSystem) -> Result<NaiveDate, String> {
+    serial_to_date(serial, system).map_err(|e| e.to_string())
+}
+
+fn to_serial(d: NaiveDate, system: DateSystem) -> Result<i64, String> {
+    date_to_serial(d, system).map_err(|e| e.to_string())
 }
 
 fn last_day_of_feb(year: i32) -> u32 {
@@ -127,37 +133,60 @@ fn change_month(date: NaiveDate, num_months: i32, return_last: bool) -> Result<N
 // is maturity moved back a whole number of periods. Stepping from the previous
 // coupon date instead (as ExcelFinancialFunctions does) lets a maturity on the
 // 29th or 30th drift to the 28th once the schedule passes February.
-fn find_pcd_ncd(settlement: i64, maturity: i64, frequency: u32) -> Result<(i64, i64), String> {
+fn find_pcd_ncd(
+    system: DateSystem,
+    settlement: i64,
+    maturity: i64,
+    frequency: u32,
+) -> Result<(i64, i64), String> {
     let months_per = (12 / frequency) as i32;
-    let mat = from_excel_date(maturity)?;
+    let mat = to_date(maturity, system)?;
     let return_last = is_last_day_of_month(mat);
 
     let mut periods = 0;
     let mut front = mat;
     let mut trailing = mat;
-    while naivedate_to_serial(front) > settlement {
+    while to_serial(front, system)? > settlement {
         trailing = front;
         periods += 1;
         front = change_month(mat, -months_per * periods, return_last)?;
     }
-    Ok((naivedate_to_serial(front), naivedate_to_serial(trailing)))
+    Ok((to_serial(front, system)?, to_serial(trailing, system)?))
 }
 
 // Latest coupon date that is <= settlement, anchored by maturity & frequency.
-fn prev_coupon_date(settlement: i64, maturity: i64, frequency: u32) -> Result<i64, String> {
-    Ok(find_pcd_ncd(settlement, maturity, frequency)?.0)
+fn prev_coupon_date(
+    system: DateSystem,
+    settlement: i64,
+    maturity: i64,
+    frequency: u32,
+) -> Result<i64, String> {
+    Ok(find_pcd_ncd(system, settlement, maturity, frequency)?.0)
 }
 
 // Earliest coupon date strictly after settlement.
-fn next_coupon_date(settlement: i64, maturity: i64, frequency: u32) -> Result<i64, String> {
-    Ok(find_pcd_ncd(settlement, maturity, frequency)?.1)
+fn next_coupon_date(
+    system: DateSystem,
+    settlement: i64,
+    maturity: i64,
+    frequency: u32,
+) -> Result<i64, String> {
+    Ok(find_pcd_ncd(system, settlement, maturity, frequency)?.1)
 }
 
 // Number of coupon payments strictly after settlement up to and including maturity.
-fn coupon_count(settlement: i64, maturity: i64, frequency: u32) -> Result<u32, String> {
+fn coupon_count(
+    system: DateSystem,
+    settlement: i64,
+    maturity: i64,
+    frequency: u32,
+) -> Result<u32, String> {
     let months_per = 12 / frequency as i32;
-    let next = from_excel_date(next_coupon_date(settlement, maturity, frequency)?)?;
-    let mat = from_excel_date(maturity)?;
+    let next = to_date(
+        next_coupon_date(system, settlement, maturity, frequency)?,
+        system,
+    )?;
+    let mat = to_date(maturity, system)?;
 
     let next_months = next.year() * 12 + next.month() as i32;
     let mat_months = mat.year() * 12 + mat.month() as i32;
@@ -170,6 +199,7 @@ fn coupon_count(settlement: i64, maturity: i64, frequency: u32) -> Result<u32, S
 
 // Total days in the coupon period that contains settlement (E).
 fn coupon_days_e(
+    system: DateSystem,
     settlement: i64,
     maturity: i64,
     frequency: u32,
@@ -178,8 +208,14 @@ fn coupon_days_e(
     match basis {
         0 | 2 | 4 => Ok(360.0 / frequency as f64),
         1 => {
-            let prev = from_excel_date(prev_coupon_date(settlement, maturity, frequency)?)?;
-            let next = from_excel_date(next_coupon_date(settlement, maturity, frequency)?)?;
+            let prev = to_date(
+                prev_coupon_date(system, settlement, maturity, frequency)?,
+                system,
+            )?;
+            let next = to_date(
+                next_coupon_date(system, settlement, maturity, frequency)?,
+                system,
+            )?;
             Ok(actual_days(prev, next))
         }
         3 => Ok(365.0 / frequency as f64),
@@ -195,29 +231,38 @@ fn coupon_days_e(
 // For example COUPDAYS(DATE(2024,4,1), DATE(2026,8,31), 2, 1) is 182 although
 // the coupon period from 2024-02-29 to 2024-08-31 has 184 days. PRICE, YIELD
 // and DURATION use the coupon period itself (`coupon_days_e`).
-fn coupdays_actual(settlement: i64, maturity: i64, frequency: u32) -> Result<f64, String> {
+fn coupdays_actual(
+    system: DateSystem,
+    settlement: i64,
+    maturity: i64,
+    frequency: u32,
+) -> Result<f64, String> {
     let months_per = (12 / frequency) as i32;
-    let mut date = from_excel_date(maturity)?;
+    let mut date = to_date(maturity, system)?;
     loop {
         let earlier = change_month(date, -months_per, false)?;
-        if naivedate_to_serial(earlier) <= settlement {
+        if to_serial(earlier, system)? <= settlement {
             break;
         }
         date = earlier;
     }
-    let (prev, next) = find_pcd_ncd(settlement, naivedate_to_serial(date), frequency)?;
+    let (prev, next) = find_pcd_ncd(system, settlement, to_serial(date, system)?, frequency)?;
     Ok((next - prev) as f64)
 }
 
 // Accrued days from the previous coupon to settlement (A).
 fn coupon_days_a(
+    system: DateSystem,
     settlement: i64,
     maturity: i64,
     frequency: u32,
     basis: u32,
 ) -> Result<f64, String> {
-    let prev = from_excel_date(prev_coupon_date(settlement, maturity, frequency)?)?;
-    let set = from_excel_date(settlement)?;
+    let prev = to_date(
+        prev_coupon_date(system, settlement, maturity, frequency)?,
+        system,
+    )?;
+    let set = to_date(settlement, system)?;
     Ok(basis_days(prev, set, basis))
 }
 
@@ -250,6 +295,9 @@ fn validate_basis(basis: u32, cell: CellReferenceIndex) -> Result<(), CalcResult
 }
 
 fn map_date_err(e: String, cell: CellReferenceIndex) -> CalcResult {
+    if e == DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE {
+        return CalcResult::new_error(Error::NIMPL, cell, e);
+    }
     CalcResult::new_error(Error::NUM, cell, e)
 }
 
@@ -257,8 +305,10 @@ fn map_date_err(e: String, cell: CellReferenceIndex) -> CalcResult {
 // Core bond price computation (standard coupon bond)
 // ============================================================
 
+#[allow(clippy::too_many_arguments)]
 // Returns the clean price (per `redemption` par) for a standard coupon bond.
 fn compute_price(
+    system: DateSystem,
     settlement: i64,
     maturity: i64,
     rate: f64,
@@ -267,9 +317,9 @@ fn compute_price(
     frequency: u32,
     basis: u32,
 ) -> Result<f64, String> {
-    let n = coupon_count(settlement, maturity, frequency)? as f64;
-    let e = coupon_days_e(settlement, maturity, frequency, basis)?;
-    let a = coupon_days_a(settlement, maturity, frequency, basis)?;
+    let n = coupon_count(system, settlement, maturity, frequency)? as f64;
+    let e = coupon_days_e(system, settlement, maturity, frequency, basis)?;
+    let a = coupon_days_a(system, settlement, maturity, frequency, basis)?;
     let dsc_over_e = (e - a) / e;
 
     let coupon = 100.0 * rate / frequency as f64;
@@ -296,7 +346,9 @@ fn compute_price(
 // Yield solver (Newton-Raphson + bisection)
 // ============================================================
 
+#[allow(clippy::too_many_arguments)]
 fn compute_yield_from_price(
+    system: DateSystem,
     target: f64,
     settlement: i64,
     maturity: i64,
@@ -306,9 +358,11 @@ fn compute_yield_from_price(
     basis: u32,
 ) -> Result<f64, String> {
     let obj = |y: f64| -> Option<f64> {
-        compute_price(settlement, maturity, rate, y, redemption, frequency, basis)
-            .ok()
-            .map(|p| p - target)
+        compute_price(
+            system, settlement, maturity, rate, y, redemption, frequency, basis,
+        )
+        .ok()
+        .map(|p| p - target)
     };
 
     let h = 1e-5;
@@ -419,13 +473,14 @@ fn days_between_not_neg_with_hack(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f
 // `settl` and the anchor date `mat`, walking forward by `num_months` from a
 // (possibly month-end-adjusted) settlement.
 fn coup_number(
+    system: DateSystem,
     mat: i64,
     settl: i64,
     num_months: i32,
     is_whole_number: bool,
 ) -> Result<f64, String> {
-    let mat_d = from_excel_date(mat)?;
-    let settl_d = from_excel_date(settl)?;
+    let mat_d = to_date(mat, system)?;
+    let settl_d = to_date(settl, system)?;
 
     let coupons_temp = if is_whole_number { 0.0 } else { 1.0 };
     let end_of_month_temp = is_last_day_of_month(mat_d);
@@ -466,6 +521,7 @@ fn coup_number(
 // rate, yld, redemption, frequency, basis: standard
 #[allow(clippy::too_many_arguments)]
 fn compute_oddfprice(
+    system: DateSystem,
     settlement: i64,
     maturity: i64,
     issue: i64,
@@ -479,17 +535,17 @@ fn compute_oddfprice(
     let m = frequency as f64;
     let num_months = (12 / frequency) as i32;
 
-    let settlement_d = from_excel_date(settlement)?;
-    let issue_d = from_excel_date(issue)?;
-    let first_coupon_d = from_excel_date(first_coupon)?;
+    let settlement_d = to_date(settlement, system)?;
+    let issue_d = to_date(issue, system)?;
+    let first_coupon_d = to_date(first_coupon, system)?;
 
     // E: length of the quasi-coupon period that ends on the first coupon.
-    let e = coupon_days_e(settlement, first_coupon, frequency, basis)?;
+    let e = coupon_days_e(system, settlement, first_coupon, frequency, basis)?;
     let dfc = days_between_not_neg(issue_d, first_coupon_d, basis);
 
     if dfc < e {
         // --- Short odd first coupon period ---
-        let n = coupon_count(settlement, maturity, frequency)? as f64;
+        let n = coupon_count(system, settlement, maturity, frequency)? as f64;
         let dsc = days_between_not_neg(settlement_d, first_coupon_d, basis);
         let a = days_between_not_neg(issue_d, settlement_d, basis);
         let x = yld / m + 1.0;
@@ -505,7 +561,7 @@ fn compute_oddfprice(
         Ok(term1 + term2 + term3 - term4)
     } else {
         // --- Long odd first coupon period (spans several quasi-coupon periods) ---
-        let nc = coupon_count(issue, first_coupon, frequency)? as i64;
+        let nc = coupon_count(system, issue, first_coupon, frequency)? as i64;
 
         let mut late_coupon = first_coupon_d;
         let mut dcnl = 0.0_f64;
@@ -531,15 +587,21 @@ fn compute_oddfprice(
         }
 
         let dsc = if basis == 2 || basis == 3 {
-            let ncd = from_excel_date(next_coupon_date(settlement, first_coupon, frequency)?)?;
+            let ncd = to_date(
+                next_coupon_date(system, settlement, first_coupon, frequency)?,
+                system,
+            )?;
             days_between_not_neg(settlement_d, ncd, basis)
         } else {
-            let pcd = from_excel_date(prev_coupon_date(settlement, first_coupon, frequency)?)?;
+            let pcd = to_date(
+                prev_coupon_date(system, settlement, first_coupon, frequency)?,
+                system,
+            )?;
             e - basis_days(pcd, settlement_d, basis)
         };
 
-        let nq = coup_number(first_coupon, settlement, num_months, true)?;
-        let n = coupon_count(first_coupon, maturity, frequency)? as f64;
+        let nq = coup_number(system, first_coupon, settlement, num_months, true)?;
+        let n = coupon_count(system, first_coupon, maturity, frequency)? as f64;
         let x = yld / m + 1.0;
         let y = dsc / e;
 
@@ -562,6 +624,7 @@ fn compute_oddfprice(
 // last_interest: last regular interest (coupon) date before the odd last period.
 #[allow(clippy::too_many_arguments)]
 fn odd_l_func(
+    system: DateSystem,
     settlement: i64,
     maturity: i64,
     last_interest: i64,
@@ -575,11 +638,11 @@ fn odd_l_func(
     let m = frequency as f64;
     let num_months = (12 / frequency) as i32;
 
-    let settlement_d = from_excel_date(settlement)?;
-    let maturity_d = from_excel_date(maturity)?;
-    let last_interest_d = from_excel_date(last_interest)?;
+    let settlement_d = to_date(settlement, system)?;
+    let maturity_d = to_date(maturity, system)?;
+    let last_interest_d = to_date(last_interest, system)?;
 
-    let nc = coupon_count(last_interest, maturity, frequency)? as i64;
+    let nc = coupon_count(system, last_interest, maturity, frequency)? as i64;
 
     let mut early_coupon = last_interest_d;
     let mut dcnl = 0.0_f64;
@@ -624,6 +687,7 @@ fn odd_l_func(
 
 #[allow(clippy::too_many_arguments)]
 fn compute_oddlprice(
+    system: DateSystem,
     settlement: i64,
     maturity: i64,
     last_interest: i64,
@@ -634,6 +698,7 @@ fn compute_oddlprice(
     basis: u32,
 ) -> Result<f64, String> {
     odd_l_func(
+        system,
         settlement,
         maturity,
         last_interest,
@@ -760,6 +825,7 @@ fn parse_coupon_args(
 impl<'a> Model<'a> {
     // DURATION(settlement, maturity, coupon, yld, frequency, [basis])
     pub(crate) fn fn_duration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let arg_count = args.len();
         if !(5..=6).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -814,15 +880,15 @@ impl<'a> Model<'a> {
             );
         }
 
-        let n = match coupon_count(settlement, maturity, frequency) {
+        let n = match coupon_count(system, settlement, maturity, frequency) {
             Ok(v) => v as f64,
             Err(e) => return map_date_err(e, cell),
         };
-        let e = match coupon_days_e(settlement, maturity, frequency, basis) {
+        let e = match coupon_days_e(system, settlement, maturity, frequency, basis) {
             Ok(v) => v,
             Err(e) => return map_date_err(e, cell),
         };
-        let a = match coupon_days_a(settlement, maturity, frequency, basis) {
+        let a = match coupon_days_a(system, settlement, maturity, frequency, basis) {
             Ok(v) => v,
             Err(e) => return map_date_err(e, cell),
         };
@@ -876,6 +942,7 @@ impl<'a> Model<'a> {
 
     // PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])
     pub(crate) fn fn_price(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let arg_count = args.len();
         if !(6..=7).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -935,7 +1002,7 @@ impl<'a> Model<'a> {
         }
 
         match compute_price(
-            settlement, maturity, rate, yld, redemption, frequency, basis,
+            system, settlement, maturity, rate, yld, redemption, frequency, basis,
         ) {
             Ok(p) => CalcResult::Number(p),
             Err(e) => map_date_err(e, cell),
@@ -944,6 +1011,7 @@ impl<'a> Model<'a> {
 
     // YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])
     pub(crate) fn fn_yield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let arg_count = args.len();
         if !(6..=7).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -1002,8 +1070,9 @@ impl<'a> Model<'a> {
             );
         }
 
-        match compute_yield_from_price(pr, settlement, maturity, rate, redemption, frequency, basis)
-        {
+        match compute_yield_from_price(
+            system, pr, settlement, maturity, rate, redemption, frequency, basis,
+        ) {
             Ok(y) => CalcResult::Number(y),
             Err(e) => map_date_err(e, cell),
         }
@@ -1011,6 +1080,7 @@ impl<'a> Model<'a> {
 
     // ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency, [basis])
     pub(crate) fn fn_oddfprice(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let arg_count = args.len();
         if !(8..=9).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -1074,6 +1144,7 @@ impl<'a> Model<'a> {
         }
 
         match compute_oddfprice(
+            system,
             settlement,
             maturity,
             issue,
@@ -1091,6 +1162,7 @@ impl<'a> Model<'a> {
 
     // ODDFYIELD(settlement, maturity, issue, first_coupon, rate, pr, redemption, frequency, [basis])
     pub(crate) fn fn_oddfyield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let arg_count = args.len();
         if !(8..=9).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -1155,6 +1227,7 @@ impl<'a> Model<'a> {
 
         let price_fn = |yld: f64| {
             compute_oddfprice(
+                system,
                 settlement,
                 maturity,
                 issue,
@@ -1176,6 +1249,7 @@ impl<'a> Model<'a> {
 
     // ODDLPRICE(settlement, maturity, last_interest, rate, yld, redemption, frequency, [basis])
     pub(crate) fn fn_oddlprice(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let arg_count = args.len();
         if !(7..=8).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -1235,6 +1309,7 @@ impl<'a> Model<'a> {
         }
 
         match compute_oddlprice(
+            system,
             settlement,
             maturity,
             last_interest,
@@ -1251,6 +1326,7 @@ impl<'a> Model<'a> {
 
     // ODDLYIELD(settlement, maturity, last_interest, rate, pr, redemption, frequency, [basis])
     pub(crate) fn fn_oddlyield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let arg_count = args.len();
         if !(7..=8).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -1310,6 +1386,7 @@ impl<'a> Model<'a> {
         }
 
         match odd_l_func(
+            system,
             settlement,
             maturity,
             last_interest,
@@ -1328,11 +1405,12 @@ impl<'a> Model<'a> {
     // COUPDAYBS(settlement, maturity, frequency, [basis])
     // Days from the beginning of the coupon period to settlement.
     pub(crate) fn fn_coupdaybs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let (settlement, maturity, frequency, basis) = match parse_coupon_args(self, args, cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        match coupon_days_a(settlement, maturity, frequency, basis) {
+        match coupon_days_a(system, settlement, maturity, frequency, basis) {
             Ok(v) => CalcResult::Number(v),
             Err(e) => map_date_err(e, cell),
         }
@@ -1341,14 +1419,15 @@ impl<'a> Model<'a> {
     // COUPDAYS(settlement, maturity, frequency, [basis])
     // Total days in the coupon period that contains settlement.
     pub(crate) fn fn_coupdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let (settlement, maturity, frequency, basis) = match parse_coupon_args(self, args, cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
         let days = if basis == 1 {
-            coupdays_actual(settlement, maturity, frequency)
+            coupdays_actual(system, settlement, maturity, frequency)
         } else {
-            coupon_days_e(settlement, maturity, frequency, basis)
+            coupon_days_e(system, settlement, maturity, frequency, basis)
         };
         match days {
             Ok(v) => CalcResult::Number(v),
@@ -1359,19 +1438,20 @@ impl<'a> Model<'a> {
     // COUPDAYSNC(settlement, maturity, frequency, [basis])
     // Days from settlement to the next coupon date.
     pub(crate) fn fn_coupdaysnc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let (settlement, maturity, frequency, basis) = match parse_coupon_args(self, args, cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let next = match next_coupon_date(settlement, maturity, frequency) {
+        let next = match next_coupon_date(system, settlement, maturity, frequency) {
             Ok(v) => v,
             Err(e) => return map_date_err(e, cell),
         };
-        let set_date = match from_excel_date(settlement) {
+        let set_date = match to_date(settlement, system) {
             Ok(d) => d,
             Err(e) => return map_date_err(e, cell),
         };
-        let next_date = match from_excel_date(next) {
+        let next_date = match to_date(next, system) {
             Ok(d) => d,
             Err(e) => return map_date_err(e, cell),
         };
@@ -1380,11 +1460,11 @@ impl<'a> Model<'a> {
             // for the US 30/360 basis: the total 30/360 days in the coupon period
             // (ModifyBothDates) minus the days from its start to settlement
             // (ModifyStartDate). This is *not* simply 30/360(settlement, next).
-            let prev = match prev_coupon_date(settlement, maturity, frequency) {
+            let prev = match prev_coupon_date(system, settlement, maturity, frequency) {
                 Ok(v) => v,
                 Err(e) => return map_date_err(e, cell),
             };
-            let prev_date = match from_excel_date(prev) {
+            let prev_date = match to_date(prev, system) {
                 Ok(d) => d,
                 Err(e) => return map_date_err(e, cell),
             };
@@ -1398,11 +1478,12 @@ impl<'a> Model<'a> {
     // COUPNCD(settlement, maturity, frequency, [basis])
     // Next coupon date after settlement (returned as an Excel serial date).
     pub(crate) fn fn_coupncd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let (settlement, maturity, frequency, _basis) = match parse_coupon_args(self, args, cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        match next_coupon_date(settlement, maturity, frequency) {
+        match next_coupon_date(system, settlement, maturity, frequency) {
             Ok(serial) => CalcResult::Number(serial as f64),
             Err(e) => map_date_err(e, cell),
         }
@@ -1411,11 +1492,12 @@ impl<'a> Model<'a> {
     // COUPNUM(settlement, maturity, frequency, [basis])
     // Number of coupons payable between settlement and maturity.
     pub(crate) fn fn_coupnum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let (settlement, maturity, frequency, _basis) = match parse_coupon_args(self, args, cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        match coupon_count(settlement, maturity, frequency) {
+        match coupon_count(system, settlement, maturity, frequency) {
             Ok(n) => CalcResult::Number(n as f64),
             Err(e) => map_date_err(e, cell),
         }
@@ -1424,11 +1506,12 @@ impl<'a> Model<'a> {
     // COUPPCD(settlement, maturity, frequency, [basis])
     // Most recent coupon date at or before settlement (returned as an Excel serial date).
     pub(crate) fn fn_couppcd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let system = self.date_system();
         let (settlement, maturity, frequency, _basis) = match parse_coupon_args(self, args, cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        match prev_coupon_date(settlement, maturity, frequency) {
+        match prev_coupon_date(system, settlement, maturity, frequency) {
             Ok(serial) => CalcResult::Number(serial as f64),
             Err(e) => map_date_err(e, cell),
         }

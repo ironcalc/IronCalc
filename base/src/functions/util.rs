@@ -8,18 +8,19 @@ use crate::{
     formatter::format::parse_date,
     locale::Locale,
     number_format::to_excel_precision,
+    types::DateSystem,
 };
 
 /// If `s` looks like a date literal in the given locale, return its Excel
 /// serial number as `f64`. Pure numeric strings are rejected here because the
 /// numeric branch in `build_criteria` handles them already, and date parsing
 /// must not shadow the simpler number path.
-fn parse_date_criterion(s: &str, locale: &Locale) -> Option<f64> {
+fn parse_date_criterion(s: &str, locale: &Locale, date_system: DateSystem) -> Option<f64> {
     let trimmed = s.trim();
     if trimmed.is_empty() || parse_finite_number(trimmed).is_some() {
         return None;
     }
-    parse_date(trimmed, locale)
+    parse_date(trimmed, locale, date_system)
         .ok()
         .map(|(serial, _)| serial as f64)
 }
@@ -372,6 +373,7 @@ fn result_is_equal_to_empty(calc_result: &CalcResult) -> bool {
 pub(crate) fn build_criteria<'a>(
     value: &'a CalcResult,
     locale: &'a Locale,
+    date_system: DateSystem,
 ) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
     match value {
         CalcResult::String(s) => {
@@ -381,7 +383,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
-                } else if let Some(f) = parse_date_criterion(v, locale) {
+                } else if let Some(f) = parse_date_criterion(v, locale, date_system) {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else {
                     Box::new(move |x| result_is_less_or_equal_than_string(x, &v.to_lowercase()))
@@ -392,7 +394,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
-                } else if let Some(f) = parse_date_criterion(v, locale) {
+                } else if let Some(f) = parse_date_criterion(v, locale, date_system) {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else {
                     Box::new(move |x| result_is_greater_or_equal_than_string(x, &v.to_lowercase()))
@@ -412,7 +414,7 @@ pub(crate) fn build_criteria<'a>(
                     }
                 } else if v.is_empty() {
                     Box::new(result_is_not_equal_to_empty)
-                } else if let Some(f) = parse_date_criterion(v, locale) {
+                } else if let Some(f) = parse_date_criterion(v, locale, date_system) {
                     Box::new(move |x| result_is_not_equal_to_number(x, f))
                 } else {
                     Box::new(move |x| result_is_not_equal_to_string(x, &v.to_lowercase()))
@@ -423,7 +425,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
-                } else if let Some(f) = parse_date_criterion(v, locale) {
+                } else if let Some(f) = parse_date_criterion(v, locale, date_system) {
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else {
                     Box::new(move |x| result_is_less_than_string(x, &v.to_lowercase()))
@@ -434,7 +436,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
-                } else if let Some(f) = parse_date_criterion(v, locale) {
+                } else if let Some(f) = parse_date_criterion(v, locale, date_system) {
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else {
                     Box::new(move |x| result_is_greater_than_string(x, &v.to_lowercase()))
@@ -457,7 +459,7 @@ pub(crate) fn build_criteria<'a>(
                     } else {
                         Box::new(move |_| false)
                     }
-                } else if let Some(f) = parse_date_criterion(v, locale) {
+                } else if let Some(f) = parse_date_criterion(v, locale, date_system) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
                 } else {
                     Box::new(move |x| result_is_equal_to_string(x, &v.to_lowercase()))

@@ -3,7 +3,6 @@ use chrono::{Datelike, NaiveDate};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
     model::Model,
 };
 
@@ -377,17 +376,17 @@ impl<'a> Model<'a> {
             );
         }
 
-        let issue = match from_excel_date(issue_serial) {
+        let issue = match self.date_from_serial(issue_serial, cell) {
             Ok(d) => d,
-            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
+            Err(e) => return e,
         };
-        let first_interest = match from_excel_date(first_interest_serial) {
+        let first_interest = match self.date_from_serial(first_interest_serial, cell) {
             Ok(d) => d,
-            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
+            Err(e) => return e,
         };
-        let settlement = match from_excel_date(settlement_serial) {
+        let settlement = match self.date_from_serial(settlement_serial, cell) {
             Ok(d) => d,
-            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
+            Err(e) => return e,
         };
 
         match compute_accrint(
