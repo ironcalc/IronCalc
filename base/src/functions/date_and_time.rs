@@ -135,12 +135,13 @@ macro_rules! time_part_fn {
                     message: "Invalid time".to_string(),
                 };
             }
-            if value < 0.0 {
+            let value = if value < 0.0 {
                 // A negative serial is a date before the epoch. The IronCalc
                 // system takes the time of day of that date; Excel 1900 has no
-                // negative dates and the 1904 system is not implemented.
+                // negative dates; the 1904 system shows a negative value as a
+                // negative time (-0.25 is "-6:00") and reads its parts the same way.
                 match self.date_system() {
-                    DateSystem::IronCalc => {}
+                    DateSystem::IronCalc => value,
                     DateSystem::Excel1900 => {
                         return CalcResult::Error {
                             error: Error::NUM,
@@ -148,15 +149,11 @@ macro_rules! time_part_fn {
                             message: "Invalid time".to_string(),
                         };
                     }
-                    DateSystem::Excel1904 => {
-                        return CalcResult::Error {
-                            error: Error::NIMPL,
-                            origin: cell,
-                            message: DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE.to_string(),
-                        };
-                    }
+                    DateSystem::Excel1904 => -value,
                 }
-            }
+            } else {
+                value
+            };
             CalcResult::Number(($extract)(value))
         }
     };
@@ -168,8 +165,10 @@ use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::dates::calendar_year;
 use crate::formatter::dates::days_in_month;
+use crate::formatter::dates::from_ironcalc_serial;
 use crate::formatter::dates::gregorian_days_in_month;
 use crate::formatter::dates::is_gregorian_leap_year;
+use crate::formatter::dates::maximum_serial;
 use crate::formatter::dates::permissive_ymd_to_serial;
 use crate::formatter::dates::rolled_year_month;
 use crate::formatter::dates::rolled_ymd_to_serial;
@@ -177,7 +176,7 @@ use crate::formatter::dates::serial_to_date;
 use crate::formatter::dates::serial_to_iso_week;
 use crate::formatter::dates::serial_to_weekday;
 use crate::formatter::dates::serial_to_ymd;
-use crate::formatter::dates::weekday_of_serial;
+use crate::formatter::dates::weekday_of;
 use crate::formatter::dates::ymd_to_serial;
 use crate::formatter::dates::DateError;
 use crate::formatter::dates::Ymd;
@@ -1112,6 +1111,7 @@ impl<'a> Model<'a> {
         };
         // Only the ends need validating: the weekday of every serial in
         // between follows from the serial itself
+        let system = self.date_system();
         for serial in [from, to] {
             if let Err(e) = self.validate_serial(serial, cell) {
                 return e;
@@ -1119,7 +1119,7 @@ impl<'a> Model<'a> {
         }
         let mut count = 0i64;
         for serial in from..=to {
-            let weekday = weekday_of_serial(serial).number_from_monday();
+            let weekday = weekday_of(serial, system).number_from_monday();
             let is_weekend = matches!(weekday, 6 | 7);
             if !is_weekend && !holidays.contains(&serial) {
                 count += 1;
@@ -1288,6 +1288,7 @@ impl<'a> Model<'a> {
         } else {
             (end_serial, start_serial, -1.0)
         };
+        let system = self.date_system();
         for serial in [from, to] {
             if let Err(e) = self.validate_serial(serial, cell) {
                 return e;
@@ -1295,7 +1296,7 @@ impl<'a> Model<'a> {
         }
         let mut count = 0i64;
         for serial in from..=to {
-            let weekday = weekday_of_serial(serial).number_from_monday() as usize - 1;
+            let weekday = weekday_of(serial, system).number_from_monday() as usize - 1;
             if !weekend_pattern[weekday] && !holidays.contains(&serial) {
                 count += 1;
             }
@@ -1333,15 +1334,10 @@ impl<'a> Model<'a> {
             }
             None => &self.tz,
         };
-        if self.date_system() == DateSystem::Excel1904 {
-            return CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE.to_string(),
-            };
-        }
         match crate::tz::excel_serial_for_now(tz) {
-            Some(serial) => CalcResult::Number(serial.floor()),
+            Some(serial) => {
+                CalcResult::Number(from_ironcalc_serial(serial, self.date_system()).floor())
+            }
             None => CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell,
@@ -1380,15 +1376,8 @@ impl<'a> Model<'a> {
             }
             None => &self.tz,
         };
-        if self.date_system() == DateSystem::Excel1904 {
-            return CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: DATE_SYSTEM_NOT_IMPLEMENTED_MESSAGE.to_string(),
-            };
-        }
         match crate::tz::excel_serial_for_now(tz) {
-            Some(serial) => CalcResult::Number(serial),
+            Some(serial) => CalcResult::Number(from_ironcalc_serial(serial, self.date_system())),
             None => CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell,
@@ -1614,10 +1603,11 @@ impl<'a> Model<'a> {
         // materialised. LibreOffice does not check them at all; Excel accepts
         // any serial in 0..=MAXIMUM (a 0 serial is 1900-01-00) and reports
         // #NUM! otherwise.
-        match self.date_system() {
+        let system = self.date_system();
+        match system {
             DateSystem::IronCalc => {}
-            DateSystem::Excel1900 => {
-                let range = 0..=MAXIMUM_DATE_SERIAL_NUMBER as i64;
+            DateSystem::Excel1900 | DateSystem::Excel1904 => {
+                let range = 0..=maximum_serial(system);
                 if !range.contains(&start_serial) || !range.contains(&end_serial) {
                     return CalcResult::new_error(
                         Error::NUM,
@@ -1625,9 +1615,6 @@ impl<'a> Model<'a> {
                         "Out of range parameters for date".to_string(),
                     );
                 }
-            }
-            DateSystem::Excel1904 => {
-                return Self::date_error(DateError::NotImplemented, cell);
             }
         }
         CalcResult::Number((end_serial - start_serial) as f64)
@@ -1759,7 +1746,7 @@ impl<'a> Model<'a> {
             Ok(s) => s,
             Err(e) => return Self::date_error(e, cell),
         };
-        let back = (weekday_of_serial(jan1).num_days_from_monday() as i64
+        let back = (weekday_of(jan1, system).num_days_from_monday() as i64
             - start_offset.num_days_from_monday() as i64)
             .rem_euclid(7);
         let first = jan1 - back;
@@ -1828,11 +1815,12 @@ impl<'a> Model<'a> {
         holidays: &std::collections::HashSet<i64>,
         cell: CellReferenceIndex,
     ) -> Result<i64, CalcResult> {
+        let system = self.date_system();
         let mut serial = start;
         while days != 0 {
             serial += days.signum() as i64;
             self.validate_serial(serial, cell)?;
-            if !Self::is_weekend(weekday_of_serial(serial), weekend) && !holidays.contains(&serial)
+            if !Self::is_weekend(weekday_of(serial, system), weekend) && !holidays.contains(&serial)
             {
                 days -= days.signum();
             }

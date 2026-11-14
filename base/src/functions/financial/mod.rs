@@ -1,12 +1,12 @@
 use crate::{
     calc_result::CalcResult,
-    constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER},
+    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::dates::{serial_to_ymd, DateError},
+    formatter::dates::{maximum_serial, serial_to_ymd, DateError},
     model::Model,
     types::DateSystem,
 };
@@ -26,12 +26,13 @@ impl Model<'_> {
     /// XIRR only need the serials, not the dates: the 1904 system is accepted
     /// here too since the day differences are the same in every system.
     fn is_valid_date_serial(&self, serial: f64) -> bool {
-        if serial > MAXIMUM_DATE_SERIAL_NUMBER as f64 {
+        let system = self.date_system();
+        if serial > maximum_serial(system) as f64 {
             return false;
         }
-        match self.date_system() {
+        match system {
             DateSystem::IronCalc => true,
-            // Serial 0 is Excel's "0 January 1900"
+            // Serial 0 is Excel's "0 January 1900", or 1904-01-01
             DateSystem::Excel1900 | DateSystem::Excel1904 => serial >= 0.0,
         }
     }

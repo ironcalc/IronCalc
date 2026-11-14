@@ -335,29 +335,78 @@ fn excel_1900_system_days_and_days360() {
 }
 
 // ---------------------------------------------------------------------------
-// Excel 1904 date system: not implemented
+// Excel 1904 date system: the Gregorian calendar with serial 0 on 1904-01-01
 // ---------------------------------------------------------------------------
 
 #[test]
-fn excel_1904_system_is_not_implemented() {
+fn excel_1904_system_calendar() {
     let mut model = new_empty_model_excel_1904();
-    model._set("A1", "=DATE(2024,1,1)");
-    model._set("A2", "=DAY(45000)");
-    model._set("A3", "=DATEVALUE(\"2024-01-01\")");
-    model._set("A4", "=TODAY()");
-    model._set("A5", "=NOW()");
-    model._set("A6", "=TEXT(45000,\"yyyy\")");
-    model._set("A7", "=DAYS(45000,44000)");
-    model._set("A8", "=WEEKDAY(45000)");
-    model._set("A9", "=HOUR(-0.5)");
-    // Times of day do not depend on the date system
-    model._set("B1", "=HOUR(0.75)");
-    model._set("B2", "=TIME(12,30,0)");
+    model._set("A1", "=YEAR(0)");
+    model._set("A2", "=MONTH(0)");
+    model._set("A3", "=DAY(0)");
+    model._set("A4", "=DAY(1)");
+    model._set("A5", "=YEAR(1234)");
+    model._set("A6", "=MONTH(1234)");
+    model._set("A7", "=DAY(1234)");
+    model._set("A8", "=TEXT(144,\"dd/mm/yy\")");
+    model._set("A9", "=WEEKDAY(0)"); // 1904-01-01 is a Friday
+    model._set("A10", "=ISOWEEKNUM(0)");
+    // Every date is 1462 serials below the 1900 systems
+    model._set("B1", "=DATE(2024,1,1)");
+    model._set("B2", "=DATEVALUE(\"2024-01-01\")");
+    model._set("B3", "=DATE(1904,1,1)");
+    model._set("B4", "=DATE(108,1,2)"); // 1904 + 108
+    model._set("B5", "=EDATE(0,1)");
+    model._set("B6", "=EOMONTH(0,0)");
+    model._set("B7", "=DAYS(1,0)");
+    model._set("B8", "=DAYS360(0,31)");
+    model._set("B9", "=WORKDAY(0,1)"); // Friday to Monday
+    model._set("B10", "=NETWORKDAYS(0,6)");
+    model._set("B11", "=DATEDIF(0,366,\"y\")"); // 1904 is a leap year
+    model._set("B12", "=YEARFRAC(0,366,1)");
+    model._set("B13", "=TODAY()>40000");
+    // Negative serials are not dates, but they format as negative values
+    model._set("C1", "=DAY(-1)");
+    model._set("C2", "=DATE(1904,1,0)");
+    model._set("C3", "=WEEKDAY(-1)");
+    model._set("C4", "=EDATE(0,-1)");
+    model._set("C5", "=TEXT(-2,\"dd/mm/yy\")");
+    model._set("C6", "=TEXT(-0.25,\"h:mm\")");
+    model._set("C7", "=HOUR(-0.25)");
+    model._set("C8", "=DAYS(0,-1)");
     model.evaluate();
 
-    for cell in ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"] {
-        assert_eq!(model._get_text(cell), "#N/IMPL!", "{cell}");
-    }
-    assert_eq!(model._get_text("B1"), "18");
-    assert_eq!(model._get_text("B2"), "0.520833333");
+    assert_eq!(model._get_text("A1"), "1904");
+    assert_eq!(model._get_text("A2"), "1");
+    assert_eq!(model._get_text("A3"), "1");
+    assert_eq!(model._get_text("A4"), "2");
+    assert_eq!(model._get_text("A5"), "1907");
+    assert_eq!(model._get_text("A6"), "5");
+    assert_eq!(model._get_text("A7"), "19");
+    assert_eq!(model._get_text("A8"), "24/05/04");
+    assert_eq!(model._get_text("A9"), "6");
+    assert_eq!(model._get_text("A10"), "53"); // Friday 1 January 1904 is in week 53 of 1903
+
+    assert_eq!(raw(&model, "B1"), "43830"); // 45292 - 1462
+    assert_eq!(raw(&model, "B2"), "43830");
+    assert_eq!(raw(&model, "B3"), "0");
+    assert_eq!(raw(&model, "B4"), "39448"); // 2012-01-02, 40910 - 1462
+    assert_eq!(raw(&model, "B5"), "31");
+    assert_eq!(raw(&model, "B6"), "30");
+    assert_eq!(model._get_text("B7"), "1");
+    assert_eq!(model._get_text("B8"), "30");
+    assert_eq!(raw(&model, "B9"), "3");
+    assert_eq!(model._get_text("B10"), "5");
+    assert_eq!(model._get_text("B11"), "1");
+    assert_eq!(model._get_text("B12"), "1");
+    assert_eq!(model._get_text("B13"), "TRUE");
+
+    assert_eq!(model._get_text("C1"), "#NUM!");
+    assert_eq!(model._get_text("C2"), "#NUM!");
+    assert_eq!(model._get_text("C3"), "#NUM!");
+    assert_eq!(model._get_text("C4"), "#NUM!");
+    assert_eq!(model._get_text("C5"), "-03/01/04");
+    assert_eq!(model._get_text("C6"), "-6:00");
+    assert_eq!(model._get_text("C7"), "6");
+    assert_eq!(model._get_text("C8"), "#NUM!");
 }
