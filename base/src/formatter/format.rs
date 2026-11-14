@@ -206,21 +206,10 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::General(..) => {
             // FIXME: This is "General formatting"
             // We should have different codepaths for general formatting and errors
-            let mut number = Digits::new(value);
-            let sign = if value < 0.0 { "-" } else { "" };
-            // 1e-8 <= |value| < 1e11
-            if (-7..=11).contains(&number.point) && !number.is_zero() {
-                number.round(9);
-                let mut int_part: String = number.integer_part().into_iter().collect();
-                if int_part.is_empty() {
-                    int_part = "0".to_string();
-                }
-                let fract_part: String = number.fractional_part().into_iter().collect();
-                let mut text = if fract_part.is_empty() {
-                    format!("{sign}{int_part}")
-                } else {
-                    format!("{sign}{int_part}.{fract_part}")
-                };
+            let value_abs = value.abs();
+            if (1.0e-8..1.0e+11).contains(&value_abs) {
+                let mut text = format!("{value:.9}");
+                text = text.trim_end_matches('0').trim_end_matches('.').to_string();
                 if locale.numbers.symbols.decimal != "." {
                     text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
                 }
@@ -230,25 +219,23 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     error: None,
                 }
             } else {
-                if number.is_zero() {
+                if value_abs == 0.0 {
                     return Formatted {
                         text: "0".to_string(),
                         color: None,
                         error: None,
                     };
                 }
-                // Six significant digits
-                number.round(6 - number.point);
-                let exponent = number.point - 1;
-                number.shift(-exponent);
-                let exponent_sign = if exponent < 0 { '-' } else { '+' };
-                let fract_part: String = number.fractional_part().into_iter().collect();
-                let mantissa = if fract_part.is_empty() {
-                    format!("{}", number.digit(0))
-                } else {
-                    format!("{}.{fract_part}", number.digit(0))
-                };
-                let mut text = format!("{sign}{mantissa}E{exponent_sign}{:02}", exponent.abs());
+                let exponent = value_abs.log10().floor();
+                value /= 10.0_f64.powf(exponent);
+                let sign = if exponent < 0.0 { '-' } else { '+' };
+                let s = format!("{value:.5}");
+                let mut text = format!(
+                    "{}E{}{:02}",
+                    s.trim_end_matches('0').trim_end_matches('.'),
+                    sign,
+                    exponent.abs()
+                );
                 if locale.numbers.symbols.decimal != "." {
                     text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
                 }

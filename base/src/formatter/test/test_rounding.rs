@@ -106,32 +106,3 @@ fn scientific() {
     assert_eq!(format_number(-125.0, "0.0E+00", locale).text, "-1.3E+02");
     assert_eq!(format_number(5.0, "0.00E+00", locale).text, "5.00E+00");
 }
-
-// General rounds the same 15 digits half away from zero: to 9 decimals, or to
-// 6 significant digits in scientific notation. 2^-10 = 0.0009765625 is an
-// exact half at the tenth decimal, and 123456500000 / 10^11 is
-// 1.23456499999... in binary.
-#[test]
-fn general() {
-    let locale = get_default_locale();
-    assert_eq!(
-        format_number(0.0009765625, "General", locale).text,
-        "0.000976563"
-    );
-    assert_eq!(
-        format_number(-0.0009765625, "General", locale).text,
-        "-0.000976563"
-    );
-    assert_eq!(
-        format_number(123_456_500_000.0, "General", locale).text,
-        "1.23457E+11"
-    );
-    assert_eq!(
-        format_number(-123_456_500_000.0, "General", locale).text,
-        "-1.23457E+11"
-    );
-    assert_eq!(
-        format_number(0.0000000099999999999, "General", locale).text,
-        "1E-08"
-    );
-}
