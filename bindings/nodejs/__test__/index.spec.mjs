@@ -251,3 +251,21 @@ test('cell link label and style are one undo step', (t) => {
     tooltip: null,
   });
 });
+
+test('date system', (t) => {
+  const model = new UserModel("Workbook1", "en", "UTC", "en");
+  t.is(model.getDateSystem(), "IronCalc");
+  model.setUserInput(0, 1, 1, "=YEAR(0)");
+  t.is(model.getFormattedCellValue(0, 1, 1), "1899");
+  // The values do not change, their meaning does
+  model.setDateSystem("Excel1904");
+  t.is(model.getDateSystem(), "Excel1904");
+  t.is(model.getFormattedCellValue(0, 1, 1), "1904");
+  model.undo();
+  t.is(model.getDateSystem(), "IronCalc");
+  t.throws(() => model.setDateSystem("Excel2000"));
+
+  const raw = new Model("Workbook1", "en", "UTC", "en");
+  raw.setDateSystem("Excel1900");
+  t.is(raw.getDateSystem(), "Excel1900");
+});

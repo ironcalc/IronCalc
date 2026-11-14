@@ -833,6 +833,24 @@ impl Model {
     self.model.set_locale(&locale).map_err(to_js_error)
   }
 
+  /// Returns the date system of the workbook: "IronCalc" (the default, serial
+  /// 0 is 1899-12-30 and negative serials are dates before it), "Excel1900"
+  /// (Excel's default, with its 29 February 1900) or "Excel1904" (serial 0 is
+  /// 1904-01-01).
+  #[napi]
+  pub fn get_date_system(&self) -> String {
+    self.model.get_date_system().to_string()
+  }
+
+  /// Sets the date system of the workbook. The stored values do not change,
+  /// so existing dates are read in the new system.
+  #[napi]
+  pub fn set_date_system(&mut self, date_system: String) -> Result<()> {
+    let date_system = date_system.parse().map_err(to_js_error)?;
+    self.model.set_date_system(date_system);
+    Ok(())
+  }
+
   #[napi]
   pub fn get_language(&self) -> String {
     self.model.get_language()
