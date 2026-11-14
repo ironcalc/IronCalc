@@ -333,6 +333,13 @@
     "resize_drawer": "Größe der Seitenleiste ändern"
   },
   "settings": {
+    "date_system": {
+      "Excel1900": "01.01.1900 (Excel-kompatibel)",
+      "Excel1904": "01.01.1904 (Excel für Mac)",
+      "helper": "Wie die gespeicherten Datumszahlen Kalendertagen zugeordnet werden. Eine Änderung rechnet vorhandene Daten nicht um.",
+      "IronCalc": "LibreOffice/IronCalc (Standard)",
+      "label": "Datumssystem"
+    },
     "focus_on_open": {
       "cell_label": "Zelle",
       "helper": "Wählen Sie Blatt und Zelle, mit denen diese Arbeitsmappe geöffnet wird.",

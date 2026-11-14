@@ -1319,10 +1319,17 @@ const Workbook = (
         initialLocale={model.getLocale()}
         initialTimezone={model.getTimezone()}
         initialLanguage={model.getLanguage()}
-        onSettingsSave={(locale, timezone, language, focusOnOpen) => {
+        onSettingsSave={(
+          locale,
+          timezone,
+          language,
+          dateSystem,
+          focusOnOpen,
+        ) => {
           model.setLocale(locale);
           model.setTimezone(timezone);
           model.setLanguage(language);
+          model.setDateSystem(dateSystem);
           if (focusOnOpen) {
             model.setFocusOnOpen(
               focusOnOpen.sheet,

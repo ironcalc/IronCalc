@@ -333,6 +333,13 @@
     "resize_drawer": "Cambiar tamaño del panel"
   },
   "settings": {
+    "date_system": {
+      "Excel1900": "01/01/1900 (compatible con Excel)",
+      "Excel1904": "01/01/1904 (Excel para Mac)",
+      "helper": "Cómo se corresponden los números de fecha almacenados con los días del calendario. Cambiarlo no convierte las fechas existentes.",
+      "IronCalc": "LibreOffice/IronCalc (predeterminado)",
+      "label": "Sistema de fechas"
+    },
     "focus_on_open": {
       "cell_label": "Celda",
       "helper": "Elige la hoja y la celda en la que se abre este libro.",

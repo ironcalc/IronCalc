@@ -1,4 +1,5 @@
 import type {
+  DateSystem,
   FmtSettings,
   FocusOnOpen,
   IronCalcTheme,
@@ -65,6 +66,7 @@ interface RightDrawerProps {
     locale: string,
     timezone: string,
     language: string,
+    dateSystem: DateSystem,
     focusOnOpen: FocusOnOpen | null,
   ) => void;
 }
@@ -199,6 +201,7 @@ const RightDrawer = ({
             initialLocale={initialLocale}
             initialTimezone={initialTimezone}
             initialLanguage={initialLanguage}
+            initialDateSystem={model.getDateSystem()}
             initialFocusOnOpen={model.getFocusOnOpen()}
             worksheets={model.getWorksheetsProperties()}
             getSelectedCell={() => {

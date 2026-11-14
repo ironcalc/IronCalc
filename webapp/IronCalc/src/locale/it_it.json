@@ -333,6 +333,13 @@
     "resize_drawer": "Ridimensiona pannello"
   },
   "settings": {
+    "date_system": {
+      "Excel1900": "01/01/1900 (compatibile con Excel)",
+      "Excel1904": "01/01/1904 (Excel per Mac)",
+      "helper": "Come i numeri di data memorizzati corrispondono ai giorni del calendario. Modificarlo non converte le date esistenti.",
+      "IronCalc": "LibreOffice/IronCalc (predefinito)",
+      "label": "Sistema di date"
+    },
     "focus_on_open": {
       "cell_label": "Cella",
       "helper": "Scegli il foglio e la cella su cui si apre questa cartella di lavoro.",
