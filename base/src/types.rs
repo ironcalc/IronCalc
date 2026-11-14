@@ -1,6 +1,6 @@
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use crate::{cf_types::ConditionalFormatting, expressions::token::Error};
 
@@ -125,6 +125,39 @@ pub enum DateSystem {
     Excel1900,
     /// Excel 1904 date system (classic Mac default).
     Excel1904,
+}
+
+impl DateSystem {
+    /// The name used in the APIs and the bindings: "IronCalc", "Excel1900" or
+    /// "Excel1904". `parse` is the inverse.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DateSystem::IronCalc => "IronCalc",
+            DateSystem::Excel1900 => "Excel1900",
+            DateSystem::Excel1904 => "Excel1904",
+        }
+    }
+}
+
+impl Display for DateSystem {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "{}", self.as_str())
+    }
+}
+
+impl FromStr for DateSystem {
+    type Err = String;
+
+    fn from_str(name: &str) -> Result<DateSystem, String> {
+        match name {
+            "IronCalc" => Ok(DateSystem::IronCalc),
+            "Excel1900" => Ok(DateSystem::Excel1900),
+            "Excel1904" => Ok(DateSystem::Excel1904),
+            _ => Err(format!(
+                "Invalid date system: '{name}'. Expected 'IronCalc', 'Excel1900' or 'Excel1904'"
+            )),
+        }
+    }
 }
 
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]

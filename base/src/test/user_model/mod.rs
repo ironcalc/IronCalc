@@ -11,6 +11,7 @@ mod test_clear_cells;
 mod test_column_style;
 mod test_conditional_formatting;
 mod test_cut_n_paste;
+mod test_date_system;
 mod test_defined_names;
 mod test_delete_row_column_formatting;
 mod test_diff_queue;

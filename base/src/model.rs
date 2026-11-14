@@ -4125,6 +4125,28 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
+    /// Returns the date system of the workbook
+    ///
+    /// See also:
+    /// * [Model::set_date_system]
+    pub fn get_date_system(&self) -> DateSystem {
+        self.workbook.settings.date_system
+    }
+
+    /// Sets the date system of the workbook and evaluates it again.
+    ///
+    /// The stored values do not change: a cell holding serial 45000 is a
+    /// different day in the 1904 system than in the other two. This matches
+    /// what Excel does when the setting is switched in an existing workbook.
+    ///
+    /// See also:
+    /// * [Model::get_date_system]
+    /// * [crate::types::DateSystem]
+    pub fn set_date_system(&mut self, date_system: DateSystem) {
+        self.workbook.settings.date_system = date_system;
+        self.evaluate();
+    }
+
     /// Gets the formatting settings based on the locale
     pub fn get_fmt_settings(&self) -> FmtSettings {
         let day_example = 46006.0; // December 15, 2025

@@ -5,8 +5,8 @@ use bitcode::{Decode, Encode};
 use crate::{
     cf_types::CfRule,
     types::{
-        Cell, Col, Color, FocusOnOpen, Link, MergedCell, Row, SheetState, Style, StyleIncludes,
-        Theme, Worksheet,
+        Cell, Col, Color, DateSystem, FocusOnOpen, Link, MergedCell, Row, SheetState, Style,
+        StyleIncludes, Theme, Worksheet,
     },
 };
 
@@ -256,6 +256,10 @@ pub(crate) enum Diff {
     SetFocusOnOpen {
         old_value: Option<FocusOnOpen>,
         new_value: Option<FocusOnOpen>,
+    },
+    SetDateSystem {
+        old_value: DateSystem,
+        new_value: DateSystem,
     },
     // Named style diffs
     CreateNamedStyle {

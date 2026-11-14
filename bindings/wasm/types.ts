@@ -539,6 +539,14 @@ export interface FocusOnOpen {
   column: number;
 }
 
+/**
+ * How the date serial numbers of a workbook map to calendar days.
+ * - "IronCalc": serial 0 is 1899-12-30, negative serials are earlier dates (the default)
+ * - "Excel1900": Excel's default, serial 1 is 1900-01-01 and 60 is its 29 February 1900
+ * - "Excel1904": serial 0 is 1904-01-01
+ */
+export type DateSystem = "IronCalc" | "Excel1900" | "Excel1904";
+
 export interface SelectedView {
   sheet: number;
   row: number;
