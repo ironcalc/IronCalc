@@ -1,5 +1,3 @@
-use chrono::Datelike;
-
 use crate::{
     calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER},
@@ -8,7 +6,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::dates::{serial_to_date, DateError},
+    formatter::dates::{serial_to_ymd, DateError},
     model::Model,
     types::DateSystem,
 };
@@ -44,21 +42,21 @@ fn is_less_than_one_year(
     end_date: i64,
     system: DateSystem,
 ) -> Result<bool, DateError> {
-    let end = serial_to_date(end_date, system)?;
-    let start = serial_to_date(start_date, system)?;
+    let end = serial_to_ymd(end_date, system)?;
+    let start = serial_to_ymd(start_date, system)?;
     if end_date - start_date < 365 {
         return Ok(true);
     }
-    let end_year = end.year();
-    let start_year = start.year();
+    let end_year = end.year;
+    let start_year = start.year;
     if end_year == start_year {
         return Ok(true);
     }
     if end_year != start_year + 1 {
         return Ok(false);
     }
-    let start_month = start.month();
-    let end_month = end.month();
+    let start_month = start.month;
+    let end_month = end.month;
     if end_month < start_month {
         return Ok(true);
     }
@@ -66,8 +64,8 @@ fn is_less_than_one_year(
         return Ok(false);
     }
     // we are one year later same month
-    let start_day = start.day();
-    let end_day = end.day();
+    let start_day = start.day;
+    let end_day = end.day;
     Ok(end_day <= start_day)
 }
 

@@ -5,12 +5,12 @@
 //! * `IronCalc` (the LibreOffice system): serial 0 is 1899-12-30 and every
 //!   integer is a valid serial. Negative serials reach back into the proleptic
 //!   Gregorian calendar.
-//! * `Excel1900`: serial 1 is 1900-01-01 and serial 60 is the fictional
-//!   29 February 1900. From serial 61 (1900-03-01) onwards the serials agree
-//!   with the IronCalc system. Converting a serial below 61 to a date, or a date
-//!   before 1900-03-01 to a serial, is not implemented; only the explicit
-//!   year/month/day paths ([`ymd_to_serial`] and [`permissive_ymd_to_serial`])
-//!   handle those two months.
+//! * `Excel1900`: serial 0 is "0 January 1900", serial 1 is 1900-01-01 and
+//!   serial 60 is the fictional 29 February 1900, so 1900 has 366 days. From
+//!   serial 61 (1900-03-01) onwards the serials agree with the IronCalc system.
+//!   Calendar work goes through [`Ymd`], which can hold those two days that
+//!   `chrono` cannot; [`serial_to_date`] and [`date_to_serial`] are only for
+//!   code that needs a real `NaiveDate` and refuse the two odd months.
 //! * `Excel1904`: not implemented.
 //!
 //! The upper limit in every system is 9999-12-31.
@@ -91,8 +91,7 @@ fn excel_1900_serial(date: NaiveDate) -> i64 {
 /// The year of a date as a spreadsheet reports it. chrono counts years
 /// astronomically (1 BC is year 0), while LibreOffice has no year 0, so YEAR of
 /// a date in 1 BC is -1.
-pub fn calendar_year(date: NaiveDate) -> i32 {
-    let year = date.year();
+pub fn calendar_year(year: i32) -> i32 {
     if year <= 0 {
         year - 1
     } else {
@@ -128,6 +127,168 @@ pub fn serial_to_date(serial: i64, system: DateSystem) -> Result<NaiveDate, Date
     }
 }
 
+/// A calendar date in a date system. In the Excel 1900 system `day` may be 0
+/// (serial 0 is "0 January 1900") and 1900-02-29 exists, neither of which a
+/// `NaiveDate` can hold.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Ymd {
+    pub year: i32,
+    pub month: u32,
+    pub day: u32,
+}
+
+impl Ymd {
+    fn from_date(date: NaiveDate) -> Ymd {
+        Ymd {
+            year: date.year(),
+            month: date.month(),
+            day: date.day(),
+        }
+    }
+}
+
+/// Whether `year` is a leap year in the Gregorian calendar
+pub fn is_gregorian_leap_year(year: i32) -> bool {
+    (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
+}
+
+/// Whether `year` is a leap year in the calendar the date system displays.
+/// Excel's 1900 system shows a 29 February 1900, so there 1900 is a leap year.
+/// Excel only uses this calendar to label serials (DAY, MONTH, YEAR, TEXT,
+/// DATE, DAYS360); its month arithmetic (EDATE, EOMONTH) and year lengths
+/// (YEARFRAC) follow the Gregorian calendar, see [`gregorian_days_in_month`].
+pub fn is_leap_year(year: i32, system: DateSystem) -> bool {
+    if year == 1900 && system == DateSystem::Excel1900 {
+        return true;
+    }
+    is_gregorian_leap_year(year)
+}
+
+/// Days in a month of the Gregorian calendar. Month must be 1 to 12.
+pub fn gregorian_days_in_month(year: i32, month: u32) -> u32 {
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => {
+            if is_gregorian_leap_year(year) {
+                29
+            } else {
+                28
+            }
+        }
+        _ => 0,
+    }
+}
+
+/// Days in a month of the calendar the date system displays (February 1900
+/// has 29 days in the Excel 1900 system). Month must be 1 to 12.
+pub fn days_in_month(year: i32, month: u32, system: DateSystem) -> u32 {
+    if month == 2 && is_leap_year(year, system) {
+        return 29;
+    }
+    gregorian_days_in_month(year, month)
+}
+
+/// Year and month (1 to 12) of month number `month` of `year`, where `month`
+/// may be out of range and rolls into the neighbouring years, the way
+/// LibreOffice's DATE does.
+pub fn rolled_year_month(month: i64, year: i64) -> (i64, u32) {
+    if month > 0 {
+        (year + (month - 1) / 12, ((month - 1) % 12 + 1) as u32)
+    } else {
+        (year + (month - 12) / 12, (12 - (-month) % 12) as u32)
+    }
+}
+
+/// The weekday of a serial in any 1900-based system. Serial 0 is a Saturday
+/// (1899-12-30, or Excel's "0 January 1900"). Not range checked.
+pub fn weekday_of_serial(serial: i64) -> Weekday {
+    match serial.rem_euclid(7) {
+        0 => Weekday::Sat,
+        1 => Weekday::Sun,
+        2 => Weekday::Mon,
+        3 => Weekday::Tue,
+        4 => Weekday::Wed,
+        5 => Weekday::Thu,
+        _ => Weekday::Fri,
+    }
+}
+
+/// The calendar date of a serial number (date part only)
+pub fn serial_to_ymd(serial: i64, system: DateSystem) -> Result<Ymd, DateError> {
+    if serial > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
+        return Err(DateError::OutOfRange);
+    }
+    match system {
+        DateSystem::IronCalc => Ok(Ymd::from_date(epoch_plus(serial)?)),
+        DateSystem::Excel1900 => {
+            if serial < 0 {
+                return Err(DateError::OutOfRange);
+            }
+            if serial == 0 {
+                // Excel shows serial 0 as "1/0/1900"
+                return Ok(Ymd {
+                    year: 1900,
+                    month: 1,
+                    day: 0,
+                });
+            }
+            if serial == 60 {
+                return Ok(Ymd {
+                    year: 1900,
+                    month: 2,
+                    day: 29,
+                });
+            }
+            if serial < EXCEL_1900_FIRST_SHARED_SERIAL {
+                // Before the fictional leap day Excel is one day ahead: serial
+                // 1 is 1900-01-01
+                return Ok(Ymd::from_date(epoch_plus(serial + 1)?));
+            }
+            Ok(Ymd::from_date(epoch_plus(serial)?))
+        }
+        DateSystem::Excel1904 => Err(DateError::NotImplemented),
+    }
+}
+
+/// The serial of day `day` of month `month` of `year`, where the month rolls
+/// into the neighbouring years and the day into the neighbouring months (day 0
+/// is the last day of the previous month). The year is taken literally; this is
+/// the building block of DATE, EDATE and EOMONTH.
+pub fn rolled_ymd_to_serial(
+    day: i64,
+    month: i64,
+    year: i64,
+    system: DateSystem,
+) -> Result<i64, DateError> {
+    let first = first_of_rolled_month(month, year)?;
+    let serial = match system {
+        DateSystem::IronCalc => ironcalc_serial(first) + day - 1,
+        DateSystem::Excel1900 => {
+            // Adding the days in serial space makes the fictional 29 February
+            // 1900 count as a day
+            let serial = excel_1900_serial(first) + day - 1;
+            if serial < 0 {
+                return Err(DateError::OutOfRange);
+            }
+            serial
+        }
+        DateSystem::Excel1904 => return Err(DateError::NotImplemented),
+    };
+    if serial > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
+        return Err(DateError::OutOfRange);
+    }
+    Ok(serial)
+}
+
+/// The ISO 8601 week number of a serial. The weeks of the Excel 1900 and
+/// IronCalc systems contain the same serials (both have the same weekdays and
+/// serial 2 starts the first ISO week of 1900), so the shared epoch serves both.
+pub fn serial_to_iso_week(serial: i64, system: DateSystem) -> Result<u32, DateError> {
+    serial_to_weekday(serial, system)?;
+    Ok(epoch_plus(serial)?.iso_week().week())
+}
+
 /// The weekday of a serial number. Every 1900-based system agrees on it, the
 /// fictional 29 February 1900 included: Excel calls serial 1 a Sunday and so
 /// does the IronCalc system (1899-12-31), so this is available for the Excel
@@ -137,12 +298,15 @@ pub fn serial_to_weekday(serial: i64, system: DateSystem) -> Result<Weekday, Dat
         return Err(DateError::OutOfRange);
     }
     match system {
-        DateSystem::IronCalc => Ok(epoch_plus(serial)?.weekday()),
+        DateSystem::IronCalc => {
+            epoch_plus(serial)?;
+            Ok(weekday_of_serial(serial))
+        }
         DateSystem::Excel1900 => {
             if serial < 0 {
                 return Err(DateError::OutOfRange);
             }
-            Ok(epoch_plus(serial)?.weekday())
+            Ok(weekday_of_serial(serial))
         }
         DateSystem::Excel1904 => Err(DateError::NotImplemented),
     }
@@ -154,9 +318,14 @@ pub fn date_to_serial(date: NaiveDate, system: DateSystem) -> Result<i64, DateEr
         DateSystem::IronCalc => ironcalc_serial(date),
         DateSystem::Excel1900 => {
             let serial = ironcalc_serial(date);
+            if serial < 1 {
+                // Before 1899-12-31 ("0 January 1900"), which Excel rejects
+                return Err(DateError::OutOfRange);
+            }
             if serial < EXCEL_1900_FIRST_SHARED_SERIAL {
-                // Dates before 1900-03-01 live in the two months Excel counts
-                // differently. Use `ymd_to_serial` for an explicit y/m/d.
+                // A real date in January or February 1900 reached by calendar
+                // arithmetic may be off by Excel's fictional leap day; calendar
+                // work in this system goes through `Ymd` instead.
                 return Err(DateError::NotImplemented);
             }
             serial
@@ -231,13 +400,9 @@ pub fn permissive_ymd_to_serial(
 /// The first day of month `month` (1-based, may be out of range) of `year`,
 /// rolling the excess months into the year the way LibreOffice does.
 fn first_of_rolled_month(month: i64, year: i64) -> Result<NaiveDate, DateError> {
-    let (year, month) = if month > 0 {
-        (year + (month - 1) / 12, (month - 1) % 12 + 1)
-    } else {
-        (year + (month - 12) / 12, 12 - (-month) % 12)
-    };
+    let (year, month) = rolled_year_month(month, year);
     let year = i32::try_from(year).map_err(|_| DateError::OutOfRange)?;
-    NaiveDate::from_ymd_opt(year, month as u32, 1).ok_or(DateError::OutOfRange)
+    NaiveDate::from_ymd_opt(year, month, 1).ok_or(DateError::OutOfRange)
 }
 
 fn permissive_ironcalc(day: i64, month: i64, year: i64) -> Result<i64, DateError> {
@@ -246,9 +411,8 @@ fn permissive_ironcalc(day: i64, month: i64, year: i64) -> Result<i64, DateError
         30..=99 => year + 1900,
         _ => year,
     };
-    let first = first_of_rolled_month(month, year)?;
-    let serial = ironcalc_serial(first) + day - 1;
-    if !(GREGORIAN_START_SERIAL..=MAXIMUM_DATE_SERIAL_NUMBER as i64).contains(&serial) {
+    let serial = rolled_ymd_to_serial(day, month, year, DateSystem::IronCalc)?;
+    if serial < GREGORIAN_START_SERIAL {
         return Err(DateError::OutOfRange);
     }
     Ok(serial)
@@ -256,26 +420,15 @@ fn permissive_ironcalc(day: i64, month: i64, year: i64) -> Result<i64, DateError
 
 fn permissive_excel_1900(day: i64, month: i64, year: i64) -> Result<i64, DateError> {
     let year = if year < 1900 { year + 1900 } else { year };
-    let in_range = |serial: i64| (0..=MAXIMUM_DATE_SERIAL_NUMBER as i64).contains(&serial);
     // Excel checks the range after each step: year, then month, then day. A
     // year out of range is an error even if the month or day would bring the
     // date back in range.
-    let year_start = first_of_rolled_month(1, year)?;
-    if !in_range(excel_1900_serial(year_start)) {
-        return Err(DateError::OutOfRange);
-    }
-    let first = first_of_rolled_month(month, year)?;
-    let first_serial = excel_1900_serial(first);
-    if !in_range(first_serial) {
-        return Err(DateError::OutOfRange);
-    }
+    let system = DateSystem::Excel1900;
+    rolled_ymd_to_serial(1, 1, year, system)?;
+    rolled_ymd_to_serial(1, month, year, system)?;
     // Days are added in serial space, so the fictional 29 February 1900 counts
     // as a day: DATE(1900, 2, 29) is 60 and DATE(1900, 2, 30) is 61.
-    let serial = first_serial + day - 1;
-    if !in_range(serial) {
-        return Err(DateError::OutOfRange);
-    }
-    Ok(serial)
+    rolled_ymd_to_serial(day, month, year, system)
 }
 
 #[cfg(test)]
@@ -299,9 +452,9 @@ mod tests {
         assert_eq!(serial_to_date(-103615, s), Ok(ymd(1616, 4, 22)));
         // 9053 BC, which is the astronomical year -9052
         assert_eq!(serial_to_date(-4000000, s), Ok(ymd(-9052, 5, 14)));
-        assert_eq!(calendar_year(ymd(-9052, 5, 14)), -9053);
-        assert_eq!(calendar_year(ymd(0, 5, 14)), -1);
-        assert_eq!(calendar_year(ymd(1, 5, 14)), 1);
+        assert_eq!(calendar_year(-9052), -9053);
+        assert_eq!(calendar_year(0), -1);
+        assert_eq!(calendar_year(1), 1);
         assert_eq!(date_to_serial(ymd(1616, 4, 22), s), Ok(-103615));
         assert_eq!(date_to_serial(ymd(9999, 12, 31), s), Ok(2958465));
         assert_eq!(
@@ -324,6 +477,10 @@ mod tests {
             date_to_serial(ymd(1900, 2, 28), s),
             Err(DateError::NotImplemented)
         );
+        assert_eq!(
+            date_to_serial(ymd(1899, 12, 30), s),
+            Err(DateError::OutOfRange)
+        );
         // Explicit dates in the two odd months are fine
         assert_eq!(ymd_to_serial(31, 12, 1899, s), Ok(0));
         assert_eq!(ymd_to_serial(1, 1, 1900, s), Ok(1));
@@ -331,6 +488,80 @@ mod tests {
         assert_eq!(ymd_to_serial(29, 2, 1900, s), Ok(60));
         assert_eq!(ymd_to_serial(1, 3, 1900, s), Ok(61));
         assert_eq!(ymd_to_serial(30, 12, 1899, s), Err(DateError::OutOfRange));
+    }
+
+    fn y(year: i32, month: u32, day: u32) -> Ymd {
+        Ymd { year, month, day }
+    }
+
+    #[test]
+    fn excel_1900_calendar() {
+        let s = DateSystem::Excel1900;
+        assert_eq!(serial_to_ymd(-1, s), Err(DateError::OutOfRange));
+        assert_eq!(serial_to_ymd(0, s), Ok(y(1900, 1, 0)));
+        assert_eq!(serial_to_ymd(1, s), Ok(y(1900, 1, 1)));
+        assert_eq!(serial_to_ymd(31, s), Ok(y(1900, 1, 31)));
+        assert_eq!(serial_to_ymd(32, s), Ok(y(1900, 2, 1)));
+        assert_eq!(serial_to_ymd(59, s), Ok(y(1900, 2, 28)));
+        assert_eq!(serial_to_ymd(60, s), Ok(y(1900, 2, 29)));
+        assert_eq!(serial_to_ymd(61, s), Ok(y(1900, 3, 1)));
+        assert_eq!(serial_to_ymd(366, s), Ok(y(1900, 12, 31)));
+        assert_eq!(serial_to_ymd(367, s), Ok(y(1901, 1, 1)));
+        assert!(is_leap_year(1900, s));
+        assert!(!is_leap_year(1900, DateSystem::IronCalc));
+        assert_eq!(days_in_month(1900, 2, s), 29);
+        assert_eq!(days_in_month(1900, 2, DateSystem::IronCalc), 28);
+        // Rolled dates: day 0 of March is 29 February
+        assert_eq!(rolled_ymd_to_serial(0, 3, 1900, s), Ok(60));
+        assert_eq!(rolled_ymd_to_serial(0, 1, 1900, s), Ok(0));
+        assert_eq!(
+            rolled_ymd_to_serial(-1, 1, 1900, s),
+            Err(DateError::OutOfRange)
+        );
+        assert_eq!(rolled_ymd_to_serial(1, 13, 1900, s), Ok(367));
+        assert_eq!(rolled_ymd_to_serial(31, 0, 1901, s), Ok(366));
+        // Every serial round-trips
+        for serial in 0..1000 {
+            let ymd = serial_to_ymd(serial, s).unwrap();
+            assert_eq!(
+                rolled_ymd_to_serial(ymd.day as i64, ymd.month as i64, ymd.year as i64, s),
+                Ok(serial)
+            );
+        }
+    }
+
+    #[test]
+    fn ironcalc_calendar() {
+        let s = DateSystem::IronCalc;
+        assert_eq!(serial_to_ymd(0, s), Ok(y(1899, 12, 30)));
+        assert_eq!(serial_to_ymd(-100, s), Ok(y(1899, 9, 21)));
+        assert_eq!(serial_to_ymd(60, s), Ok(y(1900, 2, 28)));
+        assert_eq!(rolled_ymd_to_serial(0, 1, 1900, s), Ok(1));
+        assert_eq!(rolled_ymd_to_serial(29, 2, 1900, s), Ok(61));
+        assert_eq!(rolled_ymd_to_serial(21, 9, 1899, s), Ok(-100));
+        for serial in -1000..1000 {
+            let ymd = serial_to_ymd(serial, s).unwrap();
+            assert_eq!(
+                rolled_ymd_to_serial(ymd.day as i64, ymd.month as i64, ymd.year as i64, s),
+                Ok(serial)
+            );
+        }
+    }
+
+    #[test]
+    fn iso_weeks_are_shared_by_the_1900_systems() {
+        for serial in 0..=400 {
+            assert_eq!(
+                serial_to_iso_week(serial, DateSystem::Excel1900),
+                serial_to_iso_week(serial, DateSystem::IronCalc)
+            );
+        }
+        // Excel: Sunday 1 January 1900 is in the last week of 1899, Monday the
+        // 2nd starts week 1
+        assert_eq!(serial_to_iso_week(1, DateSystem::Excel1900), Ok(52));
+        assert_eq!(serial_to_iso_week(2, DateSystem::Excel1900), Ok(1));
+        assert_eq!(serial_to_iso_week(8, DateSystem::Excel1900), Ok(1));
+        assert_eq!(serial_to_iso_week(9, DateSystem::Excel1900), Ok(2));
     }
 
     #[test]

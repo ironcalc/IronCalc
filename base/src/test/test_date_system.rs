@@ -222,50 +222,97 @@ fn excel_1900_system_date_and_datevalue() {
 }
 
 #[test]
-fn excel_1900_system_serials_below_61_are_not_implemented() {
+fn excel_1900_system_calendar_below_61() {
     let mut model = new_empty_model_excel_1900();
-    model._set("A1", "=DAY(60)");
-    model._set("A2", "=MONTH(1)");
+    // Serial 0 is "0 January 1900", serial 60 is 29 February 1900
+    model._set("A1", "=DAY(0)");
+    model._set("A2", "=MONTH(0)");
     model._set("A3", "=YEAR(0)");
-    model._set("A4", "=EDATE(1,1)");
-    model._set("A5", "=EOMONTH(61,-1)"); // 29 February 1900 in Excel
-    model._set("A6", "=TEXT(1,\"yyyy-mm-dd\")");
-    model._set("A7", "=WORKDAY(61,-1)");
-    model._set("A8", "=DATEDIF(1,61,\"d\")");
-    // From 61 on everything works
-    model._set("B1", "=DAY(61)");
-    model._set("B2", "=MONTH(61)");
-    model._set("B3", "=YEAR(61)");
-    model._set("B4", "=TEXT(61,\"yyyy-mm-dd\")");
-    model._set("B5", "=EDATE(61,1)");
+    model._set("A4", "=DAY(1)");
+    model._set("A5", "=DAY(60)");
+    model._set("A6", "=MONTH(60)");
+    model._set("A7", "=DAY(61)");
+    model._set("A8", "=TEXT(0,\"m/d/yyyy\")");
+    model._set("A9", "=TEXT(1,\"yyyy-mm-dd\")");
+    model._set("A10", "=TEXT(60,\"mmmm d, dddd\")");
+    model._set("A11", "=TEXT(60,\"yy\")");
+    // Month arithmetic on Excel's calendar
+    model._set("B1", "=EDATE(1,1)");
+    model._set("B2", "=EDATE(89,-1)"); // 29 March to 28 February: Gregorian month lengths
+    model._set("B3", "=EDATE(0,1)"); // "0 February" is 31 January
+    model._set("B4", "=EOMONTH(61,-1)");
+    model._set("B5", "=EOMONTH(32,0)");
+    model._set("B6", "=EOMONTH(0,0)");
+    model._set("B7", "=DATEDIF(1,61,\"d\")");
+    model._set("B8", "=DATEDIF(1,61,\"m\")");
+    model._set("B9", "=DATEDIF(1,366,\"yd\")");
+    model._set("B10", "=DATEDIF(32,61,\"md\")");
+    // 1900 has 366 serials but YEARFRAC uses the Gregorian year length
+    model._set("C1", "=YEARFRAC(1,367,1)");
+    model._set("C2", "=YEARFRAC(1,367)");
+    model._set("C3", "=DATE(1900,12,31)");
+    // Weeks
+    model._set("D1", "=WEEKDAY(1)"); // Excel: 1 January 1900 is a Sunday
+    model._set("D2", "=WEEKDAY(60)"); // Excel: 29 February 1900 is a Wednesday
+    model._set("D3", "=WEEKNUM(1)");
+    model._set("D4", "=WEEKNUM(2)");
+    model._set("D5", "=WEEKNUM(8)");
+    model._set("D6", "=WEEKNUM(2,2)");
+    model._set("D7", "=ISOWEEKNUM(1)");
+    model._set("D8", "=ISOWEEKNUM(2)");
+    model._set("D9", "=NETWORKDAYS(1,61)");
+    model._set("D10", "=WORKDAY(61,-1)");
+    model._set("D11", "=WORKDAY(1,1)");
     // Negative serials are #NUM!, as in Excel
-    model._set("C1", "=DAY(-1)");
-    model._set("C2", "=HOUR(-0.5)");
-    model._set("C3", "=WEEKDAY(-1)");
-    // Weekdays and day names are known for every serial from 0 on
-    model._set("D1", "=WEEKDAY(1)");
-    model._set("D2", "=WEEKDAY(60)");
-    model._set("D3", "=TEXT(1,\"dddd\")");
-    model._set("D4", "=TEXT(0,\"ddd\")");
-    model._set("D5", "=TEXT(1,\"dddd d\")");
+    model._set("E1", "=DAY(-1)");
+    model._set("E2", "=HOUR(-0.5)");
+    model._set("E3", "=WEEKDAY(-1)");
+    model._set("E4", "=EDATE(1,-1)");
+    model._set("E5", "=WORKDAY(1,-1)");
     model.evaluate();
 
-    for cell in ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"] {
-        assert_eq!(model._get_text(cell), "#N/IMPL!", "{cell}");
+    assert_eq!(model._get_text("A1"), "0");
+    assert_eq!(model._get_text("A2"), "1");
+    assert_eq!(model._get_text("A3"), "1900");
+    assert_eq!(model._get_text("A4"), "1");
+    assert_eq!(model._get_text("A5"), "29");
+    assert_eq!(model._get_text("A6"), "2");
+    assert_eq!(model._get_text("A7"), "1");
+    assert_eq!(model._get_text("A8"), "1/0/1900");
+    assert_eq!(model._get_text("A9"), "1900-01-01");
+    assert_eq!(model._get_text("A10"), "February 29, Wednesday");
+    assert_eq!(model._get_text("A11"), "00");
+
+    assert_eq!(raw(&model, "B1"), "32");
+    assert_eq!(raw(&model, "B2"), "59");
+    assert_eq!(raw(&model, "B3"), "31");
+    assert_eq!(raw(&model, "B4"), "59");
+    assert_eq!(raw(&model, "B5"), "59");
+    assert_eq!(raw(&model, "B6"), "31");
+    assert_eq!(model._get_text("B7"), "60");
+    assert_eq!(model._get_text("B8"), "2");
+    assert_eq!(model._get_text("B9"), "365");
+    assert_eq!(model._get_text("B10"), "0");
+
+    assert_eq!(raw(&model, "C1"), "1.0027397260273974");
+    assert_eq!(model._get_text("C2"), "1");
+    assert_eq!(raw(&model, "C3"), "366");
+
+    assert_eq!(model._get_text("D1"), "1");
+    assert_eq!(model._get_text("D2"), "4");
+    assert_eq!(model._get_text("D3"), "1");
+    assert_eq!(model._get_text("D4"), "1");
+    assert_eq!(model._get_text("D5"), "2");
+    assert_eq!(model._get_text("D6"), "2");
+    assert_eq!(model._get_text("D7"), "52");
+    assert_eq!(model._get_text("D8"), "1");
+    assert_eq!(model._get_text("D9"), "44");
+    assert_eq!(raw(&model, "D10"), "60");
+    assert_eq!(raw(&model, "D11"), "2");
+
+    for cell in ["E1", "E2", "E3", "E4", "E5"] {
+        assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
     }
-    assert_eq!(model._get_text("B1"), "1");
-    assert_eq!(model._get_text("B2"), "3");
-    assert_eq!(model._get_text("B3"), "1900");
-    assert_eq!(model._get_text("B4"), "1900-03-01");
-    assert_eq!(model._get_text("B5"), "92");
-    assert_eq!(model._get_text("C1"), "#NUM!");
-    assert_eq!(model._get_text("C2"), "#NUM!");
-    assert_eq!(model._get_text("C3"), "#NUM!");
-    assert_eq!(model._get_text("D1"), "1"); // Excel: 1 January 1900 is a Sunday
-    assert_eq!(model._get_text("D2"), "4"); // Excel: 29 February 1900 is a Wednesday
-    assert_eq!(model._get_text("D3"), "Sunday");
-    assert_eq!(model._get_text("D4"), "Sat");
-    assert_eq!(model._get_text("D5"), "#N/IMPL!");
 }
 
 #[test]
@@ -275,7 +322,7 @@ fn excel_1900_system_days_and_days360() {
     model._set("A2", "=DAYS(61,-1)");
     model._set("A3", "=DAYS360(1,61)"); // 1 January to 1 March 1900
     model._set("A4", "=DAYS360(0,1)"); // "0 January" to 1 January
-    model._set("A5", "=DAYS360(60,61)"); // 29 February to 1 March
+    model._set("A5", "=DAYS360(60,61)"); // 29 February (last day of the month) to 1 March
     model._set("A6", "=DAYS360(-1,61)");
     model.evaluate();
 
@@ -283,7 +330,7 @@ fn excel_1900_system_days_and_days360() {
     assert_eq!(model._get_text("A2"), "#NUM!");
     assert_eq!(model._get_text("A3"), "60");
     assert_eq!(model._get_text("A4"), "1");
-    assert_eq!(model._get_text("A5"), "2");
+    assert_eq!(model._get_text("A5"), "1");
     assert_eq!(model._get_text("A6"), "#NUM!");
 }
 

@@ -1,5 +1,3 @@
-use chrono::Datelike;
-
 use crate::types::DateSystem;
 use crate::{
     locale::Locale,
@@ -7,7 +5,7 @@ use crate::{
 };
 
 use super::{
-    dates::{calendar_year, serial_to_date, serial_to_weekday, ymd_to_serial, DateError},
+    dates::{calendar_year, serial_to_weekday, serial_to_ymd, ymd_to_serial, DateError},
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -183,12 +181,10 @@ pub fn format_number(
             let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
             let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
             let serial = value.floor() as i64;
-            let (date, date_error) = match serial_to_date(serial, date_system) {
-                Ok(date) => (Some(date), None),
+            let (date, date_error) = match serial_to_ymd(serial, date_system) {
+                Ok(ymd) => (Some(ymd), None),
                 Err(e) => (None, Some(e)),
             };
-            // The weekday is known even when the date is not (Excel 1900
-            // serials below 61)
             let weekday = serial_to_weekday(serial, date_system).ok();
             let invalid_date = |value: f64| match date_error {
                 Some(DateError::NotImplemented) => Formatted {
@@ -227,7 +223,7 @@ pub fn format_number(
                     TextToken::Period => {}
                     TextToken::Day => match date {
                         Some(date) => {
-                            let day = date.day() as usize;
+                            let day = date.day as usize;
                             text = format!("{text}{day}");
                         }
                         None => return invalid_date(value),
@@ -237,7 +233,7 @@ pub fn format_number(
                             Some(d) => d,
                             None => return invalid_date(value),
                         };
-                        let day = date.day() as usize;
+                        let day = date.day as usize;
                         text = format!("{text}{day:02}");
                     }
                     TextToken::DayNameShort => {
@@ -265,7 +261,7 @@ pub fn format_number(
                             Some(d) => d,
                             None => return invalid_date(value),
                         };
-                        let month = date.month() as usize;
+                        let month = date.month as usize;
                         text = format!("{text}{month}");
                     }
                     TextToken::MonthPadded => {
@@ -273,7 +269,7 @@ pub fn format_number(
                             Some(d) => d,
                             None => return invalid_date(value),
                         };
-                        let month = date.month() as usize;
+                        let month = date.month as usize;
                         text = format!("{text}{month:02}");
                     }
                     TextToken::MonthNameShort => {
@@ -281,7 +277,7 @@ pub fn format_number(
                             Some(d) => d,
                             None => return invalid_date(value),
                         };
-                        let month = date.month() as usize;
+                        let month = date.month as usize;
                         text = format!("{}{}", text, locale.dates.months_short[month - 1]);
                     }
                     TextToken::MonthName => {
@@ -289,7 +285,7 @@ pub fn format_number(
                             Some(d) => d,
                             None => return invalid_date(value),
                         };
-                        let month = date.month() as usize;
+                        let month = date.month as usize;
                         text = format!("{}{}", text, locale.dates.months[month - 1]);
                     }
                     TextToken::MonthLetter => {
@@ -297,7 +293,7 @@ pub fn format_number(
                             Some(d) => d,
                             None => return invalid_date(value),
                         };
-                        let month = date.month() as usize;
+                        let month = date.month as usize;
                         let months_letter = &locale.dates.months_letter[month - 1];
                         text = format!("{text}{months_letter}");
                     }
@@ -306,14 +302,15 @@ pub fn format_number(
                             Some(d) => d,
                             None => return invalid_date(value),
                         };
-                        text = format!("{}{}", text, date.format("%y"));
+                        let year = calendar_year(date.year).rem_euclid(100);
+                        text = format!("{text}{year:02}");
                     }
                     TextToken::Year => {
                         let date = match date {
                             Some(d) => d,
                             None => return invalid_date(value),
                         };
-                        text = format!("{}{}", text, calendar_year(date));
+                        text = format!("{}{}", text, calendar_year(date.year));
                     }
                     TextToken::Hour => {
                         let mut hour = hours as i32;

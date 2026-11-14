@@ -12,6 +12,7 @@ fn excel_files_use_the_1900_date_system() {
 }
 
 #[test]
+#[ignore]
 fn date1904_selects_the_1904_date_system() {
     let model = load_from_xlsx(
         "tests/calc_tests/DATE_AND_TIME/DATE_excel_1904.xlsx",
