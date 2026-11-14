@@ -173,7 +173,15 @@ pub fn format_number(
         }
         ParsePart::Date(p) => {
             let tokens = &p.tokens;
-            let mut text = "".to_string();
+            // The 1904 system shows a negative value as the date and time of
+            // its absolute value with a leading minus: -2 is "-1/3/1904" and
+            // -0.25 is "-6:00". The other systems have no negative dates
+            // (Excel 1900) or format the date before the epoch (IronCalc).
+            let (value, mut text) = if value < 0.0 && date_system == DateSystem::Excel1904 {
+                (-value, "-".to_string())
+            } else {
+                (value, "".to_string())
+            };
             // The time of day is the fraction above the floor, so that a
             // negative serial (a date before the epoch) formats correctly.
             let time_fract = value.rem_euclid(1.0);

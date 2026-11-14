@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::expressions::utils::parse_reference_a1;
-use crate::formatter::dates::{date_to_serial, serial_to_date};
+use crate::formatter::dates::{date_to_serial, from_ironcalc_serial, serial_to_date};
 use crate::number_format::parse_finite_number;
 use crate::types::DateSystem;
 use crate::{
@@ -883,11 +883,11 @@ impl<'a> Model<'a> {
         stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
+        let date_system = self.date_system();
         let today_serial = match crate::tz::excel_serial_for_now(&self.tz) {
-            Some(s) => s.floor() as i64,
+            Some(s) => from_ironcalc_serial(s, date_system).floor() as i64,
             None => return,
         };
-        let date_system = self.date_system();
         let today = match serial_to_date(today_serial, date_system) {
             Ok(d) => d,
             Err(_) => return,
