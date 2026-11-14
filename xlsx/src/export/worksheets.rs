@@ -1,5 +1,4 @@
 #![allow(clippy::unwrap_used)]
-#![allow(clippy::panic)]
 
 //! # A note on shared formulas
 //! Although both Excel and IronCalc uses shared formulas they are used in a slightly different way that cannot be mapped 1-1
@@ -309,17 +308,53 @@ pub(crate) fn get_worksheet_xml(
                         "<c r=\"{cell_name}\" t=\"s\"{style}><v>{si}</v></c>"
                     ));
                 }
+                // A formula that was never evaluated (for instance typed while the
+                // evaluation was paused) is written without a cached value.
+                // Excel calculates it when it opens the file.
                 Cell::CellFormula {
+                    f,
                     v: FormulaValue::Unevaluated,
-                    ..
-                }
-                | Cell::ArrayFormula {
-                    v: FormulaValue::Unevaluated,
-                    ..
+                    s,
                 } => {
-                    // TODO: We should NOT panic here.
-                    // Is there like an "import error" we can set in Excel?
-                    panic!("Model needs to be evaluated before saving!");
+                    let formula = get_formula_attribute(
+                        worksheet.get_name(),
+                        row_index,
+                        column_index,
+                        &parsed_formulas[*f as usize].0,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    row_data_str.push(format!("<c r=\"{cell_name}\"{style}><f>{formula}</f></c>"));
+                }
+                Cell::ArrayFormula {
+                    f,
+                    v: FormulaValue::Unevaluated,
+                    s,
+                    r,
+                    kind,
+                } => {
+                    let node = match parsed_formulas.get(*f as usize) {
+                        Some(node) => node,
+                        None => continue,
+                    };
+                    let formula = get_array_formula_attribute(
+                        worksheet.get_name(),
+                        row_index,
+                        column_index,
+                        &node.0,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    let range = match get_range_str(row_index, column_index, r.0, r.1) {
+                        Some(range) => range,
+                        None => continue,
+                    };
+                    let cm = if matches!(kind, ArrayKind::Dynamic) {
+                        r#" cm="1""#
+                    } else {
+                        ""
+                    };
+                    row_data_str.push(format!(
+                        r#"<c r="{cell_name}"{style}{cm}><f t="array" ref="{range}">{formula}</f></c>"#
+                    ));
                 }
                 Cell::CellFormula {
                     f,
