@@ -10,6 +10,8 @@ use super::{
     parser::{ParsePart, Parser, TextToken},
 };
 
+const SECONDS_PER_DAY: i64 = 86_400;
+
 pub struct Formatted {
     pub color: Option<i32>,
     pub text: String,
@@ -170,11 +172,23 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Date(p) => {
             let tokens = &p.tokens;
             let mut text = "".to_string();
-            let time_fract = value.fract();
-            let hours = (time_fract * 24.0).floor();
-            let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
-            let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-            let date = from_excel_date(value as i64).ok();
+            // Excel rounds a date-time to the nearest second, and then takes it apart:
+            // 18:58 is stored as 68279.99999999999 seconds and shows 18:58, and a time
+            // that rounds up to midnight is the next day.
+            let mut day = value.floor();
+            let mut seconds_of_day = ((value - day) * SECONDS_PER_DAY as f64).round() as i64;
+            if seconds_of_day == SECONDS_PER_DAY {
+                day += 1.0;
+                seconds_of_day = 0;
+            }
+            let hours = seconds_of_day / 3600;
+            let minutes = seconds_of_day / 60 % 60;
+            let seconds = seconds_of_day % 60;
+            // The whole time in seconds, for [h], [mm] and [ss]
+            let elapsed_seconds = (day as i64)
+                .saturating_mul(SECONDS_PER_DAY)
+                .saturating_add(seconds_of_day);
+            let date = from_excel_date(day as i64).ok();
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -387,7 +401,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{second:02}");
                     }
                     TextToken::AMPM => {
-                        let ampm = if hours < 12.0 { "AM" } else { "PM" };
+                        let ampm = if hours < 12 { "AM" } else { "PM" };
                         text = format!("{text}{ampm}");
                     }
                     TextToken::Minute => {
@@ -399,27 +413,27 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = (value * 24.0).floor() as i32;
+                        let hour = elapsed_seconds.div_euclid(3600);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = (value * 24.0).floor() as i32;
+                        let hour = elapsed_seconds.div_euclid(3600);
                         text = format!("{text}{hour:02}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        let minute = elapsed_seconds.div_euclid(60);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        let minute = elapsed_seconds.div_euclid(60);
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        let second = elapsed_seconds;
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        let second = elapsed_seconds;
                         text = format!("{text}{second:02}");
                     }
                 }
