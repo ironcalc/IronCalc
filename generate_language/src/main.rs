@@ -524,6 +524,7 @@ pub struct Functions {
     pub percentof: String,
     pub encodeurl: String,
     pub ecma_ceiling: String,
+    pub aggregate: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]
