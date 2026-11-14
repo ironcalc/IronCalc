@@ -524,7 +524,8 @@ impl<'a> Model<'a> {
                             };
                         }
                         ParsedDefinedName::Formula(formula) => {
-                            return self.evaluate_node_with_reference(&formula, cell);
+                            return self
+                                .evaluate_defined_name_formula(name, *scope, &formula, cell, true);
                         }
                         ParsedDefinedName::LambdaDefinition(..)
                         | ParsedDefinedName::InvalidDefinedNameFormula => {}
@@ -940,7 +941,7 @@ impl<'a> Model<'a> {
                             CalcResult::Lambda(lambda_id)
                         }
                         ParsedDefinedName::Formula(formula) => {
-                            self.evaluate_node_in_context(&formula, cell)
+                            self.evaluate_defined_name_formula(name, *scope, &formula, cell, false)
                         }
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
@@ -3062,6 +3063,37 @@ impl<'a> Model<'a> {
             }
         }
         Ok(None)
+    }
+
+    /// Runs the formula of a defined name: for the reference it stands for
+    /// with `as_reference`, for its value without. A name that is already
+    /// running for this cell has reached itself, like `Loop` defined as
+    /// `Loop+1`. It would never end, so it is #NUM! where the name repeats: a
+    /// formula on the loop can still catch that error, with IFERROR.
+    fn evaluate_defined_name_formula(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &Node,
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
+        let running = (scope, name.to_lowercase(), cell);
+        if self.evaluation.names.contains(&running) {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                format!("Defined name \"{name}\" refers to itself."),
+            );
+        }
+        self.evaluation.names.push(running);
+        let result = if as_reference {
+            self.evaluate_node_with_reference(formula, cell)
+        } else {
+            self.evaluate_node_in_context(formula, cell)
+        };
+        self.evaluation.names.pop();
+        result
     }
 
     /// Returns the defined name with `name` and `scope` (`None` is global,
