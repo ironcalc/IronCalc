@@ -1,9 +1,6 @@
 use chrono::Datelike;
 
-use crate::{
-    locale::Locale,
-    number_format::{parse_finite_number, to_precision},
-};
+use crate::{locale::Locale, number_format::parse_finite_number};
 
 use super::{
     dates::{date_to_serial_number, from_excel_date},
@@ -16,30 +13,104 @@ pub struct Formatted {
     pub error: Option<String>,
 }
 
-/// Returns the vector of chars of the fractional part of a *positive* number:
-/// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
-fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
-    let b = format!("{:.1$}", value.fract(), precision as usize)
-        .chars()
-        .collect::<Vec<char>>();
-    let l = b.len() - 1;
-    let mut last_non_zero = b.len() - 1;
-    for i in 0..l {
-        if b[l - i] != '0' {
-            last_non_zero = l - i + 1;
-            break;
+/// The digits of a non-negative finite number as a number format shows them.
+///
+/// Excel keeps 15 significant digits and rounds what it displays half away from
+/// zero on that decimal value, carrying into the integer part (and the exponent):
+/// 0.96 as `0.0` is "1.0", 9.995 as `0.00` is "10.00" and `=19.99*0.05` as
+/// `$#,##0.00` is "$1.00", even though the nearest binary doubles sit just below
+/// the halfway point. Rounding the binary value with `format!` gets those wrong.
+#[derive(Debug, PartialEq)]
+struct DisplayDigits {
+    /// Digits left of the decimal point, without leading zeros (empty for zero)
+    int_part: Vec<char>,
+    /// Digits right of the decimal point, at most `precision`, without trailing zeros
+    fract_part: Vec<char>,
+    /// The power of ten (scientific formats only)
+    exponent: i32,
+}
+
+/// Rounds `value` (non-negative, finite) to `precision` decimal places the way Excel
+/// displays it. With `scientific`, the value is first written as `d.ddd x 10^exponent`.
+fn display_digits(value: f64, precision: i32, scientific: bool) -> DisplayDigits {
+    let precision = precision.max(0);
+    if value == 0.0 || !value.is_finite() {
+        return DisplayDigits {
+            int_part: vec![],
+            fract_part: vec![],
+            exponent: 0,
+        };
+    }
+    // 15 significant digits: "d.dddddddddddddde<exp>"
+    let text = format!("{value:.14e}");
+    let (mantissa, exp) = text.split_once('e').unwrap_or((&text, "0"));
+    let mut exponent: i32 = exp.parse().unwrap_or(0);
+    let mut digits: Vec<u8> = mantissa
+        .bytes()
+        .filter(u8::is_ascii_digit)
+        .map(|b| b - b'0')
+        .collect();
+    // `point` is the number of digits left of the decimal point (it can be negative)
+    let mut point = if scientific { 1 } else { exponent + 1 };
+    let keep = point + precision;
+    if keep < 0 {
+        digits.clear();
+    } else if (keep as usize) < digits.len() {
+        let round_up = digits[keep as usize] >= 5;
+        digits.truncate(keep as usize);
+        if round_up {
+            let mut i = digits.len();
+            loop {
+                if i == 0 {
+                    // every kept digit was a 9 (or none were kept): 0.96 -> 1.0
+                    digits.insert(0, 1);
+                    if scientific {
+                        // 9.996E+00 -> 1.00E+01
+                        exponent += 1;
+                        digits.pop();
+                    } else {
+                        point += 1;
+                    }
+                    break;
+                }
+                i -= 1;
+                if digits[i] == 9 {
+                    digits[i] = 0;
+                } else {
+                    digits[i] += 1;
+                    break;
+                }
+            }
         }
     }
-    if last_non_zero < 2 {
-        return vec![];
+    if digits.iter().all(|d| *d == 0) {
+        return DisplayDigits {
+            int_part: vec![],
+            fract_part: vec![],
+            exponent: if scientific { exponent } else { 0 },
+        };
     }
-    let max_len = if int_len > 15 {
-        2_usize
-    } else {
-        15_usize - int_len + 1
+    let digit_at = |i: i32| -> char {
+        if i < 0 {
+            '0'
+        } else {
+            (b'0' + digits.get(i as usize).copied().unwrap_or(0)) as char
+        }
     };
-    let last_non_zero = usize::min(last_non_zero, max_len + 1);
-    b[2..last_non_zero].to_vec()
+    let int_part: Vec<char> = (0..point.max(0)).map(digit_at).collect();
+    let int_part = match int_part.iter().position(|c| *c != '0') {
+        Some(first) => int_part[first..].to_vec(),
+        None => vec![],
+    };
+    let mut fract_part: Vec<char> = (0..precision).map(|j| digit_at(point + j)).collect();
+    while fract_part.last() == Some(&'0') {
+        fract_part.pop();
+    }
+    DisplayDigits {
+        int_part,
+        fract_part,
+        exponent: if scientific { exponent } else { 0 },
+    }
 }
 
 /// Return true if we need to add a separator in position digit_index
@@ -437,38 +508,17 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             }
             let tokens = &p.tokens;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
-            // p.precision is the number of significant digits _after_ the decimal point
-            value = to_precision(
-                value,
-                (p.precision as usize) + format!("{}", value.abs().floor()).len(),
-            );
-            let mut value_abs = value.abs();
-            let mut exponent_part: Vec<char> = vec![];
-            let mut exponent_is_negative = value_abs < 10.0;
-            if p.is_scientific {
-                if value_abs == 0.0 {
-                    exponent_part = vec!['0'];
-                    exponent_is_negative = false;
-                } else {
-                    // TODO: Implement engineering formatting.
-                    let exponent = value_abs.log10().floor();
-                    exponent_part = format!("{}", exponent.abs()).chars().collect();
-                    value /= 10.0_f64.powf(exponent);
-                    value = to_precision(value, 15);
-                    value_abs = value.abs();
-                }
-            }
+            // p.precision is the number of digits _after_ the decimal point.
+            // Round the way Excel does (see `display_digits`), carries included.
+            // TODO: Implement engineering formatting.
+            let DisplayDigits {
+                int_part,
+                fract_part,
+                exponent,
+            } = display_digits(value.abs(), p.precision, p.is_scientific);
+            let exponent_part: Vec<char> = format!("{}", exponent.abs()).chars().collect();
+            let exponent_is_negative = exponent < 0;
             let l_exp = exponent_part.len() as i32;
-            let int_number = if p.precision == 0 {
-                value_abs.round()
-            } else {
-                value_abs.floor()
-            };
-            let mut int_part: Vec<char> = format!("{}", int_number).chars().collect();
-            if int_number as i64 == 0 {
-                int_part = vec![];
-            }
-            let fract_part = get_fract_part(value_abs, p.precision, int_part.len());
             // ln is the number of digits of the integer part of the value
             let ln = int_part.len() as i32;
             // digit count is the number of digit tokens ('0', '?' and '#') to the left of the decimal point
@@ -480,8 +530,8 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let group_sizes = locale.numbers.decimal_formats.standard.to_owned();
             let group_separator = symbols.group.to_owned();
             let decimal_separator = symbols.decimal.to_owned();
-            // There probably are better ways to check if a number at a given precision is negative :/
-            let is_negative = value < -(10.0_f64.powf(-(p.precision as f64)));
+            // A negative number that rounds to zero at this precision shows no sign
+            let is_negative = value < 0.0 && !(int_part.is_empty() && fract_part.is_empty());
             let mut needs_period = false;
 
             for token in tokens {
