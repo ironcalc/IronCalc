@@ -800,6 +800,14 @@ impl<'a> Lexer<'a> {
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {
         let start = self.position;
+        // `Sheet1!#REF!`: Excel writes this when the cells are deleted
+        if sheet.is_some() && self.peek_char() == Some('#') {
+            self.position += 1;
+            return match self.consume_error() {
+                TokenType::Error(Error::REF) => TokenType::Error(Error::REF),
+                _ => TokenType::Illegal(self.set_error("Invalid reference or identifier", start)),
+            };
+        }
         let m = if self.mode == LexerMode::A1 {
             self.consume_range_a1()
         } else {
