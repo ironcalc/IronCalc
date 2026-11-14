@@ -517,7 +517,8 @@
       "sumproduct": "SUMPRODUCT",
       "percentof": "PERCENTOF",
       "encodeurl": "ENCODEURL",
-      "ecma_ceiling": "ECMA.CEILING"
+      "ecma_ceiling": "ECMA.CEILING",
+      "aggregate": "AGGREGATE"
     }
   },
   "it": {
@@ -1038,7 +1039,8 @@
       "sumproduct": "MATR.SOMMA.PRODOTTO",
       "percentof": "PERCENTUALE.DI",
       "encodeurl": "CODIFICA.URL",
-      "ecma_ceiling": "ECMA.CEILING"
+      "ecma_ceiling": "ECMA.CEILING",
+      "aggregate": "AGGREGA"
     }
   },
   "fr": {
@@ -1559,7 +1561,8 @@
       "sumproduct": "SOMMEPROD",
       "percentof": "POURCENTDE",
       "encodeurl": "URLENCODAGE",
-      "ecma_ceiling": "ECMA.CEILING"
+      "ecma_ceiling": "ECMA.CEILING",
+      "aggregate": "AGREGAT"
     }
   },
   "de": {
@@ -2080,7 +2083,8 @@
       "sumproduct": "SUMMENPRODUKT",
       "percentof": "PROZENTVON",
       "encodeurl": "URLCODIEREN",
-      "ecma_ceiling": "ECMA.CEILING"
+      "ecma_ceiling": "ECMA.CEILING",
+      "aggregate": "AGGREGAT"
     }
   },
   "es": {
@@ -2601,7 +2605,8 @@
       "sumproduct": "SUMAPRODUCTO",
       "percentof": "PORCENTAJEDE",
       "encodeurl": "URLCODIF",
-      "ecma_ceiling": "ECMA.CEILING"
+      "ecma_ceiling": "ECMA.CEILING",
+      "aggregate": "AGREGAR"
     }
   }
 }

@@ -228,6 +228,7 @@ pub enum Function {
     Dollar,
     Encodeurl,
     EcmaCeiling,
+    Aggregate,
     Findb,
     Fixed,
     Leftb,
@@ -780,6 +781,7 @@ impl_function_lookup! {
     dollar      => Dollar,
     encodeurl   => Encodeurl,
     ecma_ceiling => EcmaCeiling,
+    aggregate => Aggregate,
     findb       => Findb,
     fixed       => Fixed,
     leftb       => Leftb,
@@ -1306,6 +1308,7 @@ impl Function {
             Function::Dollar => functions.dollar.clone(),
             Function::Encodeurl => functions.encodeurl.clone(),
             Function::EcmaCeiling => functions.ecma_ceiling.clone(),
+            Function::Aggregate => functions.aggregate.clone(),
             Function::Findb => functions.findb.clone(),
             Function::Fixed => functions.fixed.clone(),
             Function::Leftb => functions.leftb.clone(),
@@ -1617,7 +1620,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 497> {
+    pub fn into_iter() -> IntoIter<Function, 498> {
         [
             Function::And,
             Function::False,
@@ -1767,6 +1770,7 @@ impl Function {
             Function::Dollar,
             Function::Encodeurl,
             Function::EcmaCeiling,
+            Function::Aggregate,
             Function::Findb,
             Function::Fixed,
             Function::Leftb,
@@ -2172,6 +2176,7 @@ impl Function {
             Function::Arraytotext => "_xlfn.ARRAYTOTEXT".to_string(),
             Function::Encodeurl => "_xlfn.ENCODEURL".to_string(),
             Function::EcmaCeiling => "_xlfn.ECMA.CEILING".to_string(),
+            Function::Aggregate => "_xlfn.AGGREGATE".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),
@@ -2430,6 +2435,7 @@ impl<'a> Model<'a> {
             Function::Dollar => self.fn_dollar(args, cell),
             Function::Encodeurl => self.fn_encodeurl(args, cell),
             Function::EcmaCeiling => self.fn_ecma_ceiling(args, cell),
+            Function::Aggregate => self.fn_aggregate(args, cell),
             Function::Findb => self.fn_findb(args, cell),
             Function::Fixed => self.fn_fixed(args, cell),
             Function::Leftb => self.fn_leftb(args, cell),
