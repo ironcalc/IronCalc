@@ -1,6 +1,7 @@
 import {
   columnNameFromNumber,
   columnNumberFromName,
+  type DateSystem,
   type FocusOnOpen,
   getAllTimezones,
   getSupportedLocales,
@@ -22,6 +23,7 @@ type SettingsProps = {
   initialLocale: string;
   initialTimezone: string;
   initialLanguage: string;
+  initialDateSystem: DateSystem;
   // The cell the workbook focuses on when opened, undefined if the setting is off
   initialFocusOnOpen: FocusOnOpen | undefined;
   worksheets: WorksheetProperties[];
@@ -31,9 +33,12 @@ type SettingsProps = {
     locale: string,
     timezone: string,
     language: string,
+    dateSystem: DateSystem,
     focusOnOpen: FocusOnOpen | null,
   ) => void;
 };
+
+const dateSystems: DateSystem[] = ["IronCalc", "Excel1900", "Excel1904"];
 
 // Parses a cell reference like "C5" (or "$C$5")
 const parseCellReference = (
@@ -126,6 +131,9 @@ const Settings = (properties: SettingsProps) => {
   const [selectedLanguage, setSelectedLanguage] = useState(
     properties.initialLanguage,
   );
+  const [selectedDateSystem, setSelectedDateSystem] = useState<DateSystem>(
+    properties.initialDateSystem,
+  );
 
   // Focus on open: the sheet (its index) and the cell (as text, like "C5")
   const initialFocus = properties.initialFocusOnOpen;
@@ -143,10 +151,12 @@ const Settings = (properties: SettingsProps) => {
     setSelectedLocale(properties.initialLocale);
     setSelectedTimezone(properties.initialTimezone);
     setSelectedLanguage(properties.initialLanguage);
+    setSelectedDateSystem(properties.initialDateSystem);
   }, [
     properties.initialLocale,
     properties.initialTimezone,
     properties.initialLanguage,
+    properties.initialDateSystem,
   ]);
 
   useEffect(() => {
@@ -190,6 +200,7 @@ const Settings = (properties: SettingsProps) => {
       selectedLocale,
       selectedTimezone,
       selectedLanguage,
+      selectedDateSystem,
       focusEnabled && parsedFocusCell
         ? { sheet: focusSheet, ...parsedFocusCell }
         : null,
@@ -269,6 +280,19 @@ const Settings = (properties: SettingsProps) => {
                 value: timezone,
                 label: timezone,
                 triggerLabel: timezone,
+              }))}
+            />
+          </div>
+          <div className="ic-settings-field-wrapper">
+            <Select
+              label={t("settings.date_system.label")}
+              helperText={t("settings.date_system.helper")}
+              value={selectedDateSystem}
+              onChange={(value) => setSelectedDateSystem(value as DateSystem)}
+              options={dateSystems.map((dateSystem) => ({
+                value: dateSystem,
+                label: t(`settings.date_system.${dateSystem}`),
+                triggerLabel: t(`settings.date_system.${dateSystem}`),
               }))}
             />
           </div>

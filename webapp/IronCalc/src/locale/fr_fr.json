@@ -333,6 +333,13 @@
     "resize_drawer": "Redimensionner le panneau"
   },
   "settings": {
+    "date_system": {
+      "Excel1900": "01/01/1900 (compatible Excel)",
+      "Excel1904": "01/01/1904 (Excel pour Mac)",
+      "helper": "Comment les nombres de date enregistrés correspondent aux jours du calendrier. Le modifier ne convertit pas les dates existantes.",
+      "IronCalc": "LibreOffice/IronCalc (par défaut)",
+      "label": "Système de dates"
+    },
     "focus_on_open": {
       "cell_label": "Cellule",
       "helper": "Choisissez la feuille et la cellule à l'ouverture de ce classeur.",

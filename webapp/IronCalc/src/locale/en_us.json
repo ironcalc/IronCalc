@@ -333,6 +333,13 @@
     "resize_drawer": "Resize drawer"
   },
   "settings": {
+    "date_system": {
+      "Excel1900": "1900-01-01 (Excel compatible)",
+      "Excel1904": "1904-01-01 (Excel for Mac)",
+      "helper": "How the stored date numbers map to calendar days. Changing it does not convert existing dates.",
+      "IronCalc": "LibreOffice/IronCalc (default)",
+      "label": "Date system"
+    },
     "focus_on_open": {
       "cell_label": "Cell",
       "helper": "Choose the sheet and cell this workbook opens on.",
