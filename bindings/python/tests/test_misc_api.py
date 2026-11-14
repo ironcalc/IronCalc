@@ -56,3 +56,25 @@ def test_hex_with_tint_to_rgb():
     assert ic.hex_with_tint_to_rgb("#000000", 0.0) == "#000000"
     assert ic.hex_with_tint_to_rgb("#FFFFFF", -1.0) == "#000000"
     assert ic.hex_with_tint_to_rgb("#000000", 1.0) == "#FFFFFF"
+
+
+def test_date_system(um):
+    assert um.get_date_system() == "IronCalc"
+    um.set_user_input(0, 1, 1, "=YEAR(0)")
+    assert um.get_formatted_cell_value(0, 1, 1) == "1899"
+    # The values do not change, their meaning does
+    um.set_date_system("Excel1904")
+    assert um.get_date_system() == "Excel1904"
+    assert um.get_formatted_cell_value(0, 1, 1) == "1904"
+    um.undo()
+    assert um.get_date_system() == "IronCalc"
+    with pytest.raises(ic.WorkbookError):
+        um.set_date_system("Excel2000")
+
+
+def test_date_system_raw(rm):
+    assert rm.get_date_system() == "IronCalc"
+    rm.set_user_input(0, 1, 1, "=YEAR(0)")
+    rm.set_date_system("Excel1900")
+    rm.evaluate()
+    assert rm.get_formatted_cell_value(0, 1, 1) == "1900"
