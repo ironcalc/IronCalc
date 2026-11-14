@@ -127,11 +127,11 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
-// The time of day of a serial in whole seconds, after rounding it to the
-// nearest millisecond (0..=86399; a time that rounds up to midnight is 0).
+// The time of day of a serial in whole seconds, rounded to the nearest second
+// (0..=86399; a time that rounds up to midnight is 0).
 fn seconds_of_day(v: f64) -> i64 {
-    let ms = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64 * 1000.0).round() as i64;
-    (ms % (SECONDS_PER_DAY as i64 * 1000)) / 1000
+    let seconds = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64).round() as i64;
+    seconds % SECONDS_PER_DAY as i64
 }
 
 // ---------------------------------------------------------------------------
@@ -1439,10 +1439,10 @@ impl<'a> Model<'a> {
     // Auto-generated TIME part helpers (HOUR / MINUTE / SECOND)
     // -----------------------------------------------------------------------
 
-    time_part_fn!(fn_hour, |v: f64| (v.rem_euclid(1.0) * 24.0).floor());
-    // MINUTE and SECOND round the time of day to the nearest millisecond
-    // before taking it apart, as Excel does: MINUTE(0.520833333) is 30
-    // (12:29:59.99997 is 12:30:00.000), SECOND(TIME(14,30,45.999)) stays 45.
+    // HOUR, MINUTE and SECOND round the time of day to the nearest second
+    // before taking it apart, as Excel does: SECOND of 0:01:05.8 is 6, and
+    // 10:59:59.6 is 11:00:00, so its HOUR is 11 and its MINUTE 0.
+    time_part_fn!(fn_hour, |v: f64| (seconds_of_day(v) / 3600) as f64);
     time_part_fn!(fn_minute, |v: f64| ((seconds_of_day(v) / 60) % 60) as f64);
     time_part_fn!(fn_second, |v: f64| (seconds_of_day(v) % 60) as f64);
 

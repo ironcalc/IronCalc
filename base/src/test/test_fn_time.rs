@@ -192,7 +192,7 @@ fn test_time_function_precision_edge_cases() {
         ("B3", "=MINUTE(999.75)"),    // Multiple days, extract minute
         // Boundary conditions at rollover points
         ("C1", "=TIME(24,60,60)"), // Should normalize to next day (00:01:00)
-        ("C2", "=HOUR(0.999999999)"), // Almost 24 hours should be 23
+        ("C2", "=HOUR(0.999999999)"), // Almost 24 hours rounds to midnight
         ("C3", "=MINUTE(0.999999999)"), // Almost 24 hours, extract minutes
         ("C4", "=SECOND(0.999999999)"), // Almost 24 hours, extract seconds
         // Precision at boundaries
@@ -208,7 +208,10 @@ fn test_time_function_precision_edge_cases() {
 
     // Boundary normalization
     assert_eq!(model._get_text("C1"), *"0.042361111"); // 24:60:60 = 01:01:00 (normalized)
-    assert_eq!(model._get_text("C2"), *"23"); // Almost 24 hours = 23:xx:xx
+                                                       // 23:59:59.99991 rounds to the nearest second, midnight, as MINUTE and SECOND do
+    assert_eq!(model._get_text("C2"), *"0");
+    assert_eq!(model._get_text("C3"), *"0");
+    assert_eq!(model._get_text("C4"), *"0");
 
     // High precision should be handled correctly
     let result_d1 = model._get_text("D1").parse::<f64>().unwrap();
@@ -374,8 +377,15 @@ fn test_time_component_extraction_comprehensive() {
     );
 
     // Test precision at boundaries
-    let (hour, _, _) = test_component_extraction("0.041666666"); // Just under 1:00 AM
+    let (hour, _, _) = test_component_extraction("0.04166"); // 0:59:59.4, under 1:00 AM
     assert_eq!(hour, "0");
+
+    // 0:59:59.99994 rounds to the nearest second, 1:00:00, as MINUTE and SECOND do
+    let (hour, minute, second) = test_component_extraction("0.041666666");
+    assert_eq!(
+        (hour, minute, second),
+        ("1".to_string(), "0".to_string(), "0".to_string())
+    );
 
     let (hour, _, _) = test_component_extraction("0.041666667"); // Exactly 1:00 AM
     assert_eq!(hour, "1");
