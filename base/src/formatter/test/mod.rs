@@ -8,6 +8,7 @@ mod test_parse_formatted_number;
 mod test_scientific;
 mod test_special_dollar;
 mod test_time;
+mod test_time_rounding;
 
 use crate::{formatter::format::Formatted, locale::Locale, types::DateSystem};
 
