@@ -102,6 +102,31 @@ pub struct Metadata {
     pub last_modified: String, //"2020-11-20T16:24:35"
 }
 
+/// The date system of a workbook: how a date serial number maps to a calendar
+/// day. Times are the fractional part of the serial in every system.
+///
+/// * `IronCalc` is the LibreOffice default. Serial 0 is 1899-12-30, so serial 1
+///   is 1899-12-31 and serial 2 is 1900-01-01. There is no 29 February 1900 and
+///   negative serials are valid, reaching back into the proleptic Gregorian
+///   calendar.
+/// * `Excel1900` is the Excel default (Windows). Serial 1 is 1900-01-01 and, for
+///   compatibility with Lotus 1-2-3, serial 60 is the non-existent 29 February
+///   1900. From serial 61 (1900-03-01) on it agrees with `IronCalc`. Serials
+///   below 1 are not valid dates.
+/// * `Excel1904` is the classic Excel for Mac system. Serial 0 is 1904-01-01,
+///   so every serial is 1462 less than in the other two systems. Serials below
+///   0 are not valid dates.
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Copy, Default)]
+pub enum DateSystem {
+    /// LibreOffice/IronCalc: epoch 1899-12-30, negative serials allowed.
+    #[default]
+    IronCalc,
+    /// Excel 1900 date system (Windows default), with the Lotus 1-2-3 leap-year bug.
+    Excel1900,
+    /// Excel 1904 date system (classic Mac default).
+    Excel1904,
+}
+
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct WorkbookSettings {
     pub tz: String,
@@ -109,6 +134,8 @@ pub struct WorkbookSettings {
     /// The cell the workbook focuses on when it is opened. If `None` the
     /// workbook opens on its first visible sheet with A1 selected.
     pub focus_on_open: Option<FocusOnOpen>,
+    /// How date serial numbers map to calendar days in this workbook.
+    pub date_system: DateSystem,
 }
 
 /// The cell a workbook focuses on when it is opened.

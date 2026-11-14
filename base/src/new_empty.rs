@@ -18,7 +18,7 @@ use crate::{
     language::{get_default_language, get_language},
     locale::{get_default_locale, get_locale},
     model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
-    types::{DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, Worksheet},
+    types::{DateSystem, DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, Worksheet},
     utils::ParsedReference,
 };
 
@@ -647,6 +647,7 @@ impl<'a> Model<'a> {
                 tz: timezone.to_string(),
                 locale: locale_id.to_string(),
                 focus_on_open: None,
+                date_system: DateSystem::IronCalc,
             },
             metadata: Metadata {
                 application: APPLICATION.to_string(),
