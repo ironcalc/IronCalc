@@ -1,11 +1,93 @@
 use crate::{
-    cf_types::{CfRule, CfRuleInput, ConditionalFormattingView},
+    cf_types::{
+        CfCellFormat, CfCellResult, CfDataBar, CfIcon, CfRating, CfRule, CfRuleInput,
+        ConditionalFormattingView,
+    },
     types::Dxf,
 };
 
 use super::{common::UserModel, history::Diff};
 
 impl<'a> UserModel<'a> {
+    /// Returns what conditional formatting does to the cell (`sheet`, `row`, `column`), as the
+    /// last evaluation computed it, without the cell's own style: `None` if no rule applies.
+    /// The formats and the exclusive results (fill, data bar, icon, rating) are the ones
+    /// [`UserModel::get_extended_cell_style`] merges into the style.
+    pub fn get_cell_conditional_format(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<CfCellFormat>, String> {
+        self.model.workbook.worksheet(sheet)?;
+        let Some(results) = self.model.cf_cache.get(&(sheet, row, column)) else {
+            return Ok(None);
+        };
+        let mut format = CfCellFormat {
+            dxfs: vec![],
+            fill: None,
+            data_bar: None,
+            icon: None,
+            rating: None,
+        };
+        // Same order as `get_extended_style_for_cell`: the formats pile up and, for the
+        // exclusive results, the last one wins.
+        for result in results {
+            match result {
+                CfCellResult::Dxf(dxf_id) => {
+                    if let Some(dxf) = self.model.workbook.styles.dxfs.get(*dxf_id as usize) {
+                        format.dxfs.push(dxf.clone());
+                    }
+                }
+                CfCellResult::ColorScale(color) => format.fill = Some(color.clone()),
+                CfCellResult::DataBar {
+                    positive_color,
+                    negative_color,
+                    is_gradient,
+                    value,
+                    axis_position,
+                    show_value,
+                } => {
+                    format.data_bar = Some(CfDataBar {
+                        positive_color: positive_color.clone(),
+                        negative_color: negative_color.clone(),
+                        is_gradient: *is_gradient,
+                        value: *value,
+                        axis_position: *axis_position,
+                        show_value: *show_value,
+                    })
+                }
+                CfCellResult::Icon {
+                    icon,
+                    color,
+                    show_value,
+                } => {
+                    format.icon = Some(CfIcon {
+                        icon: icon.clone(),
+                        color: color.clone(),
+                        show_value: *show_value,
+                    })
+                }
+                CfCellResult::Rating {
+                    icon,
+                    count,
+                    max,
+                    color,
+                    show_value,
+                } => {
+                    format.rating = Some(CfRating {
+                        icon: icon.clone(),
+                        count: *count,
+                        max: *max,
+                        color: color.clone(),
+                        show_value: *show_value,
+                    })
+                }
+            }
+        }
+        Ok(Some(format))
+    }
+
     /// Returns all CF rules for the given sheet, sorted by priority descending.
     ///
     /// Each entry carries its storage `index`; see

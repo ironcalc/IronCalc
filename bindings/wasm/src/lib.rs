@@ -1,18 +1,24 @@
 use serde::Serialize;
 use wasm_bindgen::{
     prelude::{wasm_bindgen, JsError},
-    JsValue,
+    JsCast, JsValue,
 };
 
 use ironcalc_base::{
-    cf_types::CfRuleInput,
+    cf_types::{CfCellFormat, CfDataBar, CfIcon, CfRating, CfRuleInput},
     colors,
     expressions::{
         lexer::util::get_tokens as tokenizer,
-        types::Area,
-        utils::{column_to_number, number_to_column, quote_name as quote_name_ic},
+        parser::stringify::to_english_string,
+        token::Error,
+        types::{Area, CellReferenceRC},
+        utils::{
+            column_to_number, is_valid_column_number, is_valid_row, number_to_column,
+            quote_name as quote_name_ic,
+        },
     },
-    types::{CellType, Color, Link, Style, StyleIncludes},
+    language::get_default_language,
+    types::{Cell, CellType, Color, Dxf, FormulaValue, Link, SpillValue, Style, StyleIncludes},
     worksheet::NavigationDirection,
     BorderArea, ClipboardData, DefinedNameEntry, UserModel as BaseModel, COLUMN_WIDTH_FACTOR,
     DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
@@ -128,6 +134,154 @@ impl From<ironcalc_base::FmtSettings> for FmtSettings {
     }
 }
 
+#[wasm_bindgen]
+extern "C" {
+    /// A cell given to `setCellsBatch`, `CellInput` in types.ts. Its fields are read one
+    /// by one, which is faster than deserializing the whole object.
+    type CellInputObject;
+    #[wasm_bindgen(method, getter, structural, catch)]
+    fn row(this: &CellInputObject) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(method, getter, structural, catch)]
+    fn column(this: &CellInputObject) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(method, getter, structural, catch)]
+    fn kind(this: &CellInputObject) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(method, getter, structural, catch)]
+    fn value(this: &CellInputObject) -> Result<JsValue, JsValue>;
+}
+
+fn whole_number(value: Result<JsValue, JsValue>, name: &str) -> Result<i32, String> {
+    match value.ok().and_then(|v| v.as_f64()) {
+        Some(n) if n.fract() == 0.0 && (i32::MIN as f64..=i32::MAX as f64).contains(&n) => {
+            Ok(n as i32)
+        }
+        _ => Err(format!("{name} must be a whole number")),
+    }
+}
+
+fn set_cell_input(model: &mut BaseModel, sheet: u32, cell: JsValue) -> Result<(), String> {
+    let cell: CellInputObject = cell.unchecked_into();
+    let row = whole_number(cell.row(), "row")?;
+    let column = whole_number(cell.column(), "column")?;
+    let kind = cell
+        .kind()
+        .ok()
+        .and_then(|k| k.as_string())
+        .unwrap_or_default();
+    let value = cell.value().unwrap_or(JsValue::UNDEFINED);
+    let mismatch = || format!("a {kind} cell needs a value of that type");
+    match kind.as_str() {
+        "text" => model.set_cell_text(sheet, row, column, &value.as_string().ok_or_else(mismatch)?),
+        "number" => model.set_cell_number(sheet, row, column, value.as_f64().ok_or_else(mismatch)?),
+        "boolean" => {
+            model.set_cell_boolean(sheet, row, column, value.as_bool().ok_or_else(mismatch)?)
+        }
+        "formula" => {
+            model.set_cell_formula(sheet, row, column, &value.as_string().ok_or_else(mismatch)?)
+        }
+        "input" => {
+            model.set_cell_input(sheet, row, column, &value.as_string().ok_or_else(mismatch)?)
+        }
+        _ => Err(format!("unknown kind \"{kind}\"")),
+    }
+}
+
+/// The value of a cell, `CellValue` in types.ts
+#[derive(Serialize)]
+#[serde(tag = "type", content = "value", rename_all = "lowercase")]
+enum CellValue {
+    Number(f64),
+    Text(String),
+    Boolean(bool),
+    Error(String),
+    Empty,
+}
+
+// The code of an error as the "en" language writes it, e.g. "#N/A"
+fn error_value(error: &Error) -> CellValue {
+    CellValue::Error(error.to_localized_error_string(get_default_language()))
+}
+
+impl From<&FormulaValue> for CellValue {
+    fn from(value: &FormulaValue) -> Self {
+        match value {
+            FormulaValue::Number(n) => CellValue::Number(*n),
+            FormulaValue::Text(s) => CellValue::Text(s.clone()),
+            FormulaValue::Boolean(b) => CellValue::Boolean(*b),
+            FormulaValue::Error { ei, .. } => error_value(ei),
+            // Not evaluated yet
+            FormulaValue::Unevaluated => error_value(&Error::ERROR),
+        }
+    }
+}
+
+fn cell_value(model: &BaseModel, sheet: u32, row: i32, column: i32) -> Result<CellValue, String> {
+    let workbook = &model.get_model().workbook;
+    let value = match workbook.worksheet(sheet)?.cell(row, column).as_deref() {
+        None | Some(Cell::EmptyCell { .. }) => CellValue::Empty,
+        Some(Cell::NumberCell { v, .. }) => CellValue::Number(*v),
+        Some(Cell::BooleanCell { v, .. }) => CellValue::Boolean(*v),
+        Some(Cell::ErrorCell { ei, .. }) => error_value(ei),
+        Some(Cell::SharedString { si, .. }) => CellValue::Text(
+            workbook
+                .shared_strings
+                .get(*si as usize)
+                .cloned()
+                .unwrap_or_default(),
+        ),
+        Some(Cell::CellFormula { v, .. } | Cell::ArrayFormula { v, .. }) => v.into(),
+        Some(Cell::SpillCell { v, .. }) => match v {
+            SpillValue::Number(n) => CellValue::Number(*n),
+            SpillValue::Text(s) => CellValue::Text(s.clone()),
+            SpillValue::Boolean(b) => CellValue::Boolean(*b),
+            SpillValue::Error(e) => error_value(e),
+        },
+    };
+    Ok(value)
+}
+
+// Checks that the block of `width` x `height` cells at (`row`, `column`) is in the sheet
+fn check_block(row: i32, column: i32, width: i32, height: i32) -> Result<(), String> {
+    if width < 1 || height < 1 {
+        return Err(format!("Invalid block size: {width}x{height}"));
+    }
+    if !is_valid_row(row)
+        || !is_valid_row(row + height - 1)
+        || !is_valid_column_number(column)
+        || !is_valid_column_number(column + width - 1)
+    {
+        return Err(format!(
+            "Block at ({row}, {column}) of size {width}x{height} is out of the sheet"
+        ));
+    }
+    Ok(())
+}
+
+/// The conditional format of a cell, `CellConditionalFormat` in types.ts
+#[derive(Serialize)]
+struct CellConditionalFormat {
+    row: i32,
+    column: i32,
+    dxfs: Vec<Dxf>,
+    fill: Option<Color>,
+    data_bar: Option<CfDataBar>,
+    icon: Option<CfIcon>,
+    rating: Option<CfRating>,
+}
+
+impl CellConditionalFormat {
+    fn new(row: i32, column: i32, format: CfCellFormat) -> Self {
+        CellConditionalFormat {
+            row,
+            column,
+            dxfs: format.dxfs,
+            fill: format.fill,
+            data_bar: format.data_bar,
+            icon: format.icon,
+            rating: format.rating,
+        }
+    }
+}
+
 fn leak_str(s: &str) -> &'static str {
     Box::leak(s.to_owned().into_boxed_str())
 }
@@ -230,6 +384,155 @@ impl Model {
         self.model
             .get_cell_content(sheet, row, column)
             .map_err(to_js_error)
+    }
+
+    /// The formula of a cell in English with the "en" locale, as `setCellFormula`
+    /// takes it, or `undefined` if the cell has no formula. A cell a formula
+    /// spills into has no formula of its own.
+    #[wasm_bindgen(js_name = "getCellFormula")]
+    pub fn get_cell_formula(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<String>, JsError> {
+        let model = self.model.get_model();
+        let worksheet = model.workbook.worksheet(sheet).map_err(to_js_error)?;
+        let Some(index) = worksheet
+            .cell(row, column)
+            .and_then(|cell| cell.get_formula())
+        else {
+            return Ok(None);
+        };
+        let (node, _) = model
+            .parsed_formulas
+            .get(sheet as usize)
+            .and_then(|formulas| formulas.get(index as usize))
+            .ok_or_else(|| JsError::new("Missing formula"))?;
+        let context = CellReferenceRC {
+            sheet: worksheet.get_name(),
+            row,
+            column,
+        };
+        Ok(Some(format!("={}", to_english_string(node, &context))))
+    }
+
+    /// The value of a cell as the last evaluation left it, unformatted. An error
+    /// is given by its code in English, like "#N/A". A cell a formula spills
+    /// into gives its spilled value. A formula not evaluated yet gives
+    /// "#ERROR!".
+    #[wasm_bindgen(js_name = "getCellValue", unchecked_return_type = "CellValue")]
+    pub fn get_cell_value(&self, sheet: u32, row: i32, column: i32) -> Result<JsValue, JsError> {
+        if !is_valid_row(row) || !is_valid_column_number(column) {
+            return Err(JsError::new("Invalid cell"));
+        }
+        let value = cell_value(&self.model, sheet, row, column).map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&value).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// The values of a block of cells, as `getCellValue` gives them, in one
+    /// call: one array per row, from the top row down.
+    #[wasm_bindgen(
+        js_name = "getCellValuesBlock",
+        unchecked_return_type = "CellValue[][]"
+    )]
+    pub fn get_cell_values_block(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<JsValue, JsError> {
+        check_block(row, column, width, height).map_err(to_js_error)?;
+        let mut rows = Vec::with_capacity(height as usize);
+        for r in row..row + height {
+            let mut values = Vec::with_capacity(width as usize);
+            for c in column..column + width {
+                values.push(cell_value(&self.model, sheet, r, c).map_err(to_js_error)?);
+            }
+            rows.push(values);
+        }
+        serde_wasm_bindgen::to_value(&rows).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Evaluates a formula as if it were in the cell, without storing it: the
+    /// cell and the workbook are left as they are. The formula is read like in
+    /// `setCellFormula`, with or without the leading "=". It reads the values of
+    /// the last evaluation, so call `evaluate` first after a change. A result
+    /// that is an array or a range gives its top-left value. A formula that
+    /// does not parse throws.
+    #[wasm_bindgen(js_name = "evaluateFormula", unchecked_return_type = "CellValue")]
+    pub fn evaluate_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+    ) -> Result<JsValue, JsError> {
+        let value = self
+            .model
+            .evaluate_formula(sheet, row, column, formula)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&CellValue::from(&value))
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// What conditional formatting does to a cell, apart from its own style, as
+    /// the last evaluation computed it, or `null` if no rule applies. These are
+    /// the results `getCellStyle` merges into the style.
+    #[wasm_bindgen(
+        js_name = "getCellConditionalFormat",
+        unchecked_return_type = "CellConditionalFormat | null"
+    )]
+    pub fn get_cell_conditional_format(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<JsValue, JsError> {
+        let format = self
+            .model
+            .get_cell_conditional_format(sheet, row, column)
+            .map_err(to_js_error)?
+            .map(|format| CellConditionalFormat::new(row, column, format));
+        match format {
+            Some(format) => {
+                serde_wasm_bindgen::to_value(&format).map_err(|e| to_js_error(e.to_string()))
+            }
+            None => Ok(JsValue::NULL),
+        }
+    }
+
+    /// The conditional formats of the cells of a block that have one, as
+    /// `getCellConditionalFormat` gives them, in one call, row by row from the
+    /// top. Cells without one are left out.
+    #[wasm_bindgen(
+        js_name = "getConditionalFormatsBlock",
+        unchecked_return_type = "CellConditionalFormat[]"
+    )]
+    pub fn get_conditional_formats_block(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<JsValue, JsError> {
+        check_block(row, column, width, height).map_err(to_js_error)?;
+        let mut formats = Vec::new();
+        for r in row..row + height {
+            for c in column..column + width {
+                if let Some(format) = self
+                    .model
+                    .get_cell_conditional_format(sheet, r, c)
+                    .map_err(to_js_error)?
+                {
+                    formats.push(CellConditionalFormat::new(r, c, format));
+                }
+            }
+        }
+        serde_wasm_bindgen::to_value(&formats).map_err(|e| to_js_error(e.to_string()))
     }
 
     /// Returns completion information for a formula being edited in a cell.
@@ -604,6 +907,96 @@ impl Model {
         self.model
             .set_user_input(sheet, row, column, input)
             .map_err(to_js_error)
+    }
+
+    /// Sets the text of a cell as it is: unlike `setUserInput` it is not parsed,
+    /// so "001", "=1+1" and "3/4" stay text. The cell keeps its style, except for
+    /// the quote prefix, which is added or removed as needed.
+    ///
+    /// The typed setters (`setCellText`, `setCellNumber`, `setCellBoolean` and
+    /// `setCellsBatch`) load cells whose type is already known. They do not
+    /// evaluate the workbook (call `evaluate` when done) and the changes are not
+    /// recorded in the undo history. Like `setUserInput` they clear the spill the
+    /// cell is part of and refuse cells inside a merged cell or an array formula.
+    #[wasm_bindgen(js_name = "setCellText")]
+    pub fn set_cell_text(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        text: &str,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_cell_text(sheet, row, column, text)
+            .map_err(to_js_error)
+    }
+
+    /// Sets a number in a cell, keeping its style. See `setCellText`.
+    #[wasm_bindgen(js_name = "setCellNumber")]
+    pub fn set_cell_number(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: f64,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_cell_number(sheet, row, column, value)
+            .map_err(to_js_error)
+    }
+
+    /// Sets a boolean in a cell, keeping its style. See `setCellText`.
+    #[wasm_bindgen(js_name = "setCellBoolean")]
+    pub fn set_cell_boolean(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: bool,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_cell_boolean(sheet, row, column, value)
+            .map_err(to_js_error)
+    }
+
+    /// Sets a formula in a cell, keeping its style. The formula must start with
+    /// "=" and is always read in English with the "en" locale (`,` between
+    /// arguments, `.` for decimals), whatever the language and locale of the
+    /// model. `getCellFormula` gives it back in the same form. See `setCellText`.
+    #[wasm_bindgen(js_name = "setCellFormula")]
+    pub fn set_cell_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_cell_formula(sheet, row, column, formula)
+            .map_err(to_js_error)
+    }
+
+    /// Sets cells of a sheet in one call. A `text`, `number` or `boolean` cell is
+    /// set like `setCellText`, `setCellNumber` or `setCellBoolean` set it, a
+    /// `formula` like `setCellFormula` sets it, and an `input` is read as
+    /// `setUserInput` reads it. As with the other typed setters the workbook is
+    /// not evaluated and nothing is recorded in the undo history.
+    ///
+    /// The cells are set in order. If one cannot be set, because the entry is
+    /// malformed or the cell cannot be written to, this throws an error whose
+    /// message starts with "Cell <index>:", `index` being its position in
+    /// `cells`. The cells before it stay set; it and the cells after it are not.
+    #[wasm_bindgen(js_name = "setCellsBatch")]
+    pub fn set_cells_batch(
+        &mut self,
+        sheet: u32,
+        #[wasm_bindgen(unchecked_param_type = "CellInput[]")] cells: Vec<JsValue>,
+    ) -> Result<(), JsError> {
+        for (index, cell) in cells.into_iter().enumerate() {
+            set_cell_input(&mut self.model, sheet, cell)
+                .map_err(|error| JsError::new(&format!("Cell {index}: {error}")))?;
+        }
+        Ok(())
     }
 
     #[wasm_bindgen(js_name = "setUserArrayFormula")]
