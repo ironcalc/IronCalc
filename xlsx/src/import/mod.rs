@@ -23,7 +23,7 @@ use ironcalc_base::{
         parser::{new_parser_english, stringify::to_english_string},
         types::CellReferenceRC,
     },
-    types::{Metadata, Workbook, WorkbookSettings},
+    types::{DateSystem, Metadata, Workbook, WorkbookSettings},
     Model,
 };
 
@@ -148,6 +148,9 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
             locale: locale.to_string(),
             // The selected tab and cell of the file are ignored on import
             focus_on_open: None,
+            // Excel files use the 1900 system unless `workbookPr/@date1904` says
+            // otherwise. Reading that attribute is not implemented yet.
+            date_system: DateSystem::Excel1900,
         },
         metadata,
         tables,
