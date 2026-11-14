@@ -1090,8 +1090,22 @@ impl<'a> Model<'a> {
         row2: i32,
         column2: i32,
     ) -> Result<(i32, i32), String> {
-        let whole_rows = row1 == 1 && row2 == LAST_ROW;
-        let whole_columns = column1 == 1 && column2 == LAST_COLUMN;
+        self.clip_range_to_used_area(sheet, row1, column1, row2, column2, false)
+    }
+
+    /// `clip_to_used_area`, and with `any_start` also for a range that runs to
+    /// the last row or column without starting at the first, like B2:B1048576.
+    pub(crate) fn clip_range_to_used_area(
+        &mut self,
+        sheet: u32,
+        row1: i32,
+        column1: i32,
+        row2: i32,
+        column2: i32,
+        any_start: bool,
+    ) -> Result<(i32, i32), String> {
+        let whole_rows = row2 == LAST_ROW && (any_start || row1 == 1);
+        let whole_columns = column2 == LAST_COLUMN && (any_start || column1 == 1);
         if !whole_rows && !whole_columns {
             return Ok((row2, column2));
         }
@@ -1100,9 +1114,14 @@ impl<'a> Model<'a> {
             .worksheet(sheet)
             .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
             .dimension();
-        let last_row = if whole_rows { dimension.max_row } else { row2 };
+        // A range that starts beyond the used area is not walked at all
+        let last_row = if whole_rows {
+            dimension.max_row.max(row1 - 1)
+        } else {
+            row2
+        };
         let last_column = if whole_columns {
-            dimension.max_column
+            dimension.max_column.max(column1 - 1)
         } else {
             column2
         };
