@@ -150,3 +150,45 @@ fn test_fn_sumifs_whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
 }
+
+// ── ranges of different sizes ────────────────────────────────────────────────
+
+// COUNTIFS, SUMIFS, AVERAGEIFS, MAXIFS and MINIFS need ranges of the same
+// size, as in Excel. SUMIF and AVERAGEIF do not.
+#[test]
+fn test_fn_ifs_ranges_of_different_sizes() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A2", "y");
+    model._set("A3", "x");
+    model._set("B1", "10");
+    model._set("B2", "20");
+    model._set("B3", "30");
+
+    model._set("D1", "=SUMIFS(B1:B3,A1:A2,\"x\")");
+    // The second criteria range
+    model._set("D2", "=SUMIFS(B1:B3,A1:A3,\"x\",A1,\"x\")");
+    model._set("D3", "=AVERAGEIFS(B1:B3,A1,\"x\")");
+    model._set("D4", "=MAXIFS(B1,A1:A3,\"x\")");
+    // Three rows each, but one column and two
+    model._set("D5", "=MINIFS(B1:B3,A1:B3,\"x\")");
+    model._set("D6", "=COUNTIFS(A1:A3,\"x\",B1,\">5\")");
+    model._set("D7", "=COUNTIFS(A1:A3,\"x\",B1:C3,\">5\")");
+
+    // Ranges of the same size
+    model._set("E1", "=SUMIFS(B1:B3,A1:A3,\"x\")");
+    model._set("E2", "=COUNTIFS(A1:A3,\"x\",B1:B3,\">5\")");
+    // SUMIF and AVERAGEIF with a longer sum range
+    model._set("E3", "=SUMIF(A1:A3,\"x\",B1:B5)");
+    model._set("E4", "=AVERAGEIF(A1:A3,\"x\",B1:B5)");
+
+    model.evaluate();
+
+    for cell in ["D1", "D2", "D3", "D4", "D5", "D6", "D7"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
+    assert_eq!(model._get_text("E1"), *"40");
+    assert_eq!(model._get_text("E2"), *"2");
+    assert_eq!(model._get_text("E3"), *"40");
+    assert_eq!(model._get_text("E4"), *"20");
+}

@@ -11,6 +11,12 @@ use crate::{
 /// A compiled criterion predicate, as returned by `build_criteria`.
 type Criterion<'c> = Box<dyn Fn(&CalcResult) -> bool + 'c>;
 
+/// Whether two ranges have the same number of rows and of columns.
+fn same_size(a: &Range, b: &Range) -> bool {
+    a.right.row - a.left.row == b.right.row - b.left.row
+        && a.right.column - a.left.column == b.right.column - b.left.column
+}
+
 /// Converts a single array element into the equivalent scalar `CalcResult`,
 /// used to feed `build_criteria` from an inline-array criteria argument.
 fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
@@ -45,7 +51,7 @@ impl<'a> Model<'a> {
             self.fn_averageifs(&arguments, cell)
         } else if args.len() == 3 {
             let arguments = vec![args[2].clone(), args[0].clone(), args[1].clone()];
-            self.fn_averageifs(&arguments, cell)
+            self.averageifs(&arguments, cell, false)
         } else {
             CalcResult::new_args_number_error(cell)
         }
@@ -70,11 +76,17 @@ impl<'a> Model<'a> {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            // TODO test ranges are all of the same size
             match self.node_to_range(&args[case_index * 2], cell) {
                 Ok(range) => ranges.push(range),
                 Err(e) => return e,
             }
+        }
+        if ranges.iter().any(|range| !same_size(range, &ranges[0])) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Ranges must be of the same size".to_string(),
+            );
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale));
@@ -179,10 +191,13 @@ impl<'a> Model<'a> {
         CalcResult::Number(total)
     }
 
+    /// With `check_sizes` the criteria ranges must have the size of the sum
+    /// range, as SUMIFS, AVERAGEIFS, MAXIFS and MINIFS need.
     pub(crate) fn apply_ifs<F>(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
+        check_sizes: bool,
         apply: F,
     ) -> Result<(), CalcResult>
     where
@@ -207,8 +222,16 @@ impl<'a> Model<'a> {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            // TODO test ranges are of the same size as sum_range
             ranges.push(self.node_to_range(&args[case_index * 2 - 1], cell)?);
+        }
+        // TODO in SUMIF and AVERAGEIF the sum range should take the size of
+        // the criteria range instead
+        if check_sizes && ranges.iter().any(|range| !same_size(range, &sum_range)) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Ranges must be of the same size".to_string(),
+            ));
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale));
@@ -378,9 +401,13 @@ impl<'a> Model<'a> {
                 })
                 .collect(),
             _ => {
-                // Single criterion: delegate to SUMIFS, which returns a scalar.
+                // Single criterion: a scalar, as SUMIFS but without its size check.
                 let arguments = vec![sum_range.clone(), criteria_range.clone(), criteria.clone()];
-                return self.fn_sumifs(&arguments, cell);
+                let mut total = 0.0;
+                if let Err(e) = self.apply_ifs(&arguments, cell, false, |value| total += value) {
+                    return e;
+                }
+                return CalcResult::Number(total);
             }
         };
 
@@ -420,6 +447,15 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_averageifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.averageifs(args, cell, true)
+    }
+
+    fn averageifs(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        check_sizes: bool,
+    ) -> CalcResult {
         let mut total = 0.0;
         let mut count = 0.0;
 
@@ -427,7 +463,7 @@ impl<'a> Model<'a> {
             total += value;
             count += 1.0;
         };
-        if let Err(e) = self.apply_ifs(args, cell, average) {
+        if let Err(e) = self.apply_ifs(args, cell, check_sizes, average) {
             return e;
         }
 
@@ -444,7 +480,7 @@ impl<'a> Model<'a> {
     pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut min = f64::INFINITY;
         let apply_min = |value: f64| min = value.min(min);
-        if let Err(e) = self.apply_ifs(args, cell, apply_min) {
+        if let Err(e) = self.apply_ifs(args, cell, true, apply_min) {
             return e;
         }
 
@@ -457,7 +493,7 @@ impl<'a> Model<'a> {
     pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut max = -f64::INFINITY;
         let apply_max = |value: f64| max = value.max(max);
-        if let Err(e) = self.apply_ifs(args, cell, apply_max) {
+        if let Err(e) = self.apply_ifs(args, cell, true, apply_max) {
             return e;
         }
         if max.is_infinite() {
