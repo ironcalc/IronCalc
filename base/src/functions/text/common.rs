@@ -7,7 +7,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::{format_number, parse_formatted_number},
+    formatter::format::{format_number, parse_formatted_number, Formatted},
     functions::{
         text::util::{substitute, text_after, text_before, Case},
         util::from_wildcard_to_regex,
@@ -316,6 +316,16 @@ fn concat_number(result: String, value: f64) -> String {
     result + &number_to_text(value)
 }
 
+/// The error TEXT returns when the formatter failed: #N/IMPL! when the date
+/// system is not implemented for the value, #VALUE! otherwise.
+fn format_error(formatted: &Formatted) -> Error {
+    if formatted.text == "#N/IMPL!" {
+        Error::NIMPL
+    } else {
+        Error::VALUE
+    }
+}
+
 impl<'a> Model<'a> {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = "".to_string();
@@ -431,23 +441,24 @@ impl<'a> Model<'a> {
                     }
                 };
                 let locale = self.locale;
+                let date_system = self.date_system();
                 let mut output = Vec::with_capacity(arr.len());
                 for row in arr {
                     let mut data_row = Vec::with_capacity(row.len());
                     for node in row {
                         let out = match node {
                             ArrayNode::Number(f) => {
-                                let d = format_number(f, &format_code, locale);
+                                let d = format_number(f, &format_code, locale, date_system);
                                 if d.error.is_some() {
-                                    ArrayNode::Error(Error::VALUE)
+                                    ArrayNode::Error(format_error(&d))
                                 } else {
                                     ArrayNode::String(d.text)
                                 }
                             }
                             ArrayNode::Empty => {
-                                let d = format_number(0.0, &format_code, locale);
+                                let d = format_number(0.0, &format_code, locale, date_system);
                                 if d.error.is_some() {
-                                    ArrayNode::Error(Error::VALUE)
+                                    ArrayNode::Error(format_error(&d))
                                 } else {
                                     ArrayNode::String(d.text)
                                 }
@@ -486,10 +497,10 @@ impl<'a> Model<'a> {
                         unreachable!()
                     }
                 };
-                let d = format_number(value, &format_code, self.locale);
-                if let Some(_e) = d.error {
+                let d = format_number(value, &format_code, self.locale, self.date_system());
+                if d.error.is_some() {
                     return CalcResult::Error {
-                        error: Error::VALUE,
+                        error: format_error(&d),
                         origin: cell,
                         message: "Invalid format code".to_string(),
                     };
@@ -1239,7 +1250,9 @@ impl<'a> Model<'a> {
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::String(text) => {
                 let currencies = vec!["$", "€"];
-                if let Ok((value, _)) = parse_formatted_number(&text, &currencies, self.locale) {
+                if let Ok((value, _)) =
+                    parse_formatted_number(&text, &currencies, self.locale, self.date_system())
+                {
                     return CalcResult::Number(value);
                 };
                 CalcResult::Error {

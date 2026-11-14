@@ -33,7 +33,7 @@ use std::collections::HashMap;
 
 use ironcalc_base::expressions::parser::{new_parser_english, stringify::to_excel_string};
 use ironcalc_base::expressions::types::CellReferenceRC;
-use ironcalc_base::types::{SheetState, Workbook};
+use ironcalc_base::types::{DateSystem, SheetState, Workbook};
 
 use super::escape::escape_xml;
 use super::xml_constants::XML_DECLARATION;
@@ -119,8 +119,16 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
 
     let sheets = sheets_str.join("");
     let defined_names = defined_names_str.join("");
+    // The 1904 date system is the only one the format can state. The IronCalc
+    // and Excel 1900 systems share `date1904="0"` (the default) and are told
+    // apart by the `IronCalcDateSystem` custom property (see doc_props.rs).
+    let workbook_pr = match workbook.settings.date_system {
+        DateSystem::Excel1904 => "<workbookPr date1904=\"1\"/>",
+        DateSystem::IronCalc | DateSystem::Excel1900 => "",
+    };
     format!("{XML_DECLARATION}\n\
     <workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
+    {workbook_pr}\
     <bookViews>
     <workbookView activeTab=\"{selected_sheet}\"/>\
     </bookViews>

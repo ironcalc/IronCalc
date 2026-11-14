@@ -219,7 +219,8 @@ fn networkdays_rejects_invalid_dates() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), "#NUM!");
+    // Friday 1899-12-29 to Monday 1900-04-09
+    assert_eq!(model._get_text("A1"), "72");
     assert_eq!(model._get_text("A2"), "#NUM!");
     assert_eq!(model._get_text("A3"), "#VALUE!");
 }
@@ -264,8 +265,8 @@ fn networkdays_rejects_invalid_holidays() {
     );
     assert_eq!(
         model._get_text("A2"),
-        "#NUM!",
-        "Should reject out-of-range holidays"
+        "7",
+        "A negative holiday is a date before the epoch"
     );
 }
 

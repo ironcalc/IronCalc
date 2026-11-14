@@ -3,9 +3,24 @@ use std::io::{BufReader, Read};
 use ironcalc_base::types::Metadata;
 
 use crate::error::XlsxError;
+use crate::export::doc_props::DATE_SYSTEM_PROPERTY;
 
 use super::util::get_value_or_default;
 use super::xml::XmlNode;
+
+/// The value of the `IronCalcDateSystem` custom document property, if the file
+/// has one (`docProps/custom.xml`)
+pub(super) fn load_date_system_property<R: Read + std::io::Seek>(
+    archive: &mut zip::read::ZipArchive<R>,
+) -> Option<String> {
+    let file = archive.by_name("docProps/custom.xml").ok()?;
+    let doc = XmlNode::parse(BufReader::new(file)).ok()?;
+    let property = doc.descendants().find(|n| {
+        n.has_tag_name("property") && n.attribute("name") == Some(DATE_SYSTEM_PROPERTY)
+    })?;
+    let value = property.children().find(|n| n.has_tag_name("lpwstr"))?;
+    Some(value.text().unwrap_or("").to_string())
+}
 
 struct AppData {
     application: String,

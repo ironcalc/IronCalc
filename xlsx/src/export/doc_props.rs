@@ -1,10 +1,48 @@
 use chrono::DateTime;
 use ironcalc_base::{
     new_empty::{APPLICATION, APP_VERSION, IRONCALC_USER},
-    types::Workbook,
+    types::{DateSystem, Workbook},
 };
 
 use crate::error::XlsxError;
+
+/// Name of the custom document property that records the date system
+pub const DATE_SYSTEM_PROPERTY: &str = "IronCalcDateSystem";
+
+/// The value of the `IronCalcDateSystem` property: the date of serial 0, as
+/// ODF does with `table:null-date`.
+pub fn date_system_property_value(date_system: DateSystem) -> &'static str {
+    match date_system {
+        DateSystem::IronCalc => "1899-12-30",
+        DateSystem::Excel1900 => "1900-01-01",
+        DateSystem::Excel1904 => "1904-01-01",
+    }
+}
+
+/// The date system named by an `IronCalcDateSystem` property value
+pub fn date_system_from_property_value(value: &str) -> Option<DateSystem> {
+    match value.trim() {
+        "1899-12-30" => Some(DateSystem::IronCalc),
+        "1900-01-01" => Some(DateSystem::Excel1900),
+        "1904-01-01" => Some(DateSystem::Excel1904),
+        _ => None,
+    }
+}
+
+// Custom File Properties part. Only engines that know the property read it;
+// Excel and LibreOffice keep custom properties when they save the file.
+pub(crate) fn get_custom_xml(workbook: &Workbook) -> String {
+    let value = date_system_property_value(workbook.settings.date_system);
+    format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
+<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/custom-properties\" \
+            xmlns:vt=\"http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes\">\
+  <property fmtid=\"{{D5CDD505-2E9C-101B-9397-08002B2CF9AE}}\" pid=\"2\" name=\"{DATE_SYSTEM_PROPERTY}\">\
+    <vt:lpwstr>{value}</vt:lpwstr>\
+  </property>\
+</Properties>"
+    )
+}
 
 // Application-Defined File Properties part
 pub(crate) fn get_app_xml(_: &Workbook) -> String {

@@ -28,10 +28,11 @@ use ironcalc_base::{
 };
 
 use crate::error::XlsxError;
+use crate::export::doc_props::date_system_from_property_value;
 
 use shared_strings::{read_shared_strings, SharedStringTable};
 
-use metadata::load_metadata;
+use metadata::{load_date_system_property, load_metadata};
 use styles::load_styles;
 use util::get_attribute;
 use workbook::load_workbook;
@@ -92,15 +93,21 @@ fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, 
 ///
 /// * `workbookPr/@date1904` wins: the file stores every date serial in the
 ///   1904 system.
+/// * Otherwise the `IronCalcDateSystem` custom property, written by IronCalc on
+///   export, tells the 1900 and IronCalc systems apart.
 /// * Otherwise files written by LibreOffice use its own system (serial 0 is
 ///   1899-12-30, no 29 February 1900), which is the IronCalc one. LibreOffice
-///   writes `date1904="false"` for it. Files written by IronCalc itself have
-///   always used that system too.
+///   writes `date1904="false"` for it. Files written by IronCalc before the
+///   property existed used that system too.
 /// * Anything else is assumed to be the Excel 1900 system.
-fn date_system_for(date1904: bool, application: &str) -> DateSystem {
+fn date_system_for(date1904: bool, property: Option<&str>, application: &str) -> DateSystem {
     if date1904 {
-        DateSystem::Excel1904
-    } else if application.starts_with("LibreOffice") || application.starts_with("IronCalc") {
+        return DateSystem::Excel1904;
+    }
+    if let Some(system) = property.and_then(date_system_from_property_value) {
+        return system;
+    }
+    if application.starts_with("LibreOffice") || application.starts_with("IronCalc") {
         DateSystem::IronCalc
     } else {
         DateSystem::Excel1900
@@ -156,7 +163,12 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
             }
         }
     };
-    let date_system = date_system_for(workbook.date1904, &metadata.application);
+    let date_system_property = load_date_system_property(&mut archive);
+    let date_system = date_system_for(
+        workbook.date1904,
+        date_system_property.as_deref(),
+        &metadata.application,
+    );
     Ok(Workbook {
         shared_strings: shared_strings.into_strings(),
         defined_names: workbook.defined_names,

@@ -2,7 +2,7 @@
 
 mod _rels;
 mod conditional_formatting;
-mod doc_props;
+pub(crate) mod doc_props;
 mod dxfs_styles;
 mod escape;
 mod shared_strings;
@@ -55,6 +55,7 @@ fn get_content_types_xml(workbook: &Workbook) -> String {
         r#"<Override PartName="/xl/metadata.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml"/>"#.to_string(),
         r#"<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>"#.to_string(),
         r#"<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>"#.to_string(),
+        r#"<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>"#.to_string(),
         r#"</Types>"#.to_string(),
     ]);
     format!("{XML_DECLARATION}\n{}", content.join(""))
@@ -106,6 +107,8 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.start_file("docProps/core.xml", options)?;
     let milliseconds = get_milliseconds_since_epoch();
     zip.write_all(doc_props::get_core_xml(workbook, milliseconds)?.as_bytes())?;
+    zip.start_file("docProps/custom.xml", options)?;
+    zip.write_all(doc_props::get_custom_xml(workbook).as_bytes())?;
 
     // Package-relationship item
     zip.add_directory("_rels", options)?;

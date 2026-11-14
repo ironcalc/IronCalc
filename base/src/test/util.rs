@@ -2,10 +2,18 @@
 
 use crate::expressions::types::{Area, CellReferenceIndex};
 use crate::model::Model;
-use crate::types::Cell;
+use crate::types::{Cell, DateSystem};
 
 pub fn new_empty_model<'a>() -> Model<'a> {
     Model::new_empty("model", "en", "UTC", "en").unwrap()
+}
+
+/// An empty model in the Excel 1900 date system, for tests that check Excel
+/// behaviour where it differs from the IronCalc date system
+pub fn new_empty_model_excel_1900<'a>() -> Model<'a> {
+    let mut model = new_empty_model();
+    model.workbook.settings.date_system = DateSystem::Excel1900;
+    model
 }
 
 impl<'a> Model<'a> {

@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
-    formatter::format::format_number,
+    formatter::test::format_number,
     locale::{get_locale, Locale},
 };
 
