@@ -16,10 +16,12 @@ impl<'a> Model<'a> {
 
         // Flatten first argument into Vec<Option<f64>> (numeric / non-numeric)
         let values = match array_arg {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
+            CalcResult::Range { left, right } => {
+                match self.values_from_used_range(left, right, cell) {
+                    Ok(v) => v,
+                    Err(error) => return error,
+                }
+            }
             CalcResult::Array(array) => match self.values_from_array(array) {
                 Ok(v) => v,
                 Err(error) => {

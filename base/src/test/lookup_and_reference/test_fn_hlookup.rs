@@ -85,3 +85,23 @@ fn test_hlookup_array_sorted_largest_smaller() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "b");
 }
+
+// A whole row is read only as far as the sheet's used area; the cells past it
+// are still searched, as empty cells.
+#[test]
+fn test_hlookup_whole_row() {
+    let mut model = new_empty_model();
+    model._set("B2", "10");
+    model._set("C2", "20");
+    model._set("D2", "30");
+    model._set("B3", "a");
+    model._set("C3", "b");
+    model._set("D3", "c");
+    model._set("A5", "=HLOOKUP(20,2:3,2,FALSE)");
+    model._set("A6", "=HLOOKUP(25,2:3,2,FALSE)");
+    model._set("A7", "=HLOOKUP(\"x\",2:3,2,FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A5"), "b");
+    assert_eq!(model._get_text("A6"), "#N/A");
+    assert_eq!(model._get_text("A7"), "#N/A");
+}

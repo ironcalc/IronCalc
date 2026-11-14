@@ -85,3 +85,35 @@ fn test_vlookup_array_sorted_largest_smaller() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "b");
 }
+
+// A whole column is read only as far as the sheet's used area. The cells past
+// it are still searched, as empty cells: an exact search for 0 meets the first
+// of them, as it did when every cell was read.
+#[test]
+fn test_vlookup_whole_column() {
+    let mut model = new_empty_model();
+    model._set("D1", "10");
+    model._set("D2", "20");
+    model._set("D3", "30");
+    model._set("E1", "a");
+    model._set("E2", "b");
+    model._set("E3", "c");
+    model._set("A1", "=VLOOKUP(20,D:E,2,FALSE)");
+    model._set("A2", "=VLOOKUP(25,D:E,2,FALSE)");
+    model._set("A3", "=VLOOKUP(0,D:E,2,FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "b");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("A3"), "0");
+}
+
+#[test]
+fn test_vlookup_whole_column_sees_a_spill_beyond_the_used_area() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(1,1,VLOOKUP(5,D:D,1,FALSE))");
+    model._set("C1", "=SEQUENCE(3,1,10)");
+    model._set("D1", "=SEQUENCE(5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model.evaluation.restarts_in_last_evaluation, 1);
+}

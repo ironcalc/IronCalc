@@ -234,31 +234,15 @@ impl<'a> Model<'a> {
                 let mut column2 = right.column;
                 if row1 == 1 && row2 == LAST_ROW {
                     row2 = self
-                        .workbook
-                        .worksheet(sheet)
-                        .map_err(|_| {
-                            CalcResult::new_error(
-                                Error::ERROR,
-                                *cell,
-                                format!("Invalid worksheet index: '{sheet}'"),
-                            )
-                        })?
-                        .dimension()
-                        .max_row;
+                        .used_area(sheet)
+                        .map_err(|message| CalcResult::new_error(Error::ERROR, *cell, message))?
+                        .0;
                 }
                 if column1 == 1 && column2 == LAST_COLUMN {
                     column2 = self
-                        .workbook
-                        .worksheet(sheet)
-                        .map_err(|_| {
-                            CalcResult::new_error(
-                                Error::ERROR,
-                                *cell,
-                                format!("Invalid worksheet index: '{sheet}'"),
-                            )
-                        })?
-                        .dimension()
-                        .max_column;
+                        .used_area(sheet)
+                        .map_err(|message| CalcResult::new_error(Error::ERROR, *cell, message))?
+                        .1;
                 }
                 for row in row1..=row2 {
                     for column in column1..=column2 {

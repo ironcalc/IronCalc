@@ -74,10 +74,32 @@ impl<'a> Model<'a> {
 
     // Helper function to extract and validate two matrices (ranges or arrays) with compatible shapes.
     // Returns (rows, cols, values_left, values_right) or an error.
+    // Two whole columns or rows are read only as far as the used area
+    // (`paired_used_corners`): the pairs left out are pairs of empty cells,
+    // which the functions that use this give no weight.
     pub(crate) fn fn_get_two_matrices(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
+    ) -> Result<TwoMatricesResult, CalcResult> {
+        self.get_two_matrices(args, cell, true)
+    }
+
+    // As `fn_get_two_matrices`, reading every cell of whole columns and rows:
+    // for CHISQ.TEST, which counts the pairs of empty cells too.
+    pub(crate) fn fn_get_two_matrices_unclipped(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<TwoMatricesResult, CalcResult> {
+        self.get_two_matrices(args, cell, false)
+    }
+
+    fn get_two_matrices(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        in_used_area: bool,
     ) -> Result<TwoMatricesResult, CalcResult> {
         if args.len() != 2 {
             return Err(CalcResult::new_args_number_error(cell));
@@ -114,6 +136,11 @@ impl<'a> Model<'a> {
                         "Ranges must be of the same shape".to_string(),
                     ));
                 }
+                let (r1, r2) = if in_used_area {
+                    self.paired_used_corners((l1, r1), (l2, r2), cell)?
+                } else {
+                    (r1, r2)
+                };
                 let values_left = self.values_from_range(l1, r1)?;
                 let values_right = self.values_from_range(l2, r2)?;
                 (rows1, cols1, values_left, values_right)

@@ -150,3 +150,50 @@ fn an_xlookup_over_a_whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "5");
     assert_eq!(restarts(&model), 0);
 }
+
+// The used area a whole column is clipped to is found once a pass and kept
+// (`Model::used_area`). A spill made later in the pass, beyond it, extends it:
+// H1 clips B:B first and the area found then ends at row 3; J1 then spills to
+// row 50. The formulas after the anchors walk J:J to row 50, not to row 3.
+#[test]
+fn the_used_area_kept_for_the_pass_grows_with_a_later_spill() {
+    let mut model = new_empty_model();
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("B3", "3");
+    model._set("H1", "=SEQUENCE(1,1,COUNT(B:B))");
+    model._set("J1", "=SEQUENCE(50)");
+    model._set("K1", "=COUNT(J:J)");
+    model._set("K2", "=COUNTBLANK(J:J)");
+    model._set("K3", "=MATCH(50,J:J,0)");
+    model._set("K4", "=MAX(J:J)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "3");
+    assert_eq!(model._get_text("K1"), "50");
+    assert_eq!(model._get_text("K2"), "1048526");
+    assert_eq!(model._get_text("K3"), "50");
+    assert_eq!(model._get_text("K4"), "50");
+    assert_eq!(restarts(&model), 0);
+    assert_eq!(model.evaluation.used_areas.get(&0), Some(&(50, 11)));
+
+    // The next evaluation starts from the sheet as it is, spill included.
+    model._set("J1", "=SEQUENCE(20)");
+    model.evaluate();
+    assert_eq!(model._get_text("K1"), "20");
+    assert_eq!(model._get_text("K2"), "1048556");
+}
+
+// A CSE array formula fills its area when it is evaluated; the area kept for
+// the pass takes in those cells too.
+#[test]
+fn the_used_area_kept_for_the_pass_takes_in_a_cse_area() {
+    let mut model = new_empty_model();
+    model._set("B1", "1");
+    model._set("H1", "=SEQUENCE(1,1,COUNT(B:B))");
+    model
+        .set_user_array_formula(0, 1, 10, 1, 30, "=SEQUENCE(30)")
+        .unwrap();
+    model._set("K1", "=COUNT(J:J)");
+    model.evaluate();
+    assert_eq!(model._get_text("K1"), "30");
+}
