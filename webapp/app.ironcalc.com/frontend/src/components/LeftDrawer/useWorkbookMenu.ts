@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { downloadModel } from "../rpc";
+import { downloadModel, downloadModelPdf } from "../rpc";
 import {
   duplicateModel,
   loadModelFromStorage,
@@ -62,6 +62,17 @@ export function useWorkbookMenu({ setModel, onDelete }: Options) {
     }
   };
 
+  const handleDownloadPdf = async (uuid: string) => {
+    try {
+      const model = await loadModelFromStorage(uuid);
+      if (model) {
+        await downloadModelPdf(model.toBytes(), model.getName());
+      }
+    } catch (error) {
+      console.error("Failed to download workbook as PDF:", error);
+    }
+  };
+
   const handlePinToggle = (uuid: string) => {
     togglePinWorkbook(uuid).catch((e) =>
       console.error("Failed to toggle pin:", e),
@@ -84,6 +95,7 @@ export function useWorkbookMenu({ setModel, onDelete }: Options) {
     handleDeleteConfirm,
     handleDeleteCancel,
     handleDownload,
+    handleDownloadPdf,
     handlePinToggle,
     handleDuplicate,
   };

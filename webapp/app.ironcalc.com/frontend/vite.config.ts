@@ -12,6 +12,9 @@ export default defineConfig({
       // Allow serving files from one level up to the project root
       allow: ['../../../'],
     },
+    proxy: {
+      '/api': 'http://127.0.0.1:8000',
+    },
   },
   resolve: {
     dedupe: Object.keys(workbookPkg.peerDependencies).filter(dep => dep in pkg.dependencies)

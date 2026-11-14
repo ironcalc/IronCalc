@@ -50,5 +50,8 @@ pub mod import;
 pub mod util;
 pub use ironcalc_base as base;
 
+#[cfg(feature = "pdf")]
+pub use ironcalc_pdf as pdf;
+
 #[cfg(feature = "mock_time")]
 pub mod mock_time;

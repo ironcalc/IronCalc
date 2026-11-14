@@ -9,6 +9,7 @@ import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
 import { EditMenu } from "./Navigation/EditMenu";
+import { ExportPdfDialog } from "./ExportPdfDialog/ExportPdfDialog";
 import { FileMenu } from "./Navigation/FileMenu";
 import { FormatMenu } from "./Navigation/FormatMenu";
 import { HelpMenu } from "./Navigation/HelpMenu";
@@ -43,6 +44,7 @@ export function FileBar(properties: {
   onThemeModeChange: (mode: ThemeMode) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const spacerRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
@@ -53,6 +55,10 @@ export function FileBar(properties: {
     const bytes = model.toBytes();
     const fileName = model.getName();
     await downloadModel(bytes, fileName);
+  };
+
+  const handleDownloadPdf = async () => {
+    setIsPdfDialogOpen(true);
   };
 
   const closeMenus = () => setOpenMenu(null);
@@ -91,6 +97,7 @@ export function FileBar(properties: {
           newModel={properties.newModel}
           newModelFromTemplate={properties.newModelFromTemplate}
           onDownload={handleDownload}
+          onDownloadPdf={handleDownloadPdf}
           onModelUpload={properties.onModelUpload}
           onDelete={properties.onDelete}
           isReadOnly={properties.isReadOnly}
@@ -105,6 +112,7 @@ export function FileBar(properties: {
             newModelFromTemplate={properties.newModelFromTemplate}
             onModelUpload={properties.onModelUpload}
             onDownload={handleDownload}
+            onDownloadPdf={handleDownloadPdf}
             onDelete={properties.onDelete}
             isReadOnly={properties.isReadOnly}
             isOpen={openMenu === "file"}
@@ -183,6 +191,13 @@ export function FileBar(properties: {
           {isDialogOpen && (
             <ShareWorkbookDialog
               onClose={() => setIsDialogOpen(false)}
+              model={properties.model}
+            />
+          )}
+          {isPdfDialogOpen && (
+            <ExportPdfDialog
+              open={isPdfDialogOpen}
+              onClose={() => setIsPdfDialogOpen(false)}
               model={properties.model}
             />
           )}

@@ -73,6 +73,71 @@ async fn download(data: Data<'_>) -> io::Result<FileResponder> {
     })
 }
 
+#[derive(serde::Deserialize)]
+struct DownloadPdfJsonRequest {
+    model: String,
+    options: Option<ironcalc_pdf::PdfExportOptionsPayload>,
+    custom_fonts: Option<Vec<ironcalc_pdf::CustomFontData>>,
+}
+
+/// Return a PDF version of the app.
+#[post("/api/download_pdf", data = "<data>")]
+async fn download_pdf(
+    content_type: Option<&ContentType>,
+    data: Data<'_>,
+) -> io::Result<FileResponder> {
+    println!("Download pdf");
+
+    let bytes = data
+        .open(MAX_SIZE_MB.megabytes())
+        .into_bytes()
+        .await?;
+    if !bytes.is_complete() {
+        return Err(io::Error::other(
+            "The file was not fully uploaded",
+        ));
+    };
+
+    let is_json = content_type.map(|ct| ct.is_json()).unwrap_or(false);
+
+    let (model_bytes, options) = if is_json {
+        let req: DownloadPdfJsonRequest = serde_json::from_slice(&bytes)
+            .map_err(|e| io::Error::other(format!("Invalid JSON request: {e}")))?;
+        let decoded = ironcalc_pdf::decode_base64(&req.model)
+            .map_err(|e| io::Error::other(format!("Invalid base64 model: {e}")))?;
+        let mut opts = req.options.map(|p| p.into_options()).unwrap_or_default();
+        if let Some(fonts) = req.custom_fonts {
+            opts.custom_fonts.extend(fonts);
+        }
+        (decoded, Some(opts))
+    } else {
+        (bytes.to_vec(), None)
+    };
+
+    let model = IModel::from_bytes(&model_bytes, "en").map_err(|e| {
+        io::Error::other(format!("Error creating model, '{e}'"))
+    })?;
+
+    let pdf_bytes = ironcalc::export::save_to_pdf_bytes(&model, options.as_ref()).map_err(|e| {
+        io::Error::other(format!("Error exporting to PDF: '{e}'"))
+    })?;
+
+    let content_type = ContentType::new("application", "pdf");
+
+    let disposition = Header::new(
+        "Content-Disposition".to_string(),
+        "attachment; filename=\"data.pdf\"".to_string(),
+    );
+
+    println!("Download PDF: success.");
+
+    Ok(FileResponder {
+        inner: pdf_bytes,
+        content_type,
+        disposition,
+    })
+}
+
 /// Saves the model on a file called
 #[post("/api/share", data = "<data>")]
 async fn share(db: Connection<IronCalcDB>, data: Data<'_>) -> io::Result<String> {
@@ -125,7 +190,7 @@ async fn upload(data: Data<'_>, name: &str) -> io::Result<Vec<u8>> {
 fn rocket() -> _ {
     let mut rocket = rocket::build()
         .attach(IronCalcDB::init())
-        .mount("/", routes![upload, download, share, get_model, get_model_list]);
+        .mount("/", routes![upload, download, download_pdf, share, get_model, get_model_list]);
 
     if let Ok(frontend_path) = std::env::var("IRONCALC_WEBAPP_DIR") {
         if !frontend_path.is_empty() {

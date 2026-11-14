@@ -15,6 +15,7 @@ readme = "README.md"
 # Compiles the engine with a mocked clock so tests can pin NOW()/TODAY()
 # to the timestamp stored in a workbook's METADATA sheet (see `mock_time.rs`).
 mock_time = ["ironcalc_base/mock_time"]
+pdf = ["dep:ironcalc_pdf", "ironcalc_pdf/serde"]
 
 [dependencies]
 zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
@@ -26,6 +27,7 @@ thiserror = "2.0"
 # the inicated version from crates.io when published.
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
 ironcalc_base = { path = "../base", version = "0.9" }
+ironcalc_pdf = { path = "../pdf", version = "0.1", optional = true }
 itertools = "0.15"
 chrono = "0.4"
 bitcode = "0.6.9"
