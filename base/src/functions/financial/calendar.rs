@@ -227,6 +227,7 @@ pub(super) fn actual_days(d1: Day, d2: Day) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     #[test]
