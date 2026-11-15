@@ -334,11 +334,21 @@
   },
   "settings": {
     "date_system": {
-      "Excel1900": "01.01.1900 (Excel-kompatibel)",
-      "Excel1904": "01.01.1904 (Excel für Mac)",
-      "helper": "Wie die gespeicherten Datumszahlen Kalendertagen zugeordnet werden. Eine Änderung rechnet vorhandene Daten nicht um.",
-      "IronCalc": "LibreOffice/IronCalc (Standard)",
-      "label": "Datumssystem"
+      "Excel1900": {
+        "description": "1 ist der 1. Januar 1900. Nimmt fälschlicherweise an, dass 1900 ein Schaltjahr war. Der Standard von Excel.",
+        "label": "Excel 1900"
+      },
+      "Excel1904": {
+        "description": "1 ist der 2. Januar 1904. Wird von älteren Excel-für-Mac-Arbeitsmappen verwendet.",
+        "label": "Excel 1904"
+      },
+      "helper": "Ein Datumssystem legt fest, wie eine Seriennummer einem Datum entspricht.",
+      "IronCalc": {
+        "description": "1 ist der 31. Dezember 1899. Ab 61 stimmt es mit Excel 1900 überein. Negative Zahlen sind möglich. Unser Standard.",
+        "label": "LibreOffice/IronCalc"
+      },
+      "note": "HINWEIS: Eine Änderung rechnet vorhandene Daten nicht um.",
+      "title": "Datumssystem"
     },
     "focus_on_open": {
       "cell_label": "Zelle",

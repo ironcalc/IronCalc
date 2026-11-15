@@ -14,6 +14,7 @@ import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import "./settings.css";
 import { Input } from "../../Input/Input";
+import { Radio } from "../../Radio/Radio";
 import { Select } from "../../Select/Select";
 import { Switch } from "../../Switch/Switch";
 import { LAST_COLUMN, LAST_ROW } from "../../WorksheetCanvas/constants";
@@ -146,6 +147,8 @@ const Settings = (properties: SettingsProps) => {
   const [focusSheet, setFocusSheet] = useState(initialFocusSheet);
   const [focusCell, setFocusCell] = useState(initialFocusCell);
   const focusDescriptionId = useId();
+  const dateSystemDescriptionId = useId();
+  const dateSystemGroupName = useId();
 
   useEffect(() => {
     setSelectedLocale(properties.initialLocale);
@@ -283,20 +286,34 @@ const Settings = (properties: SettingsProps) => {
               }))}
             />
           </div>
-          <div className="ic-settings-field-wrapper">
-            <Select
-              label={t("settings.date_system.label")}
-              helperText={t("settings.date_system.helper")}
-              value={selectedDateSystem}
-              onChange={(value) => setSelectedDateSystem(value as DateSystem)}
-              options={dateSystems.map((dateSystem) => ({
-                value: dateSystem,
-                label: t(`settings.date_system.${dateSystem}`),
-                triggerLabel: t(`settings.date_system.${dateSystem}`),
-              }))}
-            />
-          </div>
         </div>
+        <fieldset
+          className="ic-settings-section ic-settings-fieldset"
+          aria-describedby={dateSystemDescriptionId}
+        >
+          <legend className="ic-settings-section-title">
+            {t("settings.date_system.title")}
+          </legend>
+          <p id={dateSystemDescriptionId} className="ic-settings-description">
+            {t("settings.date_system.helper")}
+            <br />
+            {t("settings.date_system.note")}
+          </p>
+          <div className="ic-settings-fields">
+            {dateSystems.map((dateSystem) => (
+              <Radio
+                key={dateSystem}
+                name={dateSystemGroupName}
+                label={t(`settings.date_system.${dateSystem}.label`)}
+                description={t(
+                  `settings.date_system.${dateSystem}.description`,
+                )}
+                checked={selectedDateSystem === dateSystem}
+                onChange={() => setSelectedDateSystem(dateSystem)}
+              />
+            ))}
+          </div>
+        </fieldset>
         <div className="ic-settings-section">
           <Switch
             className="ic-settings-section-switch"
