@@ -1,0 +1,89 @@
+.ic-radio {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-common-black);
+}
+
+.ic-radio.disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Visually hidden but focusable */
+.ic-radio-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ic-radio-circle {
+  position: relative;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  /* Centered on the first line of the label */
+  margin-top: 1px;
+  border: 1.5px solid var(--palette-grey-400);
+  border-radius: 50%;
+  background-color: var(--palette-common-white);
+  transition: border-color 150ms ease;
+}
+
+.ic-radio-input:checked + .ic-radio-circle {
+  border-color: var(--palette-primary-main);
+}
+
+.ic-radio-input:focus-visible + .ic-radio-circle {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+}
+
+.ic-radio:hover .ic-radio-input:not(:disabled, :checked) + .ic-radio-circle {
+  border-color: var(--palette-grey-500);
+}
+
+.ic-radio:hover .ic-radio-input:checked:not(:disabled) + .ic-radio-circle {
+  border-color: var(--palette-primary-dark);
+}
+
+.ic-radio-input:checked + .ic-radio-circle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--palette-primary-main);
+}
+
+.ic-radio:hover
+  .ic-radio-input:checked:not(:disabled)
+  + .ic-radio-circle::after {
+  background-color: var(--palette-primary-dark);
+}
+
+.ic-radio-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.4;
+}
+
+.ic-radio-label {
+  font-weight: 500;
+}
+
+.ic-radio-description {
+  color: var(--palette-grey-500);
+}

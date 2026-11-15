@@ -128,3 +128,20 @@
   flex-direction: column;
   gap: 12px;
 }
+
+/* A section that is a group of radio buttons */
+.ic-settings-fieldset {
+  margin: 0;
+  min-width: 0;
+  /* Undo the browser's fieldset frame; the section keeps its bottom border */
+  border: none;
+  border-bottom: 1px solid var(--palette-grey-300);
+}
+
+/* A floated legend is laid out as an ordinary child, inside the padding,
+   instead of on the (removed) top border */
+.ic-settings-fieldset > legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}

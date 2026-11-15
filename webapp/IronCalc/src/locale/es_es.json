@@ -334,11 +334,21 @@
   },
   "settings": {
     "date_system": {
-      "Excel1900": "01/01/1900 (compatible con Excel)",
-      "Excel1904": "01/01/1904 (Excel para Mac)",
-      "helper": "Cómo se corresponden los números de fecha almacenados con los días del calendario. Cambiarlo no convierte las fechas existentes.",
-      "IronCalc": "LibreOffice/IronCalc (predeterminado)",
-      "label": "Sistema de fechas"
+      "Excel1900": {
+        "description": "1 es el 1 de enero de 1900. Asume incorrectamente que 1900 fue un año bisiesto. El valor predeterminado de Excel.",
+        "label": "Excel 1900"
+      },
+      "Excel1904": {
+        "description": "1 es el 2 de enero de 1904. Lo usan los libros antiguos de Excel para Mac.",
+        "label": "Excel 1904"
+      },
+      "helper": "Un sistema de fechas especifica cómo un número de serie se corresponde con una fecha.",
+      "IronCalc": {
+        "description": "1 es el 31 de diciembre de 1899. A partir del 61 coincide con Excel 1900. Se puede usar con números negativos. Nuestro valor predeterminado.",
+        "label": "LibreOffice/IronCalc"
+      },
+      "note": "NOTA: Cambiarlo no convierte las fechas existentes.",
+      "title": "Sistema de fechas"
     },
     "focus_on_open": {
       "cell_label": "Celda",
