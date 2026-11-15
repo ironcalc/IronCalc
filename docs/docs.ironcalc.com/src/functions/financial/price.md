@@ -12,6 +12,8 @@ It returns the **clean price** — the present value of all future cash flows (c
 
 PRICE is the inverse of [YIELD](/functions/financial/yield): given what the market demands, it tells you what you should pay.
 
+**Note**: This function is affected by the choice of [date system](/features/serial-numbers).
+
 ## Usage
 
 ### Syntax

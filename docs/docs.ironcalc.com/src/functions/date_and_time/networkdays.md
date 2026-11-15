@@ -13,6 +13,8 @@ lang: en-US
 ## Overview
 NETWORKDAYS is a function of the Date and Time category that calculates the number of working days between two dates, excluding weekends (Saturday and Sunday by default) and optionally specified holidays.
 
+**Note**: This function is affected by the choice of [date system](/features/serial-numbers).
+
 ## Usage
 
 ### Syntax

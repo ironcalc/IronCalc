@@ -9,6 +9,9 @@ lang: en-US
 :::
 ## Overview
 MONTH is a function of the Date and Time category that extracts the month from a valid date [serial number](/features/serial-numbers.md), returning a number in the range [1, 12].
+
+**Note**: This function is affected by the choice of [date system](/features/serial-numbers).
+
 ## Usage
 ### Syntax
 **MONTH(<span title="Number" style="color:#1E88E5">date</span>) => <span title="Number" style="color:#1E88E5">month</span>**

@@ -9,6 +9,8 @@ lang: en-US
 ## Overview
 DATEVALUE is a function of the Date and Time category that converts a date stored as text to a [serial number](/features/serial-numbers.md) corresponding to a date value.
 
+**Note**: This function is affected by the choice of [date system](/features/serial-numbers).
+
 ## Usage
 ### Syntax
 **DATEVALUE(<span title="Text" style="color:#1E88E5">date_text</span>) => <span title="Number" style="color:#1E88E5">datevalue</span>**
