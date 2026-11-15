@@ -9,6 +9,9 @@ lang: en-US
 :::
 ## Overview
 YEAR is a function of the Date and Time category that extracts the year from a valid date [serial number](/features/serial-numbers.md), returning a number in the range [1899, 9999].
+
+**Note**: This function is affected by the choice of [date system](/features/serial-numbers).
+
 ## Usage
 ### Syntax
 **YEAR(<span title="Number" style="color:#1E88E5">date</span>) => <span title="Number" style="color:#1E88E5">year</span>**

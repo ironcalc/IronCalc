@@ -13,6 +13,8 @@ lang: en-US
 ## Overview
 NETWORKDAYS.INTL is a function of the Date and Time category that calculates the number of working days between two dates, with customizable weekend definitions and optionally specified holidays.
 
+**Note**: This function is affected by the choice of [date system](/features/serial-numbers).
+
 ## Usage
 
 ### Syntax

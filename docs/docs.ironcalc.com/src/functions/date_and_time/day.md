@@ -9,6 +9,9 @@ lang: en-US
 :::
 ## Overview
 DAY is a function of the Date and Time category that extracts the day of the month from a valid date [serial number](/features/serial-numbers.md), returning a number in the range [1, 31].
+
+**Note**: This function is affected by the choice of [date system](/features/serial-numbers).
+
 ## Usage
 ### Syntax
 **DAY(<span title="Number" style="color:#1E88E5">date</span>) => <span title="Number" style="color:#1E88E5">day</span>**

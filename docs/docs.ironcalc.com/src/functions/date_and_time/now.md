@@ -14,6 +14,8 @@ NOW returns the current date and time as a [serial number](/features/serial-numb
 The optional `timezone` argument is an IronCalc extension. Excel, Google Sheets, and LibreOffice Calc do not support it.
 :::
 
+**Note**: This function is affected by the choice of [date system](/features/serial-numbers).
+
 ## Usage
 
 ### Syntax
