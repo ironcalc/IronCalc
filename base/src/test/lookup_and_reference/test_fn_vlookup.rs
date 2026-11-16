@@ -85,3 +85,30 @@ fn test_vlookup_array_sorted_largest_smaller() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "b");
 }
+
+#[test]
+fn test_vlookup_column_index_below_one() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "one");
+    model._set("C1", "10");
+    model._set("A2", "2");
+    model._set("B2", "two");
+    model._set("C2", "20");
+    model._set("E1", "=VLOOKUP(2,A1:C2,0,FALSE)");
+    model._set("E2", "=VLOOKUP(2,A1:C2,-1,FALSE)");
+    model._set("E3", "=VLOOKUP(2,A1:C2,0.5,FALSE)");
+    model._set("E4", "=VLOOKUP(2,A1:C2,4,FALSE)");
+    model._set("E5", "=VLOOKUP(2,A1:C2,1.9,FALSE)");
+    model._set("E6", "=VLOOKUP(2,A1:C2,2.5,FALSE)");
+    model._set("E7", "=VLOOKUP(2,A1:C2,TRUE,FALSE)");
+    model.evaluate();
+    // Below 1 after truncation is #VALUE!, past the table is #REF!
+    assert_eq!(model._get_text("E1"), "#VALUE!");
+    assert_eq!(model._get_text("E2"), "#VALUE!");
+    assert_eq!(model._get_text("E3"), "#VALUE!");
+    assert_eq!(model._get_text("E4"), "#REF!");
+    assert_eq!(model._get_text("E5"), "2");
+    assert_eq!(model._get_text("E6"), "two");
+    assert_eq!(model._get_text("E7"), "2");
+}

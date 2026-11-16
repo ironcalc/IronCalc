@@ -527,7 +527,10 @@ impl<'a> Model<'a> {
             }
         };
         // `row_index` is 1-based and must point inside the table
-        if row_index < 1 || row_index > table.rows() {
+        if row_index < 1 {
+            return CalcResult::new_error(Error::VALUE, cell, "Invalid row index".to_string());
+        }
+        if row_index > table.rows() {
             return CalcResult::Error {
                 error: Error::REF,
                 origin: cell,
@@ -591,7 +594,10 @@ impl<'a> Model<'a> {
             }
         };
         // `column_index` is 1-based and must point inside the table
-        if column_index < 1 || column_index > table.columns() {
+        if column_index < 1 {
+            return CalcResult::new_error(Error::VALUE, cell, "Invalid column index".to_string());
+        }
+        if column_index > table.columns() {
             return CalcResult::Error {
                 error: Error::REF,
                 origin: cell,
