@@ -47,6 +47,8 @@ fn simple_test() {
         ("A1:A3+{1,2}", "@A1:A3+@{1,2}"),
         // A single element is already a scalar
         ("CHAR({65})", "CHAR({65})"),
+        ("ISERROR({1,#N/A})", "@ISERROR({1,#N/A})"),
+        ("ISNUMBER(A1:A3)", "ISNUMBER(@A1:A3)"),
         // Functions are evaluated element by element over array constants
         ("SUM(ABS({-1,-2}))", "SUM(ABS({-1,-2}))"),
         (
