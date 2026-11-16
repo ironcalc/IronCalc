@@ -102,6 +102,16 @@ impl XmlNode {
         self.attribute(name).is_some()
     }
 
+    /// Whether the whitespace in this element's text is kept: its own
+    /// `xml:space` if it has one, else `inherited`, its parent's (XML 1.0,
+    /// section 2.10).
+    pub(crate) fn preserves_space(&self, inherited: bool) -> bool {
+        match self.attribute_ns(XML_NAMESPACE, "space") {
+            Some(value) => value == "preserve",
+            None => inherited,
+        }
+    }
+
     /// The character data directly inside the element, or None if there is
     /// none at all (`<t/>` and `<t></t>` have none, `<t> </t>` has a space).
     pub(crate) fn text(&self) -> Option<&str> {
@@ -153,6 +163,18 @@ pub(crate) fn reference_of(reference: &BytesRef) -> Result<Cow<'static, str>, Xl
     quick_xml::escape::resolve_predefined_entity(reference)
         .map(Cow::Borrowed)
         .ok_or_else(|| XlsxError::Xml(format!("Unknown entity: &{};", &**reference)))
+}
+
+/// The text of a `<t>` element of a string as desktop Excel reads it: unless
+/// `xml:space="preserve"` is in force there, without the XML whitespace
+/// (space, tab, line feed, carriage return) at its two ends. Whitespace inside
+/// the text stays, and so do other spaces, such as the no-break space.
+pub(crate) fn string_text(text: &str, preserve_space: bool) -> &str {
+    if preserve_space {
+        text
+    } else {
+        text.trim_matches([' ', '\t', '\n', '\r'])
+    }
 }
 
 /// The value of an attribute, normalized as XML 1.0 requires: entities

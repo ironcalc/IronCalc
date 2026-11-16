@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{BufReader, Read};
 
-use super::xml::XmlNode;
+use super::xml::{string_text, XmlNode};
 
 use crate::error::XlsxError;
 
@@ -59,17 +59,37 @@ fn read_shared_strings_from_string(text: &str) -> Result<Vec<String>, XlsxError>
 
 fn read_shared_strings_from_xml(doc: XmlNode) -> Result<Vec<String>, XlsxError> {
     let mut shared_strings = Vec::new();
-    let nodes: Vec<&XmlNode> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
-    for node in nodes {
-        let text = node
-            .descendants()
-            .filter(|n| n.has_tag_name("t"))
-            .map(|n| decode_xlsx_escapes(n.text().unwrap_or("")))
-            .collect::<Vec<String>>()
-            .join("");
-        shared_strings.push(text);
-    }
+    push_strings(&doc, false, &mut shared_strings);
     Ok(shared_strings)
+}
+
+/// Appends the string of each `<si>` at or under `node` to `strings`, in
+/// document order. `preserve_space` is what `xml:space` says around `node`.
+fn push_strings(node: &XmlNode, preserve_space: bool, strings: &mut Vec<String>) {
+    let preserve_space = node.preserves_space(preserve_space);
+    if node.has_tag_name("si") {
+        let mut text = String::new();
+        push_text(node, preserve_space, &mut text);
+        strings.push(text);
+        return;
+    }
+    for child in node.children() {
+        push_strings(child, preserve_space, strings);
+    }
+}
+
+/// Appends the text of each `<t>` at or under `node` to `text`, in document
+/// order: the plain text of a string, or each run of a rich-text one.
+fn push_text(node: &XmlNode, preserve_space: bool, text: &mut String) {
+    let preserve_space = node.preserves_space(preserve_space);
+    if node.has_tag_name("t") {
+        let t = string_text(node.text().unwrap_or(""), preserve_space);
+        text.push_str(&decode_xlsx_escapes(t));
+        return;
+    }
+    for child in node.children() {
+        push_text(child, preserve_space, text);
+    }
 }
 
 /// Decodes Excel's `_xXXXX_` escape sequences for characters that are invalid in XML 1.0.
