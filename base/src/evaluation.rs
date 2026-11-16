@@ -747,6 +747,13 @@ impl<'a> Model<'a> {
                 break;
             }
         }
+        debug_assert!(
+            self.evaluation
+                .used_areas
+                .iter()
+                .all(|(&sheet, &area)| self.used_area_covers(sheet, area)),
+            "a used area kept in the pass misses a cell the pass wrote"
+        );
         self.evaluation.in_pass = false;
         self.evaluation.root = None;
         restart
@@ -1122,10 +1129,6 @@ impl<'a> Model<'a> {
     pub(crate) fn used_area(&mut self, sheet: u32) -> Result<(i32, i32), String> {
         if self.evaluation.in_pass {
             if let Some(&area) = self.evaluation.used_areas.get(&sheet) {
-                debug_assert!(
-                    self.used_area_covers(sheet, area),
-                    "the used area kept for sheet {sheet} misses a cell written in the pass"
-                );
                 return Ok(area);
             }
         }
@@ -1141,8 +1144,9 @@ impl<'a> Model<'a> {
         Ok(area)
     }
 
-    /// Whether `area` reaches every cell of the sheet. For the check in
-    /// `used_area`.
+    /// Whether `area` reaches every cell of the sheet. Checked for every used
+    /// area kept when a pass ends, not each time one is used: finding out
+    /// walks every cell of the sheet, once per lookup over a whole column.
     fn used_area_covers(&self, sheet: u32, (max_row, max_column): (i32, i32)) -> bool {
         match self.workbook.worksheet(sheet) {
             Ok(worksheet) => {
