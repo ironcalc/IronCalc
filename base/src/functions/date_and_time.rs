@@ -731,6 +731,11 @@ impl<'a> Model<'a> {
         if args_count != 2 {
             return CalcResult::new_args_number_error(cell);
         }
+        // An omitted start date is #N/A in Excel (EOMONTH(,9)), unlike an
+        // empty cell, which is the serial number 0.
+        if matches!(args[0], Node::EmptyArgKind) {
+            return CalcResult::new_error(Error::NA, cell, "Start date is omitted".to_string());
+        }
         let serial_number = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
