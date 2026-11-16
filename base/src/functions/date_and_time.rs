@@ -62,6 +62,21 @@ fn weekday_number(weekday: chrono::Weekday, return_type: i32) -> Result<f64, Err
     Ok(num as f64)
 }
 
+// The date functions that came from the Analysis ToolPak (EDATE, EOMONTH,
+// WORKDAY, NETWORKDAYS, YEARFRAC and their variants) return #N/A when one of
+// their required arguments is omitted, as in `EOMONTH(,9)`. An empty cell is
+// different: it is the serial number 0.
+fn omitted_required_argument(
+    args: &[Node],
+    required: usize,
+    cell: CellReferenceIndex,
+) -> Option<CalcResult> {
+    args.iter()
+        .take(required)
+        .any(|arg| matches!(arg, Node::EmptyArgKind))
+        .then(|| CalcResult::new_error(Error::NA, cell, "Required argument is omitted".to_string()))
+}
+
 // Port of `isFeb29BetweenConsecutiveYears` from ExcelFinancialFunctions. Only
 // called for dates at most one year apart (`y1 == y2` or `y2 == y1 + 1`).
 fn is_feb29_between_consecutive_years(start: Ymd, end: Ymd) -> bool {
@@ -731,10 +746,8 @@ impl<'a> Model<'a> {
         if args_count != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        // An omitted start date is #N/A in Excel (EOMONTH(,9)), unlike an
-        // empty cell, which is the serial number 0.
-        if matches!(args[0], Node::EmptyArgKind) {
-            return CalcResult::new_error(Error::NA, cell, "Start date is omitted".to_string());
+        if let Some(error) = omitted_required_argument(args, 2, cell) {
+            return error;
         }
         let serial_number = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
@@ -931,6 +944,9 @@ impl<'a> Model<'a> {
         if args_count != 2 {
             return CalcResult::new_args_number_error(cell);
         }
+        if let Some(error) = omitted_required_argument(args, 2, cell) {
+            return error;
+        }
         let serial_number = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
@@ -1079,6 +1095,9 @@ impl<'a> Model<'a> {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        if let Some(error) = omitted_required_argument(args, 2, cell) {
+            return error;
+        }
         let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(n) => n.floor() as i64,
             Err(e) => return e,
@@ -1088,7 +1107,8 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
         let mut holidays: std::collections::HashSet<i64> = std::collections::HashSet::new();
-        if args.len() == 3 {
+        // An omitted optional argument, as in NETWORKDAYS(A1, B1, ), means no holidays
+        if args.len() == 3 && !matches!(args[2], Node::EmptyArgKind) {
             let values = match self.get_array_of_dates(&args[2], cell) {
                 Ok(v) => v,
                 Err(e) => return e,
@@ -1243,6 +1263,9 @@ impl<'a> Model<'a> {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        if let Some(error) = omitted_required_argument(args, 2, cell) {
+            return error;
+        }
         let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(n) => n.floor() as i64,
             Err(e) => return e,
@@ -1258,7 +1281,8 @@ impl<'a> Model<'a> {
         };
 
         let mut holidays: std::collections::HashSet<i64> = std::collections::HashSet::new();
-        if args.len() == 4 {
+        // An omitted optional argument, as in NETWORKDAYS(A1, B1, ), means no holidays
+        if args.len() == 4 && !matches!(args[3], Node::EmptyArgKind) {
             let values = match self.get_array_of_dates(&args[3], cell) {
                 Ok(v) => v,
                 Err(e) => return e,
@@ -1766,6 +1790,9 @@ impl<'a> Model<'a> {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        if let Some(error) = omitted_required_argument(args, 2, cell) {
+            return error;
+        }
         let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
@@ -1820,7 +1847,8 @@ impl<'a> Model<'a> {
     ) -> Result<std::collections::HashSet<i64>, CalcResult> {
         let mut holiday_set = std::collections::HashSet::new();
 
-        if let Some(arg) = arg_option {
+        // An omitted optional argument, as in WORKDAY(A1, 10, ), means no holidays
+        if let Some(arg) = arg_option.filter(|arg| !matches!(arg, Node::EmptyArgKind)) {
             // `collect_serial_numbers` validates every serial
             self.collect_serial_numbers(arg, cell, |serial| {
                 holiday_set.insert(serial);
@@ -1838,6 +1866,9 @@ impl<'a> Model<'a> {
     ) -> CalcResult {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
+        }
+        if let Some(error) = omitted_required_argument(args, 2, cell) {
+            return error;
         }
         let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
@@ -1877,6 +1908,9 @@ impl<'a> Model<'a> {
     pub(crate) fn fn_yearfrac(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
+        }
+        if let Some(error) = omitted_required_argument(args, 2, cell) {
+            return error;
         }
         let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,

@@ -787,6 +787,47 @@ fn test_fn_eomonth_omitted_start_date() {
 }
 
 #[test]
+fn test_fn_omitted_required_arguments_are_na() {
+    // Issue #624: the Analysis ToolPak date functions return #N/A when a
+    // required argument is omitted. An empty cell is still the serial 0.
+    let mut model = new_empty_model();
+
+    model._set("A1", "=WORKDAY(,65)");
+    model._set("A2", "=WORKDAY(45658,)");
+    model._set("A3", "=WORKDAY.INTL(,65)");
+    model._set("A4", "=WORKDAY.INTL(45658,)");
+    model._set("A5", "=NETWORKDAYS(,45658)");
+    model._set("A6", "=NETWORKDAYS(45658,)");
+    model._set("A7", "=NETWORKDAYS.INTL(,45658)");
+    model._set("A8", "=NETWORKDAYS.INTL(45658,)");
+    model._set("A9", "=EDATE(,9)");
+    model._set("A10", "=EDATE(45658,)");
+    model._set("A11", "=YEARFRAC(,45658)");
+    model._set("A12", "=YEARFRAC(45658,)");
+    model._set("A13", "=EOMONTH(45658,)");
+    // Optional arguments may still be omitted
+    model._set("A14", "=WORKDAY.INTL(45658,10,,)");
+    model._set("A15", "=NETWORKDAYS.INTL(45658,45672,,)");
+    model._set("A16", "=YEARFRAC(45658,45839,)");
+    // Empty cells are the serial 0
+    model._set("A17", "=WORKDAY(B17,65)");
+    model._set("A18", "=NETWORKDAYS(B18,10)");
+    model._set("A19", "=WORKDAY(45658,10,)");
+
+    model.evaluate();
+
+    for row in 1..=13 {
+        assert_eq!(model._get_text(&format!("A{row}")), *"#N/A", "A{row}");
+    }
+    assert_eq!(model._get_text("A14"), *"45672");
+    assert_eq!(model._get_text("A15"), *"11");
+    assert_eq!(model._get_text("A16"), *"0.5");
+    assert_eq!(model._get_text("A17"), *"90");
+    assert_eq!(model._get_text("A18"), *"7");
+    assert_eq!(model._get_text("A19"), *"45672");
+}
+
+#[test]
 fn test_fn_eomonth_out_of_bounds_returns_num() {
     // Regression for #1390: EOMONTH must return #NUM! (not panic / wrap) when the
     // result would fall outside Excel's supported date range, including when the
