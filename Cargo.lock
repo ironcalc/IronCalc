@@ -412,7 +412,6 @@ dependencies = [
  "itertools",
  "quick-xml",
  "serde",
- "serde_json",
  "thiserror",
  "uuid",
  "zip",
@@ -746,7 +745,6 @@ dependencies = [
  "pyo3-build-config",
  "pythonize",
  "serde",
- "serde_json",
 ]
 
 [[package]]

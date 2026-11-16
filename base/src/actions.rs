@@ -498,16 +498,15 @@ impl<'a> Model<'a> {
 
     /// Updates the `range` field and formula fields of every CF rule on `sheet` according to `displace_data`.
     fn displace_cf_ranges(&mut self, sheet: u32, displace_data: &DisplaceData) {
-        let count = match self.workbook.worksheets.get(sheet as usize) {
-            Some(ws) => ws.conditional_formatting.len(),
-            None => return,
+        let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) else {
+            return;
         };
 
         // Phase 1: collect (index, new_range, old_rule, anchor) without holding a borrow on self.
-        let sheet_name = self.workbook.worksheets[sheet as usize].get_name();
-        let mut phase1: Vec<(usize, String, CfRule, i32, i32)> = Vec::with_capacity(count);
-        for idx in 0..count {
-            let cf = &self.workbook.worksheets[sheet as usize].conditional_formatting[idx];
+        let sheet_name = worksheet.get_name();
+        let mut phase1: Vec<(usize, String, CfRule, i32, i32)> =
+            Vec::with_capacity(worksheet.conditional_formatting.len());
+        for (idx, cf) in worksheet.conditional_formatting.iter().enumerate() {
             let old_range = cf.range.clone();
             let new_range = displace_cf_sqref(&old_range, displace_data, sheet);
             let rule = cf.cf_rule.clone();

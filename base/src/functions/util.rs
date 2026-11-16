@@ -44,10 +44,7 @@ fn error_sort_rank(e: &Error) -> u8 {
 pub(crate) fn values_are_equal(left: &CalcResult, right: &CalcResult) -> bool {
     match (left, right) {
         (CalcResult::Number(value1), CalcResult::Number(value2)) => {
-            if (value2 - value1).abs() < f64::EPSILON {
-                return true;
-            }
-            false
+            (value2 - value1).abs() < f64::EPSILON
         }
         (CalcResult::String(value1), CalcResult::String(value2)) => {
             let value1 = value1.to_uppercase();
@@ -178,12 +175,7 @@ pub(crate) fn from_wildcard_to_regex(
 // In the rest of the cases calc_result needs to be a number (cannot be the string "23", for instance)
 fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => {
-            if (f - target).abs() < f64::EPSILON {
-                return true;
-            }
-            false
-        }
+        CalcResult::Number(f) => (f - target).abs() < f64::EPSILON,
         CalcResult::String(s) => {
             if let Some(f) = parse_finite_number(s) {
                 if (f - target).abs() < f64::EPSILON {
@@ -227,12 +219,7 @@ fn result_is_greater_or_equal_than_number(calc_result: &CalcResult, target: f64)
 
 fn result_is_not_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => {
-            if (f - target).abs() > f64::EPSILON {
-                return true;
-            }
-            false
-        }
+        CalcResult::Number(f) => (f - target).abs() > f64::EPSILON,
         _ => true,
     }
 }
@@ -269,12 +256,7 @@ pub(crate) fn result_matches_regex(calc_result: &CalcResult, reg: &regex::Regex)
 
 fn result_is_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => {
-            if target == s.to_lowercase() {
-                return true;
-            }
-            false
-        }
+        CalcResult::String(s) => target == s.to_lowercase(),
         CalcResult::EmptyCell => target.is_empty(),
         _ => false,
     }
@@ -282,12 +264,7 @@ fn result_is_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
 
 fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => {
-            if target != s.to_lowercase() {
-                return true;
-            }
-            false
-        }
+        CalcResult::String(s) => target != s.to_lowercase(),
         _ => false,
     }
 }
