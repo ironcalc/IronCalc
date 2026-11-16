@@ -247,3 +247,66 @@ fn columns_of_at_range_intersects() {
 
     assert_eq!(model._get_text("B3"), "1".to_string());
 }
+
+#[test]
+fn array_literal_takes_top_left() {
+    let mut model = new_empty_model();
+    model._set("A1", "=@{1,2,3}");
+    model._set("A2", "=@{\"a\",2;3,4}");
+    model._set("A3", "=@{#N/A,1}");
+    model._set("A4", "=@{1,2,3}+10");
+    model._set("A5", "=SUM(@{5,2,3})");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "a");
+    assert_eq!(model._get_text("A3"), "#N/A");
+    assert_eq!(model._get_text("A4"), "11");
+    assert_eq!(model._get_text("A5"), "5");
+    // A single value, nothing spills
+    assert_eq!(model._get_text("B1"), "");
+    assert_eq!(model._get_text("A1"), "1");
+}
+
+#[test]
+fn computed_array_takes_top_left() {
+    let mut model = new_empty_model();
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("A1", "=@SEQUENCE(3)");
+    model._set("A2", "=@({1,2,3}*2)");
+    model._set("A3", "=LET(x,{7,8},@x)");
+    // B1:B2*3 is an array, not a range: its top left, whatever the row
+    model._set("A9", "=@(B1:B2*3)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("A3"), "7");
+    assert_eq!(model._get_text("A9"), "3");
+}
+
+#[test]
+fn parentheses_are_kept_around_operations() {
+    let mut model = new_empty_model();
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("A1", "=@({1,2,3}*2)");
+    model._set("A2", "=@({1,2}&\"x\")");
+    model._set("A9", "=@(B1:B2*3)");
+    model._set("A3", "=@{1,2,3}");
+    model._set("A4", "=@B1:B2");
+    model.evaluate();
+
+    assert_eq!(model._get_formula("A1"), "=@({1,2,3}*2)");
+    assert_eq!(model._get_formula("A2"), "=@({1,2}&\"x\")");
+    assert_eq!(model._get_formula("A9"), "=@(B1:B2*3)");
+    assert_eq!(model._get_formula("A3"), "=@{1,2,3}");
+    assert_eq!(model._get_formula("A4"), "=@B1:B2");
+
+    // Writing back what was displayed gives the same result.
+    let formula = model._get_formula("A9");
+    model._set("C9", &formula);
+    model.evaluate();
+    assert_eq!(model._get_text("C9"), "3");
+}

@@ -1205,17 +1205,52 @@ fn stringify(
                     )
                 );
             }
-            format!(
-                "@{}",
-                stringify(
-                    child,
-                    context,
-                    displace_data,
-                    export_to_excel,
-                    locale,
-                    language
-                )
-            )
+            let child_str = stringify(
+                child,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            );
+            // `@` applies to a single primary. Anything else (an operation, a
+            // spill reference, ...) needs parentheses, or `@(A1:A2*3)` would
+            // come back as `@A1:A2*3`, which is a different formula.
+            let is_primary = match **child {
+                BooleanKind(_)
+                | StringKind(_)
+                | ReferenceKind { .. }
+                | RangeKind { .. }
+                | WrongReferenceKind { .. }
+                | WrongRangeKind { .. }
+                | DefinedNameKind { .. }
+                | TableNameKind(_)
+                | NamedVariableKind { .. }
+                | FunctionKind { .. }
+                | NamedFunctionKind { .. }
+                | LambdaDefKind { .. }
+                | LambdaCallKind { .. }
+                | ArrayKind(_)
+                | ErrorKind(_)
+                | ParseErrorKind { .. }
+                | EmptyArgKind => true,
+                // A negative number prints with a leading minus.
+                NumberKind(f) => f >= 0.0,
+                OpRangeKind { .. }
+                | OpConcatenateKind { .. }
+                | OpProductKind { .. }
+                | OpPowerKind { .. }
+                | OpSumKind { .. }
+                | CompareKind { .. }
+                | UnaryKind { .. }
+                | ImplicitIntersection { .. }
+                | SpillRangeOperator { .. } => false,
+            };
+            if is_primary {
+                format!("@{child_str}")
+            } else {
+                format!("@({child_str})")
+            }
         }
     }
 }
