@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ironcalc/wasm": "file:../../../bindings/wasm/pkg",
     "@ironcalc/workbook": "file:../../IronCalc/",
     "i18next": "^26.4.2",
     "lucide-react": "^1.49.0",

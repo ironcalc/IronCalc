@@ -214,8 +214,8 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 pub struct UserModel<'a> {
     pub(crate) model: Model<'a>,
     history: History,
-    send_queue: Vec<QueueDiffs>,
-    pause_evaluation: bool,
+    pub(super) send_queue: Vec<QueueDiffs>,
+    pub(super) pause_evaluation: bool,
     /// What the user is looking at: selected sheet, selection and scroll
     /// position of each sheet, window size. Runtime state only: it is not
     /// part of the workbook and is not serialized.

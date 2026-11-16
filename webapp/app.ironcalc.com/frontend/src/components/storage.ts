@@ -1,5 +1,6 @@
 import { Model } from "@ironcalc/workbook";
 import i18n from "../i18n";
+import { whenEvaluated } from "./workerEngine";
 
 const MAX_WORKBOOKS = 50;
 
@@ -522,7 +523,10 @@ export function createNewModel(): Promise<Model> {
 // Stores an existing model (e.g. an uploaded file) as a new workbook and
 // selects it.
 export function saveModelToStorage(model: Model): Promise<void> {
-  return serialized(() => insertWorkbook(model, model.getName(), true));
+  return serialized(async () => {
+    await whenEvaluated(model);
+    await insertWorkbook(model, model.getName(), true);
+  });
 }
 
 // Loads the currently selected workbook. Returns null if there is none or it
@@ -570,9 +574,28 @@ export function saveSelectedModelInStorage(model: Model): Promise<void> {
     if (!uuid || !metadataCache[uuid]) {
       return;
     }
+    await whenEvaluated(model);
     const bytes = model.toBytes();
     await writeTransaction((_workbooks, bytesStore) => {
       bytesStore.put(bytes, uuid);
+    });
+  });
+}
+
+// Persists the bytes of the selected workbook made elsewhere (by the
+// evaluation worker, see workerEngine.ts). They are dropped if another
+// workbook was selected while they were being made.
+export function saveSelectedBytesInStorage(
+  bytes: Promise<Uint8Array | null>,
+): Promise<void> {
+  const uuid = getSelectedUuid();
+  return serialized(async () => {
+    const data = await bytes;
+    if (!data || !uuid || uuid !== getSelectedUuid() || !metadataCache[uuid]) {
+      return;
+    }
+    await writeTransaction((_workbooks, bytesStore) => {
+      bytesStore.put(data, uuid);
     });
   });
 }
@@ -590,6 +613,7 @@ export function updateNameSelectedWorkbook(
       ...(metadataCache[uuid] ?? { createdAt: Date.now(), pinned: false }),
       name: newName,
     };
+    await whenEvaluated(model);
     const bytes = model.toBytes();
     await writeTransaction((workbooks, bytesStore) => {
       workbooks.put(metadata, uuid);

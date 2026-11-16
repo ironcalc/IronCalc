@@ -22,6 +22,7 @@ import { StorageWarning } from "./StorageWarning";
 import { type ThemeMode, updateNameSelectedWorkbook } from "./storage";
 import { useWindowWidth } from "./useWindowWidth";
 import { WorkbookTitle } from "./WorkbookTitle";
+import { whenEvaluated } from "./workerEngine";
 
 import "./file-bar.css";
 
@@ -50,6 +51,7 @@ export function FileBar(properties: {
   const { t } = useTranslation();
   const handleDownload = async () => {
     const model = properties.model;
+    await whenEvaluated(model);
     const bytes = model.toBytes();
     const fileName = model.getName();
     await downloadModel(bytes, fileName);

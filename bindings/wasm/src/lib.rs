@@ -14,8 +14,9 @@ use ironcalc_base::{
     },
     types::{CellType, Color, Link, Style, StyleIncludes},
     worksheet::NavigationDirection,
-    BorderArea, ClipboardData, DefinedNameEntry, UserModel as BaseModel, COLUMN_WIDTH_FACTOR,
-    DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
+    BorderArea, ClipboardData, DefinedNameEntry, EvaluationTracker as BaseEvaluationTracker,
+    UserModel as BaseModel, COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT,
+    ROW_HEIGHT_FACTOR,
 };
 
 fn to_js_error(error: String) -> JsError {
@@ -137,6 +138,30 @@ pub struct Model {
     model: BaseModel<'static>,
 }
 
+/// Follows the cells an evaluation writes in a model, to send what changed to
+/// another model of the same workbook (see `Model.applyEvaluationResults`).
+#[wasm_bindgen]
+pub struct EvaluationTracker {
+    tracker: BaseEvaluationTracker,
+}
+
+#[wasm_bindgen]
+impl EvaluationTracker {
+    /// Starts following the cells of `model` as they are now.
+    #[wasm_bindgen(constructor)]
+    pub fn new(model: &Model) -> EvaluationTracker {
+        EvaluationTracker {
+            tracker: BaseEvaluationTracker::new(&model.model),
+        }
+    }
+
+    /// What the evaluations of `model` changed since the last call.
+    #[wasm_bindgen(js_name = "takeResults")]
+    pub fn take_results(&mut self, model: &Model) -> Vec<u8> {
+        self.tracker.take_results(&model.model)
+    }
+}
+
 #[wasm_bindgen]
 impl Model {
     #[wasm_bindgen(constructor)]
@@ -223,6 +248,17 @@ impl Model {
     #[wasm_bindgen(js_name = "applyExternalDiffs")]
     pub fn apply_external_diffs(&mut self, diffs: &[u8]) -> Result<(), JsError> {
         self.model.apply_external_diffs(diffs).map_err(to_js_error)
+    }
+
+    /// Applies the results of an evaluation made by another model of the same
+    /// workbook, as returned by `EvaluationTracker.takeResults`. It does not
+    /// evaluate. This lets a model whose evaluation is paused show what a model
+    /// evaluating elsewhere (e.g. in a Web Worker) computed.
+    #[wasm_bindgen(js_name = "applyEvaluationResults")]
+    pub fn apply_evaluation_results(&mut self, results: &[u8]) -> Result<(), JsError> {
+        self.model
+            .apply_evaluation_results(results)
+            .map_err(to_js_error)
     }
 
     #[wasm_bindgen(js_name = "getCellContent")]

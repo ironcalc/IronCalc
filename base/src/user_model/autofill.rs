@@ -524,7 +524,7 @@ impl<'a> UserModel<'a> {
         }
         self.apply_fill_merge_creation(sheet, &plan, &mut diff_list)?;
         self.push_diff_list(diff_list);
-        self.evaluate();
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
@@ -706,7 +706,7 @@ impl<'a> UserModel<'a> {
         }
         self.apply_fill_merge_creation(sheet, &plan, &mut diff_list)?;
         self.push_diff_list(diff_list);
-        self.evaluate();
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
