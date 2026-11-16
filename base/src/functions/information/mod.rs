@@ -24,103 +24,83 @@ fn get_system() -> String {
 }
 
 impl<'a> Model<'a> {
-    pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(_) => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
+    /// The IS functions that look at the type of a value (ISNUMBER, ISERROR,
+    /// ...). `test` is given the value, or `None` for something that is not a
+    /// value of any type (a missing argument, a lambda). A range or an array is
+    /// tested element by element and gives an array of booleans.
+    fn is_value_of_type(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        test: impl Fn(Option<&ArrayNode>) -> bool,
+    ) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
         }
-        CalcResult::new_args_number_error(cell)
+        let array = match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return CalcResult::new_error(
+                        Error::ERROR,
+                        cell,
+                        "3D ranges are not allowed".to_string(),
+                    );
+                }
+                self.evaluate_range(left, right)
+            }
+            CalcResult::Array(array) => array,
+            CalcResult::Number(f) => return CalcResult::Boolean(test(Some(&ArrayNode::Number(f)))),
+            CalcResult::String(s) => return CalcResult::Boolean(test(Some(&ArrayNode::String(s)))),
+            CalcResult::Boolean(b) => {
+                return CalcResult::Boolean(test(Some(&ArrayNode::Boolean(b))))
+            }
+            CalcResult::Error { error, .. } => {
+                return CalcResult::Boolean(test(Some(&ArrayNode::Error(error))))
+            }
+            CalcResult::EmptyCell => return CalcResult::Boolean(test(Some(&ArrayNode::Empty))),
+            _ => return CalcResult::Boolean(test(None)),
+        };
+        CalcResult::Array(
+            array
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|value| ArrayNode::Boolean(test(Some(value))))
+                        .collect()
+                })
+                .collect(),
+        )
+    }
+
+    pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.is_value_of_type(args, cell, |v| matches!(v, Some(ArrayNode::Number(_))))
     }
     pub(crate) fn fn_istext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::String(_) => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_value_of_type(args, cell, |v| matches!(v, Some(ArrayNode::String(_))))
     }
     pub(crate) fn fn_isnontext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::String(_) => return CalcResult::Boolean(false),
-                _ => {
-                    return CalcResult::Boolean(true);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_value_of_type(args, cell, |v| !matches!(v, Some(ArrayNode::String(_))))
     }
     pub(crate) fn fn_islogical(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Boolean(_) => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_value_of_type(args, cell, |v| matches!(v, Some(ArrayNode::Boolean(_))))
     }
     pub(crate) fn fn_isblank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::EmptyCell => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_value_of_type(args, cell, |v| matches!(v, Some(ArrayNode::Empty)))
     }
     pub(crate) fn fn_iserror(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Error { .. } => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_value_of_type(args, cell, |v| matches!(v, Some(ArrayNode::Error(_))))
     }
     pub(crate) fn fn_iserr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Error { error, .. } => {
-                    if Error::NA == error {
-                        return CalcResult::Boolean(false);
-                    } else {
-                        return CalcResult::Boolean(true);
-                    }
-                }
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_value_of_type(
+            args,
+            cell,
+            |v| matches!(v, Some(ArrayNode::Error(error)) if *error != Error::NA),
+        )
     }
     pub(crate) fn fn_isna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Error {
-                    error: Error::NA, ..
-                } => {
-                    return CalcResult::Boolean(true);
-                }
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_value_of_type(args, cell, |v| {
+            matches!(v, Some(ArrayNode::Error(Error::NA)))
+        })
     }
 
     // Returns true if it is a reference or evaluates to a reference
