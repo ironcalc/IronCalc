@@ -23,7 +23,7 @@ use super::worksheets::{
     find_or_add_formula, from_a1_to_rc, get_cell_from_excel, parse_cell_reference, parse_range,
     CellArrayKind,
 };
-use super::xml::{attribute_value_of, reference_of, XmlNode, XmlTreeBuilder};
+use super::xml::{attribute_value_of, reference_of, string_text, XmlNode, XmlTreeBuilder};
 use quick_xml::XmlVersion;
 
 // sheetData
@@ -149,6 +149,12 @@ struct SheetDataReader<'a, 'p> {
     stack: Vec<Tag>,
     row: Option<RowXml>,
     cell: Option<CellXml>,
+    /// For each element open inside an inline string, `<is>` included,
+    /// whether `xml:space="preserve"` is in force there.
+    inline_space: Vec<bool>,
+    /// Where the text of the open `<t>` of an inline string starts in the
+    /// cell's `rich_text`.
+    text_start: usize,
 
     /// What the last row and the last cell were read into, kept for the next
     /// ones: a sheet has millions of cells, and with these none of them
@@ -156,6 +162,18 @@ struct SheetDataReader<'a, 'p> {
     row_buffer: Vec<(i32, Cell)>,
     reference_buffer: String,
     value_buffer: String,
+}
+
+/// Whether the whitespace in the text of `element` is kept: its own
+/// `xml:space` if it has one, else `inherited`, its parent's.
+fn preserves_space(element: &BytesStart, inherited: bool) -> Result<bool, XlsxError> {
+    for attribute in element.attributes() {
+        let attribute = attribute?;
+        if let "xml:space" = attribute.key.as_ref() {
+            return Ok(attribute_value_of(&attribute)? == "preserve");
+        }
+    }
+    Ok(inherited)
 }
 
 /// The `t` attribute of a cell. The types there are need no string of their own.
@@ -209,6 +227,17 @@ impl SheetDataReader<'_, '_> {
                 formula.has_elements = true;
             }
         }
+        if tag == Tag::InlineString || !self.inline_space.is_empty() {
+            let inherited = self.inline_space.last().copied().unwrap_or(false);
+            self.inline_space.push(preserves_space(element, inherited)?);
+            if tag == Tag::Text {
+                self.text_start = self
+                    .cell
+                    .as_ref()
+                    .and_then(|cell| cell.rich_text.as_ref())
+                    .map_or(0, String::len);
+            }
+        }
         match tag {
             Tag::Row => self.start_row(element)?,
             Tag::Cell => self.start_cell(element)?,
@@ -247,6 +276,18 @@ impl SheetDataReader<'_, '_> {
     }
 
     fn close(&mut self, tag: Tag) -> Result<(), XlsxError> {
+        if let Some(preserve_space) = self.inline_space.pop() {
+            if tag == Tag::Text {
+                if let Some(rich_text) = self.cell.as_mut().and_then(|c| c.rich_text.as_mut()) {
+                    let kept = string_text(&rich_text[self.text_start..], preserve_space);
+                    if kept.len() < rich_text.len() - self.text_start {
+                        let kept = kept.to_string();
+                        rich_text.truncate(self.text_start);
+                        rich_text.push_str(&kept);
+                    }
+                }
+            }
+        }
         match tag {
             Tag::Row => self.end_row(),
             Tag::Cell => self.end_cell(),
@@ -646,6 +687,8 @@ pub(super) fn read_sheet_data<R: BufRead>(
         stack: Vec::new(),
         row: None,
         cell: None,
+        inline_space: Vec::new(),
+        text_start: 0,
         row_buffer: Vec::new(),
         reference_buffer: String::new(),
         value_buffer: String::new(),
