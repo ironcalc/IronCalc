@@ -85,6 +85,23 @@ impl<'a> Model<'a> {
             fn_criteria.push(build_criteria(criterion, self.locale));
         }
 
+        match self.countifs_count(ranges.as_slice(), &fn_criteria, cell) {
+            Ok(total) => CalcResult::Number(total),
+            Err(e) => e,
+        }
+    }
+
+    /// Counts the cells matching every criterion, clipped to the used area (and
+    /// counting the empty cells past it only when a criterion matches empty), the
+    /// way COUNTIFS does. Shared with the spilled COUNTIF path so a spilled count
+    /// does not walk a whole criteria column once per criterion.
+    pub(crate) fn countifs_count(
+        &mut self,
+        ranges: &[Range],
+        fn_criteria: &[Criterion<'_>],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let case_count = ranges.len();
         let mut total = 0.0;
         let first_range = &ranges[0];
         let left_row = first_range.left.row;
@@ -95,11 +112,11 @@ impl<'a> Model<'a> {
         let dimension = match self.workbook.worksheet(first_range.left.sheet) {
             Ok(s) => s.dimension(),
             Err(_) => {
-                return CalcResult::new_error(
+                return Err(CalcResult::new_error(
                     Error::ERROR,
                     cell,
                     format!("Invalid worksheet index: '{}'", first_range.left.sheet),
-                )
+                ))
             }
         };
         let max_row = dimension.max_row;
@@ -181,7 +198,7 @@ impl<'a> Model<'a> {
                 }
             }
         }
-        CalcResult::Number(total)
+        Ok(total)
     }
 
     pub(crate) fn apply_ifs<F>(
@@ -378,26 +395,6 @@ impl<'a> Model<'a> {
         }
     }
 
-    /// Counts the cells of `range` that satisfy `fn_criterion`, with COUNTIF/COUNTIFS
-    /// semantics (a cell of any type counts, not only numbers). Used for the spilled
-    /// COUNTIF path.
-    fn count_matches(&mut self, range: &Range, fn_criterion: &Criterion<'_>) -> f64 {
-        let mut total = 0.0;
-        for row in range.left.row..=range.right.row {
-            for column in range.left.column..=range.right.column {
-                let value = self.evaluate_cell(CellReferenceIndex {
-                    sheet: range.left.sheet,
-                    row,
-                    column,
-                });
-                if fn_criterion(&value) {
-                    total += 1.0;
-                }
-            }
-        }
-        total
-    }
-
     /// COUNTIF where the `criteria` argument may be a single value, a range or an
     /// array. A scalar criterion yields a single count (via COUNTIFS); a range or
     /// array criterion spills one count per element, preserving the criteria's shape.
@@ -423,10 +420,19 @@ impl<'a> Model<'a> {
         for criteria_row in &criteria_grid {
             let mut out_row: Vec<ArrayNode> = Vec::with_capacity(criteria_row.len());
             for criterion in criteria_row {
-                let fn_criterion = build_criteria(criterion, self.locale);
-                out_row.push(ArrayNode::Number(
-                    self.count_matches(&criteria_range, &fn_criterion),
-                ));
+                // Count through the same used-area-clipped walk as COUNTIFS (one
+                // criteria range, one criterion), not the whole criteria range.
+                let fn_criteria = [build_criteria(criterion, self.locale)];
+                let node = match self.countifs_count(
+                    std::slice::from_ref(&criteria_range),
+                    &fn_criteria,
+                    cell,
+                ) {
+                    Ok(total) => ArrayNode::Number(total),
+                    Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+                    Err(_) => ArrayNode::Error(Error::ERROR),
+                };
+                out_row.push(node);
             }
             output.push(out_row);
         }

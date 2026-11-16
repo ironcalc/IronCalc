@@ -156,3 +156,17 @@ fn maxifs_array_criteria_no_match_is_zero() {
     assert_eq!(model._get_text("D1"), "30");
     assert_eq!(model._get_text("E1"), "0");
 }
+
+// ── Open-column criteria range ────────────────────────────────────────────────
+// COUNTIF counts through the COUNTIFS walk, clipped to the used area, so a whole
+// column is not read once per criterion. The counts still match.
+
+#[test]
+fn countif_whole_column_array_criteria_spill() {
+    let mut model = group_model(); // A1:A6 = A,A,B,B,C,A
+    model._set("D1", r#"=COUNTIF(A:A,{"A","B","C"})"#);
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "3"); // A
+    assert_eq!(model._get_text("E1"), "2"); // B
+    assert_eq!(model._get_text("F1"), "1"); // C
+}
