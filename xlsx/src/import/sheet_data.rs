@@ -86,6 +86,8 @@ struct RowXml {
     index: Option<i32>,
     /// With their column, in the order the file gives them.
     cells: Vec<(i32, Cell)>,
+    /// `xml:space="preserve"` is in force on the row, its own or inherited.
+    preserve_space: bool,
 }
 
 /// An `<f>` element: the formula of a cell.
@@ -126,7 +128,8 @@ struct CellXml {
     ///   </is>
     /// </c>
     rich_text: Option<String>,
-    /// The cell's `xml:space` is "preserve", inherited by its inline string.
+    /// `xml:space="preserve"` is in force on the cell, its own or its row's;
+    /// its inline string inherits it.
     preserve_space: bool,
     formula: Option<FormulaXml>,
 }
@@ -149,6 +152,9 @@ struct SheetDataReader<'a, 'p> {
 
     /// The open elements inside `sheetData`.
     stack: Vec<Tag>,
+    /// `xml:space="preserve"` is in force on `sheetData`, its own or the
+    /// worksheet's.
+    preserve_space: bool,
     row: Option<RowXml>,
     cell: Option<CellXml>,
     /// For each element open inside an inline string, `<is>` included,
@@ -337,6 +343,7 @@ impl SheetDataReader<'_, '_> {
         let mut style = 0;
         let mut custom_format = false;
         let mut hidden = false;
+        let mut preserve_space = self.preserve_space;
         for attribute in element.attributes() {
             let attribute = attribute?;
             let value = attribute_value_of(&attribute)?;
@@ -350,6 +357,7 @@ impl SheetDataReader<'_, '_> {
                 "s" => style = value.parse::<i32>().unwrap_or(0),
                 "customFormat" => custom_format = parse_bool_with_default(Some(&value), false),
                 "hidden" => hidden = parse_bool_with_default(Some(&value), false),
+                "xml:space" => preserve_space = &*value == "preserve",
                 _ => {}
             }
         }
@@ -371,6 +379,7 @@ impl SheetDataReader<'_, '_> {
         self.row = Some(RowXml {
             index,
             cells: std::mem::take(&mut self.row_buffer),
+            preserve_space,
         });
         Ok(())
     }
@@ -406,6 +415,10 @@ impl SheetDataReader<'_, '_> {
         // ph: Show Phonetic, unused
         let mut cell = CellXml {
             reference: std::mem::take(&mut self.reference_buffer),
+            preserve_space: self
+                .row
+                .as_ref()
+                .map_or(self.preserve_space, |row| row.preserve_space),
             ..Default::default()
         };
         cell.reference.clear();
@@ -679,6 +692,8 @@ pub(super) fn read_sheet_data<R: BufRead>(
     let mut tree = XmlTreeBuilder::new();
     let mut buffer = Vec::new();
     let mut in_sheet_data = false;
+    // `xml:space` on the worksheet, which `sheetData` inherits
+    let mut worksheet_preserves_space = false;
     let mut state = SheetDataReader {
         sheet_name,
         parser,
@@ -691,6 +706,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
         index_map: HashMap::new(),
         array_cell: HashMap::new(),
         stack: Vec::new(),
+        preserve_space: false,
         row: None,
         cell: None,
         inline_space: Vec::new(),
@@ -705,6 +721,13 @@ pub(super) fn read_sheet_data<R: BufRead>(
             Event::Eof => break,
             Event::Start(element) if !in_sheet_data && is_sheet_data(element) => {
                 in_sheet_data = true;
+                state.preserve_space = preserves_space(element, worksheet_preserves_space)?;
+            }
+            Event::Start(element)
+                if !in_sheet_data && element.local_name().as_ref() == "worksheet" =>
+            {
+                worksheet_preserves_space = preserves_space(element, false)?;
+                tree.push(&event)?;
             }
             Event::End(element)
                 if in_sheet_data && state.stack.is_empty() && is_sheet_data_end(element) =>
