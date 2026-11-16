@@ -184,17 +184,29 @@ pub fn format_number(
             } else {
                 (value, "".to_string())
             };
-            // Excel rounds a date-time to the nearest second, and then takes it apart:
-            // 18:58 is stored as 68279.99999999999 seconds and shows 18:58, and a time
-            // that rounds up to midnight is the next day. The time of day is the part
-            // above the floor, so that a negative serial (a date before the epoch)
-            // formats correctly.
+            // Excel rounds a date-time to the nearest second (or to the tenth,
+            // hundredth or thousandth of a second the format shows, as in `ss.00`),
+            // and then takes it apart: 18:58 is stored as 68279.99999999999 seconds
+            // and shows 18:58, and a time that rounds up to midnight is the next day.
+            // The time of day is the part above the floor, so that a negative serial
+            // (a date before the epoch) formats correctly.
+            let fraction_digits = tokens
+                .iter()
+                .find_map(|t| match t {
+                    TextToken::SecondFraction(n) => Some(*n),
+                    _ => None,
+                })
+                .unwrap_or(0);
+            let ticks_per_second = 10_i64.pow(fraction_digits);
+            let ticks_per_day = SECONDS_PER_DAY * ticks_per_second;
             let mut day = value.floor();
-            let mut seconds_of_day = ((value - day) * SECONDS_PER_DAY as f64).round() as i64;
-            if seconds_of_day == SECONDS_PER_DAY {
+            let mut ticks_of_day = ((value - day) * ticks_per_day as f64).round() as i64;
+            if ticks_of_day == ticks_per_day {
                 day += 1.0;
-                seconds_of_day = 0;
+                ticks_of_day = 0;
             }
+            let seconds_of_day = ticks_of_day / ticks_per_second;
+            let second_fraction = ticks_of_day % ticks_per_second;
             let hours = seconds_of_day / 3600;
             let minutes = seconds_of_day / 60 % 60;
             let seconds = seconds_of_day % 60;
@@ -210,6 +222,11 @@ pub fn format_number(
                 color: None,
                 error: Some(format!("Invalid date value: '{value}'")),
             };
+            // A time that rounds up past the last day is not a valid date, even
+            // when the format only shows the time: 9999-12-31 23:59:59.6 is #VALUE!
+            if date.is_none() && value.floor() < day {
+                return invalid_date(value);
+            }
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -353,6 +370,11 @@ pub fn format_number(
                     TextToken::SecondPadded => {
                         let second = seconds as i32;
                         text = format!("{text}{second:02}");
+                    }
+                    TextToken::SecondFraction(n) => {
+                        let decimal = &locale.numbers.symbols.decimal;
+                        let width = *n as usize;
+                        text = format!("{text}{decimal}{second_fraction:0width$}");
                     }
                     TextToken::AMPM => {
                         let ampm = if hours < 12 { "AM" } else { "PM" };
@@ -608,6 +630,7 @@ pub fn format_number(
                     TextToken::MinutePadded => {}
                     TextToken::Second => {}
                     TextToken::SecondPadded => {}
+                    TextToken::SecondFraction(_) => {}
                     TextToken::AMPM => {}
                     TextToken::ElapsedHour => {}
                     TextToken::ElapsedHourPadded => {}

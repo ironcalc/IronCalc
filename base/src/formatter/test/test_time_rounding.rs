@@ -94,3 +94,69 @@ fn rounding_carries_into_the_next_day() {
     assert_eq!(format_number(value, "h:mm", locale).text, "0:00");
     assert_eq!(format_number(value, "[h]:mm", locale).text, "1087032:00");
 }
+
+// `m` and `mm` just before the seconds are minutes, not months: 00:59:59.6
+// rounds to 01:00:00, which is 00:00 in mm:ss.
+#[test]
+fn minutes_before_seconds() {
+    let locale = get_default_locale();
+    assert_eq!(
+        format_number(3_599.6 / 86_400.0, "mm:ss", locale).text,
+        "00:00"
+    );
+    assert_eq!(
+        format_number(754.0 / 86_400.0, "mm:ss", locale).text,
+        "12:34"
+    );
+    assert_eq!(
+        format_number(754.0 / 86_400.0, "m:ss", locale).text,
+        "12:34"
+    );
+    // A month is still a month
+    assert_eq!(
+        format_number(45_292.0, "mm/dd/yyyy", locale).text,
+        "01/01/2024"
+    );
+}
+
+// The fraction of a second the format shows is rounded, not the second:
+// 12:00:59.6 is 12:00:59.6 in h:mm:ss.0
+#[test]
+fn fractions_of_a_second() {
+    let locale = get_default_locale();
+    let value = 43_259.6 / 86_400.0;
+    assert_eq!(format_number(value, "h:mm:ss.0", locale).text, "12:00:59.6");
+    assert_eq!(
+        format_number(value, "h:mm:ss.00", locale).text,
+        "12:00:59.60"
+    );
+    assert_eq!(
+        format_number(43_259.96 / 86_400.0, "h:mm:ss.00", locale).text,
+        "12:00:59.96"
+    );
+    assert_eq!(
+        format_number(43_259.96 / 86_400.0, "h:mm:ss.0", locale).text,
+        "12:01:00.0"
+    );
+    assert_eq!(
+        format_number(1.234 / 86_400.0, "[ss].000", locale).text,
+        "01.234"
+    );
+    assert_eq!(
+        format_number(1.234 / 86_400.0, "mm:ss.00", locale).text,
+        "00:01.23"
+    );
+}
+
+// A time on 9999-12-31 that rounds up to midnight is past the last date, even
+// when the format only shows the time.
+#[test]
+fn rounding_past_the_last_date() {
+    let locale = get_default_locale();
+    let value = 2_958_465.0 + 86_399.6 / 86_400.0;
+    assert_eq!(format_number(value, "h:mm:ss", locale).text, "#VALUE!");
+    assert_eq!(
+        format_number(2_958_465.0 + 86_399.4 / 86_400.0, "h:mm:ss", locale).text,
+        "23:59:59"
+    );
+}
