@@ -18,17 +18,6 @@ fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> Calc
     }
 }
 
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
-    match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        _ => ArrayNode::Error(Error::VALUE),
-    }
-}
-
 impl<'a> Model<'a> {
     /// `=SCAN([initial_value], array, lambda)`
     ///
@@ -79,7 +68,7 @@ impl<'a> Model<'a> {
         // slot in the output is that seed value itself (not the result of calling lambda).
         let mut start_col = 0;
         if !has_initial {
-            result[0][0] = calc_result_to_array_node(accumulator.clone());
+            result[0][0] = self.lambda_result_to_array_node(accumulator.clone());
             start_col = 1;
         }
 
@@ -95,7 +84,7 @@ impl<'a> Model<'a> {
                 if accumulator.is_error() {
                     return accumulator;
                 }
-                result[i][j] = calc_result_to_array_node(accumulator.clone());
+                result[i][j] = self.lambda_result_to_array_node(accumulator.clone());
             }
         }
 

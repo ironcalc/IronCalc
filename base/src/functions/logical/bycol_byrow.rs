@@ -9,17 +9,6 @@ use crate::{
     model::Model,
 };
 
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
-    match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        _ => ArrayNode::Error(Error::VALUE),
-    }
-}
-
 impl<'a> Model<'a> {
     /// `=BYCOL(array, lambda)`
     ///
@@ -50,7 +39,7 @@ impl<'a> Model<'a> {
         for j in 0..num_cols {
             let column: Vec<Vec<ArrayNode>> = data.iter().map(|row| vec![row[j].clone()]).collect();
             let result = self.call_lambda(lambda_result.clone(), &[Node::ArrayKind(column)], cell);
-            results.push(calc_result_to_array_node(result));
+            results.push(self.lambda_result_to_array_node(result));
         }
 
         CalcResult::Array(vec![results])
@@ -87,7 +76,7 @@ impl<'a> Model<'a> {
                 &[Node::ArrayKind(vec![row.clone()])],
                 cell,
             );
-            results.push(vec![calc_result_to_array_node(result)]);
+            results.push(vec![self.lambda_result_to_array_node(result)]);
         }
 
         CalcResult::Array(results)
@@ -149,7 +138,7 @@ impl<'a> Model<'a> {
                     vec![CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
                     cell,
                 );
-                row.push(calc_result_to_array_node(cell_result));
+                row.push(self.lambda_result_to_array_node(cell_result));
             }
             result.push(row);
         }

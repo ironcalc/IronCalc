@@ -82,6 +82,29 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
 }
 
 impl<'a> Model<'a> {
+    /// The element that what a LAMBDA gives becomes in the array built by
+    /// BYROW, BYCOL, MAP, MAKEARRAY or SCAN. A single value is that value,
+    /// also as a 1x1 array or a reference to a single cell (`CHAR(r)` for a
+    /// row `r` of one element is a 1x1 array). Anything larger, or a LAMBDA,
+    /// cannot be one element: `#CALC!`.
+    pub(crate) fn lambda_result_to_array_node(&mut self, result: CalcResult) -> ArrayNode {
+        match result {
+            CalcResult::Array(array) => match array.as_slice() {
+                [row] if row.len() == 1 => row[0].clone(),
+                _ => ArrayNode::Error(Error::CALC),
+            },
+            CalcResult::Range { left, right } => {
+                if left == right {
+                    calc_result_to_array_node(self.evaluate_cell(left))
+                } else {
+                    ArrayNode::Error(Error::CALC)
+                }
+            }
+            CalcResult::Lambda(_) => ArrayNode::Error(Error::CALC),
+            other => calc_result_to_array_node(other),
+        }
+    }
+
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
         match parse_finite_number(s.trim()) {
             Some(f) => Some(f),
