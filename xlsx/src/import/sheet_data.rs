@@ -125,6 +125,8 @@ struct CellXml {
     ///   </is>
     /// </c>
     rich_text: Option<String>,
+    /// The cell's `xml:space` is "preserve", inherited by its inline string.
+    preserve_space: bool,
     formula: Option<FormulaXml>,
 }
 
@@ -226,7 +228,10 @@ impl SheetDataReader<'_, '_> {
             }
         }
         if tag == Tag::InlineString || !self.inline_space.is_empty() {
-            let inherited = self.inline_space.last().copied().unwrap_or(false);
+            let inherited = match self.inline_space.last() {
+                Some(preserve_space) => *preserve_space,
+                None => self.cell.as_ref().is_some_and(|cell| cell.preserve_space),
+            };
             self.inline_space.push(preserves_space(element, inherited)?);
             if tag == Tag::Text {
                 self.text_start = self
@@ -416,6 +421,7 @@ impl SheetDataReader<'_, '_> {
                 "t" => cell.cell_type = Some(cell_type_of(&value)),
                 "cm" => cell.is_dynamic_array = &*value == "1",
                 "vm" => cell.value_metadata = Some(value.into_owned()),
+                "xml:space" => cell.preserve_space = &*value == "preserve",
                 _ => {}
             }
         }
