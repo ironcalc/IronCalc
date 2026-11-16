@@ -696,42 +696,33 @@ fn parse_datevalue_parts(value: &str) -> Result<(u32, u32, i32, i32), String> {
 }
 
 impl<'a> Model<'a> {
+    /// A date argument of DATEDIF. Text is coerced like any other number, so
+    /// numeric text ("10") is a serial number, and otherwise read as DATEVALUE
+    /// would ("2026-01-01 24:00:00" rolls over to the next day). Text with
+    /// surrounding spaces (" 2024-01-10 ") is #VALUE! in Excel. Booleans count
+    /// as 0 and 1, empty cells as 0.
     fn get_date_serial(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<i64, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
-        match result {
-            CalcResult::Number(f) => Ok(f.floor() as i64),
-            CalcResult::String(s) => match parse_datevalue_text(&s, self.date_system()) {
-                Ok(n) => Ok(n),
-                Err(error) => Err(CalcResult::Error {
-                    error,
-                    origin: cell,
-                    message: "Invalid date".to_string(),
-                }),
-            },
-            CalcResult::Boolean(b) => {
-                if b {
-                    Ok(1)
-                } else {
-                    Ok(0)
+        if let CalcResult::String(s) = &result {
+            if let Some(f) = self.cast_number(s) {
+                return Ok(f.floor() as i64);
+            }
+            if s.trim() == s {
+                if let Ok(n) = parse_datevalue_text(s, self.date_system()) {
+                    return Ok(n);
                 }
             }
-            error @ CalcResult::Error { .. } => Err(error),
-            CalcResult::Range { .. } => Err(CalcResult::Error {
-                error: Error::NIMPL,
+            return Err(CalcResult::Error {
+                error: Error::VALUE,
                 origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(0),
-            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
+                message: "Invalid date".to_string(),
+            });
         }
+        self.cast_to_number(result, cell).map(|f| f.floor() as i64)
     }
 
     // -----------------------------------------------------------------------
@@ -1587,7 +1578,7 @@ impl<'a> Model<'a> {
             }
             _ => {
                 return CalcResult::Error {
-                    error: Error::VALUE,
+                    error: Error::NUM,
                     origin: cell,
                     message: "Invalid unit".to_string(),
                 };

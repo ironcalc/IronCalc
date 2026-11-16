@@ -179,13 +179,13 @@ fn test_datedif_edge_and_error_cases() {
     model._set("A1", "=DATEDIF(\"2/28/2020\", \"3/1/2020\", \"D\")");
     // End date before start date => #NUM!
     model._set("A2", "=DATEDIF(\"2/1/2021\", \"1/1/2021\", \"D\")");
-    // Invalid unit => #VALUE!
+    // Invalid unit => #NUM!
     model._set("A3", "=DATEDIF(\"1/1/2020\", \"1/1/2021\", \"Z\")");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"2");
     assert_eq!(model._get_text("A2"), *"#NUM!");
-    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
 }
 
 #[test]
