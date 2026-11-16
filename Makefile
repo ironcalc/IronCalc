@@ -1,6 +1,9 @@
 .PHONY: lint
 lint:
 	cargo fmt -- --check
+	@v=$$(cargo pkgid -p ironcalc | sed 's/.*[#@]//'); \
+	grep -qF 'ironcalc = { git = "https://github.com/ironcalc/IronCalc", tag = "v'"$$v"'" }' README.md || \
+	{ echo "README.md: ironcalc dependency example must use tag v$$v"; exit 1; }
 	cargo clippy --all-targets --all-features -- -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings
 	cd webapp/IronCalc/ && npm install && npm run check
 	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run check
