@@ -32,7 +32,10 @@ function evaluateAndSend(model: Model) {
   try {
     model.evaluate();
     const results = tracker.takeResults(model);
-    post({ type: "results", seq: lastSeq, results }, [results.buffer]);
+    const evaluationMs = model.getLastEvaluationDuration() ?? 0;
+    post({ type: "results", seq: lastSeq, results, evaluationMs }, [
+      results.buffer,
+    ]);
   } finally {
     tracker.free();
   }
@@ -81,9 +84,9 @@ async function handle(message: ToWorker) {
       pending = [];
       lastSeq = 0;
       post({ type: "opened" });
-      // The values in a file are those of its last evaluation, which may be
-      // missing changes that were saved before their results came back
-      evaluateAndSend(model);
+      if (message.evaluate) {
+        evaluateAndSend(model);
+      }
       break;
     }
     case "diffs": {

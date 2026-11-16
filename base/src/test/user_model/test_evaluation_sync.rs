@@ -313,3 +313,23 @@ fn wrong_results() {
     let mut model = new_empty_user_model();
     assert!(model.apply_evaluation_results(b"not results").is_err());
 }
+
+#[test]
+fn last_evaluation_duration() {
+    let mut model = new_empty_user_model();
+    assert_eq!(model.last_evaluation_duration(), None);
+
+    // A change made while paused is not evaluated
+    model.pause_evaluation();
+    model.set_user_input(0, 1, 1, "=1+1").unwrap();
+    assert_eq!(model.last_evaluation_duration(), None);
+
+    // The clock is mocked in tests: it does not move during the evaluation
+    model.resume_evaluation();
+    model.set_user_input(0, 1, 2, "=A1+1").unwrap();
+    assert_eq!(model.last_evaluation_duration(), Some(0));
+
+    let mut other = new_empty_user_model();
+    other.evaluate();
+    assert_eq!(other.last_evaluation_duration(), Some(0));
+}

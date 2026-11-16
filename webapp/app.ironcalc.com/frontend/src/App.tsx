@@ -176,7 +176,8 @@ function App() {
 
   useEffect(() => {
     if (!model) return;
-    // Evaluates (and serializes) the workbook off the main thread
+    // Evaluates (and serializes) the workbook off the main thread when it is
+    // slow to evaluate
     const engine = new WorkerEngine(model, () => {
       // Cells that depend on the last changes now have their values
       ironCalcRef.current?.workbook?.refresh();

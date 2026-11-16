@@ -13,7 +13,7 @@ use crate::{
         types::Area,
         utils::{is_valid_column_number, is_valid_row},
     },
-    model::{DefinedNameEntry, FmtSettings, Model},
+    model::{get_milliseconds_since_epoch, DefinedNameEntry, FmtSettings, Model},
     types::{
         Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
         MergedCell, SheetProperties, SheetState, Style, Theme, VerticalAlignment,
@@ -216,6 +216,8 @@ pub struct UserModel<'a> {
     history: History,
     pub(super) send_queue: Vec<QueueDiffs>,
     pub(super) pause_evaluation: bool,
+    /// How long the last evaluation took, in milliseconds.
+    last_evaluation_duration: Option<i64>,
     /// What the user is looking at: selected sheet, selection and scroll
     /// position of each sheet, window size. Runtime state only: it is not
     /// part of the workbook and is not serialized.
@@ -257,6 +259,7 @@ impl<'a> UserModel<'a> {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            last_evaluation_duration: None,
             view: WorkbookView::default(),
         };
         user_model.apply_focus_on_open();
@@ -279,6 +282,7 @@ impl<'a> UserModel<'a> {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            last_evaluation_duration: None,
             view: WorkbookView::default(),
         })
     }
@@ -387,7 +391,24 @@ impl<'a> UserModel<'a> {
     /// * [Model::evaluate]
     /// * [UserModel::pause_evaluation]
     pub fn evaluate(&mut self) {
-        self.model.evaluate()
+        self.timed_evaluate()
+    }
+
+    /// How long the last evaluation took, in milliseconds. `None` if the model
+    /// has not evaluated since it was created.
+    ///
+    /// A host can use it to decide where to evaluate: a workbook whose
+    /// evaluation blocks the UI for too long can be evaluated elsewhere (see
+    /// [crate::EvaluationTracker]).
+    pub fn last_evaluation_duration(&self) -> Option<i64> {
+        self.last_evaluation_duration
+    }
+
+    fn timed_evaluate(&mut self) {
+        let start = get_milliseconds_since_epoch();
+        self.model.evaluate();
+        // The clock can go back
+        self.last_evaluation_duration = Some((get_milliseconds_since_epoch() - start).max(0));
     }
 
     /// Returns the list of pending diffs and removes them from the queue
@@ -2338,7 +2359,7 @@ impl<'a> UserModel<'a> {
 
     pub(super) fn evaluate_if_not_paused(&mut self) {
         if !self.pause_evaluation {
-            self.model.evaluate();
+            self.timed_evaluate();
         }
     }
 }

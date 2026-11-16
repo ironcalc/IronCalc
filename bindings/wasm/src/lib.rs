@@ -240,6 +240,13 @@ impl Model {
         self.model.evaluate();
     }
 
+    /// How long the last evaluation took, in milliseconds, or `undefined` if
+    /// the model has not evaluated yet.
+    #[wasm_bindgen(js_name = "getLastEvaluationDuration")]
+    pub fn get_last_evaluation_duration(&self) -> Option<f64> {
+        self.model.last_evaluation_duration().map(|ms| ms as f64)
+    }
+
     #[wasm_bindgen(js_name = "flushSendQueue")]
     pub fn flush_send_queue(&mut self) -> Vec<u8> {
         self.model.flush_send_queue()

@@ -582,8 +582,8 @@ export function saveSelectedModelInStorage(model: Model): Promise<void> {
   });
 }
 
-// Persists the bytes of the selected workbook made elsewhere (by the
-// evaluation worker, see workerEngine.ts). They are dropped if another
+// Persists the bytes of the selected workbook once they are made (maybe by
+// the evaluation worker, see workerEngine.ts). They are dropped if another
 // workbook was selected while they were being made.
 export function saveSelectedBytesInStorage(
   bytes: Promise<Uint8Array | null>,
