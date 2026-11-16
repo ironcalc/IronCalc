@@ -13,15 +13,37 @@ use std::io::Write;
 
 const MAIN: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 
+/// Attributes added to the opening tags of the file's elements (`c` to the
+/// cells of the inline strings).
+#[derive(Default)]
+struct On<'a> {
+    worksheet: &'a str,
+    sheet_data: &'a str,
+    row: &'a str,
+    c: &'a str,
+    is: &'a str,
+    sst: &'a str,
+    si: &'a str,
+}
+
+const PRESERVE: &str = " xml:space=\"preserve\"";
+
 /// The bytes of an xlsx file with one sheet. Row n holds in A the shared
 /// string whose `<si>` has the inner XML `shared[n - 1]`, and in B the inline
-/// string whose `<is>` has the inner XML `inline[n - 1]`. `sst`, `si`, `is` and
-/// `c` are added to the opening tags of those elements (`c` to the cells of
-/// the inline strings).
-fn xlsx(shared: &[&str], inline: &[&str], sst: &str, si: &str, is: &str, c: &str) -> Vec<u8> {
+/// string whose `<is>` has the inner XML `inline[n - 1]`.
+fn xlsx(shared: &[&str], inline: &[&str], on: &On) -> Vec<u8> {
+    let On {
+        worksheet,
+        sheet_data,
+        row: row_attributes,
+        c,
+        is,
+        sst,
+        si,
+    } = on;
     let mut data = String::new();
     for row in 1..=shared.len().max(inline.len()) {
-        data.push_str(&format!("<row r=\"{row}\">"));
+        data.push_str(&format!("<row r=\"{row}\"{row_attributes}>"));
         if row <= shared.len() {
             data.push_str(&format!("<c r=\"A{row}\" t=\"s\"><v>{}</v></c>", row - 1));
         }
@@ -81,7 +103,7 @@ fn xlsx(shared: &[&str], inline: &[&str], sst: &str, si: &str, is: &str, c: &str
             "xl/worksheets/sheet1.xml",
             format!(
                 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\
-                 <worksheet xmlns=\"{MAIN}\"><sheetData>{data}</sheetData></worksheet>"
+                 <worksheet xmlns=\"{MAIN}\"{worksheet}><sheetData{sheet_data}>{data}</sheetData></worksheet>"
             ),
         ),
         (
@@ -133,7 +155,7 @@ fn assert_read_as_excel(cases: &[(&str, &str)], inline_too: bool) {
     let xml: Vec<&str> = cases.iter().map(|(xml, _)| *xml).collect();
     let expected: Vec<String> = cases.iter().map(|(_, text)| text.to_string()).collect();
     let inline: &[&str] = if inline_too { &xml } else { &[] };
-    let bytes = xlsx(&xml, inline, "", "", "", "");
+    let bytes = xlsx(&xml, inline, &On::default());
     assert_eq!(texts(&bytes, 1, cases.len()), expected, "shared strings");
     if inline_too {
         assert_eq!(texts(&bytes, 2, cases.len()), expected, "inline strings");
@@ -224,13 +246,103 @@ fn escapes_are_decoded_after_the_ends_are_dropped() {
 fn preserve_around_the_t_is_inherited() {
     let shared = ["<t> kept </t>", "<r><t> run1 </t></r><r><t> run2 </t></r>"];
     let expected = vec![" kept ".to_string(), " run1  run2 ".to_string()];
-    let preserve = " xml:space=\"preserve\"";
-    let on_si = xlsx(&shared, &[], "", preserve, "", "");
+    let on_si = xlsx(
+        &shared,
+        &[],
+        &On {
+            si: PRESERVE,
+            ..On::default()
+        },
+    );
     assert_eq!(texts(&on_si, 1, 2), expected, "on <si>");
-    let on_sst = xlsx(&shared, &[], preserve, "", "", "");
+    let on_sst = xlsx(
+        &shared,
+        &[],
+        &On {
+            sst: PRESERVE,
+            ..On::default()
+        },
+    );
     assert_eq!(texts(&on_sst, 1, 2), expected, "on <sst>");
-    let on_is = xlsx(&[], &shared, "", "", preserve, "");
+    let on_is = xlsx(
+        &[],
+        &shared,
+        &On {
+            is: PRESERVE,
+            ..On::default()
+        },
+    );
     assert_eq!(texts(&on_is, 2, 2), expected, "on <is>");
-    let on_c = xlsx(&[], &shared, "", "", "", preserve);
+    let on_c = xlsx(
+        &[],
+        &shared,
+        &On {
+            c: PRESERVE,
+            ..On::default()
+        },
+    );
     assert_eq!(texts(&on_c, 2, 2), expected, "on <c>");
+}
+
+/// Above the cell the rule is XML's (Excel was measured on `<c>` and below):
+/// `preserve` on the row, on `sheetData` or on the worksheet is inherited by
+/// the inline strings under it, and `xml:space="default"` nearer the text
+/// turns it off again.
+#[test]
+fn preserve_above_the_cell_is_inherited_and_default_turns_it_off() {
+    let inline = ["<t> kept </t>", "<r><t> run1 </t></r><r><t> run2 </t></r>"];
+    let kept = vec![" kept ".to_string(), " run1  run2 ".to_string()];
+    let dropped = vec!["kept".to_string(), "run1run2".to_string()];
+    let default = " xml:space=\"default\"";
+    let on_row = xlsx(
+        &[],
+        &inline,
+        &On {
+            row: PRESERVE,
+            ..On::default()
+        },
+    );
+    assert_eq!(texts(&on_row, 2, 2), kept, "on <row>");
+    let on_sheet_data = xlsx(
+        &[],
+        &inline,
+        &On {
+            sheet_data: PRESERVE,
+            ..On::default()
+        },
+    );
+    assert_eq!(texts(&on_sheet_data, 2, 2), kept, "on <sheetData>");
+    let on_worksheet = xlsx(
+        &[],
+        &inline,
+        &On {
+            worksheet: PRESERVE,
+            ..On::default()
+        },
+    );
+    assert_eq!(texts(&on_worksheet, 2, 2), kept, "on <worksheet>");
+    let off_on_c = xlsx(
+        &[],
+        &inline,
+        &On {
+            row: PRESERVE,
+            c: default,
+            ..On::default()
+        },
+    );
+    assert_eq!(texts(&off_on_c, 2, 2), dropped, "on <row>, default on <c>");
+    let off_on_row = xlsx(
+        &[],
+        &inline,
+        &On {
+            worksheet: PRESERVE,
+            row: default,
+            ..On::default()
+        },
+    );
+    assert_eq!(
+        texts(&off_on_row, 2, 2),
+        dropped,
+        "on <worksheet>, default on <row>"
+    );
 }
