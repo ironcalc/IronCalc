@@ -39,6 +39,9 @@ pub enum TextToken {
     ElapsedMinutePadded,
     ElapsedSecond,
     ElapsedSecondPadded,
+    // Tenths, hundredths or thousandths of a second after the seconds: the
+    // number of digits (1 to 3) in `ss.0`, `ss.00` or `ss.000`
+    SecondFraction(u32),
     AMPM,
 }
 pub struct NumberPart {
@@ -194,6 +197,30 @@ impl Parser {
                 Token::Percent => {
                     tokens.push(TextToken::Literal('%'));
                     percent += 1;
+                }
+                Token::Period
+                    if next_token == Token::Zero
+                        && matches!(
+                            tokens.last(),
+                            Some(
+                                TextToken::Second
+                                    | TextToken::SecondPadded
+                                    | TextToken::ElapsedSecond
+                                    | TextToken::ElapsedSecondPadded
+                            )
+                        ) =>
+                {
+                    // Fractions of a second: `ss.0`, `ss.00`, `ss.000`
+                    let mut digits = 0;
+                    let mut after = next_token;
+                    while after == Token::Zero && digits < 3 {
+                        digits += 1;
+                        after = self.lexer.next_token();
+                    }
+                    tokens.push(TextToken::SecondFraction(digits));
+                    last_token_is_digit = false;
+                    token = after;
+                    continue;
                 }
                 Token::Period => {
                     if is_number && !found_decimal_dot {
@@ -392,6 +419,28 @@ impl Parser {
             token = next_token;
         }
         if is_date {
+            // `m` and `mm` just before the seconds are minutes, as in `mm:ss`
+            // (right after the hours they already are)
+            for i in 0..tokens.len() {
+                if !matches!(tokens[i], TextToken::Month | TextToken::MonthPadded) {
+                    continue;
+                }
+                let next = tokens[i + 1..].iter().find(|t| {
+                    !matches!(
+                        t,
+                        TextToken::Literal(_)
+                            | TextToken::Text(_)
+                            | TextToken::Ghost(_)
+                            | TextToken::Spacer(_)
+                    )
+                });
+                if matches!(next, Some(TextToken::Second | TextToken::SecondPadded)) {
+                    tokens[i] = match tokens[i] {
+                        TextToken::Month => TextToken::Minute,
+                        _ => TextToken::MinutePadded,
+                    };
+                }
+            }
             if is_number {
                 return ParsePart::Error(ErrorPart {});
             }

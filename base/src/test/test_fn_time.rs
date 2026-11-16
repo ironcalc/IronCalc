@@ -192,7 +192,7 @@ fn test_time_function_precision_edge_cases() {
         ("B3", "=MINUTE(999.75)"),    // Multiple days, extract minute
         // Boundary conditions at rollover points
         ("C1", "=TIME(24,60,60)"), // Should normalize to next day (00:01:00)
-        ("C2", "=HOUR(0.999999999)"), // Almost 24 hours should be 23
+        ("C2", "=HOUR(0.999999999)"), // 23:59:59.9999 rounds to midnight
         ("C3", "=MINUTE(0.999999999)"), // Almost 24 hours, extract minutes
         ("C4", "=SECOND(0.999999999)"), // Almost 24 hours, extract seconds
         // Precision at boundaries
@@ -208,7 +208,7 @@ fn test_time_function_precision_edge_cases() {
 
     // Boundary normalization
     assert_eq!(model._get_text("C1"), *"0.042361111"); // 24:60:60 = 01:01:00 (normalized)
-    assert_eq!(model._get_text("C2"), *"23"); // Almost 24 hours = 23:xx:xx
+    assert_eq!(model._get_text("C2"), *"0"); // Rounded to the second: 00:00:00
 
     // High precision should be handled correctly
     let result_d1 = model._get_text("D1").parse::<f64>().unwrap();
@@ -374,8 +374,15 @@ fn test_time_component_extraction_comprehensive() {
     );
 
     // Test precision at boundaries
-    let (hour, _, _) = test_component_extraction("0.041666666"); // Just under 1:00 AM
-    assert_eq!(hour, "0");
+    // 00:59:59.99994 rounds to the second: 1:00:00
+    let (hour, _, _) = test_component_extraction("0.041666666");
+    assert_eq!(hour, "1");
+
+    let (hour, minute, second) = test_component_extraction("0.04166"); // 00:59:59.42
+    assert_eq!(
+        (hour, minute, second),
+        ("0".to_string(), "59".to_string(), "59".to_string())
+    );
 
     let (hour, _, _) = test_component_extraction("0.041666667"); // Exactly 1:00 AM
     assert_eq!(hour, "1");
@@ -419,13 +426,13 @@ fn test_time_component_function_errors() {
     assert_eq!(model._get_text("A6"), *"#ERROR!");
 
     // In the IronCalc date system -0.5 is 1899-12-29 12:00 and -0.000001 is
-    // 1899-12-29 23:59:59.9
+    // 1899-12-29 23:59:59.91, which rounds to the second: 1899-12-30 00:00:00
     assert_eq!(model._get_text("B1"), *"12");
     assert_eq!(model._get_text("B2"), *"0");
     assert_eq!(model._get_text("B3"), *"0");
-    assert_eq!(model._get_text("B4"), *"23");
-    assert_eq!(model._get_text("B5"), *"59");
-    assert_eq!(model._get_text("B6"), *"59");
+    assert_eq!(model._get_text("B4"), *"0");
+    assert_eq!(model._get_text("B5"), *"0");
+    assert_eq!(model._get_text("B6"), *"0");
 }
 
 #[test]
