@@ -29,6 +29,10 @@ fn test_column_to_number() {
         column_to_number("ab"),
         Err("Column identifier can use only A-Z characters".to_string())
     );
+    assert_eq!(
+        column_to_number("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"),
+        Err("Column is not valid.".to_string())
+    )
 }
 
 #[test]
