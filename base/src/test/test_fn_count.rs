@@ -151,3 +151,28 @@ fn test_fn_counta_whole_column_records_one_rectangle() {
     assert!(model.evaluation.seen.len() <= 4);
     assert_eq!(model.evaluation.seen_ranges.len(), 1);
 }
+
+// COUNTIFS walks its ranges as far as the larger used area of their sheets:
+// past it every cell of every range is empty. Sheet2 is used down to row 9,
+// further than Sheet1, and the pair in row 9 counts.
+#[test]
+fn test_fn_countifs_whole_columns_on_two_sheets() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("Sheet2!A1", "5");
+    model._set("Sheet2!A2", "6");
+    model._set("Sheet2!A9", "7");
+    model._set("C1", "=COUNTIFS(Sheet1!A:A,\"\",Sheet2!A:A,\">0\")");
+    model._set("C2", "=COUNTIFS(Sheet1!A1:A9,\"\",Sheet2!A1:A9,\">0\")");
+    model._set("D1", "=COUNTIFS(Sheet2!A:A,\">0\",Sheet1!A:A,\"\")");
+    // The same across whole rows
+    model._set("Sheet2!K3", "4");
+    model._set("D2", "=COUNTIFS(Sheet1!3:3,\"\",Sheet2!3:3,\">0\")");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "1");
+    assert_eq!(model._get_text("C2"), "1");
+    assert_eq!(model._get_text("D1"), "1");
+    assert_eq!(model._get_text("D2"), "1");
+}
