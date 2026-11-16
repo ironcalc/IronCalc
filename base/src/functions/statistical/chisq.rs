@@ -305,6 +305,35 @@ impl<'a> Model<'a> {
         self.values_from_range(left, right)
     }
 
+    /// `values_from_range` for a function that pairs the values of a range with
+    /// those of another range or array in reading order and skips a pair with
+    /// an empty cell (the paired T.TEST). The rows below the sheet's used area
+    /// are left out, but a range more than one row tall keeps its full width:
+    /// cut at the used width, the cells after the cut would move up in reading
+    /// order and be paired out of place. A range one row tall is cut at the
+    /// used width, which only shortens it.
+    pub(crate) fn values_from_used_rows(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        let (row, column) = self
+            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+        let column = if left.row == right.row {
+            column
+        } else {
+            right.column
+        };
+        let right = CellReferenceIndex {
+            sheet: left.sheet,
+            row,
+            column,
+        };
+        self.values_from_range(left, right)
+    }
+
     /// The bottom-right corners to read two ranges of the same shape to, for a
     /// function that pairs their cells position by position and gives a pair
     /// of empty cells no weight. A whole column or row is read only as far as

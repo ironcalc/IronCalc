@@ -61,3 +61,36 @@ fn test_fn_t_test_whole_columns() {
     assert_eq!(model._get_text("A2"), "TRUE");
     assert_eq!(model._get_text("A3"), "TRUE");
 }
+
+// The paired test pairs the cells of the two samples in reading order. A
+// range more than one row tall is read at its full width, so that a sample is
+// not cut narrower on its own sheet than the other is: Sheet1 is two columns
+// wide and Sheet2 three, and cutting each to its own width would pair 8 with
+// 100 and 10 with 9.
+#[test]
+fn test_fn_t_test_paired_whole_rows_on_two_sheets() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set("A1", "1");
+    model._set("B1", "4");
+    model._set("A2", "8");
+    model._set("B2", "10");
+    model._set("Sheet2!A1", "2");
+    model._set("Sheet2!B1", "5");
+    model._set("Sheet2!A2", "9");
+    model._set("Sheet2!B2", "12");
+    model._set("Sheet2!C1", "100");
+    model._set("A5", "=T.TEST(Sheet1!1:2,Sheet2!1:2,2,1)");
+    model._set("A6", "=T.TEST(Sheet1!A1:C2,Sheet2!A1:C2,2,1)");
+    model._set("A7", "=TTEST(Sheet1!1:2,Sheet2!1:2,2,1)");
+    // Against an array of another shape the pairs are the first cells of the
+    // range in reading order: (1, 1) and (4, 2)
+    model._set("A8", "=T.TEST(Sheet1!1:2,{1,2,3,4,5,6},2,1)");
+    model._set("A9", "=T.TEST(Sheet1!A1:F1,{1,2,3,4,5,6},2,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A5"), "0.015392438");
+    assert_eq!(model._get_text("A6"), "0.015392438");
+    assert_eq!(model._get_text("A7"), "0.015392438");
+    assert_eq!(model._get_text("A8"), "0.5");
+    assert_eq!(model._get_text("A9"), "0.5");
+}
