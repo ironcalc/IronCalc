@@ -100,8 +100,8 @@ fn is_feb29_between_consecutive_years(start: Ymd, end: Ymd) -> bool {
 // The time of day of a serial in whole seconds, after rounding it to the
 // nearest millisecond (0..=86399; a time that rounds up to midnight is 0).
 fn seconds_of_day(v: f64) -> i64 {
-    let ms = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64 * 1000.0).round() as i64;
-    (ms % (SECONDS_PER_DAY as i64 * 1000)) / 1000
+    let s = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64).round() as i64;
+    s % SECONDS_PER_DAY as i64
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +143,11 @@ macro_rules! time_part_fn {
                 Ok(v) => v,
                 Err(e) => return e,
             };
-            if value >= (MAXIMUM_DATE_SERIAL_NUMBER + 1) as f64 {
+            if value >= (MAXIMUM_DATE_SERIAL_NUMBER + 1) as f64
+                || (value.floor() >= MAXIMUM_DATE_SERIAL_NUMBER as f64
+                    && (value.rem_euclid(1.0) * SECONDS_PER_DAY_F64).round()
+                        >= SECONDS_PER_DAY_F64)
+            {
                 return CalcResult::Error {
                     error: Error::NUM,
                     origin: cell,
@@ -1426,7 +1430,7 @@ impl<'a> Model<'a> {
     // Auto-generated TIME part helpers (HOUR / MINUTE / SECOND)
     // -----------------------------------------------------------------------
 
-    time_part_fn!(fn_hour, |v: f64| (v.rem_euclid(1.0) * 24.0).floor());
+    time_part_fn!(fn_hour, |v: f64| (seconds_of_day(v) / 3600) as f64);
     // MINUTE and SECOND round the time of day to the nearest millisecond
     // before taking it apart, as Excel does: MINUTE(0.520833333) is 30
     // (12:29:59.99997 is 12:30:00.000), SECOND(TIME(14,30,45.999)) stays 45.
