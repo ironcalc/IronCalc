@@ -79,3 +79,4 @@ Criteria matching. A criterion like ">1/3/1900" is parsed as a date through the 
 
 The last valid date is 9999-12-31. In the Excel 1900 and LibreOffice system that is the serial number 2,958,465. For the Excel 1904 system that is 2,957,003.
 Negative numbers are only supported by the LibreOffice/IronCalc system.
+In the IronCalc system the first valid date is 1582-15-10 (the Gregorian epoch). It corresponds with teh serial number -115,858. Smaller serial numbers are formatted as #VALUE!
