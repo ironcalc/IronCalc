@@ -81,7 +81,6 @@ function App() {
       saveDefaultLocaleInStorage(language);
       if (model) {
         model.setLocale(getShortLocaleCode(language));
-        // The autosave picks the change up
       }
     }
   };
@@ -176,10 +175,7 @@ function App() {
 
   useEffect(() => {
     if (!model) return;
-    // Evaluates (and serializes) the workbook off the main thread when it is
-    // slow to evaluate
     const engine = new WorkerEngine(model, () => {
-      // Cells that depend on the last changes now have their values
       ironCalcRef.current?.workbook?.refresh();
     });
     // We try to save the model every second

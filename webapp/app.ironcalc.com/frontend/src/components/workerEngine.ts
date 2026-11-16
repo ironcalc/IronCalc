@@ -1,23 +1,16 @@
 import type { Model } from "@ironcalc/workbook";
 import type { FromWorker, ToWorker } from "./workerProtocol";
 
-// How often the model is checked for changes to send to the worker, or for a
-// slow evaluation. Both checks cost next to nothing.
 const TICK_INTERVAL_MS = 25;
 
-// An evaluation that takes longer than this blocks the UI noticeably: it is a
-// long task (https://w3c.github.io/longtasks/). Workbooks that evaluate faster
-// stay on the main thread, where they need no second copy of the workbook.
+// Longer than this is a long task: https://w3c.github.io/longtasks/
 const SLOW_EVALUATION_MS = 50;
 
-// The engine of each model shown, so that code that serializes a model can
-// wait for its evaluation (see `whenEvaluated`).
 const engines = new WeakMap<Model, WorkerEngine>();
 
 /**
- * Resolves once every change made to `model` has been evaluated and its
- * results applied, so that `model.toBytes()` holds every computed value.
- * Resolves at once for a model that evaluates on the main thread.
+ * Resolves once `model.toBytes()` includes the results of every change made so
+ * far.
  */
 export function whenEvaluated(model: Model): Promise<void> {
   return engines.get(model)?.idle() ?? Promise.resolve();
@@ -36,73 +29,49 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 /**
- * Evaluates the workbook in a Web Worker when evaluating it would block the
- * main thread for too long (or serializing it, to save it).
+ * Evaluates the workbook in a Web Worker while evaluating it would block the
+ * main thread, and serializes it there too.
  *
- * A workbook that evaluates quickly evaluates on the main thread, as it always
- * did. The first evaluation of a workbook runs in the worker, where it cannot
- * block the UI, to find out which kind it is. A workbook that evaluates slowly
- * stays in the worker; a workbook that grows slow while on the main thread
- * moves to the worker after its first slow evaluation.
+ * The workbook is evaluated in the worker as it opens, to time it. One that
+ * evaluates quickly goes back to evaluating on the main thread, until an
+ * evaluation there is slow. One that is slow stays in the worker.
  *
- * In the worker, the model the UI shows has its evaluation paused. Every
- * change made to it is sent to a second model in the worker, which evaluates
- * and sends back what changed (see `EvaluationTracker` in the engine). There
- * is at most one set of changes waiting for its results: changes made in the
- * meantime wait in the model's send queue and are sent when the results
- * arrive. Until then cells that depend on a change show their previous value.
- *
- * If workers are not available, or the worker fails, the model evaluates on
- * the main thread.
+ * While in the worker, the model shown has its evaluation paused and sends its
+ * changes to the worker one batch at a time (see `EvaluationTracker`). Until
+ * the results of a batch arrive, the cells that depend on it show their
+ * previous values.
  */
 export class WorkerEngine {
   private readonly model: Model;
   private readonly onResults: () => void;
   private worker: Worker | null = null;
-  // Whether the worker is measuring the first evaluation of the workbook
-  private probing = false;
-  // Whether a worker failed to start or to follow the workbook
+  private timingFirstEvaluation = false;
   private workerFailed = false;
   private timer: ReturnType<typeof setInterval> | null = null;
-  // What an empty send queue encodes to
   private readonly emptyQueue: Uint8Array;
-  // Sequence number of the last diffs sent, and whether their results are due
-  private sent = 0;
+  private changeCount = 0;
+  private savedChangeCount = 0;
   private waitingForResults = false;
-  // The last diffs included in a successful save
-  private saved = 0;
   private nextRequestId = 1;
   private readonly requests = new Map<
     number,
-    {
-      resolve: (bytes: Uint8Array | null) => void;
-      reject: (error: Error) => void;
-    }
+    (bytes: Uint8Array | null) => void
   >();
   private idleWaiters: (() => void)[] = [];
-  // The language the worker parses cell inputs in
-  private language: string;
+  private workerLanguage: string;
 
   constructor(model: Model, onResults: () => void) {
     this.model = model;
     this.onResults = onResults;
-    this.language = model.getLanguage();
-    // Whatever is queued is already in the model
+    this.workerLanguage = model.getLanguage();
     model.flushSendQueue();
     this.emptyQueue = model.flushSendQueue();
     engines.set(model, this);
-    if (typeof Worker === "undefined") {
-      return;
-    }
-    // The values in a file are those of its last evaluation, which may be
-    // missing changes that were saved before their results came back: the
-    // workbook is evaluated as it opens, and that evaluation is measured.
-    if (this.startWorker(true)) {
+    if (typeof Worker !== "undefined" && this.startWorker({ evaluate: true })) {
       this.timer = setInterval(() => this.tick(), TICK_INTERVAL_MS);
     }
   }
 
-  /** Resolves when every change made so far has its results applied. */
   idle(): Promise<void> {
     this.sync();
     if (!this.worker || !this.waitingForResults) {
@@ -111,27 +80,24 @@ export class WorkerEngine {
     return new Promise((resolve) => this.idleWaiters.push(resolve));
   }
 
-  /** Whether there are changes that were not saved yet. */
   hasUnsavedChanges(): boolean {
     if (!this.worker) {
-      // Same check the app always did: anything in the queue is a change
       this.flushQueue();
     } else {
       this.sync();
     }
-    return this.sent !== this.saved;
+    return this.changeCount !== this.savedChangeCount;
   }
 
   /**
-   * The bytes of the workbook, to save it, with every change made so far. In
-   * the worker they are made there. `null` if the engine is disposed before
-   * they are ready.
+   * The bytes of the workbook with every change made so far, or `null` if the
+   * engine is disposed first.
    */
   serialize(): Promise<Uint8Array | null> {
-    const seq = this.sent;
+    const changeCount = this.changeCount;
     const markSaved = (bytes: Uint8Array | null) => {
       if (bytes) {
-        this.saved = Math.max(this.saved, seq);
+        this.savedChangeCount = Math.max(this.savedChangeCount, changeCount);
       }
       return bytes;
     };
@@ -139,13 +105,12 @@ export class WorkerEngine {
       return Promise.resolve(markSaved(this.model.toBytes()));
     }
     const id = this.nextRequestId++;
-    return new Promise<Uint8Array | null>((resolve, reject) => {
-      this.requests.set(id, { resolve, reject });
+    return new Promise<Uint8Array | null>((resolve) => {
+      this.requests.set(id, resolve);
       this.post({ type: "serialize", id });
     }).then(markSaved);
   }
 
-  /** Stops the engine. The model evaluates again as it is edited. */
   dispose() {
     if (this.worker) {
       this.model.resumeEvaluation();
@@ -158,18 +123,14 @@ export class WorkerEngine {
     if (engines.get(this.model) === this) {
       engines.delete(this.model);
     }
-    // The workbook is closing: there is nothing left to save
-    for (const request of this.requests.values()) {
-      request.resolve(null);
+    for (const resolve of this.requests.values()) {
+      resolve(null);
     }
     this.requests.clear();
     this.wakeIdleWaiters();
   }
 
-  // Opens the workbook in a new worker and evaluates there from now on.
-  // `evaluate` asks the worker to evaluate the workbook as it opens and to
-  // measure it.
-  private startWorker(evaluate: boolean): boolean {
+  private startWorker({ evaluate }: { evaluate: boolean }): boolean {
     let worker: Worker;
     try {
       worker = new Worker(new URL("./evaluationWorker.ts", import.meta.url), {
@@ -184,15 +145,16 @@ export class WorkerEngine {
       this.handle(event.data);
     worker.onerror = (event) => this.fallBack(event.message);
     this.worker = worker;
-    // Whatever is queued is already in the model the worker opens
+    // Already in the bytes the worker opens
     this.flushQueue();
     this.model.pauseEvaluation();
-    this.language = this.model.getLanguage();
+    this.workerLanguage = this.model.getLanguage();
     const bytes = this.model.toBytes();
-    this.post({ type: "open", bytes, language: this.language, evaluate }, [
-      bytes.buffer,
-    ]);
-    this.probing = evaluate;
+    this.post(
+      { type: "open", bytes, language: this.workerLanguage, evaluate },
+      [bytes.buffer],
+    );
+    this.timingFirstEvaluation = evaluate;
     this.waitingForResults = evaluate;
     return true;
   }
@@ -200,34 +162,30 @@ export class WorkerEngine {
   private stopWorker() {
     this.worker?.terminate();
     this.worker = null;
-    this.probing = false;
+    this.timingFirstEvaluation = false;
     this.waitingForResults = false;
   }
 
-  // Evaluates on the main thread from now on. The model holds the results of
-  // every diff sent to the worker, unless `evaluateAll`.
-  private leaveWorker(evaluateAll: boolean) {
+  private leaveWorker({ missingResults }: { missingResults: boolean }) {
     this.stopWorker();
     this.model.resumeEvaluation();
-    if (this.flushQueue() || evaluateAll) {
+    if (this.flushQueue() || missingResults) {
       this.model.evaluate();
     }
     if (this.requests.size > 0) {
       const bytes = this.model.toBytes();
-      for (const request of this.requests.values()) {
-        request.resolve(bytes.slice());
+      for (const resolve of this.requests.values()) {
+        resolve(bytes.slice());
       }
       this.requests.clear();
     }
     this.wakeIdleWaiters();
   }
 
-  // Drops what is in the send queue, counting it as a change. Whether there
-  // was anything.
   private flushQueue(): boolean {
     const queued = !bytesEqual(this.model.flushSendQueue(), this.emptyQueue);
     if (queued) {
-      this.sent += 1;
+      this.changeCount += 1;
     }
     return queued;
   }
@@ -249,31 +207,29 @@ export class WorkerEngine {
       this.sync();
       return;
     }
-    // On the main thread, every change is evaluated as it is made
     const duration = this.model.getLastEvaluationDuration() ?? 0;
     if (duration > SLOW_EVALUATION_MS && !this.workerFailed) {
-      // The model is evaluated: the worker need not evaluate it again
-      this.startWorker(false);
+      this.startWorker({ evaluate: false });
     }
   }
 
-  // Sends the changes made since the last time, unless results are due
   private sync() {
     if (!this.worker || this.waitingForResults) {
       return;
     }
     const diffs = this.model.flushSendQueue();
     if (!bytesEqual(diffs, this.emptyQueue)) {
-      this.sent += 1;
+      this.changeCount += 1;
       this.waitingForResults = true;
-      this.post({ type: "diffs", diffs, seq: this.sent }, [diffs.buffer]);
+      this.post({ type: "diffs", diffs, seq: this.changeCount }, [
+        diffs.buffer,
+      ]);
     }
-    // The language is not part of the diffs, but the cell inputs in them are
-    // written in it. The worker switches after applying the diffs above, which
-    // were (almost always) made before the switch: it is checked often.
+    // Not in the diffs: a batch with changes from both before and after a
+    // switch is applied in the previous language
     const language = this.model.getLanguage();
-    if (language !== this.language) {
-      this.language = language;
+    if (language !== this.workerLanguage) {
+      this.workerLanguage = language;
       this.post({ type: "language", language });
     }
   }
@@ -290,17 +246,15 @@ export class WorkerEngine {
           return;
         }
         this.waitingForResults = false;
-        if (this.probing) {
-          this.probing = false;
+        if (this.timingFirstEvaluation) {
+          this.timingFirstEvaluation = false;
           if (message.evaluationMs <= SLOW_EVALUATION_MS) {
-            // Quick enough for the main thread
-            this.leaveWorker(false);
+            this.leaveWorker({ missingResults: false });
             this.onResults();
             return;
           }
         }
         this.onResults();
-        // Changes made while the worker was evaluating
         this.sync();
         if (!this.waitingForResults) {
           this.wakeIdleWaiters();
@@ -308,23 +262,17 @@ export class WorkerEngine {
         break;
       }
       case "serialized": {
-        this.requests.get(message.id)?.resolve(message.bytes);
+        this.requests.get(message.id)?.(message.bytes);
         this.requests.delete(message.id);
         break;
       }
       case "error": {
-        if (message.id !== undefined) {
-          this.requests.get(message.id)?.reject(new Error(message.message));
-          this.requests.delete(message.id);
-        } else {
-          this.fallBack(message.message);
-        }
+        this.fallBack(message.message);
         break;
       }
     }
   }
 
-  // The worker can no longer follow the workbook: evaluate here from now on
   private fallBack(reason: string) {
     if (!this.worker) {
       return;
@@ -338,9 +286,9 @@ export class WorkerEngine {
       clearInterval(this.timer);
       this.timer = null;
     }
-    // The worker may not have seen the last changes: they are saved from here
-    this.sent += 1;
-    this.leaveWorker(true);
+    // Saves the main thread's model too, in case the worker's last save is wrong
+    this.changeCount += 1;
+    this.leaveWorker({ missingResults: true });
     this.onResults();
   }
 }

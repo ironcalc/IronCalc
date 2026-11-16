@@ -216,7 +216,6 @@ pub struct UserModel<'a> {
     history: History,
     pub(super) send_queue: Vec<QueueDiffs>,
     pub(super) pause_evaluation: bool,
-    /// How long the last evaluation took, in milliseconds.
     last_evaluation_duration: Option<i64>,
     /// What the user is looking at: selected sheet, selection and scroll
     /// position of each sheet, window size. Runtime state only: it is not
@@ -395,11 +394,7 @@ impl<'a> UserModel<'a> {
     }
 
     /// How long the last evaluation took, in milliseconds. `None` if the model
-    /// has not evaluated since it was created.
-    ///
-    /// A host can use it to decide where to evaluate: a workbook whose
-    /// evaluation blocks the UI for too long can be evaluated elsewhere (see
-    /// [crate::EvaluationTracker]).
+    /// has not evaluated yet.
     pub fn last_evaluation_duration(&self) -> Option<i64> {
         self.last_evaluation_duration
     }

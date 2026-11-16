@@ -138,8 +138,8 @@ pub struct Model {
     model: BaseModel<'static>,
 }
 
-/// Follows the cells an evaluation writes in a model, to send what changed to
-/// another model of the same workbook (see `Model.applyEvaluationResults`).
+/// Tells what an evaluation of a model changed, for
+/// `Model.applyEvaluationResults` on another model of the same workbook.
 #[wasm_bindgen]
 pub struct EvaluationTracker {
     tracker: BaseEvaluationTracker,
@@ -147,7 +147,7 @@ pub struct EvaluationTracker {
 
 #[wasm_bindgen]
 impl EvaluationTracker {
-    /// Starts following the cells of `model` as they are now.
+    /// Starts tracking the cells of `model` as they are now.
     #[wasm_bindgen(constructor)]
     pub fn new(model: &Model) -> EvaluationTracker {
         EvaluationTracker {
@@ -155,9 +155,10 @@ impl EvaluationTracker {
         }
     }
 
-    /// What the evaluations of `model` changed since the last call.
+    /// What evaluating `model` changed since the tracker was created. Frees the
+    /// tracker.
     #[wasm_bindgen(js_name = "takeResults")]
-    pub fn take_results(&mut self, model: &Model) -> Vec<u8> {
+    pub fn take_results(self, model: &Model) -> Vec<u8> {
         self.tracker.take_results(&model.model)
     }
 }
@@ -257,10 +258,8 @@ impl Model {
         self.model.apply_external_diffs(diffs).map_err(to_js_error)
     }
 
-    /// Applies the results of an evaluation made by another model of the same
-    /// workbook, as returned by `EvaluationTracker.takeResults`. It does not
-    /// evaluate. This lets a model whose evaluation is paused show what a model
-    /// evaluating elsewhere (e.g. in a Web Worker) computed.
+    /// Applies `EvaluationTracker.takeResults` from another model of the same
+    /// workbook, without evaluating.
     #[wasm_bindgen(js_name = "applyEvaluationResults")]
     pub fn apply_evaluation_results(&mut self, results: &[u8]) -> Result<(), JsError> {
         self.model

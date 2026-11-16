@@ -5,8 +5,6 @@ import type { FromWorker, ToWorker } from "./workerProtocol";
 
 const EMPTY_QUEUE = new Uint8Array([0]);
 
-// The parts of a model the engine uses. Changes are counted, not made: the
-// send queue holds how many there are since the last flush.
 class FakeModel {
   queued = 0;
   paused = false;
@@ -49,7 +47,6 @@ class FakeModel {
   }
 }
 
-// Records what the engine posts and lets the test answer as the worker would
 class FakeWorker {
   static instances: FakeWorker[] = [];
   posted: ToWorker[] = [];
@@ -94,7 +91,6 @@ function setUp() {
   return { model, engine, onResults };
 }
 
-// Lets the engine's 25 ms tick run
 function tick() {
   vi.advanceTimersByTime(25);
 }
@@ -129,12 +125,10 @@ describe("WorkerEngine", () => {
     expect(model.paused).toBe(false);
     expect(model.appliedResults).toHaveLength(1);
     expect(onResults).toHaveBeenCalledTimes(1);
-    // Nothing was waiting: nothing to evaluate here
     expect(model.evaluations).toBe(0);
     await expect(whenEvaluated(model as unknown as Model)).resolves.toBe(
       undefined,
     );
-    // Edits evaluate as they are made, and are saved from here
     model.edit();
     expect(model.evaluations).toBe(1);
     expect(engine.hasUnsavedChanges()).toBe(true);
@@ -151,7 +145,6 @@ describe("WorkerEngine", () => {
     worker.results(0, 10);
     expect(model.evaluations).toBe(1);
     expect(model.queued).toBe(0);
-    // The worker was gone before it could answer
     await expect(bytes).resolves.toEqual(model.toBytes());
     engine.dispose();
   });
@@ -169,7 +162,6 @@ describe("WorkerEngine", () => {
     expect(model.evaluations).toBe(0);
     tick();
     expect(worker.posted.at(-1)).toMatchObject({ type: "diffs", seq: 1 });
-    // A fast evaluation later on does not move it back
     worker.results(1, 1);
     expect(worker.terminated).toBe(false);
     expect(model.paused).toBe(true);
@@ -192,16 +184,31 @@ describe("WorkerEngine", () => {
     expect(FakeWorker.instances).toHaveLength(2);
     const worker = lastWorker();
     expect(model.paused).toBe(true);
-    // The model is evaluated already
     expect(worker.posted).toEqual([
       { type: "open", bytes: model.toBytes(), language: "en", evaluate: false },
     ]);
-    // The edits before the move were not saved yet
     expect(engine.hasUnsavedChanges()).toBe(true);
 
     model.edit();
     tick();
     expect(worker.posted.at(-1)).toMatchObject({ type: "diffs" });
+    engine.dispose();
+  });
+
+  it("saves from the main thread when the worker fails while saving", async () => {
+    const { model, engine } = setUp();
+    const worker = lastWorker();
+    worker.results(0, 200);
+    model.edit();
+    tick();
+    const bytes = engine.serialize();
+    worker.reply({ type: "error", message: "boom" });
+    await expect(bytes).resolves.toEqual(model.toBytes());
+    expect(worker.terminated).toBe(true);
+
+    model.edit();
+    expect(model.evaluations).toBe(2);
+    expect(engine.hasUnsavedChanges()).toBe(true);
     engine.dispose();
   });
 

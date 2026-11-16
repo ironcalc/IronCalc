@@ -3,8 +3,6 @@
 use crate::test::user_model::util::new_empty_user_model;
 use crate::{EvaluationTracker, UserModel};
 
-/// A model the UI reads, that does not evaluate, and a model that evaluates for
-/// it, kept in sync the way a host running the evaluation in a worker would.
 struct Pair<'a> {
     ui: UserModel<'a>,
     worker: UserModel<'a>,
@@ -18,33 +16,27 @@ impl<'a> Pair<'a> {
         Pair { ui, worker }
     }
 
-    /// Sends the changes made in the UI model so far to the worker
     fn send(&mut self) -> Vec<u8> {
         self.ui.flush_send_queue()
     }
 
-    /// What the worker does with a batch of changes: apply them without
-    /// evaluating, remember what the UI model holds now, evaluate, and return
-    /// what changed.
     fn evaluate(&mut self, batch: &[Vec<u8>]) -> Vec<u8> {
         self.worker.pause_evaluation();
         for diffs in batch {
             self.worker.apply_external_diffs(diffs).unwrap();
         }
         self.worker.resume_evaluation();
-        let mut tracker = EvaluationTracker::new(&self.worker);
+        let tracker = EvaluationTracker::new(&self.worker);
         self.worker.evaluate();
         tracker.take_results(&self.worker)
     }
 
-    /// A full round trip
     fn sync(&mut self) {
         let diffs = self.send();
         let results = self.evaluate(&[diffs]);
         self.ui.apply_evaluation_results(&results).unwrap();
     }
 
-    /// Asserts both models show the same in the top left corner of every sheet.
     fn assert_same(&self) {
         let sheets = self.worker.get_worksheets_properties().len() as u32;
         assert_eq!(self.ui.get_worksheets_properties().len() as u32, sheets);
@@ -78,7 +70,6 @@ fn formula_results_reach_the_paused_model() {
     assert_eq!(pair.value(0, 1, 2), "20");
     assert_eq!(pair.value(0, 1, 3), "22");
 
-    // Changing a value updates every formula that depends on it
     pair.ui.set_user_input(0, 1, 1, "5").unwrap();
     pair.sync();
     assert_eq!(pair.value(0, 1, 2), "50");
@@ -93,7 +84,6 @@ fn paused_model_does_not_evaluate() {
     pair.ui.set_user_input(0, 1, 2, "=A1*10").unwrap();
     pair.sync();
     pair.ui.set_user_input(0, 1, 1, "3").unwrap();
-    // Until the results arrive the UI keeps the previous value
     assert_eq!(pair.value(0, 1, 2), "20");
     pair.sync();
     assert_eq!(pair.value(0, 1, 2), "30");
@@ -146,7 +136,6 @@ fn blocked_spill_and_undo() {
     let mut pair = Pair::new();
     pair.ui.set_user_input(0, 1, 1, "=SEQUENCE(4)").unwrap();
     pair.sync();
-    // Writing into the spill area blocks the array
     pair.ui.set_user_input(0, 3, 1, "Bong!").unwrap();
     pair.sync();
     assert_eq!(pair.value(0, 1, 1), "#SPILL!");
@@ -174,8 +163,6 @@ fn sheets_added_and_deleted() {
     pair.sync();
     assert_eq!(pair.value(0, 1, 1), "21");
 
-    // Deleting the first sheet moves the second one to index 0: results are
-    // matched by sheet id, not by index.
     pair.ui.new_sheet().unwrap();
     pair.ui.set_user_input(2, 1, 1, "=Sheet2!A1+1").unwrap();
     pair.ui.delete_sheet(0).unwrap();
@@ -212,12 +199,9 @@ fn results_go_under_the_changes_made_meanwhile() {
     pair.sync();
     assert_eq!(pair.value(0, 2, 3), "4");
 
-    // The worker evaluates a change that touches B1 and the spill cells...
     pair.ui.set_user_input(0, 1, 1, "4").unwrap();
     let diffs = pair.send();
     let late = pair.evaluate(&[diffs]);
-    // ...while the user replaces the formula and writes over a spill cell,
-    // which blocks the array and clears the rest of its spill.
     pair.ui.set_user_input(0, 1, 2, "typed").unwrap();
     pair.ui.set_user_input(0, 2, 3, "mine").unwrap();
     pair.ui.apply_evaluation_results(&late).unwrap();
@@ -225,12 +209,10 @@ fn results_go_under_the_changes_made_meanwhile() {
     assert_eq!(pair.value(0, 2, 3), "mine");
     assert_eq!(pair.value(0, 3, 3), "");
 
-    // What the user did meanwhile is still to be sent, and is sent next
     pair.sync();
     assert_eq!(pair.value(0, 1, 3), "#SPILL!");
     pair.assert_same();
 
-    // Undoing it while the next results are on their way
     pair.ui.undo().unwrap();
     let diffs = pair.send();
     let results = pair.evaluate(&[diffs]);
@@ -272,9 +254,6 @@ fn formula_replaced_and_typed_back_in_one_batch() {
     pair.sync();
     assert_eq!(pair.value(0, 1, 2), "20");
 
-    // The user replaces the formula and types it back before the worker gets
-    // to evaluate: for the worker nothing changed, but the UI model holds the
-    // formula unevaluated.
     pair.ui.set_user_input(0, 1, 2, "=A1*3").unwrap();
     let first = pair.send();
     pair.ui.set_user_input(0, 1, 2, "=A1*10").unwrap();
@@ -295,11 +274,9 @@ fn user_keeps_typing_while_the_worker_evaluates() {
     pair.ui.set_user_input(0, 1, 1, "10").unwrap();
     let first = pair.send();
     let first_results = pair.evaluate(&[first]);
-    // Two more changes before the results arrive
     pair.ui.set_user_input(0, 1, 1, "100").unwrap();
     pair.ui.set_user_input(0, 3, 2, "=B2+1").unwrap();
     pair.ui.apply_evaluation_results(&first_results).unwrap();
-    // Results for A1=10, the user's 100 kept
     assert_eq!(pair.value(0, 2, 2), "22");
     assert_eq!(pair.value(0, 1, 1), "100");
     pair.sync();
@@ -319,12 +296,11 @@ fn last_evaluation_duration() {
     let mut model = new_empty_user_model();
     assert_eq!(model.last_evaluation_duration(), None);
 
-    // A change made while paused is not evaluated
     model.pause_evaluation();
     model.set_user_input(0, 1, 1, "=1+1").unwrap();
     assert_eq!(model.last_evaluation_duration(), None);
 
-    // The clock is mocked in tests: it does not move during the evaluation
+    // The clock is mocked in tests and does not move
     model.resume_evaluation();
     model.set_user_input(0, 1, 2, "=A1+1").unwrap();
     assert_eq!(model.last_evaluation_duration(), Some(0));
