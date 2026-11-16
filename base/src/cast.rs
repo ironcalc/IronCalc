@@ -467,12 +467,7 @@ impl<'a> Model<'a> {
     ) -> Result<bool, CalcResult> {
         let result = self.dereference(result, cell);
         match result {
-            CalcResult::Number(f) => {
-                if f == 0.0 {
-                    return Ok(false);
-                }
-                Ok(true)
-            }
+            CalcResult::Number(f) => Ok(f != 0.0),
             CalcResult::String(s) => {
                 if s.to_lowercase() == *"true" {
                     return Ok(true);
