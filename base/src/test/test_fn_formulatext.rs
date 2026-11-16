@@ -24,14 +24,35 @@ fn multi_sheet_ref() {
 }
 
 #[test]
-fn implicit_intersection() {
+fn range_gives_an_array() {
     let mut model = new_empty_model();
+    model._set("C1", "=1+1");
+    model._set("C2", "5");
+    model._set("D1", "=SUM(C1:C2)");
     model._set("A1", "=FORMULATEXT(C1:C2)");
-    model._set("A2", "=FORMULATEXT(D1:E1)");
+    model._set("A4", "=FORMULATEXT(C1:D2)");
+    model._set("A7", "=COUNTA(FORMULATEXT(C1:D2))");
+    model._set("A8", "=SUM(--ISNA(FORMULATEXT(C1:D2)))");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
-    assert_eq!(model._get_text("A2"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A1"), *"=1+1");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"=1+1");
+    assert_eq!(model._get_text("B4"), *"=SUM(C1:C2)");
+    assert_eq!(model._get_text("A5"), *"#N/A");
+    assert_eq!(model._get_text("B5"), *"#N/A");
+    assert_eq!(model._get_text("A7"), *"4");
+    assert_eq!(model._get_text("A8"), *"2");
+}
+
+#[test]
+fn range_spills_into_blocked_cell() {
+    let mut model = new_empty_model();
+    model._set("A1", "=FORMULATEXT(C1:C2)");
+    model._set("A2", "x");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#SPILL!");
 }
 
 #[test]

@@ -98,3 +98,34 @@ fn single_values_are_unchanged() {
     assert_eq!(model._get_text("B5"), "TRUE");
     assert_eq!(model._get_text("B6"), "empty");
 }
+
+#[test]
+fn isformula_over_range() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "=1+1");
+    // A3 is empty
+    model._set("B1", "=2");
+    model._set("B3", "text");
+
+    model._set("D1", "=ISFORMULA(A1:A3)");
+    model._set("E1", "=ISFORMULA(A1:B3)");
+    model._set("H1", "=ISFORMULA(A2)");
+    model._set("H2", "=ISFORMULA(A1)");
+    model._set("H3", "=SUM(--ISFORMULA(A1:B3))");
+    model._set("H4", "=ISFORMULA(1)");
+    model.evaluate();
+
+    let column = |model: &crate::Model, c: &str| -> Vec<String> {
+        (1..=3)
+            .map(|r| model._get_text(&format!("{c}{r}")))
+            .collect()
+    };
+    assert_eq!(column(&model, "D"), ["FALSE", "TRUE", "FALSE"]);
+    assert_eq!(column(&model, "E"), ["FALSE", "TRUE", "FALSE"]);
+    assert_eq!(column(&model, "F"), ["TRUE", "FALSE", "FALSE"]);
+    assert_eq!(model._get_text("H1"), "TRUE");
+    assert_eq!(model._get_text("H2"), "FALSE");
+    assert_eq!(model._get_text("H3"), "2");
+    assert_eq!(model._get_text("H4"), "#VALUE!");
+}

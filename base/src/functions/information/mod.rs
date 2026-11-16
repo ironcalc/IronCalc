@@ -160,7 +160,8 @@ impl<'a> Model<'a> {
         CalcResult::Boolean(value % 2 == 0)
     }
 
-    // ISFORMULA arg needs to be a reference or something that evaluates to a reference
+    // ISFORMULA arg needs to be a reference or something that evaluates to a reference.
+    // A range is tested cell by cell and gives an array of booleans.
     pub(crate) fn fn_isformula(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -176,20 +177,21 @@ impl<'a> Model<'a> {
                 message: "3D ranges not supported".to_string(),
             };
         }
-        if left.row != right.row && left.column != right.column {
-            // FIXME: Implicit intersection or dynamic arrays
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "argument must be a reference to a single cell".to_string(),
-            };
-        }
-        let is_formula = if let Ok(f) = self.get_cell_formula(left.sheet, left.row, left.column) {
-            f.is_some()
-        } else {
-            false
+        let is_formula = |row: i32, column: i32| {
+            matches!(self.get_cell_formula(left.sheet, row, column), Ok(Some(_)))
         };
-        CalcResult::Boolean(is_formula)
+        if left.row == right.row && left.column == right.column {
+            return CalcResult::Boolean(is_formula(left.row, left.column));
+        }
+        CalcResult::Array(
+            (left.row..=right.row)
+                .map(|row| {
+                    (left.column..=right.column)
+                        .map(|column| ArrayNode::Boolean(is_formula(row, column)))
+                        .collect()
+                })
+                .collect(),
+        )
     }
 
     pub(crate) fn fn_errortype(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
