@@ -4,8 +4,8 @@
 //! without `xml:space="preserve"` on the `<t>` or around it, the XML
 //! whitespace (space, tab, line feed, carriage return) at the two ends of each
 //! `<t>` is dropped; inside the text it stays, and so do other spaces such as
-//! the no-break space. Every string here is made up; each answer is Excel's
-//! (desktop Excel, `cases/xml-space-trim/` in the room, 2026-11-16).
+//! the no-break space. Every string here is made up; each answer is desktop
+//! Excel's (Microsoft 365), measured on files of this shape.
 
 use ironcalc::import::load_from_xlsx_bytes;
 use ironcalc_base::Model;
