@@ -4,7 +4,8 @@
 //! without `xml:space="preserve"` on the `<t>` or around it, the XML
 //! whitespace (space, tab, line feed, carriage return) at the two ends of each
 //! `<t>` is dropped; inside the text it stays, and so do other spaces such as
-//! the no-break space. Every string here is made up; each answer is Excel's.
+//! the no-break space. Every string here is made up; each answer is Excel's
+//! (desktop Excel, `cases/xml-space-trim/` in the room, 2026-11-16).
 
 use ironcalc::import::load_from_xlsx_bytes;
 use ironcalc_base::Model;
@@ -14,9 +15,10 @@ const MAIN: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 
 /// The bytes of an xlsx file with one sheet. Row n holds in A the shared
 /// string whose `<si>` has the inner XML `shared[n - 1]`, and in B the inline
-/// string whose `<is>` has the inner XML `inline[n - 1]`. `sst`, `si` and `is`
-/// are added to the opening tags of those elements.
-fn xlsx(shared: &[&str], inline: &[&str], sst: &str, si: &str, is: &str) -> Vec<u8> {
+/// string whose `<is>` has the inner XML `inline[n - 1]`. `sst`, `si`, `is` and
+/// `c` are added to the opening tags of those elements (`c` to the cells of
+/// the inline strings).
+fn xlsx(shared: &[&str], inline: &[&str], sst: &str, si: &str, is: &str, c: &str) -> Vec<u8> {
     let mut data = String::new();
     for row in 1..=shared.len().max(inline.len()) {
         data.push_str(&format!("<row r=\"{row}\">"));
@@ -25,7 +27,7 @@ fn xlsx(shared: &[&str], inline: &[&str], sst: &str, si: &str, is: &str) -> Vec<
         }
         if let Some(inner) = inline.get(row - 1) {
             data.push_str(&format!(
-                "<c r=\"B{row}\" t=\"inlineStr\"><is{is}>{inner}</is></c>"
+                "<c r=\"B{row}\" t=\"inlineStr\"{c}><is{is}>{inner}</is></c>"
             ));
         }
         data.push_str("</row>");
@@ -131,7 +133,7 @@ fn assert_read_as_excel(cases: &[(&str, &str)], inline_too: bool) {
     let xml: Vec<&str> = cases.iter().map(|(xml, _)| *xml).collect();
     let expected: Vec<String> = cases.iter().map(|(_, text)| text.to_string()).collect();
     let inline: &[&str] = if inline_too { &xml } else { &[] };
-    let bytes = xlsx(&xml, inline, "", "", "");
+    let bytes = xlsx(&xml, inline, "", "", "", "");
     assert_eq!(texts(&bytes, 1, cases.len()), expected, "shared strings");
     if inline_too {
         assert_eq!(texts(&bytes, 2, cases.len()), expected, "inline strings");
@@ -223,10 +225,12 @@ fn preserve_around_the_t_is_inherited() {
     let shared = ["<t> kept </t>", "<r><t> run1 </t></r><r><t> run2 </t></r>"];
     let expected = vec![" kept ".to_string(), " run1  run2 ".to_string()];
     let preserve = " xml:space=\"preserve\"";
-    let on_si = xlsx(&shared, &[], "", preserve, "");
+    let on_si = xlsx(&shared, &[], "", preserve, "", "");
     assert_eq!(texts(&on_si, 1, 2), expected, "on <si>");
-    let on_sst = xlsx(&shared, &[], preserve, "", "");
+    let on_sst = xlsx(&shared, &[], preserve, "", "", "");
     assert_eq!(texts(&on_sst, 1, 2), expected, "on <sst>");
-    let on_is = xlsx(&[], &shared, "", "", preserve);
+    let on_is = xlsx(&[], &shared, "", "", preserve, "");
     assert_eq!(texts(&on_is, 2, 2), expected, "on <is>");
+    let on_c = xlsx(&[], &shared, "", "", "", preserve);
+    assert_eq!(texts(&on_c, 2, 2), expected, "on <c>");
 }
