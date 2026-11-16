@@ -768,6 +768,25 @@ fn test_fn_eomonth_wrong_arguments() {
 }
 
 #[test]
+fn test_fn_eomonth_omitted_start_date() {
+    // Issue #1409: an omitted start date is #N/A in Excel, while an empty
+    // cell or an explicit 0 is a date.
+    let mut model = new_empty_model();
+
+    model._set("A1", "=EOMONTH(,9)");
+    model._set("A2", "=EOMONTH(,0)");
+    model._set("A3", "=EOMONTH(B3,9)");
+    model._set("A4", "=EOMONTH(0,9)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A3"), *"274");
+    assert_eq!(model._get_text("A4"), *"274");
+}
+
+#[test]
 fn test_fn_eomonth_out_of_bounds_returns_num() {
     // Regression for #1390: EOMONTH must return #NUM! (not panic / wrap) when the
     // result would fall outside Excel's supported date range, including when the
