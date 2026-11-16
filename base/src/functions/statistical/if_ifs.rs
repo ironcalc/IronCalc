@@ -28,27 +28,32 @@ fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> Calc
 }
 
 impl<'a> Model<'a> {
+    /// COUNTIF(criteria_range, criteria)
+    ///
+    /// The `criteria` argument may be a single value, a range or an array; in the
+    /// latter two cases COUNTIF spills one count per criterion (see [`Model::countif`]).
     pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
-            let arguments = vec![args[0].clone(), args[1].clone()];
-            self.fn_countifs(&arguments, cell)
+            self.countif(&args[0], &args[1], cell)
         } else {
             CalcResult::new_args_number_error(cell)
         }
     }
 
     /// AVERAGEIF(criteria_range, criteria, [average_range])
-    /// if average_rage is missing then criteria_range will be used
+    /// if average_range is missing then criteria_range will be used.
+    ///
+    /// The `criteria` argument may be a single value, a range or an array; in the
+    /// latter two cases AVERAGEIF spills one average per criterion (see
+    /// [`Model::averageif`]).
     pub(crate) fn fn_averageif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 2 {
-            let arguments = vec![args[0].clone(), args[0].clone(), args[1].clone()];
-            self.fn_averageifs(&arguments, cell)
-        } else if args.len() == 3 {
-            let arguments = vec![args[2].clone(), args[0].clone(), args[1].clone()];
-            self.fn_averageifs(&arguments, cell)
-        } else {
-            CalcResult::new_args_number_error(cell)
-        }
+        // When average_range is missing, criteria_range doubles as the average_range.
+        let (value_range, criteria_range, criteria) = match args.len() {
+            2 => (&args[0], &args[0], &args[1]),
+            3 => (&args[2], &args[0], &args[1]),
+            _ => return CalcResult::new_args_number_error(cell),
+        };
+        self.averageif(value_range, criteria_range, criteria, cell)
     }
 
     // FIXME: This function shares a lot of code with apply_ifs. Can we merge them?
@@ -332,6 +337,211 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// Resolves `criteria` and, when it is a range or an inline array, returns its
+    /// values as a grid to spill one aggregate per element over. Returns `None` for a
+    /// single scalar criterion, so the caller takes its ordinary non-spilling path.
+    ///
+    /// This mirrors the criteria handling of [`Model::sumif`] and is what lets COUNTIF,
+    /// AVERAGEIF and MIN/MAXIFS spill over an array criterion the same way SUMIF does.
+    fn criteria_spill_grid(
+        &mut self,
+        criteria: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<Vec<Vec<CalcResult>>> {
+        match self.evaluate_node_in_context(criteria, cell) {
+            CalcResult::Range { left, right } => {
+                let mut grid = Vec::new();
+                for r in left.row..=right.row {
+                    let mut row = Vec::new();
+                    for c in left.column..=right.column {
+                        row.push(self.evaluate_cell(CellReferenceIndex {
+                            sheet: left.sheet,
+                            row: r,
+                            column: c,
+                        }));
+                    }
+                    grid.push(row);
+                }
+                Some(grid)
+            }
+            CalcResult::Array(array) => Some(
+                array
+                    .iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|node| array_node_to_calc_result(node, cell))
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            _ => None,
+        }
+    }
+
+    /// Counts the cells of `range` that satisfy `fn_criterion`, with COUNTIF/COUNTIFS
+    /// semantics (a cell of any type counts, not only numbers). Used for the spilled
+    /// COUNTIF path.
+    fn count_matches(&mut self, range: &Range, fn_criterion: &Criterion<'_>) -> f64 {
+        let mut total = 0.0;
+        for row in range.left.row..=range.right.row {
+            for column in range.left.column..=range.right.column {
+                let value = self.evaluate_cell(CellReferenceIndex {
+                    sheet: range.left.sheet,
+                    row,
+                    column,
+                });
+                if fn_criterion(&value) {
+                    total += 1.0;
+                }
+            }
+        }
+        total
+    }
+
+    /// COUNTIF where the `criteria` argument may be a single value, a range or an
+    /// array. A scalar criterion yields a single count (via COUNTIFS); a range or
+    /// array criterion spills one count per element, preserving the criteria's shape.
+    pub(crate) fn countif(
+        &mut self,
+        criteria_range: &Node,
+        criteria: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let criteria_grid = match self.criteria_spill_grid(criteria, cell) {
+            Some(grid) => grid,
+            None => {
+                // Single criterion: delegate to COUNTIFS, which returns a scalar.
+                let arguments = vec![criteria_range.clone(), criteria.clone()];
+                return self.fn_countifs(&arguments, cell);
+            }
+        };
+        let criteria_range = match self.node_to_range(criteria_range, cell) {
+            Ok(r) => r,
+            Err(e) => return e,
+        };
+        let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(criteria_grid.len());
+        for criteria_row in &criteria_grid {
+            let mut out_row: Vec<ArrayNode> = Vec::with_capacity(criteria_row.len());
+            for criterion in criteria_row {
+                let fn_criterion = build_criteria(criterion, self.locale);
+                out_row.push(ArrayNode::Number(
+                    self.count_matches(&criteria_range, &fn_criterion),
+                ));
+            }
+            output.push(out_row);
+        }
+        CalcResult::Array(output)
+    }
+
+    /// AVERAGEIF where the `criteria` argument may be a single value, a range or an
+    /// array. A scalar criterion yields a single average (via AVERAGEIFS); a range or
+    /// array criterion spills one average per element. `value_range` is the range the
+    /// averages are taken over (the criteria range itself when AVERAGEIF omits it).
+    pub(crate) fn averageif(
+        &mut self,
+        value_range: &Node,
+        criteria_range: &Node,
+        criteria: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let criteria_grid = match self.criteria_spill_grid(criteria, cell) {
+            Some(grid) => grid,
+            None => {
+                // Single criterion: delegate to AVERAGEIFS, which returns a scalar.
+                let arguments = vec![value_range.clone(), criteria_range.clone(), criteria.clone()];
+                return self.fn_averageifs(&arguments, cell);
+            }
+        };
+        let value_range = match self.node_to_range(value_range, cell) {
+            Ok(r) => r,
+            Err(e) => return e,
+        };
+        let criteria_range = match self.node_to_range(criteria_range, cell) {
+            Ok(r) => r,
+            Err(e) => return e,
+        };
+        let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(criteria_grid.len());
+        for criteria_row in &criteria_grid {
+            let mut out_row: Vec<ArrayNode> = Vec::with_capacity(criteria_row.len());
+            for criterion in criteria_row {
+                let fn_criteria = [build_criteria(criterion, self.locale)];
+                let mut total = 0.0;
+                let mut count = 0.0;
+                let node = match self.run_ifs(
+                    &value_range,
+                    std::slice::from_ref(&criteria_range),
+                    &fn_criteria,
+                    cell,
+                    |v| {
+                        total += v;
+                        count += 1.0;
+                    },
+                ) {
+                    Ok(()) => {
+                        if count == 0.0 {
+                            ArrayNode::Error(Error::DIV)
+                        } else {
+                            ArrayNode::Number(total / count)
+                        }
+                    }
+                    Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+                    Err(_) => ArrayNode::Error(Error::ERROR),
+                };
+                out_row.push(node);
+            }
+            output.push(out_row);
+        }
+        CalcResult::Array(output)
+    }
+
+    /// Spills MINIFS/MAXIFS over a single array or range criterion, mirroring
+    /// [`Model::sumif`]. `args` is `[value_range, criteria_range, criteria]`; returns
+    /// `None` when `criteria` is a single scalar (the caller takes the normal path).
+    /// `init`/`fold` select min vs. max; an empty match yields 0, as MIN/MAXIFS do.
+    fn minmaxif_spill(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        init: f64,
+        fold: fn(f64, f64) -> f64,
+    ) -> Option<CalcResult> {
+        let criteria_grid = self.criteria_spill_grid(&args[2], cell)?;
+        let value_range = match self.node_to_range(&args[0], cell) {
+            Ok(r) => r,
+            Err(e) => return Some(e),
+        };
+        let criteria_range = match self.node_to_range(&args[1], cell) {
+            Ok(r) => r,
+            Err(e) => return Some(e),
+        };
+        let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(criteria_grid.len());
+        for criteria_row in &criteria_grid {
+            let mut out_row: Vec<ArrayNode> = Vec::with_capacity(criteria_row.len());
+            for criterion in criteria_row {
+                let fn_criteria = [build_criteria(criterion, self.locale)];
+                let mut acc = init;
+                let mut seen = false;
+                let node = match self.run_ifs(
+                    &value_range,
+                    std::slice::from_ref(&criteria_range),
+                    &fn_criteria,
+                    cell,
+                    |v| {
+                        acc = fold(acc, v);
+                        seen = true;
+                    },
+                ) {
+                    Ok(()) => ArrayNode::Number(if seen { acc } else { 0.0 }),
+                    Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+                    Err(_) => ArrayNode::Error(Error::ERROR),
+                };
+                out_row.push(node);
+            }
+            output.push(out_row);
+        }
+        Some(CalcResult::Array(output))
+    }
+
     /// SUMIF where the `criteria` argument may be a single value, a range or an
     /// array. A scalar criterion yields a single sum; a range or array criterion
     /// spills one sum per criterion element, preserving the criteria's shape.
@@ -442,6 +652,12 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // A single array/range criterion spills one minimum per criterion element.
+        if args.len() == 3 {
+            if let Some(result) = self.minmaxif_spill(args, cell, f64::INFINITY, f64::min) {
+                return result;
+            }
+        }
         let mut min = f64::INFINITY;
         let apply_min = |value: f64| min = value.min(min);
         if let Err(e) = self.apply_ifs(args, cell, apply_min) {
@@ -455,6 +671,12 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // A single array/range criterion spills one maximum per criterion element.
+        if args.len() == 3 {
+            if let Some(result) = self.minmaxif_spill(args, cell, -f64::INFINITY, f64::max) {
+                return result;
+            }
+        }
         let mut max = -f64::INFINITY;
         let apply_max = |value: f64| max = value.max(max);
         if let Err(e) = self.apply_ifs(args, cell, apply_max) {
