@@ -38,6 +38,21 @@ fn simple_test() {
         ("ASINH(A1:A10)", "ASINH(@A1:A10)"),
         ("ACOSH(A1:A10)", "ACOSH(@A1:A10)"),
         ("ATANH(A1:A10)", "ATANH(@A1:A10)"),
+        // A legacy formula shows the top left element of an array
+        ("CHAR({65,66,67})", "@CHAR({65,66,67})"),
+        ("CHAR({67;68})", "@CHAR({67;68})"),
+        ("CHAR({65,66;67,68})", "@CHAR({65,66;67,68})"),
+        ("{1,2}+1", "@{1,2}+1"),
+        ("{1,2,3}", "@{1,2,3}"),
+        ("A1:A3+{1,2}", "@A1:A3+@{1,2}"),
+        // A single element is already a scalar
+        ("CHAR({65})", "CHAR({65})"),
+        // Functions are evaluated element by element over array constants
+        ("SUM(ABS({-1,-2}))", "SUM(ABS({-1,-2}))"),
+        (
+            "SUM(--ISERROR(CHAR({65,0,256,66})))",
+            "SUM(--ISERROR(CHAR({65,0,256,66})))",
+        ),
         ("ATAN2(A1:A10,B1:B10)", "ATAN2(@A1:A10,@B1:B10)"),
         ("ATAN2(A1:A10,A1)", "ATAN2(@A1:A10,A1)"),
         ("SQRT(A1:A10)", "SQRT(@A1:A10)"),

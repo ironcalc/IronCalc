@@ -61,8 +61,44 @@ fn is_range_reference(s: &str) -> bool {
 ///  * A:A => @A:A
 ///  * SIN(A1:D1) => SIN(@A1:D1)
 ///
+/// A value that is known to be an array of more than one element, in a place
+/// that expects a scalar, is collapsed too: a legacy formula shows the top left
+/// element of an array.
+///  * CHAR({65,66,67}) => @CHAR({65,66,67})
+///  * {1,2}+1 => @{1,2}+1
+///
+/// Arrays in the scalar arguments of a function are left alone: legacy Excel
+/// evaluates the function element by element (`SUM(ABS({-1,-2}))` is 3).
+///
 /// Assumes formula return a scalar
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
+    // Ranges inside are intersected first, so that `A1:A3+{1,2}` intersects
+    // `A1:A3` with the row, as legacy Excel does.
+    add_implicit_intersection_to_ranges(node, add);
+    if !add || matches!(node, Node::ImplicitIntersection { .. }) {
+        return;
+    }
+    // Like ranges, LET and LAMBDA never get an automatic intersection.
+    if matches!(
+        node,
+        Node::FunctionKind {
+            kind: Function::Let | Function::Lambda,
+            ..
+        }
+    ) {
+        return;
+    }
+    if let StaticResult::Array(rows, columns) = run_static_analysis_on_node(node) {
+        if rows * columns > 1 {
+            *node = Node::ImplicitIntersection {
+                automatic: true,
+                child: Box::new(node.clone()),
+            };
+        }
+    }
+}
+
+fn add_implicit_intersection_to_ranges(node: &mut Node, add: bool) {
     match node {
         Node::BooleanKind(_)
         | Node::NumberKind(_)
