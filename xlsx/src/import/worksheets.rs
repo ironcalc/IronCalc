@@ -32,6 +32,7 @@ use super::{
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
     util::{get_attribute, get_bool_false, get_color},
+    value_metadata::ValueMetadata,
 };
 
 pub(crate) struct Sheet {
@@ -473,7 +474,7 @@ pub(super) enum CellArrayKind {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn get_cell_from_excel(
     cell_value: Option<&str>,
-    value_metadata: Option<&str>,
+    metadata_error: Option<&str>,
     cell_type: &str,
     cell_style: i32,
     formula_index: i32,
@@ -525,14 +526,13 @@ pub(super) fn get_cell_from_excel(
                 }
             }
             "e" => {
-                // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
+                // For compatibility Excel writes errors like #SPILL! and #CALC! as #VALUE!,
+                // with the actual error in the value metadata (see `value_metadata.rs`).
                 // Older engines would just import #VALUE!
                 let mut error_name = cell_value.unwrap_or("#ERROR!");
-                if error_name == "#VALUE!" && value_metadata.is_some() {
-                    error_name = match value_metadata {
-                        Some("1") => "#CALC!",
-                        Some("2") => "#SPILL!",
-                        _ => error_name,
+                if error_name == "#VALUE!" {
+                    if let Some(name) = metadata_error {
+                        error_name = name;
                     }
                 }
                 if let Some(anchor) = anchor_cell {
@@ -618,14 +618,13 @@ pub(super) fn get_cell_from_excel(
             "b" => make_cell(FormulaValue::Boolean(cell_value == Some("1"))),
             "n" => make_cell(FormulaValue::Number(parse_cell_number(cell_value))),
             "e" => {
-                // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
+                // For compatibility Excel writes errors like #SPILL! and #CALC! as #VALUE!,
+                // with the actual error in the value metadata (see `value_metadata.rs`).
                 // Older engines would just import #VALUE!
                 let mut error_name = cell_value.unwrap_or("#ERROR!");
-                if error_name == "#VALUE!" && value_metadata.is_some() {
-                    error_name = match value_metadata {
-                        Some("1") => "#CALC!",
-                        Some("2") => "#SPILL!",
-                        _ => error_name,
+                if error_name == "#VALUE!" {
+                    if let Some(name) = metadata_error {
+                        error_name = name;
                     }
                 }
                 make_cell(FormulaValue::new_error(
@@ -922,6 +921,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     worksheets: &[String],
     tables: &HashMap<String, Table>,
     shared_strings: &mut SharedStringTable,
+    value_metadata: &ValueMetadata,
     defined_names: Vec<DefinedNameS>,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
@@ -946,6 +946,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         sheet_name,
         &mut parser,
         shared_strings,
+        value_metadata,
     )?;
     let ws = &worksheet;
 
@@ -1003,12 +1004,14 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn load_sheets<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
     rels: &HashMap<String, Relationship>,
     workbook: &WorkbookXML,
     tables: &mut HashMap<String, Table>,
     shared_strings: &mut SharedStringTable,
+    value_metadata: &ValueMetadata,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
 ) -> Result<Vec<Worksheet>, XlsxError> {
@@ -1065,6 +1068,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 worksheets,
                 tables,
                 shared_strings,
+                value_metadata,
                 defined_names.clone(),
                 theme,
                 dxfs,

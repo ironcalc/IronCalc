@@ -6,6 +6,7 @@ mod styles;
 mod tables;
 mod theme;
 mod util;
+mod value_metadata;
 mod workbook;
 mod worksheets;
 mod xml;
@@ -35,6 +36,7 @@ use shared_strings::{read_shared_strings, SharedStringTable};
 use metadata::{load_date_system_property, load_metadata};
 use styles::load_styles;
 use util::get_attribute;
+use value_metadata::load_value_metadata;
 use workbook::load_workbook;
 use worksheets::{load_sheets, Relationship};
 
@@ -132,12 +134,14 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     // stored in x14 `extLst` extensions carry inline `<x14:dxf>` formats that we
     // append to `styles.dxfs`, referencing them back by index from the rule.
     let mut styles = load_styles(&mut archive, &theme)?;
+    let value_metadata = load_value_metadata(&mut archive, &rels);
     let worksheets = load_sheets(
         &mut archive,
         &rels,
         &workbook,
         &mut tables,
         &mut shared_strings,
+        &value_metadata,
         &theme,
         &mut styles.dxfs,
     )?;

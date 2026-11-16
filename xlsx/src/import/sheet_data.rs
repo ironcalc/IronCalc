@@ -18,6 +18,7 @@ use crate::error::XlsxError;
 
 use super::shared_strings::SharedStringTable;
 use super::util::parse_bool_with_default;
+use super::value_metadata::ValueMetadata;
 use super::worksheets::{
     find_or_add_formula, from_a1_to_rc, get_cell_from_excel, parse_cell_reference, parse_range,
     CellArrayKind,
@@ -132,6 +133,7 @@ struct SheetDataReader<'a, 'p> {
     sheet_name: &'a str,
     parser: &'a mut Parser<'p>,
     shared_strings: &'a mut SharedStringTable,
+    value_metadata: &'a ValueMetadata,
 
     sheet_data: SheetData,
     rows: Vec<Row>,
@@ -354,7 +356,7 @@ impl SheetDataReader<'_, '_> {
         // s: style index
         // t: cell type
         // cm: cell metadata (used for dynamic arrays)
-        // vm: value metadata (used for #SPILL! and #CALC! errors)
+        // vm: value metadata (errors like #SPILL! and #CALC!, see `value_metadata.rs`)
         // ph: Show Phonetic, unused
         let mut cell = CellXml {
             reference: std::mem::take(&mut self.reference_buffer),
@@ -595,7 +597,9 @@ impl SheetDataReader<'_, '_> {
         let anchor_cell = self.array_cell.get(&(r_index, column_index)).cloned();
         let cell_read = get_cell_from_excel(
             cell.value.as_deref(),
-            cell.value_metadata.as_deref(),
+            cell.value_metadata
+                .as_deref()
+                .and_then(|vm| self.value_metadata.error_name(vm)),
             cell_type,
             cell.style,
             formula_index,
@@ -622,6 +626,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     sheet_name: &str,
     parser: &mut Parser,
     shared_strings: &mut SharedStringTable,
+    value_metadata: &ValueMetadata,
 ) -> Result<SheetDataXml, XlsxError> {
     let mut reader = quick_xml::Reader::from_reader(reader);
     let mut tree = XmlTreeBuilder::new();
@@ -631,6 +636,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
         sheet_name,
         parser,
         shared_strings,
+        value_metadata,
         sheet_data: SheetData::new(),
         rows: Vec::new(),
         shared_formulas: Vec::new(),
