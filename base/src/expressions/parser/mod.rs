@@ -1277,6 +1277,13 @@ impl<'a> Parser<'a> {
                             row_end += 1;
                         }
                     }
+                    Some(token::TableSpecifier::HeadersData) => {}
+                    Some(token::TableSpecifier::DataTotals) => {
+                        row_start += header_row_count;
+                        if totals_row_count != 0 {
+                            row_end += 1;
+                        }
+                    }
                     None => {
                         // skip the headers
                         row_start += header_row_count;

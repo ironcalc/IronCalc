@@ -98,9 +98,8 @@ impl<'a> Lexer<'a> {
     ///  5. MyTable[[#Totals], [MyColumn]]
     ///  6. MyTable[[#This Row], [Jan]:[Dec]]
     ///  7. MyTable[]
-    ///
-    /// Multiple specifiers are not supported yet:
-    ///  1. MyTable[[#Data], [#Totals], [MyColumn]]
+    ///  8. MyTable[[#Headers], [#Data], [MyColumn]]
+    ///  9. MyTable[[#Data], [#Totals], [MyColumn]]
     ///
     /// In particular note that names of columns are escaped only when they are in the first argument
     /// We use '[' and ']'
@@ -147,13 +146,37 @@ impl<'a> Lexer<'a> {
             });
         }
         self.expect(TokenType::LeftBracket)?;
-        let specifier = self.consume_table_specifier()?;
+        let mut specifier = self.consume_table_specifier()?;
         if specifier.is_some() {
-            let peek_token = self.peek_token();
+            let mut peek_token = self.peek_token();
             if peek_token == TokenType::Comma {
                 self.advance_token();
                 self.expect(TokenType::LeftBracket)?;
-            } else if peek_token == TokenType::RightBracket {
+                // Excel allows only two combinations of items: [#Headers],[#Data] and [#Data],[#Totals]
+                if let Some(second) = self.consume_table_specifier()? {
+                    specifier = match (specifier, second) {
+                        (Some(TableSpecifier::Headers), TableSpecifier::Data) => {
+                            Some(TableSpecifier::HeadersData)
+                        }
+                        (Some(TableSpecifier::Data), TableSpecifier::Totals) => {
+                            Some(TableSpecifier::DataTotals)
+                        }
+                        _ => {
+                            return Err(LexerError {
+                                position: self.position,
+                                message: "Invalid structured reference".to_string(),
+                            });
+                        }
+                    };
+                    peek_token = self.peek_token();
+                    if peek_token == TokenType::Comma {
+                        self.advance_token();
+                        self.expect(TokenType::LeftBracket)?;
+                    }
+                }
+            }
+            if peek_token == TokenType::RightBracket {
+                self.advance_token();
                 return Ok(TokenType::StructuredReference {
                     table_name: table_name.to_string(),
                     specifier,

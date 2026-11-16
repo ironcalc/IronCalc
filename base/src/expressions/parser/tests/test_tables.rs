@@ -102,3 +102,65 @@ fn simple_table() {
         "SUBTOTAL(109,'Sheet One'!$A$2:$A$3)"
     );
 }
+
+#[test]
+fn two_item_specifiers() {
+    let worksheets = vec!["Sheet One".to_string()];
+
+    // Table A1:C5: a header row, three data rows and a totals row
+    let column_names = ["Item", "Amount", "Double"];
+    let mut tables = create_test_table("Table1", &column_names, "A1", 5);
+    tables.get_mut("Table1").unwrap().totals_row_count = 1;
+
+    let mut parser = new_parser(worksheets, vec![], tables);
+    // Reference cell is 'Sheet One'!F1
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 1,
+        column: 6,
+    };
+
+    let formula = "SUM(Table1[[#Headers],[#Data],[Amount]])";
+    let t = parser.parse(formula, &cell_reference);
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "SUM($B$1:$B$4)"
+    );
+
+    let formula = "SUM(Table1[[#Data],[#Totals],[Amount]])";
+    let t = parser.parse(formula, &cell_reference);
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "SUM($B$2:$B$5)"
+    );
+
+    let formula = "COUNTA(Table1[[#Headers],[#Data],[Item]:[Amount]])";
+    let t = parser.parse(formula, &cell_reference);
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "COUNTA($A$1:$B$4)"
+    );
+}
+
+#[test]
+fn data_and_totals_without_totals_row() {
+    let worksheets = vec!["Sheet One".to_string()];
+
+    // Table A1:C4: a header row and three data rows
+    let column_names = ["Item", "Amount", "Double"];
+    let tables = create_test_table("Table1", &column_names, "A1", 4);
+
+    let mut parser = new_parser(worksheets, vec![], tables);
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 1,
+        column: 6,
+    };
+
+    let formula = "SUM(Table1[[#Data],[#Totals],[Amount]])";
+    let t = parser.parse(formula, &cell_reference);
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "SUM($B$2:$B$4)"
+    );
+}
