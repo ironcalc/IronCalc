@@ -214,3 +214,77 @@ fn bycol_lambda_counta() {
     assert_eq!(model._get_text("H1"), "1");
     assert_eq!(model._get_text("I1"), "2");
 }
+
+// ── LAMBDA results that are arrays or references ─────────────────────────────
+
+#[test]
+fn byrow_lambda_giving_a_1x1_array() {
+    let mut model = new_empty_model();
+    model._set("H1", "72");
+    model._set("H2", "105");
+    // Each row is a 1x1 array, so CHAR(r) is a 1x1 array too
+    model._set("A1", "=BYROW({72;105},LAMBDA(r,CHAR(r)))");
+    model._set("B1", "=BYROW(H1:H2,LAMBDA(r,CHAR(r)))");
+    model._set("C1", "=CONCAT(BYROW({72;105},LAMBDA(r,CHAR(r))))");
+    model._set("D1", "=BYCOL({72,105},LAMBDA(c,CHAR(c)))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "H");
+    assert_eq!(model._get_text("A2"), "i");
+    assert_eq!(model._get_text("B1"), "H");
+    assert_eq!(model._get_text("B2"), "i");
+    assert_eq!(model._get_text("C1"), "Hi");
+    assert_eq!(model._get_text("D1"), "H");
+    assert_eq!(model._get_text("E1"), "i");
+}
+
+#[test]
+fn byrow_lambda_giving_a_reference() {
+    let mut model = new_empty_model();
+    model._set("H1", "72");
+    model._set("H2", "105");
+    model._set("A1", "=BYROW({1;2},LAMBDA(r,H2))");
+    model._set("B1", "=BYROW({1;2},LAMBDA(r,INDEX(H1:H2,SUM(r))))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "105");
+    assert_eq!(model._get_text("A2"), "105");
+    assert_eq!(model._get_text("B1"), "72");
+    assert_eq!(model._get_text("B2"), "105");
+}
+
+#[test]
+fn lambda_giving_more_than_one_value_is_calc_error() {
+    let mut model = new_empty_model();
+    model._set("H1", "72");
+    model._set("H2", "105");
+    model._set("A1", "=BYROW({1;2},LAMBDA(r,{1,2}))");
+    model._set("B1", "=BYROW({1;2},LAMBDA(r,H1:H2))");
+    model._set("C1", "=BYCOL({1,2},LAMBDA(c,SEQUENCE(2)))");
+    model._set("A5", "=MAKEARRAY(1,2,LAMBDA(r,c,{1,2}))");
+    model._set("A6", "=MAP({1;2},LAMBDA(x,{1,2}))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#CALC!");
+    assert_eq!(model._get_text("A2"), "#CALC!");
+    assert_eq!(model._get_text("B1"), "#CALC!");
+    assert_eq!(model._get_text("C1"), "#CALC!");
+    assert_eq!(model._get_text("A5"), "#CALC!");
+    assert_eq!(model._get_text("A6"), "#CALC!");
+}
+
+#[test]
+fn map_makearray_scan_lambda_giving_a_1x1_array() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAP({65;66},LAMBDA(x,CHAR({1}*x)))");
+    model._set("B1", "=MAKEARRAY(1,2,LAMBDA(r,c,CHAR({64}+c)))");
+    model._set("A4", "=SCAN(0,{1;2},LAMBDA(a,x,{1}*(a+x)))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "A");
+    assert_eq!(model._get_text("A2"), "B");
+    assert_eq!(model._get_text("B1"), "A");
+    assert_eq!(model._get_text("C1"), "B");
+    assert_eq!(model._get_text("A4"), "1");
+    assert_eq!(model._get_text("A5"), "3");
+}
