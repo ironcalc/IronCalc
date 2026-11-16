@@ -207,6 +207,8 @@ pub enum TableSpecifier {
     Headers,
     ThisRow,
     Totals,
+    HeadersData,
+    DataTotals,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]

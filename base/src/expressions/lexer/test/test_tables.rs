@@ -71,3 +71,68 @@ fn table_totals_no_reference() {
     );
     assert_eq!(lx.next_token(), EOF);
 }
+
+#[test]
+fn table_headers_and_data() {
+    let mut lx = new_lexer("tbInfo[[#Headers], [#Data], [Amount]]");
+    assert_eq!(
+        lx.next_token(),
+        StructuredReference {
+            table_name: "tbInfo".to_string(),
+            specifier: Some(TableSpecifier::HeadersData),
+            table_reference: Some(TableReference::ColumnReference("Amount".to_string()))
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn table_data_and_totals_range() {
+    let mut lx = new_lexer("tbInfo[[#Data],[#Totals],[Jan]:[Dec]]");
+    assert_eq!(
+        lx.next_token(),
+        StructuredReference {
+            table_name: "tbInfo".to_string(),
+            specifier: Some(TableSpecifier::DataTotals),
+            table_reference: Some(TableReference::RangeReference((
+                "Jan".to_string(),
+                "Dec".to_string()
+            )))
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn table_headers_and_data_no_reference() {
+    let mut lx = new_lexer("tbInfo[[#Headers],[#Data]]");
+    assert_eq!(
+        lx.next_token(),
+        StructuredReference {
+            table_name: "tbInfo".to_string(),
+            specifier: Some(TableSpecifier::HeadersData),
+            table_reference: None
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn table_invalid_item_combination() {
+    let mut lx = new_lexer("tbInfo[[#Headers],[#Totals],[Jan]]");
+    assert!(matches!(lx.next_token(), Illegal(_)));
+}
+
+#[test]
+fn table_totals_in_brackets_no_reference() {
+    let mut lx = new_lexer("tbInfo[[#Totals]]");
+    assert_eq!(
+        lx.next_token(),
+        StructuredReference {
+            table_name: "tbInfo".to_string(),
+            specifier: Some(TableSpecifier::Totals),
+            table_reference: None
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+}
