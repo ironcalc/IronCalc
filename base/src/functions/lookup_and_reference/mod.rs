@@ -1083,6 +1083,7 @@ impl<'a> Model<'a> {
     // Returns a formula as a string. Two differences with Excel:
     // - It returns the formula in English
     // - It formats the formula without spaces between elements
+    // A range gives an array with the formula of each cell (#N/A where there is none).
     pub(crate) fn fn_formulatext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -1096,23 +1097,33 @@ impl<'a> Model<'a> {
                     message: "3D ranges not supported".to_string(),
                 };
             }
-            if left.row != right.row || left.column != right.column {
-                // FIXME: Implicit intersection or dynamic arrays
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "argument must be a reference to a single cell".to_string(),
+            let formula_text = |row: i32, column: i32| {
+                self.get_english_cell_formula(left.sheet, row, column)
+                    .ok()
+                    .flatten()
+            };
+            if left.row == right.row && left.column == right.column {
+                return match formula_text(left.row, left.column) {
+                    Some(f) => CalcResult::String(f),
+                    None => CalcResult::Error {
+                        error: Error::NA,
+                        origin: cell,
+                        message: "Reference does not have a formula".to_string(),
+                    },
                 };
             }
-            if let Ok(Some(f)) = self.get_english_cell_formula(left.sheet, left.row, left.column) {
-                CalcResult::String(f)
-            } else {
-                CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Reference does not have a formula".to_string(),
-                }
-            }
+            CalcResult::Array(
+                (left.row..=right.row)
+                    .map(|row| {
+                        (left.column..=right.column)
+                            .map(|column| match formula_text(row, column) {
+                                Some(f) => ArrayNode::String(f),
+                                None => ArrayNode::Error(Error::NA),
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            )
         } else {
             CalcResult::Error {
                 error: Error::ERROR,
