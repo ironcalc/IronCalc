@@ -334,6 +334,7 @@
   },
   "settings": {
     "date_system": {
+      "default": "Default",
       "Excel1900": {
         "description": "1 is January 1, 1900. Assumes incorrectly that 1900 was a leap year. Excel's default.",
         "label": "Excel 1900"
@@ -342,12 +343,11 @@
         "description": "1 is January 2, 1904. Used by older Excel for Mac workbooks.",
         "label": "Excel 1904"
       },
-      "helper": "A date system specifies how a serial number relates to a date.",
+      "helper": "A date system specifies how a serial number relates to a date. Changing it does not convert existing dates.",
       "IronCalc": {
-        "description": "1 is December 31, 1899. From 61 onward it coincides with Excel 1900. You can use it with negative numbers. Our default.",
+        "description": "1 is December 31, 1899. From 61 onward it coincides with Excel 1900. You can use it with negative numbers.",
         "label": "LibreOffice/IronCalc"
       },
-      "note": "NOTE: Changing it does not convert existing dates.",
       "title": "Date system"
     },
     "focus_on_open": {

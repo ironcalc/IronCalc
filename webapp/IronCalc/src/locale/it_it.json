@@ -334,6 +334,7 @@
   },
   "settings": {
     "date_system": {
+      "default": "Predefinito",
       "Excel1900": {
         "description": "1 è il 1º gennaio 1900. Assume erroneamente che il 1900 fosse un anno bisestile. Il valore predefinito di Excel.",
         "label": "Excel 1900"
@@ -342,12 +343,11 @@
         "description": "1 è il 2 gennaio 1904. Usato dalle cartelle di lavoro meno recenti di Excel per Mac.",
         "label": "Excel 1904"
       },
-      "helper": "Un sistema di date specifica come un numero di serie corrisponde a una data.",
+      "helper": "Un sistema di date specifica come un numero di serie corrisponde a una data. Modificarlo non converte le date esistenti.",
       "IronCalc": {
-        "description": "1 è il 31 dicembre 1899. Dal 61 in poi coincide con Excel 1900. Si può usare con numeri negativi. Il nostro valore predefinito.",
+        "description": "1 è il 31 dicembre 1899. Dal 61 in poi coincide con Excel 1900. Si può usare con numeri negativi.",
         "label": "LibreOffice/IronCalc"
       },
-      "note": "NOTA: modificarlo non converte le date esistenti.",
       "title": "Sistema di date"
     },
     "focus_on_open": {
