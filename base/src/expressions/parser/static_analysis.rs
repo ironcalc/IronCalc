@@ -401,8 +401,21 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             column1,
             row2,
             column2,
+            absolute_row1,
+            absolute_column1,
+            absolute_row2,
+            absolute_column2,
             ..
-        } => StaticResult::Range(row2 - row1, column2 - column1),
+        } => {
+            // A relative end is stored as an offset from the formula's cell and an
+            // absolute end as a position, so when the two ends differ the size of
+            // `$B$1:B3` depends on the cell the formula is in.
+            if absolute_row1 != absolute_row2 || absolute_column1 != absolute_column2 {
+                StaticResult::Unknown
+            } else {
+                StaticResult::Range(row2 - row1, column2 - column1)
+            }
+        }
         Node::OpRangeKind { .. } => {
             // TODO: We could do a bit better here
             StaticResult::Unknown
