@@ -151,6 +151,7 @@ mod test_ln;
 mod test_locale;
 mod test_log;
 mod test_log10;
+mod test_mixed_range_shape;
 mod test_mod_quotient;
 mod test_networkdays;
 mod test_now;
