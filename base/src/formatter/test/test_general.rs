@@ -300,3 +300,40 @@ fn test_german_locale() {
     let locale = get_locale("de").expect("");
     assert_eq!(format_number(1234.56, "General", locale).text, "1234,56");
 }
+
+#[test]
+fn test_conditional_phone_number() {
+    let locale = get_default_locale();
+    let format = "[<=9999999]###-####;(###)\\ ###-####";
+    assert_eq!(
+        format_number(2065440703.0, format, locale).text,
+        "(206) 544-0703"
+    );
+    assert_eq!(format_number(5440703.0, format, locale).text, "544-0703");
+    assert_eq!(format_number(9999999.0, format, locale).text, "999-9999");
+    assert_eq!(
+        format_number(10000000.0, format, locale).text,
+        "(1) 000-0000"
+    );
+}
+
+#[test]
+fn test_conditional_sections() {
+    let locale = get_default_locale();
+    // Both first and second sections have conditions: the third is the fallback
+    let format = "[>100]\"big\";[<-100]\"small\";0.0";
+    assert_eq!(format_number(500.0, format, locale).text, "big");
+    assert_eq!(format_number(-500.0, format, locale).text, "small");
+    assert_eq!(format_number(5.0, format, locale).text, "5.0");
+    // A negative number in the fallback section keeps its minus sign
+    assert_eq!(format_number(-5.0, format, locale).text, "-5.0");
+
+    // Colors follow the selected section
+    let format = "[Red][<=100]0;[Blue][>100]0";
+    assert_eq!(format_number(50.0, format, locale).text, "50");
+    assert_eq!(format_number(500.0, format, locale).text, "500");
+    assert_ne!(
+        format_number(50.0, format, locale).color,
+        format_number(500.0, format, locale).color
+    );
+}
