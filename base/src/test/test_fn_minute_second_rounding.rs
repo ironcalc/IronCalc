@@ -22,3 +22,29 @@ fn minute_and_second_round_to_the_millisecond() {
     assert_eq!(model._get_text("A4"), "1");
     assert_eq!(model._get_text("A5"), "0");
 }
+
+// Excel's SECOND rounds a fraction of a second to the nearest second, half a second
+// or more up, and the rounding carries: a lap of 1:05.8 is 6 seconds and one of
+// 0:59.6 is 0 seconds of the next minute. The hour carries the same way, as the
+// time formats show it: 10:59:59.6 is 11:00:00.
+#[test]
+fn a_fraction_of_a_second_rounds_to_the_nearest_second() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SECOND(65.8/86400)");
+    model._set("A2", "=SECOND(59.6/86400)");
+    model._set("A3", "=MINUTE(59.6/86400)");
+    model._set("A4", "=SECOND(0.5+0.4/86400)");
+    model._set("A5", "=SECOND(0.5+0.6/86400)");
+    model._set("A6", "=HOUR(TIME(10,59,59)+0.6/86400)");
+    model._set("A7", "=MINUTE(TIME(10,59,59)+0.6/86400)");
+    model._set("A8", "=HOUR(TIME(10,59,59)+0.4/86400)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "6");
+    assert_eq!(model._get_text("A2"), "0");
+    assert_eq!(model._get_text("A3"), "1");
+    assert_eq!(model._get_text("A4"), "0");
+    assert_eq!(model._get_text("A5"), "1");
+    assert_eq!(model._get_text("A6"), "11");
+    assert_eq!(model._get_text("A7"), "0");
+    assert_eq!(model._get_text("A8"), "10");
+}
