@@ -6,6 +6,7 @@ use crate::{
 
 use super::{
     dates::{calendar_year, serial_to_weekday, serial_to_ymd, ymd_to_serial},
+    lexer::Compare,
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -60,6 +61,53 @@ fn use_group_separator(use_thousands: bool, digit_index: i32, group_sizes: &str)
     false
 }
 
+/// The condition of a section of the format, like `[<=9999999]`, if it has one
+fn section_condition(part: &ParsePart) -> Option<&(Compare, f64)> {
+    match part {
+        ParsePart::Number(p) => p.condition.as_ref(),
+        _ => None,
+    }
+}
+
+fn condition_holds(value: f64, (cmp, threshold): &(Compare, f64)) -> bool {
+    match cmp {
+        Compare::Equal => value == *threshold,
+        Compare::LessThan => value < *threshold,
+        Compare::GreaterThan => value > *threshold,
+        Compare::LessOrEqualThan => value <= *threshold,
+        Compare::GreaterOrEqualThan => value >= *threshold,
+    }
+}
+
+/// When the first or second section has a condition, the sections are
+/// picked by condition and not by the sign of the value:
+/// * The first section if its condition holds
+/// * Otherwise the second section if its condition holds
+/// * Otherwise the third section if the first two both have conditions, or
+///   the second section if it has none
+///
+/// Returns `None` if the format has no conditions.
+fn select_conditional_section(value: f64, parts: &[ParsePart]) -> Option<usize> {
+    let first = parts.first().and_then(section_condition);
+    let second = parts.get(1).and_then(section_condition);
+    if first.is_none() && second.is_none() {
+        return None;
+    }
+    if first.is_some_and(|c| condition_holds(value, c)) {
+        return Some(0);
+    }
+    if second.is_some_and(|c| condition_holds(value, c)) {
+        return Some(1);
+    }
+    let fallback = if first.is_some() && second.is_some() {
+        2
+    } else {
+        1
+    };
+    // A section that is not there: we use the first section
+    Some(if fallback < parts.len() { fallback } else { 0 })
+}
+
 pub fn format_number(
     value_original: f64,
     format: &str,
@@ -82,46 +130,58 @@ pub fn format_number(
     // You can use the ampersand (&) text operator to join, or concatenate, two values.
     let mut value = value_original;
     let part;
-    match parts.len() {
-        1 => {
-            part = &parts[0];
-        }
-        2 => {
-            if value >= 0.0 {
-                part = &parts[0]
-            } else {
-                value = -value;
-                part = &parts[1];
+    if parts.len() > 4 {
+        return Formatted {
+            text: "#VALUE!".to_owned(),
+            color: None,
+            error: Some("Too many parts".to_owned()),
+        };
+    }
+    if let Some(index) = select_conditional_section(value, &parts) {
+        // The value keeps its sign: a negative number shows its minus sign
+        part = &parts[index];
+    } else {
+        match parts.len() {
+            1 => {
+                part = &parts[0];
             }
-        }
-        3 => {
-            if value > 0.0 {
-                part = &parts[0]
-            } else if value < 0.0 {
-                value = -value;
-                part = &parts[1];
-            } else {
-                value = 0.0;
-                part = &parts[2];
+            2 => {
+                if value >= 0.0 {
+                    part = &parts[0]
+                } else {
+                    value = -value;
+                    part = &parts[1];
+                }
             }
-        }
-        4 => {
-            if value > 0.0 {
-                part = &parts[0]
-            } else if value < 0.0 {
-                value = -value;
-                part = &parts[1];
-            } else {
-                value = 0.0;
-                part = &parts[2];
+            3 => {
+                if value > 0.0 {
+                    part = &parts[0]
+                } else if value < 0.0 {
+                    value = -value;
+                    part = &parts[1];
+                } else {
+                    value = 0.0;
+                    part = &parts[2];
+                }
             }
-        }
-        _ => {
-            return Formatted {
-                text: "#VALUE!".to_owned(),
-                color: None,
-                error: Some("Too many parts".to_owned()),
-            };
+            4 => {
+                if value > 0.0 {
+                    part = &parts[0]
+                } else if value < 0.0 {
+                    value = -value;
+                    part = &parts[1];
+                } else {
+                    value = 0.0;
+                    part = &parts[2];
+                }
+            }
+            _ => {
+                return Formatted {
+                    text: "#VALUE!".to_owned(),
+                    color: None,
+                    error: Some("Too many parts".to_owned()),
+                };
+            }
         }
     }
     match part {

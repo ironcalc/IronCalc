@@ -361,6 +361,6 @@ fn a_number_too_large_in_a_number_format_is_an_error() {
             "=TEXT(5, \"[>1e308]0.0;0\")",
             "=TEXT(5, \"[>]0.0;0\")",
         ]),
-        ["#VALUE!", "#VALUE!", "5.0", "5.0"]
+        ["#VALUE!", "#VALUE!", "5", "5.0"]
     );
 }
