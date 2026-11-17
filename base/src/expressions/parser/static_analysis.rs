@@ -677,15 +677,17 @@ fn args_signature_sheet(arg_count: usize) -> Vec<Signature> {
     }
 }
 
+// The value looked up by HLOOKUP, VLOOKUP, LOOKUP and MATCH is a scalar: a legacy formula
+// intersects a range given there with its own row or column, as in `MATCH(@A1:A3,B1:B3,0)`.
 fn args_signature_hlookup(arg_count: usize) -> Vec<Signature> {
     if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Scalar]
+        vec![Signature::Scalar, Signature::Vector, Signature::Scalar]
     } else if arg_count == 4 {
         vec![
-            Signature::Vector,
-            Signature::Vector,
             Signature::Scalar,
             Signature::Vector,
+            Signature::Scalar,
+            Signature::Scalar,
         ]
     } else {
         vec![Signature::Error; arg_count]
@@ -711,9 +713,9 @@ fn args_signature_index(arg_count: usize) -> Vec<Signature> {
 
 fn args_signature_lookup(arg_count: usize) -> Vec<Signature> {
     if arg_count == 2 {
-        vec![Signature::Vector, Signature::Vector]
+        vec![Signature::Scalar, Signature::Vector]
     } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Vector]
+        vec![Signature::Scalar, Signature::Vector, Signature::Vector]
     } else {
         vec![Signature::Error; arg_count]
     }
@@ -721,9 +723,9 @@ fn args_signature_lookup(arg_count: usize) -> Vec<Signature> {
 
 fn args_signature_match(arg_count: usize) -> Vec<Signature> {
     if arg_count == 2 {
-        vec![Signature::Vector, Signature::Vector]
+        vec![Signature::Scalar, Signature::Vector]
     } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Scalar]
+        vec![Signature::Scalar, Signature::Vector, Signature::Scalar]
     } else {
         vec![Signature::Error; arg_count]
     }
