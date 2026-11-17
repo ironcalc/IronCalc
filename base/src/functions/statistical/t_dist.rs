@@ -301,15 +301,38 @@ impl<'a> Model<'a> {
         CalcResult::Number(x.abs())
     }
 
+    /// Reads a sample of T.TEST from a range. The paired test pairs the values
+    /// of the two samples in reading order, so it keeps the full width of a
+    /// range more than one row tall (`values_from_used_rows`); the other types
+    /// do not pair values and read only the used area (`values_from_used_range`).
+    fn t_test_sample(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        paired: bool,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        if paired {
+            self.values_from_used_rows(left, right, cell)
+        } else {
+            self.values_from_used_range(left, right, cell)
+        }
+    }
+
     // T.TEST(array1, array2, tails, type)
     pub(crate) fn fn_t_test(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 4 {
             return CalcResult::new_args_number_error(cell);
         }
 
+        // The type decides how the samples are read, so it is read first. Its
+        // errors are returned below, after those of the samples and the tails.
+        let test_type_number = self.get_number(&args[3], cell);
+        let paired = matches!(&test_type_number, Ok(f) if f.trunc() == 1.0);
+
         let values1_opts = match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::Range { left, right } => {
-                match self.values_from_used_rows(left, right, cell) {
+                match self.t_test_sample(left, right, cell, paired) {
                     Ok(v) => v,
                     Err(error) => return error,
                 }
@@ -335,7 +358,7 @@ impl<'a> Model<'a> {
 
         let values2_opts = match self.evaluate_node_in_context(&args[1], cell) {
             CalcResult::Range { left, right } => {
-                match self.values_from_used_rows(left, right, cell) {
+                match self.t_test_sample(left, right, cell, paired) {
                     Ok(v) => v,
                     Err(error) => return error,
                 }
@@ -376,7 +399,7 @@ impl<'a> Model<'a> {
             }
             Err(e) => return e,
         };
-        let test_type = match self.get_number(&args[3], cell) {
+        let test_type = match test_type_number {
             Ok(f) => {
                 let tf = f.trunc();
                 match tf {

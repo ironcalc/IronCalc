@@ -94,3 +94,95 @@ fn test_fn_t_test_paired_whole_rows_on_two_sheets() {
     assert_eq!(model._get_text("A8"), "0.5");
     assert_eq!(model._get_text("A9"), "0.5");
 }
+
+fn new_model_with_two_sheets<'a>() -> crate::model::Model<'a> {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set("A1", "1");
+    model._set("B1", "4");
+    model._set("A2", "8");
+    model._set("B2", "10");
+    model._set("Sheet2!A1", "2");
+    model._set("Sheet2!B1", "5");
+    model._set("Sheet2!A2", "9");
+    model._set("Sheet2!B2", "12");
+    model._set("Sheet2!C1", "100");
+    model
+}
+
+// Types 2 and 3 do not pair cells: over whole rows they give what the rows
+// written out give.
+#[test]
+fn test_fn_t_test_unpaired_whole_rows_on_two_sheets() {
+    let mut model = new_model_with_two_sheets();
+    model._set("A5", "=T.TEST(Sheet1!1:2,Sheet2!1:2,2,2)");
+    model._set("A6", "=T.TEST(Sheet1!A1:C2,Sheet2!A1:C2,2,2)");
+    model._set("A7", "=T.TEST(Sheet1!1:2,Sheet2!1:2,1,3)");
+    model._set("A8", "=T.TEST(Sheet1!A1:C2,Sheet2!A1:C2,1,3)");
+    model.evaluate();
+    assert_ne!(model._get_text("A5"), "#DIV/0!");
+    assert_eq!(model._get_text("A5"), model._get_text("A6"));
+    assert_ne!(model._get_text("A7"), "#DIV/0!");
+    assert_eq!(model._get_text("A7"), model._get_text("A8"));
+}
+
+// Types 2 and 3 read each sample only as far as the used area of its sheet,
+// also over whole rows. With a dynamic array in the workbook every cell read
+// goes on record, so the record counts the cells read: a whole row read at
+// its full width would be 16,384 cells.
+#[test]
+fn test_fn_t_test_unpaired_whole_rows_read_only_the_used_area() {
+    let mut model = new_model_with_two_sheets();
+    model._set("A5", "=T.TEST(Sheet1!1:2,Sheet2!1:2,2,2)");
+    model._set("A6", "=SEQUENCE(1)");
+    model.evaluate();
+    assert_ne!(model._get_text("A5"), "#DIV/0!");
+    let cells_read = model.evaluation.seen.len();
+    assert!(cells_read < 100, "{cells_read} cells read");
+}
+
+// The type can come from a cell or a formula, and it is truncated: 1.9 is the
+// paired test.
+#[test]
+fn test_fn_t_test_type_from_a_cell_or_a_formula() {
+    let mut model = new_model_with_two_sheets();
+    model._set("A10", "1");
+    model._set("A11", "2");
+    model._set("A5", "=T.TEST(Sheet1!1:2,Sheet2!1:2,2,A10)");
+    model._set("A6", "=T.TEST(Sheet1!1:2,Sheet2!1:2,2,1+0.9)");
+    model._set("A7", "=T.TEST(Sheet1!1:2,Sheet2!1:2,2,1.9)");
+    model._set("A8", "=T.TEST(Sheet1!1:2,Sheet2!1:2,2,A11)");
+    model._set("A9", "=T.TEST(Sheet1!A1:C2,Sheet2!A1:C2,2,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A5"), "0.015392438");
+    assert_eq!(model._get_text("A6"), "0.015392438");
+    assert_eq!(model._get_text("A7"), "0.015392438");
+    assert_eq!(model._get_text("A8"), model._get_text("A9"));
+}
+
+// The errors of the type come after those of the samples and of the tails.
+#[test]
+fn test_fn_t_test_error_order() {
+    let mut model = new_empty_model();
+    for row in 1..=3 {
+        model._set(&format!("A{row}"), &row.to_string());
+        model._set(&format!("B{row}"), &(row * 2).to_string());
+        model._set(&format!("C{row}"), &row.to_string());
+    }
+    model._set("C2", "=NA()");
+    model._set("E1", "=T.TEST(C1:C3,B1:B3,2,1/0)");
+    model._set("E2", "=T.TEST(A1:A3,C1:C3,2,1/0)");
+    model._set("E3", "=T.TEST(A1:A3,B1:B3,\"x\",1/0)");
+    model._set("E4", "=T.TEST(A1:A3,B1:B3,3,1/0)");
+    model._set("E5", "=T.TEST(A1:A3,B1:B3,2,1/0)");
+    model._set("E6", "=T.TEST(A1:A3,B1:B3,2,4)");
+    model._set("E7", "=T.TEST(A1:A3,B1:B3,2,\"x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "#N/A");
+    assert_eq!(model._get_text("E2"), "#N/A");
+    assert_eq!(model._get_text("E3"), "#VALUE!");
+    assert_eq!(model._get_text("E4"), "#NUM!");
+    assert_eq!(model._get_text("E5"), "#DIV/0!");
+    assert_eq!(model._get_text("E6"), "#NUM!");
+    assert_eq!(model._get_text("E7"), "#VALUE!");
+}
