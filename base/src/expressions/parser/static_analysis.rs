@@ -121,8 +121,15 @@ fn add_implicit_intersection_to_ranges(node: &mut Node, add: bool) {
                 *node = new_node
             }
         }
-        Node::SpillRangeOperator { child } => {
-            add_implicit_intersection(child, add);
+        // A spill reference (A1#) is a range: in a scalar context it is
+        // intersected with the formula's row/column, like A1:A3.
+        Node::SpillRangeOperator { .. } => {
+            if add {
+                *node = Node::ImplicitIntersection {
+                    automatic: true,
+                    child: Box::new(node.clone()),
+                };
+            }
         }
         Node::RangeKind {
             row1,
