@@ -296,15 +296,22 @@ const Settings = (properties: SettingsProps) => {
           </legend>
           <p id={dateSystemDescriptionId} className="ic-settings-description">
             {t("settings.date_system.helper")}
-            <br />
-            {t("settings.date_system.note")}
           </p>
           <div className="ic-settings-fields">
             {dateSystems.map((dateSystem) => (
               <Radio
                 key={dateSystem}
                 name={dateSystemGroupName}
-                label={t(`settings.date_system.${dateSystem}.label`)}
+                label={
+                  <>
+                    {t(`settings.date_system.${dateSystem}.label`)}
+                    {dateSystem === "IronCalc" && (
+                      <span className="ic-settings-badge">
+                        {t("settings.date_system.default")}
+                      </span>
+                    )}
+                  </>
+                }
                 description={t(
                   `settings.date_system.${dateSystem}.description`,
                 )}

@@ -123,6 +123,19 @@
   color: var(--palette-grey-500);
 }
 
+.ic-settings-badge {
+  display: inline-block;
+  vertical-align: top;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 16px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--palette-grey-600);
+  background-color: var(--palette-grey-100);
+}
+
 .ic-settings-fields {
   display: flex;
   flex-direction: column;
