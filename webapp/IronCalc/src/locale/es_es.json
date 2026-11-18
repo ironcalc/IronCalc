@@ -435,6 +435,7 @@
     "decrease_font_size": "Disminuir tamaño de fuente",
     "download_png": "Descargar como PNG",
     "fill_color": "Color de relleno",
+    "focus_cell": "Resaltar celda activa",
     "font_color": "Color de fuente",
     "font_size": "Tamaño de fuente",
     "format_menu": {

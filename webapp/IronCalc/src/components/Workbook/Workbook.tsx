@@ -1123,6 +1123,11 @@ const Workbook = (
             model.setShowGridLines(sheet, show);
             setRedrawId((id) => id + 1);
           }}
+          focusCell={workbookState.getFocusCell()}
+          onToggleFocusCell={(on) => {
+            workbookState.setFocusCell(on);
+            setRedrawId((id) => id + 1);
+          }}
           formatOptions={fmtSettings}
           onOpenConditionalFormatting={() =>
             openDrawer("conditionalFormatting")
