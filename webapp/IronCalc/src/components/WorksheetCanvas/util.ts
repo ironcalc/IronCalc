@@ -94,6 +94,10 @@ export function readThemeFromCSS(root: Element): Theme {
     ),
     headerBorderColor: readCSSVar("--palette-sheet-header-border-color", style),
     outlineColor: readCSSVar("--palette-sheet-outline-color", style),
+    outlineBackgroundColor: readCSSVar(
+      "--palette-sheet-outline-background-color",
+      style,
+    ),
     headerFont: readCSSVar("--palette-sheet-header-font", style),
     gridSeparatorColor: readCSSVar(
       "--palette-sheet-grid-separator-color",
@@ -118,6 +122,7 @@ export interface Theme {
   headerSelectedBackground: string;
   headerBorderColor: string;
   outlineColor: string;
+  outlineBackgroundColor: string;
   headerFont: string;
   gridSeparatorColor: string;
   defaultTextColor: string;

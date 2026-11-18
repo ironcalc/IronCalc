@@ -2516,10 +2516,51 @@ export default class WorksheetCanvas {
     });
   }
 
+  // Focus cell: shades the rows and columns of the selected cell (all of
+  // them for a merged cell). The "evenodd" fill leaves their intersection,
+  // the cell itself, clear.
+  private drawFocusCell(): void {
+    if (!this.workbookState.getFocusCell()) {
+      return;
+    }
+    const [sheet, selectedRow, selectedColumn] = this.model.getSelectedCell();
+    const { row, column, width, height } = this.mergeMap.get(
+      `${selectedRow}-${selectedColumn}`,
+    ) ?? { row: selectedRow, column: selectedColumn, width: 1, height: 1 };
+    const [x, y] = this.getCoordinatesByCell(row, column);
+    const [areaWidth, areaHeight] = this.getAreaDimensions(
+      row,
+      column,
+      row + height - 1,
+      column + width - 1,
+    );
+    // A band in the scrolling pane stops at the frozen panes
+    const top =
+      row > this.model.getFrozenRowsCount(sheet)
+        ? Math.max(y, headerRowHeight + this.getFrozenRowsHeight())
+        : y;
+    const left =
+      column > this.model.getFrozenColumnsCount(sheet)
+        ? Math.max(x, headerColumnWidth + this.getFrozenColumnsWidth())
+        : x;
+    const { ctx } = this;
+    ctx.fillStyle = this.theme.outlineBackgroundColor;
+    ctx.beginPath();
+    // Fully scrolled under the frozen panes, a band is empty
+    if (y + areaHeight > top) {
+      ctx.rect(0, top, this.width, y + areaHeight - top);
+    }
+    if (x + areaWidth > left) {
+      ctx.rect(left, 0, x + areaWidth - left, this.height);
+    }
+    ctx.fill("evenodd");
+  }
+
   // Draws:
   // * cell outline marking the selected cell
   // * the area outline marking the selected area (if any)
   // * the handle (the small circle/square that allows you to extend and autofill)
+
   private drawCellOutline(): void {
     const { cellOutline, areaOutline, cellOutlineHandle } = this;
     if (this.workbookState.getEditingCell()) {
@@ -3016,6 +3057,9 @@ export default class WorksheetCanvas {
     for (const cell of this.cells) {
       this.renderCellText(cell);
     }
+
+    // Before the headers, which paint over the bands' ends
+    this.drawFocusCell();
 
     // Draw column headers
     this.renderColumnHeaders(

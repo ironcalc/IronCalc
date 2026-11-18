@@ -40,6 +40,7 @@ import {
   Redo2,
   RemoveFormatting,
   Rows3,
+  ScanSquare,
   Strikethrough,
   SwatchBook,
   TableCellsMerge,
@@ -129,6 +130,8 @@ type ToolbarProperties = {
   numFmt: string;
   showGridLines: boolean;
   onToggleShowGridLines: (show: boolean) => void;
+  focusCell: boolean;
+  onToggleFocusCell: (on: boolean) => void;
   formatOptions: FmtSettings;
   onOpenConditionalFormatting: () => void;
   isConditionalFormattingOpen: boolean;
@@ -755,6 +758,16 @@ function Toolbar(properties: ToolbarProperties) {
                 properties.onToggleShowGridLines(!properties.showGridLines)
               }
               disabled={!canEdit}
+            />
+          </Tooltip>
+          <Tooltip title={t("toolbar.focus_cell")}>
+            <IconButton
+              icon={<ScanSquare />}
+              aria-label={t("toolbar.focus_cell")}
+              pressed={properties.focusCell}
+              onClick={() =>
+                properties.onToggleFocusCell(!properties.focusCell)
+              }
             />
           </Tooltip>
         </div>

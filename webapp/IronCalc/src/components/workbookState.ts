@@ -112,6 +112,7 @@ export class WorkbookState {
   private cutRange: CutRange | null;
   private selecting: boolean;
   private zoom: number;
+  private focusCell: boolean;
 
   constructor() {
     // the extendTo area is the area we are covering
@@ -121,6 +122,16 @@ export class WorkbookState {
     this.cutRange = null;
     this.selecting = false;
     this.zoom = 100;
+    this.focusCell = false;
+  }
+
+  // Shade the active cell's row and column (visual only and not saved in the file)
+  getFocusCell(): boolean {
+    return this.focusCell;
+  }
+
+  setFocusCell(value: boolean): void {
+    this.focusCell = value;
   }
 
   // The zoom of the sheet, in percent
