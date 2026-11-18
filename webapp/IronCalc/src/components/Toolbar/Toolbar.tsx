@@ -12,6 +12,7 @@ import {
   AlignLeft,
   AlignRight,
   ArrowDownToLine,
+  ArrowsToAxisHorizontal,
   ArrowUpToLine,
   Bold,
   Brush,
@@ -52,7 +53,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowMiddleFromLine } from "../../icons";
 import BorderPicker from "../BorderPicker/BorderPicker";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
@@ -637,7 +637,7 @@ function Toolbar(properties: ToolbarProperties) {
           </Tooltip>
           <Tooltip title={t("toolbar.vertical_align_middle")}>
             <IconButton
-              icon={<ArrowMiddleFromLine />}
+              icon={<ArrowsToAxisHorizontal />}
               aria-label={t("toolbar.vertical_align_middle")}
               pressed={properties.verticalAlign === "center"}
               onClick={() => properties.onToggleVerticalAlign("center")}

@@ -14,6 +14,7 @@ import {
   AlignLeft,
   AlignRight,
   ArrowDownToLine,
+  ArrowsToAxisHorizontal,
   ArrowUpToLine,
   Bold,
   Check,
@@ -24,7 +25,6 @@ import {
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowMiddleFromLine,
   BorderBottomIcon,
   BorderLeftIcon,
   BorderNoneIcon,
@@ -679,7 +679,7 @@ const EditNamedStyle = ({
                     },
                     {
                       value: "center",
-                      icon: <ArrowMiddleFromLine />,
+                      icon: <ArrowsToAxisHorizontal />,
                       "aria-label": t("toolbar.vertical_align_middle"),
                     },
                     {
