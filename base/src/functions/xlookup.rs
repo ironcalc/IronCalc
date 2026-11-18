@@ -118,6 +118,34 @@ fn linear_search(
 }
 
 impl<'a> Model<'a> {
+    /// Evaluates the lookup array or the return array of XLOOKUP.
+    ///
+    /// The node is evaluated in reference context, so a reference stays a range
+    /// even when it points at a single cell: `XLOOKUP("x",A1,B1)` looks in the
+    /// 1x1 range A1, as in Excel. Anything that is not a reference is evaluated
+    /// as before.
+    ///
+    /// The corners of the range are put in order. A formula parsed at one cell
+    /// and evaluated at another (a shared formula) can give a range like
+    /// A6:$A$3, and reference context does not reorder it.
+    fn xlookup_array_argument(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        match self.evaluate_node_with_reference(node, cell) {
+            CalcResult::Range { left, right } => CalcResult::Range {
+                left: CellReferenceIndex {
+                    sheet: left.sheet,
+                    row: left.row.min(right.row),
+                    column: left.column.min(right.column),
+                },
+                right: CellReferenceIndex {
+                    sheet: right.sheet,
+                    row: left.row.max(right.row),
+                    column: left.column.max(right.column),
+                },
+            },
+            other => other,
+        }
+    }
+
     /// The XLOOKUP function searches a range or an array, and then returns the item corresponding
     /// to the first match it finds. If no match exists, then XLOOKUP can return the closest (approximate) match.
     /// =XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])
@@ -213,7 +241,7 @@ impl<'a> Model<'a> {
             SearchMode::StartAtFirstItem
         };
         // lookup_array
-        match self.evaluate_node_in_context(&args[1], cell) {
+        match self.xlookup_array_argument(&args[1], cell) {
             CalcResult::Range { left, right } => {
                 let is_row_vector = if left.row == right.row {
                     false
@@ -228,7 +256,7 @@ impl<'a> Model<'a> {
                     };
                 };
                 // return array
-                match self.evaluate_node_in_context(&args[2], cell) {
+                match self.xlookup_array_argument(&args[2], cell) {
                     CalcResult::Range {
                         left: result_left,
                         right: result_right,
