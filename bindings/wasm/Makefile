@@ -58,6 +58,24 @@ pkg-xlsx/.built-$(SRC_HASH): | deps types.js
 	rm -f pkg-xlsx/.built-*
 	touch $@
 
+# Fast unoptimized builds into pkg/ and pkg-xlsx/ for local frontend work:
+# --dev skips LTO, optimizations and wasm-opt, and builds incrementally. The
+# wasm is larger, slower, and has overflow checks on. Never publish these.
+# They delete the release stamp so the next `make wasm` / `make xlsx` rebuilds.
+wasm-dev: | deps types.js
+	wasm-pack build --dev --target web --scope ironcalc
+	cp README.pkg.md pkg/README.md
+	$(PYTHON) fix_types.py pkg
+	$(PYTHON) fix_package.py pkg
+	rm -f pkg/.built-*
+
+xlsx-dev: | deps types.js
+	wasm-pack build --dev --target web --scope ironcalc --out-dir pkg-xlsx -- --features xlsx
+	cp README.pkg-xlsx.md pkg-xlsx/README.md
+	$(PYTHON) fix_types.py pkg-xlsx
+	$(PYTHON) fix_package.py pkg-xlsx @ironcalc/wasm-xlsx
+	rm -f pkg-xlsx/.built-*
+
 # types.ts compiles to types.js, which fix_types.py prepends to the pkg's
 # wasm.js. One shared target so parallel `make -j` builds don't race on it.
 types.js: types.ts | deps
@@ -84,4 +102,4 @@ clean:
 	rm -rf pkg pkg-xlsx pkg-nodejs pkg-nodejs-xlsx
 	rm -f types.js
 
-.PHONY: all wasm xlsx deps lint clean tests
+.PHONY: all wasm xlsx wasm-dev xlsx-dev deps lint clean tests
