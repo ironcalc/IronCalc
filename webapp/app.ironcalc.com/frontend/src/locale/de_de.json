@@ -124,6 +124,8 @@
       "button": "Ansicht",
       "hide_gridlines": "Gitternetzlinien ausblenden",
       "show_gridlines": "Gitternetzlinien einblenden",
+      "hide_focus_cell": "Fokuszelle ausblenden",
+      "show_focus_cell": "Fokuszelle einblenden",
       "freeze": "Fixieren",
       "freeze_rows_one": "{{count}} Zeile fixieren",
       "freeze_rows_other": "{{count}} Zeilen fixieren",

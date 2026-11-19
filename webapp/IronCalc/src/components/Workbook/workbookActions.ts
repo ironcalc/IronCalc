@@ -51,4 +51,7 @@ export interface WorkbookActions {
   /** The next zoom level in steps of 10%. */
   zoomIn: () => void;
   zoomOut: () => void;
+  /** Whether the selected cell's row and column are shaded. */
+  getFocusCell: () => boolean;
+  setFocusCell: (on: boolean) => void;
 }
