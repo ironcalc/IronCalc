@@ -268,11 +268,6 @@ fn displace_cf_sqref(sqref: &str, data: &DisplaceData, sheet: u32) -> String {
         .join(" ")
 }
 
-// NOTE: There is a difference with Excel behaviour when deleting cells/rows/columns
-// In Excel if the whole range is deleted then it will substitute for #REF!
-// In IronCalc, if one of the edges of the range is deleted will replace the edge with #REF!
-// I feel this is unimportant for now.
-
 /// Displaces a single formula string (with or without leading `=`) using `to_string_displaced`.
 /// CF formulas are stored in English (see [Model::user_formula_to_internal]),
 /// so the caller must have the parser in the default (English) locale/language.
