@@ -1004,6 +1004,20 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     })
 }
 
+/// The relationship a `<sheet>` points at through its `r:id`. The standard says it
+/// shall reference the worksheet part, so an empty or unknown id is an error.
+fn sheet_relationship<'a>(
+    rels: &'a HashMap<String, Relationship>,
+    sheet_name: &str,
+    rel_id: &str,
+) -> Result<&'a Relationship, XlsxError> {
+    rels.get(rel_id).ok_or_else(|| {
+        XlsxError::Xml(format!(
+            "Sheet \"{sheet_name}\" points at no relationship (r:id=\"{rel_id}\")"
+        ))
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn load_sheets<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
@@ -1018,7 +1032,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     // load comments, tables and hyperlink relationships
     let mut sheet_rels = HashMap::new();
     for sheet in &workbook.worksheets {
-        let rel = &rels[&sheet.id];
+        let rel = sheet_relationship(rels, &sheet.name, &sheet.id)?;
         if rel.rel_type.ends_with("worksheet") {
             let path = &rel.target;
             let path = if let Some(p) = path.strip_prefix('/') {
@@ -1043,7 +1057,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
         let sheet_name = &sheet.name;
         let rel_id = &sheet.id;
         let state = &sheet.state;
-        let rel = &rels[rel_id];
+        let rel = sheet_relationship(rels, sheet_name, rel_id)?;
         if rel.rel_type.ends_with("worksheet") {
             let path = &rel.target;
             let path = if let Some(p) = path.strip_prefix('/') {
