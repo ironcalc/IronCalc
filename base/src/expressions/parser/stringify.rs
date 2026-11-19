@@ -445,6 +445,90 @@ pub(crate) fn displace_coordinates(
     Some((row, column))
 }
 
+/// What deleting rows or columns does to a range taken as a whole.
+pub(crate) enum ShrunkRange {
+    /// No rows or columns are deleted from the range's sheet: each corner is
+    /// displaced on its own (`displace_coordinates`).
+    Corners,
+    /// The `(row, column)` of the two corners of what is left of the range
+    At((i32, i32), (i32, i32)),
+    /// Every row or column of the range is deleted
+    Gone,
+}
+
+/// Deleting rows or columns that cover the first or last rows or columns of a
+/// range shrinks the range to what is left, `A5:A8` becoming `A5:A7` when row
+/// 5 or row 8 is deleted. Only a range that is deleted entirely is gone. This
+/// is what Excel does.
+///
+/// `first` and `second` are the `(row, column)` of the two corners in absolute
+/// terms. `full_row` and `full_column` are as in [`displace_coordinates`]:
+/// `A:A` is not shortened by deleting rows, nor `3:3` by deleting columns.
+pub(crate) fn shrink_range(
+    sheet_index: u32,
+    first: (i32, i32),
+    second: (i32, i32),
+    full_row: bool,
+    full_column: bool,
+    displace_data: &DisplaceData,
+) -> ShrunkRange {
+    match displace_data {
+        DisplaceData::Row { sheet, row, delta }
+            if *delta < 0 && *sheet == sheet_index && !full_row =>
+        {
+            match shrink(first.0, second.0, *row, -*delta) {
+                Some((row1, row2)) => ShrunkRange::At((row1, first.1), (row2, second.1)),
+                None => ShrunkRange::Gone,
+            }
+        }
+        DisplaceData::Column {
+            sheet,
+            column,
+            delta,
+        } if *delta < 0 && *sheet == sheet_index && !full_column => {
+            match shrink(first.1, second.1, *column, -*delta) {
+                Some((column1, column2)) => {
+                    ShrunkRange::At((first.0, column1), (second.0, column2))
+                }
+                None => ShrunkRange::Gone,
+            }
+        }
+        _ => ShrunkRange::Corners,
+    }
+}
+
+/// The two ends `first` and `second` of a span of rows (or columns) after
+/// `count` of them are deleted starting at `start`, in the same order, or
+/// `None` if every one of them is deleted.
+fn shrink(first: i32, second: i32, start: i32, count: i32) -> Option<(i32, i32)> {
+    let end = start + count - 1;
+    let (low, high) = (first.min(second), first.max(second));
+    if low >= start && high <= end {
+        return None;
+    }
+    // An end above the deleted span stays, one inside it moves to the nearest
+    // row that is left, and one below it moves up by `count`.
+    let low = if low < start {
+        low
+    } else if low <= end {
+        start
+    } else {
+        low - count
+    };
+    let high = if high < start {
+        high
+    } else if high <= end {
+        start - 1
+    } else {
+        high - count
+    };
+    if first <= second {
+        Some((low, high))
+    } else {
+        Some((high, low))
+    }
+}
+
 /// Converts a local reference to a string applying some displacement if needed.
 /// It uses A1 style if context is not None. If context is None it uses R1C1 style
 /// If full_row is true then the row details will be omitted in the A1 case
@@ -693,14 +777,59 @@ fn stringify(
                 && *absolute_column2
                 && (*column1 == 1)
                 && (*column2 == LAST_COLUMN);
+            let (mut row1, mut column1, mut row2, mut column2) = (*row1, *column1, *row2, *column2);
+            let mut displace_data = displace_data;
+            if let Some(context) = context {
+                let absolute = |is_absolute: bool, value: i32, origin: i32| {
+                    if is_absolute {
+                        value
+                    } else {
+                        value + origin
+                    }
+                };
+                let first = (
+                    absolute(*absolute_row1, row1, context.row),
+                    absolute(*absolute_column1, column1, context.column),
+                );
+                let second = (
+                    absolute(*absolute_row2, row2, context.row),
+                    absolute(*absolute_column2, column2, context.column),
+                );
+                match shrink_range(
+                    *sheet_index,
+                    first,
+                    second,
+                    full_row,
+                    full_column,
+                    displace_data,
+                ) {
+                    ShrunkRange::Corners => {}
+                    ShrunkRange::Gone => return "#REF!".to_string(),
+                    ShrunkRange::At(first, second) => {
+                        // Written out as they are now, with nothing more to displace
+                        let relative = |is_absolute: bool, value: i32, origin: i32| {
+                            if is_absolute {
+                                value
+                            } else {
+                                value - origin
+                            }
+                        };
+                        row1 = relative(*absolute_row1, first.0, context.row);
+                        column1 = relative(*absolute_column1, first.1, context.column);
+                        row2 = relative(*absolute_row2, second.0, context.row);
+                        column2 = relative(*absolute_column2, second.1, context.column);
+                        displace_data = &DisplaceData::None;
+                    }
+                }
+            }
             let s1 = stringify_reference(
                 context,
                 displace_data,
                 &Reference {
                     sheet_name,
                     sheet_index: *sheet_index,
-                    row: *row1,
-                    column: *column1,
+                    row: row1,
+                    column: column1,
                     absolute_row: *absolute_row1,
                     absolute_column: *absolute_column1,
                 },
@@ -713,8 +842,8 @@ fn stringify(
                 &Reference {
                     sheet_name: &None,
                     sheet_index: *sheet_index,
-                    row: *row2,
-                    column: *column2,
+                    row: row2,
+                    column: column2,
                     absolute_row: *absolute_row2,
                     absolute_column: *absolute_column2,
                 },

@@ -12,7 +12,7 @@
 //! [`to_string_displaced`](super::stringify::to_string_displaced) and parsing
 //! it back in the cell's new place, without the writing and the parsing.
 
-use super::stringify::{displace_coordinates, DisplaceData};
+use super::stringify::{displace_coordinates, shrink_range, DisplaceData, ShrunkRange};
 use super::Node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
@@ -153,12 +153,65 @@ impl Displacement<'_> {
     }
 }
 
+impl Displacement<'_> {
+    /// What deleting rows or columns does to a range as a whole (see
+    /// [`shrink_range`]), with the corners given and returned relative to the
+    /// cell where they are not absolute.
+    fn shrunk_range(
+        &self,
+        sheet_index: u32,
+        (absolute_row1, absolute_column1, row1, column1): (bool, bool, i32, i32),
+        (absolute_row2, absolute_column2, row2, column2): (bool, bool, i32, i32),
+        full_row: bool,
+        full_column: bool,
+    ) -> ShrunkRange {
+        let absolute = |is_absolute: bool, value: i32, origin: i32| {
+            if is_absolute {
+                value
+            } else {
+                value + origin
+            }
+        };
+        let relative = |is_absolute: bool, value: i32, origin: i32| {
+            if is_absolute {
+                value
+            } else {
+                value - origin
+            }
+        };
+        let first = (
+            absolute(absolute_row1, row1, self.from.0),
+            absolute(absolute_column1, column1, self.from.1),
+        );
+        let second = (
+            absolute(absolute_row2, row2, self.from.0),
+            absolute(absolute_column2, column2, self.from.1),
+        );
+        match shrink_range(sheet_index, first, second, full_row, full_column, self.data) {
+            ShrunkRange::At(first, second) => ShrunkRange::At(
+                (
+                    relative(absolute_row1, first.0, self.to.0),
+                    relative(absolute_column1, first.1, self.to.1),
+                ),
+                (
+                    relative(absolute_row2, second.0, self.to.0),
+                    relative(absolute_column2, second.1, self.to.1),
+                ),
+            ),
+            other => other,
+        }
+    }
+}
+
 /// The formula after the displacement, or `None` if it is unchanged. Only
 /// references change: the rest of the formula is copied as it is.
 ///
-/// A reference to a deleted cell becomes `#REF!`; a range with a deleted end
-/// becomes the range operator on what is left, `#REF!:B4`, as it is when the
-/// formula is written out and read back.
+/// A reference to a deleted cell becomes `#REF!`. Deleting rows or columns
+/// shrinks a range to what is left of it, and only a range deleted entirely
+/// becomes `#REF!` (see [`shrink_range`]). Any other displacement that
+/// deletes one end of a range (deleting cells) leaves the range operator on
+/// what is left, `#REF!:B4`, as it is when the formula is written out and
+/// read back.
 pub(crate) fn displaced_node(node: &Node, displacement: &Displacement) -> Option<Node> {
     use Node::*;
     match node {
@@ -235,6 +288,35 @@ pub(crate) fn displaced_node(node: &Node, displacement: &Displacement) -> Option
             let full_row = *absolute_row1 && *absolute_row2 && *row1 == 1 && *row2 == LAST_ROW;
             let full_column =
                 *absolute_column1 && *absolute_column2 && *column1 == 1 && *column2 == LAST_COLUMN;
+            match displacement.shrunk_range(
+                *sheet_index,
+                (*absolute_row1, *absolute_column1, *row1, *column1),
+                (*absolute_row2, *absolute_column2, *row2, *column2),
+                full_row,
+                full_column,
+            ) {
+                ShrunkRange::Corners => {}
+                ShrunkRange::Gone => return Some(ErrorKind(Error::REF)),
+                ShrunkRange::At((new_row1, new_column1), (new_row2, new_column2)) => {
+                    if (new_row1, new_column1, new_row2, new_column2)
+                        == (*row1, *column1, *row2, *column2)
+                    {
+                        return None;
+                    }
+                    return Some(RangeKind {
+                        sheet_name: sheet_name.clone(),
+                        sheet_index: *sheet_index,
+                        absolute_row1: *absolute_row1,
+                        absolute_column1: *absolute_column1,
+                        row1: new_row1,
+                        column1: new_column1,
+                        absolute_row2: *absolute_row2,
+                        absolute_column2: *absolute_column2,
+                        row2: new_row2,
+                        column2: new_column2,
+                    });
+                }
+            }
             let first = displacement.reference(
                 Some(*sheet_index),
                 *absolute_row1,
