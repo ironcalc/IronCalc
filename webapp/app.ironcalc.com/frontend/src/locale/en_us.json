@@ -124,6 +124,8 @@
       "button": "View",
       "hide_gridlines": "Hide gridlines",
       "show_gridlines": "Show gridlines",
+      "hide_focus_cell": "Hide focus cell",
+      "show_focus_cell": "Show focus cell",
       "freeze": "Freeze",
       "freeze_rows_one": "Freeze {{count}} row",
       "freeze_rows_other": "Freeze {{count}} rows",

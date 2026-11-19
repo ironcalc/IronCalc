@@ -124,6 +124,8 @@
       "button": "Ver",
       "hide_gridlines": "Ocultar líneas de cuadrícula",
       "show_gridlines": "Mostrar líneas de cuadrícula",
+      "hide_focus_cell": "Ocultar celda de enfoque",
+      "show_focus_cell": "Mostrar celda de enfoque",
       "freeze": "Inmovilizar",
       "freeze_rows_one": "Inmovilizar {{count}} fila",
       "freeze_rows_other": "Inmovilizar {{count}} filas",

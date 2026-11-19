@@ -124,6 +124,8 @@
       "button": "Affichage",
       "hide_gridlines": "Masquer le quadrillage",
       "show_gridlines": "Afficher le quadrillage",
+      "hide_focus_cell": "Masquer le focus sur la cellule",
+      "show_focus_cell": "Afficher le focus sur la cellule",
       "freeze": "Figer",
       "freeze_rows_one": "Figer {{count}} ligne",
       "freeze_rows_other": "Figer {{count}} lignes",

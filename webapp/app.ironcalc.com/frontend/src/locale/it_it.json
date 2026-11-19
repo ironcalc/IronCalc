@@ -124,6 +124,8 @@
       "button": "Visualizza",
       "hide_gridlines": "Nascondi griglia",
       "show_gridlines": "Mostra griglia",
+      "hide_focus_cell": "Nascondi cella con stato attivo",
+      "show_focus_cell": "Mostra cella con stato attivo",
       "freeze": "Blocca",
       "freeze_rows_one": "Blocca {{count}} riga",
       "freeze_rows_other": "Blocca {{count}} righe",

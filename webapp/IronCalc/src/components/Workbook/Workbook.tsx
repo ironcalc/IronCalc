@@ -592,6 +592,11 @@ const Workbook = (
       workbookState.setZoom(zoomOutLevel(workbookState.getZoom()));
       setRedrawId((id) => id + 1);
     },
+    getFocusCell: () => workbookState.getFocusCell(),
+    setFocusCell: (on: boolean): void => {
+      workbookState.setFocusCell(on);
+      setRedrawId((id) => id + 1);
+    },
   };
 
   useImperativeHandle(ref, () => actions);
@@ -1123,11 +1128,8 @@ const Workbook = (
             model.setShowGridLines(sheet, show);
             setRedrawId((id) => id + 1);
           }}
-          focusCell={workbookState.getFocusCell()}
-          onToggleFocusCell={(on) => {
-            workbookState.setFocusCell(on);
-            setRedrawId((id) => id + 1);
-          }}
+          focusCell={actions.getFocusCell()}
+          onToggleFocusCell={actions.setFocusCell}
           formatOptions={fmtSettings}
           onOpenConditionalFormatting={() =>
             openDrawer("conditionalFormatting")

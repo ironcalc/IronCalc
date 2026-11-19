@@ -12,6 +12,7 @@ import {
   Grid2x2Check,
   Grid2x2X,
   ImageDown,
+  ScanSquare,
   Snowflake,
   Tag,
 } from "lucide-react";
@@ -45,6 +46,8 @@ export function ViewMenu(props: {
 
   const sheet = model.getSelectedSheet();
   const showGridLines = model.getShowGridLines(sheet);
+  const workbook = props.ironCalcRef.current?.workbook;
+  const focusCell = workbook?.getFocusCell() ?? false;
   const hiddenSheets = model
     .getWorksheetsProperties()
     .map(({ name, state }, index) => ({ name, state, index }))
@@ -85,6 +88,16 @@ export function ViewMenu(props: {
             showGridLines
               ? "file_bar.view_menu.hide_gridlines"
               : "file_bar.view_menu.show_gridlines",
+          )}
+        </MenuItem>
+        <MenuItem
+          icon={<ScanSquare />}
+          onClick={() => workbook?.setFocusCell(!focusCell)}
+        >
+          {t(
+            focusCell
+              ? "file_bar.view_menu.hide_focus_cell"
+              : "file_bar.view_menu.show_focus_cell",
           )}
         </MenuItem>
         <MenuDivider />
