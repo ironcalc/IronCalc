@@ -14,8 +14,9 @@ use ironcalc_base::{
     },
     types::{CellType, Color, Link, Style, StyleIncludes},
     worksheet::NavigationDirection,
-    BorderArea, ClipboardData, DefinedNameEntry, UserModel as BaseModel, COLUMN_WIDTH_FACTOR,
-    DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, ROW_HEIGHT_FACTOR,
+    BorderArea, ClipboardData, DefinedNameEntry, EvaluationTracker as BaseEvaluationTracker,
+    UserModel as BaseModel, COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT,
+    ROW_HEIGHT_FACTOR,
 };
 
 fn to_js_error(error: String) -> JsError {
@@ -137,6 +138,31 @@ pub struct Model {
     model: BaseModel<'static>,
 }
 
+/// Tells what an evaluation of a model changed, for
+/// `Model.applyEvaluationResults` on another model of the same workbook.
+#[wasm_bindgen]
+pub struct EvaluationTracker {
+    tracker: BaseEvaluationTracker,
+}
+
+#[wasm_bindgen]
+impl EvaluationTracker {
+    /// Starts tracking the cells of `model` as they are now.
+    #[wasm_bindgen(constructor)]
+    pub fn new(model: &Model) -> EvaluationTracker {
+        EvaluationTracker {
+            tracker: BaseEvaluationTracker::new(&model.model),
+        }
+    }
+
+    /// What evaluating `model` changed since the tracker was created. Frees the
+    /// tracker.
+    #[wasm_bindgen(js_name = "takeResults")]
+    pub fn take_results(self, model: &Model) -> Vec<u8> {
+        self.tracker.take_results(&model.model)
+    }
+}
+
 #[wasm_bindgen]
 impl Model {
     #[wasm_bindgen(constructor)]
@@ -215,6 +241,13 @@ impl Model {
         self.model.evaluate();
     }
 
+    /// How long the last evaluation took, in milliseconds, or `undefined` if
+    /// the model has not evaluated yet.
+    #[wasm_bindgen(js_name = "getLastEvaluationDuration")]
+    pub fn get_last_evaluation_duration(&self) -> Option<f64> {
+        self.model.last_evaluation_duration().map(|ms| ms as f64)
+    }
+
     #[wasm_bindgen(js_name = "flushSendQueue")]
     pub fn flush_send_queue(&mut self) -> Vec<u8> {
         self.model.flush_send_queue()
@@ -223,6 +256,15 @@ impl Model {
     #[wasm_bindgen(js_name = "applyExternalDiffs")]
     pub fn apply_external_diffs(&mut self, diffs: &[u8]) -> Result<(), JsError> {
         self.model.apply_external_diffs(diffs).map_err(to_js_error)
+    }
+
+    /// Applies `EvaluationTracker.takeResults` from another model of the same
+    /// workbook, without evaluating.
+    #[wasm_bindgen(js_name = "applyEvaluationResults")]
+    pub fn apply_evaluation_results(&mut self, results: &[u8]) -> Result<(), JsError> {
+        self.model
+            .apply_evaluation_results(results)
+            .map_err(to_js_error)
     }
 
     #[wasm_bindgen(js_name = "getCellContent")]

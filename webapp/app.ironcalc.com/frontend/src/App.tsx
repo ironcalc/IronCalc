@@ -34,7 +34,7 @@ import {
   loadThemeModeFromStorage,
   saveDefaultLocaleInStorage,
   saveModelToStorage,
-  saveSelectedModelInStorage,
+  saveSelectedBytesInStorage,
   saveThemeModeInStorage,
   selectModelFromStorage,
   subscribeToStorage,
@@ -42,6 +42,7 @@ import {
 } from "./components/storage";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
+import { WorkerEngine } from "./components/workerEngine";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
@@ -80,7 +81,6 @@ function App() {
       saveDefaultLocaleInStorage(language);
       if (model) {
         model.setLocale(getShortLocaleCode(language));
-        saveSelectedModelInStorage(model).catch(reportSaveError);
       }
     }
   };
@@ -175,23 +175,28 @@ function App() {
 
   useEffect(() => {
     if (!model) return;
+    const engine = new WorkerEngine(model, () => {
+      ironCalcRef.current?.workbook?.refresh();
+    });
     // We try to save the model every second
     const interval = setInterval(() => {
       if (isSavingRef.current) {
         // The previous save is still running; changes are picked up next tick
         return;
       }
-      const queue = model.flushSendQueue();
-      if (queue.length !== 1) {
+      if (engine.hasUnsavedChanges()) {
         isSavingRef.current = true;
-        saveSelectedModelInStorage(model)
+        saveSelectedBytesInStorage(engine.serialize())
           .catch(reportSaveError)
           .finally(() => {
             isSavingRef.current = false;
           });
       }
     }, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      engine.dispose();
+    };
   }, [model, reportSaveError]);
 
   if (!model) {

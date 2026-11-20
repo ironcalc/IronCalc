@@ -1,6 +1,7 @@
 import type { Model } from "@ironcalc/workbook";
 import { useEffect, useState } from "react";
 import { shareModel } from "../rpc";
+import { whenEvaluated } from "../workerEngine";
 
 export function useShareDialog(model: Model | undefined): {
   url: string;
@@ -15,6 +16,7 @@ export function useShareDialog(model: Model | undefined): {
       return;
     }
     const generateUrl = async () => {
+      await whenEvaluated(model);
       const bytes = model.toBytes();
       const hash = await shareModel(bytes);
       setUrl(`${location.origin}/?model=${hash}`);

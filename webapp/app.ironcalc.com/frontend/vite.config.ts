@@ -7,6 +7,9 @@ import workbookPkg from '../../IronCalc/package.json' with { type: 'json' };
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), svgr()],
+  worker: {
+    format: 'es',
+  },
   server: {
     fs: {
       // Allow serving files from one level up to the project root
