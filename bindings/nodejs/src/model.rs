@@ -10,7 +10,9 @@ use ironcalc::{
   import::{load_from_icalc, load_from_xlsx},
 };
 
-use crate::{area, js_to_color, leak_str, to_js_error, CellType, DefinedName, FmtSettings};
+use crate::{
+  area, js_to_color, leak_str, to_js_error, CellType, DefinedName, FmtSettings, NewSheet,
+};
 
 /// A workbook model implementing the "raw" low level API. Nothing is
 /// evaluated automatically: you need to call `evaluate` yourself. There is no
@@ -638,8 +640,9 @@ impl Model {
 
   /// Adds a new sheet with an automatically generated name
   #[napi]
-  pub fn new_sheet(&mut self) {
-    self.model.new_sheet();
+  pub fn new_sheet(&mut self) -> NewSheet {
+    let (name, index) = self.model.new_sheet();
+    NewSheet { name, index }
   }
 
   #[napi]
