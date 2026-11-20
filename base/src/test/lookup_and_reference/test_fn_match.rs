@@ -68,3 +68,21 @@ fn test_match_array_not_a_vector() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+#[test]
+fn test_match_full_column_approximate() {
+    let mut model = new_empty_model();
+    // A full-column reference must not scan all 1,048,576 rows. The scan is
+    // clamped to the last stored cell, so approximate MATCH returns the
+    // position of the largest value <= target instead of the last row.
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("B1", "=MATCH(3, A:A, 1)");
+    model._set("B2", "=MATCH(2, A:A, 1)");
+    model._set("B3", "=MATCH(5, A:A, 1)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "3");
+    assert_eq!(model._get_text("B2"), "2");
+    assert_eq!(model._get_text("B3"), "3");
+}
