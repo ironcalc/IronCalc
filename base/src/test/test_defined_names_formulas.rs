@@ -184,3 +184,90 @@ fn local_name_formulas_resolve_in_their_sheet() {
     assert_eq!(model._get_text("Sheet1!A2"), "8");
     assert_eq!(model._get_text("Data!A1"), "20");
 }
+
+// A name whose formula reaches the name again would never end: it is #NUM!
+#[test]
+fn names_that_reach_themselves() {
+    let mut model = new_empty_model();
+    model.add_sheet("Data").unwrap();
+    for (name, formula) in [
+        // Itself
+        ("Loop", "Loop+1"),
+        // Each other
+        ("CycA", "CycB+0"),
+        ("CycB", "CycA+0"),
+        // Each other, as references
+        ("RefA", "RefB"),
+        ("RefB", "RefA"),
+        // Each other, unless K1 is 1
+        ("Maybe", "IF(Sheet1!$K$1=1,1,Other+1)"),
+        ("Other", "Maybe+1"),
+        // Not a loop: a name used twice in a formula
+        ("Base", "Sheet1!$K$2*2"),
+        ("Twice", "Base+Base"),
+        // Not a loop: the cell to the right of the cell that uses the name
+        ("Next", "Sheet1!B1+1"),
+        // Not a loop: the workbook name uses the name local to Data
+        ("Price", "Data!Price*2"),
+        // A name for a name for a cell: read for its value it is the number
+        // in the cell, not a reference to it
+        ("Cell", "Sheet1!$K$2"),
+        ("Alias", "Cell"),
+        // A loop through a cell is a circular reference, as before
+        ("Mine", "Sheet1!$A$8+1"),
+    ] {
+        model
+            .new_defined_name(DefinedNameEntry::new(name, formula))
+            .unwrap();
+    }
+    model
+        .new_defined_name(DefinedNameEntry::new("Price", "10").scope(1))
+        .unwrap();
+
+    model._set("K1", "1");
+    model._set("K2", "5");
+    model._set("A1", "=Loop");
+    model._set("A2", "=CycA");
+    model._set("A3", "=COUNTIF(RefA,\"x\")");
+    model._set("A4", "=Maybe");
+    model._set("A5", "=Twice");
+    model._set("A6", "=Price");
+    model._set("A7", "=ISNUMBER(Alias)");
+    model._set("A8", "=Mine");
+    // M9 runs Next, which reads N9, which runs Next for itself
+    model._set("M9", "=Next");
+    model._set("N9", "=Next");
+    model._set("O9", "5");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+    assert_eq!(model._get_text("A4"), "1");
+    assert_eq!(model._get_text("A5"), "20");
+    assert_eq!(model._get_text("A6"), "20");
+    assert_eq!(model._get_text("A7"), "TRUE");
+    assert_eq!(model._get_text("A8"), "#CIRC!");
+    assert_eq!(model._get_text("M9"), "7");
+    assert_eq!(model._get_text("N9"), "6");
+
+    model._set("K1", "2");
+    model.evaluate();
+    assert_eq!(model._get_text("A4"), "#NUM!");
+}
+
+// While a deep chain of cells unwinds, a read comes back empty, so a name
+// that ends can take the branch that loops. That run is thrown away
+#[test]
+fn name_that_ends_while_cells_unwind() {
+    let mut model = new_empty_model();
+    model.set_max_evaluation_depth(2);
+    model
+        .new_defined_name(DefinedNameEntry::new("Cond", "IF(Sheet1!$Z$1=1,1,Cond+1)"))
+        .unwrap();
+    model._set("A1", "=Cond");
+    model._set("Z1", "=Z2");
+    model._set("Z2", "=Z3");
+    model._set("Z3", "1");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+}

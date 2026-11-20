@@ -382,6 +382,9 @@ pub(crate) struct Evaluation {
     pub(crate) cells: HashMap<CellKey, CellState, KeyBuild>,
     /// Cells being evaluated, innermost last.
     pub(crate) stack: Vec<CellReferenceIndex>,
+    /// Defined names whose formula is running, innermost last, each with the
+    /// cell it runs for. A name found here again has reached itself.
+    pub(crate) names: Vec<(Option<u32>, String, CellReferenceIndex)>,
     /// The cell the driver is evaluating: the root of the current recursion,
     /// on whose behalf every read of the pass is recorded.
     pub(crate) root: Option<CellReferenceIndex>,
@@ -463,6 +466,7 @@ impl Default for Evaluation {
             anchor_order: Vec::new(),
             cells: HashMap::default(),
             stack: Vec::new(),
+            names: Vec::new(),
             root: None,
             circular: HashSet::default(),
             seen: HashMap::default(),
@@ -712,6 +716,7 @@ impl<'a> Model<'a> {
         let state = &mut self.evaluation;
         state.cells.clear();
         state.stack.clear();
+        state.names.clear();
         state.seen.clear();
         state.seen_ranges.clear();
         state.restart = None;
