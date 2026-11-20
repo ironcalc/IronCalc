@@ -87,3 +87,34 @@ fn fn_round_arguments() {
     assert_eq!(model._get_text("C3"), *"1.2");
     assert_eq!(model._get_text("C4"), *"#ERROR!");
 }
+
+#[test]
+fn fn_round_arrays() {
+    // ROUND, ROUNDUP and ROUNDDOWN work element by element on arrays and ranges.
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "25");
+    model._set("A3", "40");
+    model._set("B1", "=SUMPRODUCT(ROUND(A1:A3/7,0))");
+    model._set("B2", "=SUM(ROUNDUP(A1:A3/7,0))");
+    model._set("B3", "=SUM(ROUNDDOWN(A1:A3/7,0))");
+    // The digits can be an array too
+    model._set("C1", "=ROUND(1.256,{0,1,2})");
+    // A range spills
+    model._set("C2", "=ROUND(A1:A3/7,1)");
+    // An error in one element only makes that element an error
+    model._set("A10", "=ROUND({1.5,\"x\"},0)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), *"11");
+    assert_eq!(model._get_text("B2"), *"12");
+    assert_eq!(model._get_text("B3"), *"9");
+    assert_eq!(model._get_text("C1"), *"1");
+    assert_eq!(model._get_text("D1"), *"1.3");
+    assert_eq!(model._get_text("E1"), *"1.26");
+    assert_eq!(model._get_text("C2"), *"1.4");
+    assert_eq!(model._get_text("C3"), *"3.6");
+    assert_eq!(model._get_text("C4"), *"5.7");
+    assert_eq!(model._get_text("A10"), *"2");
+    assert_eq!(model._get_text("B10"), *"#VALUE!");
+}
