@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bitcode::{Decode, Encode};
 
 use crate::{
+    actions::DisplacedFormula,
     cf_types::CfRule,
     types::{
         Cell, Col, Color, DateSystem, FocusOnOpen, Link, MergedCell, Row, SheetState, Style,
@@ -137,6 +138,8 @@ pub(crate) enum Diff {
         row: i32,
         count: i32,
         old_data: Vec<RowData>,
+        /// Formulas elsewhere in the workbook that the delete rewrote
+        old_formulas: Vec<DisplacedFormula>,
     },
     InsertColumns {
         sheet: u32,
@@ -148,6 +151,8 @@ pub(crate) enum Diff {
         column: i32,
         count: i32,
         old_data: Vec<ColumnData>,
+        /// Formulas elsewhere in the workbook that the delete rewrote
+        old_formulas: Vec<DisplacedFormula>,
     },
     DeleteSheet {
         sheet: u32,
