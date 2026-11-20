@@ -496,6 +496,24 @@ pub fn icon_set_icons(name: &str) -> Option<Vec<(Icon, Color)>> {
     }
 }
 
+/// What conditional formatting does to a cell, kept apart from the cell's own style.
+/// [`ExtendedStyle`] has the same results merged into the style.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CfCellFormat {
+    /// The formats of the matched rules, in the order they are applied to the style, from the
+    /// lowest priority to the highest: where two of them set the same property, the later
+    /// one wins.
+    pub dxfs: Vec<Dxf>,
+    /// The fill colour given by a colour-scale rule.
+    pub fill: Option<Color>,
+    /// Set when a data-bar rule applies to the cell.
+    pub data_bar: Option<CfDataBar>,
+    /// Set when an icon-set rule applies to the cell.
+    pub icon: Option<CfIcon>,
+    /// Set when a rating rule applies to the cell.
+    pub rating: Option<CfRating>,
+}
+
 /// The full visual description of a cell, including any conditional formatting overlay.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ExtendedStyle {
