@@ -94,9 +94,10 @@ fn is_valid_r1c1_identifier(name: &str, next_char: Option<char>) -> bool {
     utils::is_valid_identifier(name) || next_char != Some('[')
 }
 
-/// A character that can be part of an identifier (see `consume_identifier`)
+/// A character that can be part of an identifier (see `consume_identifier`).
+/// Like Excel, `?` is allowed after the first character (`Rate?`).
 fn is_identifier_char(c: char) -> bool {
-    c.is_alphanumeric() || c == '_' || c == '.'
+    c.is_alphanumeric() || c == '_' || c == '.' || c == '?'
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -634,7 +635,7 @@ impl<'a> Lexer<'a> {
         let mut position = self.position;
         while position < self.len {
             let next_char = self.chars[position];
-            if next_char.is_alphanumeric() || next_char == '_' || next_char == '.' {
+            if is_identifier_char(next_char) {
                 position += 1;
             } else {
                 break;
