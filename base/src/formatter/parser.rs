@@ -56,7 +56,6 @@ pub struct NumberPart {
     pub is_scientific: bool,
     pub scientific_minus: bool,
     pub exponent_digit_count: i32,
-    pub currency: Option<char>,
 }
 
 pub struct DatePart {
@@ -158,7 +157,6 @@ impl Parser {
         let mut exponent_digit_count = 0;
         let mut number = NumberState::Integer;
         let mut index = 0;
-        let mut currency = None;
         let mut is_time = false;
 
         while token != Token::EOF && token != Token::Separator {
@@ -240,8 +238,11 @@ impl Parser {
                 Token::Condition(cmp, value) => {
                     condition = Some((cmp, value));
                 }
-                Token::Currency(c) => {
-                    currency = Some(c);
+                // The symbol is written where it stands, like a quoted text
+                Token::Currency(symbol) => {
+                    if !symbol.is_empty() {
+                        tokens.push(TextToken::Text(symbol));
+                    }
                 }
                 Token::QuestionMark => {
                     tokens.push(TextToken::Digit(Digit {
@@ -462,7 +463,6 @@ impl Parser {
                 is_scientific,
                 scientific_minus,
                 exponent_digit_count,
-                currency,
             })
         }
     }

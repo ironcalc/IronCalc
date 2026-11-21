@@ -482,9 +482,6 @@ pub fn format_number(
         }
         ParsePart::Number(p) => {
             let mut text = "".to_string();
-            if let Some(c) = p.currency {
-                text = format!("{c}");
-            }
             let tokens = &p.tokens;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
             // p.precision is the number of significant digits _after_ the decimal point
