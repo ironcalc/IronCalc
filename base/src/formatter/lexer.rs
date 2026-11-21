@@ -25,8 +25,8 @@ pub enum Token {
     Sharp,         // #
     Zero,          // 0
     QuestionMark,  // ?
-    Scientific,    // E+
-    ScientificMinus, // E-
+    Scientific(char),      // E+ or e+ (the letter as written)
+    ScientificMinus(char), // E- or e-
     General,       // General
     // Dates and time
     Day,                 // d
@@ -339,6 +339,8 @@ impl Lexer {
                 '.' => Token::Period,
                 '0' => Token::Zero,
                 '@' => Token::Raw,
+                // Excel shows a vertical bar without quotes too: TEXT(123456.789,"|#,e-#|") is "|1e5|"
+                '|' => Token::Literal(x),
                 '%' => Token::Percent,
                 '[' => {
                     if let Some(c) = self.peek_char() {
@@ -426,12 +428,13 @@ impl Lexer {
                         Token::ILLEGAL
                     }
                 }
-                'E' => {
+                // Excel writes the exponent's letter as the format has it: 0e+0 gives 1e+5
+                'E' | 'e' => {
                     if let Some(s) = self.read_next_char() {
                         if s == '+' {
-                            Token::Scientific
+                            Token::Scientific(x)
                         } else if s == '-' {
-                            Token::ScientificMinus
+                            Token::ScientificMinus(x)
                         } else {
                             self.set_error(&format!("Unexpected char: {s}. Expected + or -"));
                             Token::ILLEGAL
