@@ -44,6 +44,7 @@ use std::sync::Arc;
 
 use crate::calc_result::CalcResult;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::parser::Node;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
@@ -987,7 +988,13 @@ impl<'a> Model<'a> {
         // Shares the formula, it does not copy it.
         let node =
             Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
-        match self.evaluate_node_in_context(&node, cell_reference) {
+        let result = match node.as_ref() {
+            Node::OpSumKind { kind, left, right } => {
+                self.formula_sum(kind, left, right, cell_reference)
+            }
+            node => self.evaluate_node_in_context(node, cell_reference),
+        };
+        match result {
             CalcResult::Range { left, right } => {
                 if left == right {
                     self.evaluate_cell(left)
