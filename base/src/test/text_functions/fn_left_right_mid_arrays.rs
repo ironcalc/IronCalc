@@ -120,3 +120,20 @@ fn roundtrip_mid_array_formula() {
     let f = model.get_cell_formula(0, 1, 1).unwrap().unwrap();
     assert_eq!(f, "=MID(N2,SEQUENCE(LEN(N2)),1)");
 }
+
+// ── A count given as text that holds a number is that number, as in Excel ──────
+// Excel: LEFT("a string","6") is "a stri" (Apache POI's FormulaEvalTestData_Copy.xlsx,
+// EverythingTests!E824, saved by Excel).
+#[test]
+fn text_counts_are_numbers() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=LEFT("a string","6")"#);
+    model._set("A2", r#"=RIGHT("a string","3")"#);
+    model._set("A3", r#"=MID("a string","3","3")"#);
+    model._set("A4", r#"=LEFT("a string","six")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "a stri");
+    assert_eq!(model._get_text("A2"), "ing");
+    assert_eq!(model._get_text("A3"), "str");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+}

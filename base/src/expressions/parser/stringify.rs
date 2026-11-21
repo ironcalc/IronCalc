@@ -725,25 +725,26 @@ fn stringify(
                 language
             )
         ),
-        OpConcatenateKind { left, right } => format!(
-            "{}&{}",
-            stringify(
-                left,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language
-            ),
-            stringify(
-                right,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language
-            )
-        ),
+        OpConcatenateKind { left, right } => {
+            // CompareKind has lower precedence than &, so wrap it to preserve semantics:
+            // "its "&(2<3) is "its TRUE", "its "&2<3 compares "its 2" with 3
+            let side = |node: &Node| {
+                let s = stringify(
+                    node,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                );
+                if matches!(node, CompareKind { .. }) {
+                    format!("({s})")
+                } else {
+                    s
+                }
+            };
+            format!("{}&{}", side(left), side(right))
+        }
         CompareKind { kind, left, right } => format!(
             "{}{}{}",
             stringify(
