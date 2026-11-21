@@ -191,7 +191,7 @@ impl<'a> Model<'a> {
             // default
             MatchMode::ExactMatch
         };
-        let search_mode = if args.len() == 6 {
+        let search_mode = if args.len() == 6 && !matches!(args[5], Node::EmptyArgKind) {
             match self.get_number(&args[5], cell) {
                 Ok(c) => match c.floor() as i32 {
                     1 => SearchMode::StartAtFirstItem,
