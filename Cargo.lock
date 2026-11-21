@@ -420,6 +420,7 @@ dependencies = [
  "chrono-tz",
  "csv",
  "js-sys",
+ "libm",
  "rand",
  "regex",
  "regex-lite",

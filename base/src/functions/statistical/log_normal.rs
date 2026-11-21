@@ -1,5 +1,6 @@
-use statrs::distribution::{Continuous, ContinuousCDF, LogNormal};
+use statrs::distribution::{Continuous, LogNormal};
 
+use super::normal::standard_normal_cdf;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -52,7 +53,11 @@ impl<'a> Model<'a> {
             }
         };
 
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
+        let result = if cumulative {
+            standard_normal_cdf((x.ln() - mean) / std_dev)
+        } else {
+            dist.pdf(x)
+        };
 
         if !result.is_finite() {
             return CalcResult::Error {

@@ -1,3 +1,4 @@
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -63,4 +64,26 @@ fn fn_delta_misc() {
     model.evaluate();
 
     assert_eq!(model._get_text("B1"), *"1");
+}
+
+#[test]
+fn fn_erf_erfc_full_precision() {
+    // Values cached by Excel (AppVersion 16.0300, workbook saved on 12 March 2023) in
+    // xlsx/tests/calc_tests/ENGINEERING/ERFs.xlsx. The calc tests compare to 5e-8, which is why
+    // statrs' erf (0.8427007929427149 for ERF(1)) passed them.
+    let cases = [
+        ("=ERF(1)", 0.8427007929497149),
+        ("=ERF.PRECISE(1)", 0.8427007929497149),
+        ("=ERFC(1)", 0.15729920705028513),
+        ("=ERFC.PRECISE(1)", 0.15729920705028513),
+    ];
+    let mut model = new_empty_model();
+    for (index, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", index + 1), formula);
+    }
+    model.evaluate();
+    for (index, (formula, expected)) in cases.iter().enumerate() {
+        let value = model.get_cell_value_by_ref(&format!("Sheet1!A{}", index + 1));
+        assert_eq!(value, Ok(CellValue::Number(*expected)), "{formula}");
+    }
 }
