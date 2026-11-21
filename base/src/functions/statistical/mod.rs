@@ -28,6 +28,7 @@ mod quartile;
 mod rank_eq_avg;
 mod standard_dev;
 mod standardize;
+mod typed_arguments;
 mod t_dist;
 mod trimmean;
 mod variance;

@@ -69,3 +69,23 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
 }
+
+// Text and booleans typed into the argument list are counted, as in Excel; values read
+// from cells are not. Excel: VAR(TRUE,FALSE,TRUE) is 0.33333333333333337 (Apache POI's
+// FormulaEvalTestData_Copy.xlsx, EverythingTests!K1448, saved by Excel).
+#[test]
+fn typed_text_and_booleans() {
+    let mut model = new_empty_model();
+    model._set("B1", "TRUE");
+    model._set("A1", r#"=VAR(TRUE,FALSE,TRUE)"#);
+    model._set("A2", r#"=VAR.S("1","2")"#);
+    model._set("A3", r#"=VAR.P("1","3")"#);
+    model._set("A4", r#"=VAR(B1,1,2)"#);
+    model._set("A5", r#"=VAR.S("x",1,2)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0.333333333");
+    assert_eq!(model._get_text("A2"), *"0.5");
+    assert_eq!(model._get_text("A3"), *"1");
+    assert_eq!(model._get_text("A4"), *"0.5");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+}
