@@ -39,7 +39,10 @@ use ironcalc_base::{
 
 use crate::export::conditional_formatting::get_conditional_formatting_xml;
 
-use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
+use super::{
+    escape::escape_xml, value_metadata::get_value_metadata_attribute,
+    xml_constants::XML_DECLARATION,
+};
 
 fn get_range_str(row: i32, column: i32, width: i32, height: i32) -> Option<String> {
     let column1 = number_to_column(column)?;
@@ -48,13 +51,35 @@ fn get_range_str(row: i32, column: i32, width: i32, height: i32) -> Option<Strin
     Some(format!("{}{}:{}{}", column1, row, column2, row2))
 }
 
-/// The `t="e"` attribute and the cached `<v>` of a formula that evaluates to an error.
+/// The value of an error in a `t="e"` cell.
+/// Only the errors of the xlsx standard can be written there: with any other Excel offers
+/// to repair the file and other readers (calamine) do not read the sheet at all.
+/// Excel writes the errors older versions do not know (#SPILL!, #CALC!) as #VALUE!, with
+/// the actual error in the value metadata (see `value_metadata.rs`), and so do we.
+/// The errors only IronCalc has are also #VALUE!, but nothing says which one they were.
+fn get_xlsx_error(ei: &Error) -> &'static str {
+    match ei {
+        Error::NULL => "#NULL!",
+        Error::REF => "#REF!",
+        Error::NAME => "#NAME?",
+        Error::VALUE => "#VALUE!",
+        Error::DIV => "#DIV/0!",
+        Error::NA => "#N/A",
+        Error::NUM => "#NUM!",
+        Error::SPILL | Error::CALC | Error::ERROR | Error::NIMPL | Error::CIRC => "#VALUE!",
+    }
+}
+
+/// The attributes (`t="e"` and `vm`) and the cached `<v>` of a formula that evaluates to an error.
 /// Excel only knows the xlsx errors: a cached #CIRC!, #ERROR! or #N/IMPL makes it offer to
 /// repair the file, so for those both are left out and Excel calculates the formula itself.
-fn get_formula_error_parts(ei: &Error) -> (&'static str, String) {
+fn get_formula_error_parts(ei: &Error) -> (String, String) {
     match ei {
-        Error::CIRC | Error::ERROR | Error::NIMPL => ("", String::new()),
-        _ => (" t=\"e\"", format!("<v>{ei}</v>")),
+        Error::CIRC | Error::ERROR | Error::NIMPL => (String::new(), String::new()),
+        _ => (
+            format!(" t=\"e\"{}", get_value_metadata_attribute(ei)),
+            format!("<v>{}</v>", get_xlsx_error(ei)),
+        ),
     }
 }
 
@@ -283,8 +308,10 @@ pub(crate) fn get_worksheet_xml(
                 }
                 Cell::ErrorCell { ei, s } => {
                     let style = get_cell_style_attribute(*s);
+                    let vm = get_value_metadata_attribute(ei);
+                    let v = get_xlsx_error(ei);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"e\"{style}><v>{ei}</v></c>"
+                        "<c r=\"{cell_name}\" t=\"e\"{style}{vm}><v>{v}</v></c>"
                     ));
                 }
                 Cell::SpillCell {
