@@ -13,6 +13,24 @@ use crate::user_model::common::selected_sheet_after_move;
 use crate::user_model::history::{Diff, DiffList};
 
 impl<'a> UserModel<'a> {
+    /// True if the defined name `name` with scope `scope` is already what
+    /// `entry` says, its formula being the stored one. There is nothing to
+    /// update then, and updating a name reparses the whole workbook: the
+    /// snapshots of the defined names that go with a structural diff are
+    /// like this unless its undo could not restore the name.
+    fn defined_name_is(&self, name: &str, scope: Option<u32>, entry: &DefinedNameEntry) -> bool {
+        name == entry.name
+            && scope == entry.scope
+            && self
+                .model
+                .get_defined_name(name, scope)
+                .is_ok_and(|defined_name| {
+                    defined_name.formula == entry.formula
+                        && defined_name.hidden == entry.hidden
+                        && defined_name.comment == entry.comment
+                })
+    }
+
     pub(super) fn apply_undo_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list.iter().rev() {
@@ -401,17 +419,16 @@ impl<'a> UserModel<'a> {
                     new_hidden: _,
                     new_comment: _,
                 } => {
-                    self.model.update_defined_name(
-                        new_name,
-                        *new_scope,
-                        DefinedNameEntry {
-                            name: name.clone(),
-                            scope: *scope,
-                            formula: old_formula.clone(),
-                            hidden: *old_hidden,
-                            comment: old_comment.clone(),
-                        },
-                    )?;
+                    let old = DefinedNameEntry {
+                        name: name.clone(),
+                        scope: *scope,
+                        formula: old_formula.clone(),
+                        hidden: *old_hidden,
+                        comment: old_comment.clone(),
+                    };
+                    if !self.defined_name_is(new_name, *new_scope, &old) {
+                        self.model.update_defined_name(new_name, *new_scope, old)?;
+                    }
                 }
                 Diff::SetSheetState {
                     index,
@@ -943,17 +960,18 @@ impl<'a> UserModel<'a> {
                     new_formula,
                     new_hidden,
                     new_comment,
-                } => self.model.update_defined_name(
-                    name,
-                    *scope,
-                    DefinedNameEntry {
+                } => {
+                    let new = DefinedNameEntry {
                         name: new_name.clone(),
                         scope: *new_scope,
                         formula: new_formula.clone(),
                         hidden: *new_hidden,
                         comment: new_comment.clone(),
-                    },
-                )?,
+                    };
+                    if !self.defined_name_is(name, *scope, &new) {
+                        self.model.update_defined_name(name, *scope, new)?;
+                    }
+                }
                 Diff::SetSheetState {
                     index,
                     old_value: _,

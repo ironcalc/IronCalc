@@ -15,7 +15,7 @@ use crate::{
     },
     model::{DefinedNameEntry, FmtSettings, Model},
     types::{
-        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, DateSystem,
+        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, DateSystem, DefinedName,
         HorizontalAlignment, MergedCell, SheetProperties, SheetState, Style, Theme,
         VerticalAlignment,
     },
@@ -1068,9 +1068,11 @@ impl<'a> UserModel<'a> {
     /// See also [`Model::insert_rows`].
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_defined_names = self.model.workbook.defined_names.clone();
         self.model.insert_rows(sheet, row, row_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.extend(self.defined_names_snapshot_diffs(old_defined_names));
         diff_list.push(Diff::InsertRows {
             sheet,
             row,
@@ -1100,9 +1102,11 @@ impl<'a> UserModel<'a> {
         column_count: i32,
     ) -> Result<(), String> {
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_defined_names = self.model.workbook.defined_names.clone();
         self.model.insert_columns(sheet, column, column_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.extend(self.defined_names_snapshot_diffs(old_defined_names));
         diff_list.push(Diff::InsertColumns {
             sheet,
             column,
@@ -1165,9 +1169,11 @@ impl<'a> UserModel<'a> {
         })?;
 
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_defined_names = self.model.workbook.defined_names.clone();
         self.model.delete_rows(sheet, row, row_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.extend(self.defined_names_snapshot_diffs(old_defined_names));
         diff_list.extend(link_diffs);
         diff_list.push(Diff::DeleteRows {
             sheet,
@@ -1245,9 +1251,11 @@ impl<'a> UserModel<'a> {
         })?;
 
         let old_merged_cells = self.model.get_merged_cells(sheet)?.to_vec();
+        let old_defined_names = self.model.workbook.defined_names.clone();
         self.model.delete_columns(sheet, column, column_count)?;
 
         let mut diff_list = self.merged_cells_snapshot_diffs(sheet, old_merged_cells)?;
+        diff_list.extend(self.defined_names_snapshot_diffs(old_defined_names));
         diff_list.extend(link_diffs);
         diff_list.push(Diff::DeleteColumns {
             sheet,
@@ -2352,6 +2360,52 @@ impl<'a> UserModel<'a> {
         } else {
             Ok(vec![])
         }
+    }
+
+    /// Returns a snapshot diff for every defined name whose formula is not
+    /// the one it has in `old_defined_names`.
+    ///
+    /// Inserting or deleting rows or columns displaces the defined names on
+    /// its own when it is (re)played, but its undo cannot always reconstruct
+    /// the original formulas (a name that pointed at a deleted cell is `#REF!`
+    /// and stays so when the rows are inserted again). As with the merged
+    /// cells, the snapshot has `old_formula == new_formula` — a no-op when
+    /// applied — and must go *before* the structural diff in the list, so
+    /// that on undo (replayed in reverse) it runs last and restores the exact
+    /// original formula.
+    pub(super) fn defined_names_snapshot_diffs(
+        &self,
+        old_defined_names: Vec<DefinedName>,
+    ) -> Vec<Diff> {
+        let mut diffs = Vec::new();
+        for (old, new) in old_defined_names
+            .into_iter()
+            .zip(&self.model.workbook.defined_names)
+        {
+            if old.formula == new.formula {
+                continue;
+            }
+            let scope = match old.sheet_id {
+                Some(sheet_id) => match self.model.get_sheet_index_by_sheet_id(sheet_id) {
+                    Some(index) => Some(index),
+                    None => continue,
+                },
+                None => None,
+            };
+            diffs.push(Diff::UpdateDefinedName {
+                name: old.name.clone(),
+                scope,
+                old_formula: old.formula.clone(),
+                old_hidden: old.hidden,
+                old_comment: old.comment.clone(),
+                new_name: old.name,
+                new_scope: scope,
+                new_formula: old.formula,
+                new_hidden: old.hidden,
+                new_comment: old.comment,
+            });
+        }
+        diffs
     }
 
     pub(crate) fn push_diff_list(&mut self, diff_list: DiffList) {

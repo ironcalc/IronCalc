@@ -3,8 +3,8 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::cut_paste::cf_sqref_anchor;
 use crate::expressions::parser::displace::{displaced_node, Displacement};
 use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
-use crate::expressions::parser::stringify::{to_string_displaced, DisplaceData};
-use crate::expressions::parser::Parser as ExprParser;
+use crate::expressions::parser::stringify::{to_english_string, to_string_displaced, DisplaceData};
+use crate::expressions::parser::{Node, Parser as ExprParser};
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils;
 use crate::language::get_default_language;
@@ -446,7 +446,7 @@ impl<'a> Model<'a> {
     /// formula that moved along with everything it reads does not change at
     /// all, which in a large sheet is the usual case, and such a cell is left
     /// alone. The spill cells of a moved array are pointed at their anchor's
-    /// new place.
+    /// new place. The formulas of the defined names are displaced too.
     fn displace_formulas(
         &mut self,
         displace_data: &DisplaceData,
@@ -493,7 +493,60 @@ impl<'a> Model<'a> {
             let new_formula = self.shared_formula_index(sheet, new_node, static_result)?;
             self.set_cell_formula_index(sheet, row, column, new_formula, is_dynamic)?;
         }
+        self.displace_defined_names(displace_data);
         Ok(())
+    }
+
+    /// Displaces the formulas of the defined names according to
+    /// `displace_data`. A defined name is kept as the text of its formula and
+    /// has no cell of its own: its references are displaced as those in the
+    /// formula of a cell that does not move. A name whose formula does not
+    /// change is left as it is.
+    fn displace_defined_names(&mut self, displace_data: &DisplaceData) {
+        let mut changed = false;
+        for index in 0..self.workbook.defined_names.len() {
+            let defined_name = &self.workbook.defined_names[index];
+            // Parsed where `parse_defined_names` parses it: a name local to a
+            // sheet in that sheet, a workbook name in the first one
+            let mut context = self.defined_name_context();
+            if let Some(sheet_id) = defined_name.sheet_id {
+                let Some(sheet) = self.get_sheet_index_by_sheet_id(sheet_id) else {
+                    continue;
+                };
+                context.sheet = self.workbook.worksheets[sheet as usize].get_name();
+            }
+            let trimmed = defined_name.formula.trim();
+            let has_equals = trimmed.starts_with('=');
+            let body = trimmed.strip_prefix('=').unwrap_or(trimmed).to_string();
+            // Defined-name formulas are stored in English
+            let node = self.parse_internal_formula(&body, &context);
+            if matches!(node, Node::ParseErrorKind { .. }) {
+                continue;
+            }
+            let displacement = Displacement {
+                data: displace_data,
+                from: (context.row, context.column),
+                to: (context.row, context.column),
+            };
+            let Some(new_node) = displaced_node(&node, &displacement) else {
+                continue;
+            };
+            let new_body = to_english_string(&new_node, &context);
+            self.workbook.defined_names[index].formula = if has_equals {
+                format!("={new_body}")
+            } else {
+                new_body
+            };
+            changed = true;
+        }
+        if changed {
+            // What the parser and the evaluation know of the names is made
+            // from their formulas
+            let defined_names = self.workbook.get_defined_names_with_scope();
+            self.parser
+                .set_worksheets_and_names(self.workbook.get_worksheet_names(), defined_names);
+            self.parse_defined_names();
+        }
     }
 
     /// Updates the `range` field and formula fields of every CF rule on `sheet` according to `displace_data`.
