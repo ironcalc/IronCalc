@@ -202,6 +202,13 @@ fn test_names() {
     assert!(is_valid_identifier("\\."));
     assert!(is_valid_identifier("truñe"));
 
+    // names may start with any letter, not only ASCII ones
+    assert!(is_valid_identifier("부가세율"));
+    assert!(is_valid_identifier("세율_2026"));
+    assert!(is_valid_identifier("ñu"));
+    assert!(is_valid_identifier("Ставка"));
+    assert!(is_valid_identifier("税率"));
+
     // invalid
     assert!(!is_valid_identifier("true"));
     assert!(!is_valid_identifier("false"));

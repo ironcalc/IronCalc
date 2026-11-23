@@ -184,3 +184,25 @@ fn local_name_formulas_resolve_in_their_sheet() {
     assert_eq!(model._get_text("Sheet1!A2"), "8");
     assert_eq!(model._get_text("Data!A1"), "20");
 }
+
+// A defined name may start with any letter, not only an ASCII one (e.g. Hangul)
+#[test]
+fn names_starting_with_non_ascii_letters() {
+    let mut model = new_empty_model();
+    model._set("K1", "0.1");
+    model._set("K2", "20000");
+    model
+        .new_defined_name(DefinedNameEntry::new("부가세율", "Sheet1!$K$1"))
+        .unwrap();
+    model
+        .new_defined_name(DefinedNameEntry::new("ñu", "Sheet1!$K$2"))
+        .unwrap();
+
+    model._set("A1", "=K2*부가세율");
+    model._set("A2", "=SUM(K2,K2)*부가세율+1");
+    model._set("A3", "=ñu*2");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2000");
+    assert_eq!(model._get_text("A2"), "4001");
+    assert_eq!(model._get_text("A3"), "40000");
+}
