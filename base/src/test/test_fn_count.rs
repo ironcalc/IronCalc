@@ -74,8 +74,7 @@ fn test_fn_counta_omitted_argument() {
     let mut model = new_empty_model();
     // Excel-verified: desktop Excel for Microsoft 365, Adam Marsh, 2026-11-22.
     model._set("A1", "=COUNTA(1,)");
-    // Same rule, not run in Excel for this change. Microsoft's COUNTA page
-    // does not state these two results.
+    // Excel-verified: desktop Excel for Microsoft 365, Adam Marsh, 2026-11-23.
     model._set("A2", "=COUNTA(,)");
     model._set("A3", "=COUNTA(1)");
     model.evaluate();
