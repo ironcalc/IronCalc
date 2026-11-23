@@ -378,7 +378,11 @@ impl<'a> Model<'a> {
         let mut result = 0.0;
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
+                // An omitted argument (COUNTA(1,)) counts. An empty cell does not.
+                CalcResult::EmptyArg => {
+                    result += 1.0;
+                }
+                CalcResult::EmptyCell => {}
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(

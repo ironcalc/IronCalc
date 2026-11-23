@@ -67,6 +67,24 @@ fn test_fn_count_minimal() {
     assert_eq!(model._get_text("A3"), *"3");
 }
 
+// An omitted argument is an empty value, and COUNTA counts it. An empty cell
+// is still skipped (see test_fn_count_minimal).
+#[test]
+fn test_fn_counta_omitted_argument() {
+    let mut model = new_empty_model();
+    // Excel-verified: desktop Excel for Microsoft 365, Adam Marsh, 2026-11-22.
+    model._set("A1", "=COUNTA(1,)");
+    // Same rule, not run in Excel for this change. Microsoft's COUNTA page
+    // does not state these two results.
+    model._set("A2", "=COUNTA(,)");
+    model._set("A3", "=COUNTA(1)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(model._get_text("A2"), *"2");
+    assert_eq!(model._get_text("A3"), *"1");
+}
+
 // ── whole-column range and a spill beyond the used area ─────────────────────
 
 // A whole-column range is clipped to the sheet's used area before it is
