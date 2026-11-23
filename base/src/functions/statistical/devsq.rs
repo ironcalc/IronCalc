@@ -1,5 +1,6 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::running_stats::RunningStats;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -11,22 +12,12 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let mut sum = 0.0;
-        let mut sumsq = 0.0;
-        let mut count: u64 = 0;
-
-        // tiny helper so we don't repeat ourselves
-        #[inline]
-        fn accumulate(sum: &mut f64, sumsq: &mut f64, count: &mut u64, value: f64) {
-            *sum += value;
-            *sumsq += value * value;
-            *count += 1;
-        }
+        let mut stats = RunningStats::default();
 
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(value) => {
-                    accumulate(&mut sum, &mut sumsq, &mut count, value);
+                    stats.add(value);
                 }
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
@@ -57,7 +48,7 @@ impl<'a> Model<'a> {
                                 column,
                             }) {
                                 CalcResult::Number(value) => {
-                                    accumulate(&mut sum, &mut sumsq, &mut count, value);
+                                    stats.add(value);
                                 }
                                 error @ CalcResult::Error { .. } => return error,
                                 _ => {
@@ -72,7 +63,7 @@ impl<'a> Model<'a> {
                         for value in row {
                             match value {
                                 ArrayNode::Number(value) => {
-                                    accumulate(&mut sum, &mut sumsq, &mut count, value);
+                                    stats.add(value);
                                 }
                                 ArrayNode::Error(error) => {
                                     return CalcResult::Error {
@@ -95,7 +86,7 @@ impl<'a> Model<'a> {
             };
         }
 
-        if count == 0 {
+        if stats.count() == 0 {
             // No numeric data at all
             return CalcResult::new_error(
                 Error::DIV,
@@ -104,14 +95,6 @@ impl<'a> Model<'a> {
             );
         }
 
-        let n = count as f64;
-        let mut result = sumsq - (sum * sum) / n;
-
-        // Numerical noise can make result slightly negative when it should be 0
-        if result < 0.0 && result > -1e-12 {
-            result = 0.0;
-        }
-
-        CalcResult::Number(result)
+        CalcResult::Number(stats.sum_sq_dev())
     }
 }

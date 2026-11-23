@@ -492,3 +492,25 @@ fn criteria_with_labels_only() {
     assert_eq!(model._get_text("G2"), *"#VALUE!");
     assert_eq!(model._get_text("G3"), *"#VALUE!");
 }
+
+#[test]
+fn variance_of_values_far_from_zero() {
+    let mut model = new_empty_model();
+    model._set("A1", "ID");
+    model._set("B1", "Amount");
+    for row in 2..=5 {
+        model._set(&format!("A{row}"), "1");
+        model._set(&format!("B{row}"), &format!("=1000000000+{row}"));
+    }
+    model._set("D1", "ID");
+    model._set("D2", "1");
+    model._set("E1", "=DVAR(A1:B5, \"Amount\", D1:D2)");
+    model._set("E2", "=DVARP(A1:B5, \"Amount\", D1:D2)");
+    model._set("E3", "=DSTDEV(A1:B5, \"Amount\", D1:D2)");
+    model._set("E4", "=DSTDEVP(A1:B5, \"Amount\", D1:D2)");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), *"1.666666667");
+    assert_eq!(model._get_text("E2"), *"1.25");
+    assert_eq!(model._get_text("E3"), *"1.290994449");
+    assert_eq!(model._get_text("E4"), *"1.118033989");
+}

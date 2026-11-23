@@ -5,6 +5,7 @@ use crate::{
     Model,
 };
 
+use super::statistical::running_stats::RunningStats;
 use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex};
 
 impl<'a> Model<'a> {
@@ -355,13 +356,13 @@ impl<'a> Model<'a> {
     }
 
     // Small internal helper for DSTDEV / DVAR
-    // Collects sum, sum of squares, and count of numeric values in the field
+    // Collects the statistics of the numeric values in the field
     // for rows that match the criteria.
     fn db_numeric_stats(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-    ) -> Result<(f64, f64, usize), CalcResult> {
+    ) -> Result<RunningStats, CalcResult> {
         if args.len() != 3 {
             return Err(CalcResult::new_args_number_error(cell));
         }
@@ -384,9 +385,7 @@ impl<'a> Model<'a> {
             });
         }
 
-        let mut sum = 0.0f64;
-        let mut sumsq = 0.0f64;
-        let mut count = 0usize;
+        let mut stats = RunningStats::default();
 
         let mut row = db_left.row + 1; // skip header
         while row <= db_right.row {
@@ -398,28 +397,26 @@ impl<'a> Model<'a> {
                 });
                 if let CalcResult::Number(n) = v {
                     if n.is_finite() {
-                        sum += n;
-                        sumsq += n * n;
-                        count += 1;
+                        stats.add(n);
                     }
                 }
             }
             row += 1;
         }
 
-        Ok((sum, sumsq, count))
+        Ok(stats)
     }
 
     // =DSTDEV(database, field, criteria)
     // Sample standard deviation of matching numeric values
     pub(crate) fn fn_dstdev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
+        let stats = match self.db_numeric_stats(args, cell) {
             Ok(stats) => stats,
             Err(e) => return e,
         };
 
         // Excel behaviour: #DIV/0! if 0 or 1 numeric values match
-        if count < 2 {
+        if stats.count() < 2 {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
@@ -427,22 +424,19 @@ impl<'a> Model<'a> {
             };
         }
 
-        let n = count as f64;
-        let var = (sumsq - (sum * sum) / n) / (n - 1.0);
-        let var = if var < 0.0 { 0.0 } else { var };
-        CalcResult::Number(var.sqrt())
+        CalcResult::Number(stats.var_s().sqrt())
     }
 
     // =DVAR(database, field, criteria)
     // Sample variance of matching numeric values
     pub(crate) fn fn_dvar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
+        let stats = match self.db_numeric_stats(args, cell) {
             Ok(stats) => stats,
             Err(e) => return e,
         };
 
         // Excel behaviour: #DIV/0! if 0 or 1 numeric values match
-        if count < 2 {
+        if stats.count() < 2 {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
@@ -450,22 +444,19 @@ impl<'a> Model<'a> {
             };
         }
 
-        let n = count as f64;
-        let var = (sumsq - (sum * sum) / n) / (n - 1.0);
-        let var = if var < 0.0 { 0.0 } else { var };
-        CalcResult::Number(var)
+        CalcResult::Number(stats.var_s())
     }
 
     // =DSTDEVP(database, field, criteria)
     // Population standard deviation of matching numeric values
     pub(crate) fn fn_dstdevp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
+        let stats = match self.db_numeric_stats(args, cell) {
             Ok(stats) => stats,
             Err(e) => return e,
         };
 
         // Excel behaviour: #DIV/0! if no numeric values match
-        if count == 0 {
+        if stats.count() == 0 {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
@@ -473,22 +464,19 @@ impl<'a> Model<'a> {
             };
         }
 
-        let n = count as f64;
-        let var = (sumsq - (sum * sum) / n) / n;
-        let var = if var < 0.0 { 0.0 } else { var };
-        CalcResult::Number(var.sqrt())
+        CalcResult::Number(stats.var_p().sqrt())
     }
 
     // =DVARP(database, field, criteria)
     // Population variance of matching numeric values
     pub(crate) fn fn_dvarp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
+        let stats = match self.db_numeric_stats(args, cell) {
             Ok(stats) => stats,
             Err(e) => return e,
         };
 
         // Excel behaviour: #DIV/0! if no numeric values match
-        if count == 0 {
+        if stats.count() == 0 {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
@@ -496,10 +484,7 @@ impl<'a> Model<'a> {
             };
         }
 
-        let n = count as f64;
-        let var = (sumsq - (sum * sum) / n) / n;
-        let var = if var < 0.0 { 0.0 } else { var };
-        CalcResult::Number(var)
+        CalcResult::Number(stats.var_p())
     }
 
     /// Resolve the "field" (2nd arg) to an absolute column index (i32) within the sheet.
