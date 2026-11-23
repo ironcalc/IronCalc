@@ -69,3 +69,52 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
 }
+
+// ── values far from zero ────────────────────────────────────────────────────
+
+// Adding a constant to every value does not change the variance. Excel (since
+// 2003) keeps all the digits here.
+#[test]
+fn values_far_from_zero() {
+    let cases = [
+        ("VAR.P(A1:A4)", "1.25"),
+        ("VAR.S(A1:A4)", "1.666666667"),
+        ("VARA(A1:A4)", "1.666666667"),
+        ("VARPA(A1:A4)", "1.25"),
+        ("STDEV.P(A1:A4)", "1.118033989"),
+        ("STDEV.S(A1:A4)", "1.290994449"),
+        ("STDEVA(A1:A4)", "1.290994449"),
+        ("STDEVPA(A1:A4)", "1.118033989"),
+        ("DEVSQ(A1:A4)", "5"),
+    ];
+    for offset in ["0", "1000000000", "-1000000000"] {
+        let mut model = new_empty_model();
+        for row in 1..=4 {
+            model._set(&format!("A{row}"), &format!("={offset}+{row}"));
+        }
+        for (row, (formula, _)) in cases.iter().enumerate() {
+            model._set(&format!("B{}", row + 1), &format!("={formula}"));
+        }
+        model.evaluate();
+        for (row, (formula, expected)) in cases.iter().enumerate() {
+            let cell = format!("B{}", row + 1);
+            assert_eq!(model._get_text(&cell), *expected, "{formula} {offset}");
+        }
+    }
+}
+
+// The sum of the squares is not exact here, but the variance is still zero
+#[test]
+fn equal_values() {
+    let mut model = new_empty_model();
+    for row in 1..=10 {
+        model._set(&format!("A{row}"), "123456789.1");
+    }
+    model._set("B1", "=VAR.P(A1:A10)");
+    model._set("B2", "=STDEV.S(A1:A10)");
+    model._set("B3", "=DEVSQ(A1:A10)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), *"0");
+    assert_eq!(model._get_text("B2"), *"0");
+    assert_eq!(model._get_text("B3"), *"0");
+}

@@ -26,6 +26,7 @@ mod poisson;
 mod prob;
 mod quartile;
 mod rank_eq_avg;
+pub(crate) mod running_stats;
 mod standard_dev;
 mod standardize;
 mod t_dist;
