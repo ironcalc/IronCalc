@@ -1,5 +1,14 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
+/// Cumulative distribution function of the standard normal distribution.
+///
+/// We do not use statrs' `Normal::cdf`: its `erfc` is only good to about 1e-11, so for instance
+/// NORM.S.DIST(1,TRUE) came out as 0.8413447460549428 where Excel gives 0.841344746068543.
+/// libm's `erfc` (a port of the musl/fdlibm one) is correct to the last digit or two.
+pub(crate) fn standard_normal_cdf(z: f64) -> f64 {
+    0.5 * libm::erfc(-z / std::f64::consts::SQRT_2)
+}
+
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -49,7 +58,11 @@ impl<'a> Model<'a> {
             }
         };
 
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
+        let result = if cumulative {
+            standard_normal_cdf((x - mean) / std_dev)
+        } else {
+            dist.pdf(x)
+        };
 
         if !result.is_finite() {
             return CalcResult::Error {
@@ -139,7 +152,11 @@ impl<'a> Model<'a> {
             }
         };
 
-        let result = if cumulative { dist.cdf(z) } else { dist.pdf(z) };
+        let result = if cumulative {
+            standard_normal_cdf(z)
+        } else {
+            dist.pdf(z)
+        };
 
         if !result.is_finite() {
             return CalcResult::Error {
