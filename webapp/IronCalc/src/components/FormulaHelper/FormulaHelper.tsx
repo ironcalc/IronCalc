@@ -6,10 +6,16 @@
 //   * The signature / docs of the function whose arguments you are filling in
 //     (e.g. "=SUM(" -> SUM ( number1 , [number2] , … ) + description/examples)
 //
+// Both cards also cover what the user defined in the workbook: named functions
+// (with their description and the description of their parameters) and defined
+// names (with their comment). Those carry a tag telling which of the two they
+// are.
+//
 // The selected list row is controlled by the parent so it can be driven from
 // either the mouse (hover) or the keyboard (arrow keys). See the editor
 // integration in Editor.tsx and the standalone demo in FormulaHelper.stories.
 
+import type { NamedFunction } from "@ironcalc/wasm";
 import { ChevronUp } from "lucide-react";
 import {
   Fragment,
@@ -21,9 +27,10 @@ import {
 import { IconButton } from "../Button/IconButton";
 import {
   type Completion,
+  type CompletionItem,
+  type CompletionItemKind,
   displayArgName,
   docsUrl,
-  firstSentence,
   lookup,
 } from "./formulaCompletion";
 import "./formulaHelper.css";
@@ -41,6 +48,19 @@ function swallowPointerDown(event: ReactPointerEvent) {
 
 function swallowClick(event: ReactMouseEvent) {
   event.stopPropagation();
+}
+
+// The tag shown next to what the user defined in the workbook, telling a named
+// function from a defined name. Built-in functions have none.
+function KindTag({ kind }: { kind: CompletionItemKind }) {
+  if (kind === "builtin") {
+    return null;
+  }
+  return (
+    <span className={`ic-fh-tag ic-fh-tag-${kind}`}>
+      {kind === "function" ? "Function" : "Name"}
+    </span>
+  );
 }
 
 interface FormulaHelperProps {
@@ -73,6 +93,14 @@ export function FormulaHelper({
       />
     );
   }
+  if (completion.namedFunction) {
+    return (
+      <NamedFunctionDetail
+        namedFunction={completion.namedFunction}
+        activeIndex={completion.activeIndex}
+      />
+    );
+  }
   return (
     <FunctionDetail
       name={completion.name}
@@ -88,7 +116,7 @@ function FunctionList({
   onSelect,
   onAccept,
 }: {
-  matches: string[];
+  matches: CompletionItem[];
   prefix: string;
   selected: number;
   onSelect: (index: number) => void;
@@ -109,26 +137,30 @@ function FunctionList({
       onPointerDown={swallowPointerDown}
       onClick={swallowClick}
     >
-      {matches.map((name, index) => {
-        const info = lookup(name);
+      {matches.map((item, index) => {
+        const { name, kind, description } = item;
         const isSelected = index === clamped;
         return (
           <button
             type="button"
-            key={name}
+            key={`${kind}:${name}`}
             ref={isSelected ? scrollSelectedIntoView : undefined}
             className={`ic-fh-list-item${isSelected ? " ic-fh-selected" : ""}`}
             onMouseEnter={() => onSelect(index)}
             onClick={() => onAccept(index)}
           >
-            <span className="ic-fh-name">
-              <span className="ic-fh-name-match">{prefix}</span>
-              {name.slice(prefix.length)}
-            </span>
-            {isSelected && info ? (
-              <span className="ic-fh-list-desc">
-                {firstSentence(info.description)}
+            <span className="ic-fh-list-row">
+              <span className="ic-fh-name">
+                {/* The name keeps its own casing, whatever the user typed. */}
+                <span className="ic-fh-name-match">
+                  {name.slice(0, prefix.length)}
+                </span>
+                {name.slice(prefix.length)}
               </span>
+              <KindTag kind={kind} />
+            </span>
+            {isSelected && description ? (
+              <span className="ic-fh-list-desc">{description}</span>
             ) : null}
           </button>
         );
@@ -141,13 +173,8 @@ function FunctionList({
 // user's choice (collapsed/uncollapsed) is remembered.
 let lastCollapsed = false;
 
-function FunctionDetail({
-  name,
-  activeIndex,
-}: {
-  name: string;
-  activeIndex: number;
-}) {
+// Shared by both detail cards: the collapsed state and its toggle button.
+function useCollapsed() {
   const [collapsed, setCollapsed] = useState(lastCollapsed);
   const toggleCollapsed = () => {
     setCollapsed((value) => {
@@ -155,6 +182,101 @@ function FunctionDetail({
       return lastCollapsed;
     });
   };
+  const button = (
+    <IconButton
+      icon={
+        <ChevronUp
+          size={16}
+          style={{ transform: collapsed ? "rotate(180deg)" : undefined }}
+        />
+      }
+      aria-label={collapsed ? "Expand" : "Collapse"}
+      title={collapsed ? "Expand" : "Collapse"}
+      size="xs"
+      className="ic-fh-collapse-btn"
+      onClick={toggleCollapsed}
+    />
+  );
+  return { collapsed, button };
+}
+
+// The card of a named function: its signature, the description the user gave
+// it and the description of each parameter that has one.
+function NamedFunctionDetail({
+  namedFunction,
+  activeIndex,
+}: {
+  namedFunction: NamedFunction;
+  activeIndex: number;
+}) {
+  const { collapsed, button } = useCollapsed();
+  const { name, description, parameters } = namedFunction;
+  const documented = parameters.some((parameter) => parameter.description);
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: only swallows events so editing isn't interrupted
+    // biome-ignore lint/a11y/useKeyWithClickEvents: not user-interactive; stops propagation only
+    <div
+      className="ic-fh"
+      onPointerDown={swallowPointerDown}
+      onClick={swallowClick}
+    >
+      <div className="ic-fh-header">
+        <div className="ic-fh-header-main">
+          <div className="ic-fh-signature">
+            <span className="ic-fh-fn-name">{name}</span>
+            {" ( "}
+            {parameters.map((parameter, index) => (
+              <Fragment key={parameter.name}>
+                {index > 0 ? <span className="ic-fh-comma">, </span> : null}
+                <span
+                  className={`ic-fh-arg${
+                    index === activeIndex ? " ic-fh-arg-active" : ""
+                  }`}
+                >
+                  {parameter.optional ? `[${parameter.name}]` : parameter.name}
+                </span>
+              </Fragment>
+            ))}
+            {" )"}
+          </div>
+          {collapsed || !description ? null : (
+            <div className="ic-fh-desc">{description}</div>
+          )}
+        </div>
+        <KindTag kind="function" />
+        {button}
+      </div>
+
+      {collapsed || !documented ? null : (
+        <div className="ic-fh-body">
+          {parameters.map((parameter, index) =>
+            parameter.description ? (
+              <div
+                key={parameter.name}
+                className={`ic-fh-param${
+                  index === activeIndex ? " ic-fh-param-active" : ""
+                }`}
+              >
+                <span className="ic-fh-param-name">{parameter.name}</span>
+                {parameter.description}
+              </div>
+            ) : null,
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FunctionDetail({
+  name,
+  activeIndex,
+}: {
+  name: string;
+  activeIndex: number;
+}) {
+  const { collapsed, button } = useCollapsed();
   const info = lookup(name);
   if (!info) {
     return null;
@@ -208,19 +330,7 @@ function FunctionDetail({
             </div>
           )}
         </div>
-        <IconButton
-          icon={
-            <ChevronUp
-              size={16}
-              style={{ transform: collapsed ? "rotate(180deg)" : undefined }}
-            />
-          }
-          aria-label={collapsed ? "Expand" : "Collapse"}
-          title={collapsed ? "Expand" : "Collapse"}
-          size="xs"
-          className="ic-fh-collapse-btn"
-          onClick={toggleCollapsed}
-        />
+        {button}
       </div>
 
       {collapsed || info.examples.length === 0 ? null : (
