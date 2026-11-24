@@ -46,6 +46,7 @@ use crate::calc_result::CalcResult;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lookup_index::{ExactIndex, LookupIndexKey};
 use crate::model::Model;
 use crate::types::{ArrayKind, Cell, Worksheet};
 
@@ -398,6 +399,9 @@ pub(crate) struct Evaluation {
     /// Set when the current pass must be abandoned. Every evaluation in
     /// progress then returns without storing anything.
     pub(crate) restart: Option<Restart>,
+    /// Exact-match indexes of the ranges searched in the current pass
+    /// (`functions::lookup_index`). Dropped with the pass.
+    pub(crate) lookup_indexes: HashMap<LookupIndexKey, Arc<ExactIndex>>,
     /// True while `evaluate()` is running a pass. Outside a pass (conditional
     /// formatting at load time, formula helpers) there is no driver to restart
     /// anything, so cells are simply evaluated on demand.
@@ -468,6 +472,7 @@ impl Default for Evaluation {
             seen: HashMap::default(),
             seen_ranges: Vec::new(),
             restart: None,
+            lookup_indexes: HashMap::new(),
             in_pass: false,
             record_reads: false,
             restarts_in_last_evaluation: 0,
@@ -714,6 +719,7 @@ impl<'a> Model<'a> {
         state.stack.clear();
         state.seen.clear();
         state.seen_ranges.clear();
+        state.lookup_indexes.clear();
         state.restart = None;
         state.depth = 0;
         state.unwinding = false;

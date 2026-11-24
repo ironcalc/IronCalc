@@ -8,6 +8,7 @@ use crate::{
 };
 
 use super::binary_search::binary_search_on_array;
+use super::lookup_index::{target_key, ExactEquality, LookupIndexKey};
 use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex, values_are_equal};
 
 mod address_areas;
@@ -196,6 +197,69 @@ fn index_from_array(
 }
 
 impl<'a> Model<'a> {
+    /// Exact match of `target` in the first column (`by_rows`) or first row of
+    /// a range table, answered from the pass index. The outer `None` means the
+    /// index cannot answer exactly like the scan and the caller must scan.
+    fn search_exact_indexed(
+        &mut self,
+        table: &LookupTable,
+        by_rows: bool,
+        target: &CalcResult,
+        equality: ExactEquality,
+    ) -> Option<Option<usize>> {
+        let LookupTable::Range { left, right } = table else {
+            return None;
+        };
+        let key = target_key(target, equality)?;
+        let (row2, column2) = if by_rows {
+            (right.row, left.column)
+        } else {
+            (left.row, right.column)
+        };
+        let index = self.exact_lookup_index(LookupIndexKey {
+            sheet: left.sheet,
+            row1: left.row,
+            column1: left.column,
+            row2,
+            column2,
+            equality,
+        })?;
+        Some(index.first(&key))
+    }
+
+    /// `binary_search_on_array` over the first column (`by_rows`) or first row
+    /// of the table, reading only the positions it probes instead of the
+    /// whole vector.
+    fn search_sorted(
+        &mut self,
+        table: &LookupTable,
+        by_rows: bool,
+        target: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Option<usize> {
+        let length = if by_rows { table.rows() } else { table.columns() }.max(0) as usize;
+        let mut l = 0;
+        let mut r = length;
+        while l < r {
+            let m = (l + r) / 2;
+            let value = if by_rows {
+                table.get(self, m as i32, 0, cell)
+            } else {
+                table.get(self, 0, m as i32, cell)
+            };
+            match compare_values(&value, target) {
+                -1 => l = m + 1,
+                1 => r = m,
+                _ => return Some(m),
+            }
+        }
+        if l == 0 {
+            None
+        } else {
+            Some(l - 1)
+        }
+    }
+
     /// Materializes a value that is expected to be a vector (a single row or a
     /// single column) into a flat list of values. Accepts both range references
     /// and in-formula array literals. Used by the vector-based lookup functions
@@ -409,6 +473,31 @@ impl<'a> Model<'a> {
             1
         };
         let match_range = self.evaluate_node_in_context(&args[1], cell);
+        if match_type == 0 {
+            if let CalcResult::Range { left, right } = &match_range {
+                if left.row == right.row || left.column == right.column {
+                    if let Some(key) = target_key(&target, ExactEquality::Match) {
+                        if let Some(index) = self.exact_lookup_index(LookupIndexKey {
+                            sheet: left.sheet,
+                            row1: left.row,
+                            column1: left.column,
+                            row2: right.row,
+                            column2: right.column,
+                            equality: ExactEquality::Match,
+                        }) {
+                            return match index.first(&key) {
+                                Some(position) => CalcResult::Number(position as f64 + 1.0),
+                                None => CalcResult::Error {
+                                    error: Error::NA,
+                                    origin: cell,
+                                    message: "Not found".to_string(),
+                                },
+                            };
+                        }
+                    }
+                }
+            }
+        }
 
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
@@ -538,8 +627,18 @@ impl<'a> Model<'a> {
             };
         }
         // We look for `lookup_value` in the first row of the table
-        let search_vector = table.first_row(self, cell);
-        match lookup_index(&lookup_value, &search_vector, is_sorted) {
+        let found = if is_sorted {
+            self.search_sorted(&table, false, &lookup_value, cell)
+        } else {
+            match self.search_exact_indexed(&table, false, &lookup_value, ExactEquality::Vlookup) {
+                Some(found) => found,
+                None => {
+                    let search_vector = table.first_row(self, cell);
+                    lookup_index(&lookup_value, &search_vector, false)
+                }
+            }
+        };
+        match found {
             Some(column) => table.get(self, row_index - 1, column as i32, cell),
             None => CalcResult::Error {
                 error: Error::NA,
@@ -605,8 +704,18 @@ impl<'a> Model<'a> {
             };
         }
         // We look for `lookup_value` in the first column of the table
-        let search_vector = table.first_column(self, cell);
-        match lookup_index(&lookup_value, &search_vector, is_sorted) {
+        let found = if is_sorted {
+            self.search_sorted(&table, true, &lookup_value, cell)
+        } else {
+            match self.search_exact_indexed(&table, true, &lookup_value, ExactEquality::Vlookup) {
+                Some(found) => found,
+                None => {
+                    let search_vector = table.first_column(self, cell);
+                    lookup_index(&lookup_value, &search_vector, false)
+                }
+            }
+        };
+        match found {
             Some(row) => table.get(self, row as i32, column_index - 1, cell),
             None => CalcResult::Error {
                 error: Error::NA,
