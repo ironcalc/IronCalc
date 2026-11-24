@@ -26,7 +26,7 @@ function acceptFunction(
   const completion = getCompletion(model, text, cursor);
   expect(completion?.kind).toBe("list");
   const list = completion as ListCompletion;
-  const selected = list.matches.indexOf(functionName);
+  const selected = list.matches.findIndex((item) => item.name === functionName);
   expect(selected).toBeGreaterThanOrEqual(0);
   return applyListCompletion(text, cursor, list, selected);
 }
@@ -54,4 +54,89 @@ test("text after the cursor is preserved", () => {
 test("the partial name is matched case-insensitively", () => {
   const result = acceptFunction("=su", 3, "SUM");
   expect(result.text).toBe("=SUM(");
+});
+
+// ---- Named functions and defined names ----
+
+function workbookWithNames(): Model {
+  const m = new Model("workbook", "en", "UTC", "en");
+  m.newSheet();
+  m.newNamedFunction({
+    name: "Margin",
+    formula: "(revenue-cost)/revenue",
+    description: "Share of the revenue that is profit.",
+    parameters: [
+      { name: "revenue", description: "Total revenue" },
+      { name: "cost", optional: true },
+    ],
+  });
+  m.newNamedFunction({ name: "MaSecret", formula: "1", hidden: true });
+  m.newNamedFunction({ name: "MaOther", formula: "2", scope: 1 });
+  m.newDefinedName({
+    name: "MaxRate",
+    formula: "Sheet1!$A$1",
+    comment: "Highest rate allowed",
+  });
+  // Adding a sheet selects it: go back to the first one.
+  m.setSelectedSheet(0);
+  return m;
+}
+
+test("the list mixes built-ins, named functions and defined names", () => {
+  const m = workbookWithNames();
+  const completion = getCompletion(m, "=ma", 3) as ListCompletion;
+  expect(completion.kind).toBe("list");
+  const byName = new Map(completion.matches.map((item) => [item.name, item]));
+  expect(byName.get("MATCH")?.kind).toBe("builtin");
+  expect(byName.get("Margin")).toEqual({
+    kind: "function",
+    name: "Margin",
+    description: "Share of the revenue that is profit.",
+  });
+  expect(byName.get("MaxRate")).toEqual({
+    kind: "name",
+    name: "MaxRate",
+    description: "Highest rate allowed",
+  });
+  // Hidden entries and those local to another sheet are left out.
+  expect(byName.has("MaSecret")).toBe(false);
+  expect(byName.has("MaOther")).toBe(false);
+  // A local function is offered in its own sheet.
+  m.setSelectedSheet(1);
+  const local = getCompletion(m, "=ma", 3) as ListCompletion;
+  expect(local.matches.some((item) => item.name === "MaOther")).toBe(true);
+  // Sorted by name, whatever the kind.
+  const names = completion.matches.map((item) => item.name.toUpperCase());
+  expect(names).toEqual([...names].sort());
+});
+
+test("a named function is accepted with its own casing and a parenthesis", () => {
+  const m = workbookWithNames();
+  const completion = getCompletion(m, "=1+marg", 7) as ListCompletion;
+  const selected = completion.matches.findIndex((i) => i.name === "Margin");
+  const result = applyListCompletion("=1+marg", 7, completion, selected);
+  expect(result).toEqual({ text: "=1+Margin(", cursor: 10 });
+});
+
+test("a defined name is accepted without a parenthesis", () => {
+  const m = workbookWithNames();
+  const completion = getCompletion(m, "=maxr", 5) as ListCompletion;
+  const selected = completion.matches.findIndex((i) => i.name === "MaxRate");
+  const result = applyListCompletion("=maxr", 5, completion, selected);
+  expect(result).toEqual({ text: "=MaxRate", cursor: 8 });
+});
+
+test("the arguments of a named function carry its definition", () => {
+  const m = workbookWithNames();
+  const completion = getCompletion(m, "=margin(A1,", 11);
+  expect(completion?.kind).toBe("detail");
+  if (completion?.kind !== "detail") {
+    return;
+  }
+  expect(completion.name).toBe("Margin");
+  expect(completion.activeIndex).toBe(1);
+  expect(completion.namedFunction?.parameters).toEqual([
+    { name: "revenue", description: "Total revenue", optional: false },
+    { name: "cost", description: "", optional: true },
+  ]);
 });

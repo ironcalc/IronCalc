@@ -4,7 +4,7 @@
 // shape. Both the popup (FormulaHelper.tsx) and the editor's keyboard handling
 // consume the same `Completion` value.
 
-import type { Model } from "@ironcalc/wasm";
+import type { DefinedName, Model, NamedFunction } from "@ironcalc/wasm";
 import rawFunctions from "./functions.json";
 
 // One argument: [name, type, description]. A trailing "*" on the name marks the
@@ -77,25 +77,73 @@ export function displayArgName(argName: string): string {
   return argName.endsWith("*") ? `[${argName.slice(0, -1)}]` : argName;
 }
 
-// Listing function names (e.g. "=SU"): the typed `prefix`, the `matches`, and
-// the scalar offset where the partial name starts (so it can be replaced when a
+// One row of the list. Besides the built-in functions of the catalogue there
+// are the things the user defined in the workbook:
+//
+//   * "builtin":  a built-in function (SUM, VLOOKUP…)
+//   * "function": a named function, with the description the user gave it
+//   * "name":     a defined name (named range), with its comment
+//
+// `name` is what gets inserted: upper case for built-ins, as the user wrote it
+// for the other two. `description` is empty when there is none.
+export type CompletionItemKind = "builtin" | "function" | "name";
+
+export interface CompletionItem {
+  kind: CompletionItemKind;
+  name: string;
+  description: string;
+}
+
+// Listing names (e.g. "=SU"): the typed `prefix`, the `matches`, and the
+// scalar offset where the partial name starts (so it can be replaced when a
 // completion is accepted).
 export interface ListCompletion {
   kind: "list";
   prefix: string;
-  matches: string[];
+  matches: CompletionItem[];
   replaceFrom: number;
 }
 
 // Filling in a function's arguments (e.g. "=SUMIF("): the function `name` and
-// the 0-based index of the argument under the cursor.
+// the 0-based index of the argument under the cursor. `namedFunction` is set
+// when the function is one the user defined, rather than a built-in one.
 export interface DetailCompletion {
   kind: "detail";
   name: string;
   activeIndex: number;
+  namedFunction?: NamedFunction;
 }
 
 export type Completion = ListCompletion | DetailCompletion | null;
+
+// The entries of `entries` that can be used from `sheet` and are meant to be
+// seen: the workbook ones and those local to the sheet, minus the hidden ones.
+// A local entry shadows a workbook one with the same name, as it does in a
+// formula. Names are case-insensitive.
+function visibleFrom<
+  T extends { name: string; scope?: number | null; hidden: boolean },
+>(entries: T[], sheet: number): T[] {
+  const byName = new Map<string, T>();
+  for (const entry of entries) {
+    const isLocal = entry.scope !== undefined && entry.scope !== null;
+    if (entry.hidden || (isLocal && entry.scope !== sheet)) {
+      continue;
+    }
+    const key = entry.name.toUpperCase();
+    if (isLocal || !byName.has(key)) {
+      byName.set(key, entry);
+    }
+  }
+  return [...byName.values()];
+}
+
+function namedFunctions(model: Model, sheet: number): NamedFunction[] {
+  return visibleFrom(model.getNamedFunctionList(), sheet);
+}
+
+function definedNames(model: Model, sheet: number): DefinedName[] {
+  return visibleFrom(model.getDefinedNameList(), sheet);
+}
 
 // Ask the engine what is expected at `cursor` (a UTF-16 offset into `text`) and
 // turn it into a `Completion`. Returns null when there is nothing to suggest.
@@ -105,8 +153,10 @@ export function getCompletion(
   cursor: number,
 ): Completion {
   let context: ReturnType<Model["getFormulaCompletion"]>;
+  let sheet: number;
   try {
-    const [sheet, row, column] = model.getSelectedCell();
+    const [selectedSheet, row, column] = model.getSelectedCell();
+    sheet = selectedSheet;
     // The engine wants a Unicode scalar offset, not a UTF-16 one.
     const scalarCursor = Array.from(text.slice(0, cursor)).length;
     context = model.getFormulaCompletion(
@@ -128,10 +178,23 @@ export function getCompletion(
   );
   if (argHint) {
     const [name, oneBasedIndex] = argHint.Argument;
+    const activeIndex = oneBasedIndex - 1;
+    const upperName = name.toUpperCase();
+    const namedFunction = namedFunctions(model, sheet).find(
+      (entry) => entry.name.toUpperCase() === upperName,
+    );
+    if (namedFunction) {
+      return {
+        kind: "detail",
+        name: namedFunction.name,
+        activeIndex,
+        namedFunction,
+      };
+    }
     if (!lookup(name)) {
       return null;
     }
-    return { kind: "detail", name, activeIndex: oneBasedIndex - 1 };
+    return { kind: "detail", name, activeIndex };
   }
 
   const nameHint = context.expecting.find(
@@ -140,7 +203,39 @@ export function getCompletion(
   );
   if (nameHint) {
     const prefix = nameHint.FunctionName.toUpperCase();
-    const matches = functionNames.filter((name) => name.startsWith(prefix));
+    const startsWithPrefix = (name: string) =>
+      name.toUpperCase().startsWith(prefix);
+    const matches: CompletionItem[] = [
+      ...functionNames.filter(startsWithPrefix).map(
+        (name): CompletionItem => ({
+          kind: "builtin",
+          name,
+          description: firstSentence(lookup(name)?.description ?? ""),
+        }),
+      ),
+      ...namedFunctions(model, sheet)
+        .filter((entry) => startsWithPrefix(entry.name))
+        .map(
+          (entry): CompletionItem => ({
+            kind: "function",
+            name: entry.name,
+            description: entry.description,
+          }),
+        ),
+      ...definedNames(model, sheet)
+        .filter((entry) => startsWithPrefix(entry.name))
+        .map(
+          (entry): CompletionItem => ({
+            kind: "name",
+            name: entry.name,
+            description: entry.comment,
+          }),
+        ),
+    ].sort((a, b) => {
+      const nameA = a.name.toUpperCase();
+      const nameB = b.name.toUpperCase();
+      return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
+    });
     if (matches.length === 0) {
       return null;
     }
@@ -150,8 +245,9 @@ export function getCompletion(
   return null;
 }
 
-// Accept a function from a list completion: replace the partial name with
-// `NAME(` and report where the caret should land (just after the "(").
+// Accept a row of a list completion: replace the partial name with `NAME(` for
+// a function, or just `NAME` for a defined name, and report where the caret
+// should land (right after what was inserted).
 //
 // `text` is the full cell input including any leading "=" and `cursor` is a
 // UTF-16 offset into it. `completion.replaceFrom` is a Unicode *scalar* offset
@@ -164,8 +260,8 @@ export function applyListCompletion(
   selected: number,
 ): { text: string; cursor: number } {
   const index = Math.min(Math.max(selected, 0), completion.matches.length - 1);
-  const name = completion.matches[index];
-  const insert = `${name}(`;
+  const item = completion.matches[index];
+  const insert = item.kind === "name" ? item.name : `${item.name}(`;
 
   const equalsOffset = text.startsWith("=") ? 1 : 0;
   const startScalar = completion.replaceFrom + equalsOffset;

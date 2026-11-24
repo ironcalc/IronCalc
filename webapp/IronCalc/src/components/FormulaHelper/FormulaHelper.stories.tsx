@@ -8,6 +8,7 @@ import { applyListCompletion, getCompletion } from "./formulaCompletion";
 // into the real editor: a plain <input> drives it. Type a formula such as:
 //   =SU        -> list of matching function names (↑/↓ to move, Enter to pick)
 //   =SUMIF(    -> SUMIF signature and argument docs
+//   =SUR       -> a named function and a defined name, each with its tag
 function FormulaHelperPlayground() {
   const [model, setModel] = useState<Model | null>(null);
   const [text, setText] = useState("=SU");
@@ -18,7 +19,27 @@ function FormulaHelperPlayground() {
   useEffect(() => {
     async function start() {
       await init();
-      setModel(new Model("Workbook1", "en", "UTC", "en"));
+      const workbook = new Model("Workbook1", "en", "UTC", "en");
+      // Something of the user's own, to see next to the built-in functions.
+      workbook.newNamedFunction({
+        name: "Surcharge",
+        formula: "amount*(1+rate)",
+        description: "Adds a surcharge to an amount.",
+        parameters: [
+          { name: "amount", description: "The amount before the surcharge" },
+          {
+            name: "rate",
+            description: "The surcharge, as a fraction of the amount",
+            optional: true,
+          },
+        ],
+      });
+      workbook.newDefinedName({
+        name: "SurchargeRate",
+        formula: "Sheet1!$A$1",
+        comment: "The surcharge applied to every order",
+      });
+      setModel(workbook);
     }
     start();
   }, []);

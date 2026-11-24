@@ -270,7 +270,8 @@ const Editor = (options: EditorOptions) => {
     textareaRef,
   );
 
-  // Replace the partial function name with `NAME(` and place the caret inside.
+  // Replace the partial name with `NAME(` for a function, or `NAME` for a
+  // defined name, and place the caret right after it.
   // Takes an explicit index so a row click can accept the row it lands on directly.
   const acceptHelperFunction = (index: number = helperSelected) => {
     const textarea = textareaRef.current;
@@ -312,6 +313,20 @@ const Editor = (options: EditorOptions) => {
     } else if (event.key === "ArrowUp") {
       setHelperSelected((value) => Math.max(value - 1, 0));
     } else if (event.key === "Enter" || event.key === "Tab") {
+      // A defined name that is already fully typed has nothing to complete:
+      // leave the key to the editor, so Enter commits the cell as usual.
+      const textarea = textareaRef.current;
+      if (
+        textarea &&
+        applyListCompletion(
+          textarea.value,
+          textarea.selectionStart,
+          completion,
+          helperSelected,
+        ).text === textarea.value
+      ) {
+        return false;
+      }
       acceptHelperFunction();
     } else {
       return false;
