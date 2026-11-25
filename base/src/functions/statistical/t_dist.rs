@@ -219,6 +219,18 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
+        // T.INV(0, 1) is the Cauchy inverse at 0. Excel returns #DIV/0! for
+        // that pair and #NUM! for T.INV(0, 2). df is already truncated, so a
+        // non-integer such as 1.9 is treated as 1. Excel's result for that
+        // input is unverified.
+        if p == 0.0 && df == 1.0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "T.INV is undefined for probability 0 and 1 degree of freedom".to_string(),
+            };
+        }
+
         if p <= 0.0 || p >= 1.0 || df < 1.0 {
             return CalcResult::Error {
                 error: Error::NUM,

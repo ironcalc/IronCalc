@@ -101,7 +101,8 @@ fn test_fn_t_inv_smoke() {
     model._set("A4", "=T.INV(0.95, 10, 1)");
 
     // Domain errors:
-    // p <= 0 or >= 1
+    // p <= 0 or >= 1 is #NUM!, except T.INV(0, 1), which is #DIV/0!
+    // (see test_fn_t_inv_probability_zero_one_df).
     model._set("A5", "=T.INV(0, 10)");
     model._set("A6", "=T.INV(1, 10)");
     // df < 1
@@ -118,6 +119,21 @@ fn test_fn_t_inv_smoke() {
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
     assert_eq!(model._get_text("A7"), *"#NUM!");
+}
+
+// T.INV(0, 1) is #DIV/0!. T.INV(0, 2) stays #NUM!.
+#[test]
+fn test_fn_t_inv_probability_zero_one_df() {
+    let mut model = new_empty_model();
+    // Excel-verified: desktop Excel for Microsoft 365, adamlocalis, 2026-11-22.
+    model._set("A1", "=T.INV(0,1)");
+    model._set("A2", "=T.INV(0,2)");
+    // df is truncated before the check, so 1.9 is treated as 1. Excel's
+    // result for T.INV(0, 1.9) is unverified, so it is not asserted here.
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
 }
 
 #[test]
