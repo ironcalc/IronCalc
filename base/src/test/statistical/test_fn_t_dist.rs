@@ -128,12 +128,18 @@ fn test_fn_t_inv_probability_zero_one_df() {
     // Excel-verified: desktop Excel for Microsoft 365, adamlocalis, 2026-11-22.
     model._set("A1", "=T.INV(0,1)");
     model._set("A2", "=T.INV(0,2)");
-    // df is truncated before the check, so 1.9 is treated as 1. Excel's
-    // result for T.INV(0, 1.9) is unverified, so it is not asserted here.
+    // Excel-verified: desktop Excel for Microsoft 365, adamlocalis, 2026-11-25.
+    // Excel also truncates df, so T.INV(0, 1.9) is #DIV/0!.
+    model._set("A3", "=T.INV(0,1.9)");
+    model._set("A4", "=T.INV(1,1)");
+    model._set("A5", "=T.INV(0,TRUE)");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#DIV/0!");
     assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#DIV/0!");
 }
 
 #[test]

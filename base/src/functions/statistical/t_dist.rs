@@ -220,9 +220,8 @@ impl<'a> Model<'a> {
         };
 
         // T.INV(0, 1) is the Cauchy inverse at 0. Excel returns #DIV/0! for
-        // that pair and #NUM! for T.INV(0, 2). df is already truncated, so a
-        // non-integer such as 1.9 is treated as 1. Excel's result for that
-        // input is unverified.
+        // that pair and #NUM! for T.INV(0, 2). Excel also truncates df, so
+        // T.INV(0, 1.9) is #DIV/0!.
         if p == 0.0 && df == 1.0 {
             return CalcResult::Error {
                 error: Error::DIV,
