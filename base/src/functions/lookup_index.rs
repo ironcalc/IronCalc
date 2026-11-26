@@ -100,9 +100,7 @@ pub(crate) fn target_key(target: &CalcResult, equality: ExactEquality) -> Option
                 return None;
             }
             let wildcards = match equality {
-                ExactEquality::Vlookup | ExactEquality::Match => {
-                    text.contains(['*', '?', '~'])
-                }
+                ExactEquality::Vlookup | ExactEquality::Match => text.contains(['*', '?', '~']),
                 ExactEquality::Xlookup => false,
             };
             if wildcards {
@@ -181,15 +179,26 @@ mod tests {
         assert!(target_key(&CalcResult::Number(1.0), ExactEquality::Vlookup).is_none());
         assert!(target_key(&CalcResult::Number(-1.5), ExactEquality::Match).is_none());
         assert!(target_key(&CalcResult::Number(0.0), ExactEquality::Xlookup).is_none());
-        assert!(target_key(&CalcResult::String("a*".to_string()), ExactEquality::Vlookup).is_none());
+        assert!(target_key(
+            &CalcResult::String("a*".to_string()),
+            ExactEquality::Vlookup
+        )
+        .is_none());
         assert!(target_key(&CalcResult::String("".to_string()), ExactEquality::Xlookup).is_none());
         assert!(target_key(&CalcResult::Boolean(true), ExactEquality::Match).is_none());
-        assert!(target_key(&CalcResult::String("a*".to_string()), ExactEquality::Xlookup).is_some());
+        assert!(target_key(
+            &CalcResult::String("a*".to_string()),
+            ExactEquality::Xlookup
+        )
+        .is_some());
     }
 
     #[test]
     fn vlookup_numbers_use_fifteen_digits() {
-        let a = target_key(&CalcResult::Number(2.000000000000001), ExactEquality::Vlookup);
+        let a = target_key(
+            &CalcResult::Number(2.000000000000001),
+            ExactEquality::Vlookup,
+        );
         let b = target_key(&CalcResult::Number(2.0), ExactEquality::Vlookup);
         assert_eq!(a, b);
         let c = target_key(&CalcResult::Number(2.000000000000001), ExactEquality::Match);
@@ -200,11 +209,17 @@ mod tests {
     #[test]
     fn text_case() {
         assert_eq!(
-            target_key(&CalcResult::String("Łódź".to_string()), ExactEquality::Vlookup),
+            target_key(
+                &CalcResult::String("Łódź".to_string()),
+                ExactEquality::Vlookup
+            ),
             Some(ValueKey::Text("łódź".to_string()))
         );
         assert_eq!(
-            target_key(&CalcResult::String("Łódź".to_string()), ExactEquality::Xlookup),
+            target_key(
+                &CalcResult::String("Łódź".to_string()),
+                ExactEquality::Xlookup
+            ),
             Some(ValueKey::Text("ŁÓDŹ".to_string()))
         );
     }

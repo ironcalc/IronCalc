@@ -237,7 +237,12 @@ impl<'a> Model<'a> {
         target: &CalcResult,
         cell: CellReferenceIndex,
     ) -> Option<usize> {
-        let length = if by_rows { table.rows() } else { table.columns() }.max(0) as usize;
+        let length = if by_rows {
+            table.rows()
+        } else {
+            table.columns()
+        }
+        .max(0) as usize;
         let mut l = 0;
         let mut r = length;
         while l < r {

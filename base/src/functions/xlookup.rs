@@ -274,20 +274,22 @@ impl<'a> Model<'a> {
                                     if let Some(key) =
                                         target_key(&lookup_value, ExactEquality::Xlookup)
                                     {
-                                        if let Some(index) = self.exact_lookup_index(LookupIndexKey {
-                                            sheet: left.sheet,
-                                            row1: left.row,
-                                            column1: left.column,
-                                            row2: right.row,
-                                            column2: right.column,
-                                            equality: ExactEquality::Xlookup,
-                                        }) {
-                                            let found = if search_mode == SearchMode::StartAtFirstItem
-                                            {
-                                                index.first(&key)
-                                            } else {
-                                                index.last(&key)
-                                            };
+                                        if let Some(index) =
+                                            self.exact_lookup_index(LookupIndexKey {
+                                                sheet: left.sheet,
+                                                row1: left.row,
+                                                column1: left.column,
+                                                row2: right.row,
+                                                column2: right.column,
+                                                equality: ExactEquality::Xlookup,
+                                            })
+                                        {
+                                            let found =
+                                                if search_mode == SearchMode::StartAtFirstItem {
+                                                    index.first(&key)
+                                                } else {
+                                                    index.last(&key)
+                                                };
                                             return match found {
                                                 Some(index) => {
                                                     let index = index as i32;
