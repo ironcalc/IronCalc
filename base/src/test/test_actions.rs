@@ -195,9 +195,9 @@ fn test_delete_columns() {
     // A long as the borders of the range are not included that's ok.
     assert_eq!(model._get_formula("A2"), *"=SUM(C4:K4)");
 
-    // FIXME: In Excel this would be (lower limit won't change)
-    // assert_eq!(model._get_formula("A3"), *"=SUM(E4:K4)");
-    assert_eq!(model._get_formula("A3"), *"=SUM(#REF!:K4)");
+    // The first column of the range in A3 is deleted: the range shrinks to
+    // what is left (F4:M4 before the deletion), as in Excel.
+    assert_eq!(model._get_formula("A3"), *"=SUM(D4:K4)");
 }
 
 #[test]
