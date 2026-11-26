@@ -177,6 +177,6 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
       <definedNames>\
         {defined_names}\
       </definedNames>\
-      <calcPr/>\
+      <calcPr fullCalcOnLoad=\"1\"/>\
     </workbook>")
 }
