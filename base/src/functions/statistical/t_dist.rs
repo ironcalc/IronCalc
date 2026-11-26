@@ -31,6 +31,16 @@ pub(crate) fn sample_var(xs: &[f64]) -> f64 {
     s / ((n - 1) as f64)
 }
 
+/// Returns the x such that the upper tail of the Cauchy distribution
+/// (Student's t with one degree of freedom) is q: P(X > x) = q
+fn cauchy_upper_quantile(q: f64) -> f64 {
+    if q == 0.5 {
+        // tan(PI/2) is not infinity in floating point
+        return 0.0;
+    }
+    1.0 / (std::f64::consts::PI * q).tan()
+}
+
 enum TTestType {
     Paired,
     TwoSampleEqualVar,
@@ -220,8 +230,7 @@ impl<'a> Model<'a> {
         };
 
         // T.INV(0, 1) is the Cauchy inverse at 0. Excel returns #DIV/0! for
-        // that pair and #NUM! for T.INV(0, 2). Excel also truncates df, so
-        // T.INV(0, 1.9) is #DIV/0!.
+        // that pair and #NUM! for T.INV(0, 2).
         if p == 0.0 && df == 1.0 {
             return CalcResult::Error {
                 error: Error::DIV,
@@ -236,6 +245,18 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Invalid parameters for T.INV".to_string(),
             };
+        }
+
+        if df == 1.0 {
+            // One degree of freedom is the Cauchy distribution, that has a
+            // closed form. It is also exact in the tails, where the generic
+            // inverse fails: T.INV(1E-300, 1) is -3.18E+299.
+            let x = if p < 0.5 {
+                -cauchy_upper_quantile(p)
+            } else {
+                cauchy_upper_quantile(1.0 - p)
+            };
+            return CalcResult::Number(x);
         }
 
         let dist = match StudentsT::new(0.0, 1.0, df) {
@@ -277,6 +298,30 @@ impl<'a> Model<'a> {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
+
+        // With one degree of freedom Excel uses the closed form of the Cauchy
+        // distribution: T.INV.2T(0, 1) is #DIV/0! (it is #NUM! for
+        // T.INV.2T(0, 2)) and there is no upper bound on the probability, so
+        // T.INV.2T(1.1, 1) is -0.158384440324536.
+        if df == 1.0 && p >= 0.0 {
+            if p == 0.0 {
+                return CalcResult::Error {
+                    error: Error::DIV,
+                    origin: cell,
+                    message: "T.INV.2T is undefined for probability 0 and 1 degree of freedom"
+                        .to_string(),
+                };
+            }
+            let x = cauchy_upper_quantile(p / 2.0);
+            if !x.is_finite() {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Invalid result for T.INV.2T".to_string(),
+                };
+            }
+            return CalcResult::Number(x);
+        }
 
         if p <= 0.0 || p > 1.0 || df < 1.0 {
             return CalcResult::Error {
