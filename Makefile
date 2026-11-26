@@ -8,7 +8,6 @@ lint:
 	cd webapp/IronCalc/ && npm install && npm run check
 	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run check
 	cd webapp/embed.ironcalc.com/ && npm install && npm run check
-	cd docs/docs.ironcalc.com/ && npm install && npm run build
 
 .PHONY: format
 format:
