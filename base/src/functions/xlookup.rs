@@ -8,6 +8,7 @@ use super::{
         binary_search_descending_or_greater, binary_search_descending_or_smaller,
         binary_search_or_greater, binary_search_or_smaller,
     },
+    lookup_index::{target_key, ExactEquality, LookupIndexKey},
     util::{compare_values, from_wildcard_to_regex, result_matches_regex},
 };
 
@@ -269,6 +270,42 @@ impl<'a> Model<'a> {
                         };
                         match search_mode {
                             SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
+                                if match_mode == MatchMode::ExactMatch {
+                                    if let Some(key) =
+                                        target_key(&lookup_value, ExactEquality::Xlookup)
+                                    {
+                                        if let Some(index) =
+                                            self.exact_lookup_index(LookupIndexKey {
+                                                sheet: left.sheet,
+                                                row1: left.row,
+                                                column1: left.column,
+                                                row2: right.row,
+                                                column2: right.column,
+                                                equality: ExactEquality::Xlookup,
+                                            })
+                                        {
+                                            let found =
+                                                if search_mode == SearchMode::StartAtFirstItem {
+                                                    index.first(&key)
+                                                } else {
+                                                    index.last(&key)
+                                                };
+                                            return match found {
+                                                Some(index) => {
+                                                    let index = index as i32;
+                                                    self.evaluate_cell(CellReferenceIndex {
+                                                        sheet: result_left.sheet,
+                                                        row: result_left.row
+                                                            + if is_row_vector { index } else { 0 },
+                                                        column: result_left.column
+                                                            + if is_row_vector { 0 } else { index },
+                                                    })
+                                                }
+                                                None => if_not_found,
+                                            };
+                                        }
+                                    }
+                                }
                                 let array = &self.prepare_array(&left, &right, is_row_vector);
                                 match linear_search(&lookup_value, array, search_mode, match_mode) {
                                     Some(index) => {

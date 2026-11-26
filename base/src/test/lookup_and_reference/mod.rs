@@ -5,6 +5,7 @@ mod test_fn_hlookup;
 mod test_fn_hstack_vstack;
 mod test_fn_index;
 mod test_fn_lookup;
+mod test_fn_lookup_index;
 mod test_fn_match;
 mod test_fn_rows_columns;
 mod test_fn_trimrange;
