@@ -11,6 +11,8 @@ fn get_fonts_xml(styles: &Styles) -> String {
     let fonts = &styles.fonts;
     let mut fonts_str: Vec<String> = vec![];
     for font in fonts {
+        // The order of the children is fixed by the schema (CT_Font):
+        // b, i, strike, u, sz, color, name, family, scheme
         let size = format!("<sz val=\"{}\"/>", font.sz);
         let color = match &font.color {
             Color::Rgb(s) => format!("<color rgb=\"FF{}\"/>", s.trim_start_matches('#')),
@@ -32,13 +34,13 @@ fn get_fonts_xml(styles: &Styles) -> String {
         let scheme = format!("<scheme val=\"{}\"/>", font.scheme);
         fonts_str.push(format!(
             "<font>\
+                {bold}\
+                {italic}\
+                {strike}\
+                {underline}\
                 {size}\
                 {color}\
                 {name}\
-                {bold}\
-                {italic}\
-                {underline}\
-                {strike}\
                 {family}\
                 {scheme}\
              </font>"
