@@ -278,3 +278,44 @@ pub(crate) fn get_styles_xml(model: &Workbook) -> String {
 </styleSheet>"
     )
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use ironcalc_base::types::Font;
+
+    // The schema (CT_Font) is a sequence: the children must come in this order
+    // or strict readers (the Open XML SDK validator) refuse the file.
+    #[test]
+    fn font_children_follow_the_schema_order() {
+        let styles = Styles {
+            fonts: vec![Font {
+                b: true,
+                i: true,
+                strike: true,
+                u: true,
+                color: Color::Rgb("#FF0000".to_string()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let xml = get_fonts_xml(&styles);
+        let positions: Vec<usize> = [
+            "<b/>",
+            "<i/>",
+            "<strike/>",
+            "<u/>",
+            "<sz ",
+            "<color ",
+            "<name ",
+            "<family ",
+            "<scheme ",
+        ]
+        .iter()
+        .map(|tag| xml.find(tag).unwrap())
+        .collect();
+        assert!(positions.is_sorted(), "{xml}");
+    }
+}
