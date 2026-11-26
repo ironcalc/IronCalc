@@ -92,6 +92,19 @@ fn simple_test() {
         ("COLUMN()", "COLUMN()"),
         ("SUM(ROW(A1:A10))", "SUM(ROW(A1:A10))"),
         ("SIN(ROW(A1:A10))", "SIN(@ROW(A1:A10))"),
+        // Lookups: the value looked up is a scalar, the ranges searched are not
+        ("MATCH(A1:A10,B1:B10,0)", "MATCH(@A1:A10,B1:B10,0)"),
+        ("MATCH(A1:A10,B1:B10)", "MATCH(@A1:A10,B1:B10)"),
+        ("MATCH(A1,B1:B10,0)", "MATCH(A1,B1:B10,0)"),
+        (
+            "VLOOKUP(A1:A10,B1:C10,2,FALSE)",
+            "VLOOKUP(@A1:A10,B1:C10,2,FALSE)",
+        ),
+        ("HLOOKUP(A1:J1,A2:J3,2)", "HLOOKUP(@A1:J1,A2:J3,2)"),
+        (
+            "LOOKUP(A1:A10,B1:B10,C1:C10)",
+            "LOOKUP(@A1:A10,B1:B10,C1:C10)",
+        ),
         // INDIRECT takes one text and gives a reference
         ("INDIRECT(A1:A10)", "@INDIRECT(@A1:A10)"),
         ("INDIRECT(A1:A10,FALSE)", "@INDIRECT(@A1:A10,FALSE)"),
