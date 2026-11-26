@@ -4,6 +4,45 @@ use crate::{
 };
 
 impl<'a> Model<'a> {
+    /// The two arguments of a covariance, evaluated. When both are ranges of
+    /// the same shape their bottom-right corners are brought in to what
+    /// `paired_used_corners` reads.
+    fn paired_in_used_area(
+        &mut self,
+        first: &Node,
+        second: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(CalcResult, CalcResult), CalcResult> {
+        let first = self.evaluate_node_in_context(first, cell);
+        let second = self.evaluate_node_in_context(second, cell);
+        match (first, second) {
+            (
+                CalcResult::Range {
+                    left: left1,
+                    right: right1,
+                },
+                CalcResult::Range {
+                    left: left2,
+                    right: right2,
+                },
+            ) => {
+                let (right1, right2) =
+                    self.paired_used_corners((left1, right1), (left2, right2), cell)?;
+                Ok((
+                    CalcResult::Range {
+                        left: left1,
+                        right: right1,
+                    },
+                    CalcResult::Range {
+                        left: left2,
+                        right: right2,
+                    },
+                ))
+            }
+            pair => Ok(pair),
+        }
+    }
+
     pub(crate) fn fn_covariance_p(
         &mut self,
         args: &[Node],
@@ -13,7 +52,13 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values1_opts = match self.evaluate_node_in_context(&args[0], cell) {
+        // Two whole columns are read only as far as the used area: the pairs
+        // left out are pairs of empty cells, which carry no weight here.
+        let (first, second) = match self.paired_in_used_area(&args[0], &args[1], cell) {
+            Ok(pair) => pair,
+            Err(error) => return error,
+        };
+        let values1_opts = match first {
             CalcResult::Range { left, right } => match self.values_from_range(left, right) {
                 Ok(v) => v,
                 Err(error) => return error,
@@ -37,7 +82,7 @@ impl<'a> Model<'a> {
             }
         };
 
-        let values2_opts = match self.evaluate_node_in_context(&args[1], cell) {
+        let values2_opts = match second {
             CalcResult::Range { left, right } => match self.values_from_range(left, right) {
                 Ok(v) => v,
                 Err(error) => return error,
@@ -142,7 +187,13 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values1_opts = match self.evaluate_node_in_context(&args[0], cell) {
+        // Two whole columns are read only as far as the used area: the pairs
+        // left out are pairs of empty cells, which carry no weight here.
+        let (first, second) = match self.paired_in_used_area(&args[0], &args[1], cell) {
+            Ok(pair) => pair,
+            Err(error) => return error,
+        };
+        let values1_opts = match first {
             CalcResult::Range { left, right } => match self.values_from_range(left, right) {
                 Ok(v) => v,
                 Err(error) => return error,
@@ -166,7 +217,7 @@ impl<'a> Model<'a> {
             }
         };
 
-        let values2_opts = match self.evaluate_node_in_context(&args[1], cell) {
+        let values2_opts = match second {
             CalcResult::Range { left, right } => match self.values_from_range(left, right) {
                 Ok(v) => v,
                 Err(error) => return error,
