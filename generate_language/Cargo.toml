@@ -7,3 +7,9 @@ edition = "2024"
 serde = { version = "1.0", features = ["derive"] }
 bitcode = "0.6.3"
 serde_json = "1.0"
+
+# The generator runs once, on a small file, so it is never optimised. Optimising the
+# Deserialize code of `Functions` (one field per function) takes LLVM over an hour in a
+# release build: the time grows with about the cube of the number of fields.
+[profile.release]
+opt-level = 0
