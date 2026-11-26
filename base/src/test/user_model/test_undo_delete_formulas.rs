@@ -71,3 +71,45 @@ fn undo_delete_rows_restores_formulas_in_other_sheets() {
     );
     assert_eq!(model.get_formatted_cell_value(1, 1, 1).unwrap(), "10");
 }
+
+#[test]
+fn undo_delete_rows_restores_a_range_whose_end_was_deleted() {
+    for deleted in [5, 8] {
+        let mut model = new_empty_user_model();
+        for (row, value) in [(5, "1"), (6, "2"), (7, "4"), (8, "8")] {
+            model.set_user_input(0, row, 1, value).unwrap();
+        }
+        model.set_user_input(0, 1, 3, "=SUM(A5:A8)").unwrap();
+
+        model.delete_rows(0, deleted, 1).unwrap();
+        assert_eq!(model.get_cell_content(0, 1, 3).unwrap(), "=SUM(A5:A7)");
+
+        model.undo().unwrap();
+        assert_eq!(model.get_cell_content(0, 1, 3).unwrap(), "=SUM(A5:A8)");
+        assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "15");
+
+        model.redo().unwrap();
+        assert_eq!(model.get_cell_content(0, 1, 3).unwrap(), "=SUM(A5:A7)");
+    }
+}
+
+#[test]
+fn undo_delete_columns_restores_a_range_whose_end_was_deleted() {
+    for deleted in [1, 4] {
+        let mut model = new_empty_user_model();
+        for (column, value) in [(1, "1"), (2, "2"), (3, "4"), (4, "8")] {
+            model.set_user_input(0, 1, column, value).unwrap();
+        }
+        model.set_user_input(0, 3, 5, "=SUM(A1:D1)").unwrap();
+
+        model.delete_columns(0, deleted, 1).unwrap();
+        assert_eq!(model.get_cell_content(0, 3, 4).unwrap(), "=SUM(A1:C1)");
+
+        model.undo().unwrap();
+        assert_eq!(model.get_cell_content(0, 3, 5).unwrap(), "=SUM(A1:D1)");
+        assert_eq!(model.get_formatted_cell_value(0, 3, 5).unwrap(), "15");
+
+        model.redo().unwrap();
+        assert_eq!(model.get_cell_content(0, 3, 4).unwrap(), "=SUM(A1:C1)");
+    }
+}
