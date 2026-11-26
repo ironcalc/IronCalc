@@ -4,6 +4,7 @@ mod test_complex_precedence;
 mod test_defined_names;
 mod test_displace;
 mod test_excel_export_lambda_let;
+mod test_excel_export_xlfn;
 mod test_general;
 mod test_implicit_intersection;
 mod test_implicit_intersection_export;
