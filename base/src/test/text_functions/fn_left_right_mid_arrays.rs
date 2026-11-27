@@ -120,3 +120,26 @@ fn roundtrip_mid_array_formula() {
     let f = model.get_cell_formula(0, 1, 1).unwrap().unwrap();
     assert_eq!(f, "=MID(N2,SEQUENCE(LEN(N2)),1)");
 }
+
+// ── Numeric-string counts are coerced like Excel (#1788) ──────────────────────
+
+#[test]
+fn numeric_string_counts_are_coerced() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=LEFT("abcdef","2")"#);
+    model._set("A2", r#"=RIGHT("abcdef","2")"#);
+    model._set("A3", r#"=MID("abcdef","2","3")"#);
+    model._set("A4", r#"=LEFT("abcdef"," 3 ")"#);
+    model._set("B1", "2");
+    model._set("B2", r#"=LEFT("abcdef",B1&"")"#);
+    model._set("A5", r#"=LEFT("abcdef","x")"#);
+    model._set("A6", r#"=LEFT("abcdef","-1")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "ab");
+    assert_eq!(model._get_text("A2"), "ef");
+    assert_eq!(model._get_text("A3"), "bcd");
+    assert_eq!(model._get_text("A4"), "abc");
+    assert_eq!(model._get_text("B2"), "ab");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+}
