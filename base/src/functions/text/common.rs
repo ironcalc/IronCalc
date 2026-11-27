@@ -59,15 +59,19 @@ impl TextArg {
 }
 
 /// Coerces a single array element to a number for the start/length arguments of
-/// LEFT/RIGHT/MID. Booleans and strings are rejected with `#VALUE!`, matching the
-/// scalar behaviour of these functions; empties are treated as 0 and errors
-/// propagate.
+/// LEFT/RIGHT/MID. Numeric strings (`"2"`) are coerced as Excel does and other
+/// strings and booleans are rejected with `#VALUE!`; empties are treated as 0 and
+/// errors propagate.
 fn text_num_arg(node: &ArrayNode) -> Result<f64, Error> {
     match node {
         ArrayNode::Number(v) => Ok(*v),
         ArrayNode::Empty => Ok(0.0),
         ArrayNode::Error(e) => Err(e.clone()),
-        ArrayNode::Boolean(_) | ArrayNode::String(_) => Err(Error::VALUE),
+        ArrayNode::String(s) => match s.trim().parse::<f64>() {
+            Ok(v) if v.is_finite() => Ok(v),
+            _ => Err(Error::VALUE),
+        },
+        ArrayNode::Boolean(_) => Err(Error::VALUE),
     }
 }
 
