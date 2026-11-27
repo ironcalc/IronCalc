@@ -1,3 +1,4 @@
+use crate::cast::calc_result_to_array_node;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -118,6 +119,50 @@ fn linear_search(
 }
 
 impl<'a> Model<'a> {
+    /// The `index`-th item of `return_array` along the lookup axis: a single value, or,
+    /// when `return_array` is wider (taller) than a vector, the whole row (column) as an
+    /// array that spills.
+    fn xlookup_pick(
+        &mut self,
+        result_left: CellReferenceIndex,
+        result_right: CellReferenceIndex,
+        is_row_vector: bool,
+        index: i32,
+    ) -> CalcResult {
+        let (first_row, first_column) = if is_row_vector {
+            (result_left.row + index, result_left.column)
+        } else {
+            (result_left.row, result_left.column + index)
+        };
+        let (last_row, last_column) = if is_row_vector {
+            (first_row, result_right.column)
+        } else {
+            (result_right.row, first_column)
+        };
+        if first_row == last_row && first_column == last_column {
+            return self.evaluate_cell(CellReferenceIndex {
+                sheet: result_left.sheet,
+                row: first_row,
+                column: first_column,
+            });
+        }
+        let mut output = Vec::new();
+        for row in first_row..=last_row {
+            let mut line = Vec::new();
+            for column in first_column..=last_column {
+                line.push(calc_result_to_array_node(self.evaluate_cell(
+                    CellReferenceIndex {
+                        sheet: result_left.sheet,
+                        row,
+                        column,
+                    },
+                )));
+            }
+            output.push(line);
+        }
+        CalcResult::Array(output)
+    }
+
     /// The XLOOKUP function searches a range or an array, and then returns the item corresponding
     /// to the first match it finds. If no match exists, then XLOOKUP can return the closest (approximate) match.
     /// =XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])
@@ -233,10 +278,15 @@ impl<'a> Model<'a> {
                         left: result_left,
                         right: result_right,
                     } => {
-                        if result_right.row - result_left.row != right.row - left.row
-                            || result_right.column - result_left.column
-                                != right.column - left.column
-                        {
+                        // return_array must span the lookup_array along its own axis. Across
+                        // it, it can be wider: the whole matching row (or column) is returned
+                        // and spills.
+                        let same_size = if is_row_vector {
+                            result_right.row - result_left.row == right.row - left.row
+                        } else {
+                            result_right.column - result_left.column == right.column - left.column
+                        };
+                        if !same_size {
                             return CalcResult::Error {
                                 error: Error::VALUE,
                                 origin: cell,
@@ -271,17 +321,12 @@ impl<'a> Model<'a> {
                             SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
                                 let array = &self.prepare_array(&left, &right, is_row_vector);
                                 match linear_search(&lookup_value, array, search_mode, match_mode) {
-                                    Some(index) => {
-                                        let row_index =
-                                            if is_row_vector { index as i32 } else { 0 };
-                                        let column_index =
-                                            if is_row_vector { 0 } else { index as i32 };
-                                        self.evaluate_cell(CellReferenceIndex {
-                                            sheet: result_left.sheet,
-                                            row: result_left.row + row_index,
-                                            column: result_left.column + column_index,
-                                        })
-                                    }
+                                    Some(index) => self.xlookup_pick(
+                                        result_left,
+                                        result_right,
+                                        is_row_vector,
+                                        index as i32,
+                                    ),
                                     None => if_not_found,
                                 }
                             }
@@ -313,10 +358,6 @@ impl<'a> Model<'a> {
                                 match index {
                                     None => if_not_found,
                                     Some(l) => {
-                                        let row =
-                                            result_left.row + if is_row_vector { l } else { 0 };
-                                        let column =
-                                            result_left.column + if is_row_vector { 0 } else { l };
                                         if match_mode == MatchMode::ExactMatch {
                                             let value = self.evaluate_cell(CellReferenceIndex {
                                                 sheet: left.sheet,
@@ -325,22 +366,24 @@ impl<'a> Model<'a> {
                                                     + if is_row_vector { 0 } else { l },
                                             });
                                             if compare_values(&value, &lookup_value) == 0 {
-                                                self.evaluate_cell(CellReferenceIndex {
-                                                    sheet: result_left.sheet,
-                                                    row,
-                                                    column,
-                                                })
+                                                self.xlookup_pick(
+                                                    result_left,
+                                                    result_right,
+                                                    is_row_vector,
+                                                    l,
+                                                )
                                             } else {
                                                 if_not_found
                                             }
                                         } else if match_mode == MatchMode::ExactMatchSmaller
                                             || match_mode == MatchMode::ExactMatchLarger
                                         {
-                                            self.evaluate_cell(CellReferenceIndex {
-                                                sheet: result_left.sheet,
-                                                row,
-                                                column,
-                                            })
+                                            self.xlookup_pick(
+                                                result_left,
+                                                result_right,
+                                                is_row_vector,
+                                                l,
+                                            )
                                         } else {
                                             CalcResult::Error {
                                                 error: Error::VALUE,
