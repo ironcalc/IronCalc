@@ -128,6 +128,43 @@ fn test_apply_ifs_date_criterion_respects_locale() {
     assert_eq!(model._get_text("A4"), *"1");
 }
 
+// A legacy import stores `SUMIFS(Data!B:B,Data!A:A,$A:$A)` as
+// `SUMIFS(Data!B:B,Data!A:A,@$A:$A)`. `@$A:$A` is the criterion cell on this
+// row, so each formula sums the Data rows whose key matches column A.
+#[test]
+fn test_fn_sumifs_implicit_intersection_criteria() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model.rename_sheet("Sheet2", "Data").unwrap();
+
+    model._set("Data!A2", "apple");
+    model._set("Data!B2", "10");
+    model._set("Data!A3", "banana");
+    model._set("Data!B3", "20");
+    model._set("Data!A4", "apple");
+    model._set("Data!B4", "30");
+    model._set("Data!A5", "cherry");
+    model._set("Data!B5", "7");
+
+    model._set("A2", "apple");
+    model._set("A3", "banana");
+    model._set("A10", "cherry");
+    model._set("F2", "=SUMIFS(Data!B:B,Data!A:A,@$A:$A)");
+    model._set("F3", "=SUMIFS(Data!B:B,Data!A:A,@$A:$A)");
+    model._set("F10", "=SUMIFS(Data!B:B,Data!A:A,@$A:$A)");
+
+    model.evaluate();
+
+    assert_eq!(
+        model._get_formula("F10"),
+        "=SUMIFS(Data!B:B,Data!A:A,@$A:$A)"
+    );
+    // apple = 10 + 30, banana = 20, cherry = 7
+    assert_eq!(model._get_text("F2"), "40");
+    assert_eq!(model._get_text("F3"), "20");
+    assert_eq!(model._get_text("F10"), "7");
+}
+
 // ── whole-column range and a spill beyond the used area ─────────────────────
 
 // A whole-column range is clipped to the sheet's used area before it is

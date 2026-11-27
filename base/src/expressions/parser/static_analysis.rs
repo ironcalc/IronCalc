@@ -679,6 +679,28 @@ fn args_signature_sumif_spill(arg_count: usize) -> Vec<Signature> {
     }
 }
 
+/// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...).
+///
+/// `sum_range` and every `criteria_rangeN` are ranges. Every `criteriaN` is a
+/// scalar, so a legacy import intersects a range criterion such as `$A:$A`
+/// into `@$A:$A`. The argument count must be odd and at least 3.
+fn args_signature_sumifs(arg_count: usize) -> Vec<Signature> {
+    if arg_count >= 3 && !arg_count.is_multiple_of(2) {
+        (0..arg_count)
+            .map(|index| {
+                // Even indexes after the sum range are the criteria.
+                if index > 0 && index.is_multiple_of(2) {
+                    Signature::Scalar
+                } else {
+                    Signature::Vector
+                }
+            })
+            .collect()
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
 // 1 or none scalars
 fn args_signature_sheet(arg_count: usize) -> Vec<Signature> {
     if arg_count == 0 {
@@ -1133,7 +1155,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sqrtpi => args_signature_scalars(arg_count, 1, 0),
         Function::Sum => vec![Signature::Vector; arg_count],
         Function::Sumif => args_signature_sumif_spill(arg_count),
-        Function::Sumifs => vec![Signature::Vector; arg_count],
+        Function::Sumifs => args_signature_sumifs(arg_count),
         Function::Tan => args_signature_scalars(arg_count, 1, 0),
         Function::Tanh => args_signature_scalars(arg_count, 1, 0),
         Function::ErrorType => args_signature_scalars(arg_count, 1, 0),
