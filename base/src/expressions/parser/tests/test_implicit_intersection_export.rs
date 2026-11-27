@@ -89,6 +89,64 @@ fn sum_keeps_explicit_intersection() {
     ]);
 }
 
+// SUMIFS criteria (arguments 2, 4, 6, ...) are scalars. A legacy formula such as
+// `SUMIFS(Data!B:B,Data!A:A,$A:$A)` therefore intersects `$A:$A` on import and
+// drops the operator again on export. The sum range and each criteria range stay
+// whole columns.
+#[test]
+fn sumifs_intersects_criteria_only() {
+    let worksheets = vec!["Sheet1".to_string(), "Data".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    // The cellproof fixture sits in F10.
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 10,
+        column: 6,
+    };
+    let cases = [
+        (
+            "SUMIFS(Data!B:B,Data!A:A,$A:$A)",
+            "SUMIFS(Data!B:B,Data!A:A,@$A:$A)",
+            "SUMIFS(Data!B:B,Data!A:A,$A:$A)",
+        ),
+        (
+            "SUMIFS(Data!C:C,Data!A:A,$A:$A,Data!B:B,$B:$B)",
+            "SUMIFS(Data!C:C,Data!A:A,@$A:$A,Data!B:B,@$B:$B)",
+            "SUMIFS(Data!C:C,Data!A:A,$A:$A,Data!B:B,$B:$B)",
+        ),
+        // A bounded range criterion is a scalar too. The ranges are not.
+        (
+            "SUMIFS($B:$B,$A:$A,$C$1:$E$1)",
+            "SUMIFS($B:$B,$A:$A,@$C$1:$E$1)",
+            "SUMIFS($B:$B,$A:$A,$C$1:$E$1)",
+        ),
+        // A single cell and a string are already scalars.
+        (
+            "SUMIFS(Data!B:B,Data!A:A,$A$10)",
+            "SUMIFS(Data!B:B,Data!A:A,$A$10)",
+            "SUMIFS(Data!B:B,Data!A:A,$A$10)",
+        ),
+        (
+            "SUMIFS(Data!B:B,Data!A:A,\"apple\")",
+            "SUMIFS(Data!B:B,Data!A:A,\"apple\")",
+            "SUMIFS(Data!B:B,Data!A:A,\"apple\")",
+        ),
+    ];
+    for (excel_input, internal, expected_excel) in cases {
+        let mut t = parser.parse(excel_input, &cell_reference);
+        add_implicit_intersection(&mut t, true);
+
+        let r = to_english_localized_string(&t, &cell_reference);
+        assert_eq!(r, internal, "internal form of `{excel_input}`");
+
+        let excel_formula = to_excel_string(&t, &cell_reference);
+        assert_eq!(
+            excel_formula, expected_excel,
+            "Excel export of `{excel_input}`"
+        );
+    }
+}
+
 // In a scalar context the operator is redundant: the import re-inserts it, so the
 // export drops `_xlfn.SINGLE`. This is the behaviour we must NOT lose for vector
 // arguments above.

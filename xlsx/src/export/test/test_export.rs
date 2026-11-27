@@ -1,5 +1,6 @@
 use ironcalc_base::{DefinedNameEntry, NamedFunctionEntry};
 use std::fs;
+use std::io::Read;
 
 use ironcalc_base::types::{Color, NamedFunctionParameter, StyleIncludes};
 use ironcalc_base::Model;
@@ -561,4 +562,62 @@ fn theme_tints_keep_every_digit() {
     assert_eq!(a1.font.color, Color::Theme(4, -0.14996795556505021));
     assert_eq!(a2.font.color, Color::Theme(1, -0.0499893185216834));
     fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
+fn sumifs_criteria_intersection_round_trips() {
+    // Legacy SUMIFS criteria are scalars. `@$A:$A` is what import stores for
+    // `$A:$A`; export writes the range without `@`, and the next import puts
+    // the operator back. Each row sums Data!B where Data!A matches column A.
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model.rename_sheet("Sheet2", "Data").unwrap();
+    model.set_user_input(1, 2, 1, "apple".to_string()).unwrap();
+    model.set_user_input(1, 2, 2, "10".to_string()).unwrap();
+    model.set_user_input(1, 3, 1, "banana".to_string()).unwrap();
+    model.set_user_input(1, 3, 2, "20".to_string()).unwrap();
+    model.set_user_input(1, 4, 1, "apple".to_string()).unwrap();
+    model.set_user_input(1, 4, 2, "30".to_string()).unwrap();
+
+    model.set_user_input(0, 2, 1, "apple".to_string()).unwrap();
+    model
+        .set_user_input(0, 10, 1, "banana".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 2, 6, "=SUMIFS(Data!B:B,Data!A:A,@$A:$A)".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 10, 6, "=SUMIFS(Data!B:B,Data!A:A,@$A:$A)".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 6).unwrap(), "40");
+    assert_eq!(model.get_formatted_cell_value(0, 10, 6).unwrap(), "20");
+
+    let temp_file_name = "temp_file_test_sumifs_criteria_intersection.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let file = fs::File::open(temp_file_name).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+    let mut sheet = String::new();
+    archive
+        .by_name("xl/worksheets/sheet1.xml")
+        .unwrap()
+        .read_to_string(&mut sheet)
+        .unwrap();
+
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+
+    assert!(
+        sheet.contains(">SUMIFS(Data!B:B,Data!A:A,$A:$A)</f>"),
+        "{sheet}"
+    );
+    assert!(!sheet.contains("@$A:$A"), "{sheet}");
+    assert!(!sheet.contains("_xlfn.SINGLE"), "{sheet}");
+    assert_eq!(
+        model.get_cell_formula(0, 10, 6).unwrap(),
+        Some("=SUMIFS(Data!B:B,Data!A:A,@$A:$A)".to_string())
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 2, 6).unwrap(), "40");
+    assert_eq!(model.get_formatted_cell_value(0, 10, 6).unwrap(), "20");
 }
