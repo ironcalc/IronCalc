@@ -72,7 +72,19 @@ fn simple_test() {
         ("AND(A1:A10)", "AND(A1:A10)"),
         ("OR(A1:A10)", "OR(A1:A10)"),
         ("NOT(A1:A10)", "NOT(@A1:A10)"),
-        ("IF(A1:A10,B1:B10,C1:C10)", "IF(@A1:A10,@B1:B10,@C1:C10)"),
+        // IF's condition is one value; its branches pass references through.
+        // A range branch makes the call reference-shaped, so a scalar position
+        // wraps the call (`=@IF(...)`). A range consumer does not.
+        ("IF(A1:A10,B1:B10,C1:C10)", "@IF(@A1:A10,B1:B10,C1:C10)"),
+        ("IF(A1:A10,1,0)", "IF(@A1:A10,1,0)"),
+        ("IF(TRUE,B1:B4)", "@IF(TRUE,B1:B4)"),
+        ("SUM(IF(TRUE,B1:B4))", "SUM(IF(TRUE,B1:B4))"),
+        ("COUNT(IF(TRUE,B1:B4))", "COUNT(IF(TRUE,B1:B4))"),
+        ("MAX(IF(TRUE,B1:B4))", "MAX(IF(TRUE,B1:B4))"),
+        ("SUBTOTAL(9,IF(TRUE,B1:B4))", "SUBTOTAL(9,IF(TRUE,B1:B4))"),
+        ("AVERAGE(IF(TRUE,B1:B4))", "AVERAGE(IF(TRUE,B1:B4))"),
+        ("SUM(IF(B1>0,B1:B4,C1:C4))", "SUM(IF(B1>0,B1:B4,C1:C4))"),
+        ("SUM(IF(B1>5,B1:B4,C1:C4))", "SUM(IF(B1>5,B1:B4,C1:C4))"),
         // CHOOSE value args pass references through: no `@` on the arms. In a
         // scalar position the whole call is wrapped instead; in a range
         // position (e.g. inside SUM) nothing is wrapped.

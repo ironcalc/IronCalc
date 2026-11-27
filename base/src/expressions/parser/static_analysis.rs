@@ -1043,6 +1043,19 @@ fn args_signature_address(arg_count: usize) -> Vec<Signature> {
     vec![Signature::Scalar; arg_count]
 }
 
+fn args_signature_if(arg_count: usize) -> Vec<Signature> {
+    // IF(condition, value_if_true, [value_if_false]): the condition is one
+    // value; the branches pass references through (Excel: SUM(IF(TRUE, B1:B4))
+    // sums the range, it does not intersect it). A wrong number of arguments
+    // is not a scalar context either.
+    if !(2..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Vector; arg_count];
+    result[0] = Signature::Scalar;
+    result
+}
+
 fn args_signature_choose(arg_count: usize) -> Vec<Signature> {
     // CHOOSE(index, value1, ...): the index is a scalar; the value arguments
     // pass references through untouched (Excel: SUM(CHOOSE(2, A1:A5, B1:B5))
@@ -1092,7 +1105,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
     match kind {
         Function::And => vec![Signature::Vector; arg_count],
         Function::False => args_signature_no_args(arg_count),
-        Function::If => args_signature_scalars(arg_count, 2, 1),
+        Function::If => args_signature_if(arg_count),
         Function::Iferror => args_signature_scalars(arg_count, 2, 0),
         Function::Ifna => args_signature_scalars(arg_count, 2, 0),
         Function::Ifs => vec![Signature::Scalar; arg_count],
@@ -1745,7 +1758,14 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
     match kind {
         Function::And => StaticResult::Scalar,
         Function::False => StaticResult::Scalar,
-        Function::If => scalar_arguments(args),
+        // IF passes a reference branch through, so a range or array branch
+        // makes the call reference-shaped. Legacy import then wraps the whole
+        // call in `@` (Excel upgrades `=IF(TRUE,B1:B4)` to `=@IF(...)`) and
+        // leaves it unwrapped inside a range consumer such as SUM.
+        Function::If => match scalar_arguments(args) {
+            StaticResult::Array(n, m) => StaticResult::Range(n, m),
+            other => other,
+        },
         Function::Iferror => scalar_arguments(args),
         Function::Ifna => scalar_arguments(args),
         Function::Ifs => not_implemented(args),
