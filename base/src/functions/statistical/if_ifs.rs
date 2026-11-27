@@ -27,6 +27,100 @@ fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> Calc
     }
 }
 
+/// Converts a scalar criterion back into an AST node, so an array criterion can be
+/// evaluated one element at a time through the ordinary scalar `*IFS` path.
+fn calc_result_to_node(value: &CalcResult) -> Node {
+    match value {
+        CalcResult::Number(n) => Node::NumberKind(*n),
+        CalcResult::Boolean(b) => Node::BooleanKind(*b),
+        CalcResult::String(s) => Node::StringKind(s.clone()),
+        CalcResult::Error { error, .. } => Node::ErrorKind(error.clone()),
+        _ => Node::StringKind(String::new()),
+    }
+}
+
+impl<'a> Model<'a> {
+    /// COUNTIFS, SUMIFS, AVERAGEIFS, MINIFS and MAXIFS where a criterion is an inline
+    /// array (`{"x","y"}`) or a multi-cell range: Excel returns one result per
+    /// criterion element, keeping the criteria's shape (so `SUM(COUNTIFS(r,{"x","y"}))`
+    /// adds them up). Criteria are the arguments at `first, first + 2, ...`.
+    ///
+    /// Returns `None` when every criterion is a scalar (the caller takes its ordinary
+    /// path). Several array criteria must have the same shape and are paired element
+    /// by element; broadcasting a row against a column is not supported (`#VALUE!`).
+    pub(crate) fn spill_ifs(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        first: usize,
+        scalar_fn: fn(&mut Self, &[Node], CellReferenceIndex) -> CalcResult,
+    ) -> Option<CalcResult> {
+        let mut grids: Vec<(usize, Vec<Vec<CalcResult>>)> = vec![];
+        for index in (first..args.len()).step_by(2) {
+            let grid: Vec<Vec<CalcResult>> = match self.evaluate_node_in_context(&args[index], cell)
+            {
+                CalcResult::Array(array) => array
+                    .iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|node| array_node_to_calc_result(node, cell))
+                            .collect()
+                    })
+                    .collect(),
+                CalcResult::Range { left, right }
+                    if left.sheet == right.sheet
+                        && (left.row != right.row || left.column != right.column) =>
+                {
+                    let mut grid = Vec::new();
+                    for row in left.row..=right.row {
+                        let mut out_row = Vec::new();
+                        for column in left.column..=right.column {
+                            out_row.push(self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }));
+                        }
+                        grid.push(out_row);
+                    }
+                    grid
+                }
+                _ => continue,
+            };
+            grids.push((index, grid));
+        }
+        let (_, shape) = grids.first()?;
+        let (rows, columns) = (shape.len(), shape.first().map_or(0, |r| r.len()));
+        if grids
+            .iter()
+            .any(|(_, g)| g.len() != rows || g.iter().any(|r| r.len() != columns))
+        {
+            return Some(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Criteria arrays have different sizes".to_string(),
+            ));
+        }
+        let mut output = Vec::with_capacity(rows);
+        for r in 0..rows {
+            let mut out_row = Vec::with_capacity(columns);
+            for c in 0..columns {
+                let mut scalar_args = args.to_vec();
+                for (index, grid) in &grids {
+                    scalar_args[*index] = calc_result_to_node(&grid[r][c]);
+                }
+                out_row.push(match scalar_fn(self, &scalar_args, cell) {
+                    CalcResult::Number(n) => ArrayNode::Number(n),
+                    CalcResult::Error { error, .. } => ArrayNode::Error(error),
+                    _ => ArrayNode::Error(Error::ERROR),
+                });
+            }
+            output.push(out_row);
+        }
+        Some(CalcResult::Array(output))
+    }
+}
+
 impl<'a> Model<'a> {
     pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
@@ -56,6 +150,9 @@ impl<'a> Model<'a> {
         let args_count = args.len();
         if args_count < 2 || !args_count.is_multiple_of(2) {
             return CalcResult::new_args_number_error(cell);
+        }
+        if let Some(spilled) = self.spill_ifs(args, cell, 1, Self::fn_countifs) {
+            return spilled;
         }
 
         let case_count = args_count / 2;
@@ -420,6 +517,9 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_averageifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if let Some(spilled) = self.spill_ifs(args, cell, 2, Self::fn_averageifs) {
+            return spilled;
+        }
         let mut total = 0.0;
         let mut count = 0.0;
 
@@ -442,6 +542,9 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if let Some(spilled) = self.spill_ifs(args, cell, 2, Self::fn_minifs) {
+            return spilled;
+        }
         let mut min = f64::INFINITY;
         let apply_min = |value: f64| min = value.min(min);
         if let Err(e) = self.apply_ifs(args, cell, apply_min) {
@@ -455,6 +558,9 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if let Some(spilled) = self.spill_ifs(args, cell, 2, Self::fn_maxifs) {
+            return spilled;
+        }
         let mut max = -f64::INFINITY;
         let apply_max = |value: f64| max = value.max(max);
         if let Err(e) = self.apply_ifs(args, cell, apply_max) {
