@@ -529,6 +529,25 @@ fn sumif_static_result(args: &[Node]) -> StaticResult {
     }
 }
 
+/// COUNTIFS, SUMIFS, AVERAGEIFS, MINIFS and MAXIFS spill like SUMIF: one result per
+/// element of an array/range criterion (the arguments at `first, first + 2, ...`),
+/// with the shape of that criterion; all scalar criteria give a scalar.
+fn ifs_static_result(args: &[Node], first: usize) -> StaticResult {
+    let mut result = StaticResult::Scalar;
+    for criteria in args.iter().skip(first).step_by(2) {
+        match run_static_analysis_on_node(criteria) {
+            StaticResult::Array(a, b) | StaticResult::Range(a, b) => {
+                if let StaticResult::Scalar = result {
+                    result = StaticResult::Array(a, b);
+                }
+            }
+            StaticResult::Scalar => {}
+            StaticResult::Unknown => return StaticResult::Unknown,
+        }
+    }
+    result
+}
+
 fn static_analysis_offset(args: &[Node]) -> StaticResult {
     // If first argument is a single cell reference and there are no4th and 5th argument,
     // or they are 1, then it is a scalar
@@ -1232,7 +1251,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Count => vec![Signature::Vector; arg_count],
         Function::Counta => vec![Signature::Vector; arg_count],
         Function::Countblank => vec![Signature::Vector; arg_count],
-        Function::Countif => args_signature_sumif(arg_count),
+        Function::Countif => args_signature_sumif_spill(arg_count),
         Function::Countifs => vec![Signature::Vector; arg_count],
         Function::Maxifs => vec![Signature::Vector; arg_count],
         Function::Minifs => vec![Signature::Vector; arg_count],
@@ -1792,7 +1811,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sqrtpi => StaticResult::Scalar,
         Function::Sum => StaticResult::Scalar,
         Function::Sumif => sumif_static_result(args),
-        Function::Sumifs => not_implemented(args),
+        Function::Sumifs => ifs_static_result(args, 2),
         Function::Tan => scalar_arguments(args),
         Function::Tanh => scalar_arguments(args),
         Function::ErrorType => not_implemented(args),
@@ -1914,14 +1933,14 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Averagea => not_implemented(args),
         Function::Avedev => not_implemented(args),
         Function::Averageif => not_implemented(args),
-        Function::Averageifs => not_implemented(args),
+        Function::Averageifs => ifs_static_result(args, 2),
         Function::Count => not_implemented(args),
         Function::Counta => not_implemented(args),
         Function::Countblank => not_implemented(args),
-        Function::Countif => not_implemented(args),
-        Function::Countifs => not_implemented(args),
-        Function::Maxifs => not_implemented(args),
-        Function::Minifs => not_implemented(args),
+        Function::Countif => ifs_static_result(args, 1),
+        Function::Countifs => ifs_static_result(args, 1),
+        Function::Maxifs => ifs_static_result(args, 2),
+        Function::Minifs => ifs_static_result(args, 2),
         // DATE broadcasts element-wise: an array/range argument yields an array.
         Function::Date => scalar_arguments(args),
         Function::Datedif => not_implemented(args),
