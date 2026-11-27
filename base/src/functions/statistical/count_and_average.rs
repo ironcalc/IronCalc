@@ -911,11 +911,16 @@ impl<'a> Model<'a> {
                 }
             }
         };
-        let k = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
+        // Excel compares k with 1 and with the count before it rounds. LARGE
+        // then ceilings k, which is SMALL at count + 1 - k. TRUE is 1, so
+        // FALSE (0) is #NUM!, and numeric text such as "2" is accepted.
+        // NaN fails every comparison, so reject it here instead of casting it
+        // to an index.
+        let k = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
             Err(s) => return s,
         };
-        if k < 1.0 {
+        if k.is_nan() || k < 1.0 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -930,15 +935,15 @@ impl<'a> Model<'a> {
                 message: "No numeric values for LARGE".to_string(),
             };
         }
-        numeric_values.sort_by(|a, b| b.partial_cmp(a).unwrap_or(Ordering::Equal));
-        let k_usize = k as usize;
-        if k_usize > numeric_values.len() {
+        if k > numeric_values.len() as f64 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
                 message: "K is larger than the number of data points".to_string(),
             };
         }
+        numeric_values.sort_by(|a, b| b.partial_cmp(a).unwrap_or(Ordering::Equal));
+        let k_usize = k.ceil() as usize;
         CalcResult::Number(numeric_values[k_usize - 1])
     }
 
@@ -1012,12 +1017,13 @@ impl<'a> Model<'a> {
             }
         };
 
-        let k = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
+        // Same bounds as LARGE, checked before rounding. SMALL then cuts k
+        // down toward zero. See `fn_large` for TRUE, FALSE, and numeric text.
+        let k = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
             Err(s) => return s,
         };
-
-        if k < 1.0 {
+        if k.is_nan() || k < 1.0 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -1033,12 +1039,7 @@ impl<'a> Model<'a> {
                 message: "No numeric values for SMALL".to_string(),
             };
         }
-
-        // For SMALL, sort ascending
-        numeric_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
-
-        let k_usize = k as usize;
-        if k_usize > numeric_values.len() {
+        if k > numeric_values.len() as f64 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -1046,6 +1047,10 @@ impl<'a> Model<'a> {
             };
         }
 
+        // For SMALL, sort ascending
+        numeric_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+
+        let k_usize = k.trunc() as usize;
         CalcResult::Number(numeric_values[k_usize - 1])
     }
 }
