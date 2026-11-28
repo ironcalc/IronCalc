@@ -641,9 +641,17 @@ impl<'a> Model<'a> {
             | Cell::BooleanCell { .. }
             | Cell::NumberCell { .. }
             | Cell::ErrorCell { .. }
-            | Cell::SharedString { .. }
-            | Cell::CellFormula { .. } => {
-                // This is a regular cell, we can just move it.
+            | Cell::SharedString { .. } => {
+                // A value moves as it is stored. Typing its text in again at the
+                // new place could change it: the text "0630" would become a
+                // number, "=B1" a formula and a long number would lose digits.
+                let worksheet = self.workbook.worksheet_mut(sheet)?;
+                worksheet.update_cell(target_row, target_column, source_cell)?;
+                worksheet.remove_cell(source_row, source_column)?;
+                return Ok(());
+            }
+            Cell::CellFormula { .. } => {
+                // This is a regular formula, we can just move it.
             }
             Cell::SpillCell { a, .. } => {
                 // A cell of a CSE array is moved together with its anchor, whether
@@ -684,15 +692,9 @@ impl<'a> Model<'a> {
                 array = Some(*r);
             }
         }
-        let formula_or_value = self
+        let formula = self
             .get_cell_formula(sheet, source_row, source_column)?
-            .unwrap_or_else(|| {
-                source_cell.get_localized_text(
-                    &self.workbook.shared_strings,
-                    self.locale,
-                    self.language,
-                )
-            });
+            .ok_or("Expected a formula")?;
 
         if let Some((width, height)) = array {
             // We are moving an array formula, we need to move the whole range.
@@ -706,16 +708,9 @@ impl<'a> Model<'a> {
                     }
                 }
             }
-            self.set_user_array_formula(
-                sheet,
-                target_row,
-                target_column,
-                width,
-                height,
-                &formula_or_value,
-            )?;
+            self.set_user_array_formula(sheet, target_row, target_column, width, height, &formula)?;
         } else {
-            self.set_user_input(sheet, target_row, target_column, formula_or_value)?;
+            self.set_user_input(sheet, target_row, target_column, formula)?;
         }
 
         let worksheet = self.workbook.worksheet_mut(sheet)?;
@@ -1319,8 +1314,7 @@ impl<'a> Model<'a> {
 
         // Links move with their cells: take the moved column's links out and
         // shift the links of the columns in between. The moved links are
-        // re-attached at the end, after the cells have been rebuilt (rebuilding
-        // goes through `set_user_input`, which could auto-link URL-like values).
+        // re-attached at the end, after the cells have been rebuilt.
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         let moved_links: Vec<(i32, Link)> = worksheet
             .links
@@ -1352,16 +1346,7 @@ impl<'a> Model<'a> {
                 .cell(r.row, column)
                 .ok_or("Expected Cell to exist")?
                 .into_owned();
-            let style_idx = cell.get_style();
-            let formula_or_value =
-                self.get_cell_formula(sheet, r.row, column)?
-                    .unwrap_or_else(|| {
-                        cell.get_localized_text(
-                            &self.workbook.shared_strings,
-                            self.locale,
-                            self.language,
-                        )
-                    });
+            let formula = self.get_cell_formula(sheet, r.row, column)?;
 
             let mut array = None;
 
@@ -1401,7 +1386,7 @@ impl<'a> Model<'a> {
                 }
             }
 
-            original_cells.push((r.row, formula_or_value, style_idx, array));
+            original_cells.push((r.row, cell, formula, array));
             let ws = self.workbook.worksheet_mut(sheet)?;
             ws.remove_cell(r.row, column)?;
         }
@@ -1438,11 +1423,19 @@ impl<'a> Model<'a> {
                     .set_column_width_and_style(c + 1, w, h, s)?;
             }
         }
-        for (r, value, style_idx, array) in original_cells {
+        for (r, cell, formula, array) in original_cells {
+            let style_idx = cell.get_style();
+            let Some(formula) = formula else {
+                // A value is put back as it is stored (see `move_cell`)
+                self.workbook
+                    .worksheet_mut(sheet)?
+                    .update_cell(r, target_column, cell)?;
+                continue;
+            };
             if let Some(a) = array {
-                self.set_user_array_formula(sheet, r, target_column, a.0, a.1, &value)?;
+                self.set_user_array_formula(sheet, r, target_column, a.0, a.1, &formula)?;
             } else {
-                self.set_user_input(sheet, r, target_column, value)?;
+                self.set_user_input(sheet, r, target_column, formula)?;
             }
             self.workbook
                 .worksheet_mut(sheet)?
@@ -1452,9 +1445,8 @@ impl<'a> Model<'a> {
             .worksheet_mut(sheet)?
             .set_column_width_and_style(target_column, width, hidden, style)?;
 
-        // Re-attach the moved links, discarding any link the rebuild auto-created
+        // Re-attach the moved links
         let worksheet = self.workbook.worksheet_mut(sheet)?;
-        worksheet.links.retain(|&(_, c), _| c != target_column);
         for (r, link) in moved_links {
             worksheet.links.insert((r, target_column), link);
         }
@@ -1475,8 +1467,7 @@ impl<'a> Model<'a> {
 
         // Links move with their cells: take the moved row's links out and shift
         // the links of the rows in between. The moved links are re-attached at
-        // the end, after the cells have been rebuilt (rebuilding goes through
-        // `set_user_input`, which could auto-link URL-like values).
+        // the end, after the cells have been rebuilt.
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         let moved_links: Vec<(i32, Link)> = worksheet
             .links
@@ -1505,10 +1496,7 @@ impl<'a> Model<'a> {
                 .cell(row, *c)
                 .ok_or("Expected Cell to exist")?
                 .into_owned();
-            let style_idx = cell.get_style();
-            let formula_or_value = self.get_cell_formula(sheet, row, *c)?.unwrap_or_else(|| {
-                cell.get_localized_text(&self.workbook.shared_strings, self.locale, self.language)
-            });
+            let formula = self.get_cell_formula(sheet, row, *c)?;
             let mut array = None;
 
             match &cell {
@@ -1546,7 +1534,7 @@ impl<'a> Model<'a> {
                     array = Some(*r);
                 }
             }
-            original_cells.push((*c, formula_or_value, style_idx, array));
+            original_cells.push((*c, cell, formula, array));
             let ws = self.workbook.worksheet_mut(sheet)?;
             ws.remove_cell(row, *c)?;
         }
@@ -1565,7 +1553,15 @@ impl<'a> Model<'a> {
                 }
             }
         }
-        for (c, value, style_idx, array) in original_cells {
+        for (c, cell, formula, array) in original_cells {
+            let style_idx = cell.get_style();
+            let Some(formula) = formula else {
+                // A value is put back as it is stored (see `move_cell`)
+                self.workbook
+                    .worksheet_mut(sheet)?
+                    .update_cell(target_row, c, cell)?;
+                continue;
+            };
             if let Some(array_range) = array {
                 self.set_user_array_formula(
                     sheet,
@@ -1573,10 +1569,10 @@ impl<'a> Model<'a> {
                     c,
                     array_range.0,
                     array_range.1,
-                    &value,
+                    &formula,
                 )?;
             } else {
-                self.set_user_input(sheet, target_row, c, value)?;
+                self.set_user_input(sheet, target_row, c, formula)?;
             }
             self.workbook
                 .worksheet_mut(sheet)?
@@ -1603,9 +1599,8 @@ impl<'a> Model<'a> {
         }
         worksheet.rows = new_rows;
 
-        // Re-attach the moved links, discarding any link the rebuild auto-created
+        // Re-attach the moved links
         let worksheet = self.workbook.worksheet_mut(sheet)?;
-        worksheet.links.retain(|&(r, _), _| r != target_row);
         for (c, link) in moved_links {
             worksheet.links.insert((target_row, c), link);
         }
